@@ -11,7 +11,9 @@ use smallvec1::SmallVec;
 use crate::analysis::HirAnalysisDb;
 use crate::analysis::name_resolution;
 use crate::analysis::ty;
-use crate::analysis::ty::diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag};
+use crate::analysis::ty::diagnostics::{
+    TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag,
+};
 use crate::analysis::ty::generic_defaults::{default_dependencies, type_default_diags};
 use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
@@ -462,6 +464,31 @@ impl<'db> Trait<'db> {
         diags
     }
 
+    /// Diagnostics for effect rows and result spaces given values in the
+    /// trait itself.
+    pub fn diags_access_defaults(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        let rows = self
+            .rows(db)
+            .iter()
+            .filter(|row| row.effects.is_some())
+            .filter_map(|row| Some(("effect row", row.name.to_opt()?)));
+        let spaces = self
+            .spaces(db)
+            .iter()
+            .filter(|space| space.value.is_some())
+            .filter_map(|space| Some(("space", space.name.to_opt()?)));
+        rows.chain(spaces)
+            .map(|(kind, name)| {
+                TraitLowerDiag::AccessItemDefault {
+                    primary: self.span().name().into(),
+                    kind,
+                    name,
+                }
+                .into()
+            })
+            .collect()
+    }
+
     /// Diagnostics for generic parameter issues (duplicates, defined in parent).
     pub fn diags_generic_params(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let owner = GenericParamOwner::Trait(self);
@@ -770,6 +797,78 @@ impl<'db> ImplTrait<'db> {
                     }
                     .into(),
                 );
+            }
+        }
+        diags
+    }
+
+    /// Diagnostics for effect rows and result spaces: each one the trait
+    /// declares, and every space given, naming a space.
+    pub fn diags_access_items(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        use ty::diagnostics::ImplDiag;
+        use ty::trait_lower::lower_impl_trait;
+
+        let Some(implementor) = lower_impl_trait(db, self) else {
+            return Vec::new();
+        };
+        let trait_ = implementor.trait_def(db);
+        let primary = || DynLazySpan::from(self.span().ty());
+        let rows = self.rows(db).iter().filter_map(|row| {
+            let name = row.name.to_opt()?;
+            (!trait_
+                .rows(db)
+                .iter()
+                .any(|row| row.name.to_opt() == Some(name)))
+            .then_some(("effect row", name))
+        });
+        let spaces = self.spaces(db).iter().filter_map(|space| {
+            let name = space.name.to_opt()?;
+            (!trait_
+                .spaces(db)
+                .iter()
+                .any(|space| space.name.to_opt() == Some(name)))
+            .then_some(("space", name))
+        });
+        let mut diags: Vec<TyDiagCollection<'db>> = rows
+            .chain(spaces)
+            .map(|(kind, name)| {
+                ImplDiag::AccessItemNotDefinedInTrait {
+                    primary: primary(),
+                    trait_,
+                    kind,
+                    name,
+                }
+                .into()
+            })
+            .collect();
+        for name in trait_
+            .spaces(db)
+            .iter()
+            .filter_map(|space| space.name.to_opt())
+        {
+            match self
+                .spaces(db)
+                .iter()
+                .find(|given| given.name.to_opt() == Some(name))
+                .and_then(|given| given.value)
+            {
+                None => diags.push(
+                    ImplDiag::MissingAssociatedSpace {
+                        primary: primary(),
+                        trait_,
+                        name,
+                    }
+                    .into(),
+                ),
+                Some(value)
+                    if value
+                        .to_opt()
+                        .and_then(|value| ty::result_space::impl_space_value(db, self, value))
+                        .is_none() =>
+                {
+                    diags.push(TyLowerDiag::UnknownResultSpace(primary()).into());
+                }
+                Some(_) => {}
             }
         }
         diags
@@ -1666,6 +1765,15 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_param_types(db));
         out.extend(self.diags_return(db));
         out.extend(self.diags_view_types(db));
+        // A result-space annotation names a space.
+        if self
+            .ret_spaces(db)
+            .iter()
+            .zip(ty::result_space::declared_result_spaces(db, self))
+            .any(|(annotation, contract)| annotation.is_some() && contract.is_none())
+        {
+            out.push(TyLowerDiag::UnknownResultSpace(self.span().ret_ty().into()).into());
+        }
 
         for pred in WhereClauseOwner::Func(self).clause(db).predicates(db) {
             out.extend(pred.diags(db));
@@ -1724,6 +1832,7 @@ impl<'db> Diagnosable<'db> for Trait<'db> {
             }
         }
         out.extend(self.diags_assoc_defaults(db));
+        out.extend(self.diags_access_defaults(db));
         out.extend(self.diags_super_traits(db));
 
         for pred in WhereClauseOwner::Trait(self).clause(db).predicates(db) {
@@ -1763,6 +1872,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));
+        out.extend(self.diags_access_items(db));
         out.extend(self.diags_assoc_types_bounds(db));
         out.extend(self.diags_missing_assoc_consts(db));
         out.extend(self.diags_assoc_consts(db));

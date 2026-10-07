@@ -1,5 +1,6 @@
 use super::{
     adt_def::AdtCycleMember,
+    effects::rows::RowKey,
     provider::{ProviderAddressSpace, ProviderLayoutFailure},
     trait_def::TraitInstId,
     ty_check::{RecordLike, TraitOps},
@@ -65,6 +66,9 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
+    /// A result-space annotation, or an implementation's associated space,
+    /// that names no space.
+    UnknownResultSpace(DynLazySpan<'db>),
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -298,6 +302,7 @@ impl TyLowerDiag<'_> {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
             Self::ViewTypeMode { .. } => 59,
+            Self::UnknownResultSpace(_) => 60,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
             Self::GrowingRecursiveType(_) => 57,
@@ -476,6 +481,13 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         func: Func<'db>,
         key: HirTypeId<'db>,
+    },
+
+    /// A call needs an abstract row, which only the caller's own can supply.
+    MissingRow {
+        primary: DynLazySpan<'db>,
+        func: Func<'db>,
+        row: RowKey<'db>,
     },
 
     AmbiguousEffect {
@@ -932,6 +944,51 @@ pub enum BodyDiag<'db> {
     UnsafeProviderRequiresUnsafe {
         primary: DynLazySpan<'db>,
     },
+    /// A `with` provider naming existing storage or transient state that the
+    /// function's own effects do not cover.
+    UncoveredProvider {
+        primary: DynLazySpan<'db>,
+        is_mut: bool,
+    },
+
+    /// A closure in a constant context, which cannot evaluate it.
+    ClosureInConstContext {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A closure whose parameter count differs from the callable shape it
+    /// is passed as.
+    ClosureArityMismatch {
+        primary: DynLazySpan<'db>,
+        expected: usize,
+        given: usize,
+    },
+
+    /// A write to, or a `mut` access of, a binding a closure captures: the
+    /// closure has its own copy, read-only.
+    WriteToCapture {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
+
+    /// A closure capturing an access (a view, `ref` or `mut` binding or
+    /// parameter) of a non-`Copy` value, which it can neither copy nor move.
+    AccessCapture {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
+
+    /// A non-`Copy` capture moved out of the closure's environment, which
+    /// each call only views.
+    MoveOutOfCapture {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
+
+    /// A two-base loop over one viewed and one `mut` base.
+    MixedLoopBases {
+        primary: DynLazySpan<'db>,
+    },
 }
 
 impl<'db> BodyDiag<'db> {
@@ -1068,6 +1125,14 @@ impl<'db> BodyDiag<'db> {
             Self::TryOnNonSum { .. } => 103,
             Self::TryReturnMismatch { .. } => 104,
             Self::ViewInstantiation { .. } => 105,
+            Self::MissingRow { .. } => 106,
+            Self::UncoveredProvider { .. } => 107,
+            Self::ClosureInConstContext { .. } => 108,
+            Self::ClosureArityMismatch { .. } => 109,
+            Self::WriteToCapture { .. } => 110,
+            Self::AccessCapture { .. } => 111,
+            Self::MoveOutOfCapture { .. } => 112,
+            Self::MixedLoopBases { .. } => 114,
             Self::MutableBindingCannotBeCapability { .. } => 73,
             Self::ArrayRepeatRequiresCopy { .. } => 71,
             Self::ArrayIndexOutOfBounds { .. } => 84,
@@ -1130,6 +1195,13 @@ pub enum TraitLowerDiag<'db> {
     UnsafeLocalBoundBlanketImpl(ImplTrait<'db>),
     CyclicTraitRef(ImplTrait<'db>),
     CyclicSuperTraits(Vec<Trait<'db>>),
+    /// A trait's effect row or result space with a value: each
+    /// implementation gives its own.
+    AccessItemDefault {
+        primary: DynLazySpan<'db>,
+        kind: &'static str,
+        name: IdentId<'db>,
+    },
 }
 
 impl TraitLowerDiag<'_> {
@@ -1140,6 +1212,7 @@ impl TraitLowerDiag<'_> {
             Self::CyclicSuperTraits { .. } => 2,
             Self::CyclicTraitRef(_) => 3,
             Self::UnsafeLocalBoundBlanketImpl(_) => 4,
+            Self::AccessItemDefault { .. } => 5,
         }
     }
 }
@@ -1344,6 +1417,20 @@ pub enum ImplDiag<'db> {
         raw_ty: TyId<'db>,
         failure: ProviderLayoutFailure,
     },
+
+    /// An effect row or result space the trait does not declare.
+    AccessItemNotDefinedInTrait {
+        primary: DynLazySpan<'db>,
+        trait_: Trait<'db>,
+        kind: &'static str,
+        name: IdentId<'db>,
+    },
+
+    MissingAssociatedSpace {
+        primary: DynLazySpan<'db>,
+        trait_: Trait<'db>,
+        name: IdentId<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -1375,6 +1462,8 @@ impl ImplDiag<'_> {
             Self::InherentConstShadowsFn { .. } => 21,
             Self::InvalidEffectHandleRaw { .. } => 22,
             Self::TypeNotDefinedInTrait { .. } => 23,
+            Self::AccessItemNotDefinedInTrait { .. } => 26,
+            Self::MissingAssociatedSpace { .. } => 27,
         }
     }
 }

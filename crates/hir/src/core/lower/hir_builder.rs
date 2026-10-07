@@ -9,13 +9,14 @@ use rustc_hash::FxHashSet;
 use crate::{
     HirDb,
     hir_def::{
-        ArithBinOp, AssocConstDef, AssocTyDef, Attr, AttrArg, AttrListId, BinOp, BlockKind, Body,
-        BodyKind, EffectParamListId, Expr, ExprId, FieldDefListId, FieldIndex, Func, FuncModifiers,
-        FuncParam, FuncParamListId, FuncParamMode, FuncParamName, GenericArg, GenericArgListId,
-        GenericParam, GenericParamListId, IdentId, ImplTrait, IntegerId, ItemKind, LitKind, Mod,
-        NormalAttr, Partial, Pat, PatId, PathId, PathKind, Stmt, StmtId, Struct, TopLevelMod,
-        TrackedItemId, TrackedItemVariant, TraitRefId, TypeBound, TypeGenericArg, TypeGenericParam,
-        TypeId, TypeKind, TypeMode, UnOp, Visibility, WhereClauseId, expr::CallArg,
+        AccessItems, ArithBinOp, AssocConstDef, AssocTyDef, Attr, AttrArg, AttrListId, BinOp,
+        BlockKind, Body, BodyKind, EffectParamListId, Expr, ExprId, FieldDefListId, FieldIndex,
+        Func, FuncModifiers, FuncParam, FuncParamListId, FuncParamMode, FuncParamName, FuncReturn,
+        GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId, ImplTrait,
+        IntegerId, ItemKind, LitKind, Mod, NormalAttr, Partial, Pat, PatId, PathId, PathKind, Stmt,
+        StmtId, Struct, TopLevelMod, TrackedItemId, TrackedItemVariant, TraitRefId, TypeBound,
+        TypeGenericArg, TypeGenericParam, TypeId, TypeKind, TypeMode, UnOp, Visibility,
+        WhereClauseId, expr::CallArg,
     },
     span::{DesugaredOrigin, HirOrigin},
 };
@@ -448,6 +449,7 @@ where
             where_clause,
             types,
             consts,
+            AccessItems::default(),
             self.top_mod(),
             origin,
         )
@@ -548,7 +550,10 @@ where
                     where_clause,
                     Partial::Present(spec.params),
                     effects,
-                    spec.ret_ty,
+                    FuncReturn {
+                        ty: spec.ret_ty,
+                        spaces: Vec::new(),
+                    },
                     spec.modifiers,
                     Some(body),
                     this.top_mod(),

@@ -9,12 +9,25 @@ use super::abi::{Bytes, DynArray, DynString}
 
 pub trait Copy {}
 
+/// A `Copy` type a view parameter takes by copy, a *snapshot*: a scalar or a
+/// handle, such as `Address` or a storage array, whose copy is all a callee
+/// can observe. Primitives, raw pointers, effect handles and static slots
+/// are snapshots without it. Every other value, `Copy` or not, is viewed in
+/// place: the call reads the caller's place for its duration, and a
+/// projection's result over it is the caller's place.
+pub trait Snapshot: Copy {}
+
 // Built-in primitive types are trivially copyable.
 impl Copy for () {}
 impl<const N: usize> Copy for String<N> {}
 impl Copy for Bytes {}
 impl Copy for DynString {}
 impl<T> Copy for DynArray<T> {}
+
+// A memory buffer handle is a snapshot of where its contents lie.
+impl Snapshot for Bytes {}
+impl Snapshot for DynString {}
+impl<T> Snapshot for DynArray<T> {}
 impl<T, const N: usize> Copy for [T; N]
     where T: Copy
 {}

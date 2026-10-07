@@ -16,15 +16,14 @@ pub enum Stmt<'db> {
     /// The first `PatId` is the pattern for binding which can be used in the
     /// for-loop body.
     ///
-    /// The second `ExprId` is the iterable expression.
+    /// The second `ExprId` is the iterable expression, the third the driver of
+    /// `for x in y by d`, if any, and the fourth the for-loop body.
     ///
-    /// The third `ExprId` is the for-loop body.
-    ///
-    /// The fourth field is the unroll hint:
+    /// The fifth field is the unroll hint:
     /// - `None`: no attribute, use auto-unroll heuristics (unroll if < 10 iterations)
     /// - `Some(true)`: #[unroll] attribute forces unrolling
     /// - `Some(false)`: #[unroll(never)] attribute prevents unrolling
-    For(PatId, ExprId, ExprId, Option<bool>),
+    For(PatId, ExprId, Option<ExprId>, ExprId, Option<bool>),
 
     /// The first `CondId` is the condition of the while-loop.
     /// The second `ExprId` is the body of the while-loop.

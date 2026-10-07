@@ -1,0 +1,41 @@
+---
+source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
+expression: diags
+input_file: fixtures/ty_check/result_spaces.fe
+---
+error[3-0060]: unknown result space
+   ┌─ result_spaces.fe:20:15
+   │
+20 │ impl Slot for Unknown {
+   │               ^^^^^^^ expected `memory`, `storage`, `transient`, `calldata`, `code`, a parameter, an effect, `target(p)`, or an associated space
+
+error[3-0060]: unknown result space
+   ┌─ result_spaces.fe:36:25
+   │
+36 │     fn bad(mut self) -> mut u256 @nowhere {
+   │                         ^^^^^^^^^^^^^^^^^ expected `memory`, `storage`, `transient`, `calldata`, `code`, a parameter, an effect, `target(p)`, or an associated space
+
+error[3-0060]: unknown result space
+   ┌─ result_spaces.fe:44:32
+   │
+44 │     fn not_target(mut self) -> mut u256 @foo(self) {
+   │                                ^^^^^^^^^^^^^^^^^^^ expected `memory`, `storage`, `transient`, `calldata`, `code`, a parameter, an effect, `target(p)`, or an associated space
+
+error[6-0026]: associated effect row not defined in trait
+   ┌─ result_spaces.fe:20:15
+   │
+20 │ impl Slot for Unknown {
+   │               ^^^^^^^ associated effect row `E` is not defined in trait `Slot`
+
+error[6-0026]: associated space not defined in trait
+   ┌─ result_spaces.fe:20:15
+   │
+20 │ impl Slot for Unknown {
+   │               ^^^^^^^ associated space `T` is not defined in trait `Slot`
+
+error[6-0027]: missing associated space in trait implementation
+  ┌─ result_spaces.fe:9:15
+  │
+9 │ impl Slot for Missing {
+  │               ^^^^^^^ missing associated space `S` from trait `Slot`

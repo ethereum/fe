@@ -196,17 +196,25 @@ pub trait Ord<T = Self> {
     fn ge(self, _ other: T) -> bool
 }
 
-// Indexing operator
+/// `t[i]` where the context reads the element.
 pub trait Index<I> {
+    /// The effects of reaching an element.
+    uses E
+    /// The address space of the projected element.
+    space S
     type Output
 
-    fn index(self, _ index: I) -> ref Self::Output
+    fn index(self, _ index: I) -> ref Self::Output @S uses E
 }
 
-pub trait IndexMut<I> {
-    type Output
+/// `t[i]` where the context needs a `mut` place: an assignment target,
+/// `mut t[i]`, or a `mut self` method's receiver.
+pub trait IndexMut<I>: Index<I> {
+    /// The authority to mutate an element. It may strengthen `E` without
+    /// widening what a read reaches.
+    uses EM
 
-    fn index_mut(mut self, _ index: I) -> mut Self::Output
+    fn index_mut(mut self, _ index: I) -> mut Self::Output @S uses EM
 }
 
 // Augmented assignment operators (return unit)

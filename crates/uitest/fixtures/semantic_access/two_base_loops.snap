@@ -1,0 +1,20 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+expression: diags
+input_file: fixtures/semantic_access/two_base_loops.fe
+---
+error[16-0001]: access conflict in `fn same_base`
+   ┌─ two_base_loops.fe:10:28
+   │
+10 │     for (x, y) in (mut xs, mut xs) by zip() {
+   │                    ------  ^^^^^^ cannot mutably access this place while a `mut` access of it is open
+   │                    │
+   │                    access opened here
+
+error[16-0001]: access conflict in `fn nested_bases`
+   ┌─ two_base_loops.fe:18:29
+   │
+18 │     for (x, y) in (mut p.a, mut p.a) by zip() {
+   │                    -------  ^^^^^^^ cannot mutably access this place while a `mut` access of it is open
+   │                    │
+   │                    access opened here

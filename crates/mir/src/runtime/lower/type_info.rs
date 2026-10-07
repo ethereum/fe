@@ -85,11 +85,7 @@ impl<'db> RuntimeTypeModel<'db> {
             RuntimeTypeShape::Pointer { target }
         } else if let Some(scalar) = scalar_class_from_repr_ty(db, repr_ty) {
             RuntimeTypeShape::Scalar(scalar)
-        } else if repr_ty.as_enum(db).is_some()
-            || repr_ty.is_struct(db)
-            || repr_ty.is_array(db)
-            || repr_ty.is_tuple(db)
-        {
+        } else if repr_ty.as_enum(db).is_some() || repr_ty.is_product(db) || repr_ty.is_array(db) {
             RuntimeTypeShape::Aggregate
         } else {
             RuntimeTypeShape::Other
@@ -171,7 +167,7 @@ impl<'db> RuntimeTypeModel<'db> {
                         runtime_transport_sensitive_aggregate(db, elem, env.scope, env.assumptions)
                     });
                 }
-                if self.repr_ty.is_tuple(db) || self.repr_ty.is_struct(db) {
+                if self.repr_ty.is_product(db) {
                     return self.repr_ty.field_types(db).into_iter().any(|field| {
                         runtime_transport_sensitive_aggregate(db, field, env.scope, env.assumptions)
                     });
@@ -278,7 +274,7 @@ pub(crate) fn validate_runtime_array_extents_in_env<'db>(
             visit(db, env, inner, seen)?;
         } else if let Some((_, inner)) = ty.as_capability(db) {
             visit(db, env, inner, seen)?;
-        } else if ty.is_tuple(db) || ty.is_struct(db) {
+        } else if ty.is_product(db) {
             for field in ty.field_types(db) {
                 visit(db, env, field, seen)?;
             }
@@ -371,7 +367,7 @@ pub(super) fn runtime_zero_sized_ty<'db>(
                         .is_some_and(|elem| runtime_zero_sized_ty(db, elem, scope, assumptions))
             });
     }
-    if repr_ty.is_tuple(db) || repr_ty.is_struct(db) {
+    if repr_ty.is_product(db) {
         return repr_ty
             .field_types(db)
             .into_iter()

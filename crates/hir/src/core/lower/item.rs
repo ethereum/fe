@@ -7,9 +7,9 @@ use super::{
 };
 use crate::{
     hir_def::{
-        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId,
-        GenericParamListId, IdentId, TraitRefId, TupleTypeId, TypeBound, TypeId, WhereClauseId,
-        item::*,
+        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId, GenericArg,
+        GenericArgListId, GenericParamListId, IdentId, Partial, PathId, TraitRefId, TupleTypeId,
+        TypeBound, TypeGenericArg, TypeId, TypeKind, WhereClauseId, item::*,
     },
     lower::msg::lower_msg_as_mod,
     span::HirOrigin,
@@ -487,6 +487,24 @@ impl<'db> Func<'db> {
             .map(|params| FuncParamListId::lower_ast(ctxt, params))
             .into();
         let ret_ty = sig.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
+        // A trailing `@S` is the contract of components that declare none.
+        let ret_space = sig.ret_space();
+        let ret_spaces = sig
+            .ret_ty()
+            .into_iter()
+            .flat_map(|ty| ty.syntax().descendants().filter_map(ast::ModeType::cast))
+            .filter(|mode| {
+                matches!(
+                    mode.mode(),
+                    Some(ast::TypeMode::Ref(_) | ast::TypeMode::Mut(_))
+                )
+            })
+            .map(|mode| {
+                mode.space()
+                    .or_else(|| ret_space.clone())
+                    .map(|space| SpaceAnnotation::lower_ast(ctxt, space))
+            })
+            .collect();
         let effects = lower_uses_clause_opt(ctxt, ast.sig().uses_clause());
         let vis = super::lower_visibility(&ast);
         let is_unsafe = super::lower_is_unsafe(&ast);
@@ -507,7 +525,10 @@ impl<'db> Func<'db> {
             where_clause,
             params,
             effects,
-            ret_ty,
+            FuncReturn {
+                ty: ret_ty,
+                spaces: ret_spaces,
+            },
             modifiers,
             body,
             top_mod,
@@ -573,35 +594,102 @@ pub(super) fn lower_uses_clause_opt<'db>(
     ctxt: &mut FileLowerCtxt<'db>,
     uses: Option<ast::UsesClause>,
 ) -> EffectParamListId<'db> {
-    use crate::hir_def::{EffectParam, EffectParamListId};
+    let (list, param) = uses.map_or((None, None), |uses| (uses.param_list(), uses.param()));
+    lower_uses_params(ctxt, list, param)
+}
 
-    let mut data: Vec<EffectParam<'db>> = Vec::new();
+/// Lowers the effects of a `uses` clause or row: a list or a single entry.
+fn lower_uses_params<'db>(
+    ctxt: &mut FileLowerCtxt<'db>,
+    list: Option<ast::UsesParamList>,
+    param: Option<ast::UsesParam>,
+) -> EffectParamListId<'db> {
+    use crate::hir_def::EffectParam;
 
-    if let Some(uses) = uses {
-        if let Some(list) = uses.param_list() {
-            for p in list {
-                let name = p.name().map(|n| IdentId::lower_token(ctxt, n.syntax()));
-                let is_mut = p.mut_token().is_some();
-                let key_ty = TypeId::lower_ast_partial(ctxt, p.ty());
-                data.push(EffectParam {
-                    name,
-                    key_ty,
-                    is_mut,
-                });
-            }
-        } else if let Some(p) = uses.param() {
-            let name = p.name().map(|n| IdentId::lower_token(ctxt, n.syntax()));
-            let is_mut = p.mut_token().is_some();
+    let data: Vec<_> = list
+        .into_iter()
+        .flatten()
+        .chain(param)
+        .map(|p| {
             let key_ty = TypeId::lower_ast_partial(ctxt, p.ty());
-            data.push(EffectParam {
-                name,
+            // `Field(T)` is the core marker `Field<T>`.
+            let key_ty = match (p.field_key(), key_ty) {
+                (Some(_), Partial::Present(handle)) => {
+                    let db = ctxt.db();
+                    let args = GenericArgListId::new(
+                        db,
+                        vec![GenericArg::Type(TypeGenericArg {
+                            ty: Partial::Present(handle),
+                        })],
+                        true,
+                    );
+                    let path = ctxt.core_path().push_str_args(db, "Field", args);
+                    Partial::Present(TypeId::new(db, TypeKind::Path(Partial::Present(path))))
+                }
+                (_, key_ty) => key_ty,
+            };
+            EffectParam {
+                name: p.name().map(|n| IdentId::lower_token(ctxt, n.syntax())),
                 key_ty,
-                is_mut,
-            });
+                is_mut: p.mut_token().is_some(),
+            }
+        })
+        .collect();
+    EffectParamListId::new(ctxt.db(), data)
+}
+
+impl<'db> AssocSpace<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitSpaceItem) -> Self {
+        validate_unsupported_item_attrs(
+            ctxt,
+            ast.attr_list(),
+            "space",
+            ast.name().map(|name| name.text().to_string()),
+        );
+        AssocSpace {
+            name: IdentId::lower_token_partial(ctxt, ast.name()),
+            value: ast
+                .value()
+                .map(|value| Partial::Present(PathId::lower_ast(ctxt, value))),
         }
     }
+}
 
-    EffectParamListId::new(ctxt.db(), data)
+impl<'db> SpaceAnnotation<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::SpaceAnnotation) -> Self {
+        let path = PathId::lower_ast_partial(ctxt, ast.path());
+        match ast.target() {
+            Some(target) => {
+                let target = Partial::Present(PathId::lower_ast(ctxt, target));
+                // Only `target` takes an argument.
+                if path.to_opt().and_then(|path| path.as_ident(ctxt.db()))
+                    == Some(IdentId::new(ctxt.db(), "target".to_string()))
+                {
+                    Self::Target(target)
+                } else {
+                    Self::Path(Partial::Absent)
+                }
+            }
+            None => Self::Path(path),
+        }
+    }
+}
+
+impl<'db> AssocRow<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitUsesItem) -> Self {
+        validate_unsupported_item_attrs(
+            ctxt,
+            ast.attr_list(),
+            "uses",
+            ast.name().map(|name| name.text().to_string()),
+        );
+        AssocRow {
+            name: IdentId::lower_token_partial(ctxt, ast.name()),
+            effects: ast
+                .eq()
+                .map(|_| lower_uses_params(ctxt, ast.param_list(), ast.param())),
+        }
+    }
 }
 
 impl<'db> Enum<'db> {
@@ -737,6 +825,8 @@ impl<'db> Trait<'db> {
 
         let mut types = vec![];
         let mut consts = vec![];
+        let mut rows = vec![];
+        let mut spaces = vec![];
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
@@ -769,6 +859,10 @@ impl<'db> Trait<'db> {
                         );
                         consts.push(AssocConstDecl::lower_ast(ctxt, c));
                     }
+                    ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
+                    ast::TraitItemKind::Space(space) => {
+                        spaces.push(AssocSpace::lower_ast(ctxt, space));
+                    }
                 };
             }
         }
@@ -784,6 +878,7 @@ impl<'db> Trait<'db> {
             where_clause,
             types,
             consts,
+            AccessItems { rows, spaces },
             ctxt.top_mod(),
             origin,
         );
@@ -827,12 +922,47 @@ impl<'db> ImplTrait<'db> {
         // Lower generic params first so they are in scope for trait-ref/type and where-clause lowering.
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let trait_ref = TraitRefId::lower_ast_partial(ctxt, ast.trait_ref());
+        let mut trait_ref = TraitRefId::lower_ast_partial(ctxt, ast.trait_ref());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let origin = HirOrigin::raw(&ast);
 
+        // The `-> R` of a callable shape, `impl FnMut(u256) -> u256 for F`,
+        // is the implementation's `type Out = R`, not a binding of the trait.
+        let mut shape_types = vec![];
+        if ast
+            .trait_ref()
+            .is_some_and(|trait_ref| trait_ref.fn_shape().is_some())
+            && let Partial::Present(lowered) = trait_ref
+            && let Partial::Present(path) = lowered.path(ctxt.db())
+            && let Partial::Present(ident) = path.ident(ctxt.db())
+        {
+            let db = ctxt.db();
+            let (outs, args): (Vec<_>, Vec<_>) = path
+                .generic_args(db)
+                .data(db)
+                .iter()
+                .cloned()
+                .partition(|arg| matches!(arg, GenericArg::AssocType(_)));
+            shape_types.extend(outs.into_iter().filter_map(|out| match out {
+                GenericArg::AssocType(binding) => Some(AssocTyDef {
+                    attributes: AttrListId::new(db, Vec::new()),
+                    name: binding.name,
+                    type_ref: binding.ty,
+                }),
+                _ => None,
+            }));
+            let args = GenericArgListId::new(db, args, true);
+            let path = match path.parent(db) {
+                Some(parent) => parent.push_ident_args(db, ident, args),
+                None => PathId::from_ident(db, ident),
+            };
+            trait_ref = Partial::Present(TraitRefId::new(db, Partial::Present(path)));
+        }
+
         let mut types = vec![];
         let mut consts = vec![];
+        let mut rows = vec![];
+        let mut spaces = vec![];
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
                 match impl_item.kind() {
@@ -864,10 +994,18 @@ impl<'db> ImplTrait<'db> {
                         );
                         consts.push(AssocConstDef::lower_ast(ctxt, c));
                     }
+                    ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
+                    ast::TraitItemKind::Space(space) => {
+                        spaces.push(AssocSpace::lower_ast(ctxt, space));
+                    }
                 };
             }
         }
 
+        shape_types.retain(|shape_type: &AssocTyDef| {
+            !types.iter().any(|defined| defined.name == shape_type.name)
+        });
+        types.extend(shape_types);
         let impl_trait = Self::new(
             ctxt.db(),
             id,
@@ -878,6 +1016,7 @@ impl<'db> ImplTrait<'db> {
             where_clause,
             types,
             consts,
+            AccessItems { rows, spaces },
             ctxt.top_mod(),
             origin,
         );

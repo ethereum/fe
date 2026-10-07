@@ -12,10 +12,13 @@ use crate::{
 use common::indexmap::IndexMap;
 use salsa::Update;
 
-use super::{BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker};
+use super::{
+    BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker, env::ClosureExpectation,
+};
 use crate::analysis::{
     HirAnalysisDb,
     ty::{
+        closure::{CallableShape, out_ident},
         const_ty::{CallableInputLayoutHoleOrigin, HoleAnchor, LayoutHoleArgSite, LoweringContext},
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
@@ -601,6 +604,26 @@ impl<'db> Callable<'db> {
                     .flatten()
                     .map(|ty| tc.normalize_ty(ty))
                 });
+            if !already_typed
+                && matches!(
+                    hir_arg.expr.data(db, tc.body()),
+                    Partial::Present(Expr::Closure { .. })
+                )
+            {
+                // A closure's unannotated parameters take their types from the
+                // arguments before it (`fold(0, |acc, x| acc + x)`); a mismatch
+                // is reported below.
+                for (idx, arg) in args.iter().enumerate().skip(usize::from(has_receiver)) {
+                    if let Some(expected) = self.arg_ty(db, idx) {
+                        let (given, expected) =
+                            (tc.normalize_ty(arg.expr_prop.ty), tc.normalize_ty(expected));
+                        let _ = tc.table.unify(given, expected);
+                    }
+                }
+                if let Some(expectation) = self.closure_arg_expectation(tc, arg_idx) {
+                    tc.env.expect_closure(hir_arg.expr, expectation);
+                }
+            }
             args.push(CallArg::from_hir_arg(
                 tc,
                 hir_arg,
@@ -619,7 +642,8 @@ impl<'db> Callable<'db> {
         };
 
         let mut checked_inputs = Vec::with_capacity(expected_arity);
-        for (i, (given, expected)) in args.into_iter().zip(expected_arg_tys.iter()).enumerate() {
+        for (i, (mut given, expected)) in args.into_iter().zip(expected_arg_tys.iter()).enumerate()
+        {
             // Call labels are either explicit (`f(x: value)`) or inferred from a bare
             // identifier argument (`f(x)`), but not from arbitrary expressions (`f(10)`).
             // If the callee parameter has an unsuppressed label, the call must provide
@@ -670,6 +694,17 @@ impl<'db> Callable<'db> {
             // projection's result) is used as one; a receiver is accessed
             // implicitly; any other `mut` argument must be written `mut p`.
             let is_receiver = has_receiver && i == 0;
+            // A `mut self` receiver needs a mutable place.
+            if is_receiver
+                && mode == FuncParamMode::Mut
+                && !given.expr_prop.is_mut
+                && tc.select_mut_place(given.expr)
+            {
+                given.expr_prop = tc
+                    .env
+                    .typed_expr(given.expr)
+                    .expect("selected place is typed");
+            }
             let access = given.expr_prop.access();
             let mut diagnosed = false;
             match mode {
@@ -691,6 +726,13 @@ impl<'db> Callable<'db> {
                         diagnosed = true;
                     }
                 }
+                // A closure literal is a temporary its callee may mutate:
+                // its captures are its own, read-only.
+                FuncParamMode::Mut
+                    if matches!(
+                        given.expr.data(db, tc.body()),
+                        Partial::Present(Expr::Closure { .. })
+                    ) => {}
                 FuncParamMode::Mut => {
                     diagnosed = true;
                     if access.is_some() {
@@ -945,6 +987,48 @@ impl<'db> CallArg<'db> {
 }
 
 impl<'db> Callable<'db> {
+    /// The callable shape expected of a closure literal passed as argument
+    /// `arg_idx`: a shape bound on the parameter's type.
+    fn closure_arg_expectation(
+        &self,
+        tc: &mut TyChecker<'db>,
+        arg_idx: usize,
+    ) -> Option<ClosureExpectation<'db>> {
+        let db = tc.db;
+        let param_ty = tc.normalize_ty(self.arg_ty(db, arg_idx)?);
+        collect_func_decl_constraints(db, self.callable_def, true)
+            .instantiate(db, &self.generic_args)
+            .list(db)
+            .iter()
+            .find_map(|&constraint| {
+                let constraint = self.normalize_with_trait_evidence(db, constraint);
+                let shape = CallableShape::of(db, constraint.def(db))?;
+                let (&self_ty, args) = constraint.args(db).split_first()?;
+                if tc.normalize_ty(self_ty) != param_ty {
+                    return None;
+                }
+                let arity = shape.modes.len();
+                let params = args
+                    .get(..arity)?
+                    .iter()
+                    .map(|&ty| tc.normalize_ty(ty))
+                    .collect();
+                let ret = if shape.result_is_arg() {
+                    args.get(arity).copied()
+                } else {
+                    constraint
+                        .assoc_type_bindings(db)
+                        .get(&out_ident(db))
+                        .copied()
+                };
+                Some(ClosureExpectation {
+                    modes: shape.modes,
+                    params,
+                    ret,
+                })
+            })
+    }
+
     pub(super) fn process_constraints(
         &self,
         tc: &mut TyChecker<'db>,

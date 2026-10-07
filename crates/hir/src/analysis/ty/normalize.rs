@@ -14,11 +14,12 @@ use super::{
     binder::Binder,
     canonical::Canonical,
     canonical::Canonicalized,
+    closure::closure_out_ty,
     fold::{TyFoldable, TyFolder},
     layout_holes::LayoutRootUse,
     trait_def::{
-        ImplementorOrigin, TraitInstId, TraitRefId,
-        impls_for_trait_and_ty_with_possible_constraints, resolve_trait_impl_instance,
+        ImplementorOrigin, TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints,
+        resolve_trait_impl_instance,
     },
     trait_lower::complete_impl_assoc_ty,
     trait_resolution::{PredicateListId, Selection, TraitSolveCx},
@@ -252,6 +253,15 @@ impl<'db> TypeNormalizer<'db> {
             return None;
         }
 
+        if let Some(out) = closure_out_ty(
+            self.db,
+            self.fold_ty(self.db, assoc.trait_.self_ty(self.db)),
+            assoc.trait_.def(self.db),
+            assoc.name,
+        ) {
+            return Some(out);
+        }
+
         // 3) Fall back to the general associated type search used by path resolution,
         //    but restrict results to the same trait as `assoc` and deduplicate by
         //    the resulting type. If all viable candidates agree on a single type,
@@ -323,8 +333,7 @@ impl<'db> TypeNormalizer<'db> {
 
     fn try_resolve_assoc_ty_from_impls(&mut self, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
         let trait_inst = assoc.trait_.fold_with(self.db, self).as_predicate(self.db);
-        let trait_def = trait_inst.def(self.db);
-        let canonical_self_ty = Canonical::new(self.db, trait_inst.self_ty(self.db));
+        let canonical_inst = Canonical::new(self.db, trait_inst);
 
         let mut dedup: IndexMap<TyId<'db>, ()> = IndexMap::new();
 
@@ -339,11 +348,10 @@ impl<'db> TypeNormalizer<'db> {
             let target_inst = cx.query();
             let original_target = cx.try_extract::<TraitInstId<'db>>(target_inst);
             for ingot in search_ingots.into_iter().flatten() {
-                for implementor in impls_for_trait_and_ty_with_possible_constraints(
+                for implementor in impls_for_trait_inst_with_possible_constraints(
                     self.db,
                     ingot,
-                    trait_def,
-                    canonical_self_ty,
+                    canonical_inst,
                     self.assumptions,
                 ) {
                     let Some(implementor) =

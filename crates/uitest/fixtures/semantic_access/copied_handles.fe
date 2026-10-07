@@ -1,0 +1,28 @@
+// A handle is a `Copy` value naming its domain: copies of one storage
+// handle reach the same domain, so a projection through one reserves it
+// against writes through another.
+use std::evm::StorageMap
+
+// Rejected: `h2` writes the map while a `mut` projection through `h1` is open.
+pub contract Conflict {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let mut h1 = m
+        let mut h2 = m
+        let x = mut h1[1]
+        h2[2] = 5
+        x += 1
+    }
+}
+
+// Accepted: the projection's last use comes first.
+pub contract Sequential {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let mut h1 = m
+        let mut h2 = m
+        let x = mut h1[1]
+        x += 1
+        h2[2] = 5
+    }
+}

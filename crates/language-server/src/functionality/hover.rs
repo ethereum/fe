@@ -54,6 +54,7 @@ fn contract_from_effect_site<'db>(
             Some(ItemKind::Contract(contract)) => Some(contract),
             _ => None,
         },
+        EffectParamSite::Closure(_) => None,
     }
 }
 
@@ -86,6 +87,10 @@ fn effect_key_path_at_site<'db>(
             .key_ty
             .to_opt()?
             .as_path(db),
+        EffectParamSite::Closure(_) => EffectEnvView::new(site)
+            .requirements(db)
+            .get(idx)?
+            .binding_path(db),
     }
 }
 

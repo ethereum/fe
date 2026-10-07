@@ -15,7 +15,7 @@ error[6-0008]: method `write_key` has incompatible return type
  7 │     unsafe fn write_key(ptr: *u8, self) -> u256 {
    │               ^^^^^^^^^ expected `()`, found `u256`
    │
-   ┌─ src/evm/storage_map.fe:17:15
+   ┌─ src/evm/storage_map.fe:18:15
    │
-17 │     unsafe fn write_key(ptr: *u8, self)
+18 │     unsafe fn write_key(ptr: *u8, self)
    │               --------- trait requires this return type

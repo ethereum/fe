@@ -24,6 +24,7 @@ use crate::analysis::{
     HirAnalysisDb,
     ty::{
         canonical::{Canonical, Solution},
+        closure::closure_implementor,
         fold::TyFoldable,
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_in_ingots},
         ty_def::{TyData, TyId},
@@ -149,6 +150,9 @@ pub(crate) enum TargetSolutionMatch {
 enum Clause<'db> {
     Implementor(ImplementorId<'db>),
     Assumption(usize),
+    /// The builtin implementation of the closure that is the goal's self
+    /// type (`ty::closure`), built from the goal in its own table.
+    Closure,
 }
 
 #[derive(Clone)]
@@ -380,6 +384,9 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         let mut clauses =
             Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
         clauses.extend(implementors.iter().copied().map(Clause::Implementor));
+        if closure_implementor(self.db, prepared.normalized_goal).is_some() {
+            clauses.push(Clause::Closure);
+        }
         if !prepared.query.require_impl && self.goal_can_use_assumptions(prepared.normalized_goal) {
             clauses.extend(
                 (0..prepared.query.assumptions.list(self.db).len()).map(Clause::Assumption),
@@ -456,6 +463,24 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     return Ok(Transition::Reject);
                 }
                 ImplementorId::assumption(self.db, query.goal.fold_with(self.db, &mut table))
+            }
+            Clause::Closure => {
+                let Some(implementor) = closure_implementor(self.db, normalized_goal) else {
+                    return Ok(Transition::Reject);
+                };
+                if unify_trait_inst_with_normalized_assoc_bindings(
+                    self.db,
+                    &mut table,
+                    implementor.trait_inst(self.db),
+                    normalized_goal,
+                    scope,
+                    query.assumptions,
+                )
+                .is_err()
+                {
+                    return Ok(Transition::Reject);
+                }
+                implementor
             }
         };
 

@@ -62,14 +62,18 @@ fn test_zst_target_effect_handles_keep_runtime_carriers() uses (evm: Evm) {
 }
 
 #[test]
-fn pointers_and_effect_handles_support_read_write() uses (evm: Evm) {
+fn pointers_and_effect_handles_support_read_write() uses (evm: mut Evm) {
     let mp = ptr::alloc<u256>()
     unsafe { *mp = 41 }
     unsafe { assert!(*mp == 41) }
 
-    let sp: StorPtr<u256> = unsafe { evm.stor_ptr(0xabc) }
-    sp.write(42)
-    assert!(sp.read() == 42)
+    // A pointer made at runtime is reached through a provider of it, which
+    // the raw storage authority of `evm` installs.
+    let mut sp: StorPtr<u256> = unsafe { evm.stor_ptr(0xabc) }
+    with (sp) {
+        sp.write(42)
+        assert!(sp.read() == 42)
+    }
 }
 
 #[test]

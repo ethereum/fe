@@ -369,7 +369,7 @@ impl<'db> PathView<'db> {
         match body_ctx {
             BodyPathContext::Expr(expr_id) => {
                 // Expression reference (e.g., `p` in `p.foo()` or `x + 1`)
-                let def_span = typed_body.expr_binding_def_span_in_body(body, expr_id)?;
+                let def_span = typed_body.expr_binding_def_span_in_body(db, body, expr_id)?;
                 let ty = typed_body.expr_ty(db, expr_id);
                 let binding = typed_body.expr_binding(expr_id)?;
 

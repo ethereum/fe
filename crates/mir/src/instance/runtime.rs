@@ -145,6 +145,7 @@ fn lower_runtime_body<'db>(
             }
             let mut body = lower_to_rmir(db, instance)?;
             inline_projections(db, &mut body)?;
+            body.elide_proven_variant_asserts();
             body
         }
         RuntimeInstanceSource::Synthetic(synthetic) => {

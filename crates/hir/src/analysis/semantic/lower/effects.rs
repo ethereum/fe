@@ -178,7 +178,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         SEffectArgValue::Value(SOperand::inherited(local))
                     }
                 }
-                EffectArg::Value(_) => unreachable!("with provider is missing its source"),
+                // A handle argument a `Field` authority is taken from: its
+                // place, read again.
+                EffectArg::Value(expr) => SEffectArgValue::Value(self.lower_expr_operand(*expr)),
                 EffectArg::Unknown => {
                     SEffectArgValue::Value(SOperand::synthetic(self.unit_value()))
                 }
@@ -244,13 +246,7 @@ pub(super) fn provisional_owner_effect_bindings<'db>(
                         site,
                         requirement.binding_idx,
                     )?;
-                    Some(LocalBinding::EffectParam {
-                        site: requirement.binding_site,
-                        idx: requirement.binding_idx as usize,
-                        binding_name: requirement.binding_name,
-                        provider_idx,
-                        is_mut: requirement.is_mut,
-                    })
+                    Some(LocalBinding::effect(&requirement, provider_idx))
                 })
                 .collect::<Vec<_>>()
         })
@@ -261,6 +257,7 @@ pub fn effect_param_site<'db>(owner: BodyOwner<'db>) -> Option<EffectParamSite<'
     match owner {
         BodyOwner::Func(func) => Some(EffectParamSite::Func(func)),
         BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => None,
+        BodyOwner::Closure { def, .. } => Some(EffectParamSite::Closure(def)),
         BodyOwner::ContractInit { contract } => Some(EffectParamSite::ContractInit { contract }),
         BodyOwner::ContractRecvArm {
             contract,

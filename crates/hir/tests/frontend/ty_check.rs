@@ -82,7 +82,7 @@ fn trigger() {
     assert!(
         !diags
             .iter()
-            .any(|diag| diag.message == "`Seq` needs to be implemented for !"),
+            .any(|diag| diag.message == "`Collection` needs to be implemented for !"),
         "{diags:#?}"
     );
 }

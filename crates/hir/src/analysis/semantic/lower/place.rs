@@ -80,12 +80,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
     fn lower_place_source(&mut self, source_place: &Place<'db>, capture: bool) -> SPlace<'db> {
         let PlaceBase::Binding(binding) = source_place.base;
-        let local = *self
-            .binding_locals
-            .get(&binding)
-            .expect("binding local should be allocated");
-        let mut place = SPlace::new(local);
-        let mut ty = self.locals[local.index()].ty;
+        let (mut place, mut ty) = match self.capture_places.get(&binding) {
+            Some((place, ty)) => (place.clone(), *ty),
+            None => {
+                let local = *self
+                    .binding_locals
+                    .get(&binding)
+                    .expect("binding local should be allocated");
+                (SPlace::new(local), self.locals[local.index()].ty)
+            }
+        };
 
         for projection in &source_place.projections {
             match *projection {

@@ -19,7 +19,7 @@ pub fn parse_type<S: TokenStream>(
             parser.parse_cp(PtrTypeScope::default(), checkpoint)
         }
         Some(SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw) => {
-            parser.parse_cp(ModeTypeScope::default(), checkpoint)
+            parser.parse_cp(ModeTypeScope::new(false), checkpoint)
         }
         Some(SyntaxKind::LParen) => parser.parse_cp(TupleTypeScope::default(), checkpoint),
         Some(SyntaxKind::LBracket) => parser.parse_cp(ArrayTypeScope::default(), checkpoint),
@@ -27,6 +27,21 @@ pub fn parse_type<S: TokenStream>(
             .parse_cp(NeverTypeScope::default(), checkpoint)
             .map_err(|e| e.into()),
         _ => parser.parse_cp(PathTypeScope::default(), checkpoint),
+    }
+}
+
+/// Parses a closure parameter type, which may be a mode keyword without its
+/// payload type (e.g. `|value: own|`).
+pub(crate) fn parse_closure_param_type<S: TokenStream>(
+    parser: &mut Parser<S>,
+) -> Result<(), Recovery<ErrProof>> {
+    if matches!(
+        parser.current_kind(),
+        Some(SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw)
+    ) {
+        parser.parse(ModeTypeScope::new(true))
+    } else {
+        parse_type(parser, None).map(|_| ())
     }
 }
 
@@ -54,7 +69,12 @@ impl super::Parse for PtrTypeScope {
     }
 }
 
-define_scope!(ModeTypeScope, ModeType);
+define_scope!(
+    ModeTypeScope {
+        allow_missing_inner: bool
+    },
+    ModeType
+);
 impl super::Parse for ModeTypeScope {
     type Error = Recovery<ErrProof>;
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
@@ -64,7 +84,44 @@ impl super::Parse for ModeTypeScope {
             None,
         )?;
         parser.bump();
-        parse_type(parser, None).map(|_| ())
+        if self.allow_missing_inner {
+            let newline_as_trivia = parser.set_newline_as_trivia(true);
+            let missing_inner = matches!(
+                parser.current_kind(),
+                Some(SyntaxKind::Comma | SyntaxKind::Pipe)
+            );
+            parser.set_newline_as_trivia(newline_as_trivia);
+            if missing_inner {
+                return Ok(());
+            }
+        }
+        parse_type(parser, None)?;
+        parse_space_annotation_opt(parser)
+    }
+}
+
+/// `@S`, `@p` or `@target(p)`, if present.
+pub(crate) fn parse_space_annotation_opt<S: TokenStream>(
+    parser: &mut Parser<S>,
+) -> Result<(), Recovery<ErrProof>> {
+    if parser.current_kind() == Some(SyntaxKind::At) {
+        parser.parse(SpaceAnnotationScope::default())?;
+    }
+    Ok(())
+}
+
+define_scope!(SpaceAnnotationScope, SpaceAnnotation);
+impl super::Parse for SpaceAnnotationScope {
+    type Error = Recovery<ErrProof>;
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        parser.bump_expected(SyntaxKind::At);
+        parser.or_recover(|p| p.parse(PathScope::default()))?;
+        if parser.bump_if(SyntaxKind::LParen) {
+            parser.or_recover(|p| p.parse(PathScope::default()))?;
+            parser.bump_or_recover(SyntaxKind::RParen, "expected `)`")?;
+        }
+        Ok(())
     }
 }
 

@@ -322,9 +322,10 @@ fn signature_port_span(
         LayoutSignaturePort::Input(CallableInputLayoutHoleOrigin::ValueParam(idx)) => {
             span.params().param(idx).ty().resolve(db)
         }
-        LayoutSignaturePort::Input(CallableInputLayoutHoleOrigin::Effect(idx)) => {
-            span.effects().param_idx(idx).resolve(db)
-        }
+        LayoutSignaturePort::Input(CallableInputLayoutHoleOrigin::Effect(idx)) => span
+            .effects()
+            .param_idx(func.effect_origin(db, idx))
+            .resolve(db),
         LayoutSignaturePort::Output => span.ret_ty().resolve(db),
     }
 }

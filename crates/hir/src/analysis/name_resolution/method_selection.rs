@@ -8,6 +8,7 @@ use crate::analysis::{
     name_resolution::{available_traits_in_scope, is_scope_visible_from},
     ty::{
         canonical::{Canonical, Canonicalized, Solution},
+        closure::closure_shape_insts,
         fold::TyFoldable as _,
         method_table::{MethodProbe, ProbedMethod, probe_method},
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_and_ty, impls_for_ty},
@@ -230,6 +231,12 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
 
     fn assemble_trait_method_candidates(&mut self) {
         let scope_ingot = self.scope.ingot(self.db);
+        // Closures implement their callable shapes without HIR impls.
+        if let Some(closure) = self.receiver.original().as_closure(self.db) {
+            for inst in closure_shape_insts(self.db, closure) {
+                self.insert_assumption_trait_method_cand(inst);
+            }
+        }
 
         // When the receiver is a type parameter (e.g. `D` in `fn f<D: Trait>(d: D)`),
         // we don't know its concrete type yet, so probing impls would pull in many
@@ -306,16 +313,40 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
 
     fn insert_assumption_trait_method_cand(&mut self, inst: TraitInstId<'db>) {
         let trait_def = inst.def(self.db);
-        if self.allow_trait(trait_def)
-            && let Some(&trait_method) = trait_def.method_defs(self.db).get(&self.method_name)
-        {
-            self.candidates
-                .traits
-                .insert(AssembledTraitMethodCand::Assumption {
-                    inst,
-                    method: trait_method,
-                });
+        if !self.allow_trait(trait_def) {
+            return;
         }
+        let Some(&trait_method) = trait_def.method_defs(self.db).get(&self.method_name) else {
+            return;
+        };
+        // Bounds on one trait instance that differ only in associated type
+        // bindings, such as `A<T = u256>` and the `A` a bound on a subtrait
+        // implies, are one candidate with every binding.
+        let same = self.candidates.traits.iter().copied().find(|cand| {
+            matches!(cand, AssembledTraitMethodCand::Assumption { inst: known, .. }
+                if known.def(self.db) == trait_def && known.args(self.db) == inst.args(self.db))
+        });
+        let inst = match same {
+            Some(
+                known @ AssembledTraitMethodCand::Assumption {
+                    inst: known_inst, ..
+                },
+            ) => {
+                self.candidates.traits.remove(&known);
+                let mut bindings = known_inst.assoc_type_bindings(self.db).clone();
+                for (&name, &ty) in inst.assoc_type_bindings(self.db) {
+                    bindings.entry(name).or_insert(ty);
+                }
+                TraitInstId::new(self.db, trait_def, inst.args(self.db).to_vec(), bindings)
+            }
+            _ => inst,
+        };
+        self.candidates
+            .traits
+            .insert(AssembledTraitMethodCand::Assumption {
+                inst,
+                method: trait_method,
+            });
     }
 }
 
@@ -849,6 +880,10 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
         for pred in self.assumptions.list(self.db) {
             let trait_def = pred.def(self.db);
             insert_trait(trait_def)
+        }
+        // A closure's callable shapes are intrinsic to its type.
+        if let Some(closure) = self.receiver.original().as_closure(self.db) {
+            closure_shape_insts(self.db, closure).for_each(|inst| insert_trait(inst.def(self.db)));
         }
 
         traits

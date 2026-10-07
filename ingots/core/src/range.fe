@@ -1,4 +1,6 @@
-use ingot::seq::Seq
+use ingot::iter::{Bidirectional, Collection}
+use ingot::option::Option
+use ingot::ops::{WrappingAdd, WrappingSub}
 
 /// Trait for range bounds - either compile-time known or runtime.
 pub trait Bound {
@@ -33,70 +35,161 @@ pub struct Range<S: Bound, E: Bound> {
     pub end: <E as Bound>::Repr,
 }
 
-/// Fully const range: `Known<S>..Known<E>`
-impl<const S: usize, const E: usize> Seq for Range<Known<S>, Known<E>> {
+// A range's cursor is its value, which it yields as a temporary. A valid
+// cursor lies in the range, so stepping from it cannot overflow.
+#[inline(always)]
+fn range_start(_ lo: usize, _ hi: usize) -> Option<usize> {
+    if lo < hi { Option::Some(lo) } else { Option::None }
+}
+
+#[inline(always)]
+fn range_next(_ c: usize, _ hi: usize) -> Option<usize> {
+    let next = c.wrapping_add(1)
+    if next < hi { Option::Some(next) } else { Option::None }
+}
+
+#[inline(always)]
+fn range_last(_ lo: usize, _ hi: usize) -> Option<usize> {
+    if lo < hi { Option::Some(hi.wrapping_sub(1)) } else { Option::None }
+}
+
+#[inline(always)]
+fn range_prev(_ c: usize, _ lo: usize) -> Option<usize> {
+    if c > lo { Option::Some(c.wrapping_sub(1)) } else { Option::None }
+}
+
+/// Fully const range: `Known<LO>..Known<HI>`
+impl<const LO: usize, const HI: usize> Collection for Range<Known<LO>, Known<HI>> {
+    space S = memory
+    type Cursor = usize
     type Item = usize
 
-    fn len(self) -> usize {
-        if E < S {
-            0
-        } else {
-            E - S
-        }
+    #[inline(always)]
+    fn start(self) -> Option<usize> {
+        range_start(LO, HI)
     }
 
-    fn get(self, _ i: usize) -> usize {
-        S + i
+    #[inline(always)]
+    fn next(self, _ c: usize) -> Option<usize> {
+        range_next(c, HI)
+    }
+
+    #[inline(always)]
+    fn at(self, _ c: usize) -> ref usize {
+        ref c
     }
 }
 
-/// Const start, dynamic end: `Known<S>..n` (common `0..n` pattern)
-impl<const S: usize> Seq for Range<Known<S>, Unknown> {
-    type Item = usize
-
-    fn len(self) -> usize {
-        if self.end < S {
-            0
-        } else {
-            self.end - S
-        }
+impl<const LO: usize, const HI: usize> Bidirectional for Range<Known<LO>, Known<HI>> {
+    #[inline(always)]
+    fn last(self) -> Option<usize> {
+        range_last(LO, HI)
     }
 
-    fn get(self, _ i: usize) -> usize {
-        S + i
+    #[inline(always)]
+    fn prev(self, _ c: usize) -> Option<usize> {
+        range_prev(c, LO)
     }
 }
 
-/// Dynamic start, const end: `n..Known<E>`
-impl<const E: usize> Seq for Range<Unknown, Known<E>> {
+/// Const start, dynamic end: `Known<LO>..n` (common `0..n` pattern)
+impl<const LO: usize> Collection for Range<Known<LO>, Unknown> {
+    space S = memory
+    type Cursor = usize
     type Item = usize
 
-    fn len(self) -> usize {
-        if E < self.start {
-            0
-        } else {
-            E - self.start
-        }
+    #[inline(always)]
+    fn start(self) -> Option<usize> {
+        range_start(LO, self.end)
     }
 
-    fn get(self, _ i: usize) -> usize {
-        self.start + i
+    #[inline(always)]
+    fn next(self, _ c: usize) -> Option<usize> {
+        range_next(c, self.end)
+    }
+
+    #[inline(always)]
+    fn at(self, _ c: usize) -> ref usize {
+        ref c
+    }
+}
+
+impl<const LO: usize> Bidirectional for Range<Known<LO>, Unknown> {
+    #[inline(always)]
+    fn last(self) -> Option<usize> {
+        range_last(LO, self.end)
+    }
+
+    #[inline(always)]
+    fn prev(self, _ c: usize) -> Option<usize> {
+        range_prev(c, LO)
+    }
+}
+
+/// Dynamic start, const end: `n..Known<HI>`
+impl<const HI: usize> Collection for Range<Unknown, Known<HI>> {
+    space S = memory
+    type Cursor = usize
+    type Item = usize
+
+    #[inline(always)]
+    fn start(self) -> Option<usize> {
+        range_start(self.start, HI)
+    }
+
+    #[inline(always)]
+    fn next(self, _ c: usize) -> Option<usize> {
+        range_next(c, HI)
+    }
+
+    #[inline(always)]
+    fn at(self, _ c: usize) -> ref usize {
+        ref c
+    }
+}
+
+impl<const HI: usize> Bidirectional for Range<Unknown, Known<HI>> {
+    #[inline(always)]
+    fn last(self) -> Option<usize> {
+        range_last(self.start, HI)
+    }
+
+    #[inline(always)]
+    fn prev(self, _ c: usize) -> Option<usize> {
+        range_prev(c, self.start)
     }
 }
 
 /// Fully dynamic range: `start..end`
-impl Seq for Range<Unknown, Unknown> {
+impl Collection for Range<Unknown, Unknown> {
+    space S = memory
+    type Cursor = usize
     type Item = usize
 
-    fn len(self) -> usize {
-        if self.end < self.start {
-            0
-        } else {
-            self.end - self.start
-        }
+    #[inline(always)]
+    fn start(self) -> Option<usize> {
+        range_start(self.start, self.end)
     }
 
-    fn get(self, _ i: usize) -> usize {
-        self.start + i
+    #[inline(always)]
+    fn next(self, _ c: usize) -> Option<usize> {
+        range_next(c, self.end)
+    }
+
+    #[inline(always)]
+    fn at(self, _ c: usize) -> ref usize {
+        ref c
+    }
+}
+
+impl Bidirectional for Range<Unknown, Unknown> {
+    #[inline(always)]
+    fn last(self) -> Option<usize> {
+        range_last(self.start, self.end)
+    }
+
+    #[inline(always)]
+    fn prev(self, _ c: usize) -> Option<usize> {
+        range_prev(c, self.start)
     }
 }

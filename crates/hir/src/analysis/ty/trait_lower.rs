@@ -76,7 +76,9 @@ fn raw_impl_self_key<'db>(
             {
                 NameResKind::Prim(prim) => match TyBase::from(prim) {
                     TyBase::Prim(prim) => Some(ImplSelfKey::Prim(prim)),
-                    TyBase::Adt(_) | TyBase::Contract(_) | TyBase::Func(_) => unreachable!(),
+                    TyBase::Adt(_) | TyBase::Contract(_) | TyBase::Func(_) | TyBase::Closure(_) => {
+                        unreachable!()
+                    }
                 },
                 NameResKind::Scope(
                     scope @ ScopeId::Item(
@@ -160,7 +162,9 @@ pub(crate) fn complete_selected_impl<'db>(
 ) -> Option<ImplementorId<'db>> {
     match selected.origin(db) {
         ImplementorOrigin::Hir(impl_trait) => lower_impl_trait(db, impl_trait),
-        ImplementorOrigin::VirtualContract(_) | ImplementorOrigin::Assumption => Some(selected),
+        ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Assumption
+        | ImplementorOrigin::Closure => Some(selected),
     }
 }
 
@@ -290,7 +294,9 @@ pub(crate) fn complete_impl_trait<'db>(
     match implementor.origin(db) {
         ImplementorOrigin::Hir(impl_trait) => lower_impl_trait_candidate(db, impl_trait)
             .expect("a collected impl header must remain lowerable"),
-        ImplementorOrigin::VirtualContract(_) | ImplementorOrigin::Assumption => implementor,
+        ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Assumption
+        | ImplementorOrigin::Closure => implementor,
     }
 }
 
@@ -801,7 +807,8 @@ pub(crate) fn collect_implementor_methods<'db>(
     let impl_trait = match implementor.origin(db) {
         super::trait_def::ImplementorOrigin::Hir(impl_trait) => impl_trait,
         super::trait_def::ImplementorOrigin::VirtualContract(_)
-        | super::trait_def::ImplementorOrigin::Assumption => return methods,
+        | super::trait_def::ImplementorOrigin::Assumption
+        | super::trait_def::ImplementorOrigin::Closure => return methods,
     };
     let scope = impl_trait.scope();
     let graph = scope.scope_graph(db);

@@ -51,6 +51,7 @@ pub struct SolSlot {
 }
 
 impl Copy for SolSlot {}
+impl Snapshot for SolSlot {}
 
 impl SolSlot {
     /// The storage slot `slot`.
@@ -109,6 +110,7 @@ pub struct SolWord {
 }
 
 impl Copy for SolWord {}
+impl Snapshot for SolWord {}
 
 impl SolWord {
     /// The `T` stored `offset` bytes above the low end of the word. Reverts

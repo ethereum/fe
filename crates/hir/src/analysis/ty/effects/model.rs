@@ -216,7 +216,10 @@ impl<'db> EffectRequirementDecl<'db> {
             SemanticEffectRequirementKey::Trait(trait_inst) => EffectRequirementKey::Trait(
                 TraitKeySchema::from_canonical_trait_binding(db, trait_inst),
             ),
-            SemanticEffectRequirementKey::Other => return None,
+            // Calls expand or forward a row before resolving its components.
+            SemanticEffectRequirementKey::Row(_) | SemanticEffectRequirementKey::Other => {
+                return None;
+            }
         };
 
         Some(Self {

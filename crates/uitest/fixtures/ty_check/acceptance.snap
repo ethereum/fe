@@ -1,0 +1,67 @@
+---
+source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
+expression: diags
+input_file: fixtures/ty_check/acceptance.fe
+---
+error[3-0059]: `Span` is a `#[view]` type
+   ┌─ acceptance.fe:94:17
+   │
+94 │ fn case21_alias(_ s: own Alias) {}
+   │                 ^^^^^^^^^^^^^^ a `#[view]` type cannot be an `own` parameter
+
+error[3-0059]: `Span` is a `#[view]` type
+    ┌─ acceptance.fe:105:11
+    │
+105 │     span: Span,
+    │           ^^^^ a `#[view]` type cannot be a field
+
+error[3-0059]: `Span` is a `#[view]` type
+    ┌─ acceptance.fe:108:14
+    │
+108 │ type Spans = [Alias; 2]
+    │              ^^^^^^^^^^ a `#[view]` type cannot be part of another type
+
+error[8-0036]: missing effect `Key` required by `start`
+   ┌─ acceptance.fe:56:14
+   │
+56 │     for x in xs by d {
+   │              ^^ `start` requires effect `Key` to be in scope
+   │
+   = provide it with `with (Key = value)` or require it via `uses Key`
+
+error[8-0036]: missing effect `Key` required by `next`
+   ┌─ acceptance.fe:56:14
+   │
+56 │     for x in xs by d {
+   │              ^^ `next` requires effect `Key` to be in scope
+   │
+   = provide it with `with (Key = value)` or require it via `uses Key`
+
+error[8-0036]: missing effect `Key` required by `at`
+   ┌─ acceptance.fe:56:14
+   │
+56 │     for x in xs by d {
+   │              ^^ `at` requires effect `Key` to be in scope
+   │
+   = provide it with `with (Key = value)` or require it via `uses Key`
+
+error[8-0105]: this call instantiates its callee at the `#[view]` type `Span`
+   ┌─ acceptance.fe:99:5
+   │
+99 │     take_assoc<Owner>(owner.span())
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a `#[view]` type cannot be an `own` parameter
+
+error[8-0105]: this call instantiates its callee at the `#[view]` type `Span`
+    ┌─ acceptance.fe:115:5
+    │
+115 │     take(owner.span())
+    │     ^^^^^^^^^^^^^^^^^^ a `#[view]` type cannot be an `own` parameter
+
+error[8-0107]: a `with` provider naming storage needs the function's own authority
+   ┌─ acceptance.fe:15:11
+   │
+15 │     with (ptr) {
+   │           ^^^ this handle names storage the function's `uses` does not cover
+   │
+   = require it via `uses (storage: RawStorage)`, or vouch for it in an `unsafe` block

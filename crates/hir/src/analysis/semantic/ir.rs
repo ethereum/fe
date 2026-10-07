@@ -6,7 +6,7 @@ use crate::{
         semantic::instance::{SemanticInstance, SemanticInstanceKey},
         ty::{
             provider::ProviderAddressSpace,
-            ty_check::{BodyOwner, EffectArgLayoutView, EffectPassMode, LocalBinding},
+            ty_check::{BodyOwner, EffectArgLayoutView, EffectPassMode, ForLoopStep, LocalBinding},
             ty_def::{BorrowKind, TyId},
         },
     },
@@ -308,8 +308,7 @@ pub enum SemOrigin<'db> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum CallSiteId {
     Expr(ExprId),
-    ForLoopLen(StmtId),
-    ForLoopGet(StmtId),
+    ForLoop(StmtId, ForLoopStep),
 }
 
 #[salsa::interned]

@@ -60,6 +60,7 @@ impl core::ops::Eq for Address {
 }
 
 impl Copy for Address {}
+impl Snapshot for Address {}
 
 impl Default for Address {
     fn default() -> Self {
@@ -133,19 +134,22 @@ impl<T> EffectHandleMut for StorPtr<T> {}
 impl<T> EffectRef<T> for StorPtr<T> {}
 impl<T> EffectRefMut<T> for StorPtr<T> {}
 
+// A pointer names the slot it reaches: a contract field's pointer is reached
+// with the authority over the field, and any other with a provider of the
+// pointer, which only raw storage authority installs.
 impl<T> StorPtr<T> {
     /// Reads the pointed-at value.
-    pub fn read(self) -> T
+    pub fn read(self) -> T uses (storage: Field(Self))
         where T: Copy
     {
-        let mut ptr = self
+        let ptr = self
         with (ptr) {
             core::effect_ref::read(ptr)
         }
     }
 
     /// Writes the pointed-at value.
-    pub fn write(self, _ value: own T) {
+    pub fn write(self, _ value: own T) uses (storage: mut Field(Self)) {
         let mut ptr = self
         with (ptr) {
             core::effect_ref::write(ptr, value)
@@ -198,17 +202,17 @@ impl<T> EffectRefMut<T> for TStorPtr<T> {}
 
 impl<T> TStorPtr<T> {
     /// Reads the pointed-at transient value.
-    pub fn read(self) -> T
+    pub fn read(self) -> T uses (storage: Field(Self))
         where T: Copy
     {
-        let mut ptr = self
+        let ptr = self
         with (ptr) {
             core::effect_ref::read(ptr)
         }
     }
 
     /// Writes the pointed-at transient value.
-    pub fn write(self, _ value: own T) {
+    pub fn write(self, _ value: own T) uses (storage: mut Field(Self)) {
         let mut ptr = self
         with (ptr) {
             core::effect_ref::write(ptr, value)
@@ -244,16 +248,29 @@ impl<T, const SLOT: u256> TSlot<T, SLOT> {
         self.ptr_unchecked()
     }
 
+    // The slot is the field `Self` names, so `Field(Self)` covers the
+    // pointer to it.
+
     /// Reads the value at the assigned slot.
-    pub fn read(self) -> T
+    pub fn read(self) -> T uses (storage: Field(Self))
         where T: Copy
     {
-        self.ptr_unchecked().read()
+        let ptr = self.ptr_unchecked()
+        unsafe {
+            with (ptr) {
+                core::effect_ref::read(ptr)
+            }
+        }
     }
 
     /// Writes the value at the assigned slot.
-    pub fn write(mut self, _ value: own T) {
-        self.ptr_unchecked().write(value)
+    pub fn write(mut self, _ value: own T) uses (storage: mut Field(Self)) {
+        let mut ptr = self.ptr_unchecked()
+        unsafe {
+            with (ptr) {
+                core::effect_ref::write(ptr, value)
+            }
+        }
     }
 }
 

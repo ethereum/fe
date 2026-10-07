@@ -4,10 +4,10 @@
 //! promises. A yield site is the body's tail or a returned expression; blocks,
 //! `if`, `match` and `with` yield through their tails. Each yield site's shape
 //! is recorded for lowering.
-use super::{TyChecker, ValuePathRef};
+use super::{ExprProp, TyChecker, ValuePathRef, expr::IndexMutOp};
 use crate::{
     analysis::ty::{diagnostics::BodyDiag, shape::Shape, ty_def::BorrowKind},
-    hir_def::{CallableDef, Expr, ExprId, Partial, Stmt, UnOp},
+    hir_def::{BinOp, CallableDef, Expr, ExprId, Partial, Stmt, UnOp},
 };
 
 impl<'db> TyChecker<'db> {
@@ -49,8 +49,10 @@ impl<'db> TyChecker<'db> {
                 }
             }
             Expr::With(_, body) => self.check_yield_site(*body, shape),
-            _ => self.check_yield_leaf(expr, data, shape),
+            _ => return self.check_yield_leaf(expr, data, shape),
         }
+        // It yields what its tails do.
+        self.env.consume_access(expr);
     }
 
     fn check_yield_leaf(&mut self, expr: ExprId, data: &Expr<'db>, shape: &Shape<'db>) {
@@ -112,6 +114,58 @@ impl<'db> TyChecker<'db> {
                 }
             }
         }
+    }
+
+    /// Makes `expr`, a place a `mut` context needs, mutable by selecting
+    /// `index_mut` for the trait-lowered indexes along its place chain:
+    /// `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a `mut self` method.
+    /// Returns whether the place is mutable.
+    pub(super) fn select_mut_place(&mut self, expr: ExprId) -> bool {
+        let Some(prop) = self.env.typed_expr(expr) else {
+            return false;
+        };
+        if prop.is_mut {
+            return true;
+        }
+        let selected = match self.env.expr_data(expr) {
+            Partial::Present(Expr::Field(base, _)) => self.select_mut_place(*base),
+            Partial::Present(Expr::Bin(base, index, BinOp::Index)) => {
+                let Some(base_prop) = self.env.typed_expr(*base) else {
+                    return false;
+                };
+                if base_prop.ty.is_array(self.db) {
+                    self.select_mut_place(*base)
+                } else {
+                    // `index_mut` takes `mut self`: a place base must be writable.
+                    let is_place =
+                        self.env.expr_place(*base).is_some() || self.is_pointer_deref_expr(*base);
+                    if is_place && !self.select_mut_place(*base) {
+                        return false;
+                    }
+                    self.env.forget_call(expr);
+                    let indexed =
+                        self.check_ops_trait(expr, base_prop.ty, &IndexMutOp, Some(*index));
+                    !indexed.ty.has_invalid(self.db)
+                }
+            }
+            Partial::Present(Expr::MethodCall(..)) => self.check_mut_method_variant(expr),
+            _ => false,
+        };
+        if selected {
+            let shape = prop.shape.as_ref().map(|shape| match shape {
+                Shape::Access(_, ty) => Shape::Access(BorrowKind::Mut, *ty),
+                shape => shape.clone(),
+            });
+            self.env.type_expr(
+                expr,
+                ExprProp {
+                    is_mut: true,
+                    shape,
+                    ..prop
+                },
+            );
+        }
+        selected
     }
 
     /// Marks `expr` as used as an access. A block forwards the access of its

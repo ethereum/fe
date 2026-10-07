@@ -1,0 +1,45 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+expression: diags
+input_file: fixtures/semantic_access/handle_operations.fe
+---
+error[16-0001]: access conflict in `fn Direct::__init__`
+   ┌─ handle_operations.fe:28:9
+   │
+27 │         let x = mut m[1]
+   │                     ---- projection opened here
+28 │         m.set(key: 2, value: 5)
+   │         ^ cannot write to this place while a `mut` projection of it is open
+
+error[16-0001]: access conflict in `fn Copied::__init__`
+   ┌─ handle_operations.fe:39:17
+   │
+38 │         let x = mut m[1]
+   │                     ---- projection opened here
+39 │         let v = h.get(2)
+   │                 ^^^^^^^^ cannot read this place while a `mut` projection of it is open
+
+error[16-0001]: access conflict in `fn Aggregated::__init__`
+   ┌─ handle_operations.fe:51:9
+   │
+50 │         let x = mut m[1]
+   │                     ---- projection opened here
+51 │         ledger.credit(2)
+   │         ^^^^^^ cannot write to this place while a `mut` projection of it is open
+
+error[16-0001]: access conflict in `fn Owned::__init__`
+   ┌─ handle_operations.fe:60:21
+   │
+59 │         let x = mut m[1]
+   │                     ---- projection opened here
+60 │         store_owned(m)
+   │                     ^ cannot write to this place while a `mut` projection of it is open
+
+error[16-0001]: access conflict in `fn Provided::__init__`
+   ┌─ handle_operations.fe:72:13
+   │
+70 │         let x = mut m[1]
+   │                     ---- projection opened here
+71 │         with (h) {
+72 │             h.set(key: 2, value: 5)
+   │             ^ cannot write to this place while a `mut` projection of it is open

@@ -397,7 +397,13 @@ fn func_sig_to_doc<'a>(
 
     let ret_doc = sig.ret_ty().map_or_else(
         || alloc.nil(),
-        |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
+        |ty| {
+            let ret = alloc.text(" -> ").append(ty.to_doc(ctx));
+            match sig.ret_space() {
+                Some(space) => ret.append(alloc.text(" ")).append(space.to_doc(ctx)),
+                None => ret,
+            }
+        },
     );
 
     let has_uses = sig.uses_clause().is_some();
@@ -1181,7 +1187,54 @@ impl ToDoc for ast::TraitItem {
             TraitItemKind::Func(func) => func.to_doc(ctx),
             TraitItemKind::Type(ty) => ty.to_doc(ctx),
             TraitItemKind::Const(c) => c.to_doc(ctx),
+            TraitItemKind::Uses(row) => row.to_doc(ctx),
+            TraitItemKind::Space(space) => space.to_doc(ctx),
         }
+    }
+}
+
+impl ToDoc for ast::TraitSpaceItem {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+
+        token_doc_item_like_if_comments!(self, ctx);
+
+        let name = self
+            .name()
+            .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
+        let value = self.value().map_or_else(
+            || alloc.nil(),
+            |value| alloc.text(" = ").append(value.to_doc(ctx)),
+        );
+
+        attrs_doc(self, ctx)
+            .append(alloc.text("space "))
+            .append(name)
+            .append(value)
+    }
+}
+
+impl ToDoc for ast::TraitUsesItem {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+
+        token_doc_item_like_if_comments!(self, ctx);
+
+        let name = self
+            .name()
+            .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
+        let effects = if let Some(params) = self.param_list() {
+            alloc.text(" = ").append(params.to_doc(ctx))
+        } else if let Some(param) = self.param() {
+            alloc.text(" = ").append(param.to_doc(ctx))
+        } else {
+            alloc.nil()
+        };
+
+        attrs_doc(self, ctx)
+            .append(alloc.text("uses "))
+            .append(name)
+            .append(effects)
     }
 }
 

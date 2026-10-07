@@ -818,11 +818,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                         .map(|ty| self.instance.normalized_ty(self.db, ty))
                         .ok_or(NormalizeError::InvalidProjection)?;
                     vec![element_ty; fields.len()]
-                } else if ty.is_tuple(self.db)
-                    || ty
-                        .adt_def(self.db)
-                        .is_some_and(|adt| matches!(adt.adt_ref(self.db), AdtRef::Struct(_)))
-                {
+                } else if ty.is_product(self.db) {
                     self.instance.normalized_field_types(self.db, ty).to_vec()
                 } else {
                     return Err(NormalizeError::InvalidProjection);
@@ -2946,7 +2942,7 @@ fn ty_has_enum<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
     if ty.is_array(db) {
         return ty_has_enum(db, ty.generic_args(db)[0]);
     }
-    (ty.is_tuple(db) || ty.is_struct(db))
+    ty.is_product(db)
         && ty
             .field_types(db)
             .into_iter()

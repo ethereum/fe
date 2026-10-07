@@ -1,0 +1,153 @@
+// `for pat in base by d` runs the driver `d` over `base`: `d` is an ordinary
+// value that holds no reference to the base. A method chain rooted at a
+// collection, `for x in xs.reversed().take(2)`, names its base once. A driver
+// yields what it adds beside each element, as `enumerate()` its index; a
+// producer yields owned values.
+use core::iter::{Collection, Driver, Identity, Producer, Skip, Take}
+use core::iter::{enumerate, reversed, skip, step_by, take}
+use core::option::Option
+
+struct Account { balance: u256, owner: u256 }
+
+struct Holder { items: [u256; 3] }
+
+impl Holder {
+    fn items(self) -> ref [u256; 3] {
+        ref self.items
+    }
+}
+
+fn make() -> [u256; 3] {
+    [7, 8, 9]
+}
+
+// Traversal order is a parameter.
+fn sum_by<C: Collection<Item = u256>, D: Driver<C, Item = u256, Extra = ()>>(_ xs: C, _ d: D) -> u256 uses (C::E, D::E) {
+    let mut s = 0
+    for x in xs by d {
+        s += x
+    }
+    s
+}
+
+fn page(_ offset: usize, _ len: usize) -> Take<Skip<Identity>> {
+    skip(offset).take(len)
+}
+
+// Owned accounts, one per balance, numbered from 1.
+struct Open {}
+
+impl<B: Collection<Item = u256, Cursor = usize>> Producer<B> for Open {
+    type State = usize
+    type Out = Account
+
+    fn start(self, _ base: B) -> Option<usize> uses B::E {
+        base.start()
+    }
+
+    fn next(self, _ base: B, _ s: usize) -> Option<usize> uses B::E {
+        base.next(s)
+    }
+
+    fn produce(mut self, _ base: B, _ s: usize) -> Account uses B::E {
+        Account { balance: Collection::at(base, s), owner: s as u256 + 1 }
+    }
+}
+
+#[test]
+fn drivers_by_name() {
+    let xs: [u256; 5] = [1, 2, 3, 4, 5]
+    let mut digits = 0
+    for x in xs by reversed() {
+        digits = digits * 10 + x
+    }
+    assert!(digits == 54321)
+    assert!(sum_by(xs, reversed()) == 15)
+    assert!(sum_by(xs, page(1, 2)) == 5)
+    assert!(sum_by(xs, step_by(2)) == 9)
+    assert!(sum_by(xs, take(0)) == 0)
+
+    // A driver is a value: bound once, used twice.
+    let d = skip(3)
+    assert!(sum_by(xs, d) + sum_by(xs, d) == 18)
+}
+
+#[test]
+fn method_chains() {
+    let xs: [u256; 5] = [1, 2, 3, 4, 5]
+    let mut digits = 0
+    for x in xs.reversed().take(2) {
+        digits = digits * 10 + x
+    }
+    assert!(digits == 54)
+
+    let mut weighted = 0
+    for (i, x) in xs.enumerate() {
+        weighted += i as u256 * x
+    }
+    assert!(weighted == 40)
+
+    let mut last = 0
+    for (i, x) in xs.reversed().enumerate().skip(1).step_by(2) {
+        last = i as u256 * 10 + x
+    }
+    assert!(last == 32)
+
+    // A projected base stays the base; a temporary one is evaluated once.
+    let holder = Holder { items: [1, 2, 3] }
+    digits = 0
+    for x in holder.items().reversed() {
+        digits = digits * 10 + x
+    }
+    assert!(digits == 321)
+    digits = 0
+    for x in make().reversed().take(2) {
+        digits = digits * 10 + x
+    }
+    assert!(digits == 98)
+}
+
+#[test]
+fn non_copy_elements() {
+    let accounts = [Account { balance: 5, owner: 1 }, Account { balance: 7, owner: 2 }]
+    let mut digits = 0
+    for account in accounts by reversed() {
+        digits = digits * 10 + account.balance
+    }
+    assert!(digits == 75)
+    let mut sum = 0
+    for (i, account) in accounts.enumerate() {
+        sum += account.owner * i as u256
+    }
+    assert!(sum == 2)
+}
+
+#[test]
+fn mutating_through_drivers() {
+    let mut xs: [u256; 4] = [1, 2, 3, 4]
+    for x in mut xs by skip(2) {
+        x *= 10
+    }
+    assert!(xs[0] == 1 && xs[1] == 2 && xs[2] == 30 && xs[3] == 40)
+    for (i, x) in mut xs by enumerate().take(3) {
+        x += i as u256
+    }
+    assert!(xs[0] == 1 && xs[1] == 3 && xs[2] == 32 && xs[3] == 40)
+}
+
+#[test]
+fn producers() {
+    let xs: [u256; 3] = [10, 20, 30]
+    let mut sum = 0
+    for (i, x) in xs by enumerate().copied() {
+        sum += i as u256 + x
+    }
+    assert!(sum == 63)
+
+    let open = Open {}
+    let mut owned = 0
+    for account in xs by open {
+        owned += account.balance * account.owner
+    }
+    assert!(owned == 140)
+}

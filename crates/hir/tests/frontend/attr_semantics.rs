@@ -71,7 +71,7 @@ fn expr_valued_loop_unroll_attr_does_not_apply_hint() {
     let body = func.body(&db).expect("expected function body");
 
     let unroll_hint = body.stmts(&db).iter().find_map(|(_, stmt)| match stmt {
-        Partial::Present(Stmt::For(_, _, _, hint)) => Some(*hint),
+        Partial::Present(Stmt::For(.., hint)) => Some(*hint),
         Partial::Present(_) | Partial::Absent => None,
     });
 
@@ -96,7 +96,7 @@ fn empty_loop_unroll_attr_parens_do_not_apply_hint() {
     let body = func.body(&db).expect("expected function body");
 
     let unroll_hint = body.stmts(&db).iter().find_map(|(_, stmt)| match stmt {
-        Partial::Present(Stmt::For(_, _, _, hint)) => Some(*hint),
+        Partial::Present(Stmt::For(.., hint)) => Some(*hint),
         Partial::Present(_) | Partial::Absent => None,
     });
 
@@ -121,7 +121,7 @@ fn unroll_never_attr_prevents_unrolling() {
     let body = func.body(&db).expect("expected function body");
 
     let unroll_hint = body.stmts(&db).iter().find_map(|(_, stmt)| match stmt {
-        Partial::Present(Stmt::For(_, _, _, hint)) => Some(*hint),
+        Partial::Present(Stmt::For(.., hint)) => Some(*hint),
         Partial::Present(_) | Partial::Absent => None,
     });
 

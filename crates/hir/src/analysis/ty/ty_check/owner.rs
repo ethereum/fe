@@ -1,5 +1,7 @@
-use crate::analysis::ty::ty_def::TyId;
-use crate::hir_def::{ItemKind, attr::ArithmeticMode};
+use crate::analysis::ty::ty_def::{ClosureTy, TyId};
+use crate::hir_def::{
+    ClosureDef, Expr, ExprId, ItemKind, Partial, attr::ArithmeticMode, params::FuncParamMode,
+};
 use crate::span::DynLazySpan;
 use crate::{
     analysis::HirAnalysisDb,
@@ -24,6 +26,14 @@ pub enum BodyOwner<'db> {
         contract: Contract<'db>,
         recv_idx: u32,
         arm_idx: u32,
+    },
+    /// The body of a closure called through a callable shape trait whose
+    /// receiver, `self` or `mut self`, is `receiver`: one body per receiver
+    /// mode it is called with.
+    Closure {
+        ty: ClosureTy<'db>,
+        def: ClosureDef<'db>,
+        receiver: FuncParamMode,
     },
 }
 
@@ -61,9 +71,14 @@ impl<'db> EffectParamOwner<'db> {
         }
     }
 
-    pub fn effect_param_ty_span(self, _db: &'db dyn HirAnalysisDb, idx: usize) -> DynLazySpan<'db> {
+    pub fn effect_param_ty_span(self, db: &'db dyn HirAnalysisDb, idx: usize) -> DynLazySpan<'db> {
         match self {
-            EffectParamOwner::Func(func) => func.span().effects().param_idx(idx).ty().into(),
+            EffectParamOwner::Func(func) => func
+                .span()
+                .effects()
+                .param_idx(func.effect_origin(db, idx))
+                .ty()
+                .into(),
             EffectParamOwner::Contract(contract) => {
                 contract.span().effects().param_idx(idx).ty().into()
             }
@@ -92,6 +107,71 @@ impl<'db> EffectParamOwner<'db> {
 }
 
 impl<'db> BodyOwner<'db> {
+    /// The owner of `closure`'s body; `def` is always the closure type's.
+    pub fn closure(
+        db: &'db dyn HirAnalysisDb,
+        closure: ClosureTy<'db>,
+        receiver: FuncParamMode,
+    ) -> Self {
+        Self::Closure {
+            ty: closure,
+            def: closure.def(db),
+            receiver,
+        }
+    }
+
+    /// The owner of the item body `body`, which a closure's body is part of.
+    pub fn from_body(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<Self> {
+        if let Some(func) = body.containing_func(db) {
+            return Some(Self::Func(func));
+        }
+        match body.scope().parent_item(db)? {
+            ItemKind::Const(const_) if const_.body(db).to_opt() == Some(body) => {
+                Some(Self::Const(const_))
+            }
+            ItemKind::Contract(contract) => {
+                if contract.init(db).is_some_and(|init| init.body(db) == body) {
+                    return Some(Self::ContractInit { contract });
+                }
+                contract
+                    .recvs(db)
+                    .data(db)
+                    .iter()
+                    .enumerate()
+                    .find_map(|(recv_idx, recv)| {
+                        let arm_idx = recv.arms.data(db).iter().position(|arm| arm.body == body)?;
+                        Some(Self::ContractRecvArm {
+                            contract,
+                            recv_idx: recv_idx as u32,
+                            arm_idx: arm_idx as u32,
+                        })
+                    })
+            }
+            _ => None,
+        }
+    }
+
+    /// The closure whose body this owner is, which only the expressions and
+    /// statements of its region (`ty::closure::closure_regions`) are part of.
+    pub fn closure_region(self) -> Option<ExprId> {
+        match self {
+            Self::Closure { def, .. } => Some(def.expr),
+            _ => None,
+        }
+    }
+
+    /// The expression whose value the body returns: a closure's body
+    /// expression, or the whole body.
+    pub fn root_expr(self, db: &'db dyn HirAnalysisDb) -> Option<ExprId> {
+        match self {
+            Self::Closure { def, .. } => match def.expr.data(db, def.body) {
+                Partial::Present(Expr::Closure { body, .. }) => Some(*body),
+                _ => None,
+            },
+            _ => self.body(db).map(|body| body.expr(db)),
+        }
+    }
+
     /// A `where` clause condition, checked as a `bool` constant.
     pub fn const_predicate(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Self {
         Self::AnonConstBody {
@@ -163,7 +243,9 @@ impl<'db> BodyOwner<'db> {
         db: &'db dyn HirAnalysisDb,
     ) -> Option<crate::hir_def::ContractRecvArm<'db>> {
         match self {
-            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => None,
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
+                None
+            }
             BodyOwner::ContractInit { .. } => None,
             BodyOwner::ContractRecvArm {
                 contract,
@@ -199,6 +281,7 @@ impl<'db> BodyOwner<'db> {
                     .recv_arm(db, recv_idx as usize, arm_idx as usize)?
                     .body,
             ),
+            BodyOwner::Closure { def, .. } => Some(def.body),
         }
     }
 
@@ -209,13 +292,14 @@ impl<'db> BodyOwner<'db> {
             BodyOwner::AnonConstBody { body, .. } => body.scope(),
             BodyOwner::ContractInit { contract } => contract.scope(),
             BodyOwner::ContractRecvArm { contract, .. } => contract.scope(),
+            BodyOwner::Closure { def, .. } => def.body.scope(),
         }
     }
 
     pub fn effects(self, db: &'db dyn HirAnalysisDb) -> EffectParamListId<'db> {
         match self {
             BodyOwner::Func(func) => func.effects(db),
-            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => {
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
                 EffectParamListId::new(db, Vec::new())
             }
             BodyOwner::ContractInit { contract } => contract.init(db).map_or_else(
@@ -233,10 +317,17 @@ impl<'db> BodyOwner<'db> {
         }
     }
 
-    pub fn effect_param_ty_span(self, _db: &'db dyn HirAnalysisDb, idx: usize) -> DynLazySpan<'db> {
+    pub fn effect_param_ty_span(self, db: &'db dyn HirAnalysisDb, idx: usize) -> DynLazySpan<'db> {
         match self {
-            BodyOwner::Func(func) => func.span().effects().param_idx(idx).ty().into(),
-            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => DynLazySpan::invalid(),
+            BodyOwner::Func(func) => func
+                .span()
+                .effects()
+                .param_idx(func.effect_origin(db, idx))
+                .ty()
+                .into(),
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
+                DynLazySpan::invalid()
+            }
             BodyOwner::ContractInit { contract } => contract
                 .span()
                 .init_block()

@@ -2534,8 +2534,9 @@ fn lower_callable_input_effect_key<'db>(
             );
             ResolvedEffectKey::Trait(TraitKeySchema::from_canonical_trait_binding(db, inst))
         }
-        ResolvedEffectKey::Invalid => ResolvedEffectKey::Invalid,
-        ResolvedEffectKey::Other => ResolvedEffectKey::Other,
+        key @ (ResolvedEffectKey::Row(_)
+        | ResolvedEffectKey::Invalid
+        | ResolvedEffectKey::Other) => key,
     }
 }
 
@@ -2737,7 +2738,9 @@ pub(crate) fn callable_input_layout_hole_groups<'db>(
             ResolvedEffectKey::Trait(schema) => {
                 collect_unique_layout_placeholders_in_order(db, schema.into_trait_inst(db))
             }
-            ResolvedEffectKey::Invalid | ResolvedEffectKey::Other => continue,
+            ResolvedEffectKey::Row(_) | ResolvedEffectKey::Invalid | ResolvedEffectKey::Other => {
+                continue;
+            }
         };
         if placeholders.is_empty() {
             continue;
@@ -3002,7 +3005,9 @@ pub fn callable_input_layout_backing_sources<'db>(
                 ),
                 param_idx,
             ),
-            ResolvedEffectKey::Invalid | ResolvedEffectKey::Other => false,
+            ResolvedEffectKey::Row(_) | ResolvedEffectKey::Invalid | ResolvedEffectKey::Other => {
+                false
+            }
         };
         if contains {
             sources.push(CallableInputLayoutBackingSource {

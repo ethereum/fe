@@ -14,6 +14,7 @@ use ingot::evm::ops::{calldataload, calldatacopy, calldatasize, revert_empty}
 pub struct CallData { pub base: u256 }
 
 impl Copy for CallData {}
+impl Snapshot for CallData {}
 
 impl CallData {
     #[inline(always)]

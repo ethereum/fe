@@ -1,0 +1,133 @@
+// Run-time results of the draft-6 acceptance list ("Acceptance tests"),
+// numbered as the spec lists it. Static results are in
+// `uitest/semantic_access/acceptance.fe` and `uitest/ty_check/acceptance.fe`.
+use core::iter::{Identity, reversed}
+use std::evm::Evm
+
+struct Cell { v: u256 }
+
+fn inner(_ c: mut Cell) -> mut u256 {
+    yield mut c.v
+    c.v = c.v * 10 + 1
+}
+
+fn outer(_ c: mut Cell) -> mut u256 {
+    let x = inner(mut c)
+    yield mut x
+    x += 1
+}
+
+// 4. An outer slide uses the inner grant it retains, and the inner session
+// finishes after it: (5 + 1) * 10 + 1.
+#[test]
+fn case04_resumption_order() {
+    let mut c = Cell { v: 0 }
+    let x = outer(mut c)
+    x = 5
+    assert!(c.v == 61)
+}
+
+fn tally(_ c: mut Cell) -> mut u256 {
+    let mut tmp = c.v
+    yield mut tmp
+    c.v = tmp + 100
+}
+
+// 11. A slide-bearing session exited by `break` runs its slide once.
+#[test]
+fn case11_break_runs_slide_once() {
+    let mut c = Cell { v: 0 }
+    let mut i: u256 = 0
+    while i < 3 {
+        let x = tally(mut c)
+        if i == 1 {
+            break
+        }
+        x += 1
+        i += 1
+    }
+    assert!(c.v == 201)
+}
+
+fn written_back(_ c: mut Cell) -> mut u256 {
+    let mut tmp = c.v
+    yield mut tmp
+    c.v = tmp + 1000
+}
+
+fn optional(_ c: mut Cell, _ give: bool) -> Option<mut u256> {
+    let x = written_back(mut c)
+    if !give {
+        return Option::None
+    }
+    yield Option::Some(mut x)
+    x += 10
+}
+
+// 15. An outer projection returning `None` after opening an inner write-back
+// session finishes the inner session (its cleanup runs) and runs no outer
+// slide.
+#[test]
+fn case15_empty_exit_cleans_up() {
+    let mut c = Cell { v: 0 }
+    if let Option::Some(x) = optional(mut c, false) {
+        x += 1
+    }
+    assert!(c.v == 1000)
+    if let Option::Some(x) = optional(mut c, true) {
+        x += 1
+    }
+    assert!(c.v == 1000 + 1000 + 11)
+}
+
+fn replaceable(_ c: mut Cell) -> mut Cell {
+    yield mut c
+    c.v += 2
+}
+
+// 26. A mutable exported referent replaced before the slide resumes: the
+// slide sees what the caller left.
+#[test]
+fn case26_replaced_referent() {
+    let mut c = Cell { v: 1 }
+    let x = replaceable(mut c)
+    x = Cell { v: 40 }
+    assert!(c.v == 42)
+}
+
+msg Words {
+    #[selector = 1]
+    Get { i: u256 } -> u256,
+}
+
+// 23. `Identity` and `Reversed` forward a storage-yielding base: the loop
+// writes the contract's words in place.
+pub contract StoredWords {
+    mut words: [u256; 3],
+
+    init() uses (mut words) {
+        let mut next: u256 = 1
+        for word in mut words by reversed() {
+            word = next
+            next += 1
+        }
+        let d = Identity {}
+        for word in mut words by d {
+            word *= 10
+        }
+    }
+
+    recv Words {
+        Get { i } -> u256 uses (words) {
+            words[i as usize]
+        }
+    }
+}
+
+#[test]
+fn case23_storage_base() uses (evm: mut Evm) {
+    let addr = evm.create2<StoredWords>(value: 0, args: (), salt: 0)
+    let first: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: Words::Get { i: 0 })
+    let last: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: Words::Get { i: 2 })
+    assert!(first == 30 && last == 10)
+}

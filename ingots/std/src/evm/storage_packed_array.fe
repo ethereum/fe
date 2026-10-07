@@ -73,6 +73,7 @@ impl ValidPackedBits for PackedBits<64> {}
 impl ValidPackedBits for PackedBits<128> {}
 
 impl<const BITS: u256, const SALT: u256> Copy for StoragePackedArray<BITS, SALT> {}
+impl<const BITS: u256, const SALT: u256> Snapshot for StoragePackedArray<BITS, SALT> {}
 
 impl<const BITS: u256, const SALT: u256> StoragePackedArray<BITS, SALT>
     where PackedBits<BITS>: ValidPackedBits

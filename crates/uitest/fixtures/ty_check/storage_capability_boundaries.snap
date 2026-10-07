@@ -46,6 +46,14 @@ error[8-0036]: missing effect `RawStorage` required by `new`
    │
    = provide it with `with (RawStorage = value)` or require it via `uses RawStorage`
 
+error[8-0036]: missing effect `Field(Self)` required by `write`
+   ┌─ storage_capability_boundaries.fe:29:5
+   │
+29 │     slot.write(1)
+   │     ^^^^^^^^^^^^^ `write` requires effect `Field(Self)` to be in scope
+   │
+   = the authority over a storage field comes with a handle argument that lies in an effect provider, such as a contract field under `uses (mut store)`
+
 error[8-0066]: mutable borrow requires a mutable place
    ┌─ storage_capability_boundaries.fe:29:5
    │

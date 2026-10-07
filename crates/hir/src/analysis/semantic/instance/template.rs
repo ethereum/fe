@@ -71,6 +71,13 @@ impl<'db> GenericSubst<'db> {
         args: Vec<TyId<'db>>,
     ) -> Self {
         let generic_owner = match owner {
+            // A closure's body shares its parent's generic context.
+            BodyOwner::Closure { def, .. } => {
+                return BodyOwner::from_body(db, def.body).map_or_else(
+                    || Self::none(db),
+                    |parent| Self::for_body_owner(db, parent, args),
+                );
+            }
             BodyOwner::Func(func) if args.is_empty() => {
                 return Self::for_owner(
                     db,

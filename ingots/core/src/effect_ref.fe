@@ -26,6 +26,12 @@ pub enum AddressSpace {
     TransientStorage,
 }
 
+/// `Field(T)` in a `uses` clause: the authority over the storage field a
+/// handle of type `T` names, keyed by `T`. A provider of type `T` gives it,
+/// and so does a call's argument of type `T` that is a place in an effect
+/// provider: `map[k] += 1` takes it from `map`.
+pub struct Field<T> {}
+
 /// Marker: `Self` can satisfy a read-only effect whose domain is `Target`.
 pub trait EffectRef<Target> {}
 

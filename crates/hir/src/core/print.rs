@@ -403,6 +403,22 @@ impl<'db> FuncParamListId<'db> {
 impl<'db> FuncParam<'db> {
     /// Pretty-prints a function parameter.
     pub fn pretty_print(&self, db: &'db dyn HirDb) -> String {
+        let mut result = self.pretty_print_binding(db);
+
+        // Type (if not a self param with fallback) — use "?" if Absent.
+        if !self.self_ty_fallback {
+            result.push_str(": ");
+            match self.ty {
+                Partial::Present(ty) => result.push_str(&ty.pretty_print(db)),
+                Partial::Absent => result.push('?'),
+            }
+        }
+
+        result
+    }
+
+    /// Pretty-prints the parameter up to (excluding) its type annotation.
+    fn pretty_print_binding(&self, db: &'db dyn HirDb) -> String {
         let mut result = String::new();
         let mode_prefix = match self.mode {
             FuncParamMode::View => "",
@@ -427,15 +443,6 @@ impl<'db> FuncParam<'db> {
         match self.name {
             Partial::Present(name) => result.push_str(&name.pretty_print(db)),
             Partial::Absent => result.push('_'),
-        }
-
-        // Type (if not a self param with fallback) — use "?" if Absent.
-        if !self.self_ty_fallback {
-            result.push_str(": ");
-            match self.ty {
-                Partial::Present(ty) => result.push_str(&ty.pretty_print(db)),
-                Partial::Absent => result.push('?'),
-            }
         }
 
         result
@@ -583,6 +590,41 @@ impl<'db> Expr<'db> {
     pub fn pretty_print(&self, db: &'db dyn HirDb, body: Body<'db>, indent: usize) -> String {
         match self {
             Expr::Lit(lit) => lit.pretty_print(db),
+
+            Expr::Closure {
+                params,
+                ret_ty,
+                body: closure_body,
+            } => {
+                let params = params
+                    .data(db)
+                    .iter()
+                    .map(|param| {
+                        // A closure parameter type, or the payload type after its
+                        // mode keyword, may be omitted to be inferred (`a`, `a: own`).
+                        let mut param_str = param.pretty_print_binding(db);
+                        if let Partial::Present(ty) = param.ty {
+                            param_str.push_str(": ");
+                            match ty.data(db) {
+                                TypeKind::Mode(mode, Partial::Absent) => {
+                                    param_str.push_str(mode.keyword())
+                                }
+                                _ => param_str.push_str(&ty.pretty_print(db)),
+                            }
+                        }
+                        param_str
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let ret_ty = ret_ty
+                    .map(|ty| format!(" -> {}", ty.pretty_print(db)))
+                    .unwrap_or_default();
+                let body_expr = unwrap_partial_ref(closure_body.data(db, body), "Closure::body");
+                format!(
+                    "|{params}|{ret_ty} {}",
+                    body_expr.pretty_print(db, body, indent)
+                )
+            }
 
             Expr::Block(stmts, kind) => {
                 let mut result = match kind {
@@ -1009,9 +1051,13 @@ impl<'db> Stmt<'db> {
                 result
             }
 
-            Stmt::For(pat, iter, body_expr, unroll) => {
+            Stmt::For(pat, iter, driver, body_expr, unroll) => {
                 let pat = unwrap_partial_ref(pat.data(db, body), "For::pat");
                 let iter_expr = unwrap_partial_ref(iter.data(db, body), "For::iter");
+                let driver = driver.map_or_else(String::new, |driver| {
+                    let driver = unwrap_partial_ref(driver.data(db, body), "For::driver");
+                    format!(" by {}", driver.pretty_print(db, body, indent))
+                });
                 let body_block = unwrap_partial_ref(body_expr.data(db, body), "For::body");
 
                 let prefix = match unroll {
@@ -1020,10 +1066,11 @@ impl<'db> Stmt<'db> {
                     None => "",
                 };
                 format!(
-                    "{}for {} in {} {}",
+                    "{}for {} in {}{} {}",
                     prefix,
                     pat.pretty_print(db, body),
                     iter_expr.pretty_print(db, body, indent),
+                    driver,
                     body_block.pretty_print(db, body, indent)
                 )
             }
@@ -1185,7 +1232,7 @@ impl<'db> Func<'db> {
         }
 
         // Effects
-        result.push_str(&self.effects(db).pretty_print(db));
+        result.push_str(&self.declared_effects(db).pretty_print(db));
 
         // Where clause
         result.push_str(&self.where_clause(db).pretty_print(db));

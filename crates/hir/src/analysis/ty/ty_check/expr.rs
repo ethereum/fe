@@ -1,25 +1,32 @@
+use std::iter;
+
 use either::Either;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::ToPrimitive;
 use rustc_hash::FxHashMap;
 use smallvec1::SmallVec;
 
-use crate::core::hir_def::{
-    ArithBinOp, BinOp, CallArg as HirCallArg, CallableDef, Cond, CondId, Expr, ExprId, FieldIndex,
-    IdentId, IntegerId, LitKind, LogicalBinOp, Partial, PatId, PathId, Stmt, StmtId, UnOp,
-    VariantKind, WithBinding,
+use crate::core::{
+    hir_def::{
+        ArithBinOp, BinOp, CallArg as HirCallArg, CallableDef, ClosureDef, Cond, CondId, Expr,
+        ExprId, FieldIndex, Func, FuncParam, FuncParamListId, FuncParamMode, IdentId, IntegerId,
+        LitKind, LogicalBinOp, Partial, PatId, PathId, Stmt, StmtId, TypeId as HirTyId, TypeKind,
+        TypeMode, UnOp, VariantKind, WithBinding,
+    },
+    semantic::{EffectRequirement, EffectRequirementKey as SemanticEffectRequirementKey},
 };
 use crate::span::DynLazySpan;
 
 use super::{
-    CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef, EffectArgLayoutView,
-    PatternLayoutContext, RecordLike, Typeable, ValuePathRef,
+    BodyOwner, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef, EffectArgLayoutView,
+    PatternLayoutContext, RecordLike, RowArg, Typeable, ValuePathRef,
     effect_env::{
         FamilyKeyedEntry, FrameLookupResult, MatchedForwarder, MatchedKeyedEntry, MatchedWitness,
     },
     env::{
-        BindingAccess, EffectOrigin, EffectParamSite, ExprProp, LocalBinding, ParamSite,
-        PendingPrimitiveOp, ProvidedEffect, TraitObligation, TraitObligationOrigin, TyCheckEnv,
+        BindingAccess, ClosureExpectation, EffectOrigin, EffectParamSite, ExprProp, LocalBinding,
+        ParamSite, PendingPrimitiveOp, ProvidedEffect, TraitObligation, TraitObligationOrigin,
+        TyCheckEnv,
     },
     merged_borrow_provider,
     path::ResolvedPathInBody,
@@ -39,21 +46,24 @@ use crate::analysis::ty::{
     effects::{
         BarrierReason, EffectBarrier, EffectKeyKind, EffectPatternKey, EffectQuery,
         EffectRequirementDecl, EffectRequirementKey, EffectWitness, ForwardedEffectKey,
-        PatternSlotKind, StoredEffectKey, StoredTraitKey, StoredTypeKey, TraitPatternKey,
-        TypePatternKey, WitnessTransport,
+        PatternSlotKind, StoredEffectKey, StoredTraitKey, StoredTypeKey, TraitKeySchema,
+        TraitPatternKey, TypePatternKey, WitnessTransport,
         elaborate::{
             build_barrier_pattern_for_with_key,
             build_conservative_same_family_barrier_pattern_in_scope, build_effect_query_for_call,
             contains_projection_or_invalid_query_state, effect_requirement_decls_for_callable,
             finalize_stored_effect_key, query_contains_unresolved_inference,
+            seed_forwarder_from_requirement,
         },
+        instantiate_trait_effect_key,
         match_::{
             KeyMatchCommit, apply_key_match_commit, instantiate_trait_pattern_in,
             instantiate_trait_pattern_in_with_bindings, query_matches_forwarder,
             query_matches_witness,
         },
-        place_effect_provider_param_index_map, stored_value_contains_implicit_layout_params,
-        stored_value_contains_out_of_scope_params,
+        normalize_effect_identity_trait, place_effect_provider_param_index_map,
+        rows::{RowExpansion, RowKey, RowPath, expand_rows},
+        stored_value_contains_implicit_layout_params, stored_value_contains_out_of_scope_params,
     },
     fold::{TyFoldable as _, TyFolder},
     normalize::normalize_with_trait_evidence,
@@ -67,7 +77,7 @@ use crate::analysis::ty::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
     },
     ty_check::callable::{Callable, EffectProviderProvenance, EffectProviderSpecialization},
-    ty_def::{BorrowKind, PrimTy, TyBase, TyData, prim_int_bits},
+    ty_def::{BorrowKind, ClosureTy, PrimTy, TyBase, TyData, prim_int_bits},
     unify::UnificationTable,
 };
 use crate::analysis::{
@@ -94,17 +104,20 @@ use crate::analysis::{
         const_ty::{ConstTyData, ConstTyId, const_ty_from_sem_const, try_eval_const_int_expr},
         normalize::normalize_ty,
         ty_check::{RecordInitLowering, TyChecker, path::RecordInitChecker},
+        ty_contains_const_hole,
         ty_def::{InvalidCause, TyId},
         ty_lower::{
             callable_input_carrier_projected_layout_ty, callable_input_layout_origin_ty,
             callable_input_layout_projection_paths, callable_input_projected_layout_ty,
             instantiate_callable_effect_layout_args, instantiate_callable_projection_layout_args,
+            lower_hir_ty,
         },
     },
 };
 use crate::hir_def::{FieldParent, ItemKind, scope_graph::ScopeId};
 use crate::semantic::{
     FieldStorageLayout, LayoutProjection, LayoutViewError, LayoutViewKind, ProviderBinding,
+    ProviderSource,
 };
 use common::indexmap::IndexMap;
 
@@ -209,12 +222,6 @@ enum AssignLhsStatus {
     Assignable,
     Immutable,
     NonAssignable,
-}
-
-struct MutableIndexTarget<'db> {
-    prop: ExprProp<'db>,
-    target_ty: TyId<'db>,
-    trait_lowered: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -380,6 +387,11 @@ impl<'db> TyChecker<'db> {
             }
             Expr::Lit(lit) => ExprProp::new(self.lit_ty_for_expected(lit, expected), true),
             Expr::Block(..) => self.check_block(expr, expr_data, expected, result_discarded),
+            Expr::Closure {
+                params,
+                ret_ty,
+                body,
+            } => self.check_closure(expr, *params, *ret_ty, *body),
             Expr::Un(..) => self.check_unary(expr, expr_data),
             Expr::Cast(inner, ty) => self.check_cast(expr, *inner, *ty),
             Expr::Try(inner) => self.check_try(expr, *inner),
@@ -538,11 +550,261 @@ impl<'db> TyChecker<'db> {
         }
     }
 
+    /// Checks a closure expression and its body, inline: the body sees the
+    /// enclosing bindings, and each one it uses is a capture, copied or
+    /// moved into the closure's environment.
+    fn check_closure(
+        &mut self,
+        expr: ExprId,
+        params: FuncParamListId<'db>,
+        ret_ty: Option<HirTyId<'db>>,
+        body: ExprId,
+    ) -> ExprProp<'db> {
+        let def = ClosureDef {
+            body: self.body(),
+            expr,
+        };
+        let params = params.data(self.db);
+        let span: DynLazySpan<'db> = expr.span(self.body()).into();
+        if matches!(
+            self.env.owner(),
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. }
+        ) {
+            self.push_diag(BodyDiag::ClosureInConstContext {
+                primary: span.clone(),
+            });
+        }
+
+        // The shape the callee the closure is passed to expects types its
+        // unannotated parameters and its result in context. Against a shape
+        // of another arity they are invalid, so the body does not cascade.
+        let expectation = self.env.take_closure_expectation(expr).map(|expectation| {
+            if expectation.params.len() == params.len() {
+                return expectation;
+            }
+            self.push_diag(BodyDiag::ClosureArityMismatch {
+                primary: span.clone(),
+                expected: expectation.params.len(),
+                given: params.len(),
+            });
+            ClosureExpectation {
+                modes: vec![FuncParamMode::View; params.len()],
+                params: vec![TyId::invalid(self.db, InvalidCause::Other); params.len()],
+                ret: expectation.ret,
+            }
+        });
+
+        self.env.enter_closure(def);
+        let mut param_tys = Vec::new();
+        for (idx, param) in params.iter().enumerate() {
+            let expected = expectation
+                .as_ref()
+                .map(|expectation| (expectation.modes[idx], expectation.params[idx]));
+            let (mode, ty) = self.closure_param(param, expected);
+            let binding = LocalBinding::Param {
+                site: ParamSite::Closure(def),
+                idx,
+                mode,
+                ty,
+                is_mut: param.is_mut,
+            };
+            self.env.register_closure_param(param.name(), binding);
+            param_tys.push((mode, ty));
+        }
+        let ret = match ret_ty {
+            Some(ret_ty) => self.lower_closure_ty(ret_ty),
+            None => expectation
+                .and_then(|expectation| expectation.ret)
+                .unwrap_or_else(|| self.fresh_ty()),
+        };
+
+        // The body is its own for control flow: `return` leaves the closure,
+        // which is no projection, and the enclosing body's loops are not its.
+        let expected = std::mem::replace(&mut self.expected, ret);
+        let projection_shape = self.projection_shape.take();
+        let explicit_yields = std::mem::replace(&mut self.explicit_yields, false);
+        let return_borrow_provider = self.first_return_borrow_provider.take();
+        let loops = self.env.swap_loop_stack(Vec::new());
+        self.check_expr(body, ret);
+        self.record_implicit_move_for_owned_expr(body, ret);
+        self.env.swap_loop_stack(loops);
+        self.first_return_borrow_provider = return_borrow_provider;
+        self.explicit_yields = explicit_yields;
+        self.projection_shape = projection_shape;
+        self.expected = expected;
+        let (info, effects) = self.env.leave_closure(expr);
+
+        let parent_args = match self.env.owner() {
+            BodyOwner::Func(func) => CallableDef::Func(func).params(self.db).to_vec(),
+            _ => Vec::new(),
+        };
+        let closure = ClosureTy::new(
+            self.db,
+            def,
+            parent_args,
+            info.captures
+                .iter()
+                .map(|capture| capture.ty)
+                .collect::<Vec<_>>(),
+            param_tys,
+            ret,
+            effects,
+        );
+        self.env.register_closure_info(expr, info);
+        ExprProp::new(TyId::closure(self.db, closure), true)
+    }
+
+    /// An enclosing body's effect binding used in a closure body: the
+    /// closure's row's component with its key, which each call's caller
+    /// provides.
+    fn capture_effect(&mut self, binding: LocalBinding<'db>) -> ExprProp<'db> {
+        let LocalBinding::EffectParam {
+            site,
+            idx,
+            binding_name,
+            is_mut,
+            ..
+        } = binding
+        else {
+            unreachable!("an effect binding is captured")
+        };
+        // A binding whose requirement does not resolve has its error already.
+        let Some((component, provided)) =
+            self.env
+                .semantic_effect_requirement(site, idx)
+                .and_then(|requirement| {
+                    self.env.closure_effect(
+                        requirement.key,
+                        binding_name,
+                        requirement.binding_ty,
+                        is_mut,
+                    )
+                })
+        else {
+            return ExprProp::invalid(self.db);
+        };
+        if let Some(provided) = provided {
+            self.seed_closure_effect(provided);
+        }
+        let ty = self.env.lookup_binding_ty(&component);
+        ExprProp {
+            binding: Some(component),
+            borrow_provider: self.concrete_borrow_provider_for_binding(component),
+            ..ExprProp::new(ty, is_mut)
+        }
+    }
+
+    /// Makes `req`, which no provider in a closure body meets, a component
+    /// of the closure's row, returning whether it did. Rows cannot be.
+    fn provide_closure_effect(
+        &mut self,
+        req: &EffectRequirementDecl<'db>,
+        query: &EffectQuery<'db>,
+    ) -> bool {
+        if !self.env.in_closure() {
+            return false;
+        }
+        let key = match &query.key {
+            EffectPatternKey::Type(key) => {
+                SemanticEffectRequirementKey::Type(self.table.fold_ty(self.db, key.carrier))
+            }
+            EffectPatternKey::Trait(key) => SemanticEffectRequirementKey::Trait(
+                TraitKeySchema {
+                    def: key.def,
+                    args_no_self: key.args_no_self.clone(),
+                    assoc_bindings: key.assoc_bindings.clone(),
+                }
+                .into_trait_inst(self.db)
+                .fold_with(self.db, &mut self.table),
+            ),
+        };
+        let has_var = match &key {
+            SemanticEffectRequirementKey::Trait(inst) => {
+                inst.args(self.db).iter().any(|ty| ty.has_var(self.db))
+                    || inst
+                        .assoc_ty_bindings(self.db)
+                        .iter()
+                        .any(|(_, ty)| ty.has_var(self.db))
+            }
+            key => key.binding_ty(self.db).is_none_or(|ty| ty.has_var(self.db)),
+        };
+        if has_var {
+            return false;
+        }
+        let name = req
+            .name
+            .or_else(|| req.key_ty.as_path(self.db)?.ident(self.db).to_opt())
+            .unwrap_or_else(|| IdentId::new(self.db, "effect".to_string()));
+        let Some((_, provided)) = self
+            .env
+            .closure_effect(key, name, req.key_ty, req.required_mut)
+        else {
+            return false;
+        };
+        if let Some(provided) = provided {
+            self.seed_closure_effect(provided);
+        }
+        true
+    }
+
+    /// Provides a new component of a closure's row in its body, below any
+    /// `with` the body opens.
+    fn seed_closure_effect(&mut self, provided: ProvidedEffect<'db>) {
+        let Some(LocalBinding::EffectParam { site, idx, .. }) = provided.binding else {
+            return;
+        };
+        let (scope, assumptions) = (self.env.owner().scope(), self.env.assumptions());
+        if let Some(requirement) = self.env.semantic_effect_requirement(site, idx)
+            && let Some(req) = EffectRequirementDecl::from_effect_requirement(self.db, &requirement)
+            && let Some(forwarder) =
+                seed_forwarder_from_requirement(self, &req, provided, scope, assumptions)
+        {
+            self.env.effect_env_mut().insert_base_forwarder(forwarder);
+        }
+    }
+
+    /// A closure parameter's mode and type: as annotated, else as the
+    /// expected shape has them, else a view of an inferred type. A mode
+    /// written without a type (`x: own`) keeps the mode and infers the type.
+    fn closure_param(
+        &mut self,
+        param: &FuncParam<'db>,
+        expected: Option<(FuncParamMode, TyId<'db>)>,
+    ) -> (FuncParamMode, TyId<'db>) {
+        let annotation = param.ty.to_opt();
+        let (mode, payload) = match annotation.map(|ty| ty.data(self.db)) {
+            Some(TypeKind::Mode(mode, payload)) => (
+                Some(match mode {
+                    TypeMode::Own => FuncParamMode::Own,
+                    TypeMode::Mut => FuncParamMode::Mut,
+                    TypeMode::Ref => FuncParamMode::View,
+                }),
+                payload.to_opt(),
+            ),
+            _ => (None, annotation),
+        };
+        let mode = mode.or(expected.map(|(mode, _)| mode));
+        let ty = match payload {
+            Some(ty) => self.lower_closure_ty(ty),
+            None => expected.map_or_else(|| self.fresh_ty(), |(_, ty)| ty),
+        };
+        (mode.unwrap_or(FuncParamMode::View), ty)
+    }
+
+    fn lower_closure_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
+        let ty = lower_hir_ty(self.db, ty, self.env.scope(), self.env.assumptions());
+        if ty.is_star_kind(self.db) && !ty_contains_const_hole(self.db, ty) {
+            ty
+        } else {
+            TyId::invalid(self.db, InvalidCause::Other)
+        }
+    }
+
     fn check_unary(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::Un(lhs, op) = expr_data else {
             unreachable!()
         };
-        let prop = self.check_expr_unknown(*lhs);
+        let mut prop = self.check_expr_unknown(*lhs);
         if prop.ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
@@ -575,6 +837,9 @@ impl<'db> TyChecker<'db> {
         }
 
         if matches!(op, UnOp::Mut | UnOp::Ref) {
+            if *op == UnOp::Mut && self.select_mut_place(*lhs) {
+                prop = self.env.typed_expr(*lhs).expect("selected place is typed");
+            }
             if !self.env.is_place_expr(*lhs) {
                 self.push_diag(BodyDiag::BorrowFromNonPlace {
                     primary: expr.span(self.body()).into(),
@@ -1493,18 +1758,31 @@ impl<'db> TyChecker<'db> {
     }
 
     pub(super) fn check_callable_effects(&mut self, expr: ExprId, callable: &mut Callable<'db>) {
-        let body = self.body();
-        let call_span: DynLazySpan<'db> = expr.span(body).into();
-        let args = self.resolve_callable_effects(call_span.clone(), callable);
+        let call_span: DynLazySpan<'db> = expr.span(self.body()).into();
+        let call_args = match expr.data(self.db, self.body()) {
+            Partial::Present(Expr::Call(_, args)) => args.iter().map(|arg| arg.expr).collect(),
+            Partial::Present(Expr::MethodCall(receiver, _, _, args)) => iter::once(*receiver)
+                .chain(args.iter().map(|arg| arg.expr))
+                .collect(),
+            Partial::Present(Expr::Bin(lhs, rhs, _) | Expr::AugAssign(lhs, rhs, _)) => {
+                vec![*lhs, *rhs]
+            }
+            Partial::Present(Expr::Un(inner, _)) => vec![*inner],
+            _ => Vec::new(),
+        };
+        let args = self.resolve_callable_effects(call_span, callable, &call_args);
         for arg in args {
             self.env.push_call_effect_arg(expr, arg);
         }
     }
 
+    /// Resolves the effects `callable` requires where it is called with the
+    /// argument expressions `call_args`, its receiver first.
     pub(super) fn resolve_callable_effects(
         &mut self,
         call_span: DynLazySpan<'db>,
         callable: &mut Callable<'db>,
+        call_args: &[ExprId],
     ) -> Vec<super::ResolvedEffectArg<'db>> {
         let CallableDef::Func(func) = callable.callable_def else {
             return Vec::new();
@@ -1525,10 +1803,35 @@ impl<'db> TyChecker<'db> {
             crate::core::semantic::EffectEnvView::new(EffectParamSite::Func(func));
 
         let provided_span = |provided: ProvidedEffect<'db>| match provided.origin {
-            EffectOrigin::With { value_expr } => Some(value_expr.span(body).into()),
+            EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
+                Some(value_expr.span(body).into())
+            }
             EffectOrigin::Param { .. } => None,
         };
-        let reqs = effect_requirement_decls_for_callable(self.db, callable.callable_def);
+        // Each component of a callee row the call expands is resolved like the
+        // callee's own effects, in a slot numbered after them.
+        let rows = self.callee_rows(callable, func);
+        // A row has no provider of its own: its reserved provider slot is `()`.
+        for requirement in func.effective_effect_requirements(self.db) {
+            if requirement.key.key_row().is_some()
+                && let Some(Some(slot)) =
+                    callee_provider_arg_idx_by_effect.get(requirement.binding_idx as usize)
+                && let Some(&provider_var) = callable.generic_args().get(*slot)
+            {
+                self.table.unify(provider_var, TyId::unit(self.db)).ok();
+            }
+        }
+        let row_paths: FxHashMap<u32, RowPath> = rows
+            .components
+            .iter()
+            .map(|component| (component.requirement.binding_idx, component.path.clone()))
+            .collect();
+        let reqs: Vec<_> = effect_requirement_decls_for_callable(self.db, callable.callable_def)
+            .into_iter()
+            .chain(rows.components.iter().filter_map(|component| {
+                EffectRequirementDecl::from_effect_requirement(self.db, &component.requirement)
+            }))
+            .collect();
         for (param_idx, req) in reqs.iter().enumerate() {
             let key_ty = req.key_ty;
             let Some(query) = build_effect_query_for_call(self, callable, req) else {
@@ -1539,7 +1842,13 @@ impl<'db> TyChecker<'db> {
                 .copied()
                 .flatten();
 
-            match self.resolve_effect_query(func, req.clone(), query.clone(), call_span.clone()) {
+            let mut resolution = self.resolve_effect_query(req.clone(), query.clone(), call_args);
+            if matches!(resolution, EffectResolution::Missing)
+                && self.provide_closure_effect(req, &query)
+            {
+                resolution = self.resolve_effect_query(req.clone(), query.clone(), call_args);
+            }
+            match resolution {
                 EffectResolution::Chosen(evidence) => {
                     let (provider, arg_style, layout_view, key_kind, instantiated_key_ty) =
                         match *evidence {
@@ -1630,6 +1939,11 @@ impl<'db> TyChecker<'db> {
                             }
                         };
 
+                    if req.required_mut
+                        && let Some(binding) = provider.binding
+                    {
+                        self.env.require_mut_closure_effect(binding);
+                    }
                     let (arg, pass_mode) =
                         self.effect_arg_for_provider(provider, arg_style, req.required_mut);
                     let provider_target_ty = self.provider_target_ty_for_effect_arg(
@@ -1712,12 +2026,23 @@ impl<'db> TyChecker<'db> {
                             "effect arg provider space must be explicit for {pass_mode:?} at {key_ty:?}"
                         );
                     }
-                    if let Some(resolved_binding) =
-                        callee_effect_env.resolved_binding(self.db, req.binding_idx as usize)
-                    {
-                        let provider_idx = resolved_binding.provider.provider_idx;
+                    let slot = if row_paths.contains_key(&req.binding_idx) {
+                        Some((
+                            req.binding_idx,
+                            ProviderSource::UsesParam {
+                                site: EffectParamSite::Func(func),
+                                requirement_idx: req.binding_idx,
+                            },
+                        ))
+                    } else {
+                        callee_effect_env
+                            .resolved_binding(self.db, req.binding_idx as usize)
+                            .map(|binding| (binding.provider.provider_idx, binding.provider.source))
+                    };
+                    if let Some(slot) = slot {
+                        let provider_idx = slot.0;
                         let specialization = self.specialize_effect_provider_binding(
-                            resolved_binding.provider,
+                            slot,
                             provider,
                             &arg,
                             pass_mode,
@@ -1740,7 +2065,7 @@ impl<'db> TyChecker<'db> {
                         arg,
                         with_source: match provider.origin {
                             EffectOrigin::With { value_expr } => Some(value_expr),
-                            EffectOrigin::Param { .. } => None,
+                            EffectOrigin::Param { .. } | EffectOrigin::Arg { .. } => None,
                         },
                         pass_mode,
                         layout_view,
@@ -1749,6 +2074,10 @@ impl<'db> TyChecker<'db> {
                         instantiated_key_ty,
                         provider_target_ty,
                         provider: provider_space,
+                        row_arg: row_paths
+                            .get(&req.binding_idx)
+                            .cloned()
+                            .map(RowArg::Component),
                     });
                 }
                 EffectResolution::BlockedByBarrier => {}
@@ -1768,6 +2097,51 @@ impl<'db> TyChecker<'db> {
                 }
             }
         }
+        // A row that stays abstract is the caller's own row, forwarded.
+        let effects = func.effective_effect_requirements(self.db);
+        let forwarded = rows
+            .abstract_rows
+            .iter()
+            .map(|&(entry, row)| (&effects[entry as usize], RowPath::entry(entry), row))
+            .chain(rows.components.iter().filter_map(|component| {
+                let row = component.requirement.key.key_row()?;
+                Some((&component.requirement, component.path.clone(), row))
+            }));
+        for (requirement, path, row) in forwarded {
+            match self.own_row_binding(requirement, row) {
+                Some((binding, own)) => resolved_args.push(super::ResolvedEffectArg {
+                    param_idx: resolved_args.len(),
+                    binding_idx: requirement.binding_idx,
+                    key: requirement.binding_ty,
+                    arg: super::EffectArg::Binding(binding),
+                    with_source: None,
+                    pass_mode: super::EffectPassMode::ByValue,
+                    layout_view: super::EffectArgLayoutView::Direct,
+                    required_mut: requirement.is_mut,
+                    key_kind: EffectKeyKind::Row,
+                    instantiated_key_ty: None,
+                    provider_target_ty: None,
+                    provider: None,
+                    row_arg: Some(RowArg::Forwarded { callee: path, own }),
+                }),
+                // A row of an instance no implementation satisfies is the
+                // unsatisfied bound's error, reported once.
+                None if matches!(
+                    is_goal_satisfiable(
+                        self.db,
+                        TraitSolveCx::new(self.db, self.env.scope())
+                            .with_assumptions(self.env.assumptions()),
+                        row.inst,
+                    ),
+                    GoalSatisfiability::UnSat(_)
+                ) => {}
+                None => self.push_diag(BodyDiag::MissingRow {
+                    primary: call_span.clone(),
+                    func,
+                    row,
+                }),
+            }
+        }
         let mut providers = specialized_providers.into_values().collect::<Vec<_>>();
         providers.sort_by_key(|provider| provider.provider.provider_idx);
         *callable.effect_providers_mut() = providers;
@@ -1775,10 +2149,101 @@ impl<'db> TyChecker<'db> {
         resolved_args
     }
 
+    /// The callee's rows as this call instantiates them.
+    fn callee_rows(&mut self, callable: &Callable<'db>, func: Func<'db>) -> RowExpansion<'db> {
+        let requirements: Vec<_> = func
+            .effective_effect_requirements(self.db)
+            .iter()
+            .map(|requirement| match requirement.key {
+                SemanticEffectRequirementKey::Row(row) => {
+                    let inst = instantiate_trait_effect_key(self.db, row.inst, callable)
+                        .fold_with(self.db, &mut self.table);
+                    let inst = normalize_effect_identity_trait(
+                        self.db,
+                        inst,
+                        self.env.scope(),
+                        self.env.assumptions(),
+                        callable.trait_inst(),
+                    );
+                    EffectRequirement {
+                        key: SemanticEffectRequirementKey::Row(RowKey { inst, row: row.row }),
+                        ..requirement.clone()
+                    }
+                }
+                _ => requirement.clone(),
+            })
+            .collect();
+        expand_rows(
+            self.db,
+            &requirements,
+            self.env.scope(),
+            self.env.assumptions(),
+        )
+    }
+
+    /// The caller's own effect binding that forwards the abstract row `row`,
+    /// with where `row` sits in it: an entry naming it, or an entry whose row
+    /// expands to it here.
+    fn own_row_binding(
+        &mut self,
+        requirement: &EffectRequirement<'db>,
+        row: RowKey<'db>,
+    ) -> Option<(LocalBinding<'db>, RowPath)> {
+        // In a closure's body, a row is a component of the closure's row.
+        if self.env.in_closure() {
+            let (binding, _) = self.env.closure_effect(
+                SemanticEffectRequirementKey::Row(row),
+                requirement.binding_name,
+                requirement.binding_ty,
+                requirement.is_mut,
+            )?;
+            let LocalBinding::EffectParam { idx, .. } = binding else {
+                return None;
+            };
+            return Some((binding, RowPath::entry(idx as u32)));
+        }
+        let super::BodyOwner::Func(caller) = self.env.owner() else {
+            return None;
+        };
+        let (scope, assumptions) = (self.env.scope(), self.env.assumptions());
+        let names_row = |requirement: &EffectRequirement<'db>| {
+            requirement.key.key_row().is_some_and(|own| {
+                own.row == row.row
+                    && normalize_effect_identity_trait(self.db, own.inst, scope, assumptions, None)
+                        == row.inst
+            })
+        };
+        let requirements = caller.effective_effect_requirements(self.db);
+        let path = match requirements
+            .iter()
+            .find(|requirement| names_row(requirement))
+        {
+            Some(requirement) => RowPath::entry(requirement.binding_idx),
+            None => {
+                expand_rows(self.db, requirements, scope, assumptions)
+                    .components
+                    .into_iter()
+                    .find(|component| names_row(&component.requirement))?
+                    .path
+            }
+        };
+        let entry = requirements
+            .iter()
+            .find(|requirement| requirement.binding_idx == path.entry)?;
+        let binding = LocalBinding::EffectParam {
+            site: entry.binding_site,
+            idx: entry.binding_idx as usize,
+            binding_name: entry.binding_name,
+            provider_idx: entry.binding_idx,
+            is_mut: entry.is_mut,
+        };
+        Some((binding, path))
+    }
+
     fn instantiate_callable_effect_layout_args(
         &mut self,
         callable: &mut Callable<'db>,
-        callee: crate::hir_def::Func<'db>,
+        callee: Func<'db>,
         effect_idx: usize,
         actual_key_ty: TyId<'db>,
     ) {
@@ -1793,11 +2258,49 @@ impl<'db> TyChecker<'db> {
 
     fn resolve_effect_query(
         &mut self,
-        func: crate::hir_def::Func<'db>,
         req: EffectRequirementDecl<'db>,
         query: EffectQuery<'db>,
-        call_span: DynLazySpan<'db>,
+        call_args: &[ExprId],
     ) -> EffectResolution<'db> {
+        // `Field(T)` takes the authority of the first argument of type `T`
+        // whose place lies in an effect provider or an access, since that
+        // handle names the field; a copy of a handle carries none. Otherwise
+        // a provider of type `T` gives it.
+        if req.key_ty.field_key_handle(self.db).is_some()
+            && let EffectPatternKey::Type(type_query) = &query.key
+        {
+            for &arg in call_args {
+                let Some(prop) = self.env.typed_expr(arg) else {
+                    continue;
+                };
+                let authority = self.env.expr_place(arg).is_some_and(|place| {
+                    let PlaceBase::Binding(binding) = place.base;
+                    match (binding, self.env.binding_access(&binding)) {
+                        (LocalBinding::EffectParam { .. }, _) => true,
+                        (_, Some(BindingAccess::View)) => {
+                            !self.ty_is_copy(self.env.lookup_binding_ty(&binding))
+                        }
+                        (_, access) => access.is_some(),
+                    }
+                });
+                if !authority {
+                    continue;
+                }
+                let provider = ProvidedEffect {
+                    origin: EffectOrigin::Arg { expr: arg },
+                    ty: prop.ty.fold_with(self.db, &mut self.table),
+                    is_mut: prop.is_mut,
+                    binding: None,
+                };
+                if let Some(evidence) = self.evaluate_unkeyed_type_provider(
+                    type_query.clone(),
+                    provider,
+                    query.required_mut,
+                ) {
+                    return EffectResolution::Chosen(Box::new(evidence));
+                }
+            }
+        }
         let mut viable: SmallVec<[EffectEvidence<'db>; 2]> = SmallVec::new();
         let effect_env = self.env.effect_env().clone();
         for frame in effect_env.lookup_effect_frames(&query, self) {
@@ -1879,7 +2382,6 @@ impl<'db> TyChecker<'db> {
                 }
             }
         }
-        let _ = (func, call_span);
         EffectResolution::Missing
     }
 
@@ -2123,7 +2625,9 @@ impl<'db> TyChecker<'db> {
             | ProviderLayoutEvidence::ContractField => {}
         }
         let place = match provider.origin {
-            EffectOrigin::With { value_expr } => self.env.expr_place(value_expr),
+            EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
+                self.env.expr_place(value_expr)
+            }
             EffectOrigin::Param { .. } => provider
                 .binding
                 .map(|binding| Place::new(PlaceBase::Binding(binding))),
@@ -2150,7 +2654,9 @@ impl<'db> TyChecker<'db> {
         match arg_style {
             EffectArgStyle::Place => {
                 let place = match provider.origin {
-                    EffectOrigin::With { value_expr } => self.env.expr_place(value_expr),
+                    EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
+                        self.env.expr_place(value_expr)
+                    }
                     EffectOrigin::Param { .. } => provider
                         .binding
                         .map(|binding| Place::new(PlaceBase::Binding(binding))),
@@ -2165,13 +2671,15 @@ impl<'db> TyChecker<'db> {
                     super::EffectArg::Value(value_expr),
                     super::EffectPassMode::ByTempPlace,
                 ),
-                EffectOrigin::Param { .. } => {
+                EffectOrigin::Param { .. } | EffectOrigin::Arg { .. } => {
                     (super::EffectArg::Unknown, super::EffectPassMode::Unknown)
                 }
             },
             EffectArgStyle::Value => (
                 match provider.origin {
-                    EffectOrigin::With { value_expr } => super::EffectArg::Value(value_expr),
+                    EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
+                        super::EffectArg::Value(value_expr)
+                    }
                     EffectOrigin::Param { .. } => provider
                         .binding
                         .map_or(super::EffectArg::Unknown, super::EffectArg::Binding),
@@ -2224,7 +2732,7 @@ impl<'db> TyChecker<'db> {
                             EffectParamSite::Contract(contract)
                             | EffectParamSite::ContractInit { contract }
                             | EffectParamSite::ContractRecvArm { contract, .. } => contract,
-                            EffectParamSite::Func(_) => {
+                            EffectParamSite::Func(_) | EffectParamSite::Closure(_) => {
                                 unreachable!(
                                     "effect field bindings cannot originate from function sites"
                                 )
@@ -2344,7 +2852,7 @@ impl<'db> TyChecker<'db> {
 
     fn specialize_effect_provider_binding(
         &mut self,
-        slot: ProviderBinding<'db>,
+        (slot_idx, source): (u32, ProviderSource<'db>),
         provided: ProvidedEffect<'db>,
         arg: &super::EffectArg<'db>,
         pass_mode: super::EffectPassMode,
@@ -2355,8 +2863,7 @@ impl<'db> TyChecker<'db> {
             .effect_provider_provenance(provided, arg)
             .unwrap_or_else(|| {
                 panic!(
-                    "missing call-site provider provenance for {:?} in {:?}",
-                    slot.provider_idx,
+                    "missing call-site provider provenance for {slot_idx:?} in {:?}",
                     self.env.owner(),
                 )
             });
@@ -2392,16 +2899,16 @@ impl<'db> TyChecker<'db> {
                         },
                     );
                     ProviderBinding {
-                        provider_idx: slot.provider_idx,
+                        provider_idx: slot_idx,
                         provider_ty,
                         is_mut: provided.is_mut,
-                        source: slot.source,
+                        source,
                         semantics,
                         layout_env: None,
                     }
                 },
                 |provider| ProviderBinding {
-                    provider_idx: slot.provider_idx,
+                    provider_idx: slot_idx,
                     ..provider
                 },
             );
@@ -2449,7 +2956,8 @@ impl<'db> TyChecker<'db> {
         let binding = match arg {
             super::EffectArg::Place(place) => {
                 if !place.projections.is_empty()
-                    && let EffectOrigin::With { value_expr } = provided.origin
+                    && let EffectOrigin::With { value_expr }
+                    | EffectOrigin::Arg { expr: value_expr } = provided.origin
                 {
                     return Some(EffectProviderProvenance::Expr {
                         owner,
@@ -2465,10 +2973,12 @@ impl<'db> TyChecker<'db> {
         binding
             .map(|binding| EffectProviderProvenance::Binding { owner, binding })
             .or(match provided.origin {
-                EffectOrigin::With { value_expr } => Some(EffectProviderProvenance::Expr {
-                    owner,
-                    expr: value_expr,
-                }),
+                EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
+                    Some(EffectProviderProvenance::Expr {
+                        owner,
+                        expr: value_expr,
+                    })
+                }
                 EffectOrigin::Param { .. } => None,
             })
     }
@@ -3284,6 +3794,34 @@ impl<'db> TyChecker<'db> {
         }
         let candidate = match candidate {
             Ok(candidate) => candidate,
+            // Mutability variants, `at(self)` and `at(mut self)`: the view one,
+            // unless the context needs a `mut` place (`select_mut_place`).
+            Err(MethodSelectionError::AmbiguousTraitMethod(ref ambiguous))
+                if let [first, second] = ambiguous.candidates.as_slice()
+                    && let Some((view, mutable)) = [(first, second), (second, first)]
+                        .into_iter()
+                        .find(|(view, mutable)| {
+                            let mode = |method| CallableDef::Func(method).param_mode(self.db, 0);
+                            mode(view.cand.method) == FuncParamMode::View
+                                && mode(mutable.cand.method) == FuncParamMode::Mut
+                        }) =>
+            {
+                let inst = canonical_r_ty.extract_solution(&mut self.table, mutable.cand.inst);
+                self.env.register_mut_variant(
+                    expr,
+                    selected_receiver_ty,
+                    super::env::PendingMethodCandidate {
+                        inst,
+                        method: mutable.cand.method,
+                        needs_confirmation: mutable.needs_confirmation,
+                    },
+                );
+                if view.needs_confirmation {
+                    MethodCandidate::NeedsConfirmation(view.cand)
+                } else {
+                    MethodCandidate::TraitMethod(view.cand)
+                }
+            }
             Err(err) => {
                 if let MethodSelectionError::AmbiguousTraitMethod(ambiguous) = err {
                     // Defer resolution using return-type constraints
@@ -3431,6 +3969,66 @@ impl<'db> TyChecker<'db> {
     /// Registers a checked call and types its result. A projection's result
     /// is a place granted by the call's session; its shape says which parts
     /// are accesses.
+    /// Re-resolves the method call `expr`, which selected the view variant
+    /// of a method, to its `mut self` variant, for a context that needs a
+    /// `mut` place. Returns whether it has one.
+    pub(super) fn check_mut_method_variant(&mut self, expr: ExprId) -> bool {
+        let Partial::Present(Expr::MethodCall(receiver, _, generic_args, args)) =
+            expr.data(self.db, self.body())
+        else {
+            return false;
+        };
+        let Some((recv_ty, variant)) = self.env.take_mut_variant(expr) else {
+            return false;
+        };
+        let Some(receiver_prop) = self.env.typed_expr(*receiver) else {
+            return false;
+        };
+        self.env.forget_call(expr);
+        let call_span = expr.span(self.body()).into_method_call_expr();
+        let func_ty = self.instantiate_trait_method_to_term(variant.method, recv_ty, variant.inst);
+        let Ok(mut callable) = Callable::new(
+            self.db,
+            func_ty,
+            receiver.span(self.body()).into(),
+            Some(variant.inst),
+        ) else {
+            return false;
+        };
+        if variant.needs_confirmation {
+            self.env.register_trait_obligation(TraitObligation {
+                goal: variant.inst,
+                origin: TraitObligationOrigin::GenericConfirmation,
+                span: call_span.clone().into(),
+            });
+        }
+        let anchor = HoleAnchor::BodySyntax {
+            body: self.body(),
+            site: BodyHoleSite::Expr(expr),
+        };
+        if !callable.unify_generic_args(
+            self,
+            *generic_args,
+            anchor,
+            call_span.clone().generic_args(),
+        ) {
+            return false;
+        }
+        callable.check_args(
+            self,
+            args,
+            call_span.clone().args(),
+            Some((*receiver, receiver_prop)),
+            true,
+        );
+        self.specialize_callable_layout_args(&mut callable, Some(*receiver), args);
+        self.check_callable_effects(expr, &mut callable);
+        callable.process_constraints(self, expr, call_span.method_name().into());
+        let typed = self.finish_call(expr, callable);
+        self.env.type_expr(expr, typed);
+        true
+    }
+
     fn finish_call(&mut self, expr: ExprId, callable: Callable<'db>) -> ExprProp<'db> {
         let ret_ty = callable.ret_ty(self.db);
         let ret_ty = self.normalize_ty(ret_ty);
@@ -3518,10 +4116,23 @@ impl<'db> TyChecker<'db> {
                     .lookup_binding_ty(&binding)
                     .fold_with(self.db, &mut self.table);
                 let ty = self.normalize_ty(ty);
-                let is_mut = self
-                    .env
-                    .binding_access(&binding)
-                    .map_or(binding.is_mut(), BindingAccess::is_mut);
+                let access = self.env.binding_access(&binding);
+                // A closure has its own read-only copy of each binding it
+                // captures.
+                let captured = self.env.binding_is_capture(binding);
+                if captured {
+                    if matches!(binding, LocalBinding::EffectParam { .. }) {
+                        return self.capture_effect(binding);
+                    }
+                    if access.is_some() && !ty.has_var(self.db) && !self.ty_is_copy(ty) {
+                        self.push_diag(BodyDiag::AccessCapture {
+                            primary: path_expr_span.into(),
+                            name: binding.binding_name(&self.env),
+                        });
+                    }
+                    self.env.record_capture(binding, ty);
+                }
+                let is_mut = !captured && access.map_or(binding.is_mut(), BindingAccess::is_mut);
                 ExprProp {
                     binding: Some(binding),
                     borrow_provider: self.concrete_borrow_provider_for_binding(binding),
@@ -4267,7 +4878,7 @@ impl<'db> TyChecker<'db> {
     fn specialize_callable_layout_origin(
         &self,
         callable: &mut Callable<'db>,
-        func: crate::hir_def::Func<'db>,
+        func: Func<'db>,
         expr: ExprId,
         origin: crate::analysis::ty::const_ty::CallableInputLayoutHoleOrigin,
     ) {
@@ -4287,7 +4898,7 @@ impl<'db> TyChecker<'db> {
     fn specialize_callable_layout_context(
         &self,
         callable: &mut Callable<'db>,
-        func: crate::hir_def::Func<'db>,
+        func: Func<'db>,
         origin: crate::analysis::ty::const_ty::CallableInputLayoutHoleOrigin,
         field: &FieldStorageLayout<'db>,
         view: LayoutViewKind,
@@ -4338,7 +4949,7 @@ impl<'db> TyChecker<'db> {
     fn specialize_callable_effect_layout_projections(
         &self,
         callable: &mut Callable<'db>,
-        callee: crate::hir_def::Func<'db>,
+        callee: Func<'db>,
         effect_idx: usize,
         provider: ProvidedEffect<'db>,
         arg: &super::EffectArg<'db>,
@@ -4831,11 +5442,10 @@ impl<'db> TyChecker<'db> {
             unreachable!()
         };
 
-        if let Some(unit) = self.check_index_mut_assign(*lhs, *rhs) {
-            return unit;
+        let mut typed_lhs = self.check_expr_unknown(*lhs);
+        if self.select_mut_place(*lhs) {
+            typed_lhs = self.env.typed_expr(*lhs).expect("selected place is typed");
         }
-
-        let typed_lhs = self.check_expr_unknown(*lhs);
         // The target is a place, possibly a projection's result.
         self.consume_access(*lhs);
         // Assignment is an expected-type boundary. In particular, an assigned
@@ -4854,100 +5464,6 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(TyId::unit(self.db), true)
     }
 
-    fn check_index_mut_assign(&mut self, lhs: ExprId, rhs: ExprId) -> Option<ExprProp<'db>> {
-        let target = self.check_index_mut_target(lhs)?;
-        if target.prop.ty.has_invalid(self.db) {
-            return Some(ExprProp::new(TyId::unit(self.db), true));
-        }
-
-        let mut rhs_prop = self.check_expr(rhs, target.target_ty);
-        rhs_prop.ty = self.unify_ty(
-            Typeable::Expr(rhs, rhs_prop.clone()),
-            rhs_prop.ty,
-            target.target_ty,
-        );
-
-        if !target.trait_lowered {
-            self.check_assign_lhs(lhs, &target.prop);
-        }
-
-        self.record_implicit_move_for_owned_expr(rhs, rhs_prop.ty);
-
-        Some(ExprProp::new(TyId::unit(self.db), true))
-    }
-
-    fn check_index_mut_target(&mut self, lhs: ExprId) -> Option<MutableIndexTarget<'db>> {
-        let Partial::Present(Expr::Bin(base, index, BinOp::Index)) = self.env.expr_data(lhs) else {
-            return None;
-        };
-
-        let base_prop = self.check_expr_unknown(*base);
-        self.consume_access(*base);
-        if base_prop.ty.has_invalid(self.db) {
-            return Some(MutableIndexTarget {
-                prop: ExprProp::invalid(self.db),
-                target_ty: TyId::invalid(self.db, InvalidCause::Other),
-                trait_lowered: false,
-            });
-        }
-
-        let base_place_ty = base_prop.ty;
-        if base_place_ty.is_array(self.db) {
-            let args = base_place_ty.generic_args(self.db);
-            let lhs_ty = args[0];
-            let index_ty = args[1].const_ty_ty(self.db).unwrap();
-            self.check_expr(*index, index_ty);
-            if let Some(index_value) = self.try_eval_static_int(*index, index_ty)
-                && let Some(len) = base_place_ty.array_len(self.db)
-                && index_value.data(self.db) >= &BigUint::from(len)
-            {
-                self.push_diag(BodyDiag::ArrayIndexOutOfBounds {
-                    primary: index.span(self.body()).into(),
-                    index: index_value,
-                    len,
-                })
-            }
-            let typed_lhs = ExprProp::new(lhs_ty, base_prop.is_mut);
-            self.unify_ty(
-                Typeable::Expr(lhs, typed_lhs.clone()),
-                typed_lhs.ty,
-                typed_lhs.ty,
-            );
-
-            return Some(MutableIndexTarget {
-                prop: typed_lhs,
-                target_ty: lhs_ty,
-                trait_lowered: false,
-            });
-        }
-
-        // `IndexMut::index_mut` takes `mut self`: a place base must be
-        // writable, as the receiver of any `mut self` method call must be.
-        if !base_prop.is_mut
-            && (self.env.expr_place(*base).is_some() || self.is_pointer_deref_expr(*base))
-        {
-            self.report_cannot_borrow_mut(*base, base.span(self.body()).into());
-        }
-        let indexed = self.check_ops_trait(lhs, base_prop.ty, &IndexMutOp, Some(*index));
-        if indexed.ty.has_invalid(self.db) {
-            return Some(MutableIndexTarget {
-                prop: indexed,
-                target_ty: TyId::invalid(self.db, InvalidCause::Other),
-                trait_lowered: true,
-            });
-        }
-
-        // `IndexMut::index_mut` is a `mut` projection: its result is the
-        // assigned place.
-        self.consume_access(lhs);
-        self.unify_ty(Typeable::Expr(lhs, indexed.clone()), indexed.ty, indexed.ty);
-        Some(MutableIndexTarget {
-            target_ty: indexed.ty,
-            prop: indexed,
-            trait_lowered: true,
-        })
-    }
-
     fn check_aug_assign(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::AugAssign(lhs, rhs, op) = expr_data else {
             unreachable!()
@@ -4955,21 +5471,16 @@ impl<'db> TyChecker<'db> {
 
         let unit = ExprProp::new(TyId::unit(self.db), true);
 
-        let (typed_lhs, lhs_place_ty, trait_lowered) =
-            if let Some(target) = self.check_index_mut_target(*lhs) {
-                (target.prop, target.target_ty, target.trait_lowered)
-            } else {
-                let typed_lhs = self.check_expr_unknown(*lhs);
-                self.consume_access(*lhs);
-                let lhs_place_ty = typed_lhs.ty;
-                (typed_lhs, lhs_place_ty, false)
-            };
+        let mut typed_lhs = self.check_expr_unknown(*lhs);
+        if self.select_mut_place(*lhs) {
+            typed_lhs = self.env.typed_expr(*lhs).expect("selected place is typed");
+        }
+        self.consume_access(*lhs);
+        let lhs_place_ty = typed_lhs.ty;
         if typed_lhs.ty.has_invalid(self.db) {
             return unit;
         }
-        if !trait_lowered
-            && self.check_assign_lhs(*lhs, &typed_lhs) == AssignLhsStatus::NonAssignable
-        {
+        if self.check_assign_lhs(*lhs, &typed_lhs) == AssignLhsStatus::NonAssignable {
             return unit;
         }
 
@@ -4998,7 +5509,7 @@ impl<'db> TyChecker<'db> {
     /// Resolve a core::ops trait method for an operator on a given LHS type and
     /// optionally check the RHS against the inferred method parameter type.
     /// Returns the fully-instantiated function type and concrete trait instance.
-    fn check_ops_trait(
+    pub(super) fn check_ops_trait(
         &mut self,
         expr: ExprId,
         lhs_ty: TyId<'db>,
@@ -5257,6 +5768,7 @@ impl<'db> TyChecker<'db> {
             checked_inputs.push(self.normalize_ty(rhs_ty));
         }
         callable.set_checked_input_tys(checked_inputs);
+        self.check_callable_effects(expr, &mut callable);
 
         let ret_ty = self.normalize_ty(callable.ret_ty(self.db));
         let shape = callable
@@ -5304,6 +5816,9 @@ impl<'db> TyChecker<'db> {
 
         if !typed_lhs.is_mut {
             let binding = self.find_base_binding(lhs);
+            if self.report_write_to_capture(binding, lhs.span(self.body()).into()) {
+                return AssignLhsStatus::Immutable;
+            }
             let diag = match binding {
                 Some(binding) => {
                     let (ident, def_span) =
@@ -5346,10 +5861,30 @@ impl<'db> TyChecker<'db> {
     }
 
     pub(super) fn report_cannot_borrow_mut(&mut self, expr: ExprId, primary: DynLazySpan<'db>) {
-        let binding = self
-            .find_base_binding(expr)
-            .map(|binding| (binding.binding_name(&self.env), binding.def_span(&self.env)));
+        let binding = self.find_base_binding(expr);
+        if self.report_write_to_capture(binding, primary.clone()) {
+            return;
+        }
+        let binding =
+            binding.map(|binding| (binding.binding_name(&self.env), binding.def_span(&self.env)));
         self.push_diag(BodyDiag::CannotBorrowMut { primary, binding });
+    }
+
+    /// Reports a write through `binding` if it is a capture of the closure
+    /// being checked, returning whether it is.
+    fn report_write_to_capture(
+        &mut self,
+        binding: Option<LocalBinding<'db>>,
+        primary: DynLazySpan<'db>,
+    ) -> bool {
+        let Some(binding) = binding.filter(|&binding| self.env.binding_is_capture(binding)) else {
+            return false;
+        };
+        self.push_diag(BodyDiag::WriteToCapture {
+            primary,
+            name: binding.binding_name(&self.env),
+        });
+        true
     }
 
     /// Returns the base binding for a given expression if it exists.
@@ -5395,7 +5930,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn is_pointer_deref_expr(&self, expr: ExprId) -> bool {
+    pub(super) fn is_pointer_deref_expr(&self, expr: ExprId) -> bool {
         matches!(
             expr.data(self.db, self.body()),
             Partial::Present(Expr::Un(_, UnOp::Deref))
@@ -5704,7 +6239,7 @@ impl TraitOps for AugAssignOp {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct IndexMutOp;
+pub(super) struct IndexMutOp;
 
 impl TraitOps for IndexMutOp {
     fn triple(&self) -> [&str; 3] {

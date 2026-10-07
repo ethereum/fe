@@ -29,7 +29,7 @@
 //! calling them on another scale is a type error rather than a silent
 //! precision bug.
 use super::default::Default
-use super::marker::Copy
+use super::marker::{Copy, Snapshot}
 use super::num::{IntWord, UnsignedAbs, isqrt, leading_zeros, mul_div, mul_div_ceil, mulmod}
 use super::ops::{Add, Div, Eq, Mul, Neg, Ord, Pow, Sub}
 use super::panics::PANIC_OVERFLOW
@@ -53,6 +53,8 @@ const I256_MAX: u256 = 0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
 impl<const D: u256> Copy for UFixed<D> {}
 impl<const D: u256> Copy for Fixed<D> {}
+impl<const D: u256> Snapshot for UFixed<D> {}
+impl<const D: u256> Snapshot for Fixed<D> {}
 
 impl<const D: u256> UFixed<D> {
     /// `10^D`, the raw value of `1.0`.

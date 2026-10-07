@@ -1,7 +1,7 @@
 pub use super::{
     clone::Clone,
     default::Default,
-    marker::Copy,
+    marker::{Copy, Snapshot},
     error::ErrorVariant,
     message::MsgVariant,
     num::Abs,

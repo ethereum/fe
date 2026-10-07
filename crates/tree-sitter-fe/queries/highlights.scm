@@ -58,6 +58,7 @@
 ; === Parameters and Local Variables ===
 
 (parameter name: (identifier) @variable.parameter)
+(closure_parameter name: (identifier) @variable.parameter)
 (uses_param name: (identifier) @variable.parameter)
 (let_statement name: (path_pattern (path (path_segment (identifier) @variable))))
 (let_statement name: (mut_pattern (path_pattern (path (path_segment (identifier) @variable)))))
@@ -73,6 +74,7 @@
 
 [
   "as"
+  "by"
   "const"
   "contract"
   "else"

@@ -1,0 +1,39 @@
+use std::evm::{Evm, StorageMap, TStorPtr}
+
+// A map's entries are persistent wherever its handle lies, so a map inside
+// transient state draws its salt from the storage slots and never shares one
+// with a persistent map.
+
+struct Ledger {
+    balances: StorageMap<u256, u256>,
+}
+
+impl Ledger {
+    fn get(mut self, _ key: u256) -> u256 {
+        self.balances.get(key)
+    }
+}
+
+msg Msg {
+    #[selector = 1]
+    Run -> u256,
+}
+
+pub contract C {
+    mut a: StorageMap<u256, u256>,
+    mut t: TStorPtr<Ledger>,
+
+    recv Msg {
+        Run -> u256 uses (mut a, mut t) {
+            a.set(key: 1, value: 5)
+            t.get(1)
+        }
+    }
+}
+
+#[test]
+fn maps_under_transient_fields_take_storage_salts() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    let v: u256 = evm.call(addr: c, gas: 200000, value: 0, message: Msg::Run {})
+    assert!(v == 0)
+}

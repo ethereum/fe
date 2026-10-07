@@ -104,6 +104,10 @@ impl super::Parse for ForStmtScope {
             parser.bump();
         }
         parse_expr_no_struct(parser)?;
+        // `by` is a keyword only here.
+        if parser.is_ident("by") {
+            parser.parse(ForDriverScope::default())?;
+        }
 
         // pop `Ident` recovery token, which is only included because it solves a contrived test case
         parser.pop_recovery_stack();
@@ -112,6 +116,16 @@ impl super::Parse for ForStmtScope {
             parser.parse(BlockExprScope::default())?;
         }
         Ok(())
+    }
+}
+
+define_scope! { ForDriverScope, ForDriver }
+impl super::Parse for ForDriverScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.bump_expected(SyntaxKind::Ident);
+        parse_expr_no_struct(parser)
     }
 }
 

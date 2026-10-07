@@ -26,6 +26,7 @@ const PANIC_SELECTOR: u256 = 0x4e487b71
 pub struct ReturnData { pub base: u256 }
 
 impl Copy for ReturnData {}
+impl Snapshot for ReturnData {}
 
 impl ReturnData {
     /// A view of the whole current returndata.

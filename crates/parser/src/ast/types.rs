@@ -55,6 +55,29 @@ impl ModeType {
     pub fn inner(&self) -> Option<Type> {
         support::child(self.syntax())
     }
+
+    /// The component's result-space contract: `ref T @S`.
+    pub fn space(&self) -> Option<SpaceAnnotation> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    /// A result-space contract: `@S`, `@B::S`, `@p`, `@self` or
+    /// `@target(p)`.
+    pub struct SpaceAnnotation,
+    SK::SpaceAnnotation,
+}
+impl SpaceAnnotation {
+    /// The space, or `target` in `@target(p)`.
+    pub fn path(&self) -> Option<super::Path> {
+        support::child(self.syntax())
+    }
+
+    /// `p` in `@target(p)`.
+    pub fn target(&self) -> Option<super::Path> {
+        support::children(self.syntax()).nth(1)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

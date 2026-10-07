@@ -25,8 +25,10 @@ pub mod reference;
 mod storage_layout;
 pub mod symbol;
 use crate::analysis::HirAnalysisDb;
+use crate::analysis::ty::closure::closure_effect_requirements;
 use crate::analysis::ty::corelib::{resolve_core_trait, resolve_lib_func_path};
 use crate::analysis::ty::diagnostics::{ImplDiag, TyLowerDiag};
+use crate::analysis::ty::effects::rows::RowKey;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::normalize_ty;
 use crate::analysis::ty::shape::{Shape, lower_return_shape, mentions_mode, return_shape_diags};
@@ -39,8 +41,7 @@ pub use reference::{
     FieldAccessView, HasReferences, MethodCallView, PathView, ReferenceView, Target, UsePathView,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::collections::VecDeque;
-use std::iter;
+use std::{collections::VecDeque, iter, ops::Range};
 pub use storage_layout::{
     AllocatedContractStorageLayout, AssignedLayoutTy, AssignedRootValue, ConcreteRootOccurrence,
     ConcreteRootOccurrenceId, ContractFieldId, ContractLayoutEntry, ContractLayoutEntryKind,
@@ -291,7 +292,7 @@ fn contract_effect_hidden_param_scope<'db>(
         EffectParamSite::Contract(contract)
         | EffectParamSite::ContractInit { contract }
         | EffectParamSite::ContractRecvArm { contract, .. } => contract.scope(),
-        EffectParamSite::Func(_) => {
+        EffectParamSite::Func(_) | EffectParamSite::Closure(_) => {
             unreachable!("contract effect hidden params must use a contract-scoped site")
         }
     }
@@ -329,7 +330,7 @@ fn contract_effect_layout_param_name<'db>(
             recv_idx,
             arm_idx
         ),
-        EffectParamSite::Func(_) => {
+        EffectParamSite::Func(_) | EffectParamSite::Closure(_) => {
             unreachable!("contract effect hidden params must use a contract-scoped site")
         }
     };
@@ -429,39 +430,50 @@ fn func_effect_requirements_canonical<'db>(
                 .name
                 .or_else(|| key_syntax.as_path(db)?.ident(db).to_opt())
                 .unwrap_or_else(|| IdentId::new(db, "_effect".to_string()));
-            let (key_kind, key_ty, key_trait) =
-                resolve_callable_input_effect_key(db, func, idx, key_syntax, assumptions)
-                    .into_parts(db);
             let effect_layout_args = layout_args.get(&CallableInputLayoutHoleOrigin::Effect(idx));
-            let key_ty = key_ty.map(|ty| {
-                if !ty_contains_const_hole(db, ty) {
-                    return ty;
-                }
-                let Some(effect_layout_args) = effect_layout_args else {
-                    return ty;
+            let key =
+                match resolve_callable_input_effect_key(db, func, idx, key_syntax, assumptions)
+                    .into_requirement_key(db)
+                {
+                    EffectRequirementKey::Type(ty) => EffectRequirementKey::Type(
+                        match effect_layout_args.filter(|_| ty_contains_const_hole(db, ty)) {
+                            Some(effect_layout_args) => {
+                                let ty = substitute_layout_holes_by_placeholder(
+                                    db,
+                                    ty,
+                                    effect_layout_args,
+                                );
+                                debug_assert!(
+                                    !ty_contains_const_hole(db, ty) || ty.has_invalid(db),
+                                    "unelaborated layout hole remained in callable effect key type"
+                                );
+                                ty
+                            }
+                            None => ty,
+                        },
+                    ),
+                    EffectRequirementKey::Trait(trait_inst) => {
+                        EffectRequirementKey::Trait(canonicalize_effect_binding_trait_inst(
+                            db,
+                            match effect_layout_args.filter(|_| {
+                                !collect_layout_hole_tys_in_order(db, trait_inst).is_empty()
+                            }) {
+                                Some(effect_layout_args) => {
+                                    substitute_layout_holes_by_placeholder_in(
+                                        db,
+                                        trait_inst,
+                                        effect_layout_args,
+                                    )
+                                }
+                                None => trait_inst,
+                            },
+                        ))
+                    }
+                    key => key,
                 };
-                let ty = substitute_layout_holes_by_placeholder(db, ty, effect_layout_args);
-                debug_assert!(
-                    !ty_contains_const_hole(db, ty) || ty.has_invalid(db),
-                    "unelaborated layout hole remained in callable effect key type"
-                );
-                ty
-            });
-            let key_trait = key_trait.map(|trait_inst| {
-                if collect_layout_hole_tys_in_order(db, trait_inst).is_empty() {
-                    return canonicalize_effect_binding_trait_inst(db, trait_inst);
-                }
-                let Some(effect_layout_args) = effect_layout_args else {
-                    return canonicalize_effect_binding_trait_inst(db, trait_inst);
-                };
-                canonicalize_effect_binding_trait_inst(
-                    db,
-                    substitute_layout_holes_by_placeholder_in(db, trait_inst, effect_layout_args),
-                )
-            });
             Some(EffectRequirement {
                 binding_name,
-                key: EffectRequirementKey::from_parts(key_kind, key_ty, key_trait),
+                key,
                 is_mut: effect.is_mut,
                 binding_site: EffectParamSite::Func(func),
                 binding_idx: idx as u32,
@@ -508,16 +520,14 @@ fn func_provider_bindings_canonical<'db>(
         })
         .collect::<Vec<_>>();
 
-    let base_provider_idx = providers.len();
     providers.extend(
         registered_root_providers(db, EffectParamSite::Func(func))
             .iter()
             .cloned()
-            .enumerate()
-            .map(|(idx, registration)| {
+            .map(|registration| {
                 let provider_ty = registration.provider_ty;
                 ProviderBinding {
-                    provider_idx: (base_provider_idx + idx) as u32,
+                    provider_idx: registration.func_provider_idx(),
                     provider_ty,
                     is_mut: true,
                     source: ProviderSource::RootProvider {
@@ -1708,6 +1718,8 @@ pub struct ArgBinding<'db> {
 pub enum EffectRequirementKey<'db> {
     Type(TyId<'db>),
     Trait(TraitInstId<'db>),
+    /// An associated effect row, matched by identity until it expands.
+    Row(RowKey<'db>),
     Other,
 }
 
@@ -1720,7 +1732,7 @@ impl<'db> EffectRequirementKey<'db> {
         match key_kind {
             EffectKeyKind::Type => key_ty.map_or(Self::Other, Self::Type),
             EffectKeyKind::Trait => key_trait.map_or(Self::Other, Self::Trait),
-            EffectKeyKind::Other => Self::Other,
+            EffectKeyKind::Row | EffectKeyKind::Other => Self::Other,
         }
     }
 
@@ -1728,6 +1740,7 @@ impl<'db> EffectRequirementKey<'db> {
         match self {
             Self::Type(_) => EffectKeyKind::Type,
             Self::Trait(_) => EffectKeyKind::Trait,
+            Self::Row(_) => EffectKeyKind::Row,
             Self::Other => EffectKeyKind::Other,
         }
     }
@@ -1735,14 +1748,21 @@ impl<'db> EffectRequirementKey<'db> {
     pub fn key_ty(&self) -> Option<TyId<'db>> {
         match self {
             Self::Type(ty) => Some(*ty),
-            Self::Trait(_) | Self::Other => None,
+            Self::Trait(_) | Self::Row(_) | Self::Other => None,
         }
     }
 
     pub fn key_trait(&self) -> Option<TraitInstId<'db>> {
         match self {
             Self::Trait(trait_inst) => Some(*trait_inst),
-            Self::Type(_) | Self::Other => None,
+            Self::Type(_) | Self::Row(_) | Self::Other => None,
+        }
+    }
+
+    pub fn key_row(&self) -> Option<RowKey<'db>> {
+        match self {
+            Self::Row(row) => Some(*row),
+            Self::Type(_) | Self::Trait(_) | Self::Other => None,
         }
     }
 
@@ -1750,7 +1770,35 @@ impl<'db> EffectRequirementKey<'db> {
         match self {
             Self::Type(ty) => Some(*ty),
             Self::Trait(trait_inst) => Some(trait_inst.self_ty(db)),
-            Self::Other => None,
+            Self::Row(_) | Self::Other => None,
+        }
+    }
+}
+
+impl<'db> TyVisitable<'db> for EffectRequirementKey<'db> {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: crate::analysis::ty::visitor::TyVisitor<'db> + ?Sized,
+    {
+        match self {
+            Self::Type(ty) => ty.visit_with(visitor),
+            Self::Trait(inst) => inst.visit_with(visitor),
+            Self::Row(row) => row.visit_with(visitor),
+            Self::Other => {}
+        }
+    }
+}
+
+impl<'db> TyFoldable<'db> for EffectRequirementKey<'db> {
+    fn super_fold_with<F>(self, db: &'db dyn HirAnalysisDb, folder: &mut F) -> Self
+    where
+        F: crate::analysis::ty::fold::TyFolder<'db>,
+    {
+        match self {
+            Self::Type(ty) => Self::Type(ty.fold_with(db, folder)),
+            Self::Trait(inst) => Self::Trait(inst.fold_with(db, folder)),
+            Self::Row(row) => Self::Row(row.fold_with(db, folder)),
+            Self::Other => Self::Other,
         }
     }
 }
@@ -1893,7 +1941,9 @@ impl<'db> EffectEnvView<'db> {
             EffectRequirementKey::Trait(_) => provider
                 .map(|binding| binding.provider_ty)
                 .or_else(|| requirement.key.binding_ty(db)),
-            EffectRequirementKey::Type(_) | EffectRequirementKey::Other => requirement
+            EffectRequirementKey::Type(_)
+            | EffectRequirementKey::Row(_)
+            | EffectRequirementKey::Other => requirement
                 .key
                 .binding_ty(db)
                 .or_else(|| provider.map(|binding| binding.provider_ty)),
@@ -2129,6 +2179,36 @@ pub fn effect_requirements_for_site<'db>(
             let arm = RecvArmView::new(db, recv, arm_idx);
             arm.effective_effect_requirements(db).clone()
         }
+        EffectParamSite::Closure(def) => closure_effect_requirements(db, def),
+    }
+}
+
+/// The canonical provider of `requirement`, a component of a row the body at
+/// `owner` is generic over (the closure's at `closure`, if any): the provider
+/// parameter its instances substitute.
+pub(crate) fn row_effect_provider<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: ScopeId<'db>,
+    closure: Option<ExprId>,
+    requirement: &EffectRequirement<'db>,
+) -> ProviderBinding<'db> {
+    let provider_ty = TyParam::row_effect_provider(
+        requirement.binding_name,
+        requirement.binding_idx as usize,
+        owner,
+        closure,
+    )
+    .ty(db);
+    ProviderBinding {
+        provider_idx: requirement.binding_idx,
+        provider_ty,
+        is_mut: requirement.is_mut,
+        source: ProviderSource::UsesParam {
+            site: requirement.binding_site,
+            requirement_idx: requirement.binding_idx,
+        },
+        semantics: provider_semantics(db, owner, PredicateListId::empty_list(db), provider_ty),
+        layout_env: None,
     }
 }
 
@@ -2152,6 +2232,12 @@ fn provider_bindings_for_site_query<'db>(
         | EffectParamSite::ContractRecvArm { contract, .. } => {
             contract_provider_bindings_canonical(db, contract, site)
         }
+        EffectParamSite::Closure(def) => closure_effect_requirements(db, def)
+            .iter()
+            .map(|requirement| {
+                row_effect_provider(db, def.body.scope(), Some(def.expr), requirement)
+            })
+            .collect(),
     }
 }
 
@@ -2189,6 +2275,13 @@ fn effect_resolutions_for_site_query<'db>(
             };
             contract_effect_resolutions_canonical(db, contract, site, arm.effects)
         }
+        EffectParamSite::Closure(def) => closure_effect_requirements(db, def)
+            .iter()
+            .map(|requirement| ResolvedEffectBinding {
+                requirement_idx: requirement.binding_idx,
+                provider_idx: requirement.binding_idx,
+            })
+            .collect(),
     }
 }
 
@@ -2959,7 +3052,7 @@ pub struct EffectParamView<'db> {
 }
 
 impl<'db> EffectParamView<'db> {
-    fn effect(self, db: &'db dyn HirDb) -> &'db crate::core::hir_def::EffectParam<'db> {
+    fn effect(self, db: &'db dyn HirAnalysisDb) -> &'db crate::core::hir_def::EffectParam<'db> {
         match self.owner {
             EffectParamOwner::Func(func) => &func.effects(db).data(db)[self.idx],
             EffectParamOwner::Contract(contract) => &contract.effects(db).data(db)[self.idx],
@@ -2968,24 +3061,24 @@ impl<'db> EffectParamView<'db> {
     }
 
     /// Optional name for this effect parameter.
-    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
+    pub fn name(self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
         self.effect(db).name
     }
 
     /// The type syntax identifying the effect key.
-    pub fn key_ty(self, db: &'db dyn HirDb) -> Option<TypeId<'db>> {
+    pub fn key_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TypeId<'db>> {
         self.effect(db).key_ty.to_opt()
     }
 
     /// The path identifying a nominal effect key, if the key is path-shaped.
-    pub fn key_path(self, db: &'db dyn HirDb) -> Option<PathId<'db>> {
+    pub fn key_path(self, db: &'db dyn HirAnalysisDb) -> Option<PathId<'db>> {
         self.key_ty(db)?
             .as_path(db)
             .filter(|path| path.ident(db).is_present())
     }
 
     /// Whether this effect requires mutation.
-    pub fn is_mut(self, db: &'db dyn HirDb) -> bool {
+    pub fn is_mut(self, db: &'db dyn HirAnalysisDb) -> bool {
         self.effect(db).is_mut
     }
 
@@ -2995,7 +3088,112 @@ impl<'db> EffectParamView<'db> {
     }
 }
 
+/// A function's effects with an implementation's rows spliced in, and the
+/// declared `uses` entry each comes from.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+pub struct SplicedEffects<'db> {
+    pub list: EffectParamListId<'db>,
+    origins: Vec<usize>,
+    /// Each implementation row spliced in, with the effects it became.
+    splices: Vec<(IdentId<'db>, usize, usize)>,
+}
+
+/// In an implementation of a trait, a `uses E` or `uses Self::E` entry naming
+/// one of the trait's rows stands for the effects the implementation gives
+/// that row, none if it gives none.
+#[salsa::tracked(return_ref)]
+fn spliced_func_effects<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> SplicedEffects<'db> {
+    let declared = func.declared_effects(db);
+    let impl_trait = match func.scope().parent(db) {
+        Some(ScopeId::Item(ItemKind::ImplTrait(impl_trait))) => Some(impl_trait),
+        _ => None,
+    };
+    let trait_rows = impl_trait
+        .and_then(|impl_trait| impl_trait.candidate_trait_inst_result(db).ok())
+        .map(|inst| inst.def(db).rows(db))
+        .unwrap_or_default();
+    let mut list = Vec::new();
+    let mut origins = Vec::new();
+    let mut splices = Vec::new();
+    for (idx, effect) in declared.data(db).iter().enumerate() {
+        let row = effect
+            .name
+            .is_none()
+            .then(|| effect.key_ty.to_opt()?.as_path(db))
+            .flatten()
+            .and_then(|path| own_row_name(db, path))
+            .filter(|name| {
+                trait_rows
+                    .iter()
+                    .any(|row| row.name.to_opt() == Some(*name))
+            });
+        let spliced = match (row, impl_trait) {
+            (Some(name), Some(impl_trait)) => impl_trait
+                .rows(db)
+                .iter()
+                .find(|row| row.name.to_opt() == Some(name))
+                .and_then(|row| row.effects)
+                .map_or_else(Vec::new, |effects| effects.data(db).clone()),
+            _ => vec![effect.clone()],
+        };
+        if let Some(name) = row {
+            splices.push((name, list.len(), list.len() + spliced.len()));
+        }
+        origins.extend(std::iter::repeat_n(idx, spliced.len()));
+        list.extend(spliced);
+    }
+    SplicedEffects {
+        list: EffectParamListId::new(db, list),
+        origins,
+        splices,
+    }
+}
+
+/// The row `path` names as `E` or `Self::E`.
+fn own_row_name<'db>(db: &'db dyn HirAnalysisDb, path: PathId<'db>) -> Option<IdentId<'db>> {
+    match path.parent(db) {
+        None => path.as_ident(db),
+        Some(parent) if parent.is_self_ty(db) && path.generic_args(db).is_empty(db) => {
+            path.ident(db).to_opt()
+        }
+        Some(_) => None,
+    }
+}
+
 impl<'db> Func<'db> {
+    /// The function's effects: its `uses` entries, with an implementation's
+    /// rows spliced in.
+    pub fn effects(self, db: &'db dyn HirAnalysisDb) -> EffectParamListId<'db> {
+        spliced_func_effects(db, self).list
+    }
+
+    /// Whether effect `idx` is given by an implementation's row.
+    pub fn effect_from_row(self, db: &'db dyn HirAnalysisDb, idx: usize) -> bool {
+        spliced_func_effects(db, self)
+            .splices
+            .iter()
+            .any(|(_, start, end)| (*start..*end).contains(&idx))
+    }
+
+    /// The effects the implementation's row `row` became, if the function
+    /// splices it.
+    pub fn row_splice(self, db: &'db dyn HirAnalysisDb, row: IdentId<'db>) -> Option<Range<usize>> {
+        spliced_func_effects(db, self)
+            .splices
+            .iter()
+            .find(|(name, ..)| *name == row)
+            .map(|(_, start, end)| *start..*end)
+    }
+
+    /// The declared `uses` entry that effect `idx` comes from.
+    pub fn effect_origin(self, db: &'db dyn HirAnalysisDb, idx: usize) -> usize {
+        spliced_func_effects(db, self)
+            .origins
+            .get(idx)
+            .copied()
+            .unwrap_or(idx)
+    }
+
     /// Iterate parameters as contextual views (semantic traversal helper).
     pub fn params(self, db: &'db dyn HirDb) -> impl Iterator<Item = FuncParamView<'db>> + 'db {
         let len = self
@@ -3008,7 +3206,7 @@ impl<'db> Func<'db> {
     /// Iterate effect parameters as contextual views.
     pub fn effect_params(
         self,
-        db: &'db dyn HirDb,
+        db: &'db dyn HirAnalysisDb,
     ) -> impl Iterator<Item = EffectParamView<'db>> + 'db {
         let len = self.effects(db).data(db).len();
         let owner = EffectParamOwner::Func(self);
@@ -3016,7 +3214,7 @@ impl<'db> Func<'db> {
     }
 
     /// Returns true if this function has any effect parameters.
-    pub fn has_effects(self, db: &'db dyn HirDb) -> bool {
+    pub fn has_effects(self, db: &'db dyn HirAnalysisDb) -> bool {
         !self.effects(db).data(db).is_empty()
     }
 }
@@ -4526,7 +4724,7 @@ impl<'db> ImplTrait<'db> {
         Self::impl_trait_local_nominal_root(db, impl_trait).is_some_and(|root| match root {
             TyBase::Adt(adt) => adt.ingot(db) == impl_trait_ingot,
             TyBase::Contract(contract) => contract.top_mod(db).ingot(db) == impl_trait_ingot,
-            TyBase::Prim(_) | TyBase::Func(_) => false,
+            TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) => false,
         })
     }
 

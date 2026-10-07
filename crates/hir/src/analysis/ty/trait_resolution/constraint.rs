@@ -1,6 +1,6 @@
 use crate::core::hir_def::{
-    GenericParam, GenericParamOwner, GenericParamView, ItemKind, Trait, TraitRefId, TypeBound,
-    WhereClauseOwner, scope_graph::ScopeId, types::TypeId as HirTypeId,
+    GenericParam, GenericParamOwner, GenericParamView, IdentId, ItemKind, PathId, Trait,
+    TraitRefId, TypeBound, WhereClauseOwner, scope_graph::ScopeId, types::TypeId as HirTypeId,
 };
 use crate::{
     hir_def::{CallableDef, Func},
@@ -11,6 +11,7 @@ use either::Either;
 
 use crate::analysis::{
     HirAnalysisDb,
+    name_resolution::{PathRes, resolve_path},
     ty::{
         binder::Binder,
         const_ty::{ConstBodyLowering, HoleAnchor, LoweringContext},
@@ -615,12 +616,80 @@ pub(crate) fn enclosing_trait_self_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
 ) -> Option<TyId<'db>> {
+    collect_generic_params(db, enclosing_trait(db, scope)?.into()).trait_self(db)
+}
+
+/// The trait instance and item a path names, among the items `item` finds
+/// in a trait by name: `I` or `Self::I` in a trait or an implementation of
+/// one (or one of its supertraits), and `X::I` for a type `X` the scope
+/// bounds by a trait with item `I`.
+pub(crate) fn resolve_assoc_item_path<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    item: impl Fn(Trait<'db>, IdentId<'db>) -> Option<usize>,
+) -> Option<(TraitInstId<'db>, usize)> {
+    if !path.generic_args(db).is_empty(db) {
+        return None;
+    }
+    let name = path.ident(db).to_opt()?;
+    // A trait's own items are its methods' whether or not their declarations
+    // assume `Self: Trait`, and an implementation's are its trait's.
+    let own = enclosing_trait_inst(db, scope);
+    let self_ty = match path.parent(db) {
+        None => own?.self_ty(db),
+        Some(parent) => match resolve_path(db, parent, scope, assumptions, false).ok()? {
+            PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => ty,
+            _ => return None,
+        },
+    };
+    own.filter(|inst| inst.self_ty(db) == self_ty)
+        .map(|inst| PredicateListId::new(db, vec![inst]).extend_all_bounds(db))
+        .into_iter()
+        .chain([assumptions.extend_all_bounds(db)])
+        .flat_map(|list| list.list(db).iter().copied())
+        .filter(|inst| inst.self_ty(db) == self_ty)
+        .find_map(|inst| Some((inst, item(inst.def(db), name)?)))
+}
+
+/// The trait instance whose items `scope` names unqualified: that of the
+/// trait whose definition it is in, or the one the implementation it is in
+/// implements.
+fn enclosing_trait_inst<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> Option<TraitInstId<'db>> {
     let mut item = Some(scope.item());
     while let Some(current) = item {
         match current {
-            ItemKind::Trait(trait_) => {
-                return collect_generic_params(db, trait_.into()).trait_self(db);
+            ItemKind::Trait(trait_def) => {
+                return Some(TraitInstId::new_simple(
+                    db,
+                    trait_def,
+                    trait_def.params(db).to_vec(),
+                ));
             }
+            ItemKind::ImplTrait(impl_trait) => {
+                return impl_trait.candidate_trait_inst_result(db).ok();
+            }
+            ItemKind::Impl(_) => return None,
+            _ => {}
+        }
+        item = current.scope().parent_item(db);
+    }
+    None
+}
+
+/// The trait whose definition `scope` is in, outside any impl.
+pub(crate) fn enclosing_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> Option<crate::hir_def::Trait<'db>> {
+    let mut item = Some(scope.item());
+    while let Some(current) = item {
+        match current {
+            ItemKind::Trait(trait_) => return Some(trait_),
             // `Self` inside impls resolves to the implementor type directly.
             ItemKind::Impl(_) | ItemKind::ImplTrait(_) => return None,
             _ => {}

@@ -1,0 +1,21 @@
+---
+source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
+expression: diags
+input_file: fixtures/ty_check/mutability_variants.fe
+---
+error[8-0018]: left-hand side of assignment is immutable
+   ┌─ mutability_variants.fe:13:5
+   │
+12 │     let x = xs.at(0)
+   │         - try changing to `mut x`
+13 │     x = 3
+   │     ^ immutable assignment
+
+error[8-0066]: mutable borrow requires a mutable place
+  ┌─ mutability_variants.fe:6:5
+  │
+5 │     let xs: [u256; 2] = [1, 2]
+  │         -- `xs` does not provide mutable access
+6 │     xs.at(0) = 3
+  │     ^^ cannot borrow as `mut`

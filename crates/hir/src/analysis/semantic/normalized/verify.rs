@@ -6,12 +6,8 @@ use crate::{
         HirAnalysisDb,
         semantic::{
             FieldIndex, Mutability, SConst, SemanticInstance, VariantIndex,
-            capability::handle::OpaqueHandleContract,
-            capability::semantics::contains_capability,
-            get_or_build_semantic_instance,
-            lower::{effect_param_site, enum_tag_ty},
-            normalized::*,
-            sem_const_ty,
+            capability::handle::OpaqueHandleContract, capability::semantics::contains_capability,
+            get_or_build_semantic_instance, lower::enum_tag_ty, normalized::*, sem_const_ty,
         },
         ty::{
             adt_def::AdtRef,
@@ -21,7 +17,6 @@ use crate::{
             ty_is_copy,
         },
     },
-    core::semantic::EffectEnvView,
     hir_def::{ArithBinOp, BinOp, UnOp},
 };
 
@@ -461,9 +456,7 @@ fn verify_expr<'db>(
                     return Err(NormalizedBodyVerifyError::ExpressionType);
                 }
             }
-            let requirements = effect_param_site(callee.key(db).owner(db))
-                .map(|site| EffectEnvView::new(site).requirements(db))
-                .unwrap_or_default();
+            let requirements = callee.call_effect_requirements(db);
             let mut effect_bindings = FxHashSet::default();
             for arg in effect_args {
                 let Some(requirement) = requirements
@@ -568,11 +561,7 @@ fn verify_expr<'db>(
                     && element.is_some_and(|element| {
                         field_tys.iter().all(|field_ty| *field_ty == element)
                     })
-            } else if ty.is_tuple(db)
-                || ty
-                    .adt_def(db)
-                    .is_some_and(|adt| matches!(adt.adt_ref(db), AdtRef::Struct(_)))
-            {
+            } else if ty.is_product(db) {
                 body.owner.normalized_field_types(db, *ty).as_slice() == field_tys
             } else {
                 false
@@ -914,7 +903,7 @@ fn verify_scalar_result<'db>(
 
 fn ty_has_scalar_repr<'db>(db: &'db dyn HirAnalysisDb, mut ty: TyId<'db>) -> bool {
     let mut visiting = FxHashSet::default();
-    while ty.is_tuple(db) || ty.is_struct(db) {
+    while ty.is_product(db) {
         if !visiting.insert(ty) {
             return false;
         }

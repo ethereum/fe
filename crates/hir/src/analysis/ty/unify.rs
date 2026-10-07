@@ -12,7 +12,9 @@ use super::{
     const_expr::{ConstExpr, ConstExprId},
     fold::{TyFoldable, TyFolder},
     trait_def::{ImplementorId, TraitInstId, TraitRefId},
-    ty_def::{ApplicableTyProp, Kind, TyData, TyId, TyVar, TyVarSort, inference_keys},
+    ty_def::{
+        ApplicableTyProp, ClosureTy, Kind, TyBase, TyData, TyId, TyVar, TyVarSort, inference_keys,
+    },
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -136,6 +138,36 @@ where
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
                 self.unify_ty(*ty1_1, *ty2_1)?;
                 self.unify_ty(*ty1_2, *ty2_2)
+            }
+
+            // Closure types unify structurally: the same definition with
+            // unifiable component types is the same closure. One side may
+            // still carry inference variables from the body checking it.
+            (
+                TyData::TyBase(TyBase::Closure(closure1)),
+                TyData::TyBase(TyBase::Closure(closure2)),
+            ) => {
+                let db = self.db;
+                let components = |closure: ClosureTy<'db>| {
+                    closure
+                        .parent_args(db)
+                        .iter()
+                        .chain(closure.captures(db))
+                        .chain(&closure.param_tys(db))
+                        .chain([closure.ret_ty(db)].iter())
+                        .copied()
+                        .collect::<Vec<_>>()
+                };
+                let (lhs, rhs) = (components(*closure1), components(*closure2));
+                if closure1.def(db) != closure2.def(db)
+                    || closure1.modes(db) != closure2.modes(db)
+                    || lhs.len() != rhs.len()
+                {
+                    return Err(UnificationError::TypeMismatch);
+                }
+                lhs.into_iter()
+                    .zip(rhs)
+                    .try_for_each(|(lhs, rhs)| self.unify_ty(lhs, rhs))
             }
 
             (TyData::TyParam(_), TyData::TyParam(_)) | (TyData::TyBase(_), TyData::TyBase(_)) => {

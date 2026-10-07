@@ -32,7 +32,7 @@ use crate::analysis::ty::trait_resolution::constraint::{
     PredicateSource, collect_func_decl_constraint_pairs,
 };
 use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty};
-use crate::hir_def::{CallableDef, ConstGenericArgValue, ImplTrait, Trait};
+use crate::hir_def::{CallableDef, ConstGenericArgValue, ImplTrait, Trait, params::FuncParamMode};
 use crate::{
     hir_def::{
         BinOp, Body, CondId, Const, Contract, ContractRecvArm, Expr, ExprId, Func, GenericParam,
@@ -52,15 +52,15 @@ use cranelift_entity::{PrimaryMap, SecondaryMap, entity_impl, packed_option::Pac
 use ena::unify::InPlace;
 use env::TyCheckEnv;
 pub use env::{
-    BindingAccess, EffectParamSite, ExprProp, LocalBinding, ParamSite, PatBindingMode,
-    PathReadSemantics,
+    BindingAccess, ClosureCapture, ClosureInfo, EffectParamSite, ExprProp, LocalBinding, ParamSite,
+    PatBindingMode, PathReadSemantics,
 };
 pub(super) use expr::TraitOps;
 use num_traits::ToPrimitive;
 pub use owner::BodyOwner;
 pub use owner::EffectParamOwner;
-use std::sync::Arc;
-pub use stmt::ForLoopSeq;
+use std::{iter, sync::Arc};
+pub use stmt::{ForLoopCall, ForLoopItem, ForLoopPlan, ForLoopStep};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
@@ -78,7 +78,7 @@ use super::{
         BodyDiag, CallConstraintDiagInfo, FuncBodyDiag, StaticAssertComparisonValues,
         TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
     },
-    effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key},
+    effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     layout_holes::merge_equated_layout_holes,
     trait_def::{TraitInstId, resolve_trait_method_instance},
@@ -107,7 +107,7 @@ use crate::analysis::semantic::{
     eval_body_owner_const, get_or_build_semantic_instance, reify_runtime_const_for_ty,
     runtime_size_bytes_with_source,
 };
-use crate::analysis::ty::ty_def::{TyBase, TyData};
+use crate::analysis::ty::ty_def::{ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
     const_ty::{
         BodyHoleSite, CallableInputLayoutHoleOrigin, ConstTyData, ConstTyId, HoleAnchor,
@@ -831,6 +831,14 @@ fn infer_body_query<'db>(
     key: BodyInferenceKey<'db>,
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
     let owner = key.owner(db);
+    // A closure's body is checked inline in its parent's.
+    if let BodyOwner::Closure { ty, def, receiver } = owner {
+        let body = BodyOwner::from_body(db, def.body).map_or_else(
+            || TypedBody::empty(db),
+            |parent| infer_body(db, parent).1.for_closure(db, ty, receiver),
+        );
+        return (Vec::new(), body);
+    }
     let Ok(mut checker) = TyChecker::new(db, owner) else {
         return (
             Vec::new(),
@@ -839,7 +847,8 @@ fn infer_body_query<'db>(
                 BodyOwner::Const(_)
                 | BodyOwner::AnonConstBody { .. }
                 | BodyOwner::ContractInit { .. }
-                | BodyOwner::ContractRecvArm { .. } => TypedBody::empty(db),
+                | BodyOwner::ContractRecvArm { .. }
+                | BodyOwner::Closure { .. } => TypedBody::empty(db),
             },
         );
     };
@@ -1246,6 +1255,7 @@ fn typed_body_for_bodyless_func<'db>(
         value_path_refs: SecondaryMap::new(),
         semantic_expr_lowering: SecondaryMap::new(),
         record_init_lowering: SecondaryMap::new(),
+        closure_infos: SecondaryMap::new(),
         resolved_field_index: SecondaryMap::new(),
         call_effect_args: SecondaryMap::new(),
         return_borrow_provider: None,
@@ -1254,7 +1264,7 @@ fn typed_body_for_bodyless_func<'db>(
         pat_binding_modes: SecondaryMap::new(),
         pattern_store: PatternStore::default(),
         pattern_status: SecondaryMap::with_default(PatternAnalysisStatus::Invalid),
-        for_loop_seq: SecondaryMap::new(),
+        for_loop_plans: SecondaryMap::new(),
         expr_place: SecondaryMap::new(),
         expr_places: PrimaryMap::new(),
         path_applications: Vec::new(),
@@ -1371,6 +1381,20 @@ impl<'db> TyChecker<'db> {
         self.check_access_uses();
     }
 
+    /// Reports the non-`Copy` values moved out of closures' captures.
+    fn check_capture_moves(&mut self) {
+        for (expr, binding, ty) in self.env.take_capture_moves() {
+            let ty = ty.fold_with(self.db, &mut self.table);
+            let ty = self.normalize_ty(ty);
+            if !ty.has_var(self.db) && !ty.has_invalid(self.db) && !self.ty_is_copy(ty) {
+                self.push_diag(BodyDiag::MoveOutOfCapture {
+                    primary: expr.span(self.body()).into(),
+                    name: binding.binding_name(&self.env),
+                });
+            }
+        }
+    }
+
     fn check_own_param_types(&mut self) {
         match self.env.owner() {
             BodyOwner::Func(_) => {}
@@ -1419,14 +1443,15 @@ impl<'db> TyChecker<'db> {
             }
             BodyOwner::Const(_)
             | BodyOwner::AnonConstBody { .. }
-            | BodyOwner::ContractRecvArm { .. } => {}
+            | BodyOwner::ContractRecvArm { .. }
+            | BodyOwner::Closure { .. } => {}
         }
     }
 
     fn check_effect_param_keys_resolve(&mut self) {
         match self.env.owner() {
             BodyOwner::Func(func) => self.check_free_func_effect_list(func, func.effects(self.db)),
-            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => {}
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
             owner @ BodyOwner::ContractInit { contract } => {
                 self.check_contract_scoped_effect_list(owner, contract, owner.effects(self.db));
             }
@@ -1454,7 +1479,9 @@ impl<'db> TyChecker<'db> {
                     key_ty,
                     self.env.assumptions(),
                 ),
-                ResolvedEffectKey::Type(_) | ResolvedEffectKey::Trait(_)
+                ResolvedEffectKey::Type(_)
+                    | ResolvedEffectKey::Trait(_)
+                    | ResolvedEffectKey::Row(_)
             ) {
                 self.push_diag(BodyDiag::InvalidEffectKey {
                     owner: EffectParamOwner::Func(func),
@@ -1473,7 +1500,9 @@ impl<'db> TyChecker<'db> {
     ) {
         let (owner, site) = match owner {
             BodyOwner::Func(func) => (EffectParamOwner::Func(func), EffectParamSite::Func(func)),
-            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => unreachable!(),
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
+                unreachable!()
+            }
             BodyOwner::ContractInit { contract } => (
                 EffectParamOwner::ContractInit { contract },
                 EffectParamSite::ContractInit { contract },
@@ -1550,7 +1579,9 @@ impl<'db> TyChecker<'db> {
                             });
                         }
                     }
-                    ResolvedEffectKey::Invalid | ResolvedEffectKey::Other => {
+                    ResolvedEffectKey::Row(_)
+                    | ResolvedEffectKey::Invalid
+                    | ResolvedEffectKey::Other => {
                         self.push_diag(BodyDiag::InvalidEffectKey {
                             owner,
                             key: key_ty,
@@ -2921,7 +2952,18 @@ impl<'db> TyChecker<'db> {
         let Some(mut_pat) = pats.into_iter().find_map(|pat| self.first_mut_binding(pat)) else {
             return prop;
         };
-        if prop.shape.is_some() || !self.env.is_place_expr(scrutinee) {
+        if !self.env.is_place_expr(scrutinee) {
+            return prop;
+        }
+        let prop = if !prop.is_mut && self.select_mut_place(scrutinee) {
+            self.env
+                .typed_expr(scrutinee)
+                .expect("selected place is typed")
+        } else {
+            prop
+        };
+        // A projection's result is destructured through its own access.
+        if prop.shape.is_some() {
             return prop;
         }
         if !prop.is_mut {
@@ -3427,6 +3469,19 @@ pub struct ResolvedEffectArg<'db> {
     pub instantiated_key_ty: Option<TyId<'db>>,
     pub provider_target_ty: Option<TyId<'db>>,
     pub provider: Option<ProviderAddressSpace>,
+    /// For a component of one of the callee's rows, or a row it forwards,
+    /// where it sits: `binding_idx` numbers it only in the call's view.
+    pub row_arg: Option<RowArg>,
+}
+
+/// Where an effect argument sits among the callee's rows.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+pub enum RowArg {
+    /// A component of one of the callee's rows.
+    Component(RowPath),
+    /// One of the callee's rows, which the call forwards from the caller's
+    /// own row at `own`: one of its entries, or a component of one.
+    Forwarded { callee: RowPath, own: RowPath },
 }
 
 /// Resolved reference for a `const`-valued path expression.
@@ -3519,6 +3574,7 @@ mod typed_body_tables {
         pub(super) value_path_refs: SecondaryMap<ExprId, Option<ValuePathRef<'db>>>,
         pub(super) semantic_expr_lowering: SecondaryMap<ExprId, Option<SemanticExprLowering<'db>>>,
         pub(super) record_init_lowering: SecondaryMap<ExprId, Option<RecordInitLowering<'db>>>,
+        pub(super) closure_infos: SecondaryMap<ExprId, Option<ClosureInfo<'db>>>,
         pub(super) resolved_field_index: SecondaryMap<ExprId, Option<u16>>,
         pub(super) call_effect_args: SecondaryMap<ExprId, Option<Vec<ResolvedEffectArg<'db>>>>,
         pub(super) return_borrow_provider: Option<ProviderAddressSpace>,
@@ -3531,7 +3587,7 @@ mod typed_body_tables {
         pub(super) pattern_store: PatternStore<'db>,
         pub(super) pattern_status: SecondaryMap<PatId, PatternAnalysisStatus>,
         /// Resolved Seq trait methods for for-loops
-        pub(super) for_loop_seq: SecondaryMap<StmtId, Option<ForLoopSeq<'db>>>,
+        pub(super) for_loop_plans: SecondaryMap<StmtId, Option<ForLoopPlan<'db>>>,
         pub(super) expr_place: SecondaryMap<ExprId, PackedOption<ExprPlaceId>>,
         pub(super) expr_places: PrimaryMap<ExprPlaceId, Place<'db>>,
         /// The constrained type applications that resolving the body's paths
@@ -3855,6 +3911,9 @@ impl<'db> TypedBody<'db> {
         for lowering in self.tables.record_init_lowering.values().flatten() {
             lowering.visit_with(visitor);
         }
+        for info in self.tables.closure_infos.values().flatten() {
+            info.visit_with(visitor);
+        }
         for args in self.tables.call_effect_args.values().flatten() {
             args.visit_with(visitor);
         }
@@ -3866,8 +3925,8 @@ impl<'db> TypedBody<'db> {
             place.visit_with(visitor);
         }
         self.tables.pattern_store.visit_with(visitor);
-        for seq in self.tables.for_loop_seq.values().flatten() {
-            seq.visit_with(visitor);
+        for plan in self.tables.for_loop_plans.values().flatten() {
+            plan.visit_with(visitor);
         }
         for (_, ty) in &self.tables.path_applications {
             ty.visit_with(visitor);
@@ -3913,6 +3972,10 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
             .values_mut()
             .flatten()
             .for_each(|lowering| *lowering = (*lowering).fold_with(db, folder));
+        this.closure_infos
+            .values_mut()
+            .flatten()
+            .for_each(|info| *info = info.clone().fold_with(db, folder));
         for args in this.call_effect_args.values_mut().flatten() {
             for arg in args {
                 *arg = arg.clone().fold_with(db, folder);
@@ -3926,10 +3989,10 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
             .flatten()
             .for_each(|binding| *binding = binding.fold_with(db, folder));
         this.pattern_store = this.pattern_store.fold_with(db, folder);
-        this.for_loop_seq
+        this.for_loop_plans
             .values_mut()
             .flatten()
-            .for_each(|seq| *seq = seq.clone().fold_with(db, folder));
+            .for_each(|plan| *plan = plan.clone().fold_with(db, folder));
         this.expr_places
             .values_mut()
             .for_each(|place| *place = place.clone().fold_with(db, folder));
@@ -4120,7 +4183,7 @@ impl<'db> TypedBody<'db> {
         stmt_data: &Stmt<'db>,
     ) -> Option<SmirLoweringIssue> {
         match stmt_data {
-            Stmt::For(pat, expr, ..) if self.for_loop_seq(stmt).is_none() => {
+            Stmt::For(pat, expr, ..) if self.for_loop_plan(stmt).is_none() => {
                 let iterable_ty = self.expr_ty(db, *expr);
                 Some(
                     if iterable_ty.has_invalid(db)
@@ -4247,6 +4310,35 @@ impl<'db> TypedBody<'db> {
         self.tables.record_init_lowering[expr]
     }
 
+    pub fn closure_info(&self, expr: ExprId) -> Option<&ClosureInfo<'db>> {
+        self.tables.closure_infos[expr].as_ref()
+    }
+
+    /// This (parent) typed body viewed as the body of `closure` called with
+    /// a `receiver` environment: its parameters are the environment and the
+    /// closure's parameters, and its result is the closure's. A closure's
+    /// body is checked inline in its parent's, so every other table is
+    /// shared.
+    pub(crate) fn for_closure(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        closure: ClosureTy<'db>,
+        receiver: FuncParamMode,
+    ) -> Self {
+        let params = self
+            .closure_info(closure.def(db).expr)
+            .map(|info| info.params.clone())
+            .unwrap_or_default();
+        let mut body = self.clone();
+        let tables = body.tables_mut();
+        tables.result_ty = closure.ret_ty(db);
+        tables.return_borrow_provider = None;
+        tables.param_bindings = iter::once(LocalBinding::closure_env(db, closure, receiver))
+            .chain(params)
+            .collect();
+        body
+    }
+
     pub fn resolved_field_index(&self, expr: ExprId) -> Option<u16> {
         self.tables.resolved_field_index[expr]
     }
@@ -4365,8 +4457,8 @@ impl<'db> TypedBody<'db> {
     }
 
     /// Get the resolved Seq methods for a for-loop statement.
-    pub fn for_loop_seq(&self, stmt: StmtId) -> Option<&ForLoopSeq<'db>> {
-        self.tables.for_loop_seq[stmt].as_ref()
+    pub fn for_loop_plan(&self, stmt: StmtId) -> Option<&ForLoopPlan<'db>> {
+        self.tables.for_loop_plans[stmt].as_ref()
     }
 
     pub fn binding_source(
@@ -4900,7 +4992,7 @@ impl<'db> TypedBody<'db> {
                 sources?
             }
             LocalBinding::Param {
-                site: ParamSite::ContractInit(_),
+                site: ParamSite::ContractInit(_) | ParamSite::Closure(_) | ParamSite::ClosureEnv(_),
                 ..
             } => return None,
         };
@@ -5065,15 +5157,17 @@ impl<'db> TypedBody<'db> {
                     );
                 }
             }
-            crate::hir_def::Stmt::For(_, iter, loop_body, _) => {
-                self.collect_explicit_return_param_sources_in_expr(
-                    db,
-                    body,
-                    *iter,
-                    out,
-                    saw_non_param,
-                    seen,
-                );
+            crate::hir_def::Stmt::For(_, iter, driver, loop_body, _) => {
+                for expr in [*iter].into_iter().chain(*driver) {
+                    self.collect_explicit_return_param_sources_in_expr(
+                        db,
+                        body,
+                        expr,
+                        out,
+                        saw_non_param,
+                        seen,
+                    );
+                }
                 self.collect_explicit_return_param_sources_in_expr(
                     db,
                     body,
@@ -5341,6 +5435,9 @@ impl<'db> TypedBody<'db> {
                     seen,
                 );
             }
+            Expr::Closure { .. } => {
+                *saw_non_param = true;
+            }
             Expr::Lit(_) | Expr::Path(_) | Expr::UnsupportedMacroCall => {}
         }
     }
@@ -5493,10 +5590,15 @@ impl<'db> TypedBody<'db> {
     /// or if no body is available.
     ///
     /// This is used by the language server for goto-definition on local variables.
-    pub fn expr_binding_def_span(&self, func: Func<'db>, expr: ExprId) -> Option<DynLazySpan<'db>> {
+    pub fn expr_binding_def_span(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        func: Func<'db>,
+        expr: ExprId,
+    ) -> Option<DynLazySpan<'db>> {
         let body = self.tables.body?;
         let binding = self.expr_binding(expr)?;
-        Some(binding.def_span_with(body, func))
+        Some(binding.def_span_with(db, body, func))
     }
 
     /// Like `expr_binding_def_span` but takes a `Body` directly.
@@ -5504,11 +5606,12 @@ impl<'db> TypedBody<'db> {
     /// Use this when the body may not belong to a function (e.g., contract bodies).
     pub fn expr_binding_def_span_in_body(
         &self,
+        db: &'db dyn HirAnalysisDb,
         body: Body<'db>,
         expr: ExprId,
     ) -> Option<DynLazySpan<'db>> {
         let binding = self.expr_binding(expr)?;
-        Some(binding.def_span_in_body(body))
+        Some(binding.def_span_in_body(db, body))
     }
 
     /// Get the binding kind for an expression that references a local binding.
@@ -5585,6 +5688,7 @@ impl<'db> TypedBody<'db> {
             value_path_refs: SecondaryMap::new(),
             semantic_expr_lowering: SecondaryMap::new(),
             record_init_lowering: SecondaryMap::new(),
+            closure_infos: SecondaryMap::new(),
             resolved_field_index: SecondaryMap::new(),
             call_effect_args: SecondaryMap::new(),
             return_borrow_provider: None,
@@ -5593,7 +5697,7 @@ impl<'db> TypedBody<'db> {
             pat_binding_modes: SecondaryMap::new(),
             pattern_store: PatternStore::default(),
             pattern_status: SecondaryMap::with_default(PatternAnalysisStatus::Invalid),
-            for_loop_seq: SecondaryMap::new(),
+            for_loop_plans: SecondaryMap::new(),
             expr_place: SecondaryMap::new(),
             expr_places: PrimaryMap::new(),
             path_applications: Vec::new(),
@@ -5948,6 +6052,7 @@ impl<'db> TyCheckerFinalizer<'db> {
     fn new(mut checker: TyChecker<'db>) -> Self {
         let assumptions = checker.env.assumptions();
         checker.resolve_deferred();
+        checker.check_capture_moves();
         let mut body = checker.env.finish(&mut checker.table);
         body.tables_mut().return_borrow_provider = checker.first_return_borrow_provider;
         let direct_call_callees = body.body().map_or_else(FxHashSet::default, |body_id| {

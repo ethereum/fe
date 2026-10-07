@@ -1,0 +1,29 @@
+---
+source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
+expression: diags
+input_file: fixtures/ty_check/collection_loops.fe
+---
+error[8-0018]: left-hand side of assignment is immutable
+  ┌─ collection_loops.fe:6:9
+  │
+5 │     for x in xs {
+  │         - try changing to `mut x`
+6 │         x += 1
+  │         ^ immutable assignment
+
+error[8-0018]: left-hand side of assignment is immutable
+   ┌─ collection_loops.fe:13:9
+   │
+12 │     for account in accounts {
+   │         ------- try changing to `mut account`
+13 │         account.balance = 0
+   │         ^^^^^^^^^^^^^^^ immutable assignment
+
+error[8-0066]: mutable borrow requires a mutable place
+   ┌─ collection_loops.fe:19:14
+   │
+18 │ fn mutates(_ xs: [u256; 3]) {
+   │              -- `xs` does not provide mutable access
+19 │     for x in mut xs {
+   │              ^^^^^^ cannot borrow as `mut`

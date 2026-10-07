@@ -3,6 +3,7 @@ use super::crypto::keccak256
 use ingot::evm::ops::{mstore, sload_hashed, sstore_hashed}
 use ingot::evm::word::WordRepr
 use core::{EffectRef, EffectRefMut, ptr}
+use core::ops::{Index, IndexMut}
 
 /// Keys that can be written into the mapping preimage for keccak hashing.
 pub trait StorageKey {
@@ -201,6 +202,12 @@ pub struct StorageMap<K, V, const SALT: u256 = _> {
 
 impl<K, V, const SALT: u256> Copy for StorageMap<K, V, SALT> {}
 
+// A map's entries are persistent wherever the handle lies, so its salt is
+// drawn from the storage slots even inside transient state.
+impl<K, V, const SALT: u256> core::effect_ref::StaticSlot for StorageMap<K, V, SALT> {
+    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Storage
+}
+
 #[inline(always)]
 fn storagemap_storage_slot_with_salt<K>(key: K, salt: u256) -> u256
     where K: StorageKey
@@ -264,6 +271,30 @@ impl<K: StorageKey, V: WordRepr, const SALT: u256> StorageMap<K, V, SALT> {
     }
 }
 
+// `map[key]` reads the key's value into the session; `map[key] = v` and
+// `map[key] += v` write it back when the session finishes.
+impl<K: StorageKey, V: WordRepr, const SALT: u256> Index<K> for StorageMap<K, V, SALT> {
+    uses E = (storage: Field(Self))
+    space S = memory
+    type Output = V
+
+    #[inline(always)]
+    fn index(self, _ key: K) -> ref V uses E {
+        let value = self.get(key)
+        ref value
+    }
+}
+
+impl<K: StorageKey, V: WordRepr, const SALT: u256> IndexMut<K> for StorageMap<K, V, SALT> {
+    uses EM = (storage: mut Field(Self))
+
+    #[inline(always)]
+    fn index_mut(mut self, _ key: K) -> mut V uses EM {
+        let mut value = self.get(key)
+        yield mut value
+        self.set(key, value)
+    }
+}
 
 impl<A, B> StorageKey for (A, B)
 where A: StorageKey,

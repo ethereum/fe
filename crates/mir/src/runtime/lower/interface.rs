@@ -1,5 +1,5 @@
 use hir::analysis::{
-    semantic::{SemanticBody, SemanticInstance, owner_effect_bindings, same_owner_effect_binding},
+    semantic::{SemanticBody, SemanticInstance, same_owner_effect_binding},
     ty::ty_check::{BodyOwner, LocalBinding},
 };
 
@@ -118,7 +118,7 @@ pub(crate) fn runtime_visible_binding_plans<'db>(
         }
     }
 
-    for binding in owner_effect_bindings(db, owner) {
+    for binding in semantic.effect_bindings(db) {
         let plan = owner_effect_binding_boundary(db, semantic, binding)
             .map(RuntimeParamPlan::Boundary)
             .unwrap_or(RuntimeParamPlan::Erased);

@@ -19,11 +19,11 @@ error[8-0018]: left-hand side of assignment is immutable
 17 │         res += x
    │         ^^^ immutable assignment
 
-error[8-0020]: `Seq` needs to be implemented for Foo
+error[8-0020]: `Collection` needs to be implemented for Foo
    ┌─ for_.fe:11:14
    │
 11 │     for i in foo { }
    │              ^^^
    │              │
-   │              `Seq` needs to be implemented for `Foo`
-   │              consider implementing `Seq` for `Foo`
+   │              `Collection` needs to be implemented for `Foo`
+   │              consider implementing `Collection` for `Foo`

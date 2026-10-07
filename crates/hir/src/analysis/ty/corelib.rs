@@ -485,7 +485,8 @@ pub fn effect_key_state_access<'db>(
                 ),
                 GoalSatisfiability::Satisfied(_)
             ),
-            EffectRequirementKey::Other => false,
+            // A row reaches what its components reach, once it expands.
+            EffectRequirementKey::Row(_) | EffectRequirementKey::Other => false,
         }
     };
     REENTRANT_CAPABILITIES

@@ -1257,7 +1257,8 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             BodyOwner::Const(_)
             | BodyOwner::AnonConstBody { .. }
             | BodyOwner::ContractInit { .. }
-            | BodyOwner::ContractRecvArm { .. } => Vec::new(),
+            | BodyOwner::ContractRecvArm { .. }
+            | BodyOwner::Closure { .. } => Vec::new(),
         };
         arg_locals.sort_unstable_by_key(|(idx, _)| *idx);
         if args.len() != arg_locals.len()
@@ -1394,9 +1395,9 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             BodyOwner::Func(func) if !const_effects_supported(self.db, func) => {
                 Err(CtfeError::NotConstEvaluable { origin })
             }
-            BodyOwner::ContractInit { .. } | BodyOwner::ContractRecvArm { .. } => {
-                Err(CtfeError::NotConstEvaluable { origin })
-            }
+            BodyOwner::ContractInit { .. }
+            | BodyOwner::ContractRecvArm { .. }
+            | BodyOwner::Closure { .. } => Err(CtfeError::NotConstEvaluable { origin }),
             owner
             @ (BodyOwner::Func(_) | BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. }) => {
                 if inference_met_lowering_cycle(self.db, infer_body(self.db, owner)) {

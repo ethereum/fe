@@ -2413,7 +2413,7 @@ fn stmt_primary_expr_for_const_eval_diag<'db>(
     match stmt.data(db, body).clone().to_opt()? {
         Stmt::Let(_, _, expr, _) | Stmt::Return(expr) => expr,
         Stmt::Yield(expr) | Stmt::Expr(expr) => Some(expr),
-        Stmt::For(_, expr, _, _) => Some(expr),
+        Stmt::For(_, expr, ..) => Some(expr),
         Stmt::While(_, _) | Stmt::Continue | Stmt::Break => None,
     }
 }

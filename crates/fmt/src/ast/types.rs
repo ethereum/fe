@@ -821,9 +821,28 @@ impl ToDoc for ast::TypeBound {
 
 impl ToDoc for ast::TraitRef {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+        if let Some(shape) = self.fn_shape() {
+            let name = shape
+                .name()
+                .map_or_else(|| alloc.nil(), |name| alloc.text(name.text().to_string()));
+            // A parameter list, not a tuple: one parameter has no comma.
+            let params = shape.params().map_or_else(Vec::new, |params| {
+                params.elem_tys().map(|ty| ty.to_doc(ctx)).collect()
+            });
+            let params = alloc
+                .text("(")
+                .append(intersperse(alloc, params, alloc.text(", ")))
+                .append(alloc.text(")"));
+            let ret = shape.ret_ty().map_or_else(
+                || alloc.nil(),
+                |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
+            );
+            return name.append(params).append(ret);
+        }
         match self.path() {
             Some(p) => p.to_doc(ctx),
-            None => ctx.alloc.nil(),
+            None => alloc.nil(),
         }
     }
 }
@@ -870,7 +889,14 @@ impl ToDoc for ast::ModeType {
                 ctx,
                 self.syntax(),
                 indent,
-                |node| ast::Type::cast(node).map(|ty| TokenPiece::new(ty.to_doc(ctx))),
+                |node| {
+                    ast::Type::cast(node.clone())
+                        .map(|ty| TokenPiece::new(ty.to_doc(ctx)))
+                        .or_else(|| {
+                            ast::SpaceAnnotation::cast(node)
+                                .map(|space| TokenPiece::new(space.to_doc(ctx)).space_before())
+                        })
+                },
                 |token| match token.kind() {
                     SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw => {
                         Some(TokenPiece::new(alloc.text(ctx.token(&token))).space_after())
@@ -886,11 +912,34 @@ impl ToDoc for ast::ModeType {
                 .map_or_else(|| alloc.nil(), |inner| inner.to_doc(ctx));
         };
         let mode = alloc.text(ctx.token(&mode));
-        if let Some(inner) = self.inner() {
+        let mode = if let Some(inner) = self.inner() {
             mode.append(alloc.text(" ")).append(inner.to_doc(ctx))
         } else {
             mode
+        };
+        match self.space() {
+            Some(space) => mode.append(alloc.text(" ")).append(space.to_doc(ctx)),
+            None => mode,
         }
+    }
+}
+
+impl ToDoc for ast::SpaceAnnotation {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+        let path = self
+            .path()
+            .map_or_else(|| alloc.nil(), |path| path.to_doc(ctx));
+        let target = self.target().map_or_else(
+            || alloc.nil(),
+            |target| {
+                alloc
+                    .text("(")
+                    .append(target.to_doc(ctx))
+                    .append(alloc.text(")"))
+            },
+        );
+        alloc.text("@").append(path).append(target)
     }
 }
 
@@ -1216,6 +1265,7 @@ impl ToDoc for ast::Expr {
         match self.kind() {
             ExprKind::Lit(lit) => lit.to_doc(ctx),
             ExprKind::Block(block) => block.to_doc(ctx),
+            ExprKind::Closure(closure) => closure.to_doc(ctx),
             ExprKind::Bin(bin) => bin.to_doc(ctx),
             ExprKind::Un(un) => un.to_doc(ctx),
             ExprKind::Cast(cast) => cast.to_doc(ctx),

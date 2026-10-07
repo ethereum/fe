@@ -28,23 +28,23 @@ use crate::{
             shape::{Shape, sum_payload_variant},
             ty_check::{
                 BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef,
-                LocalBinding, PathReadSemantics, RecordInitLowering, RecordLike,
-                SemanticExprLowering, TypedBody, ValuePathRef,
+                ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics, RecordInitLowering,
+                RecordLike, SemanticExprLowering, TypedBody, ValuePathRef, infer_body,
             },
             ty_def::{BorrowKind, TyData, TyId},
-            ty_is_copy,
+            ty_is_copy, ty_is_snapshot,
         },
     },
     hir_def::{
         ArithBinOp, Body, CallArg, CallableDef, Cond, CondId, Expr, ExprId, Field as HirField,
         LitKind, MatchArm, Partial, Pat, PatId, PathId, Stmt, StmtId,
-        expr::{BinOp, CompBinOp, LogicalBinOp, UnOp},
+        expr::{BinOp, LogicalBinOp, UnOp},
         params::FuncParamMode,
     },
 };
 
 use super::{
-    effects::{WithBindingSource, owner_effect_bindings, provisional_owner_effect_bindings},
+    effects::{WithBindingSource, provisional_owner_effect_bindings},
     elaborate::elaborate_ends,
     local_facts::{initial_snapshot_source, ordinary_direct_value_role},
 };
@@ -125,7 +125,9 @@ pub(crate) fn lower_to_smir_with_call_sites<'a, 'db>(
             push_binding_local(binding);
             idx += 1;
         }
-        for binding in owner_effect_bindings_for_mode(db, template_owner, binding_role_mode) {
+        for binding in
+            owner_effect_bindings_for_mode(db, instance, template_owner, binding_role_mode)
+        {
             push_binding_local(binding);
         }
         return SemanticBody {
@@ -155,10 +157,12 @@ pub(crate) fn lower_to_smir_with_call_sites<'a, 'db>(
             binding_role_mode,
         },
     );
-    let result = cx.lower_expr(body.expr(db));
+    let root = template_owner
+        .root_expr(db)
+        .unwrap_or_else(|| body.expr(db));
+    let result = cx.lower_expr(root);
     if !cx.is_terminated(cx.current) {
-        let result = (cx.expr_ty(body.expr(db)) != TyId::unit(db))
-            .then(|| SOperand::expr(result, body.expr(db)));
+        let result = (cx.expr_ty(root) != TyId::unit(db)).then(|| SOperand::expr(result, root));
         cx.exit(SemOrigin::Body(template_owner), result);
     }
     let mut body = cx.finish();
@@ -166,14 +170,21 @@ pub(crate) fn lower_to_smir_with_call_sites<'a, 'db>(
     body
 }
 
+/// The effect bindings of an instance's entry: its owner's declared effects
+/// and the components of the rows they name.
 fn owner_effect_bindings_for_mode<'db>(
     db: &'db dyn HirAnalysisDb,
+    instance: SemanticInstance<'db>,
     owner: BodyOwner<'db>,
     binding_role_mode: BindingRoleMode,
 ) -> Vec<LocalBinding<'db>> {
     match binding_role_mode {
-        BindingRoleMode::Final => owner_effect_bindings(db, owner),
-        BindingRoleMode::Provisional => provisional_owner_effect_bindings(db, owner),
+        BindingRoleMode::Final => instance.effect_bindings(db),
+        BindingRoleMode::Provisional => {
+            let mut bindings = provisional_owner_effect_bindings(db, owner);
+            bindings.extend(instance.row_component_bindings(db));
+            bindings
+        }
     }
 }
 
@@ -193,10 +204,15 @@ pub(super) struct SmirLowerCtxt<'a, 'db> {
     pub(super) assigned_layout_backing_sources: Vec<bool>,
     pub(super) blocks: Vec<BlockState<'db>>,
     pub(super) binding_locals: FxHashMap<LocalBinding<'db>, SLocalId>,
+    /// In a closure body, the field of its environment each captured
+    /// binding is read from.
+    pub(super) capture_places: FxHashMap<LocalBinding<'db>, (SPlace<'db>, TyId<'db>)>,
     pub(super) with_binding_sources: FxHashMap<ExprId, WithBindingSource<'db>>,
     pub(super) current: SBlockId,
     pub(super) next_stmt_id: u32,
     pub(super) loop_stack: Vec<LoopScope>,
+    /// Loop bases, evaluated once before the method chain that drives them.
+    loop_bases: FxHashMap<ExprId, SValueId>,
     /// How many yield sites enclose the expression being lowered.
     pub(super) yield_depth: u32,
     /// The slide of the `yield` statement being lowered.
@@ -282,10 +298,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             assigned_layout_backing_sources: Vec::new(),
             blocks: Vec::new(),
             binding_locals: FxHashMap::default(),
+            capture_places: FxHashMap::default(),
             with_binding_sources: FxHashMap::default(),
             current: SBlockId::from_u32(0),
             next_stmt_id: 0,
             loop_stack: Vec::new(),
+            loop_bases: FxHashMap::default(),
             yield_depth: 0,
             slide: None,
         };
@@ -339,6 +357,18 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         for binding in self.owner_effect_bindings() {
             self.alloc_entry_binding_local(binding);
         }
+        if let BodyOwner::Closure { def, .. } = self.template_owner
+            && let Some(env) = self.typed_body.param_binding(0)
+            && let Some(info) = self.typed_body.closure_info(def.expr)
+        {
+            let env = self.binding_locals[&env];
+            for (idx, capture) in info.captures.iter().enumerate() {
+                let mut place = SPlace::new(env);
+                place.push_field(FieldIndex(idx as u16));
+                self.capture_places
+                    .insert(capture.binding, (place, capture.ty));
+            }
+        }
 
         for (pat, _) in self.body.pats(self.db).iter() {
             if let Some(binding) = self.typed_body.pat_binding(pat) {
@@ -381,6 +411,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         source: Option<LocalBinding<'db>>,
     ) -> SLocalId {
         let id = SLocalId::from_u32(self.locals.len() as u32);
+        // Later stages read local types as the instance's: `B::Item` is the
+        // element type it selects.
+        let ty = normalize_ty(self.db, ty, self.body.scope(), self.assumptions);
         let role = source.map_or_else(ordinary_direct_value_role, |binding| {
             self.binding_role(binding)
         });
@@ -416,7 +449,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     }
 
     fn owner_effect_bindings(&self) -> Vec<LocalBinding<'db>> {
-        owner_effect_bindings_for_mode(self.db, self.template_owner, self.binding_role_mode)
+        owner_effect_bindings_for_mode(
+            self.db,
+            self.instance,
+            self.template_owner,
+            self.binding_role_mode,
+        )
     }
 
     fn binding_role(&self, binding: LocalBinding<'db>) -> SemanticLocalRole<'db> {
@@ -542,6 +580,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             expr.data(self.db, self.body),
             Partial::Present(Expr::Path(_))
         ) && let Some(binding) = self.typed_body.expr_binding(expr)
+            && !self.capture_places.contains_key(&binding)
             && let Some(&local) = self.binding_locals.get(&binding)
             && self.locals[local.index()]
                 .ty
@@ -712,8 +751,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         };
         let origin = SemOrigin::Expr(expr);
         // An access binding is re-yielded through its carrier. (A projection's
-        // `Copy` view parameter is a session-owned copy, viewed below.)
+        // snapshot view parameter is a session-owned copy, viewed below.)
         if let Some(binding) = self.typed_body.expr_binding(expr)
+            && !self.capture_places.contains_key(&binding)
             && let Some(&local) = self.binding_locals.get(&binding)
             && self.locals[local.index()]
                 .ty
@@ -809,6 +849,26 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let fields = elems
                     .iter()
                     .map(|expr| self.lower_expr_operand(*expr))
+                    .collect();
+                self.emit_expr_with_origin(origin, ty, SExpr::AggregateMake { ty, fields })
+            }
+            // A closure is the aggregate of its captures, each copied or
+            // moved in.
+            Expr::Closure { .. } => {
+                let captures = self
+                    .typed_body
+                    .closure_info(expr)
+                    .expect("a typed closure has its captures")
+                    .captures
+                    .clone();
+                let fields = captures
+                    .into_iter()
+                    .map(|capture| {
+                        SOperand::expr(
+                            self.lower_binding_read(expr, capture.binding, capture.ty, None),
+                            expr,
+                        )
+                    })
                     .collect();
                 self.emit_expr_with_origin(origin, ty, SExpr::AggregateMake { ty, fields })
             }
@@ -1073,29 +1133,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
     fn lower_path_expr(&mut self, expr: ExprId) -> SValueId {
         if let Some(binding) = self.typed_body.expr_binding(expr) {
-            let local = *self
-                .binding_locals
-                .get(&binding)
-                .expect("binding local should be allocated");
-            return match self.binding_path_read_semantics(
-                binding,
-                self.typed_body
-                    .path_expr_read_semantics(expr)
-                    .expect("binding path should have typed read semantics"),
-                self.expr_ty(expr),
-            ) {
-                PathReadSemantics::ReuseLocal => local,
-                PathReadSemantics::ForwardInterface => self.emit_expr_with_origin(
-                    SemOrigin::Expr(expr),
-                    self.expr_ty(expr),
-                    SExpr::Forward(SOperand::inherited(local)),
-                ),
-                PathReadSemantics::MaterializeValue => self.emit_expr_with_origin(
-                    SemOrigin::Expr(expr),
-                    self.expr_ty(expr),
-                    SExpr::UseValue(SOperand::inherited(local)),
-                ),
-            };
+            let semantics = self
+                .typed_body
+                .path_expr_read_semantics(expr)
+                .expect("binding path should have typed read semantics");
+            return self.lower_binding_read(expr, binding, self.expr_ty(expr), Some(semantics));
         }
         if let Some(const_ref) = self.typed_body.expr_const_ref(expr) {
             return self.lower_const_ref(expr, const_ref);
@@ -1186,6 +1228,39 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 self.typed_body.expr_const_ref(expr),
                 self.typed_body.expr_code_region_ref(self.db, expr),
             ),
+        }
+    }
+
+    /// Reads `binding` as a `ty` value for `expr`: a path to it, or a
+    /// closure capturing it. A closure body reads its captures from its
+    /// environment.
+    fn lower_binding_read(
+        &mut self,
+        expr: ExprId,
+        binding: LocalBinding<'db>,
+        ty: TyId<'db>,
+        semantics: Option<PathReadSemantics>,
+    ) -> SValueId {
+        let origin = SemOrigin::Expr(expr);
+        if let Some((place, _)) = self.capture_places.get(&binding).cloned() {
+            return self.emit_expr_with_origin(origin, ty, SExpr::ReadPlace { place });
+        }
+        let local = *self
+            .binding_locals
+            .get(&binding)
+            .expect("binding local should be allocated");
+        match self.binding_path_read_semantics(
+            binding,
+            semantics.unwrap_or(PathReadSemantics::ReuseLocal),
+            ty,
+        ) {
+            PathReadSemantics::ReuseLocal => local,
+            PathReadSemantics::ForwardInterface => {
+                self.emit_expr_with_origin(origin, ty, SExpr::Forward(SOperand::inherited(local)))
+            }
+            PathReadSemantics::MaterializeValue => {
+                self.emit_expr_with_origin(origin, ty, SExpr::UseValue(SOperand::inherited(local)))
+            }
         }
     }
 
@@ -1410,10 +1485,14 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
     }
 
-    /// Lowers the call input for parameter `param`. A non-Copy projection
-    /// passed to a view parameter is viewed in place: loading it first would
-    /// move the field, and the call's view coercion cannot undo that move.
-    /// Call normalization views root values directly.
+    /// Lowers the call input for parameter `param`. A place passed to a view
+    /// parameter is viewed in place unless it is a snapshot (a scalar or
+    /// handle) or a `Copy` value an ordinary function may take by value:
+    /// loading a non-`Copy` place would move it, and a projection's result
+    /// over a `Copy` aggregate is the caller's place. (Either way the call
+    /// reads the place for its duration.) Call normalization views local
+    /// roots directly; an effect binding is viewed here when its template
+    /// type is not a parameter, so every instance lowers it alike.
     fn lower_callable_argument(
         &mut self,
         expr: ExprId,
@@ -1425,21 +1504,48 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         if mode == FuncParamMode::Own {
             return self.lower_expr(expr);
         }
+        // A closure literal passed to a `mut` parameter is a temporary.
+        if mode == FuncParamMode::Mut
+            && matches!(
+                expr.data(self.db, self.body),
+                Partial::Present(Expr::Closure { .. })
+            )
+        {
+            let local = self.hoist_temporary(expr, ty);
+            return self.emit_borrow(expr, SPlace::new(local), BorrowKind::Mut, ty);
+        }
         // An access binding passed to a view parameter is viewed through its
         // carrier.
         if matches!(
             expr.data(self.db, self.body),
             Partial::Present(Expr::Path(_))
         ) && let Some(binding) = self.typed_body.expr_binding(expr)
+            && !self.capture_places.contains_key(&binding)
             && self.typed_body.binding_access(binding).is_some()
         {
             return self.binding_locals[&binding];
         }
+        let scope = self.body.scope();
         if mode == FuncParamMode::View
-            && !ty_is_copy(self.db, self.body.scope(), ty, self.assumptions)
             && self.typed_body.expr_prop(self.db, expr).shape.is_none()
+            && !ty_is_snapshot(self.db, scope, ty, self.assumptions)
+            && (!ty_is_copy(self.db, scope, ty, self.assumptions)
+                || matches!(
+                    callable.callable_def(),
+                    CallableDef::Func(func) if func.is_projection(self.db)
+                ))
             && let Some(place) = self.try_lower_place(expr)
-            && !place.path.is_empty()
+            && (!place.path.is_empty()
+                || !ty.is_zero_sized(self.db)
+                    && infer_body(self.db, self.template_owner)
+                        .1
+                        .expr_ty(self.db, expr)
+                        .as_generic_param(self.db)
+                        .is_none()
+                    && matches!(
+                        self.locals[place.local.index()].source,
+                        Some(LocalBinding::EffectParam { .. })
+                    ))
         {
             return self.emit_borrow(expr, place, BorrowKind::Ref, ty);
         }
@@ -1453,6 +1559,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// place is guarded by a `ref` access until its own access opens after
     /// the arguments; a temporary root is hoisted into a local.
     fn prepare_receiver(&mut self, receiver: ExprId, callable: &Callable<'db>) -> Receiver<'db> {
+        if let Some(&base) = self.loop_bases.get(&receiver) {
+            return Receiver::Value(base);
+        }
         let mode = callable.callable_def().param_mode(self.db, 0);
         if mode == FuncParamMode::Own {
             return Receiver::Value(self.lower_expr(receiver));
@@ -1482,6 +1591,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             receiver.data(self.db, self.body),
             Partial::Present(Expr::Path(_))
         ) && let Some(binding) = self.typed_body.expr_binding(receiver)
+            && !self.capture_places.contains_key(&binding)
             && self.typed_body.binding_access(binding).is_some()
         {
             return Receiver::Value(self.binding_locals[&binding]);
@@ -1491,19 +1601,24 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             let guard = self.last_stmt_id(guard);
             return Receiver::Place { place, guard };
         }
-        let value = self.lower_expr(receiver);
-        let local = self.alloc_local(ty, Mutability::Mutable, None);
-        self.push_stmt(
-            SemOrigin::Expr(receiver),
-            SStmtKind::Assign {
-                dst: local,
-                expr: SExpr::UseValue(SOperand::expr(value, receiver)),
-            },
-        );
         Receiver::Place {
-            place: SPlace::new(local),
+            place: SPlace::new(self.hoist_temporary(receiver, ty)),
             guard: None,
         }
+    }
+
+    /// Evaluates `expr` into a fresh mutable local.
+    fn hoist_temporary(&mut self, expr: ExprId, ty: TyId<'db>) -> SLocalId {
+        let value = self.lower_expr(expr);
+        let local = self.alloc_local(ty, Mutability::Mutable, None);
+        self.push_stmt(
+            SemOrigin::Expr(expr),
+            SStmtKind::Assign {
+                dst: local,
+                expr: SExpr::UseValue(SOperand::expr(value, expr)),
+            },
+        );
+        local
     }
 
     /// Opens a prepared receiver's accesses: its chain's projection sessions
@@ -1699,7 +1814,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 }
             }
             Stmt::While(cond, body_expr) => self.lower_while(*cond, *body_expr),
-            Stmt::For(pat, iter, body_expr, _) => self.lower_for(stmt, *pat, *iter, *body_expr),
+            Stmt::For(pat, _, _, body_expr, _) => self.lower_for(stmt, *pat, *body_expr),
             Stmt::Continue => {
                 let is_reachable = !self.is_terminated(self.current);
                 let scope = self.loop_stack.last_mut().expect("continue outside loop");
@@ -1759,127 +1874,196 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         self.switch_to(exit_bb);
     }
 
-    fn lower_for(&mut self, stmt: StmtId, pat: PatId, iter: ExprId, body_expr: ExprId) {
-        let for_loop_call_sites = self
+    /// Lowers `for pat in base by d { body }` to the protocol its plan
+    /// selects: the collection's own, or the driver's. Each state is tested
+    /// where it is produced, so only the state itself is carried around the
+    /// loop; the next state is taken before the body, and `continue` goes
+    /// straight to its test.
+    fn lower_for(&mut self, stmt: StmtId, pat: PatId, body_expr: ExprId) {
+        let sites = self
             .for_loop_call_sites
             .get(stmt.index())
             .and_then(|sites| sites.as_ref())
             .unwrap_or_else(|| panic!("missing staged callee refs for for-loop {stmt:?}"));
-        let seq = self
+        let plan = self
             .typed_body
-            .for_loop_seq(stmt)
-            .unwrap_or_else(|| panic!("missing Seq resolution for for-loop {stmt:?}"));
-        let iter_value = self.lower_expr(iter);
-        let iter_operand = SOperand::expr(iter_value, iter);
-        let usize_ty = seq.len_callable.ret_ty(self.db);
-        let elem_ty = seq.elem_ty;
-        let idx_local = self.alloc_temp(usize_ty);
-        self.push_synthetic_stmt(SStmtKind::Assign {
-            dst: idx_local,
-            expr: SExpr::Const(SConst::from_trusted_source(
-                self.db,
-                int_const(self.db, usize_ty, BigInt::default()),
-            )),
+            .for_loop_plan(stmt)
+            .unwrap_or_else(|| panic!("missing loop protocol for for-loop {stmt:?}"));
+        // The bases the loop holds: their values, or the carriers of their
+        // accesses.
+        let bases: Vec<_> = plan
+            .bases
+            .iter()
+            .map(|&base| {
+                let value = self.lower_source(base);
+                self.loop_bases.insert(base, value);
+                SOperand::expr(value, base)
+            })
+            .collect();
+        let base = bases[0].value;
+        // The driver, evaluated once. A producer advances its own copy.
+        let driver = plan.driver.map(|driver| {
+            let value = SOperand::expr(self.lower_source(driver), driver);
+            if plan.item != ForLoopItem::Produced {
+                return value;
+            }
+            let ty = self.locals[value.value.index()].ty;
+            let temp = self.alloc_local(ty, Mutability::Mutable, None);
+            self.push_synthetic_stmt(SStmtKind::Assign {
+                dst: temp,
+                expr: SExpr::Forward(value),
+            });
+            SOperand::synthetic(temp)
         });
-        let len_effect_args = self.lower_effect_arg_slice(&for_loop_call_sites.len.effect_args);
-        let len_value = self.emit_expr(
-            usize_ty,
-            SExpr::Call {
-                call_site: CallSiteId::ForLoopLen(stmt),
-                callee: for_loop_call_sites
-                    .len
-                    .callee
-                    .expect("Seq::len should lower to a semantic callee"),
-                args: vec![iter_operand].into_boxed_slice(),
-                effect_args: len_effect_args,
-            },
+        // The calls take the driver first, then the bases, then the state.
+        let inputs: Vec<_> = driver.into_iter().chain(bases).collect();
+        let with_state = |state| [&inputs[..], &[SOperand::synthetic(state)]].concat();
+        let call = |this: &mut Self, step, args: Vec<SOperand>, ty| {
+            let site = sites.site(step);
+            let effect_args = this.lower_effect_arg_slice(&site.effect_args);
+            this.emit_expr(
+                ty,
+                SExpr::Call {
+                    call_site: CallSiteId::ForLoop(stmt, step),
+                    callee: site
+                        .callee
+                        .expect("a loop protocol call lowers to a semantic callee"),
+                    args: args.into_boxed_slice(),
+                    effect_args,
+                },
+            )
+        };
+        let option_ty = plan.call(ForLoopStep::Start).callable.ret_ty(self.db);
+        let shape = &plan.shape;
+        let some = VariantIndex(
+            sum_payload_variant(self.db, self.body.scope(), option_ty)
+                .expect("a loop state is an `Option`"),
         );
-
-        let cond_bb = self.new_block();
+        let state = self.alloc_temp(plan.state_ty);
         let body_bb = self.new_block();
-        let advance_bb = self.new_block();
+        let latch_bb = self.new_block();
         let exit_bb = self.new_block();
-        self.set_synthetic_terminator(self.current, STerminatorKind::Goto(cond_bb));
-
-        self.switch_to(cond_bb);
-        let cond = self.emit_expr(
-            TyId::bool(self.db),
-            SExpr::Binary {
-                op: BinOp::Comp(CompBinOp::Lt),
-                lhs: SOperand::synthetic(idx_local),
-                rhs: SOperand::synthetic(len_value),
-            },
-        );
-        self.set_synthetic_terminator(
-            self.current,
-            STerminatorKind::Branch {
-                cond: SOperand::synthetic(cond),
-                then_bb: body_bb,
-                else_bb: exit_bb,
-            },
-        );
+        // Enters the body with the state `next` holds, or leaves the loop.
+        let test = |this: &mut Self, next| {
+            let is_some = this.emit_expr(
+                TyId::bool(this.db),
+                SExpr::IsEnumVariant {
+                    value: SOperand::synthetic(next),
+                    variant: some,
+                },
+            );
+            let load_bb = this.new_block();
+            this.set_synthetic_terminator(
+                this.current,
+                STerminatorKind::Branch {
+                    cond: SOperand::synthetic(is_some),
+                    then_bb: load_bb,
+                    else_bb: exit_bb,
+                },
+            );
+            this.switch_to(load_bb);
+            this.push_synthetic_stmt(SStmtKind::Assign {
+                dst: state,
+                expr: SExpr::ExtractEnumField {
+                    value: SOperand::synthetic(next),
+                    variant: some,
+                    field: FieldIndex(0),
+                },
+            });
+            this.set_synthetic_terminator(this.current, STerminatorKind::Goto(body_bb));
+        };
+        let first = call(self, ForLoopStep::Start, inputs.clone(), option_ty);
+        test(self, first);
 
         self.loop_stack.push(LoopScope {
-            continue_bb: advance_bb,
+            continue_bb: latch_bb,
             break_bb: exit_bb,
             has_reachable_continue: false,
         });
         self.switch_to(body_bb);
-        let get_effect_args = self.lower_effect_arg_slice(&for_loop_call_sites.get.effect_args);
-        let elem = self.emit_expr(
-            elem_ty,
-            SExpr::Call {
-                call_site: CallSiteId::ForLoopGet(stmt),
-                callee: for_loop_call_sites
-                    .get
-                    .callee
-                    .expect("Seq::get should lower to a semantic callee"),
-                args: vec![iter_operand, SOperand::synthetic(idx_local)].into_boxed_slice(),
-                effect_args: get_effect_args,
-            },
-        );
-        if seq.element_layout_backing_source {
-            self.locals[elem.index()].layout_backing_sources = vec![LayoutBackingSource {
-                target: Vec::new(),
-                source: LayoutBackingPlace::Local(SPlace::dynamic_index(iter_value, idx_local)),
-            }];
-            self.assigned_layout_backing_sources[elem.index()] = true;
+        let next = call(self, ForLoopStep::Next, with_state(state), option_ty);
+        let mut at_args = with_state(state);
+        // `produce` advances the driver through a `mut` access.
+        if let (Some(temp), Some(driver)) = (driver, plan.driver)
+            && plan.item == ForLoopItem::Produced
+        {
+            let ty = self.locals[temp.value.index()].ty;
+            let place = SPlace::new(temp.value);
+            at_args[0] = SOperand::synthetic(self.emit_borrow(driver, place, BorrowKind::Mut, ty));
         }
-        self.bind_pattern(pat, elem);
+        let yielded = call(self, ForLoopStep::At, at_args, shape.carrier_ty(self.db));
+        // The part of what the step yields that the pattern binds.
+        let (element, element_shape) = match shape {
+            Shape::Tuple(parts) if plan.binds_element => (
+                self.emit_expr(
+                    parts[1].carrier_ty(self.db),
+                    SExpr::Field {
+                        base: SOperand::synthetic(yielded),
+                        field: FieldIndex(1),
+                    },
+                ),
+                &parts[1],
+            ),
+            shape => (yielded, shape),
+        };
+        // A copy ends the element's session before the body runs.
+        let element = match plan.item {
+            ForLoopItem::Copy => {
+                let read = |this: &mut Self, carrier, shape: &Shape<'db>| match shape {
+                    Shape::Access(_, ty) => this.emit_expr(
+                        *ty,
+                        SExpr::ReadPlace {
+                            place: SPlace::new(carrier),
+                        },
+                    ),
+                    _ => carrier,
+                };
+                match element_shape {
+                    Shape::Tuple(parts) => {
+                        let fields = parts
+                            .iter()
+                            .enumerate()
+                            .map(|(idx, part)| {
+                                let field = self.emit_expr(
+                                    part.carrier_ty(self.db),
+                                    SExpr::Field {
+                                        base: SOperand::synthetic(element),
+                                        field: FieldIndex(idx as u16),
+                                    },
+                                );
+                                SOperand::synthetic(read(self, field, part))
+                            })
+                            .collect();
+                        let ty = element_shape.erased_ty(self.db);
+                        self.emit_expr(ty, SExpr::AggregateMake { ty, fields })
+                    }
+                    shape => read(self, element, shape),
+                }
+            }
+            ForLoopItem::Access(_) | ForLoopItem::Produced => element,
+        };
+        if plan.element_layout_backing_source {
+            self.locals[element.index()].layout_backing_sources = vec![LayoutBackingSource {
+                target: Vec::new(),
+                source: LayoutBackingPlace::Local(SPlace::dynamic_index(base, state)),
+            }];
+            self.assigned_layout_backing_sources[element.index()] = true;
+        }
+        self.bind_pattern(pat, element);
         let _ = self.lower_expr(body_expr);
         let falls_through = !self.is_terminated(self.current);
         if falls_through {
-            self.set_synthetic_terminator(self.current, STerminatorKind::Goto(advance_bb));
+            self.set_synthetic_terminator(self.current, STerminatorKind::Goto(latch_bb));
         }
         let scope = self.loop_stack.pop().expect("for loop scope");
         if falls_through || scope.has_reachable_continue {
-            // Both normal fallthrough and `continue` must advance the sequence.
-            self.switch_to(advance_bb);
-            let one = self.emit_expr(
-                usize_ty,
-                SExpr::Const(SConst::from_trusted_source(
-                    self.db,
-                    int_const(self.db, usize_ty, BigInt::from(1u8)),
-                )),
-            );
-            let next = self.emit_expr(
-                usize_ty,
-                SExpr::Binary {
-                    op: BinOp::Arith(ArithBinOp::Add),
-                    lhs: SOperand::synthetic(idx_local),
-                    rhs: SOperand::synthetic(one),
-                },
-            );
-            self.push_synthetic_stmt(SStmtKind::Assign {
-                dst: idx_local,
-                expr: SExpr::UseValue(SOperand::synthetic(next)),
-            });
-            self.set_synthetic_terminator(self.current, STerminatorKind::Goto(cond_bb));
+            self.switch_to(latch_bb);
+            test(self, next);
         } else {
-            // Every body path leaves the loop, so nothing reaches the advance
-            // block. Close it like a dead `if`/`match` join rather than leaving
-            // it to read `idx_local` from a block unreachable from entry.
-            self.set_synthetic_terminator(advance_bb, STerminatorKind::Goto(advance_bb));
+            // Every body path leaves the loop, so nothing reaches the latch.
+            // Close it like a dead `if`/`match` join rather than leaving it to
+            // read `next` from a block unreachable from entry.
+            self.set_synthetic_terminator(latch_bb, STerminatorKind::Goto(latch_bb));
         }
         self.switch_to(exit_bb);
     }

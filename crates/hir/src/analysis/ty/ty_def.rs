@@ -4,8 +4,9 @@ use std::fmt;
 
 use crate::{
     hir_def::{
-        Body, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId,
+        Body, ClosureDef, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId,
         TypeAlias as HirTypeAlias, VariantKind,
+        params::FuncParamMode,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
     },
@@ -28,7 +29,7 @@ use super::{
         ConstTyData, ConstTyId, TypePrintMode, UnevaluatedConstPolicy, const_ty_from_sem_const,
     },
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
-    effects::place_effect_provider_param_index_map,
+    effects::{place_effect_provider_param_index_map, rows::RowComponent},
     trait_def::{TraitInstId, TraitRefId},
     trait_resolution::{PredicateListId, WellFormedness},
     ty_lower::collect_generic_params,
@@ -169,6 +170,7 @@ impl<'db> TyId<'db> {
                         return contract.top_mod(db).ingot(db).into();
                     }
                     TyData::TyBase(TyBase::Func(def)) => return def.ingot(db).into(),
+                    TyData::TyBase(TyBase::Closure(_)) => return None,
                     TyData::TyApp(lhs, _) => {
                         ty = *lhs;
                     }
@@ -181,6 +183,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
             TyData::TyBase(TyBase::Contract(contract)) => contract.top_mod(db).ingot(db).into(),
             TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
+            TyData::TyBase(TyBase::Closure(_)) => None,
             TyData::TyApp(lhs, _) => lhs.ingot(db),
             // Projection types don't have a single defining ingot, but we still want an ingot
             // that can be used to search for relevant trait impls. Using an ingot that is
@@ -210,6 +213,7 @@ impl<'db> TyId<'db> {
     pub fn flags(self, db: &dyn HirAnalysisDb) -> TyFlags {
         // Leaf types have fixed flags; only composite types need the cached walk.
         match self.data(db) {
+            TyData::TyBase(TyBase::Closure(_)) => ty_flags(db, self),
             TyData::TyBase(_) | TyData::Never => TyFlags::empty(),
             TyData::TyVar(_) => TyFlags::HAS_VAR,
             TyData::TyParam(_) => TyFlags::HAS_PARAM,
@@ -371,7 +375,7 @@ impl<'db> TyId<'db> {
         Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
-    pub(super) fn tuple_with_elems(db: &'db dyn HirAnalysisDb, elems: &[TyId<'db>]) -> Self {
+    pub(crate) fn tuple_with_elems(db: &'db dyn HirAnalysisDb, elems: &[TyId<'db>]) -> Self {
         let base = TyBase::tuple(elems.len());
         let mut ty = Self::new(db, TyData::TyBase(base));
         for &elem in elems {
@@ -465,6 +469,17 @@ impl<'db> TyId<'db> {
         matches!(self.base_ty(db).data(db), TyData::TyBase(TyBase::Func(_)))
     }
 
+    pub fn closure(db: &'db dyn HirAnalysisDb, closure: ClosureTy<'db>) -> Self {
+        Self::new(db, TyData::TyBase(TyBase::Closure(closure)))
+    }
+
+    pub fn as_closure(self, db: &'db dyn HirAnalysisDb) -> Option<ClosureTy<'db>> {
+        match self.base_ty(db).data(db) {
+            TyData::TyBase(TyBase::Closure(closure)) => Some(*closure),
+            _ => None,
+        }
+    }
+
     pub(crate) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
@@ -541,7 +556,7 @@ impl<'db> TyId<'db> {
                 || matches!(ty.base_ty(db).data(db), TyData::TyBase(TyBase::Func(_)))
             {
                 true
-            } else if ty.is_tuple(db) {
+            } else if ty.is_tuple(db) || ty.as_closure(db).is_some() {
                 ty.field_types(db)
                     .into_iter()
                     .all(|field_ty| inner(db, field_ty, visiting))
@@ -618,6 +633,12 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// Whether this is a product whose positional fields are its
+    /// `field_types`: a tuple, a struct, or a closure environment.
+    pub fn is_product(self, db: &dyn HirAnalysisDb) -> bool {
+        self.is_tuple(db) || self.is_struct(db) || self.as_closure(db).is_some()
+    }
+
     pub fn is_prim(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyBase(TyBase::Prim(_)))
     }
@@ -652,7 +673,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.scope(db)),
             TyData::TyBase(TyBase::Contract(c)) => Some(c.scope()),
             TyData::TyBase(TyBase::Func(func)) => Some(func.scope()),
-            TyData::TyBase(TyBase::Prim(..)) => None,
+            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(..)) => None,
             TyData::ConstTy(const_ty) => match const_ty.data(db) {
                 ConstTyData::TyVar(..) => None,
                 ConstTyData::TyParam(ty_param, _) => Some(ty_param.scope(db)),
@@ -680,7 +701,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
             TyData::TyBase(TyBase::Contract(c)) => c.scope().name_span(db),
             TyData::TyBase(TyBase::Func(func)) => Some(func.name_span()),
-            TyData::TyBase(TyBase::Prim(_)) => None,
+            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(_)) => None,
 
             TyData::ConstTy(ty) => match ty.data(db) {
                 ConstTyData::TyParam(param, _) => param.scope(db).name_span(db),
@@ -1031,6 +1052,8 @@ impl<'db> TyId<'db> {
         if self.is_tuple(db) {
             let (_, elems) = self.decompose_ty_app(db);
             elems.len()
+        } else if let Some(closure) = self.as_closure(db) {
+            closure.captures(db).len()
         } else if let Some(adt_def) = self.adt_def(db) {
             match adt_def.adt_ref(db) {
                 AdtRef::Struct(_) => adt_def.fields(db)[0].num_types(),
@@ -1054,6 +1077,8 @@ fn ty_field_types<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'d
     if ty.is_tuple(db) {
         let (_, elems) = ty.decompose_ty_app(db);
         elems.to_vec()
+    } else if let Some(closure) = ty.as_closure(db) {
+        closure.captures(db).to_vec()
     } else if let Some(adt_def) = ty.adt_def(db) {
         match adt_def.adt_ref(db) {
             AdtRef::Struct(_) => {
@@ -1106,6 +1131,59 @@ pub enum TyData<'db> {
     // This type can be unified with any other types.
     // NOTE: For type soundness check in this level, we don't consider trait satisfiability.
     Invalid(InvalidCause<'db>),
+}
+
+/// The type of a closure expression: an environment of captured values and a
+/// function of the closure's parameters. Closures are values of this type
+/// and implement the core callable shape traits of their parameter modes
+/// (see `ty::closure`).
+#[salsa::interned]
+#[derive(Debug)]
+pub struct ClosureTy<'db> {
+    pub def: ClosureDef<'db>,
+    /// Generic arguments of the item whose body defines the closure. The
+    /// closure's semantic instances substitute the parent's typed-body
+    /// template with these.
+    #[return_ref]
+    pub parent_args: Vec<TyId<'db>>,
+    /// Environment field types, one per captured binding, in capture order.
+    #[return_ref]
+    pub captures: Vec<TyId<'db>>,
+    /// The parameters' modes and types.
+    #[return_ref]
+    pub params: Vec<(FuncParamMode, TyId<'db>)>,
+    pub ret_ty: TyId<'db>,
+    /// The effects the body uses that its own `with` blocks do not provide:
+    /// its row `E`, which the caller of each call provides.
+    #[return_ref]
+    pub effects: Vec<RowComponent<'db>>,
+}
+
+impl<'db> ClosureTy<'db> {
+    pub fn modes(self, db: &'db dyn HirAnalysisDb) -> Vec<FuncParamMode> {
+        self.params(db).iter().map(|&(mode, _)| mode).collect()
+    }
+
+    pub fn param_tys(self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        self.params(db).iter().map(|&(_, ty)| ty).collect()
+    }
+
+    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
+        let params = self
+            .params(db)
+            .iter()
+            .map(|(mode, ty)| {
+                let mode = match mode {
+                    FuncParamMode::View => "",
+                    FuncParamMode::Mut => "mut ",
+                    FuncParamMode::Own => "own ",
+                };
+                format!("{mode}{}", ty.pretty_print(db))
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("|{params}| -> {}", self.ret_ty(db).pretty_print(db))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1592,7 +1670,10 @@ impl<'db> TyParam<'db> {
     }
 
     pub fn is_effect_provider(&self) -> bool {
-        matches!(self.variant, Variant::EffectProvider)
+        matches!(
+            self.variant,
+            Variant::EffectProvider | Variant::RowEffectProvider(_)
+        )
     }
 
     pub fn is_implicit(&self) -> bool {
@@ -1651,6 +1732,35 @@ impl<'db> TyParam<'db> {
         }
     }
 
+    /// The provider type of component `idx` of a row the body whose scope is
+    /// `owner` is generic over: the row of the closure at `closure`, or with
+    /// `None` a row the body's function's effects name. Each instance of the body takes it
+    /// from the provider its caller binds.
+    pub fn row_effect_provider(
+        name: IdentId<'db>,
+        idx: usize,
+        owner: ScopeId<'db>,
+        closure: Option<ExprId>,
+    ) -> Self {
+        Self {
+            name,
+            idx,
+            declared_index: None,
+            kind: Kind::Star,
+            variant: Variant::RowEffectProvider(closure),
+            owner,
+        }
+    }
+
+    /// The body whose row provider this is: its scope, and its closure if it
+    /// is a closure's.
+    pub fn row_effect_provider_of(&self) -> Option<(ScopeId<'db>, Option<ExprId>)> {
+        match self.variant {
+            Variant::RowEffectProvider(closure) => Some((self.owner, closure)),
+            _ => None,
+        }
+    }
+
     pub fn implicit_param(name: IdentId<'db>, idx: usize, kind: Kind, scope: ScopeId<'db>) -> Self {
         Self {
             name,
@@ -1675,9 +1785,10 @@ impl<'db> TyParam<'db> {
                 // TyParam.idx includes implicit params, subtract offset to get original idx
                 self.idx - offset
             }
-            Variant::Effect => self.idx,
-            Variant::EffectProvider => self.idx,
-            Variant::Implicit => self.idx,
+            Variant::Effect
+            | Variant::EffectProvider
+            | Variant::RowEffectProvider(_)
+            | Variant::Implicit => self.idx,
         }
     }
 
@@ -1688,8 +1799,9 @@ impl<'db> TyParam<'db> {
                 ScopeId::GenericParam(self.owner.item(), self.original_idx(db) as u16)
             }
             Variant::Effect => ScopeId::FuncParam(self.owner.item(), self.idx as u16),
-            Variant::EffectProvider => self.owner,
-            Variant::Implicit => self.owner,
+            Variant::EffectProvider | Variant::RowEffectProvider(_) | Variant::Implicit => {
+                self.owner
+            }
         }
     }
 }
@@ -1705,6 +1817,9 @@ enum Variant {
     /// These are inserted by type lowering for functions that have type effects so that
     /// monomorphization can treat effect domains as ordinary generic arguments.
     EffectProvider,
+    /// The provider type of a row component a body is generic over, of a
+    /// closure's row if it names the closure (`TyParam::row_effect_provider`).
+    RowEffectProvider(Option<ExprId>),
     /// Synthetic generic parameter that does not map to a source-level generic parameter.
     Implicit,
 }
@@ -1715,6 +1830,7 @@ pub enum TyBase<'db> {
     Adt(AdtDef<'db>),
     Contract(crate::hir_def::Contract<'db>),
     Func(CallableDef<'db>),
+    Closure(ClosureTy<'db>),
 }
 
 impl<'db> TyBase<'db> {
@@ -1778,6 +1894,8 @@ impl<'db> TyBase<'db> {
                 func.name(db)
                     .map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string())
             ),
+
+            Self::Closure(closure) => closure.pretty_print(db),
         }
     }
 
@@ -1970,6 +2088,7 @@ impl HasKind for TyBase<'_> {
             TyBase::Adt(adt) => adt.kind(db),
             TyBase::Contract(_) => Kind::Star, // Contracts have no generic params
             TyBase::Func(func) => func.kind(db),
+            TyBase::Closure(_) => Kind::Star,
         }
     }
 }

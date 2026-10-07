@@ -1,0 +1,64 @@
+// A method naming a row its view expands, such as a `Bidirectional` method
+// naming `Collection`'s row `E`, uses the row's components as its own
+// effects.
+use core::iter::{Bidirectional, Collection}
+
+/// Values held by an effect, and how many of them are in use.
+struct Counts {
+    values: [u256; 4],
+    len: u256,
+}
+
+fn count() -> u256 uses (counts: Counts) {
+    counts.len
+}
+
+fn value(_ i: u256) -> u256 uses (counts: Counts) {
+    counts.values[i as usize]
+}
+
+/// The values in use, reached through the `Counts` effect.
+struct InUse {}
+
+impl Collection for InUse {
+    uses E = (counts: Counts)
+    space S = memory
+    type Cursor = u256
+    type Item = u256
+
+    fn start(self) -> Option<u256> uses E {
+        if count() == 0 { Option::None } else { Option::Some(0) }
+    }
+
+    fn next(self, _ c: u256) -> Option<u256> uses E {
+        if c + 1 < count() { Option::Some(c + 1) } else { Option::None }
+    }
+
+    fn at(self, _ c: u256) -> ref u256 uses E {
+        let v = value(c)
+        ref v
+    }
+}
+
+impl Bidirectional for InUse {
+    fn last(self) -> Option<u256> uses E {
+        if count() == 0 { Option::None } else { Option::Some(count() - 1) }
+    }
+
+    fn prev(self, _ c: u256) -> Option<u256> uses E {
+        if c == 0 { Option::None } else { Option::Some(c - 1) }
+    }
+}
+
+#[test]
+fn reversed_through_a_supertrait_row() {
+    let counts = Counts { values: [1, 2, 3, 4], len: 3 }
+    let in_use = InUse {}
+    with (counts) {
+        let mut digits = 0
+        for x in in_use.reversed() {
+            digits = digits * 10 + x
+        }
+        assert(digits == 321)
+    }
+}

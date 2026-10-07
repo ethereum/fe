@@ -1237,7 +1237,9 @@ fn instantiate_provider_target_layout<'db>(
     let boundary = LayoutBoundaryIdentity::ProviderTarget(impl_instance.selected());
     let schema = match impl_instance.selected().origin(db) {
         ImplementorOrigin::Hir(impl_trait) => Some(ParamSchemaId::full(db, impl_trait.into())),
-        ImplementorOrigin::VirtualContract(_) | ImplementorOrigin::Assumption => None,
+        ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Assumption
+        | ImplementorOrigin::Closure => None,
     };
     if schema.is_none() && !impl_instance.impl_args(db).is_empty() {
         return Err(ContractLayoutError::InternalLayoutGraph);

@@ -1,0 +1,128 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+assertion_line: 25
+expression: diags
+input_file: fixtures/semantic_access/acceptance.fe
+---
+error[16-0001]: access conflict in `fn case01_direct_conflict`
+   ┌─ acceptance.fe:52:13
+   │
+51 │     let x = c.direct()
+   │             - access opened here
+52 │     let v = c.v
+   │             ^^^ cannot read this place while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn case01_slide_conflict`
+   ┌─ acceptance.fe:60:13
+   │
+59 │     let x = c.written_back()
+   │             - access opened here
+60 │     let v = c.v
+   │             ^^^ cannot read this place while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn case02_view_blocks_write`
+   ┌─ acceptance.fe:81:5
+   │
+80 │     let r = ref c
+   │             ----- access opened here
+81 │     c = 1
+   │     ^^^^^ cannot write to this place while a `ref` access of it is open
+
+error[16-0001]: access conflict in `fn aliased`
+   ┌─ acceptance.fe:94:22
+   │
+94 │         (mut self.a, mut self.a)
+   │          ----------  ^^^^^^^^^^ cannot mutably access this place while a `mut` access of it is open
+   │          │
+   │          access opened here
+
+error[16-0001]: access conflict in `fn Case06HiddenCall::__init__`
+    ┌─ acceptance.fe:153:9
+    │
+152 │         let held = mut value
+    │                    --------- access opened here
+153 │         ping_evm()
+    │         ^^^^^^^^^^ this call may write storage while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn Case07RawStorage::__init__`
+    ┌─ acceptance.fe:163:9
+    │
+162 │         let held = mut value
+    │                    --------- access opened here
+163 │         touch_raw()
+    │         ^^^^^^^^^^^ this call may write storage while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn case12_payload_view`
+    ┌─ acceptance.fe:209:15
+    │
+208 │         let view = ref self.c
+    │                    ---------- access opened here
+209 │         yield mut self.c
+    │               ^^^^^^^^^^ cannot mutably access this place while a `ref` access of it is open
+
+error[16-0001]: access conflict in `fn Case17FrameGrant::__init__`
+    ┌─ acceptance.fe:269:9
+    │
+268 │         let x = snapshot(mut vault)
+    │                          --------- access opened here
+269 │         bump_and_ping(mut x)
+    │         ^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn with_loan`
+    ┌─ acceptance.fe:329:5
+    │
+328 │     let held = mut vault.value
+    │                --------------- access opened here
+329 │     ping()
+    │     ^^^^^^ cannot mutably access this place while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn with_loan`
+    ┌─ acceptance.fe:329:5
+    │
+328 │     let held = mut vault.value
+    │                --------------- access opened here
+329 │     ping()
+    │     ^^^^^^ this call may write storage while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn case27_provider_aliases_view`
+    ┌─ acceptance.fe:409:9
+    │
+407 │     let r = ref p
+    │             ----- access opened here
+408 │     with (State = p) {
+409 │         update_state()
+    │         ^^^^^^^^^^^^^^ cannot mutably access this place while a `ref` access of it is open
+
+error[16-0001]: access conflict in `fn Case33CopyArraySpace::__init__`
+    ┌─ acceptance.fe:431:9
+    │
+430 │         let x = cells.at(0)
+    │                 ----- access opened here
+431 │         ping()
+    │         ^^^^^^ this call may write storage while a `ref` access of it is open
+
+error[16-0001]: access conflict in `fn case36_copy_array_view`
+    ┌─ acceptance.fe:445:5
+    │
+444 │     let x = first(xs)
+    │             --------- projection opened here
+445 │     xs[1] = 5
+    │     ^^^^^^^^^ cannot write to this place while a `ref` projection of it is open
+
+error[16-0002]: move conflict in `fn case13_uninitialized`
+    ┌─ acceptance.fe:222:11
+    │
+222 │     yield mut x
+    │           ^^^^^ cannot use a value before it is initialized
+
+error[16-0002]: move conflict in `fn case25_dynamic_moves`
+    ┌─ acceptance.fe:382:13
+    │
+382 │     consume(items[i])
+    │             ^^^^^^^^ cannot move out of an element at a dynamic index
+
+warning[16-0012]: discarded writes in `fn counter`
+   ┌─ acceptance.fe:67:5
+   │
+67 │     mut n
+   │     ^^^^^ this yields a place of the projection's own frame, and no code after the yield writes it back

@@ -16,16 +16,50 @@
 //! let n = operators.len()
 //! ```
 use core::abi::{AbiSize, DynArray, Encode}
+use core::iter::{Bidirectional, Collection}
 use core::ops::WrappingAdd
+use core::option::Option
 use ingot::abi::{Sol, StaticAbiElement}
 use super::effects::RawStorage
 use super::mapping::SolMapping
-use super::sol_array::{SolArray, read_dyn_array}
+use super::sol_array::{SolArray, first_index, last_index, next_index, prev_index, read_dyn_array}
 use super::sol_slot::{SolPacked, data_slot, field_mask}
 
 pub struct SolEnumerableSet<T> { slot: u256 }
 
 impl<T> Copy for SolEnumerableSet<T> {}
+impl<T> Snapshot for SolEnumerableSet<T> {}
+
+// A loop visits the elements in the set's internal order, like `get`.
+impl<T: SolPacked> Collection for SolEnumerableSet<T> {
+    uses E = (storage: RawStorage)
+    space S = memory
+    type Cursor = u256
+    type Item = T
+
+    fn start(self) -> Option<u256> uses E {
+        first_index(self.len())
+    }
+
+    fn next(self, _ c: u256) -> Option<u256> uses E {
+        next_index(c, self.len())
+    }
+
+    fn at(self, _ c: u256) -> ref T uses E {
+        let value = self.get(c)
+        ref value
+    }
+}
+
+impl<T: SolPacked> Bidirectional for SolEnumerableSet<T> {
+    fn last(self) -> Option<u256> uses E {
+        last_index(self.len())
+    }
+
+    fn prev(self, _ c: u256) -> Option<u256> uses E {
+        prev_index(c)
+    }
+}
 
 // Each element is stored as its `SolPacked` bits in a full word, which is
 // `bytes32(uint256(uint160(a)))` for an address, like OZ.

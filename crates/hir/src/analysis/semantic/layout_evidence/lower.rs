@@ -6,7 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::analysis::{
     HirAnalysisDb,
     semantic::{
-        SConst, SLocalId, SemConstId, SemanticBody, SemanticCalleeRef, SemanticInstance,
+        SConst, SLocal, SLocalId, SemConstId, SemanticBody, SemanticCalleeRef, SemanticInstance,
         SemanticNormalizationFailure, get_or_build_semantic_instance,
         identity_semantic_instance_key,
         normalized::{
@@ -2014,22 +2014,47 @@ fn layout_evidence_body_query<'db>(
     let template_owner = normalized.template_owner;
     let hir_body = template_owner.body(db);
     let identity_key = identity_semantic_instance_key(db, template_owner);
-    let template_source = (owner.key(db) != identity_key)
+    let template = (owner.key(db) != identity_key)
         .then(|| {
             let template = get_or_build_semantic_instance(db, identity_key);
             normalize_runtime_semantic_body(db, template)
                 .map_err(layout_normalization_error)
-                .map(|_| template.body(db))
+                .map(|_| template)
         })
         .transpose()?;
-    if let Some(template) = template_source
-        && template.locals.len() != source.locals.len()
-    {
-        return Err(LayoutEvidenceError::TemplateLocalCountMismatch {
-            expected: template.locals.len(),
-            actual: source.locals.len(),
-        });
-    }
+    // An instance's locals are its template's, in order, apart from the
+    // components of the rows its effects name.
+    let ordinary_locals = |instance: SemanticInstance<'db>| {
+        let components: FxHashSet<_> = instance.row_component_bindings(db).into_iter().collect();
+        instance
+            .body(db)
+            .locals
+            .iter()
+            .enumerate()
+            .filter(|(_, local)| {
+                !local
+                    .source
+                    .is_some_and(|binding| components.contains(&binding))
+            })
+            .map(|(idx, _)| idx)
+            .collect::<Vec<_>>()
+    };
+    let template_locals: FxHashMap<usize, &SLocal<'db>> = match template {
+        Some(template) => {
+            let (own, theirs) = (ordinary_locals(owner), ordinary_locals(template));
+            if own.len() != theirs.len() {
+                return Err(LayoutEvidenceError::TemplateLocalCountMismatch {
+                    expected: theirs.len(),
+                    actual: own.len(),
+                });
+            }
+            let template_body = template.body(db);
+            own.into_iter()
+                .zip(theirs.into_iter().map(|idx| &template_body.locals[idx]))
+                .collect()
+        }
+        None => FxHashMap::default(),
+    };
     let mut builder = LayoutEvidenceBuilder {
         db,
         normalized: &normalized,
@@ -2045,8 +2070,8 @@ fn layout_evidence_body_query<'db>(
     for (idx, local) in representations.locals.iter().enumerate() {
         let semantic_local = SLocalId::from_u32(idx as u32);
         let layout_ty = local.ty;
-        let template_ty = template_source
-            .and_then(|template| template.locals.get(idx))
+        let template_ty = template_locals
+            .get(&idx)
             .map_or(layout_ty, |local| local.ty);
         let origin = local
             .source

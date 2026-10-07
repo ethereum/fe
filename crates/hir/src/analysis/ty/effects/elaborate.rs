@@ -158,7 +158,7 @@ fn build_conservative_invalid_type_key_barrier_pattern_in_scope<'db>(
 ) -> Option<EffectPatternKey<'db>> {
     let ty = match resolve_effect_path(db, key_path, scope, assumptions) {
         super::ResolvedEffectKey::Type(schema) => Some(schema.carrier),
-        super::ResolvedEffectKey::Trait(_) => None,
+        super::ResolvedEffectKey::Trait(_) | super::ResolvedEffectKey::Row(_) => None,
         super::ResolvedEffectKey::Invalid | super::ResolvedEffectKey::Other => {
             match resolve_path(db, key_path, scope, assumptions, false).ok()? {
                 PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => Some(ty),
@@ -329,6 +329,7 @@ pub fn build_barrier_pattern_for_key_in_scope<'db>(
         super::ResolvedEffectKey::Trait(schema) => Some(EffectPatternKey::Trait(
             build_trait_barrier_pattern_key(db, scope, assumptions, schema.into_trait_inst(db)),
         )),
+        super::ResolvedEffectKey::Row(_) => None,
         super::ResolvedEffectKey::Invalid | super::ResolvedEffectKey::Other => {
             match resolve_path(db, key_path, scope, assumptions, false).ok()? {
                 crate::analysis::name_resolution::PathRes::Ty(ty)

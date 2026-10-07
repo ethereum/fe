@@ -353,6 +353,13 @@ pub fn resolve_static_slot_layout<'db>(
     };
     let inst = TraitInstId::new(db, static_slot, vec![owner_ty], IndexMap::new());
     let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
+    // An unresolved argument cannot instantiate an impl, only select one.
+    if owner_ty.has_var(db) {
+        return match solve_cx.select_impl(db, inst) {
+            Selection::NotFound => StaticSlotLayoutResolution::NotStaticSlot,
+            Selection::Unique(_) | Selection::Ambiguous(_) => StaticSlotLayoutResolution::Ambiguous,
+        };
+    }
     let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
         Selection::Unique(resolved)
             if !matches!(
@@ -400,6 +407,7 @@ impl<'db> RootProviderScope<'db> {
             EffectParamSite::Contract(contract)
             | EffectParamSite::ContractInit { contract }
             | EffectParamSite::ContractRecvArm { contract, .. } => Self::Contract(contract),
+            EffectParamSite::Closure(_) => unreachable!("a closure has no root providers"),
         }
     }
 }
@@ -411,12 +419,21 @@ pub struct RootProviderRegistration<'db> {
     pub provider_ty: TyId<'db>,
 }
 
+impl RootProviderRegistration<'_> {
+    /// A function's root providers are numbered down from the top, clear of
+    /// its effects' providers, which share their effects' slots.
+    pub fn func_provider_idx(&self) -> u32 {
+        u32::MAX - self.idx
+    }
+}
+
 pub fn registered_root_providers<'db>(
     db: &'db dyn HirAnalysisDb,
     site: EffectParamSite<'db>,
 ) -> &'db [RootProviderRegistration<'db>] {
     match site {
         EffectParamSite::Func(func) => registered_root_providers_for_func(db, func).as_slice(),
+        EffectParamSite::Closure(_) => &[],
         EffectParamSite::Contract(contract) => {
             registered_root_providers_for_contract(db, contract, RootProviderSiteKind::Contract)
                 .as_slice()
@@ -556,12 +573,16 @@ fn validate_effect_handle_raw<'db>(
     match resolved.selected().origin(db) {
         ImplementorOrigin::Assumption => Ok(()),
         ImplementorOrigin::Hir(impl_trait) if trusted_effect_handle_impl(db, impl_trait) => Ok(()),
-        ImplementorOrigin::Hir(_) | ImplementorOrigin::VirtualContract(_)
+        ImplementorOrigin::Hir(_)
+        | ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Closure
             if space != ProviderAddressSpace::Memory || raw_pointee != Some(target_ty) =>
         {
             Err(ProviderLayoutFailure::UntrustedRaw)
         }
-        ImplementorOrigin::Hir(_) | ImplementorOrigin::VirtualContract(_) => Ok(()),
+        ImplementorOrigin::Hir(_)
+        | ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Closure => Ok(()),
     }
 }
 

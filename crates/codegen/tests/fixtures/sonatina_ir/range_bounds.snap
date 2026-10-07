@@ -1,44 +1,15 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
+assertion_line: 416
 expression: output
 input_file: crates/codegen/tests/fixtures/range_bounds.fe
 ---
 target = "evm-ethereum-osaka"
 
-func private %get(v0.i256) -> i256 {
-    block0:
-        jump block1;
-
-    block1:
-        (v3.i256, v4.i1) = uaddo 0.i256 v0;
-        br v4 block2 block3;
-
-    block2:
-        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
-        mstore 4.i256 17.i256 i256;
-        evm_revert 0.i256 36.i256;
-
-    block3:
-        return v3;
-}
-
-func private %len() -> i256 {
-    block0:
-        jump block1;
-
-    block1:
-        br 0.i1 block2 block3;
-
-    block2:
-        jump block4;
-
-    block3:
-        jump block4;
-
-    block4:
-        v3.i256 = phi (0.i256 block2) (4.i256 block3);
-        return v3;
-}
+type @layout_0 = enum {
+    #variant_0(i256),
+    #variant_1,
+};
 
 func private %main_root() {
     block0:
@@ -49,42 +20,132 @@ func private %main_root() {
         evm_stop;
 }
 
-func private %sum_const() -> i256 {
+func inline(always) private %next(v0.i256) -> @layout_0 {
     block0:
         jump block1;
 
     block1:
-        v2.i256 = call %len;
-        jump block2;
+        v3.@layout_0 = call %range_next v0 4.i256;
+        return v3;
+}
+
+func inline(always) private %range_next(v0.i256, v1.i256) -> @layout_0 {
+    block0:
+        jump block1;
+
+    block1:
+        v4.i256 = call %wrapping_add v0 1.i256;
+        v6.i1 = lt v4 v1;
+        br v6 block2 block3;
 
     block2:
-        v20.i256 = phi (0.i256 block1) (v9 block8);
-        v3.i256 = phi (0.i256 block1) (v16 block8);
-        v5.i1 = lt v3 v2;
-        br v5 block3 block5;
+        v8.@layout_0 = enum.make @layout_0 #variant_0 v4;
+        jump block4;
 
     block3:
-        v7.i256 = call %get v3;
-        (v9.i256, v10.i1) = uaddo v20 v7;
-        br v10 block6 block7;
+        v9.@layout_0 = enum.make @layout_0 #variant_1;
+        v10.@layout_0 = enum.make @layout_0 #variant_1;
+        jump block4;
 
     block4:
-        (v16.i256, v17.i1) = uaddo v3 1.i256;
-        br v17 block6 block8;
+        v11.@layout_0 = phi (v8 block2) (v10 block3);
+        return v11;
+}
+
+func inline(always) private %range_start(v0.i256, v1.i256) -> @layout_0 {
+    block0:
+        jump block1;
+
+    block1:
+        v4.i1 = lt v0 v1;
+        br v4 block2 block3;
+
+    block2:
+        v6.@layout_0 = enum.make @layout_0 #variant_0 v0;
+        jump block4;
+
+    block3:
+        v7.@layout_0 = enum.make @layout_0 #variant_1;
+        v8.@layout_0 = enum.make @layout_0 #variant_1;
+        jump block4;
+
+    block4:
+        v9.@layout_0 = phi (v6 block2) (v8 block3);
+        return v9;
+}
+
+func inline(always) private %start() -> @layout_0 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.@layout_0 = call %range_start 0.i256 4.i256;
+        return v2;
+}
+
+func private %sum_const() -> i256 {
+    block0:
+        v0.objref<i256> = obj.alloc i256;
+        jump block1;
+
+    block1:
+        v3.@layout_0 = call %start;
+        v4.i1 = enum.is_variant v3 #variant_0;
+        br v4 block5 block4;
+
+    block2:
+        v26.i256 = phi (0.i256 block5) (v18 block6);
+        v5.i256 = phi (v11 block5) (v13 block6);
+        v6.@layout_0 = call %next v5;
+        obj.store v0 v5;
+        jump block8;
+
+    block3:
+        v8.i1 = enum.is_variant v6 #variant_0;
+        br v8 block6 block4;
+
+    block4:
+        v9.i256 = phi (0.i256 block1) (v18 block3);
+        return v9;
 
     block5:
-        return v20;
+        v11.i256 = enum.extract v3 #variant_0 0.i256;
+        jump block2;
 
     block6:
+        v13.i256 = enum.extract v6 #variant_0 0.i256;
+        jump block2;
+
+    block7:
+        v15.i256 = obj.load v0;
+        jump block10;
+
+    block8:
+        jump block7;
+
+    block9:
+        (v18.i256, v19.i1) = uaddo v26 v15;
+        br v19 block11 block12;
+
+    block10:
+        jump block9;
+
+    block11:
         mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
         mstore 4.i256 17.i256 i256;
         evm_revert 0.i256 36.i256;
 
-    block7:
-        jump block4;
+    block12:
+        jump block3;
+}
 
-    block8:
-        jump block2;
+func private %wrapping_add(v0.i256, v1.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v4.i256 = add v0 v1;
+        return v4;
 }
 
 

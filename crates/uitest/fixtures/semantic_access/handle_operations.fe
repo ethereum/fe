@@ -1,0 +1,98 @@
+// An operation through a handle accesses the field it names for its
+// duration: a call reads the fields of the handles a view argument holds and
+// writes those of a `mut` or owned argument. A handle read from its field
+// names that field; a copy elsewhere may name any field of its space.
+use std::evm::StorageMap
+
+struct Ledger {
+    balances: StorageMap<u256, u256>,
+}
+
+impl Ledger {
+    fn credit(mut self, _ key: u256) {
+        self.balances.set(key, value: 1)
+    }
+}
+
+fn store_owned(_ map: own StorageMap<u256, u256>) {
+    let mut copy = map
+    let access = mut copy
+    access.set(key: 1, value: 3)
+}
+
+// Rejected: `set` writes the field the session holds.
+pub contract Direct {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let x = mut m[1]
+        m.set(key: 2, value: 5)
+        x += 1
+    }
+}
+
+// Rejected: a copy of the handle reads the same field.
+pub contract Copied {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let h = m
+        let x = mut m[1]
+        let v = h.get(2)
+        x += v
+    }
+}
+
+// Rejected: a copy held in a memory aggregate, or passed by value, still
+// names the field.
+pub contract Aggregated {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let mut ledger = Ledger { balances: m }
+        let x = mut m[1]
+        ledger.credit(2)
+        x += 1
+    }
+}
+
+pub contract Owned {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let x = mut m[1]
+        store_owned(m)
+        x += 1
+    }
+}
+
+// Rejected: a copy installed as a provider names the field too.
+pub contract Provided {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let mut h = m
+        let x = mut m[1]
+        with (h) {
+            h.set(key: 2, value: 5)
+        }
+        x += 1
+    }
+}
+
+// Accepted: the session ends before the write.
+pub contract Sequential {
+    mut m: StorageMap<u256, u256>,
+    init() uses (mut m) {
+        let mut h = m
+        let x = mut m[1]
+        x += 1
+        h.set(key: 2, value: 5)
+    }
+}
+
+// Accepted: maps read from distinct contract fields name disjoint fields.
+pub contract Distinct {
+    mut a: StorageMap<u256, u256>,
+    mut b: StorageMap<u256, u256>,
+    init() uses (mut a, b) {
+        let x = mut a[1]
+        let v = b.get(1)
+        x += v
+    }
+}

@@ -1,0 +1,29 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+assertion_line: 25
+expression: diags
+input_file: fixtures/semantic_access/storage_map_index.fe
+---
+error[16-0001]: access conflict in `fn same_field`
+   ┌─ storage_map_index.fe:25:5
+   │
+24 │     let x = mut store.counts[key]
+   │                 ----------------- projection opened here
+25 │     store.counts[key + 1] = 3
+   │     ^^^^^^^^^^^^ cannot write to this place while a `mut` projection of it is open
+
+error[16-0001]: access conflict in `fn provided_fields`
+   ┌─ storage_map_index.fe:44:5
+   │
+43 │     let x = mut store.counts[key]
+   │                 ----------------- projection opened here
+44 │     store.other[key] = 3
+   │     ^^^^^^^^^^^ cannot write to this place while a `mut` projection of it is open
+
+error[16-0001]: access conflict in `fn read_during_write`
+   ┌─ storage_map_index.fe:58:13
+   │
+57 │     let x = mut store.counts[key]
+   │                 ----------------- projection opened here
+58 │     let y = store.counts[key]
+   │             ^^^^^^^^^^^^ cannot read this place while a `mut` projection of it is open

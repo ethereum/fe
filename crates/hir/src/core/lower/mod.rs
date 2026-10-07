@@ -13,8 +13,9 @@ use self::{item::lower_module_items, scope_builder::ScopeGraphBuilder};
 use crate::{
     HirDb, LowerHirDb,
     hir_def::{
-        AttrListId, ExprId, IdentId, IntegerId, ItemKind, LitKind, ModuleTree, Partial, StringId,
-        TopLevelMod, TrackedItemId, TrackedItemVariant, Use, Visibility, module_tree_impl,
+        AttrListId, ExprId, IdentId, IntegerId, ItemKind, LitKind, ModuleTree, Partial, PathId,
+        StringId, TopLevelMod, TrackedItemId, TrackedItemVariant, Use, Visibility,
+        module_tree_impl,
         scope_graph::ScopeGraph,
         use_tree::{UsePathId, UsePathSegment},
     },
@@ -208,6 +209,17 @@ impl<'db> FileLowerCtxt<'db> {
 
     pub(super) fn top_mod(&self) -> TopLevelMod<'db> {
         self.builder.top_mod
+    }
+
+    /// The path naming the core ingot from the file: `ingot` within core.
+    pub(super) fn core_path(&self) -> PathId<'db> {
+        let db = self.db();
+        let root = if self.top_mod().ingot(db).kind(db) == IngotKind::Core {
+            IdentId::make_ingot(db)
+        } else {
+            IdentId::new(db, "core".to_string())
+        };
+        PathId::from_ident(db, root)
     }
 
     pub(super) fn insert_synthetic_prelude_use(&mut self) {

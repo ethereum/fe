@@ -1,0 +1,17 @@
+// `for (x, y) in (a, b) by d` needs a two-base driver, and bases both viewed
+// or both `mut`.
+use core::iter::{reversed, zip}
+
+fn mixed_modes() {
+    let mut xs: [u256; 2] = [1, 2]
+    let ys: [u256; 2] = [3, 4]
+    for (x, y) in (mut xs, ys) by zip() {
+        x += y
+    }
+}
+
+fn single_base_driver() {
+    let xs: [u256; 2] = [1, 2]
+    let ys: [u256; 2] = [3, 4]
+    for (x, y) in (xs, ys) by reversed() {}
+}

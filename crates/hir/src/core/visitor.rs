@@ -558,7 +558,7 @@ pub fn walk_func<'db, V>(
     // Effects (uses clause)
     ctxt.with_new_ctxt(
         |span| span.sig().effects(),
-        |ctxt| visitor.visit_effect_param_list(ctxt, func.effects(ctxt.db)),
+        |ctxt| visitor.visit_effect_param_list(ctxt, func.declared_effects(ctxt.db)),
     );
 }
 
@@ -1147,9 +1147,12 @@ pub fn walk_stmt<'db, V>(
             }
         }
 
-        Stmt::For(pat_id, cond_id, for_body_id, _unroll) => {
+        Stmt::For(pat_id, cond_id, driver_id, for_body_id, _unroll) => {
             visit_node_in_body!(visitor, ctxt, pat_id, pat);
             visit_node_in_body!(visitor, ctxt, cond_id, expr);
+            if let Some(driver_id) = driver_id {
+                visit_node_in_body!(visitor, ctxt, driver_id, expr);
+            }
             visit_node_in_body!(visitor, ctxt, for_body_id, expr);
         }
 
@@ -1198,6 +1201,34 @@ pub fn walk_expr<'db, V>(
             for stmt_id in stmts {
                 visit_node_in_body!(visitor, ctxt, stmt_id, stmt);
             }
+        }
+
+        Expr::Closure {
+            params,
+            ret_ty,
+            body,
+        } => {
+            // Closure parameters have no `ScopeId::FuncParam` in the scope graph,
+            // so they are visited in the enclosing scope (like `let` type
+            // annotations) instead of through `visit_func_param_list`.
+            ctxt.with_new_ctxt(
+                |span| span.into_closure_expr().params(),
+                |ctxt| {
+                    for (idx, param) in params.data(ctxt.db).iter().enumerate() {
+                        ctxt.with_new_ctxt(
+                            |span| span.param(idx),
+                            |ctxt| visitor.visit_func_param(ctxt, param),
+                        );
+                    }
+                },
+            );
+            if let Some(ret_ty) = ret_ty {
+                ctxt.with_new_ctxt(
+                    |span| span.into_closure_expr().ret_ty(),
+                    |ctxt| visitor.visit_ty(ctxt, *ret_ty),
+                );
+            }
+            visit_node_in_body!(visitor, ctxt, body, expr);
         }
 
         Expr::Bin(lhs_id, rhs_id, _) => {

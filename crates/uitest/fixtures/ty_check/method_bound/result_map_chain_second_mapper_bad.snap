@@ -11,5 +11,5 @@ error[6-0003]: trait bound is not satisfied
    │
    ┌─ src/result.fe:63:22
    │
-63 │     pub fn map<U, F: Fn<T, U>>(own self, _ func: F) -> Result<E, U> {
+63 │     pub fn map<U, F: Fn<T, U>>(own self, _ func: F) -> Result<E, U> uses F::E {
    │                      -------- required by this bound on `map`

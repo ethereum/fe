@@ -269,6 +269,26 @@ pub enum FuncParamMode {
     Own,
 }
 
+/// The name of the core callable shape trait `Fn(..)`, or `FnMut(..)` when
+/// `mut_receiver`, of parameters with `modes`: `Fn_ov` for `Fn(own A, B)`,
+/// `FnMut0` for `FnMut()`, and `Fn` (`Fn<T, U>`) for `Fn(own T)`.
+pub fn callable_shape_name(mut_receiver: bool, modes: &[FuncParamMode]) -> String {
+    let receiver = if mut_receiver { "FnMut" } else { "Fn" };
+    let letters: String = modes
+        .iter()
+        .map(|mode| match mode {
+            FuncParamMode::Own => 'o',
+            FuncParamMode::View => 'v',
+            FuncParamMode::Mut => 'm',
+        })
+        .collect();
+    match letters.as_str() {
+        "" => format!("{receiver}0"),
+        "o" if !mut_receiver => receiver.to_string(),
+        letters => format!("{receiver}_{letters}"),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuncParam<'db> {
     pub mode: FuncParamMode,

@@ -24,7 +24,7 @@ use crate::{
         semantic::{
             SemOrigin, SemanticInstance,
             access::{control::semantic_may_return, projection_result_spaces},
-            capability::semantics::{CapabilityClass, capability_semantics},
+            capability::semantics::{CapabilityClass, capability_semantics, field_handle_spaces},
             definite_assignment::literal_index,
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticKind, SemanticDiagnosticSpan, operand_origin,
@@ -44,7 +44,7 @@ use crate::{
             trait_resolution::PredicateListId,
             ty_check::{BodyOwner, LocalBinding},
             ty_def::{BorrowKind, CapabilityKind, TyId},
-            ty_is_copy,
+            ty_is_snapshot,
         },
     },
     hir_def::{CallableDef, FuncParamMode, scope_graph::ScopeId},
@@ -136,6 +136,8 @@ enum Site {
     Handle,
     Effect(usize),
     Arg(usize),
+    /// The domains the field handles of an argument name.
+    ArgHandles(usize),
     Grant(usize),
 }
 
@@ -388,11 +390,12 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// The accesses a carrier argument for a parameter of `mode` passes. A
-    /// handle opens none, and a `Copy` view argument is passed by copy.
+    /// handle opens none, and a snapshot view argument is passed by copy.
     fn passed_to(&self, value: NValueId, mode: FuncParamMode) -> TokenSet {
         let ty = self.body.values[value.index()].ty;
         let ty = ty.as_capability(self.db).map_or(ty, |(_, target)| target);
-        if mode == FuncParamMode::View && ty_is_copy(self.db, self.scope, ty, self.assumptions) {
+        if mode == FuncParamMode::View && ty_is_snapshot(self.db, self.scope, ty, self.assumptions)
+        {
             return TokenSet::new();
         }
         self.passed(value)
@@ -659,8 +662,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
             // A borrow no `end` closes is not an access of its own: through
             // a carrier it names part of the carrier's access, and otherwise
             // it is normalization's view of a call argument, open for that
-            // call. A `Copy` argument is passed by copy: its read is the whole
-            // access.
+            // call. A snapshot argument is passed by copy: its read is the
+            // whole access.
             NExpr::Borrow { place, .. } | NExpr::MakeView { place, .. }
                 if !self.ended.contains(&result) =>
             {
@@ -671,7 +674,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                         .map(|token| (token, Path::new()))
                         .collect(),
                     NPlaceBase::Root(_)
-                        if ty_is_copy(self.db, self.scope, place.ty, self.assumptions) =>
+                        if ty_is_snapshot(self.db, self.scope, place.ty, self.assumptions) =>
                     {
                         Held::new()
                     }
@@ -801,6 +804,17 @@ impl<'a, 'db> Analysis<'a, 'db> {
         let mut reservations = TokenSet::new();
         for (position, arg) in args.iter().enumerate() {
             let param_mode = CallableDef::Func(func).param_mode(self.db, position);
+            if let Some(footprint) = self.handle_footprint(arg.value, param_mode) {
+                let id = self.token(
+                    result,
+                    Site::ArgHandles(position),
+                    self.new_token(TokenKind::Reservation, footprint.mode, origin),
+                );
+                let token = &mut self.tokens[id as usize];
+                token.regions = footprint.regions;
+                token.parents = footprint.parents;
+                reservations.push(id);
+            }
             let direct = self.passed_to(arg.value, param_mode);
             if direct.is_empty() {
                 continue;
@@ -871,14 +885,19 @@ impl<'a, 'db> Analysis<'a, 'db> {
             NEffectArgValue::Place(place) => place.ty,
             NEffectArgValue::Value(value) => self.body.values[value.value.index()].ty,
         };
-        let key = func
+        let requirement = func
             .effect_requirements(self.db)
             .iter()
-            .find(|requirement| requirement.binding_idx == effect.binding_idx)
-            .map(|requirement| match &requirement.key {
-                EffectRequirementKey::Type(_) => EffectRequirementKey::Type(arg_ty),
-                key => key.clone(),
-            });
+            .find(|requirement| requirement.binding_idx == effect.binding_idx);
+        let key = requirement.map(|requirement| match &requirement.key {
+            EffectRequirementKey::Type(_) => EffectRequirementKey::Type(arg_ty),
+            key => key.clone(),
+        });
+        // A zero-sized place holds nothing, but a field handle names its
+        // field: the handle a `Field(T)` key takes, and those a provider holds.
+        let names_field = requirement
+            .is_some_and(|requirement| requirement.binding_ty.field_key_handle(self.db).is_some())
+            || !field_handle_spaces(self.db, self.scope, self.assumptions, arg_ty).is_empty();
         if let Some(key) = key
             && let Some(access) = effect_key_state_access(
                 self.db,
@@ -895,10 +914,15 @@ impl<'a, 'db> Analysis<'a, 'db> {
             });
         }
         let (regions, parents) = match &effect.arg {
-            NEffectArgValue::Place(place) if place.ty.is_zero_sized(self.db) => return None,
+            NEffectArgValue::Place(place) if place.ty.is_zero_sized(self.db) && !names_field => {
+                return None;
+            }
             NEffectArgValue::Place(place) => {
                 let resolved = self.resolve(place);
-                (resolved.regions, resolved.direct)
+                (
+                    self.named_regions(resolved.regions, arg_ty),
+                    resolved.direct,
+                )
             }
             NEffectArgValue::Value(value) => (
                 self.values[value.value.index()]
@@ -914,6 +938,100 @@ impl<'a, 'db> Analysis<'a, 'db> {
             mode,
             parents,
         })
+    }
+
+    /// The regions of a place holding a value of `ty`, with each field
+    /// handle the value holds naming its field: the place itself where it
+    /// lies in a resource, and any field of the handle's space for a copy in
+    /// memory.
+    fn named_regions(&mut self, regions: Vec<AbsPlace>, ty: TyId<'db>) -> Vec<AbsPlace> {
+        let spaces = field_handle_spaces(self.db, self.scope, self.assumptions, ty);
+        if spaces.is_empty() {
+            return regions;
+        }
+        let space = match spaces.as_slice() {
+            [space] => Some(*space),
+            _ => None,
+        };
+        let mut regions: Vec<AbsPlace> = regions
+            .into_iter()
+            .map(|region| {
+                if self.space(region.base) == Some(ProviderAddressSpace::Memory) {
+                    AbsPlace::new(Base::Domain(self.domains.dynamic(space)))
+                } else {
+                    region
+                }
+            })
+            .collect();
+        regions.sort();
+        regions.dedup();
+        regions
+    }
+
+    /// The footprint of the field handles a call argument holds: an
+    /// operation through a handle accesses the field it names for the call's
+    /// duration, reading it through a view and writing it otherwise.
+    fn handle_footprint(&mut self, value: NValueId, mode: FuncParamMode) -> Option<Footprint> {
+        let ty = self.body.values[value.index()].ty;
+        let ty = ty.as_capability(self.db).map_or(ty, |(_, target)| target);
+        if field_handle_spaces(self.db, self.scope, self.assumptions, ty).is_empty() {
+            return None;
+        }
+        let (regions, mut parents) = self.source_place(value);
+        // The argument's own access is this operation's.
+        parents.extend(self.direct(value));
+        Some(Footprint {
+            regions: self.named_regions(regions, ty),
+            mode: match mode {
+                FuncParamMode::View => BorrowKind::Ref,
+                FuncParamMode::Mut | FuncParamMode::Own => BorrowKind::Mut,
+            },
+            parents,
+        })
+    }
+
+    /// The regions of the place a value was read from or borrowed, through
+    /// forwards and temporaries, or else the places its own carriers name,
+    /// with the tokens that authorize it.
+    fn source_place(&mut self, value: NValueId) -> (Vec<AbsPlace>, TokenSet) {
+        let body = self.body;
+        let mut source = value;
+        let (regions, parents) = loop {
+            match body.defining_expr(source) {
+                Some((_, NExpr::Forward { src } | NExpr::StructuralRepack { value: src, .. })) => {
+                    source = src.value
+                }
+                Some((
+                    _,
+                    NExpr::Borrow { place, .. }
+                    | NExpr::MakeView { place, .. }
+                    | NExpr::Load { place, .. },
+                )) => {
+                    // A temporary holds the value it was initialized from.
+                    if let NPlaceBase::Root(root) = place.base
+                        && let NRootKind::Temporary { value } = body.roots[root.index()].kind
+                    {
+                        source = value;
+                        continue;
+                    }
+                    let resolved = self.resolve(place);
+                    break (resolved.regions, resolved.direct);
+                }
+                _ => {
+                    let direct = self.direct(source);
+                    let regions: Vec<AbsPlace> = direct
+                        .iter()
+                        .flat_map(|token| self.tokens[*token as usize].regions.clone())
+                        .collect();
+                    break (regions, direct);
+                }
+            }
+        };
+        if regions.is_empty() {
+            (vec![AbsPlace::new(Base::Raw)], parents)
+        } else {
+            (regions, parents)
+        }
     }
 
     // --- control flow -----------------------------------------------------
@@ -1662,8 +1780,43 @@ impl<'a, 'db> Analysis<'a, 'db> {
         };
         for (position, arg) in args.iter().enumerate() {
             let param_mode = CallableDef::Func(func).param_mode(self.db, position);
+            let arg_origin = operand_origin(*arg, origin);
+            if let Some(footprint) = self.handle_footprint(arg.value, param_mode) {
+                let kind = match footprint.mode {
+                    BorrowKind::Mut => MemoryAccessKind::Write,
+                    BorrowKind::Ref => MemoryAccessKind::Read,
+                };
+                let authority = self.ancestors(&footprint.parents);
+                self.check_conflicts(
+                    state,
+                    &footprint.regions,
+                    footprint.mode,
+                    &authority,
+                    &[],
+                    kind,
+                    arg_origin,
+                )?;
+            }
             let direct = self.passed_to(arg.value, param_mode);
             if direct.is_empty() {
+                // An aggregate passed by value is still viewed in place: the
+                // call reads the place it came from.
+                let ty = self.body.values[arg.value.index()].ty;
+                if param_mode == FuncParamMode::View
+                    && !ty_is_snapshot(self.db, self.scope, ty, self.assumptions)
+                {
+                    let (regions, parents) = self.source_place(arg.value);
+                    let authority = self.ancestors(&parents);
+                    self.check_conflicts(
+                        state,
+                        &regions,
+                        BorrowKind::Ref,
+                        &authority,
+                        &[],
+                        MemoryAccessKind::Read,
+                        arg_origin,
+                    )?;
+                }
                 continue;
             }
             let (mode, kind) = match param_mode {
@@ -1678,7 +1831,6 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 .flat_map(|token| self.tokens[*token as usize].regions.clone())
                 .collect();
             let authority = self.ancestors(&direct);
-            let arg_origin = operand_origin(*arg, origin);
             // The callee may read its argument at once.
             if let Some(key) = self.carrier_key(arg.value)
                 && let Some(hole) = self.hole(state, key)
@@ -1863,10 +2015,32 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 }
             }
         }
-        Ok(spaces
+        // A declared contract holds every yield, and is the contract of a
+        // component no yield shows.
+        let declared = self.instance.declared_result_spaces(self.db);
+        spaces
             .into_iter()
-            .map(|space| space.map(|(space, _)| space))
-            .collect())
+            .enumerate()
+            .map(|(index, inferred)| {
+                let declared = declared
+                    .get(index)
+                    .copied()
+                    .flatten()
+                    .and_then(|contract| self.instance.contract_space(self.db, contract));
+                match (inferred, declared) {
+                    (Some((space, origin)), Some(declared)) if space != declared => Err(self.diag(
+                        SemanticDiagnosticKind::TransportViolation,
+                        origin,
+                        format!(
+                            "this yield names {}, but the signature declares {}",
+                            space.pretty(),
+                            declared.pretty()
+                        ),
+                    )),
+                    (inferred, declared) => Ok(inferred.map(|(space, _)| space).or(declared)),
+                }
+            })
+            .collect()
     }
 }
 

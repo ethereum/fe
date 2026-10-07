@@ -333,6 +333,17 @@ impl<'db> TyChecker<'db> {
         let Pat::Tuple(pat_tup) = pat_data else {
             unreachable!()
         };
+        // Against an invalid type, the elements are invalid too, so they do
+        // not report unknown types of their own.
+        if expected.invalid_cause(self.db).is_some() {
+            self.check_tuple_like_pattern_elems(
+                pat_tup,
+                &vec![expected; pat_tup.len()],
+                Range::default(),
+                Some(expected),
+            );
+            return self.finish_pat_check(pat, expected, expected, PatternAnalysisStatus::Invalid);
+        }
 
         let expected_len = match expected.decompose_ty_app(self.db) {
             (base, args) if base.is_tuple(self.db) => Some(args.len()),

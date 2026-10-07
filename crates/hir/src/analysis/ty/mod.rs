@@ -33,6 +33,7 @@ pub mod adt_def;
 pub mod assoc_const;
 pub mod binder;
 pub mod canonical;
+pub(crate) mod closure;
 pub(crate) mod const_check;
 pub mod const_expr;
 pub mod const_ty;
@@ -53,6 +54,7 @@ pub mod pattern_analysis;
 pub mod pattern_ir;
 pub mod pattern_types;
 pub mod provider;
+pub mod result_space;
 pub(crate) mod scratch;
 pub mod shape;
 pub(crate) mod subst;
@@ -123,6 +125,46 @@ pub fn ty_is_copy<'db>(
     }
 
     ty_is_copy_query(db, scope, ty, assumptions)
+}
+
+/// Whether a view parameter takes a value of `ty` by copy, a *snapshot*: a
+/// primitive scalar, a raw pointer, a handle (an effect handle or a static
+/// slot such as a storage map), or a `core::marker::Snapshot` type such as
+/// `Address`. Every other value, `Copy` or not, is viewed in place
+/// (`ViewTransport`).
+pub fn ty_is_snapshot<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> bool {
+    let ty = normalize::normalize_ty(db, ty, scope, assumptions);
+    if ty == TyId::unit(db)
+        || ty.is_bool(db)
+        || ty.is_integral(db)
+        || ty.is_string(db)
+        || ty.as_ptr(db).is_some()
+        || !matches!(
+            provider::resolve_effect_handle(db, scope, assumptions, ty),
+            provider::EffectHandleResolution::NotHandle
+        )
+        || !matches!(
+            provider::resolve_static_slot_layout(db, scope, assumptions, ty),
+            provider::StaticSlotLayoutResolution::NotStaticSlot
+        )
+    {
+        return true;
+    }
+    corelib::resolve_core_trait(db, scope, &["marker", "Snapshot"]).is_some_and(|snapshot| {
+        matches!(
+            is_goal_satisfiable(
+                db,
+                TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+                trait_def::TraitInstId::new_simple(db, snapshot, vec![ty]),
+            ),
+            GoalSatisfiability::Satisfied(_)
+        )
+    })
 }
 
 #[salsa::tracked]
@@ -788,7 +830,9 @@ impl ModuleAnalysisPass for ContractAnalysisPass {
                             }) as _);
                         }
                     }
-                    ResolvedEffectKey::Invalid | ResolvedEffectKey::Other => {
+                    ResolvedEffectKey::Row(_)
+                    | ResolvedEffectKey::Invalid
+                    | ResolvedEffectKey::Other => {
                         diags.push(Box::new(BodyDiag::InvalidEffectKey {
                             owner: EffectParamOwner::Contract(contract),
                             key: key_ty,

@@ -65,8 +65,11 @@ pub contract Snapshot {
         ReadCode { which } -> u256 uses (env, evm: mut Evm) {
             forward(env, which)
         }
+        // A storage aggregate is viewed in place, so a call whose effects
+        // may write storage takes a copy.
         ReadStorage { which } -> u256 uses (stored, evm: mut Evm) {
-            forward(stored, which)
+            let copy = stored
+            forward(copy, which)
         }
         CopyCode -> u256 uses (env) {
             let copied = changed(env)

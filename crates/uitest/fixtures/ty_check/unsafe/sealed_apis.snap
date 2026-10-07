@@ -10,9 +10,9 @@ error[8-0097]: call to unsafe function `copy_raw` requires an `unsafe` block or 
   7 │     ptr::copy_raw(dest, source, 32)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/ptr.fe:482:15
+    ┌─ src/ptr.fe:507:15
     │
-482 │ pub unsafe fn copy_raw(_ dest: *u8, _ source: *u8, _ len: u256) {
+507 │ pub unsafe fn copy_raw(_ dest: *u8, _ source: *u8, _ len: u256) {
     │               -------- callee defined here
 
 error[8-0097]: call to unsafe function `from_raw_parts` requires an `unsafe` block or function
@@ -21,9 +21,9 @@ error[8-0097]: call to unsafe function `from_raw_parts` requires an `unsafe` blo
  11 │     MemSlice::from_raw_parts(ptr: p, len: 4)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/ptr.fe:173:19
+    ┌─ src/ptr.fe:198:19
     │
-173 │     pub unsafe fn from_raw_parts(ptr: *T, len: u256) -> ref Self {
+198 │     pub unsafe fn from_raw_parts(ptr: *T, len: u256) -> ref Self {
     │                   -------------- callee defined here
 
 error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or function
@@ -32,9 +32,9 @@ error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or fu
  15 │     mem.mstore(addr: p, value: 1)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/evm/effects.fe:304:15
+    ┌─ src/evm/effects.fe:321:15
     │
-304 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
+321 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
     │               ------ callee defined here
 
 error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or function
@@ -43,9 +43,9 @@ error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or fu
  19 │     evm.mstore(addr: p, value: 1)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/evm/effects.fe:304:15
+    ┌─ src/evm/effects.fe:321:15
     │
-304 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
+321 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
     │               ------ callee defined here
 
 error[8-0097]: call to unsafe function `encode` requires an `unsafe` block or function
@@ -65,7 +65,7 @@ error[8-0097]: call to unsafe function `alloc_array` requires an `unsafe` block 
  27 │     let array = ptr::alloc_array<u256>(1)
     │                 ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/ptr.fe:457:15
+    ┌─ src/ptr.fe:482:15
     │
-457 │ pub unsafe fn alloc_array<T>(_ len: u256) -> MemArray<T> {
+482 │ pub unsafe fn alloc_array<T>(_ len: u256) -> MemArray<T> {
     │               ----------- callee defined here

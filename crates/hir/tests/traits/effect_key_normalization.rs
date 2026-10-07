@@ -5246,7 +5246,8 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
                 | BodyOwner::Const(_)
                 | BodyOwner::AnonConstBody { .. }
                 | BodyOwner::ContractInit { .. }
-                | BodyOwner::ContractRecvArm { .. } => None,
+                | BodyOwner::ContractRecvArm { .. }
+                | BodyOwner::Closure { .. } => None,
             }
         })
         .unwrap_or_else(|| panic!("expected nested write_cell call in helper body: {body:#?}"));

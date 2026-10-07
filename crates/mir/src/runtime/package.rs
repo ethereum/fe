@@ -4,8 +4,8 @@ use hir::{
     analysis::{
         semantic::{
             LayoutEvidenceBase, ManualContractSection, RootSemanticInstanceError, SemanticInstance,
-            generated_callee_key, get_or_build_semantic_instance, owner_effect_bindings,
-            root_semantic_instance_key, same_owner_effect_binding,
+            generated_callee_key, get_or_build_semantic_instance, root_semantic_instance_key,
+            same_owner_effect_binding,
         },
         ty::{
             CallableLayoutParamPort, LayoutEvidencePathStep,
@@ -42,7 +42,7 @@ use crate::{
         EntryEffectContext, entry_semantic_args_plan, target_root_provider_materialization,
     },
     runtime::stable_key::{
-        IdentityMode, item_identity, semantic_instance_identity_in_mode,
+        IdentityMode, closure_symbol_component, item_identity, semantic_instance_identity_in_mode,
         stable_identity_fingerprint, type_identity,
     },
     runtime::{
@@ -1509,7 +1509,7 @@ pub(crate) fn runtime_instance_for_semantic_with_visible_param_overrides<'db>(
         .iter()
         .map(|entry| {
             override_class(entry).unwrap_or_else(|| {
-                runtime_class_for_visible_binding_entry(db, semantic, typed_body, owner, env, entry)
+                runtime_class_for_visible_binding_entry(db, semantic, typed_body, env, entry)
             })
         })
         .collect();
@@ -1521,11 +1521,11 @@ fn runtime_class_for_visible_binding_entry<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
     typed_body: &hir::analysis::ty::ty_check::TypedBody<'db>,
-    owner: BodyOwner<'db>,
     env: RuntimeTypeEnv<'db>,
     entry: &RuntimeVisibleBindingPlan<'db>,
 ) -> RuntimeClass<'db> {
-    if owner_effect_bindings(db, owner)
+    if semantic
+        .effect_bindings(db)
         .into_iter()
         .any(|binding| same_owner_effect_binding(binding, entry.binding))
     {
@@ -2429,6 +2429,7 @@ fn symbol_base_for_semantic_instance<'db>(
             recv_idx,
             arm_idx
         ),
+        BodyOwner::Closure { ty, receiver, .. } => closure_symbol_component(db, ty, receiver),
         BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => "__const".to_string(),
     }
 }
@@ -2495,7 +2496,8 @@ fn inline_hint_for_semantic<'db>(
         BodyOwner::Const(_)
         | BodyOwner::AnonConstBody { .. }
         | BodyOwner::ContractInit { .. }
-        | BodyOwner::ContractRecvArm { .. } => RuntimeInlineHint::Auto,
+        | BodyOwner::ContractRecvArm { .. }
+        | BodyOwner::Closure { .. } => RuntimeInlineHint::Auto,
     }
 }
 

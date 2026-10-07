@@ -674,8 +674,9 @@ pub struct Func<'db> {
     pub(in crate::core) generic_params: GenericParamListId<'db>,
     pub(in crate::core) where_clause: WhereClauseId<'db>,
     pub(in crate::core) params_list: Partial<FuncParamListId<'db>>,
-    pub(crate) effects: EffectParamListId<'db>,
-    pub(in crate::core) ret_type_ref: Option<TypeId<'db>>,
+    pub(crate) declared_effects: EffectParamListId<'db>,
+    #[return_ref]
+    pub(in crate::core) ret: FuncReturn<'db>,
     pub(in crate::core) modifiers: FuncModifiers,
     pub body: Option<Body<'db>>,
     pub top_mod: TopLevelMod<'db>,
@@ -684,9 +685,25 @@ pub struct Func<'db> {
     pub origin: HirOrigin<ast::Func>,
 }
 
+/// A function's return type, and the result-space contract each access
+/// component of it declares, in order.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct FuncReturn<'db> {
+    pub ty: Option<TypeId<'db>>,
+    pub spaces: Vec<Option<SpaceAnnotation<'db>>>,
+}
+
 impl<'db> Func<'db> {
     pub fn span(self) -> LazyFuncSpan<'db> {
         LazyFuncSpan::new(self)
+    }
+
+    pub(in crate::core) fn ret_type_ref(self, db: &'db dyn HirDb) -> Option<TypeId<'db>> {
+        self.ret(db).ty
+    }
+
+    pub fn ret_spaces(self, db: &'db dyn HirDb) -> &'db [Option<SpaceAnnotation<'db>>] {
+        &self.ret(db).spaces
     }
 
     pub fn scope(self) -> ScopeId<'db> {
@@ -1191,6 +1208,8 @@ pub struct Trait<'db> {
     pub(in crate::core) types: Vec<AssocTyDecl<'db>>,
     #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDecl<'db>>,
+    #[return_ref]
+    pub(in crate::core) access_items: AccessItems<'db>,
 
     pub top_mod: TopLevelMod<'db>,
 
@@ -1201,6 +1220,14 @@ pub struct Trait<'db> {
 impl<'db> Trait<'db> {
     pub fn span(self) -> LazyTraitSpan<'db> {
         LazyTraitSpan::new(self)
+    }
+
+    pub fn rows(self, db: &'db dyn HirDb) -> &'db [AssocRow<'db>] {
+        &self.access_items(db).rows
+    }
+
+    pub fn spaces(self, db: &'db dyn HirDb) -> &'db [AssocSpace<'db>] {
+        &self.access_items(db).spaces
     }
 
     pub fn children_non_nested(
@@ -1245,6 +1272,42 @@ pub struct AssocTyDecl<'db> {
     pub default: Option<TypeId<'db>>,
 }
 
+/// The associated items of a trait or implementation that say what its
+/// methods reach: effect rows and result spaces.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update, Default)]
+pub struct AccessItems<'db> {
+    pub rows: Vec<AssocRow<'db>>,
+    pub spaces: Vec<AssocSpace<'db>>,
+}
+
+/// An associated result space: `space S` in a trait, or `space S = memory`
+/// in an implementation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct AssocSpace<'db> {
+    pub name: Partial<IdentId<'db>>,
+    /// The space an implementation gives: a space's name, or another
+    /// associated space such as `B::S`.
+    pub value: Option<Partial<PathId<'db>>>,
+}
+
+/// A result-space contract as written: `@S`, `@B::S`, `@memory`, `@p`,
+/// `@self`, or `@target(p)`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum SpaceAnnotation<'db> {
+    Path(Partial<PathId<'db>>),
+    /// `@target(p)`: the space of the resource the handle `p` names.
+    Target(Partial<PathId<'db>>),
+}
+
+/// An associated effect row: `uses E` in a trait, with an optional default
+/// `uses E = (..)`, or `uses E = (..)` in an implementation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct AssocRow<'db> {
+    pub name: Partial<IdentId<'db>>,
+    /// The row's effects, if given.
+    pub effects: Option<EffectParamListId<'db>>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct AssocConstDecl<'db> {
     pub attributes: AttrListId<'db>,
@@ -1268,6 +1331,8 @@ pub struct ImplTrait<'db> {
     pub(crate) types: Vec<AssocTyDef<'db>>,
     #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDef<'db>>,
+    #[return_ref]
+    pub(in crate::core) access_items: AccessItems<'db>,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -1277,6 +1342,14 @@ pub struct ImplTrait<'db> {
 impl<'db> ImplTrait<'db> {
     pub fn span(self) -> LazyImplTraitSpan<'db> {
         LazyImplTraitSpan::new(self)
+    }
+
+    pub fn rows(self, db: &'db dyn HirDb) -> &'db [AssocRow<'db>] {
+        &self.access_items(db).rows
+    }
+
+    pub fn spaces(self, db: &'db dyn HirDb) -> &'db [AssocSpace<'db>] {
+        &self.access_items(db).spaces
     }
 
     /// Returns the trait reference for this impl.

@@ -1,0 +1,51 @@
+// `Collection::at(self)` and `CollectionMut::at(mut self)` are mutability
+// variants: `xs.at(c)` reads through the view one, and a context that needs
+// a `mut` place (an assignment target, `mut xs.at(c)`, a `mut self` call)
+// selects the `mut` one.
+use core::iter::{Collection, CollectionMut}
+
+struct Counter { n: u256 }
+
+impl Counter {
+    fn bump(mut self) {
+        self.n += 1
+    }
+}
+
+#[test]
+fn reads_and_writes_by_context() {
+    let mut xs: [u256; 3] = [1, 2, 3]
+    let a = xs.at(1)
+    assert(a == 2)
+
+    xs.at(1) = 5
+    xs.at(2) += 10
+    let first = mut xs.at(0)
+    first *= 7
+    assert(xs[0] == 7 && xs[1] == 5 && xs[2] == 13)
+
+    let mut counters = [Counter { n: 0 }, Counter { n: 4 }]
+    counters.at(1).bump()
+    assert(counters[1].n == 5)
+}
+
+// Generic code selects the variants through the bounds.
+fn bump_all<C: Collection<Item = u256> + CollectionMut>(_ xs: mut C) uses (C::E, C::EM) {
+    let mut c = xs.start()
+    while true {
+        match c {
+            Option::Some(cursor) => {
+                xs.at(cursor) += 1
+                c = xs.next(cursor)
+            }
+            Option::None => break
+        }
+    }
+}
+
+#[test]
+fn generic_variants() {
+    let mut xs: [u256; 2] = [1, 2]
+    bump_all(mut xs)
+    assert(xs[0] == 2 && xs[1] == 3)
+}

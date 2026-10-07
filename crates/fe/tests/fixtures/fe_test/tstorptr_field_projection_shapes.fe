@@ -4,7 +4,9 @@
 // projections, must all lower. These shapes used to panic the Sonatina
 // backend ("runtime carrier classes have no common realizable join"): the
 // projected handle inherited the storage provider's carrier class while its
-// own type demanded the transient transport class.
+// own type demanded the transient transport class. A copied handle carries
+// no authority of its own, so the copies are installed in `unsafe` blocks
+// that vouch for the slot they name.
 use core::effect_ref::EffectHandle
 use std::evm::effects::TStorPtr
 use std::evm::{Create, Evm}
@@ -20,8 +22,10 @@ fn flag_get() -> bool uses (f: bool) {
 impl S {
     fn read_plain_self(self) -> bool {
         let flag = self.flag
-        with (flag) {
-            flag_get()
+        unsafe {
+            with (flag) {
+                flag_get()
+            }
         }
     }
 }
@@ -38,7 +42,7 @@ pub contract C {
         Go -> u256 uses (s) {
             // direct projection into a local, non-mut, then with
             let flag = s.flag
-            let direct = with (flag) { flag_get() }
+            let direct = unsafe { with (flag) { flag_get() } }
             let via_method = s.read_plain_self()
             let raw_slot = s.flag.raw()
             let mut result = raw_slot

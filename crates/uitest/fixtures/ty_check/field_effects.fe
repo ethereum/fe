@@ -1,0 +1,23 @@
+use std::evm::StorageMap
+
+// `Field(T)` is the authority over the storage field a handle of type `T`
+// names. A call takes it from a handle argument that lies in an effect
+// provider or an access; a copied handle carries none.
+
+struct Store {
+    counts: StorageMap<u256, u256>,
+}
+
+fn copied_handle(_ map: StorageMap<u256, u256>) -> u256 {
+    map[1]
+}
+
+fn local_handle() uses (store: Store) {
+    let map = store.counts
+    let _ = map[1]
+}
+
+// The authority to write needs a `mut` provider.
+fn read_only(_ key: u256) uses (store: Store) {
+    store.counts[key] = 1
+}

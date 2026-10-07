@@ -400,6 +400,7 @@ fn collect_typed_body_event_structs<'db>(
                     callable.generic_args(),
                     callable.checked_input_tys(),
                     None,
+                    &[],
                 )
             {
                 target.func = impl_func;

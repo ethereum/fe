@@ -157,13 +157,17 @@ impl<'db> ConstFnChecker<'db, '_> {
                     self.check_expr(*expr);
                 }
             }
-            Stmt::For(pat, iter, body, _) => {
+            Stmt::For(pat, iter, driver, body, _) => {
                 self.check_let_pat(*pat);
                 self.check_expr(*iter);
-                if let Some(seq) = self.typed_body.for_loop_seq(stmt) {
+                if let Some(driver) = driver {
+                    self.check_expr(*driver);
+                }
+                if let Some(plan) = self.typed_body.for_loop_plan(stmt) {
                     let span: DynLazySpan<'db> = stmt.span(self.body).into();
-                    self.check_callable(span.clone(), &seq.len_callable);
-                    self.check_callable(span, &seq.get_callable);
+                    for call in &plan.calls {
+                        self.check_callable(span.clone(), &call.callable);
+                    }
                 }
                 self.check_expr(*body);
             }
@@ -216,6 +220,10 @@ impl<'db> ConstFnChecker<'db, '_> {
             | Expr::Path(_) => {}
 
             Expr::Block(stmts, _) => stmts.iter().for_each(|stmt| self.check_stmt(*stmt)),
+
+            Expr::Closure { .. } => self.push(BodyDiag::ClosureInConstContext {
+                primary: expr.span(self.body).into(),
+            }),
 
             Expr::Bin(lhs, rhs, _) => {
                 self.check_expr(*lhs);

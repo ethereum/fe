@@ -1,0 +1,19 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/two_base_loops.fe
+---
+error[8-0020]: `Driver2` needs to be implemented for Reversed
+   ┌─ two_base_loops.fe:16:31
+   │
+16 │     for (x, y) in (xs, ys) by reversed() {}
+   │                               ^^^^^^^^^^
+   │                               │
+   │                               `Driver2` needs to be implemented for `Reversed`
+   │                               consider implementing `Driver2` for `Reversed`
+
+error[8-0114]: a two-base loop's bases are both viewed or both `mut`
+  ┌─ two_base_loops.fe:8:19
+  │
+8 │     for (x, y) in (mut xs, ys) by zip() {
+  │                   ^^^^^^^^^^^^ one base is `mut` and the other is not

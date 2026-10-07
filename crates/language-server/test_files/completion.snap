@@ -50,6 +50,7 @@ completions:
   - Panic (Struct)
   - Point (Struct)
   - Result (Enum)
+  - Snapshot (Interface)
   - Sol (Struct)
   - Some (EnumMember)
   - StorageMap (Struct)

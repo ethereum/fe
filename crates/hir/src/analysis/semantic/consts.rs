@@ -308,7 +308,8 @@ fn verify_sem_const_shape_impl<'db>(
             if ty.is_func(db) && fields.is_empty() {
                 return Ok(());
             }
-            if !ty.is_struct(db) {
+            // A closure's value is the record of its captures.
+            if !ty.is_struct(db) && ty.as_closure(db).is_none() {
                 return Err("constant record payload has a non-record type");
             }
             verify_sem_const_children(db, fields, ty.field_types(db).into_iter(), allow_dependent)
@@ -710,7 +711,7 @@ fn reify_runtime_const_impl<'db>(
             if ty.is_func(db) && fields.is_empty() {
                 return Some(struct_const(db, ty, Box::new([])));
             }
-            if !ty.is_struct(db) {
+            if !ty.is_struct(db) && ty.as_closure(db).is_none() {
                 return None;
             }
             let field_tys = ty.field_types(db);
@@ -1053,7 +1054,7 @@ pub(crate) fn runtime_size_bytes_with_source<'db>(
             Some(0)
         } else if ty.has_param(db) {
             None
-        } else if ty.is_tuple(db) {
+        } else if ty.is_tuple(db) || ty.as_closure(db).is_some() {
             let canonical_fields = ty.field_types(db);
             let source_fields = source.field_types(db);
             if canonical_fields.len() != source_fields.len() {

@@ -3361,6 +3361,7 @@ struct Rooted<const ROOT: u256> {
 impl<const ROOT: u256> Copy for Rooted<ROOT> {}
 
 impl<const ROOT: u256> Index<usize> for Rooted<ROOT> {
+    space S = self
     type Output = StorageMap<u256, u256, ROOT>
 
     fn index(self, _ index: usize) -> ref StorageMap<u256, u256, ROOT> {
@@ -3409,7 +3410,8 @@ fn for_loop_calls_transport_control_flow_selected_layout_evidence() {
         db,
         top_mod,
         r#"
-use core::Seq
+use core::iter::Collection
+use core::option::Option
 use std::evm::StorageMap
 
 struct RootedSeq<const ROOT: u256> {
@@ -3418,15 +3420,22 @@ struct RootedSeq<const ROOT: u256> {
 
 impl<const ROOT: u256> Copy for RootedSeq<ROOT> {}
 
-impl<const ROOT: u256> Seq for RootedSeq<ROOT> {
+impl<const ROOT: u256> Collection for RootedSeq<ROOT> {
+    space S = memory
+    type Cursor = usize
     type Item = u256
 
-    fn len(self) -> usize {
-        1
+    fn start(self) -> Option<usize> {
+        Option::Some(0)
     }
 
-    fn get(self, _ index: usize) -> u256 {
-        self.map.get(key: 0)
+    fn next(self, _ c: usize) -> Option<usize> {
+        Option::None
+    }
+
+    fn at(self, _ c: usize) -> ref u256 {
+        let value = self.map.get(key: 0)
+        yield ref value
     }
 }
 

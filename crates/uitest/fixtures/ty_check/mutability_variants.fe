@@ -1,0 +1,14 @@
+use core::iter::{Collection, CollectionMut}
+
+// The `mut` variant of `at` needs a mutable receiver.
+fn immutable_receiver() {
+    let xs: [u256; 2] = [1, 2]
+    xs.at(0) = 3
+}
+
+// A read selects the view variant, which yields no `mut` place.
+fn read_is_not_a_place() {
+    let mut xs: [u256; 2] = [1, 2]
+    let x = xs.at(0)
+    x = 3
+}

@@ -1,12 +1,21 @@
 use crate::analysis::HirAnalysisDb;
-use crate::analysis::place::resolve_place_field;
-use crate::analysis::ty::corelib::resolve_core_trait;
+use crate::analysis::place::{PlaceBase, resolve_place_field};
+use crate::analysis::semantic::capability::semantics::field_handle_spaces;
+use crate::analysis::semantic::effect_param_site;
+use crate::analysis::ty::corelib::{effect_key_state_access, resolve_core_trait};
 use crate::analysis::ty::diagnostics::{BodyDiag, FuncBodyDiag};
-use crate::analysis::ty::provider::{EffectHandleResolution, resolve_effect_handle};
+use crate::analysis::ty::effects::rows::expand_rows;
+use crate::analysis::ty::normalize::normalize_ty;
+use crate::analysis::ty::provider::{
+    EffectHandleResolution, ProviderAddressSpace, provider_semantics, resolve_effect_handle,
+};
 use crate::analysis::ty::trait_def::TraitInstId;
 use crate::analysis::ty::trait_resolution::{TraitSolveCx, is_goal_satisfiable};
-use crate::analysis::ty::ty_check::{BodyOwner, TypedBody};
+use crate::analysis::ty::ty_check::{BindingAccess, BodyOwner, LocalBinding, TypedBody};
 use crate::analysis::ty::ty_def::TyId;
+use crate::analysis::ty::ty_is_copy;
+use crate::analysis::ty::ty_lower::collect_layout_arg_bindings;
+use crate::core::semantic::EffectEnvView;
 use crate::hir_def::{
     BlockKind, Body, CallableDef, Cond, CondId, Expr, ExprId, Partial, Stmt, StmtId, UnOp,
 };
@@ -34,6 +43,7 @@ pub(crate) fn check_unsafe_ops<'db>(
 
     let mut checker = UnsafeChecker {
         db,
+        owner,
         body,
         typed_body,
         diags: Vec::new(),
@@ -46,6 +56,7 @@ pub(crate) fn check_unsafe_ops<'db>(
 /// everything there is allowed.
 struct UnsafeChecker<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
+    owner: BodyOwner<'db>,
     body: Body<'db>,
     typed_body: &'a TypedBody<'db>,
     diags: Vec<FuncBodyDiag<'db>>,
@@ -110,6 +121,77 @@ impl<'db> UnsafeChecker<'db, '_> {
         }
     }
 
+    /// Reports a `with` binding whose provider names existing storage or
+    /// transient state that the function's own effects do not cover, so that
+    /// nonlocal interference never disappears from its contract. A place in
+    /// one of its effects, or in an access, carries that authority; a copied
+    /// handle needs an effect of its type (`Field(T)`) or raw state authority.
+    fn check_provider_coverage(&mut self, value: ExprId) {
+        let scope = self.body.scope();
+        let assumptions = self.typed_body.assumptions();
+        let ty = normalize_ty(
+            self.db,
+            self.typed_body.expr_ty(self.db, value),
+            scope,
+            assumptions,
+        );
+        let names_resource = matches!(
+            provider_semantics(self.db, scope, assumptions, ty).address_space,
+            Some(ProviderAddressSpace::Storage | ProviderAddressSpace::Transient)
+        ) || !field_handle_spaces(self.db, scope, assumptions, ty).is_empty();
+        let authority = self.typed_body.expr_place(value).is_some_and(|place| {
+            let PlaceBase::Binding(binding) = place.base;
+            match (binding, self.typed_body.binding_access(binding)) {
+                (LocalBinding::EffectParam { .. }, _) => true,
+                (_, Some(BindingAccess::View)) => !ty_is_copy(
+                    self.db,
+                    scope,
+                    self.typed_body.binding_ty(self.db, binding),
+                    assumptions,
+                ),
+                (_, access) => access.is_some(),
+            }
+        });
+        if authority || !names_resource {
+            return;
+        }
+        let is_mut = self.typed_body.expr_prop(self.db, value).is_mut;
+        let requirements = effect_param_site(self.owner)
+            .map(|site| EffectEnvView::new(site).requirements(self.db))
+            .unwrap_or_default();
+        let rows = expand_rows(self.db, &requirements, scope, assumptions);
+        let covered = requirements
+            .iter()
+            .chain(
+                rows.components
+                    .iter()
+                    .map(|component| &component.requirement),
+            )
+            .filter(|requirement| requirement.is_mut || !is_mut)
+            .any(|requirement| {
+                requirement.key.key_ty().is_some_and(|key| {
+                    let key = normalize_ty(self.db, key, scope, assumptions);
+                    collect_layout_arg_bindings(self.db, key, ty, &mut Vec::new())
+                }) || effect_key_state_access(
+                    self.db,
+                    scope,
+                    assumptions,
+                    requirement.key.clone(),
+                    requirement.is_mut,
+                )
+                .is_some()
+            });
+        if !covered {
+            self.diags.push(
+                BodyDiag::UncoveredProvider {
+                    primary: value.span(self.body).into(),
+                    is_mut,
+                }
+                .into(),
+            );
+        }
+    }
+
     fn check_stmt(&mut self, stmt: StmtId) {
         let Partial::Present(stmt_data) = stmt.data(self.db, self.body) else {
             return;
@@ -121,9 +203,10 @@ impl<'db> UnsafeChecker<'db, '_> {
                     self.check_expr(*expr);
                 }
             }
-            Stmt::For(_, iter, body, _) => {
-                self.check_expr(*iter);
-                self.check_expr(*body);
+            Stmt::For(_, iter, driver, body, _) => {
+                for expr in [*iter].into_iter().chain(*driver).chain([*body]) {
+                    self.check_expr(expr);
+                }
             }
             Stmt::While(cond, body) => {
                 self.check_cond(*cond);
@@ -150,6 +233,7 @@ impl<'db> UnsafeChecker<'db, '_> {
             Expr::Block(stmts, BlockKind::Normal) => {
                 stmts.iter().for_each(|stmt| self.check_stmt(*stmt));
             }
+            Expr::Closure { body, .. } => self.check_expr(*body),
 
             Expr::Un(inner, op) => {
                 self.check_expr(*inner);
@@ -216,6 +300,7 @@ impl<'db> UnsafeChecker<'db, '_> {
                 for binding in bindings {
                     self.check_expr(binding.value);
                     self.check_provider(binding.value);
+                    self.check_provider_coverage(binding.value);
                 }
                 self.check_expr(*body);
             }

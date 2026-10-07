@@ -20,7 +20,8 @@ struct TaggedStorPtr<T> {
 impl<T> Copy for TaggedStorPtr<T> {}
 
 impl<T> TaggedStorPtr<T> {
-    fn read(self) -> T
+    // `self` is a copy, so the caller grants the authority over the slot.
+    fn read(self) -> T uses (storage: Field(StorPtr<T>))
         where T: Copy
     {
         self.ptr.read()
@@ -117,12 +118,12 @@ pub contract NestedProviderMaps {
         }
 
         SetTagged { key, value } uses (tagged) {
-            let mut map = tagged.ptr.read()
+            let mut map = with (tagged.ptr.ptr) { tagged.ptr.read() }
             map.set(key, value)
         }
 
         GetTagged { key } -> u256 uses (tagged) {
-            tagged.ptr.read().get(key)
+            with (tagged.ptr.ptr) { tagged.ptr.read() }.get(key)
         }
 
         GetTaggedHandleTag -> u256 uses (tagged) {

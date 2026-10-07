@@ -29,8 +29,10 @@ fn merkle_verification_gas_and_correctness() {
     let source = include_str!("evm_compiler_bench/merkle_verifier.fe");
     let bytecode = compile_fe_sonatina_bytecode(source, "MerkleVerifier", "MerkleVerifier")
         .expect("compile Merkle benchmark");
+    // Above Seq loops' 420 until Sonatina threads `Collection` cursor tests
+    // (issues/fe/for-loop-protocol-overhead).
     assert!(
-        bytecode.runtime.len() <= 420,
+        bytecode.runtime.len() <= 510,
         "Merkle bytecode regressed to {} bytes",
         bytecode.runtime.len()
     );
@@ -65,7 +67,9 @@ fn merkle_verification_gas_and_correctness() {
                     .total_step_gas;
                 // Includes decoding/copying the proof. In particular, growing
                 // proofs must not regain per-element frame/overflow checks.
-                assert!(gas <= 700 + 175 * length as u64, "proof {length}: {gas}");
+                // A `Collection` loop keeps the proof's bounds check that a
+                // counted loop elides (issues/fe/for-loop-protocol-overhead).
+                assert!(gas <= 700 + 275 * length as u64, "proof {length}: {gas}");
             }
             let result = runtime
                 .call_raw(&input, ExecutionOptions::default())

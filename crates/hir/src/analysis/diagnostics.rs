@@ -66,7 +66,9 @@ fn pretty_print_ty_for_mismatch<'db>(db: &'db dyn SpannedHirAnalysisDb, ty: TyId
                     .scope()
                     .pretty_path(db)
                     .unwrap_or_else(|| ty.pretty_print(db).to_string()),
-                TyBase::Prim(_) | TyBase::Func(_) => ty.pretty_print(db).to_string(),
+                TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) => {
+                    ty.pretty_print(db).to_string()
+                }
             }
         }
         TyData::ConstTy(_) => ty.pretty_print(db).to_string(),
@@ -1645,6 +1647,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::UnknownResultSpace(span) => primary_diag(
+                Severity::Error,
+                "unknown result space",
+                "expected `memory`, `storage`, `transient`, `calldata`, `code`, a parameter, an effect, `target(p)`, or an associated space",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ModeNotType(span) => primary_diag(
                 Severity::Error,
                 "`ref` and `mut` are not types",
@@ -3108,9 +3118,39 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         ),
                         span: primary.resolve(db),
                     }],
+                    notes: vec![match key.field_key_handle(db) {
+                        Some(_) => "the authority over a storage field comes with a handle \
+                            argument that lies in an effect provider, such as a contract \
+                            field under `uses (mut store)`"
+                            .to_string(),
+                        None => format!(
+                            "provide it with `with ({key_str} = value)` or require it via `uses {key_str}`"
+                        ),
+                    }],
+                    error_code,
+                }
+            }
+
+            Self::MissingRow { primary, func, row } => {
+                let func_name = func
+                    .name(db)
+                    .to_opt()
+                    .map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string());
+                let row = format!(
+                    "{}::{}",
+                    row.inst.self_ty(db).pretty_print(db),
+                    row.name(db).map_or("<row>", |name| name.data(db))
+                );
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("missing effect row `{row}` required by `{func_name}`"),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{func_name}` requires the row `{row}`"),
+                        span: primary.resolve(db),
+                    }],
                     notes: vec![format!(
-                        "provide it with `with ({} = value)` or require it via `uses {}`",
-                        key_str, key_str
+                        "a row whose implementation is not known here is forwarded: require it via `uses {row}`"
                     )],
                     error_code,
                 }
@@ -4852,6 +4892,94 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
+            BodyDiag::UncoveredProvider { primary, is_mut } => CompleteDiagnostic {
+                severity,
+                message: "a `with` provider naming storage needs the function's own authority"
+                    .to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this handle names storage the function's `uses` does not cover"
+                        .to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![format!(
+                    "require it via `uses (storage: {}RawStorage)`, or vouch for it in an `unsafe` block",
+                    if *is_mut { "mut " } else { "" }
+                )],
+                error_code,
+            },
+
+            BodyDiag::ClosureInConstContext { primary } => primary_diag(
+                severity,
+                "closures cannot be used in constant contexts",
+                "constant evaluation cannot evaluate a closure",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            BodyDiag::ClosureArityMismatch {
+                primary,
+                expected,
+                given,
+            } => primary_diag(
+                severity,
+                "closure has the wrong number of parameters",
+                format!(
+                    "expected a closure taking {expected} parameter{}, found {given}",
+                    if *expected == 1 { "" } else { "s" }
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            BodyDiag::WriteToCapture { primary, name } => CompleteDiagnostic {
+                severity,
+                message: format!("cannot write to `{}`, which a closure captures", name.data(db)),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "the closure only reads its copy".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "closures capture by copy or move; thread state through parameters and results instead"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            BodyDiag::AccessCapture { primary, name } => CompleteDiagnostic {
+                severity,
+                message: format!("a closure cannot capture the access `{}`", name.data(db)),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "an access of a non-`Copy` value is neither copied nor moved"
+                        .to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec!["pass the value to the closure as a parameter instead".to_string()],
+                error_code,
+            },
+
+            BodyDiag::MoveOutOfCapture { primary, name } => CompleteDiagnostic {
+                severity,
+                message: format!("cannot move `{}` out of a closure's captures", name.data(db)),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "moved here".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec!["each call of a closure only views its captures".to_string()],
+                error_code,
+            },
+
+            BodyDiag::MixedLoopBases { primary } => primary_diag(
+                severity,
+                "a two-base loop's bases are both viewed or both `mut`",
+                "one base is `mut` and the other is not",
+                primary.resolve(db),
+                error_code,
+            ),
+
             BodyDiag::UnsafeProviderRequiresUnsafe { primary } => primary_diag(
                 severity,
                 "binding a raw-pointer effect provider requires an `unsafe` block or function",
@@ -4899,6 +5027,21 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 "external trait cannot be implemented for external type",
                 "external trait cannot be implemented for external type",
                 impl_trait.span().resolve(db),
+                error_code,
+            ),
+
+            Self::AccessItemDefault {
+                primary,
+                kind,
+                name,
+            } => primary_diag(
+                Severity::Error,
+                format!("a trait's {kind} has no default"),
+                format!(
+                    "{kind} `{}` is given by each implementation, not the trait",
+                    name.data(db)
+                ),
+                primary.resolve(db),
                 error_code,
             ),
 
@@ -5491,6 +5634,39 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 format!(
                     "associated type `{}` is not defined in trait `{}`",
                     type_name.data(db),
+                    trait_.name(db).unwrap().data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::AccessItemNotDefinedInTrait {
+                primary,
+                trait_,
+                kind,
+                name,
+            } => primary_diag(
+                severity,
+                format!("associated {kind} not defined in trait"),
+                format!(
+                    "associated {kind} `{}` is not defined in trait `{}`",
+                    name.data(db),
+                    trait_.name(db).unwrap().data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::MissingAssociatedSpace {
+                primary,
+                trait_,
+                name,
+            } => primary_diag(
+                severity,
+                "missing associated space in trait implementation",
+                format!(
+                    "missing associated space `{}` from trait `{}`",
+                    name.data(db),
                     trait_.name(db).unwrap().data(db)
                 ),
                 primary.resolve(db),

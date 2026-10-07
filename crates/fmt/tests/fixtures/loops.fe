@@ -8,6 +8,10 @@ break
         }
     }
 
+    for  (i,x)  in  mut  arr   by  enumerate().take(3)  {
+        x = x + i
+    }
+
     let mut  x=0
     while   x  <  100  {
         x=x+1
