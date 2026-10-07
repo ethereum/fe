@@ -9,4 +9,4 @@ error[16-0001]: access conflict in `fn Conflict::__init__`
 12 │         let x = mut h1[1]
    │                     ----- projection opened here
 13 │         h2[2] = 5
-   │         ^^ cannot write to this place while a `mut` projection of it is open
+   │         ^^^^^ cannot write to this place while a `mut` projection of it is open

@@ -458,3 +458,142 @@ fn case37_scalar_snapshot() -> u256 {
     n = 2
     x + n
 }
+
+// 29. Accepted: writes through a `mut` parameter and a nested `mut` binding.
+fn case29_writes(_ p: mut Pair) {
+    p.a += 1
+    let h = mut p.b
+    h += 2
+}
+
+// 30. Accepted: two overlapping reads.
+fn case30_reads(_ p: mut Pair) -> u256 {
+    let r = ref p
+    let s = ref p.a
+    r.b + s
+}
+
+// 30. Rejected: an unrelated write against an open read.
+fn case30_write_under_read(_ p: mut Pair) -> u256 {
+    let r = ref p.a
+    p.a = 2
+    r
+}
+
+// 31. Accepted: a stable access resolves its place once, so restoring through
+// it restores the element first named however the index changes.
+fn case31_stable_place() -> u256 {
+    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    let mut i: usize = 0
+    let slot = mut items[i]
+    i = 1
+    let saved = slot
+    slot = Item { n: 3 }
+    consume(saved)
+    items[i].n
+}
+
+// 34. Accepted: forwarding and reordering the disjoint grants of `pair_mut`.
+fn case34_reordered(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u256) {
+    let (a, b) = xs.pair_mut(i, j)
+    (mut b, mut a)
+}
+
+// 34. Rejected: duplicating one `mut` grant.
+fn case34_duplicated(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u256) {
+    let (a, b) = xs.pair_mut(i, j)
+    (mut a, mut a)
+}
+
+fn take(_ v: u256) -> u256 {
+    v
+}
+
+// 35. Accepted: passing a copied referent does not end its source access.
+fn case35_copied_argument(_ p: mut Pair) -> u256 {
+    let x = mut p.a
+    let y = take(x)
+    x += y
+    p.a
+}
+
+fn first_of(_ p: mut Pair) -> mut u256 {
+    mut p.a
+}
+
+fn bump(_ x: mut u256) {
+    x += 1
+}
+
+// 38. Accepted: writes through an input-rooted `mut` grant, directly and
+// through a helper.
+fn case38_grant_writes(_ p: mut Pair) {
+    let x = first_of(mut p)
+    x += 1
+    bump(mut x)
+}
+
+// 38. Rejected: an independent access to the reserved owner while the grant
+// is live.
+fn case38_owner_access(_ p: mut Pair) {
+    let x = first_of(mut p)
+    p.b = 1
+    x += 1
+}
+
+struct Halves { left: Item, right: Item }
+
+// 39. Rejected: a hole opened on one branch persists past the join, so the
+// access closes with it unrestored.
+fn case39_one_branch(_ flag: bool) -> u256 {
+    let mut halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
+    let h = mut halves
+    if flag {
+        consume(h.left)
+    }
+    h.right.n
+}
+
+// 39. Accepted: restored unconditionally after the join.
+fn case39_restored(_ flag: bool) -> u256 {
+    let mut halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
+    let h = mut halves
+    if flag {
+        consume(h.left)
+    }
+    h.left = Item { n: 5 }
+    h.left.n
+}
+
+// 39. Accepted: replacing the whole referent restores every hole.
+fn case39_replaced(_ flag: bool) -> u256 {
+    let mut halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
+    let h = mut halves
+    if flag {
+        consume(h.left)
+    }
+    h = Halves { left: Item { n: 7 }, right: Item { n: 8 } }
+    h.left.n
+}
+
+fn first_item(_ items: [Item; 2]) -> ref Item {
+    ref items[0]
+}
+
+// 32. The same projection's result lies where its input does: in storage an
+// external call conflicts with it (rejected), in memory it does not.
+pub contract Case32StoragePlacement {
+    mut items: [Item; 2],
+    init() uses (items, call: mut Call) {
+        let x = first_item(items)
+        ping()
+        assert(x.n == 0)
+    }
+}
+
+fn case32_memory_placement() uses (call: mut Call) {
+    let items = [Item { n: 1 }, Item { n: 2 }]
+    let x = first_item(items)
+    ping()
+    assert(x.n == 1)
+}

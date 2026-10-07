@@ -23,7 +23,7 @@ adds a `Closure` clause when a goal's self type is a closure, building an
 `ImplementorOrigin::Closure` implementor from the goal in the goal's own
 table; the normalizer resolves `Out` to the closure's result; the row `E`
 expands to the closure's components (`effects::rows`); method selection adds
-both shapes' `call` as candidates, the view one preferred.
+both shapes' methods as candidates, `Fn`'s `call` and `FnMut`'s `call_mut`.
 
 ## Checking
 

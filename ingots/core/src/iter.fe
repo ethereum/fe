@@ -64,7 +64,7 @@ pub trait Collection {
     {
         let mut acc = init
         for x in self {
-            acc = f.call(acc, x)
+            acc = f.call_mut(acc, x)
         }
         acc
     }
@@ -110,7 +110,7 @@ pub trait CollectionMut: Collection {
     uses EM
 
     /// The element at `c`, to mutate.
-    fn at(mut self, _ c: Self::Cursor) -> mut Self::Item @S uses EM
+    fn at_mut(mut self, _ c: Self::Cursor) -> mut Self::Item @S uses EM
 }
 
 /// A collection that can also be traversed from its end.
@@ -185,7 +185,7 @@ impl<T, const N: usize> Collection for [T; N] {
 
 impl<T, const N: usize> CollectionMut for [T; N] {
     #[inline(always)]
-    fn at(mut self, _ c: usize) -> mut T {
+    fn at_mut(mut self, _ c: usize) -> mut T {
         mut self[c]
     }
 }
@@ -225,7 +225,7 @@ impl<T> Collection for MemArray<T> {
 
 impl<T> CollectionMut for MemArray<T> {
     #[inline(always)]
-    fn at(mut self, _ c: usize) -> mut T {
+    fn at_mut(mut self, _ c: usize) -> mut T {
         mut self[c]
     }
 }
@@ -295,7 +295,7 @@ pub trait Driver<B: Collection> {
 
 /// A driver whose elements a loop can mutate in place.
 pub trait DriverMut<B: CollectionMut>: Driver<B> {
-    fn at(self, _ base: mut B, _ s: Self::State) -> (Self::Extra, mut Self::Item) @B::S uses (B::EM, E)
+    fn at_mut(self, _ base: mut B, _ s: Self::State) -> (Self::Extra, mut Self::Item) @B::S uses (B::EM, E)
 }
 
 /// A traversal of two bases a loop holds, in step: `for (x, y) in (a, b) by d`.
@@ -315,7 +315,7 @@ pub trait Driver2<A: Collection, B: Collection> {
 /// A two-base driver whose elements a loop can mutate in place, which needs
 /// disjoint bases: `for (x, y) in (mut a, mut b) by d`.
 pub trait DriverMut2<A: CollectionMut, B: CollectionMut>: Driver2<A, B> {
-    fn at(self, _ a: mut A, _ b: mut B, _ s: Self::State) -> (mut A::Item @A::S, mut B::Item @B::S)
+    fn at_mut(self, _ a: mut A, _ b: mut B, _ s: Self::State) -> (mut A::Item @A::S, mut B::Item @B::S)
         uses (A::EM, B::EM, E)
 }
 
@@ -360,8 +360,8 @@ impl<B: Collection> Driver<B> for Identity {
 
 impl<B: CollectionMut> DriverMut<B> for Identity {
     #[inline(always)]
-    fn at(self, _ base: mut B, _ s: B::Cursor) -> ((), mut B::Item) uses B::EM {
-        ((), CollectionMut::at(mut base, s))
+    fn at_mut(self, _ base: mut B, _ s: B::Cursor) -> ((), mut B::Item) uses B::EM {
+        ((), CollectionMut::at_mut(mut base, s))
     }
 }
 
@@ -407,10 +407,10 @@ impl<A: Collection, B: Collection> Driver2<A, B> for Zip {
 
 impl<A: CollectionMut, B: CollectionMut> DriverMut2<A, B> for Zip {
     #[inline(always)]
-    fn at(self, _ a: mut A, _ b: mut B, _ s: (A::Cursor, B::Cursor)) -> (mut A::Item, mut B::Item)
+    fn at_mut(self, _ a: mut A, _ b: mut B, _ s: (A::Cursor, B::Cursor)) -> (mut A::Item, mut B::Item)
         uses (A::EM, B::EM)
     {
-        (CollectionMut::at(mut a, s.0), CollectionMut::at(mut b, s.1))
+        (CollectionMut::at_mut(mut a, s.0), CollectionMut::at_mut(mut b, s.1))
     }
 }
 
@@ -441,8 +441,8 @@ impl<B: Bidirectional> Driver<B> for Reversed {
 
 impl<B: Bidirectional + CollectionMut> DriverMut<B> for Reversed {
     #[inline(always)]
-    fn at(self, _ base: mut B, _ s: B::Cursor) -> ((), mut B::Item) uses B::EM {
-        ((), CollectionMut::at(mut base, s))
+    fn at_mut(self, _ base: mut B, _ s: B::Cursor) -> ((), mut B::Item) uses B::EM {
+        ((), CollectionMut::at_mut(mut base, s))
     }
 }
 
@@ -484,8 +484,8 @@ impl<B: Collection, D: Driver<B>> Driver<B> for Enumerate<D> {
 
 impl<B: CollectionMut, D: DriverMut<B>> DriverMut<B> for Enumerate<D> {
     #[inline(always)]
-    fn at(self, _ base: mut B, _ s: (usize, D::State)) -> (usize, mut D::Item) uses (B::EM, E) {
-        let (_, item) = DriverMut<B>::at(self.inner, mut base, s.1)
+    fn at_mut(self, _ base: mut B, _ s: (usize, D::State)) -> (usize, mut D::Item) uses (B::EM, E) {
+        let (_, item) = DriverMut<B>::at_mut(self.inner, mut base, s.1)
         (s.0, item)
     }
 }
@@ -534,8 +534,8 @@ impl<B: Collection, D: Driver<B>> Driver<B> for Take<D> {
 
 impl<B: CollectionMut, D: DriverMut<B>> DriverMut<B> for Take<D> {
     #[inline(always)]
-    fn at(self, _ base: mut B, _ s: (usize, D::State)) -> (D::Extra, mut D::Item) uses (B::EM, E) {
-        DriverMut<B>::at(self.inner, mut base, s.1)
+    fn at_mut(self, _ base: mut B, _ s: (usize, D::State)) -> (D::Extra, mut D::Item) uses (B::EM, E) {
+        DriverMut<B>::at_mut(self.inner, mut base, s.1)
     }
 }
 
@@ -580,8 +580,8 @@ impl<B: Collection, D: Driver<B>> Driver<B> for Skip<D> {
 
 impl<B: CollectionMut, D: DriverMut<B>> DriverMut<B> for Skip<D> {
     #[inline(always)]
-    fn at(self, _ base: mut B, _ s: D::State) -> (D::Extra, mut D::Item) uses (B::EM, E) {
-        DriverMut<B>::at(self.inner, mut base, s)
+    fn at_mut(self, _ base: mut B, _ s: D::State) -> (D::Extra, mut D::Item) uses (B::EM, E) {
+        DriverMut<B>::at_mut(self.inner, mut base, s)
     }
 }
 
@@ -626,8 +626,8 @@ impl<B: Collection, D: Driver<B>> Driver<B> for StepBy<D> {
 
 impl<B: CollectionMut, D: DriverMut<B>> DriverMut<B> for StepBy<D> {
     #[inline(always)]
-    fn at(self, _ base: mut B, _ s: D::State) -> (D::Extra, mut D::Item) uses (B::EM, E) {
-        DriverMut<B>::at(self.inner, mut base, s)
+    fn at_mut(self, _ base: mut B, _ s: D::State) -> (D::Extra, mut D::Item) uses (B::EM, E) {
+        DriverMut<B>::at_mut(self.inner, mut base, s)
     }
 }
 
@@ -708,8 +708,8 @@ impl<B: Collection, D: Driver<B>, P: Fn(D::Item) -> bool> Driver<B> for Filter<D
 }
 
 impl<B: CollectionMut, D: DriverMut<B>, P: Fn(D::Item) -> bool> DriverMut<B> for Filter<D, P> {
-    fn at(self, _ base: mut B, _ s: D::State) -> (D::Extra, mut D::Item) uses (B::EM, E) {
-        DriverMut<B>::at(self.inner, mut base, s)
+    fn at_mut(self, _ base: mut B, _ s: D::State) -> (D::Extra, mut D::Item) uses (B::EM, E) {
+        DriverMut<B>::at_mut(self.inner, mut base, s)
     }
 }
 
@@ -734,7 +734,7 @@ impl<B: Collection, D: Driver<B>, F: FnMut_v<D::Item>> Producer<B> for Map<D, F>
 
     fn produce(mut self, _ base: B, _ s: D::State) -> F::Out uses (B::E, E) {
         let (_, item) = Driver<B>::at(self.inner, base, s)
-        self.f.call(item)
+        self.f.call_mut(item)
     }
 }
 

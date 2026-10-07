@@ -109,6 +109,38 @@ error[16-0001]: access conflict in `fn case36_copy_array_view`
 445 │     xs[1] = 5
     │     ^^^^^^^^^ cannot write to this place while a `ref` projection of it is open
 
+error[16-0001]: access conflict in `fn case30_write_under_read`
+    ┌─ acceptance.fe:479:5
+    │
+478 │     let r = ref p.a
+    │             ------- access opened here
+479 │     p.a = 2
+    │     ^^^^^^^ cannot write to this place while a `ref` access of it is open
+
+error[16-0001]: access conflict in `fn case34_duplicated`
+    ┌─ acceptance.fe:505:13
+    │
+505 │     (mut a, mut a)
+    │      -----  ^^^^^ cannot mutably access this place while a `mut` access of it is open
+    │      │
+    │      access opened here
+
+error[16-0001]: access conflict in `fn case38_owner_access`
+    ┌─ acceptance.fe:540:5
+    │
+539 │     let x = first_of(mut p)
+    │                      ----- access opened here
+540 │     p.b = 1
+    │     ^^^^^^^ cannot write to this place while a `mut` access of it is open
+
+error[16-0001]: access conflict in `fn Case32StoragePlacement::__init__`
+    ┌─ acceptance.fe:589:9
+    │
+588 │         let x = first_item(items)
+    │                            ----- access opened here
+589 │         ping()
+    │         ^^^^^^ this call may write storage while a `ref` access of it is open
+
 error[16-0002]: move conflict in `fn case13_uninitialized`
     ┌─ acceptance.fe:222:11
     │
@@ -120,6 +152,15 @@ error[16-0002]: move conflict in `fn case25_dynamic_moves`
     │
 382 │     consume(items[i])
     │             ^^^^^^^^ cannot move out of an element at a dynamic index
+
+error[16-0002]: move conflict in `fn case39_one_branch`
+    ┌─ acceptance.fe:550:13
+    │
+550 │     let h = mut halves
+    │             ^^^^^^^^^^ this access ends while its referent is moved out
+551 │     if flag {
+552 │         consume(h.left)
+    │                 ------ value is moved here
 
 warning[16-0012]: discarded writes in `fn counter`
    ┌─ acceptance.fe:67:5

@@ -391,7 +391,13 @@ pub(crate) fn seed_root_provider_carriers<'a, 'db>(
         if provider.as_ref().is_some_and(|provider| {
             env.actual_runtime_visible_root_provider_class(carriers, provider)
                 .is_none()
-                && provider_erases_runtime_root(env.db(), provider, env.scope(), env.assumptions())
+                && provider_erases_runtime_root(
+                    env.db(),
+                    env.body().owner(),
+                    provider,
+                    env.scope(),
+                    env.assumptions(),
+                )
         }) {
             continue;
         }
@@ -561,7 +567,7 @@ fn lower_semantic_locals<'db>(
             cx.env
                 .actual_runtime_visible_root_provider_class(carriers, provider)
                 .is_none()
-                && provider_erases_runtime_root(db, provider, scope, assumptions)
+                && provider_erases_runtime_root(db, body.owner(), provider, scope, assumptions)
         }) {
             continue;
         }
@@ -694,7 +700,7 @@ fn lower_semantic_locals<'db>(
                 cx.env
                     .actual_runtime_visible_root_provider_class(carriers, provider)
                     .is_none()
-                    && provider_erases_runtime_root(db, provider, scope, assumptions)
+                    && provider_erases_runtime_root(db, body.owner(), provider, scope, assumptions)
             }) {
                 return RuntimeLocalLowering::Erased;
             }

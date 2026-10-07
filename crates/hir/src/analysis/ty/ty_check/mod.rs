@@ -37,7 +37,7 @@ use crate::{
     hir_def::{
         BinOp, Body, CondId, Const, Contract, ContractRecvArm, Expr, ExprId, Func, GenericParam,
         GenericParamOwner, LitKind, ManualContractRootAttr, Partial, Pat, PatId, PathId,
-        StaticAssert, StaticAssertComparison, Stmt, StmtId, StringId, TypeId as HirTyId,
+        StaticAssert, StaticAssertComparison, Stmt, StmtId, StringId, TypeId as HirTyId, UnOp,
         WhereClauseOwner,
     },
     span::{
@@ -1251,6 +1251,7 @@ fn typed_body_for_bodyless_func<'db>(
         expr_ty: SecondaryMap::new(),
         yield_shapes: SecondaryMap::new(),
         implicit_moves: FxHashSet::default(),
+        covered_providers: FxHashSet::default(),
         const_refs: SecondaryMap::new(),
         value_path_refs: SecondaryMap::new(),
         semantic_expr_lowering: SecondaryMap::new(),
@@ -2920,11 +2921,35 @@ impl<'db> TyChecker<'db> {
     fn bind_pattern_source(&mut self, pat: PatId, source: ExprId, prop: &ExprProp<'db>) {
         if let Some(shape) = &prop.shape {
             self.consume_access(source);
+            let authority = self.expr_has_authority(source);
             if self.env.is_matched_place(source) {
-                self.bind_mut_pattern_accesses(pat);
+                self.bind_mut_pattern_accesses(pat, authority);
             } else {
-                self.bind_pattern_accesses(pat, shape);
+                self.bind_pattern_accesses(pat, shape, authority);
             }
+        }
+    }
+
+    /// Whether the place `expr` names, or a projection result derives from,
+    /// carries effect authority (`binding_has_authority`).
+    pub(super) fn expr_has_authority(&self, expr: ExprId) -> bool {
+        if let Some(place) = self.env.expr_place(expr) {
+            let PlaceBase::Binding(binding) = place.base;
+            return self.env.binding_has_authority(&binding);
+        }
+        match expr.data(self.db, self.body()) {
+            Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) => {
+                self.expr_has_authority(*inner)
+            }
+            Partial::Present(Expr::Bin(base, _, BinOp::Index)) => self.expr_has_authority(*base),
+            Partial::Present(Expr::MethodCall(receiver, _, _, args)) => {
+                self.expr_has_authority(*receiver)
+                    || args.iter().any(|arg| self.expr_has_authority(arg.expr))
+            }
+            Partial::Present(Expr::Call(_, args)) => {
+                args.iter().any(|arg| self.expr_has_authority(arg.expr))
+            }
+            _ => false,
         }
     }
 
@@ -3009,26 +3034,26 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn bind_mut_pattern_accesses(&mut self, pat: PatId) {
+    fn bind_mut_pattern_accesses(&mut self, pat: PatId, authority: bool) {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return;
         };
         match pat_data {
-            Pat::Path(_, true) => self.set_pattern_access(pat, BorrowKind::Mut),
+            Pat::Path(_, true) => self.set_pattern_access(pat, BorrowKind::Mut, authority),
             Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Path(..) => {}
             Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
                 for pat in pats {
-                    self.bind_mut_pattern_accesses(*pat);
+                    self.bind_mut_pattern_accesses(*pat, authority);
                 }
             }
             Pat::Record(_, fields) => {
                 for field in fields {
-                    self.bind_mut_pattern_accesses(field.pat);
+                    self.bind_mut_pattern_accesses(field.pat, authority);
                 }
             }
             Pat::Or(lhs, rhs) => {
-                self.bind_mut_pattern_accesses(*lhs);
-                self.bind_mut_pattern_accesses(*rhs);
+                self.bind_mut_pattern_accesses(*lhs, authority);
+                self.bind_mut_pattern_accesses(*rhs, authority);
             }
         }
     }
@@ -3038,16 +3063,16 @@ impl<'db> TyChecker<'db> {
     /// kind. Tuple and sum shapes assign their components, and owned
     /// components bind by value. A shape is not a value, so a single binding
     /// cannot hold a whole tuple or sum shape.
-    fn bind_pattern_accesses(&mut self, pat: PatId, shape: &Shape<'db>) {
+    fn bind_pattern_accesses(&mut self, pat: PatId, shape: &Shape<'db>, authority: bool) {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return;
         };
         match (shape, pat_data) {
             (Shape::Owned(_), _) | (_, Pat::WildCard | Pat::Rest | Pat::Lit(_)) => {}
-            (Shape::Access(kind, _), _) => self.set_pattern_access(pat, *kind),
+            (Shape::Access(kind, _), _) => self.set_pattern_access(pat, *kind, authority),
             (_, Pat::Or(lhs, rhs)) => {
-                self.bind_pattern_accesses(*lhs, shape);
-                self.bind_pattern_accesses(*rhs, shape);
+                self.bind_pattern_accesses(*lhs, shape, authority);
+                self.bind_pattern_accesses(*rhs, shape, authority);
             }
             (Shape::Tuple(elems), Pat::Tuple(pats)) => {
                 let rest = pats
@@ -3059,7 +3084,7 @@ impl<'db> TyChecker<'db> {
                         _ => Some(idx),
                     };
                     if let Some(elem) = elem.and_then(|elem| elems.get(elem)) {
-                        self.bind_pattern_accesses(pat, elem);
+                        self.bind_pattern_accesses(pat, elem, authority);
                     }
                 }
             }
@@ -3072,7 +3097,7 @@ impl<'db> TyChecker<'db> {
                 if self.pattern_variant(pat) == Some(*variant)
                     && let [payload_pat] = pats.as_slice()
                 {
-                    self.bind_pattern_accesses(*payload_pat, payload);
+                    self.bind_pattern_accesses(*payload_pat, payload, authority);
                 }
             }
             (_, Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
@@ -3096,7 +3121,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn set_pattern_access(&mut self, pat: PatId, kind: BorrowKind) {
+    fn set_pattern_access(&mut self, pat: PatId, kind: BorrowKind, authority: bool) {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return;
         };
@@ -3110,22 +3135,22 @@ impl<'db> TyChecker<'db> {
                         self.check_view_mut_access(ty, pat.span(self.body()).into());
                     }
                     self.env
-                        .set_pat_binding_mode(pat, PatBindingMode::Access(kind));
+                        .set_pat_binding_mode(pat, PatBindingMode::Access { kind, authority });
                 }
             }
             Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
                 for pat in pats {
-                    self.set_pattern_access(*pat, kind);
+                    self.set_pattern_access(*pat, kind, authority);
                 }
             }
             Pat::Record(_, fields) => {
                 for field in fields {
-                    self.set_pattern_access(field.pat, kind);
+                    self.set_pattern_access(field.pat, kind, authority);
                 }
             }
             Pat::Or(lhs, rhs) => {
-                self.set_pattern_access(*lhs, kind);
-                self.set_pattern_access(*rhs, kind);
+                self.set_pattern_access(*lhs, kind, authority);
+                self.set_pattern_access(*rhs, kind, authority);
             }
             Pat::WildCard | Pat::Rest | Pat::Lit(..) => {}
         }
@@ -3570,6 +3595,8 @@ mod typed_body_tables {
         pub(super) expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
         pub(super) yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
         pub(super) implicit_moves: FxHashSet<ExprId>,
+        /// `with` values whose resources the function's own authority covers.
+        pub(super) covered_providers: FxHashSet<ExprId>,
         pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
         pub(super) value_path_refs: SecondaryMap<ExprId, Option<ValuePathRef<'db>>>,
         pub(super) semantic_expr_lowering: SecondaryMap<ExprId, Option<SemanticExprLowering<'db>>>,
@@ -4279,6 +4306,13 @@ impl<'db> TypedBody<'db> {
         self.tables.implicit_moves.contains(&expr)
     }
 
+    /// Whether the function's own authority covers the resources the `with`
+    /// value `expr` names: its place lies in an effect provider, or a
+    /// provider in scope holds each static slot handle it holds.
+    pub fn provider_covered(&self, expr: ExprId) -> bool {
+        self.tables.covered_providers.contains(&expr)
+    }
+
     /// All const references registered in this body, in arbitrary order.
     pub fn const_refs(&self) -> impl Iterator<Item = ConstRef<'db>> + '_ {
         self.tables.const_refs.values().flatten().copied()
@@ -4401,6 +4435,11 @@ impl<'db> TypedBody<'db> {
     /// How `binding` refers to its value.
     pub fn binding_access(&self, binding: LocalBinding<'db>) -> Option<BindingAccess> {
         env::binding_access(&binding, |pat| self.pat_binding_mode(pat))
+    }
+
+    /// Whether a place rooted in `binding` carries effect authority.
+    pub fn binding_has_authority(&self, binding: LocalBinding<'db>) -> bool {
+        env::binding_has_authority(&binding, |pat| self.pat_binding_mode(pat))
     }
 
     /// The semantic-IR type of `binding`: an access binding or a view or
@@ -5006,6 +5045,12 @@ impl<'db> TypedBody<'db> {
                 }
                 PlaceProjection::Index { index_expr, .. } => {
                     Some(self.return_index_projection(db, body, *index_expr))
+                }
+                PlaceProjection::VariantField { variant, field, .. } => {
+                    Some(Some(ReturnProjectionStep::VariantField {
+                        variant: *variant,
+                        field: *field,
+                    }))
                 }
             })
             .collect::<Option<Vec<_>>>()?;
@@ -5684,6 +5729,7 @@ impl<'db> TypedBody<'db> {
             expr_ty: SecondaryMap::new(),
             yield_shapes: SecondaryMap::new(),
             implicit_moves: FxHashSet::default(),
+            covered_providers: FxHashSet::default(),
             const_refs: SecondaryMap::new(),
             value_path_refs: SecondaryMap::new(),
             semantic_expr_lowering: SecondaryMap::new(),

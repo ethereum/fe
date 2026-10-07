@@ -9,7 +9,7 @@ struct Ledger {
 }
 
 impl Ledger {
-    fn get(mut self, _ key: u256) -> u256 {
+    fn get(mut self, _ key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
         self.balances.get(key)
     }
 }

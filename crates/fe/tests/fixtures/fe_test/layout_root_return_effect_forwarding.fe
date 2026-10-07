@@ -12,7 +12,8 @@ fn read_current<const SALT: u256>(key: u256) -> u256
     current_map().get(key: key)
 }
 
-// `map` is a copy, so the caller grants the authority over its field.
+// A data parameter carries no authority, so the caller grants the authority
+// over the maps it passes.
 fn read_through_effect(map: StorageMap<u256, u256>, key: u256) -> u256
     uses (storage: Field(StorageMap<u256, u256>))
 {

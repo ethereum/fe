@@ -336,7 +336,8 @@ impl<'db> TyChecker<'db> {
                 plan.element_layout_backing_source = layout.is_some();
                 self.check_pat_with_layout(*pat, pattern_shape.erased_ty(self.db), layout.as_ref());
                 if let ForLoopItem::Access(_) = plan.item {
-                    self.bind_pattern_accesses(*pat, &pattern_shape);
+                    let authority = bases.iter().all(|base| self.expr_has_authority(*base));
+                    self.bind_pattern_accesses(*pat, &pattern_shape, authority);
                 }
                 self.env.register_for_loop_plan(stmt, plan);
             }
@@ -466,8 +467,8 @@ impl<'db> TyChecker<'db> {
                 let inst = select(self, driver_trait, "start")?;
                 if mutates {
                     let driver_mut = core_trait(self, "DriverMut2")?;
-                    let at_inst = select(self, driver_mut, "at")?;
-                    (driver_trait, inst, driver_mut, at_inst, "at")
+                    let at_inst = select(self, driver_mut, "at_mut")?;
+                    (driver_trait, inst, driver_mut, at_inst, "at_mut")
                 } else {
                     (driver_trait, inst, driver_trait, inst, "at")
                 }
@@ -477,8 +478,8 @@ impl<'db> TyChecker<'db> {
                 let inst = select(self, collection, "start")?;
                 if mutates {
                     let collection_mut = core_trait(self, "CollectionMut")?;
-                    let at_inst = select(self, collection_mut, "at")?;
-                    (collection, inst, collection_mut, at_inst, "at")
+                    let at_inst = select(self, collection_mut, "at_mut")?;
+                    (collection, inst, collection_mut, at_inst, "at_mut")
                 } else {
                     (collection, inst, collection, inst, "at")
                 }
@@ -488,9 +489,9 @@ impl<'db> TyChecker<'db> {
                 let producer = core_trait(self, "Producer")?;
                 if mutates {
                     let driver_mut = core_trait(self, "DriverMut")?;
-                    let at_inst = select(self, driver_mut, "at")?;
+                    let at_inst = select(self, driver_mut, "at_mut")?;
                     let inst = select(self, driver_trait, "start")?;
-                    (driver_trait, inst, driver_mut, at_inst, "at")
+                    (driver_trait, inst, driver_mut, at_inst, "at_mut")
                 } else if let Some(inst) = select(self, producer, "produce") {
                     (producer, inst, producer, inst, "produce")
                 } else {

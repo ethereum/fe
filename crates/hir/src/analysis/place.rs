@@ -40,6 +40,14 @@ pub enum PlaceProjection<'db> {
         index_expr: ExprId,
         result_ty: TyId<'db>,
     },
+    /// Field `field` of variant `variant`'s payload, whichever variant the
+    /// enum holds: the place of a zero-sized handle an effect argument names.
+    VariantField {
+        variant: u16,
+        field: u16,
+        enum_ty: TyId<'db>,
+        result_ty: TyId<'db>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
@@ -54,7 +62,8 @@ impl<'db> PlaceProjection<'db> {
         match self {
             Self::Deref { result_ty }
             | Self::Field { result_ty, .. }
-            | Self::Index { result_ty, .. } => result_ty,
+            | Self::Index { result_ty, .. }
+            | Self::VariantField { result_ty, .. } => result_ty,
         }
     }
 }

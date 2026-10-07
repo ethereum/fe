@@ -41,6 +41,7 @@ use crate::{
         expr::{BinOp, LogicalBinOp, UnOp},
         params::FuncParamMode,
     },
+    projection::{IndexSource, Projection},
 };
 
 use super::{
@@ -186,6 +187,12 @@ fn owner_effect_bindings_for_mode<'db>(
             bindings
         }
     }
+}
+
+/// What a `for` loop holds of a base (`lower_loop_base`).
+enum LoopBase<'db> {
+    Value(SValueId),
+    Place(SPlace<'db>, TyId<'db>),
 }
 
 pub(super) struct SmirLowerCtxt<'a, 'db> {
@@ -1874,6 +1881,53 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         self.switch_to(exit_bb);
     }
 
+    /// A loop base: the carrier of an access binding, a value the loop holds
+    /// (a local root, an access, a snapshot or a temporary), or a place it
+    /// views afresh for each call, so a by-value traversal holds no access on
+    /// it between steps. The template's type decides, so every instance of a
+    /// template lowers alike.
+    fn lower_loop_base(&mut self, base: ExprId) -> LoopBase<'db> {
+        if self.typed_body.expr_prop(self.db, base).shape.is_none() {
+            if matches!(
+                base.data(self.db, self.body),
+                Partial::Present(Expr::Path(_))
+            ) && let Some(binding) = self.typed_body.expr_binding(base)
+                && !self.capture_places.contains_key(&binding)
+                && self.typed_body.binding_access(binding).is_some()
+            {
+                return LoopBase::Value(self.binding_locals[&binding]);
+            }
+            let template = &infer_body(self.db, self.template_owner).1;
+            let template_ty = template.expr_ty(self.db, base);
+            if !ty_is_snapshot(
+                self.db,
+                self.body.scope(),
+                template_ty,
+                template.assumptions(),
+            ) && let Some(place) = self.try_lower_place(base)
+                && (!place.path.is_empty()
+                    || template_ty.as_generic_param(self.db).is_none()
+                        && matches!(
+                            self.locals[place.local.index()].source,
+                            Some(LocalBinding::EffectParam { .. })
+                        ))
+            {
+                return LoopBase::Place(place, self.expr_ty(base));
+            }
+        }
+        LoopBase::Value(self.lower_source(base))
+    }
+
+    fn loop_base_operand(&mut self, expr: ExprId, base: &LoopBase<'db>) -> SOperand {
+        match base {
+            LoopBase::Value(value) => SOperand::expr(*value, expr),
+            LoopBase::Place(place, ty) => SOperand::expr(
+                self.emit_borrow(expr, place.clone(), BorrowKind::Ref, *ty),
+                expr,
+            ),
+        }
+    }
+
     /// Lowers `for pat in base by d { body }` to the protocol its plan
     /// selects: the collection's own, or the driver's. Each state is tested
     /// where it is produced, so only the state itself is carried around the
@@ -1889,18 +1943,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             .typed_body
             .for_loop_plan(stmt)
             .unwrap_or_else(|| panic!("missing loop protocol for for-loop {stmt:?}"));
-        // The bases the loop holds: their values, or the carriers of their
-        // accesses.
         let bases: Vec<_> = plan
             .bases
             .iter()
-            .map(|&base| {
-                let value = self.lower_source(base);
-                self.loop_bases.insert(base, value);
-                SOperand::expr(value, base)
-            })
+            .map(|&base| (base, self.lower_loop_base(base)))
             .collect();
-        let base = bases[0].value;
+        // A method chain rooted at a base views it for its own calls.
+        for (expr, base) in &bases {
+            let value = self.loop_base_operand(*expr, base).value;
+            self.loop_bases.insert(*expr, value);
+        }
         // The driver, evaluated once. A producer advances its own copy.
         let driver = plan.driver.map(|driver| {
             let value = SOperand::expr(self.lower_source(driver), driver);
@@ -1916,8 +1968,21 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             SOperand::synthetic(temp)
         });
         // The calls take the driver first, then the bases, then the state.
-        let inputs: Vec<_> = driver.into_iter().chain(bases).collect();
-        let with_state = |state| [&inputs[..], &[SOperand::synthetic(state)]].concat();
+        let inputs = |this: &mut Self| -> Vec<SOperand> {
+            driver
+                .into_iter()
+                .chain(
+                    bases
+                        .iter()
+                        .map(|(expr, base)| this.loop_base_operand(*expr, base)),
+                )
+                .collect()
+        };
+        let with_state = |this: &mut Self, state| {
+            let mut args = inputs(this);
+            args.push(SOperand::synthetic(state));
+            args
+        };
         let call = |this: &mut Self, step, args: Vec<SOperand>, ty| {
             let site = sites.site(step);
             let effect_args = this.lower_effect_arg_slice(&site.effect_args);
@@ -1972,7 +2037,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             });
             this.set_synthetic_terminator(this.current, STerminatorKind::Goto(body_bb));
         };
-        let first = call(self, ForLoopStep::Start, inputs.clone(), option_ty);
+        let args = inputs(self);
+        let first = call(self, ForLoopStep::Start, args, option_ty);
         test(self, first);
 
         self.loop_stack.push(LoopScope {
@@ -1981,8 +2047,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             has_reachable_continue: false,
         });
         self.switch_to(body_bb);
-        let next = call(self, ForLoopStep::Next, with_state(state), option_ty);
-        let mut at_args = with_state(state);
+        let args = with_state(self, state);
+        let next = call(self, ForLoopStep::Next, args, option_ty);
+        let mut at_args = with_state(self, state);
         // `produce` advances the driver through a `mut` access.
         if let (Some(temp), Some(driver)) = (driver, plan.driver)
             && plan.item == ForLoopItem::Produced
@@ -2045,7 +2112,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         if plan.element_layout_backing_source {
             self.locals[element.index()].layout_backing_sources = vec![LayoutBackingSource {
                 target: Vec::new(),
-                source: LayoutBackingPlace::Local(SPlace::dynamic_index(base, state)),
+                source: LayoutBackingPlace::Local(match &bases[0].1 {
+                    LoopBase::Value(base) => SPlace::dynamic_index(*base, state),
+                    LoopBase::Place(place, _) => {
+                        let mut place = place.clone();
+                        place
+                            .path
+                            .push(Projection::Index(IndexSource::Dynamic(state)));
+                        place
+                    }
+                }),
             }];
             self.assigned_layout_backing_sources[element.index()] = true;
         }

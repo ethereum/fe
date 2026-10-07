@@ -11,29 +11,33 @@ enum Choice<const SHARED: u256 = _, const OTHER: u256 = _> {
 impl<const SHARED: u256, const OTHER: u256> Copy for Choice<SHARED, OTHER> {}
 
 impl<const SHARED: u256, const OTHER: u256> Choice<SHARED, OTHER> {
-    fn set_other(mut own self, key: u256, value: u256) {
+    fn set_other(mut self, key: u256, value: u256)
+        uses (storage: mut Field(StorageMap<u256, u256, OTHER>))
+    {
         match self {
             Choice::Two(mut other, _) => other.set(key: key, value: value),
             Choice::One(_) => {},
         }
     }
 
-    fn set_shared(mut own self, key: u256, value: u256) {
+    fn set_shared(mut self, key: u256, value: u256)
+        uses (storage: mut Field(StorageMap<u256, u256, SHARED>))
+    {
         match self {
             Choice::Two(_, mut shared) => shared.set(key: key, value: value),
             Choice::One(mut shared) => shared.set(key: key, value: value),
         }
     }
 
-    fn get_other(self, key: u256) -> u256 {
-        match self {
+    fn get_other(self, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256, OTHER>)) {
+        match ref self {
             Choice::Two(other, _) => other.get(key: key),
             Choice::One(_) => 0,
         }
     }
 
-    fn get_shared(self, key: u256) -> u256 {
-        match self {
+    fn get_shared(self, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256, SHARED>)) {
+        match ref self {
             Choice::Two(_, shared) => shared.get(key: key),
             Choice::One(shared) => shared.get(key: key),
         }

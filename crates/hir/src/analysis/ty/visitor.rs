@@ -413,6 +413,12 @@ impl<'db> TyVisitable<'db> for PlaceProjection<'db> {
             PlaceProjection::Deref { result_ty }
             | PlaceProjection::Field { result_ty, .. }
             | PlaceProjection::Index { result_ty, .. } => result_ty.visit_with(visitor),
+            PlaceProjection::VariantField {
+                enum_ty, result_ty, ..
+            } => {
+                enum_ty.visit_with(visitor);
+                result_ty.visit_with(visitor);
+            }
         }
     }
 }

@@ -5,11 +5,11 @@ expression: diags
 input_file: fixtures/ty_check/field_effects.fe
 ---
 error[8-0018]: left-hand side of assignment is immutable
-   ┌─ field_effects.fe:22:5
+   ┌─ field_effects.fe:23:5
    │
-21 │ fn read_only(_ key: u256) uses (store: Store) {
+22 │ fn read_only(_ key: u256) uses (store: Store) {
    │                                 ----- try changing to `mut store`
-22 │     store.counts[key] = 1
+23 │     store.counts[key] = 1
    │     ^^^^^^^^^^^^^^^^^ immutable assignment
 
 error[8-0036]: missing effect `Field(Self)` required by `index`
@@ -18,12 +18,4 @@ error[8-0036]: missing effect `Field(Self)` required by `index`
 12 │     map[1]
    │     ^^^^^^ `index` requires effect `Field(Self)` to be in scope
    │
-   = the authority over a storage field comes with a handle argument that lies in an effect provider, such as a contract field under `uses (mut store)`
-
-error[8-0036]: missing effect `Field(Self)` required by `index`
-   ┌─ field_effects.fe:17:13
-   │
-17 │     let _ = map[1]
-   │             ^^^^^^ `index` requires effect `Field(Self)` to be in scope
-   │
-   = the authority over a storage field comes with a handle argument that lies in an effect provider, such as a contract field under `uses (mut store)`
+   = the authority over the field a handle names comes from an effect provider holding it, such as a contract field under `uses (mut store)`, or from a `uses (storage: Field(T))` effect

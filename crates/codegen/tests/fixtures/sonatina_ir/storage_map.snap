@@ -348,13 +348,13 @@ func private %impl_trait_i256__from_word(v0.i256) -> i256 {
         return v0;
 }
 
-func inline(always) private %get(v0.i256, v1.i256) -> i256 {
+func inline(always) private %get(v0.i256, v1.i256, v2.i256) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v4.i256 = call %get_unchecked v0 v1;
-        return v4;
+        v5.i256 = call %get_unchecked v0 v1;
+        return v5;
 }
 
 func private %get_balance(v0.i256, v1.i256, v2.i256) -> i256 {
@@ -362,7 +362,7 @@ func private %get_balance(v0.i256, v1.i256, v2.i256) -> i256 {
         jump block1;
 
     block1:
-        v5.i256 = call %get v0 0.i256;
+        v5.i256 = call %get v0 0.i256 0.i256;
         return v5;
 }
 
@@ -675,7 +675,7 @@ func private %return_value(v0.i256) {
         jump block18;
 }
 
-func inline(always) private %set(v0.i256, v1.i256, v2.i256) {
+func inline(always) private %set(v0.i256, v1.i256, v2.i256, v3.i256) {
     block0:
         jump block1;
 
@@ -689,7 +689,7 @@ func private %set_balance(v0.i256, v1.i256, v2.i256, v3.i256) {
         jump block1;
 
     block1:
-        call %set v0 v1 0.i256;
+        call %set v0 v1 0.i256 0.i256;
         return;
 }
 

@@ -1,5 +1,5 @@
 use core::ptr
-use std::evm::{Address, Ctx, Evm, RawMem, RawOps, RawStorage, StorageMap, StorPtr}
+use std::evm::{Address, Ctx, Evm, RawMem, RawOps, RawStorage, StorageMap, StorPtr, revert_empty}
 
 // Helpers ---------------------------------------------------------------
 
@@ -37,15 +37,19 @@ impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
     Erc20<BALANCES_ROOT, ALLOWANCES_ROOT>
 {
 
-    fn balance_of(self, addr: Address) -> u256 {
+    fn balance_of(self, addr: Address) -> u256 uses (balances: Field(StorageMap<Address, u256, BALANCES_ROOT>)) {
         self.balances.get(key: addr)
     }
 
-    fn allowance(self, owner: Address, spender: Address) -> u256 {
+    fn allowance(self, owner: Address, spender: Address) -> u256
+        uses (allowances: Field(StorageMap<(Address, Address), u256, ALLOWANCES_ROOT>))
+    {
         self.allowances.get(key: (owner, spender))
     }
 
-    fn approve(mut own self, owner: Address, spender: Address, value: u256) {
+    fn approve(mut self, owner: Address, spender: Address, value: u256)
+        uses (allowances: mut Field(StorageMap<(Address, Address), u256, ALLOWANCES_ROOT>))
+    {
         self.allowances.set(key: (owner, spender), value: value)
     }
 
@@ -61,30 +65,37 @@ impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
         true
     }
 
-    fn transfer(mut own self, from: Address, to: Address, amount: u256) uses (ops: RawOps) {
+    // A receiver in storage cannot be held across a call to effects that
+    // may reach it, so the methods take the caller and revert without raw
+    // storage authority. Operations on the maps take their fields' authority.
+    fn transfer(mut self, from: Address, to: Address, amount: u256)
+        uses (balances: mut Field(StorageMap<Address, u256, BALANCES_ROOT>))
+    {
         let from_bal = self.balance_of(addr: from)
         if from_bal < amount {
-            ops.revert(data: ptr::MemSpan::empty())
+            revert_empty()
         }
         let to_bal = self.balance_of(addr: to)
         self.balances.set(key: from, value: from_bal - amount)
         self.balances.set(key: to, value: to_bal + amount)
     }
 
-    fn transfer_from(mut own self, owner: Address, to: Address, amount: u256) uses (ctx: Ctx, ops: RawOps) {
-        let spender = ctx.caller()
+    fn transfer_from(mut self, spender: Address, owner: Address, to: Address, amount: u256)
+        uses (balances: mut Field(StorageMap<Address, u256, BALANCES_ROOT>), allowances: mut Field(StorageMap<(Address, Address), u256, ALLOWANCES_ROOT>))
+    {
         let allowed = self.allowance(owner: owner, spender: spender)
         if allowed < amount {
-            ops.revert(data: ptr::MemSpan::empty())
+            revert_empty()
         }
         self.transfer(from: owner, to: to, amount: amount)
         self.allowances.set(key: (owner, spender), value: allowed - amount)
     }
 
-    fn mint(mut own self, to: Address, amount: u256) uses (ctx: Ctx, ops: RawOps) {
-        let caller = ctx.caller()
+    fn mint(mut self, caller: Address, to: Address, amount: u256)
+        uses (balances: mut Field(StorageMap<Address, u256, BALANCES_ROOT>))
+    {
         if caller != self.owner {
-            ops.revert(data: ptr::MemSpan::empty())
+            revert_empty()
         }
         let bal = self.balance_of(addr: to)
         self.balances.set(key: to, value: bal + amount)
@@ -116,12 +127,12 @@ fn approve(spender: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANC
 }
 
 fn transfer_from(from: Address, to: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANCES_SALT, ALLOWANCES_SALT>, ctx: Ctx, ops: RawOps) {
-    erc20.transfer_from(owner: from, to: to, amount: amount)
+    erc20.transfer_from(spender: ctx.caller(), owner: from, to: to, amount: amount)
     1
 }
 
 fn mint(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANCES_SALT, ALLOWANCES_SALT>, ctx: Ctx, ops: RawOps) {
-    erc20.mint(to: to, amount: amount)
+    erc20.mint(caller: ctx.caller(), to: to, amount: amount)
     erc20.supply = erc20.supply + amount
     1
 }

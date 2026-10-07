@@ -11,14 +11,16 @@ fn left_map<const LEFT: u256, const RIGHT: u256>(
     pair.left
 }
 
+// A data parameter carries no authority, so the caller grants the authority
+// over the maps it passes.
 fn read_left<const LEFT: u256, const RIGHT: u256>(
     pair: Pair<LEFT, RIGHT>,
     key: u256,
-) -> u256 {
+) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
     left_map(pair: pair).get(key: key)
 }
 
-fn read_pair_left(pair: Pair, key: u256) -> u256 {
+fn read_pair_left(pair: Pair, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
     read_left(pair: pair, key: key)
 }
 
@@ -44,6 +46,7 @@ pub contract C {
         }
 
         Get { lane, key } -> u256 uses (first, second) {
+            // The pair's maps are places in the fields this arm reads.
             if lane == 0 {
                 read_pair_left(pair: first, key: key)
             } else {

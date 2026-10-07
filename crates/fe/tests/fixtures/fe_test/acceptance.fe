@@ -1,7 +1,7 @@
-// Run-time results of the draft-6 acceptance list ("Acceptance tests"),
+// Run-time results of the draft-8 acceptance list ("Acceptance tests"),
 // numbered as the spec lists it. Static results are in
 // `uitest/semantic_access/acceptance.fe` and `uitest/ty_check/acceptance.fe`.
-use core::iter::{Identity, reversed}
+use core::iter::{Collection, Driver, Identity, reversed}
 use std::evm::Evm
 
 struct Cell { v: u256 }
@@ -130,4 +130,92 @@ fn case23_storage_base() uses (evm: mut Evm) {
     let first: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: Words::Get { i: 0 })
     let last: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: Words::Get { i: 2 })
     assert!(first == 30 && last == 10)
+}
+
+struct Item { n: u256 }
+
+fn consume(_ item: own Item) -> u256 {
+    item.n
+}
+
+// 31. Restoring through a stable access restores the element it first named,
+// however the index changes.
+#[test]
+fn case31_stable_place() {
+    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    let mut i: usize = 0
+    let slot = mut items[i]
+    i = 1
+    let saved = slot
+    slot = Item { n: 3 }
+    assert(consume(saved) == 1)
+    assert(items[0].n == 3 && items[i].n == 2)
+}
+
+fn reordered(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u256) {
+    let (a, b) = xs.pair_mut(i, j)
+    (mut b, mut a)
+}
+
+// 34. Reordered `pair_mut` grants write the elements they name.
+#[test]
+fn case34_reordered_grants() {
+    let mut xs: MemArray<u256> = MemArray::new_zeroed(2)
+    let (b, a) = reordered(mut xs, 0, 1)
+    b = 20
+    a = 10
+    assert(xs[0] == 10 && xs[1] == 20)
+}
+
+fn first_of(_ c: mut Cell) -> mut u256 {
+    mut c.v
+}
+
+fn bump(_ x: mut u256) {
+    x += 1
+}
+
+// 38. Writes through an input-rooted `mut` grant, directly and through a
+// helper, land in the input.
+#[test]
+fn case38_grant_writes() {
+    let mut c = Cell { v: 1 }
+    let x = first_of(mut c)
+    x += 1
+    bump(mut x)
+    assert(c.v == 3)
+}
+
+struct Tag { n: u256 }
+
+struct Tagged {}
+
+impl<B: Collection> Driver<B> for Tagged {
+    type State = B::Cursor
+    type Item = B::Item
+    type Extra = Tag
+
+    fn start(self, _ base: B) -> Option<B::Cursor> uses (B::E, E) {
+        base.start()
+    }
+
+    fn next(self, _ base: B, _ s: B::Cursor) -> Option<B::Cursor> uses (B::E, E) {
+        base.next(s)
+    }
+
+    fn at(self, _ base: B, _ s: B::Cursor) -> (Tag, ref B::Item) uses (B::E, E) {
+        (Tag { n: 1 }, base.at(s))
+    }
+}
+
+// 40. A copied traversal of `Copy` items keeps a non-`Copy` owned `Extra`.
+#[test]
+fn case40_owned_extra() {
+    let xs: [u256; 3] = [1, 2, 3]
+    let d = Tagged {}
+    let mut total: u256 = 0
+    for (tag, x) in xs by d {
+        total += tag.n + x
+    }
+    assert(total == 9)
 }

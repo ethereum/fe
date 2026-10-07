@@ -30,6 +30,14 @@ error[8-0036]: missing effect `RawStorage` required by `new`
   │
   = provide it with `with (RawStorage = value)` or require it via `uses RawStorage`
 
+error[8-0036]: missing effect `Field(Self)` required by `get`
+  ┌─ storage_capability_boundaries.fe:9:5
+  │
+9 │     map.get(1)
+  │     ^^^^^^^^^^ `get` requires effect `Field(Self)` to be in scope
+  │
+  = the authority over the field a handle names comes from an effect provider holding it, such as a contract field under `uses (mut store)`, or from a `uses (storage: Field(T))` effect
+
 error[8-0036]: missing effect `RawStorage` required by `new`
    ┌─ storage_capability_boundaries.fe:17:5
    │
@@ -52,7 +60,18 @@ error[8-0036]: missing effect `Field(Self)` required by `write`
 29 │     slot.write(1)
    │     ^^^^^^^^^^^^^ `write` requires effect `Field(Self)` to be in scope
    │
-   = the authority over a storage field comes with a handle argument that lies in an effect provider, such as a contract field under `uses (mut store)`
+   = the authority over the field a handle names comes from an effect provider holding it, such as a contract field under `uses (mut store)`, or from a `uses (storage: Field(T))` effect
+
+error[8-0037]: effect `Field(Self)` must be mutable when calling `set`
+   ┌─ storage_capability_boundaries.fe:35:5
+   │
+33 │ uses (store: Store)
+   │       ----- effect `Field(Self)` is provided here
+34 │ {
+35 │     store.balances.set(key: 1, value: 2)
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `set` requires `mut Field(Self)`
+   │
+   = use a mutable binding or pass a mutable reference in the `with` block
 
 error[8-0066]: mutable borrow requires a mutable place
    ┌─ storage_capability_boundaries.fe:29:5

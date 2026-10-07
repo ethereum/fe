@@ -17,7 +17,7 @@ pub struct Mutex<T> {
 
 impl<T> Mutex<T> {
     /// Takes the lock, reverting if it is already held.
-    pub fn lock(mut self) {
+    pub fn lock(mut self) uses (storage: mut Field(TSlot<bool>)) {
         if self.lock.read() {
             assert!(false)
         }
@@ -25,7 +25,7 @@ impl<T> Mutex<T> {
     }
 
     /// Takes the lock if it is free, and returns whether it did.
-    pub fn try_lock(mut self) -> bool {
+    pub fn try_lock(mut self) -> bool uses (storage: mut Field(TSlot<bool>)) {
         if self.lock.read() {
             return false
         }
@@ -33,11 +33,11 @@ impl<T> Mutex<T> {
         true
     }
 
-    pub fn unlock(mut self) {
+    pub fn unlock(mut self) uses (storage: mut Field(TSlot<bool>)) {
         self.lock.write(false)
     }
 
-    pub fn is_locked(self) -> bool {
+    pub fn is_locked(self) -> bool uses (storage: Field(TSlot<bool>)) {
         self.lock.read()
     }
 

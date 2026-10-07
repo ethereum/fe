@@ -6,11 +6,13 @@ struct Pair<T> {
 }
 
 impl Pair<StorageMap<u256, u256>> {
-    fn set_left(mut self, key: u256, value: u256) {
+    fn set_left(mut self, key: u256, value: u256)
+        uses (storage: mut Field(StorageMap<u256, u256>))
+    {
         self.left.set(key: key, value: value)
     }
 
-    fn get_left(self, key: u256) -> u256 {
+    fn get_left(self, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
         self.left.get(key: key)
     }
 }

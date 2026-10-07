@@ -13,8 +13,11 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    // A handle reached through a `mut` parameter carries its authority.
-    fn credit(mut self, _ to: Address, amount: u256) {
+    // A data parameter carries no authority, so the method declares the
+    // authority over its map's field.
+    fn credit(mut self, _ to: Address, amount: u256)
+        uses (balances: mut Field(StorageMap<Address, u256>))
+    {
         self.balances[to] += amount
     }
 }

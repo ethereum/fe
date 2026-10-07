@@ -11,7 +11,9 @@ fn unwrap_map<const ROOT: u256>(
     map
 }
 
-fn read_wrapped(wrapped: Wrapped, key: u256) -> u256 {
+// A data parameter carries no authority, so the caller grants the authority
+// over the maps it passes.
+fn read_wrapped(wrapped: Wrapped, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
     unwrap_map(wrapped: wrapped).get(key: key)
 }
 

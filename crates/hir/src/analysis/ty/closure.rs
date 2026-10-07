@@ -70,6 +70,15 @@ impl CallableShape {
         resolve_core_trait(db, scope, &["functional", &name])
     }
 
+    /// The shape's method: `call`, or `call_mut` for a `mut` receiver.
+    pub(crate) fn method(&self) -> &'static str {
+        if self.mut_receiver {
+            "call_mut"
+        } else {
+            "call"
+        }
+    }
+
     /// Whether the result is the trait's last argument (`Fn<T, U>`) rather
     /// than its associated `Out`.
     pub(crate) fn result_is_arg(&self) -> bool {
@@ -305,7 +314,7 @@ pub(crate) fn callee_closure<'db>(
 ) -> Option<(ClosureTy<'db>, FuncParamMode)> {
     let closure = inst.self_ty(db).as_closure(db)?;
     let shape = CallableShape::of(db, inst.def(db))?;
-    if func.name(db).to_opt()?.data(db) != "call" {
+    if func.name(db).to_opt()?.data(db) != shape.method() {
         return None;
     }
     let receiver = if shape.mut_receiver {

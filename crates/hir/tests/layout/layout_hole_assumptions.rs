@@ -233,7 +233,8 @@ pub contract C {
 
     recv Msg {
         Protected { user } -> u256 uses (mut guarded_balances) {
-            guarded_balances.value().get(key: user)
+            let balances = guarded_balances.value()
+            balances.get(key: user)
         }
     }
 }
@@ -407,7 +408,8 @@ pub contract C {
 
     recv Msg {
         Protected { user } -> u256 uses (mut wrapped) {
-            wrapped.inner.value().get(key: user)
+            let balances = wrapped.inner.value()
+            balances.get(key: user)
         }
     }
 }

@@ -119,9 +119,7 @@ pub(crate) struct TyCheckEnv<'db> {
     /// Places matched through the `mut` access their `mut` pattern bindings
     /// open.
     matched_places: FxHashSet<ExprId>,
-    /// The `mut self` variant of a method call that selected the view one,
-    /// with its receiver type.
-    mut_variants: FxHashMap<ExprId, (TyId<'db>, PendingMethodCandidate<'db>)>,
+    covered_providers: FxHashSet<ExprId>,
     /// The part of a projection's return shape each yield site grants.
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
 
@@ -240,7 +238,7 @@ impl<'db> TyCheckEnv<'db> {
             call_effect_args: SecondaryMap::new(),
             consumed_accesses: FxHashSet::default(),
             matched_places: FxHashSet::default(),
-            mut_variants: FxHashMap::default(),
+            covered_providers: FxHashSet::default(),
             yield_shapes: SecondaryMap::new(),
             for_loop_plans: SecondaryMap::new(),
             path_applications: Vec::new(),
@@ -848,24 +846,14 @@ impl<'db> TyCheckEnv<'db> {
         self.type_expr(expr, prop);
     }
 
-    pub(super) fn register_mut_variant(
-        &mut self,
-        expr: ExprId,
-        recv_ty: TyId<'db>,
-        variant: PendingMethodCandidate<'db>,
-    ) {
-        self.mut_variants.insert(expr, (recv_ty, variant));
-    }
-
-    pub(super) fn take_mut_variant(
-        &mut self,
-        expr: ExprId,
-    ) -> Option<(TyId<'db>, PendingMethodCandidate<'db>)> {
-        self.mut_variants.remove(&expr)
-    }
-
     pub(super) fn is_matched_place(&self, expr: ExprId) -> bool {
         self.matched_places.contains(&expr)
+    }
+
+    /// Records that the function's own authority covers the resources the
+    /// `with` value `expr` names.
+    pub(super) fn cover_provider(&mut self, expr: ExprId) {
+        self.covered_providers.insert(expr);
     }
 
     pub(super) fn record_yield_shape(&mut self, expr: ExprId, shape: Shape<'db>) {
@@ -878,6 +866,10 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn binding_access(&self, binding: &LocalBinding<'db>) -> Option<BindingAccess> {
         binding_access(binding, |pat| self.pat_binding_modes[pat])
+    }
+
+    pub(super) fn binding_has_authority(&self, binding: &LocalBinding<'db>) -> bool {
+        binding_has_authority(binding, |pat| self.pat_binding_modes[pat])
     }
 
     pub(super) fn local_borrow_provider(&self, pat: PatId) -> Option<ProviderAddressSpace> {
@@ -1429,6 +1421,7 @@ impl<'db> TyCheckEnv<'db> {
             expr_ty: self.expr_ty,
             yield_shapes: self.yield_shapes,
             implicit_moves,
+            covered_providers: self.covered_providers,
             const_refs: self.const_refs,
             value_path_refs: self.value_path_refs,
             semantic_expr_lowering: self.semantic_expr_lowering,
@@ -1780,7 +1773,7 @@ fn effect_param_name<'db>(
     }
 }
 
-fn effect_param_span<'db>(
+pub(super) fn effect_param_span<'db>(
     db: &'db dyn HirAnalysisDb,
     site: EffectParamSite<'db>,
     idx: usize,
@@ -1837,8 +1830,10 @@ pub(crate) enum EffectOrigin<'db> {
     With {
         value_expr: ExprId,
     },
-    /// A call's argument whose place lies in an effect provider: the
-    /// authority `Field(T)` takes from the handle it passes.
+    /// A call's argument holding the handle a `Field(T)` authority names,
+    /// passed as its effect argument: a handle whose slot is a runtime value,
+    /// lying in an effect provider, or one an array element of a provider
+    /// holds, which has no place of its own.
     Arg {
         expr: ExprId,
     },
@@ -1917,8 +1912,12 @@ pub enum LocalBinding<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum PatBindingMode {
     ByValue,
-    /// The binding is a named access to a place, open until its last use.
-    Access(BorrowKind),
+    /// The binding is a named access to a place, open until its last use,
+    /// with the effect authority of the place it names (`binding_has_authority`).
+    Access {
+        kind: BorrowKind,
+        authority: bool,
+    },
 }
 
 /// How a binding refers to its value: an owned value has no access; a view
@@ -1944,8 +1943,14 @@ pub(crate) fn binding_access<'db>(
     match binding {
         LocalBinding::Local { pat, .. } => match pat_mode(*pat)? {
             PatBindingMode::ByValue => None,
-            PatBindingMode::Access(BorrowKind::Ref) => Some(BindingAccess::Ref),
-            PatBindingMode::Access(BorrowKind::Mut) => Some(BindingAccess::Mut),
+            PatBindingMode::Access {
+                kind: BorrowKind::Ref,
+                ..
+            } => Some(BindingAccess::Ref),
+            PatBindingMode::Access {
+                kind: BorrowKind::Mut,
+                ..
+            } => Some(BindingAccess::Mut),
         },
         LocalBinding::Param { mode, .. } => match mode {
             FuncParamMode::View => Some(BindingAccess::View),
@@ -1953,6 +1958,30 @@ pub(crate) fn binding_access<'db>(
             FuncParamMode::Own => None,
         },
         LocalBinding::EffectParam { .. } => None,
+    }
+}
+
+/// Whether a place rooted in `binding` lies in an effect provider, and so
+/// carries its authority: an effect binding, or an access to such a place.
+/// A data parameter carries none: its caller's place may be a copy.
+pub(crate) fn binding_has_authority<'db>(
+    binding: &LocalBinding<'db>,
+    pat_mode: impl FnOnce(PatId) -> Option<PatBindingMode>,
+) -> bool {
+    match binding {
+        LocalBinding::EffectParam { .. }
+        | LocalBinding::Param {
+            site: ParamSite::EffectField(_),
+            ..
+        } => true,
+        LocalBinding::Param { .. } => false,
+        LocalBinding::Local { pat, .. } => matches!(
+            pat_mode(*pat),
+            Some(PatBindingMode::Access {
+                authority: true,
+                ..
+            })
+        ),
     }
 }
 

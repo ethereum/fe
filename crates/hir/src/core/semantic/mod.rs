@@ -1185,12 +1185,14 @@ pub struct FuncParamView<'db> {
 }
 
 impl<'db> FuncParamView<'db> {
+    /// The parameter's type, without its mode, which is the parameter's.
     pub(crate) fn hir_ty(self, db: &'db dyn HirDb) -> Option<TypeId<'db>> {
         self.func
             .params_list(db)
             .to_opt()
             .and_then(|l| l.data(db).get(self.idx))
             .and_then(|param| param.ty.to_opt())
+            .and_then(|ty| ty.without_mode(db).to_opt())
     }
 
     pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {

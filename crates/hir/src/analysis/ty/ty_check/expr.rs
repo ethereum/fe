@@ -35,7 +35,7 @@ use super::{
 use crate::analysis::place::{Place, PlaceBase, PlaceProjection};
 use crate::analysis::semantic::{RuntimeSizeError, runtime_size_bytes};
 use crate::analysis::ty::{
-    adt_def::AdtRef,
+    adt_def::{AdtRef, instantiate_adt_field_shape},
     assoc_const::{AssocConstUse, InherentConstUse},
     canonical::{Canonicalized, Solution},
     const_ty::{BodyHoleSite, HoleAnchor, LoweringContext, instantiate_inherent_const_decl_ty},
@@ -68,8 +68,8 @@ use crate::analysis::ty::{
     fold::{TyFoldable as _, TyFolder},
     normalize::normalize_with_trait_evidence,
     provider::{
-        ProviderLayoutEvidence, ProviderTransport, provider_semantics,
-        provider_semantics_for_specialized_call,
+        ProviderLayoutEvidence, ProviderTransport, StaticSlotLayoutResolution, provider_semantics,
+        provider_semantics_for_specialized_call, resolve_static_slot_layout,
     },
     shape::{Shape, sum_payload_variant},
     trait_def::TraitInstId,
@@ -1574,6 +1574,9 @@ impl<'db> TyChecker<'db> {
             // opens no access.
             self.consume_access(binding.value);
             let is_mut = value_prop.is_mut;
+            if self.provider_covered(binding.value, &value_prop) {
+                self.env.cover_provider(binding.value);
+            }
 
             let provided = ProvidedEffect {
                 origin: EffectOrigin::With {
@@ -1806,7 +1809,9 @@ impl<'db> TyChecker<'db> {
             EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
                 Some(value_expr.span(body).into())
             }
-            EffectOrigin::Param { .. } => None,
+            EffectOrigin::Param { site, index, .. } => {
+                Some(super::env::effect_param_span(self.db, site, index))
+            }
         };
         // Each component of a callee row the call expands is resolved like the
         // callee's own effects, in a slot numbered after them.
@@ -1832,6 +1837,7 @@ impl<'db> TyChecker<'db> {
                 EffectRequirementDecl::from_effect_requirement(self.db, &component.requirement)
             }))
             .collect();
+        let mut field_queries = Vec::new();
         for (param_idx, req) in reqs.iter().enumerate() {
             let key_ty = req.key_ty;
             let Some(query) = build_effect_query_for_call(self, callable, req) else {
@@ -1842,6 +1848,11 @@ impl<'db> TyChecker<'db> {
                 .copied()
                 .flatten();
 
+            if req.key_ty.field_key_handle(self.db).is_some()
+                && let EffectPatternKey::Type(type_query) = &query.key
+            {
+                field_queries.push((type_query.clone(), req.clone()));
+            }
             let mut resolution = self.resolve_effect_query(req.clone(), query.clone(), call_args);
             if matches!(resolution, EffectResolution::Missing)
                 && self.provide_closure_effect(req, &query)
@@ -2097,6 +2108,45 @@ impl<'db> TyChecker<'db> {
                 }
             }
         }
+        // The callee may exercise a `Field(T)` authority over the handles its
+        // other effects hold too, so those of `T`'s shape must be covered
+        // with its mode: a static slot handle by a provider of its type, one
+        // whose slot is a runtime value by its effect's place.
+        for (query, req) in field_queries {
+            for other in &resolved_args {
+                let super::EffectArg::Place(place) = &other.arg else {
+                    continue;
+                };
+                if other.binding_idx == req.binding_idx {
+                    continue;
+                }
+                let PlaceBase::Binding(root) = place.base;
+                let parts = self.handle_places(Some(place.clone()), self.place_ty(place));
+                let uncovered = parts.into_iter().any(|(_, part)| {
+                    self.key_matches(&query, part)
+                        && !if self.is_static_slot(part) {
+                            self.handle_authority(&query, req.required_mut, None, None, part)
+                                .is_some_and(|evidence| {
+                                    !req.required_mut || evidence_provider(&evidence).is_mut
+                                })
+                        } else {
+                            !req.required_mut || root.is_mut()
+                        }
+                });
+                if uncovered {
+                    self.push_diag(BodyDiag::LentFieldAuthority {
+                        primary: call_span.clone(),
+                        func,
+                        key: req.key_ty,
+                        effect: reqs
+                            .iter()
+                            .find(|other_req| other_req.binding_idx == other.binding_idx)
+                            .and_then(|other_req| other_req.name),
+                        is_mut: req.required_mut,
+                    });
+                }
+            }
+        }
         // A row that stays abstract is the caller's own row, forwarded.
         let effects = func.effective_effect_requirements(self.db);
         let forwarded = rows
@@ -2256,49 +2306,332 @@ impl<'db> TyChecker<'db> {
         );
     }
 
+    /// The parts of a value of type `ty` at `place`, if it has one, with
+    /// their types and places: the value itself, then the fields of its
+    /// structs and tuples, the payloads of its enums' variants and its arrays'
+    /// elements (which have no place of their own), breadth first. A part's
+    /// type is the one the layout of the contract field or input `place` lies
+    /// in assigns.
+    fn handle_places(
+        &mut self,
+        place: Option<Place<'db>>,
+        ty: TyId<'db>,
+    ) -> Vec<(Option<Place<'db>>, TyId<'db>)> {
+        let layout = place
+            .as_ref()
+            .and_then(|place| self.place_layout_context(place, &[]));
+        let mut places = vec![(place, ty.fold_with(self.db, &mut self.table), vec![])];
+        let mut next = 0;
+        while let Some((place, ty, path)) = places.get(next).cloned() {
+            next += 1;
+            let push = |this: &Self, place, declared, step: &[LayoutBundlePathStep]| {
+                let path = [path.as_slice(), step].concat();
+                let ty = layout
+                    .as_ref()
+                    .and_then(|layout| this.projected_pattern_layout_ty(layout, &path))
+                    .unwrap_or(declared);
+                (place, ty, path)
+            };
+            let mut parts = Vec::new();
+            if ty.is_product(self.db) {
+                for (index, field_ty) in ty.field_types(self.db).into_iter().enumerate() {
+                    let field = place.clone().map(|mut place| {
+                        place.push_projection(PlaceProjection::Field {
+                            index: index as u16,
+                            result_ty: field_ty,
+                        });
+                        place
+                    });
+                    parts.push(push(
+                        self,
+                        field,
+                        field_ty,
+                        &[LayoutBundlePathStep::Field(index as u16)],
+                    ));
+                }
+            } else if ty.is_array(self.db) {
+                let elem_ty = ty.generic_args(self.db)[0];
+                parts.push(push(self, None, elem_ty, &[LayoutBundlePathStep::Index]));
+            } else if let Some(adt) = ty.adt_def(self.db)
+                && matches!(adt.adt_ref(self.db), AdtRef::Enum(_))
+            {
+                for (variant, fields) in adt.fields(self.db).iter().enumerate() {
+                    for field in 0..fields.num_types() {
+                        let field_ty = instantiate_adt_field_shape(
+                            self.db,
+                            adt,
+                            variant,
+                            field,
+                            ty.generic_args(self.db),
+                        );
+                        let payload = place.clone().map(|mut place| {
+                            place.push_projection(PlaceProjection::VariantField {
+                                variant: variant as u16,
+                                field: field as u16,
+                                enum_ty: ty,
+                                result_ty: field_ty,
+                            });
+                            place
+                        });
+                        parts.push(push(
+                            self,
+                            payload,
+                            field_ty,
+                            &[
+                                LayoutBundlePathStep::Variant(variant as u16),
+                                LayoutBundlePathStep::Field(field as u16),
+                            ],
+                        ));
+                    }
+                }
+            }
+            places.extend(parts);
+        }
+        places
+            .into_iter()
+            .map(|(place, ty, _)| (place, ty))
+            .collect()
+    }
+
+    /// The place within argument `arg` holding a handle of type `ty`.
+    fn arg_handle_place(&mut self, arg: ExprId, ty: TyId<'db>) -> Option<Place<'db>> {
+        let place = self.env.expr_place(arg)?;
+        let arg_ty = self.env.typed_expr(arg)?.ty;
+        self.handle_places(Some(place), arg_ty)
+            .into_iter()
+            .find_map(|(place, found)| place.filter(|_| found == ty))
+    }
+
+    /// The place a provider names: its `with` value's or effect binding's.
+    fn provider_place(&self, provider: ProvidedEffect<'db>) -> Option<Place<'db>> {
+        match provider.origin {
+            EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
+                self.env.expr_place(value_expr)
+            }
+            EffectOrigin::Param { .. } => provider
+                .binding
+                .map(|binding| Place::new(PlaceBase::Binding(binding))),
+        }
+    }
+
+    /// Whether `provider` is a `Field(T)` effect binding: authority over any
+    /// handle of `T`'s shape, since its caller supplies the layout.
+    fn is_field_provider(&self, provider: ProvidedEffect<'db>) -> bool {
+        let EffectOrigin::Param { site, index, .. } = provider.origin else {
+            return false;
+        };
+        self.env
+            .resolved_effect_binding(site, index)
+            .is_some_and(|binding| {
+                binding
+                    .requirement
+                    .binding_ty
+                    .field_key_handle(self.db)
+                    .is_some()
+            })
+    }
+
+    /// Whether `ty` has the shape of `query`'s key.
+    fn key_matches(&mut self, query: &TypePatternKey<'db>, ty: TyId<'db>) -> bool {
+        let snapshot = self.snapshot_state();
+        let ok = apply_key_match_commit(
+            self,
+            KeyMatchCommit::QueryToType {
+                query: query.clone(),
+                actual: ty,
+            },
+        );
+        self.rollback_state(snapshot);
+        ok
+    }
+
+    /// The authority over a handle of type `ty`, held by argument `arg` if
+    /// any and lying at `place` if that is a whole argument. A static slot
+    /// handle's type names its field (distinct fields' handles never share a
+    /// type), so a provider in scope holding a `ty` gives it, passed as the
+    /// place within the provider that holds it, or as the argument's for an
+    /// array element. A handle whose slot is a runtime value has the
+    /// authority of a provider of its type, or of its place
+    /// (`binding_has_authority`). A `Field` effect binding of its shape gives
+    /// either. A provider whose mode suffices is preferred.
+    fn handle_authority(
+        &mut self,
+        query: &TypePatternKey<'db>,
+        required_mut: bool,
+        arg: Option<ExprId>,
+        place: Option<Place<'db>>,
+        ty: TyId<'db>,
+    ) -> Option<EffectEvidence<'db>> {
+        let static_slot = self.is_static_slot(ty);
+        let mut found = None;
+        let providers: Vec<_> = self.env.effect_env().providers().collect();
+        for provider in providers {
+            let parts = if self.is_field_provider(provider) || !static_slot {
+                vec![(provider.origin, provider.ty)]
+            } else if let Some(provider_place) = self.provider_place(provider) {
+                // An array element has no place, so the argument, which
+                // names one, is passed for it.
+                self.handle_places(Some(provider_place), provider.ty)
+                    .into_iter()
+                    .filter(|(_, part)| *part == ty)
+                    .filter_map(|(part, _)| match part {
+                        Some(_) => Some((provider.origin, ty)),
+                        None => arg.map(|expr| (EffectOrigin::Arg { expr }, ty)),
+                    })
+                    .collect()
+            } else {
+                continue;
+            };
+            for (origin, ty) in parts {
+                if let Some(evidence) = self.evaluate_unkeyed_type_provider(
+                    query.clone(),
+                    ProvidedEffect {
+                        origin,
+                        ty,
+                        ..provider
+                    },
+                    required_mut,
+                ) {
+                    if provider.is_mut || !required_mut {
+                        return Some(evidence);
+                    }
+                    found.get_or_insert(evidence);
+                }
+            }
+        }
+        if found.is_some() {
+            return found;
+        }
+        let arg = arg?;
+        let PlaceBase::Binding(binding) = place?.base;
+        (!static_slot && self.env.binding_has_authority(&binding)).then_some(())?;
+        self.evaluate_unkeyed_type_provider(
+            query.clone(),
+            ProvidedEffect {
+                origin: EffectOrigin::Arg { expr: arg },
+                ty,
+                is_mut: self.env.typed_expr(arg)?.is_mut,
+                binding: None,
+            },
+            required_mut,
+        )
+    }
+
+    /// Whether `ty` is a static slot handle, whose type names its field.
+    fn is_static_slot(&self, ty: TyId<'db>) -> bool {
+        matches!(
+            resolve_static_slot_layout(self.db, self.env.scope(), self.env.assumptions(), ty),
+            StaticSlotLayoutResolution::Resolved(_) | StaticSlotLayoutResolution::UnresolvedSpace
+        )
+    }
+
+    /// Whether the function's own authority covers the resources the `with`
+    /// value `value` names: its place lies in an effect provider, or a
+    /// provider in scope holds each static slot handle it holds, writable if
+    /// the value is.
+    fn provider_covered(&mut self, value: ExprId, prop: &ExprProp<'db>) -> bool {
+        let place = self.env.expr_place(value);
+        if let Some(place) = &place {
+            let PlaceBase::Binding(binding) = place.base;
+            if self.env.binding_has_authority(&binding) {
+                return true;
+            }
+        }
+        let handles: Vec<_> = self
+            .handle_places(place, prop.ty)
+            .into_iter()
+            .map(|(_, ty)| ty)
+            .filter(|ty| self.is_static_slot(*ty))
+            .collect();
+        let providers: Vec<_> = self.env.effect_env().providers().collect();
+        !handles.is_empty()
+            && handles.into_iter().all(|ty| {
+                providers.iter().any(|provider| {
+                    (provider.is_mut || !prop.is_mut)
+                        && self.provider_place(*provider).is_some_and(|place| {
+                            self.handle_places(Some(place), provider.ty)
+                                .into_iter()
+                                .any(|(_, part)| part == ty)
+                        })
+                })
+            })
+    }
+
+    /// The type of the value at `place`.
+    fn place_ty(&self, place: &Place<'db>) -> TyId<'db> {
+        let PlaceBase::Binding(binding) = place.base;
+        place.projections.last().map_or_else(
+            || self.env.lookup_binding_ty(&binding),
+            |projection| projection.result_ty(),
+        )
+    }
+
     fn resolve_effect_query(
         &mut self,
         req: EffectRequirementDecl<'db>,
         query: EffectQuery<'db>,
         call_args: &[ExprId],
     ) -> EffectResolution<'db> {
-        // `Field(T)` takes the authority of the first argument of type `T`
-        // whose place lies in an effect provider or an access, since that
-        // handle names the field; a copy of a handle carries none. Otherwise
-        // a provider of type `T` gives it.
+        // The callee may exercise a `Field(T)` authority over any handle of
+        // `T`'s shape its arguments hold, so each must be authorized; the
+        // effect argument names the first.
         if req.key_ty.field_key_handle(self.db).is_some()
             && let EffectPatternKey::Type(type_query) = &query.key
         {
+            let mut handles = Vec::new();
             for &arg in call_args {
                 let Some(prop) = self.env.typed_expr(arg) else {
                     continue;
                 };
-                let authority = self.env.expr_place(arg).is_some_and(|place| {
-                    let PlaceBase::Binding(binding) = place.base;
-                    match (binding, self.env.binding_access(&binding)) {
-                        (LocalBinding::EffectParam { .. }, _) => true,
-                        (_, Some(BindingAccess::View)) => {
-                            !self.ty_is_copy(self.env.lookup_binding_ty(&binding))
-                        }
-                        (_, access) => access.is_some(),
+                let place = self.env.expr_place(arg);
+                for (index, (place, ty)) in
+                    self.handle_places(place, prop.ty).into_iter().enumerate()
+                {
+                    if self.key_matches(type_query, ty) {
+                        handles.push((arg, index == 0, place, ty));
                     }
-                });
-                if !authority {
-                    continue;
                 }
-                let provider = ProvidedEffect {
-                    origin: EffectOrigin::Arg { expr: arg },
-                    ty: prop.ty.fold_with(self.db, &mut self.table),
-                    is_mut: prop.is_mut,
-                    binding: None,
+            }
+            let mut chosen = None;
+            for (arg, whole, place, ty) in handles {
+                // A handle whose slot is a runtime value carries its place's
+                // authority only when passed whole.
+                let place = place.filter(|_| whole);
+                let Some(evidence) =
+                    self.handle_authority(type_query, query.required_mut, Some(arg), place, ty)
+                else {
+                    return EffectResolution::Missing;
                 };
-                if let Some(evidence) = self.evaluate_unkeyed_type_provider(
-                    type_query.clone(),
-                    provider,
-                    query.required_mut,
-                ) {
-                    return EffectResolution::Chosen(Box::new(evidence));
+                chosen.get_or_insert(evidence);
+            }
+            // Without one, a provider holding a handle of the key's shape
+            // gives it, one whose mode suffices first.
+            if chosen.is_none() {
+                let providers: Vec<_> = self.env.effect_env().providers().collect();
+                for provider in providers {
+                    let Some(place) = self.provider_place(provider) else {
+                        continue;
+                    };
+                    for (_, part) in self.handle_places(Some(place), provider.ty) {
+                        if self.key_matches(type_query, part)
+                            && let Some(evidence) = self.handle_authority(
+                                type_query,
+                                query.required_mut,
+                                None,
+                                None,
+                                part,
+                            )
+                        {
+                            if !query.required_mut || evidence_provider(&evidence).is_mut {
+                                return EffectResolution::Chosen(Box::new(evidence));
+                            }
+                            chosen.get_or_insert(evidence);
+                        }
+                    }
                 }
+            }
+            if let Some(evidence) = chosen {
+                return EffectResolution::Chosen(Box::new(evidence));
             }
         }
         let mut viable: SmallVec<[EffectEvidence<'db>; 2]> = SmallVec::new();
@@ -2465,6 +2798,14 @@ impl<'db> TyChecker<'db> {
             }
             MatchedKeyedEntry::Forwarder(matched) => {
                 let (key_kind, target_ty) = match matched.forwarder.key {
+                    // The body's own binding provides its key directly: its
+                    // type is the key with the layout its caller supplied,
+                    // which the key's pattern leaves open.
+                    ForwardedEffectKey::Type(_)
+                        if matched.forwarder.transport == WitnessTransport::Direct =>
+                    {
+                        (EffectKeyKind::Type, Some(matched.forwarder.provider.ty))
+                    }
                     ForwardedEffectKey::Type(forwarded) => {
                         (EffectKeyKind::Type, Some(forwarded.carrier))
                     }
@@ -2653,13 +2994,19 @@ impl<'db> TyChecker<'db> {
 
         match arg_style {
             EffectArgStyle::Place => {
+                // The provider's place, or the place within it holding the
+                // handle a `Field(T)` provider was found at.
                 let place = match provider.origin {
-                    EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
-                        self.env.expr_place(value_expr)
+                    EffectOrigin::Arg { expr } => self.arg_handle_place(expr, provider.ty),
+                    EffectOrigin::With { .. } | EffectOrigin::Param { .. } => {
+                        self.provider_place(provider).map(|place| {
+                            let ty = self.place_ty(&place);
+                            self.handle_places(Some(place.clone()), ty)
+                                .into_iter()
+                                .find_map(|(place, ty)| place.filter(|_| ty == provider.ty))
+                                .unwrap_or(place)
+                        })
                     }
-                    EffectOrigin::Param { .. } => provider
-                        .binding
-                        .map(|binding| Place::new(PlaceBase::Binding(binding))),
                 };
                 (
                     place.map_or(super::EffectArg::Unknown, super::EffectArg::Place),
@@ -3794,34 +4141,6 @@ impl<'db> TyChecker<'db> {
         }
         let candidate = match candidate {
             Ok(candidate) => candidate,
-            // Mutability variants, `at(self)` and `at(mut self)`: the view one,
-            // unless the context needs a `mut` place (`select_mut_place`).
-            Err(MethodSelectionError::AmbiguousTraitMethod(ref ambiguous))
-                if let [first, second] = ambiguous.candidates.as_slice()
-                    && let Some((view, mutable)) = [(first, second), (second, first)]
-                        .into_iter()
-                        .find(|(view, mutable)| {
-                            let mode = |method| CallableDef::Func(method).param_mode(self.db, 0);
-                            mode(view.cand.method) == FuncParamMode::View
-                                && mode(mutable.cand.method) == FuncParamMode::Mut
-                        }) =>
-            {
-                let inst = canonical_r_ty.extract_solution(&mut self.table, mutable.cand.inst);
-                self.env.register_mut_variant(
-                    expr,
-                    selected_receiver_ty,
-                    super::env::PendingMethodCandidate {
-                        inst,
-                        method: mutable.cand.method,
-                        needs_confirmation: mutable.needs_confirmation,
-                    },
-                );
-                if view.needs_confirmation {
-                    MethodCandidate::NeedsConfirmation(view.cand)
-                } else {
-                    MethodCandidate::TraitMethod(view.cand)
-                }
-            }
             Err(err) => {
                 if let MethodSelectionError::AmbiguousTraitMethod(ambiguous) = err {
                     // Defer resolution using return-type constraints
@@ -3969,66 +4288,6 @@ impl<'db> TyChecker<'db> {
     /// Registers a checked call and types its result. A projection's result
     /// is a place granted by the call's session; its shape says which parts
     /// are accesses.
-    /// Re-resolves the method call `expr`, which selected the view variant
-    /// of a method, to its `mut self` variant, for a context that needs a
-    /// `mut` place. Returns whether it has one.
-    pub(super) fn check_mut_method_variant(&mut self, expr: ExprId) -> bool {
-        let Partial::Present(Expr::MethodCall(receiver, _, generic_args, args)) =
-            expr.data(self.db, self.body())
-        else {
-            return false;
-        };
-        let Some((recv_ty, variant)) = self.env.take_mut_variant(expr) else {
-            return false;
-        };
-        let Some(receiver_prop) = self.env.typed_expr(*receiver) else {
-            return false;
-        };
-        self.env.forget_call(expr);
-        let call_span = expr.span(self.body()).into_method_call_expr();
-        let func_ty = self.instantiate_trait_method_to_term(variant.method, recv_ty, variant.inst);
-        let Ok(mut callable) = Callable::new(
-            self.db,
-            func_ty,
-            receiver.span(self.body()).into(),
-            Some(variant.inst),
-        ) else {
-            return false;
-        };
-        if variant.needs_confirmation {
-            self.env.register_trait_obligation(TraitObligation {
-                goal: variant.inst,
-                origin: TraitObligationOrigin::GenericConfirmation,
-                span: call_span.clone().into(),
-            });
-        }
-        let anchor = HoleAnchor::BodySyntax {
-            body: self.body(),
-            site: BodyHoleSite::Expr(expr),
-        };
-        if !callable.unify_generic_args(
-            self,
-            *generic_args,
-            anchor,
-            call_span.clone().generic_args(),
-        ) {
-            return false;
-        }
-        callable.check_args(
-            self,
-            args,
-            call_span.clone().args(),
-            Some((*receiver, receiver_prop)),
-            true,
-        );
-        self.specialize_callable_layout_args(&mut callable, Some(*receiver), args);
-        self.check_callable_effects(expr, &mut callable);
-        callable.process_constraints(self, expr, call_span.method_name().into());
-        let typed = self.finish_call(expr, callable);
-        self.env.type_expr(expr, typed);
-        true
-    }
-
     fn finish_call(&mut self, expr: ExprId, callable: Callable<'db>) -> ExprProp<'db> {
         let ret_ty = callable.ret_ty(self.db);
         let ret_ty = self.normalize_ty(ret_ty);
@@ -4111,6 +4370,24 @@ impl<'db> TyChecker<'db> {
         };
         match res {
             ResolvedPathInBody::Binding(binding) => {
+                if let LocalBinding::EffectParam { site, idx, .. } = binding
+                    && self
+                        .env
+                        .resolved_effect_binding(site, idx)
+                        .is_some_and(|resolved| {
+                            resolved
+                                .requirement
+                                .binding_ty
+                                .field_key_handle(self.db)
+                                .is_some()
+                        })
+                {
+                    self.push_diag(BodyDiag::FieldEffectAsValue {
+                        primary: path_expr_span.into(),
+                        name: binding.binding_name(&self.env),
+                    });
+                    return ExprProp::invalid(self.db);
+                }
                 let ty = self
                     .env
                     .lookup_binding_ty(&binding)
@@ -4823,6 +5100,12 @@ impl<'db> TyChecker<'db> {
                 PlaceProjection::Deref { .. } => None,
                 PlaceProjection::Field { index, .. } => Some(LayoutProjection::Field(*index)),
                 PlaceProjection::Index { .. } => Some(LayoutProjection::Index),
+                PlaceProjection::VariantField { variant, field, .. } => {
+                    Some(LayoutProjection::VariantField {
+                        variant: *variant,
+                        field: *field,
+                    })
+                }
             })
             .collect::<Vec<_>>();
         Some((field, layout_env.view, projections))
@@ -5005,7 +5288,19 @@ impl<'db> TyChecker<'db> {
         expr: ExprId,
         projection: &[LayoutBundlePathStep],
     ) -> Option<PatternLayoutContext<'db>> {
-        if let Some((field, view, mut base_projections)) = self.contract_field_layout_context(expr)
+        self.place_layout_context(&self.env.expr_place(expr)?, projection)
+    }
+
+    /// The layout context of `place` extended by `projection`: where the
+    /// layout of a contract field or callable input it lies in assigns the
+    /// layout arguments of its parts.
+    fn place_layout_context(
+        &self,
+        place: &Place<'db>,
+        projection: &[LayoutBundlePathStep],
+    ) -> Option<PatternLayoutContext<'db>> {
+        if let Some((field, view, mut base_projections)) =
+            self.contract_field_layout_context_for_place(place)
         {
             base_projections.extend(layout_projections_from_callable_path(projection)?);
             return Some(PatternLayoutContext::ContractField {
@@ -5014,7 +5309,6 @@ impl<'db> TyChecker<'db> {
                 base_projections,
             });
         }
-        let place = self.env.expr_place(expr)?;
         let (func, origin) = match place.base {
             PlaceBase::Binding(LocalBinding::Param {
                 site: ParamSite::Func(func),
@@ -5051,10 +5345,14 @@ impl<'db> TyChecker<'db> {
         let mut base_path = place
             .projections
             .iter()
-            .filter_map(|projection| match projection {
-                PlaceProjection::Deref { .. } => None,
-                PlaceProjection::Field { index, .. } => Some(LayoutBundlePathStep::Field(*index)),
-                PlaceProjection::Index { .. } => Some(LayoutBundlePathStep::Index),
+            .flat_map(|projection| match *projection {
+                PlaceProjection::Deref { .. } => vec![],
+                PlaceProjection::Field { index, .. } => vec![LayoutBundlePathStep::Field(index)],
+                PlaceProjection::Index { .. } => vec![LayoutBundlePathStep::Index],
+                PlaceProjection::VariantField { variant, field, .. } => vec![
+                    LayoutBundlePathStep::Variant(variant),
+                    LayoutBundlePathStep::Field(field),
+                ],
             })
             .collect::<Vec<_>>();
         base_path.extend_from_slice(projection);
@@ -5101,27 +5399,48 @@ impl<'db> TyChecker<'db> {
         field_index: u16,
     ) -> Option<TyId<'db>> {
         let place = self.env.expr_place(lhs)?;
-        let PlaceBase::Binding(LocalBinding::Param {
-            site: ParamSite::Func(func),
-            idx,
-            ..
-        }) = place.base
-        else {
-            return None;
-        };
-        let param = func.params(self.db).nth(idx)?;
-        let origin = if param.is_self_param(self.db) {
-            crate::analysis::ty::const_ty::CallableInputLayoutHoleOrigin::Receiver
-        } else {
-            crate::analysis::ty::const_ty::CallableInputLayoutHoleOrigin::ValueParam(idx)
+        let (func, origin) = match place.base {
+            PlaceBase::Binding(LocalBinding::Param {
+                site: ParamSite::Func(func),
+                idx,
+                ..
+            }) => {
+                let param = func.params(self.db).nth(idx)?;
+                let origin = if param.is_self_param(self.db) {
+                    crate::analysis::ty::const_ty::CallableInputLayoutHoleOrigin::Receiver
+                } else {
+                    crate::analysis::ty::const_ty::CallableInputLayoutHoleOrigin::ValueParam(idx)
+                };
+                (func, origin)
+            }
+            PlaceBase::Binding(
+                LocalBinding::EffectParam {
+                    site: EffectParamSite::Func(func),
+                    idx,
+                    ..
+                }
+                | LocalBinding::Param {
+                    site: ParamSite::EffectField(EffectParamSite::Func(func)),
+                    idx,
+                    ..
+                },
+            ) => (
+                func,
+                crate::analysis::ty::const_ty::CallableInputLayoutHoleOrigin::Effect(idx),
+            ),
+            PlaceBase::Binding(_) => return None,
         };
         let mut path = place
             .projections
             .iter()
-            .filter_map(|projection| match projection {
-                PlaceProjection::Deref { .. } => None,
-                PlaceProjection::Field { index, .. } => Some(LayoutBundlePathStep::Field(*index)),
-                PlaceProjection::Index { .. } => Some(LayoutBundlePathStep::Index),
+            .flat_map(|projection| match *projection {
+                PlaceProjection::Deref { .. } => vec![],
+                PlaceProjection::Field { index, .. } => vec![LayoutBundlePathStep::Field(index)],
+                PlaceProjection::Index { .. } => vec![LayoutBundlePathStep::Index],
+                PlaceProjection::VariantField { variant, field, .. } => vec![
+                    LayoutBundlePathStep::Variant(variant),
+                    LayoutBundlePathStep::Field(field),
+                ],
             })
             .collect::<Vec<_>>();
         path.push(LayoutBundlePathStep::Field(field_index));

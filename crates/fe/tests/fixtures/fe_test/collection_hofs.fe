@@ -8,7 +8,7 @@ use core::ptr::MemArray
 struct Add {}
 
 impl FnMut(own u256, u256) -> u256 for Add {
-    fn call(mut self, _ acc: own u256, _ x: u256) -> u256 {
+    fn call_mut(mut self, _ acc: own u256, _ x: u256) -> u256 {
         acc + x
     }
 }
@@ -24,7 +24,7 @@ impl Fn(u256) -> bool for IsEven {
 struct Double {}
 
 impl FnMut(u256) -> u256 for Double {
-    fn call(mut self, _ x: u256) -> u256 {
+    fn call_mut(mut self, _ x: u256) -> u256 {
         x * 2
     }
 }
@@ -36,7 +36,7 @@ struct Totals { sum: u256, count: u256 }
 struct Tally {}
 
 impl FnMut(own Totals, Account) -> Totals for Tally {
-    fn call(mut self, _ acc: own Totals, _ account: Account) -> Totals {
+    fn call_mut(mut self, _ acc: own Totals, _ account: Account) -> Totals {
         Totals { sum: acc.sum + account.balance, count: acc.count + 1 }
     }
 }

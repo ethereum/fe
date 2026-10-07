@@ -3,10 +3,11 @@ use cranelift_entity::EntityRef;
 use crate::{
     analysis::{
         place::{Place, PlaceBase, PlaceProjection, projectable_place_ty},
-        semantic::{FieldIndex, SExpr, SOperand, SPlace, SValueId, SemOrigin},
+        semantic::{FieldIndex, SExpr, SOperand, SPlace, SValueId, SemOrigin, VariantIndex},
         ty::ty_def::TyId,
     },
     hir_def::{Expr, ExprId, Partial, UnOp, expr::BinOp},
+    projection::Projection,
 };
 
 use super::body::SmirLowerCtxt;
@@ -104,6 +105,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     let index = self.lower_place_operand(index_expr, capture);
                     place.push_dynamic_index(index);
                 }
+                PlaceProjection::VariantField {
+                    variant,
+                    field,
+                    enum_ty,
+                    ..
+                } => place.path.push(Projection::VariantField {
+                    variant: VariantIndex(variant),
+                    enum_ty,
+                    field_idx: field.into(),
+                }),
             }
             ty = projection.result_ty();
         }

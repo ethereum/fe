@@ -372,7 +372,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     let dst_ty = self.locals[dst.index()].ty;
                     let by_borrow = matches!(
                         self.typed_body.pat_binding_mode(binding.representative_pat),
-                        Some(PatBindingMode::Access(_))
+                        Some(PatBindingMode::Access { .. })
                     );
                     let source_matches_dst = {
                         let scope = self.body.scope();

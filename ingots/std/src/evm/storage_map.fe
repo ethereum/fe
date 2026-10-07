@@ -256,7 +256,7 @@ impl<K: StorageKey, V: WordRepr, const SALT: u256> StorageMap<K, V, SALT> {
     }
 
     #[inline(always)]
-    pub fn get(self, _ key: K) -> V {
+    pub fn get(self, _ key: K) -> V uses (storage: Field(Self)) {
         self.get_unchecked(key)
     }
 
@@ -266,7 +266,7 @@ impl<K: StorageKey, V: WordRepr, const SALT: u256> StorageMap<K, V, SALT> {
     }
 
     #[inline(always)]
-    pub fn set(mut self, key: K, value: own V) {
+    pub fn set(mut self, key: K, value: own V) uses (storage: mut Field(Self)) {
         self.set_unchecked(key: key, value)
     }
 }

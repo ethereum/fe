@@ -24,10 +24,11 @@ fn fold<A, F: FnMut(own A, Self::Item) -> A>(self, _ init: own A, _ f: mut F) ->
 ```
 
 `Fn(own A, B) -> R` is the core trait `Fn_ov<A, B, Out = R>`, whose
-`call(self, ..)` views the callable; `FnMut(..)` is `FnMut_ov`, called with
-`mut self`; `Fn(own T) -> U` is `Fn<T, U>`. A closure implements the `Fn` and
-`FnMut` shapes of its parameter modes, with `Out` its result. Call it with
-`f.call(x)`.
+`call(self, ..)` views the callable; `FnMut(..)` is `FnMut_ov`, whose
+`call_mut(mut self, ..)` mutates it; `Fn(own T) -> U` is `Fn<T, U>`. A closure
+implements the `Fn` and `FnMut` shapes of its parameter modes, with `Out` its
+result. Call it with `f.call(x)`, or `f.call_mut(x)` through an `FnMut`
+bound.
 
 Unannotated parameters take their modes and types from the shape bound of
 the parameter the closure is passed to, after the arguments before it: in

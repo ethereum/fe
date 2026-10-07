@@ -158,6 +158,22 @@ impl<'db> EffectEnv<'db> {
         self.current_frame_mut().unkeyed.push(binding);
     }
 
+    /// Every provider in scope, innermost frame first.
+    pub fn providers(&self) -> impl Iterator<Item = ProvidedEffect<'db>> + '_ {
+        self.frames.iter().rev().flat_map(|frame| {
+            frame
+                .keyed_by_family
+                .values()
+                .flatten()
+                .filter_map(|entry| match entry {
+                    KeyedEffectEntry::Witness(witness) => Some(witness.provider),
+                    KeyedEffectEntry::Forwarder(forwarder) => Some(forwarder.provider),
+                    KeyedEffectEntry::Barrier(_) => None,
+                })
+                .chain(frame.unkeyed.iter().copied())
+        })
+    }
+
     pub fn lookup_effect_frames(
         &self,
         query: &EffectQuery<'db>,

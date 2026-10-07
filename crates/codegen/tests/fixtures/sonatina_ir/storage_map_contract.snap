@@ -164,22 +164,22 @@ func private %from_word(v0.i256) -> i256 {
         return v0;
 }
 
-func inline(always) private %get__gcbe1(v0.i256, v1.i256) -> i256 {
+func inline(always) private %get__g3955(v0.i256, v1.i256, v2.i256) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v4.i256 = call %get_unchecked__gcbe1 v0 v1;
-        return v4;
+        v5.i256 = call %get_unchecked__g7fdf v0 v1;
+        return v5;
 }
 
-func inline(always) private %get__g7fdf(v0.i256, v1.i256) -> i256 {
+func inline(always) private %std__lib__evm__storage_map__impl_StorageMap_9f54__get__g996d_5530(v0.i256, v1.i256, v2.i256) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v4.i256 = call %get_unchecked__g7fdf v0 v1;
-        return v4;
+        v5.i256 = call %get_unchecked__gcbe1 v0 v1;
+        return v5;
 }
 
 func private %get_allowance(v0.i256, v1.i256) -> i256 {
@@ -187,7 +187,7 @@ func private %get_allowance(v0.i256, v1.i256) -> i256 {
         jump block1;
 
     block1:
-        v4.i256 = call %get__g7fdf v0 v1;
+        v4.i256 = call %get__g3955 v0 v1 v1;
         return v4;
 }
 
@@ -196,8 +196,17 @@ func private %get_balance(v0.i256, v1.i256) -> i256 {
         jump block1;
 
     block1:
-        v4.i256 = call %get__gcbe1 v0 v1;
+        v4.i256 = call %std__lib__evm__storage_map__impl_StorageMap_9f54__get__g996d_5530 v0 v1 v1;
         return v4;
+}
+
+func inline(always) private %std__lib__evm__storage_map__impl_StorageMap_9f54__get__g996d_f63f(v0.i256, v1.i256, v2.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v5.i256 = call %get_unchecked__gcbe1 v0 v1;
+        return v5;
 }
 
 func inline(always) private %get_unchecked__g7fdf(v0.i256, v1.i256) -> i256 {
@@ -562,12 +571,21 @@ func private %runtime() {
         jump block15;
 }
 
-func inline(always) private %set__g7fdf(v0.i256, v1.i256, v2.i256) {
+func inline(always) private %std__lib__evm__storage_map__impl_StorageMap_9f54__set__g996d_4b89(v0.i256, v1.i256, v2.i256, v3.i256) {
     block0:
         jump block1;
 
     block1:
-        call %set_unchecked__g7fdf v0 v1 v2;
+        call %set_unchecked__gcbe1 v0 v1 v2;
+        return;
+}
+
+func inline(always) private %std__lib__evm__storage_map__impl_StorageMap_9f54__set__g996d_ac84(v0.i256, v1.i256, v2.i256, v3.i256) {
+    block0:
+        jump block1;
+
+    block1:
+        call %set_unchecked__gcbe1 v0 v1 v2;
         return;
 }
 
@@ -576,7 +594,7 @@ func private %set_allowance(v0.i256, v1.i256, v2.i256) {
         jump block1;
 
     block1:
-        call %set__g7fdf v0 v1 v2;
+        call %set__g3955 v0 v1 v2 v2;
         return;
 }
 
@@ -585,16 +603,16 @@ func private %set_balance(v0.i256, v1.i256, v2.i256) {
         jump block1;
 
     block1:
-        call %set__gcbe1 v0 v1 v2;
+        call %std__lib__evm__storage_map__impl_StorageMap_9f54__set__g996d_ac84 v0 v1 v2 v2;
         return;
 }
 
-func inline(always) private %set__gcbe1(v0.i256, v1.i256, v2.i256) {
+func inline(always) private %set__g3955(v0.i256, v1.i256, v2.i256, v3.i256) {
     block0:
         jump block1;
 
     block1:
-        call %set_unchecked__gcbe1 v0 v1 v2;
+        call %set_unchecked__g7fdf v0 v1 v2;
         return;
 }
 
@@ -722,7 +740,7 @@ func private %transfer(v0.i256, v1.i256, v2.i256, v3.i256) -> i256 {
         jump block1;
 
     block1:
-        v6.i256 = call %get__gcbe1 v0 v3;
+        v6.i256 = call %std__lib__evm__storage_map__impl_StorageMap_9f54__get__g996d_f63f v0 v3 v3;
         v8.i1 = lt v6 v2;
         br v8 block2 block3;
 
@@ -733,7 +751,7 @@ func private %transfer(v0.i256, v1.i256, v2.i256, v3.i256) -> i256 {
         jump block4;
 
     block4:
-        v12.i256 = call %get__gcbe1 v1 v3;
+        v12.i256 = call %std__lib__evm__storage_map__impl_StorageMap_9f54__get__g996d_f63f v1 v3 v3;
         (v15.i256, v16.i1) = usubo v6 v2;
         br v16 block5 block6;
 
@@ -743,12 +761,12 @@ func private %transfer(v0.i256, v1.i256, v2.i256, v3.i256) -> i256 {
         evm_revert 0.i256 36.i256;
 
     block6:
-        call %set__gcbe1 v0 v15 v3;
+        call %std__lib__evm__storage_map__impl_StorageMap_9f54__set__g996d_4b89 v0 v15 v3 v3;
         (v27.i256, v28.i1) = uaddo v12 v2;
         br v28 block5 block7;
 
     block7:
-        call %set__gcbe1 v1 v27 v3;
+        call %std__lib__evm__storage_map__impl_StorageMap_9f54__set__g996d_4b89 v1 v27 v3 v3;
         return 0.i256;
 }
 

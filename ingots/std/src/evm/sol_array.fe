@@ -154,7 +154,7 @@ impl<T: SolPacked> Collection for SolArray<T> {
 impl<T: SolPacked> CollectionMut for SolArray<T> {
     uses EM = (storage: mut RawStorage)
 
-    fn at(mut self, _ c: u256) -> mut T uses EM {
+    fn at_mut(mut self, _ c: u256) -> mut T uses EM {
         let mut value = self.get(c)
         yield mut value
         self.set(index: c, value)

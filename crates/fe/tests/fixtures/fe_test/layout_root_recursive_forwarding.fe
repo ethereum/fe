@@ -1,12 +1,16 @@
 use std::evm::{Evm, StorageMap}
 
+// A data parameter carries no authority, so the caller grants the authority
+// over the maps' fields.
 fn direct_dynamic(
     first: StorageMap<u256, u256>,
     second: StorageMap<u256, u256>,
     lane: usize,
     depth: u256,
     key: u256,
-) -> u256 {
+) -> u256
+    uses (storage: Field(StorageMap<u256, u256>))
+{
     if depth == 0 {
         return if lane == 0 { first.get(key: key) } else { second.get(key: key) }
     }
@@ -18,7 +22,9 @@ fn direct_static(
     second: StorageMap<u256, u256>,
     depth: u256,
     key: u256,
-) -> u256 {
+) -> u256
+    uses (storage: Field(StorageMap<u256, u256>))
+{
     if depth == 0 {
         return second.get(key: key)
     }
@@ -31,7 +37,9 @@ fn mutual_a(
     lane: usize,
     depth: u256,
     key: u256,
-) -> u256 {
+) -> u256
+    uses (storage: Field(StorageMap<u256, u256>))
+{
     if depth == 0 {
         return if lane == 0 { first.get(key: key) } else { second.get(key: key) }
     }
@@ -44,7 +52,9 @@ fn mutual_b(
     lane: usize,
     depth: u256,
     key: u256,
-) -> u256 {
+) -> u256
+    uses (storage: Field(StorageMap<u256, u256>))
+{
     if depth == 0 {
         return if lane == 0 { first.get(key: key) } else { second.get(key: key) }
     }
@@ -57,11 +67,13 @@ struct Wrapped {
 }
 
 impl Wrapped {
-    fn lane(self, lane: usize, key: u256) -> u256 {
+    fn lane(self, lane: usize, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
         if lane == 0 { self.first.get(key: key) } else { self.second.get(key: key) }
     }
 
-    fn receiver_recursive(self, lane: usize, depth: u256, key: u256) -> u256 {
+    fn receiver_recursive(self, lane: usize, depth: u256, key: u256) -> u256
+        uses (storage: Field(StorageMap<u256, u256>))
+    {
         if depth == 0 {
             return self.lane(lane, key)
         }
@@ -76,6 +88,15 @@ fn recursive_wrapped(wrapped: own Wrapped, depth: u256) -> Wrapped {
     recursive_wrapped(wrapped, depth: depth - 1)
 }
 
+// The returned maps' types do not name the fields they came from, so the
+// read takes the authority over any map of their shape, which the caller
+// grants for the maps it passes.
+fn returned_lane(wrapped: own Wrapped, lane: usize, depth: u256, key: u256) -> u256
+    uses (storage: Field(StorageMap<u256, u256>))
+{
+    recursive_wrapped(wrapped, depth).lane(lane, key)
+}
+
 fn effect_recursive(lane: usize, depth: u256, key: u256) -> u256
     uses (wrapped: Wrapped)
 {
@@ -86,9 +107,11 @@ fn effect_recursive(lane: usize, depth: u256, key: u256) -> u256
 }
 
 trait RecursiveRead {
-    fn leaf(self, lane: usize, key: u256) -> u256
+    fn leaf(self, lane: usize, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>))
 
-    fn default_recursive(self, lane: usize, depth: u256, key: u256) -> u256 {
+    fn default_recursive(self, lane: usize, depth: u256, key: u256) -> u256
+        uses (storage: Field(StorageMap<u256, u256>))
+    {
         if depth == 0 {
             return self.leaf(lane, key)
         }
@@ -97,7 +120,7 @@ trait RecursiveRead {
 }
 
 impl RecursiveRead for Wrapped {
-    fn leaf(self, lane: usize, key: u256) -> u256 {
+    fn leaf(self, lane: usize, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
         self.lane(lane, key)
     }
 }
@@ -153,7 +176,7 @@ pub contract C {
         }
 
         GetReturned { lane, depth, key } -> u256 uses (wrapped) {
-            recursive_wrapped(wrapped, depth).lane(lane, key)
+            returned_lane(wrapped, lane, depth, key)
         }
 
         GetEffect { lane, depth, key } -> u256 uses (wrapped) {

@@ -185,7 +185,7 @@ fn entry_effect_arg_plan_for_binding<'db>(
         ProviderSource::ContractField { field: field_id } => {
             let env = RuntimeTypeEnv::for_semantic(db, semantic);
             if runtime_effect_binding_plan(db, semantic, binding).is_none()
-                && provider_erases_runtime_root(db, &provider, env.scope, env.assumptions)
+                && provider_erases_runtime_root(db, semantic, &provider, env.scope, env.assumptions)
             {
                 return Ok(None);
             }

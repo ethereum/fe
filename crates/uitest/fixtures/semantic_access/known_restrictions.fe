@@ -1,0 +1,55 @@
+// The draft's known restrictions, as the checker decides them.
+use core::iter::Collection
+
+struct Grid { cells: [u256; 4] }
+
+impl Collection for Grid {
+    space S = self
+    type Cursor = (usize, usize)
+    type Item = u256
+
+    fn start(self) -> Option<(usize, usize)> {
+        Option::Some((0, 0))
+    }
+
+    fn next(self, _ c: (usize, usize)) -> Option<(usize, usize)> {
+        if c.1 == 0 { Option::Some((c.0, 1)) } else { Option::None }
+    }
+
+    fn at(self, _ c: (usize, usize)) -> ref u256 {
+        ref self.cells[c.0 * 2 + c.1]
+    }
+}
+
+// Rejected: an aggregate cursor is viewed in place, so the element's session
+// reserves it.
+fn aggregate_cursor(_ g: Grid) -> u256 {
+    let mut cur = (0, 0)
+    let x = g.at(cur)
+    cur = (0, 1)
+    x
+}
+
+// Accepted: a `usize` cursor is a snapshot.
+fn scalar_cursor(_ xs: [u256; 3]) -> u256 {
+    let mut cur: usize = 0
+    let x = xs.at(cur)
+    cur = 1
+    x + cur as u256
+}
+
+struct Item { n: u256 }
+
+fn consume(_ item: own Item) -> u256 {
+    item.n
+}
+
+// Accepted: an owned argument taken from storage is a copy; storage is never
+// moved from.
+pub contract StorageCopy {
+    mut item: Item,
+    init() uses (mut item) {
+        let n = consume(item)
+        item.n = n + 1
+    }
+}

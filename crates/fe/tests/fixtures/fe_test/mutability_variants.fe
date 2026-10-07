@@ -1,10 +1,13 @@
-// `Collection::at(self)` and `CollectionMut::at(mut self)` are mutability
-// variants: `xs.at(c)` reads through the view one, and a context that needs
-// a `mut` place (an assignment target, `mut xs.at(c)`, a `mut self` call)
-// selects the `mut` one.
+// `Collection::at(self)` and `CollectionMut::at_mut(mut self)` are distinct
+// methods: `xs.at(c)` yields a view and `xs.at_mut(c)` a `mut` access. A
+// projection result carries its own mode, so it takes no `mut` marker.
 use core::iter::{Collection, CollectionMut}
 
 struct Counter { n: u256 }
+
+fn increment(_ x: mut u256) {
+    x += 1
+}
 
 impl Counter {
     fn bump(mut self) {
@@ -13,29 +16,31 @@ impl Counter {
 }
 
 #[test]
-fn reads_and_writes_by_context() {
+fn reads_and_writes_by_method() {
     let mut xs: [u256; 3] = [1, 2, 3]
     let a = xs.at(1)
     assert(a == 2)
 
-    xs.at(1) = 5
-    xs.at(2) += 10
-    let first = mut xs.at(0)
+    xs.at_mut(1) = 5
+    xs.at_mut(2) += 10
+    let first = xs.at_mut(0)
     first *= 7
     assert(xs[0] == 7 && xs[1] == 5 && xs[2] == 13)
 
     let mut counters = [Counter { n: 0 }, Counter { n: 4 }]
-    counters.at(1).bump()
+    counters.at_mut(1).bump()
     assert(counters[1].n == 5)
+    increment(xs.at_mut(1))
+    assert(xs[1] == 6)
 }
 
-// Generic code selects the variants through the bounds.
+// Generic code names the method its bound declares.
 fn bump_all<C: Collection<Item = u256> + CollectionMut>(_ xs: mut C) uses (C::E, C::EM) {
     let mut c = xs.start()
     while true {
         match c {
             Option::Some(cursor) => {
-                xs.at(cursor) += 1
+                xs.at_mut(cursor) += 1
                 c = xs.next(cursor)
             }
             Option::None => break

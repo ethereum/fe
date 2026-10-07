@@ -74,6 +74,26 @@ fn uncovered_map(_ map: StorageMap<u256, u256>) -> u256 {
     }
 }
 
+struct Counts {
+    counts: StorageMap<u256, u256>,
+}
+
+// Accepted: the copy names a field the function's own provider holds.
+fn copied_map() -> u256 uses (store: Counts) {
+    let counts = store.counts
+    with (counts) {
+        count()
+    }
+}
+
+// Rejected: a provider that can write needs authority that can.
+fn copied_map_mut() -> u256 uses (store: Counts) {
+    let mut counts = store.counts
+    with (counts) {
+        count()
+    }
+}
+
 // Accepted: the authority over the field a map of this type names.
 fn covered_map(_ map: StorageMap<u256, u256>) -> u256
     uses (storage: Field(StorageMap<u256, u256>))

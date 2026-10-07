@@ -90,40 +90,45 @@ pub contract NestedProviderMaps {
         tagged.attach(ptr)
     }
 
+    // A map read through a pointer names a field no effect of the arm
+    // covers, so raw storage authority vouches for installing it.
     recv NestedProviderMsg {
-        SetInferred { key, value } uses (inferred) {
+        SetInferred { key, value } uses (inferred, evm: mut Evm) {
             let mut map = inferred.ptr.read()
-            map.set(key, value)
+            with (map) { map.set(key, value) }
         }
 
-        SetExplicit { key, value } uses (explicit) {
+        SetExplicit { key, value } uses (explicit, evm: mut Evm) {
             let mut map = explicit.ptr.read()
-            map.set(key, value)
+            with (map) { map.set(key, value) }
         }
 
         SetDirect { key, value } uses (mut direct) {
             direct.set(key, value)
         }
 
-        GetInferred { key } -> u256 uses (inferred) {
-            inferred.ptr.read().get(key)
+        GetInferred { key } -> u256 uses (inferred, evm: Evm) {
+            let map = inferred.ptr.read()
+            with (map) { map.get(key) }
         }
 
-        GetExplicit { key } -> u256 uses (explicit) {
-            explicit.ptr.read().get(key)
+        GetExplicit { key } -> u256 uses (explicit, evm: Evm) {
+            let map = explicit.ptr.read()
+            with (map) { map.get(key) }
         }
 
         GetDirect { key } -> u256 uses (direct) {
             direct.get(key)
         }
 
-        SetTagged { key, value } uses (tagged) {
+        SetTagged { key, value } uses (tagged, evm: mut Evm) {
             let mut map = with (tagged.ptr.ptr) { tagged.ptr.read() }
-            map.set(key, value)
+            with (map) { map.set(key, value) }
         }
 
-        GetTagged { key } -> u256 uses (tagged) {
-            with (tagged.ptr.ptr) { tagged.ptr.read() }.get(key)
+        GetTagged { key } -> u256 uses (tagged, evm: Evm) {
+            let map = with (tagged.ptr.ptr) { tagged.ptr.read() }
+            with (map) { map.get(key) }
         }
 
         GetTaggedHandleTag -> u256 uses (tagged) {

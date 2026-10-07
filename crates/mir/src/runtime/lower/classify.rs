@@ -1426,6 +1426,7 @@ impl<'db> ExprStaticFactsBuilder<'_, 'db> {
                                 ..
                             }) if provider_erases_runtime_root(
                                 db,
+                                body.owner(),
                                 binding,
                                 type_env.scope,
                                 type_env.assumptions,
@@ -1714,12 +1715,41 @@ pub(crate) fn provider_source_erases_zero_sized_effect_value<'db>(
     }
 }
 
+/// Whether effect `idx` of `site` is a `Field(T)` effect: authority only,
+/// which no code reads, so it has no runtime value.
+fn is_field_effect<'db>(db: &'db dyn MirDb, site: EffectParamSite<'db>, idx: u32) -> bool {
+    let EffectParamSite::Func(func) = site else {
+        return false;
+    };
+    func.effect_requirements(db).iter().any(|requirement| {
+        requirement.binding_idx == idx && requirement.binding_ty.field_key_handle(db).is_some()
+    })
+}
+
+/// Whether `provider` supplies one of `semantic`'s `Field(T)` effects.
+fn provider_is_field_effect<'db>(
+    db: &'db dyn MirDb,
+    semantic: SemanticInstance<'db>,
+    provider: &ProviderBinding<'db>,
+) -> bool {
+    semantic.effect_bindings(db).into_iter().any(|binding| {
+        matches!(binding, LocalBinding::EffectParam { site, idx, provider_idx, .. }
+            if provider_idx == provider.provider_idx && is_field_effect(db, site, idx as u32))
+    })
+}
+
+/// Whether `provider`, supplying an effect of `semantic`, has no runtime
+/// root: a `Field` authority, or a value that needs no storage.
 pub(crate) fn provider_erases_runtime_root<'db>(
     db: &'db dyn MirDb,
+    semantic: SemanticInstance<'db>,
     provider: &ProviderBinding<'db>,
     scope: Option<hir::hir_def::scope_graph::ScopeId<'db>>,
     assumptions: PredicateListId<'db>,
 ) -> bool {
+    if provider_is_field_effect(db, semantic, provider) {
+        return true;
+    }
     if let ProviderSource::ContractField { field: field_id } = provider.source {
         return field_id
             .contract
@@ -1747,7 +1777,10 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
     semantic: SemanticInstance<'db>,
     binding: LocalBinding<'db>,
 ) -> Option<RuntimeEffectBindingPlan<'db>> {
-    if !matches!(binding, LocalBinding::EffectParam { .. }) {
+    let LocalBinding::EffectParam { site, idx, .. } = binding else {
+        return None;
+    };
+    if is_field_effect(db, site, idx as u32) {
         return None;
     }
     let env = RuntimeTypeEnv::for_semantic(db, semantic);
@@ -1763,7 +1796,7 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
             provenance: ValueProvenance::RootProvider(provider),
         } => {
             let value_ty = provider.semantics.target_ty.unwrap_or(binding_ty);
-            if provider_erases_runtime_root(db, &provider, env.scope, env.assumptions) {
+            if provider_erases_runtime_root(db, semantic, &provider, env.scope, env.assumptions) {
                 return None;
             }
             let class = runtime_class_for_provider_value_ty_in_env(db, env, &provider, value_ty)?;
@@ -1839,7 +1872,7 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
             provider: Some(provider),
             value_ty,
         } => {
-            if provider_erases_runtime_root(db, &provider, env.scope, env.assumptions) {
+            if provider_erases_runtime_root(db, semantic, &provider, env.scope, env.assumptions) {
                 return None;
             }
             let class = runtime_class_for_provider_value_ty_in_env(db, env, &provider, value_ty)?;
@@ -1869,7 +1902,7 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
             provenance: hir::analysis::semantic::PlaceProvenance::RootProvider(provider),
             value_ty,
         } => {
-            if provider_erases_runtime_root(db, &provider, env.scope, env.assumptions) {
+            if provider_erases_runtime_root(db, semantic, &provider, env.scope, env.assumptions) {
                 return None;
             }
             let class = runtime_class_for_provider_value_ty_in_env(db, env, &provider, value_ty)?;
@@ -2506,7 +2539,13 @@ fn normalized_place_root_transport_class_in_context<'db>(
             NRootKind::Provider { binding } => {
                 let actual = env.actual_runtime_visible_root_provider_class(carriers, binding);
                 if actual.is_none()
-                    && provider_erases_runtime_root(env.db, binding, env.scope(), env.assumptions())
+                    && provider_erases_runtime_root(
+                        env.db,
+                        env.body.owner(),
+                        binding,
+                        env.scope(),
+                        env.assumptions(),
+                    )
                 {
                     return None;
                 }
@@ -2558,7 +2597,13 @@ fn normalized_place_root_class_in_context<'db>(
                 let value_ty = env.body.normalized.root(root)?.ty;
                 let actual = env.actual_runtime_visible_root_provider_class(carriers, binding);
                 if actual.is_none()
-                    && provider_erases_runtime_root(env.db, binding, env.scope(), env.assumptions())
+                    && provider_erases_runtime_root(
+                        env.db,
+                        env.body.owner(),
+                        binding,
+                        env.scope(),
+                        env.assumptions(),
+                    )
                 {
                     return None;
                 }
@@ -3617,9 +3662,11 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
             2,
             "specialized grant visible ABI should omit the inert receiver:\nself_role={self_role:#?}\nparam_plans={param_plans:#?}\nplans={plans:#?}\nabi={abi:#?}"
         );
+        // `grant`'s `Field` authority has no runtime value, but its layout
+        // is still passed.
         assert_eq!(
             abi.evidence_params.len(),
-            1,
+            2,
             "the declared receiver layout must remain an explicit evidence parameter:\nabi={abi:#?}"
         );
         assert_eq!(signature, abi.signature());
@@ -3728,7 +3775,7 @@ uses (slot: Slot<u256>)
             "generic zero-sized uses providers should have no runtime payload"
         );
         assert!(
-            provider_erases_runtime_root(&db, &provider, env.scope, env.assumptions),
+            provider_erases_runtime_root(&db, semantic, &provider, env.scope, env.assumptions),
             "root effect planning must erase the same generic zero-sized provider"
         );
     }

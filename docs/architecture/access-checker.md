@@ -85,7 +85,11 @@ The analysis resolves carriers to *tokens*:
 | Handle | provider handles | Names a domain; confers no exclusivity. |
 
 An abstract place is a base and a path (fields, variant fields, constant or
-dynamic indices):
+dynamic indices). A path may end in `KeySpace`: the entries of the static
+slot handles the place holds (a map's keyed slots), which lie apart from the
+place itself. Key-space regions overlap each other by their paths and raw
+state, never a data access, so a `mut` access of a struct holding a map does
+not conflict with an operation on the map's entries.
 
 - `Root`: storage the body owns: locals, owned parameters, temporaries.
 - `Param(i)`: the place data parameter `i` names. Its address space is part of
@@ -117,13 +121,15 @@ Each operation is checked against the open tokens it is not derived from:
   directly (`RawStorage`). Immutable authority only reads.
 - Calls that start external executions themselves (call intrinsics and
   methods of the reentrant std capabilities) access all state.
-- A call also accesses the fields the *field handles* of each argument name
-  (values of a `StaticSlot` type, such as a `StorageMap`, at any path of the
-  argument; `field_handle_spaces`): reading them for a view parameter and
-  writing them for a `mut` or owned one, since the callee may operate through
-  the handles. A handle that lies in a resource names its own place there; a
-  copy in memory, or a handle a call returns, names a dynamic domain of its
-  space. A projection reserves those fields for its session.
+- A handle operation's `Field(Self)` effect accesses the field the handle
+  names. The type checker supplies, as its effect argument, the place within
+  an effect provider that holds the handle (a static slot handle's type names
+  its field, so a copy's is the original's), else the handle argument: a
+  dynamic domain of its space when that is a copy in memory. A `Field(T)` key
+  with open layout arguments names a dynamic domain wherever it came from. A
+  handle argument, alone or in an aggregate, is data: a callee operates
+  through it only under a `Field` effect of its own, whose footprint the call
+  carries.
 
 So `let v = mut store.value` held across a call whose effects permit
 reentrancy is rejected, while closing the access before the call is accepted.

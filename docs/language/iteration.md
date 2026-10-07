@@ -11,11 +11,17 @@ for y in xs by map(|x: u256| x * 2) { .. }
 ```
 
 `Collection` (`core::iter`) is the protocol: `start` and `next` move a
-cursor, `at` projects the element at it. `CollectionMut` adds `at` with
+cursor, `at` projects the element at it. `CollectionMut` adds `at_mut` with
 `mut` access for `for .. in mut ..` loops, and `Bidirectional` traverses in
 reverse. Arrays, `MemArray`, `MemSlice`, ranges, `SolArray` and
 `SolEnumerableSet` are collections; a collection declares the effects its
 methods need (`uses E`) and the space of the places it yields (`space S`).
+
+A loop that copies each item (a `Copy` item, or a producer's value) holds
+no access on its base between steps, so the body may change the collection,
+and `at` reads each element afresh. A projected or `mut` traversal holds the
+element's session during the body, which then cannot change the base; so
+does a `while let` whose condition opens a session, until the back edge.
 
 ## Drivers and producers
 

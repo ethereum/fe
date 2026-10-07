@@ -20,9 +20,11 @@ pub trait Fn<T, U> {
 // trait of that shape, `Fn_ov<A, B, Out = R>`: the receiver's mode (`self`
 // for `Fn`, `mut self` for `FnMut`) and each parameter's mode are part of
 // the trait, since modes are not types, and the result is the associated
-// `Out`, which the callable determines. `Fn(own T) -> U` is `Fn<T, U>`. Each
-// shape's `uses E` is the row a closure fills with the effects it uses.
-// Shapes have at most three parameters.
+// `Out`, which the callable determines. `Fn(own T) -> U` is `Fn<T, U>`.
+// `Fn` shapes are called with `call`, `FnMut` shapes with `call_mut`: method
+// resolution never depends on a receiver's mode. Each shape's `uses E` is the
+// row a closure fills with the effects it uses. Shapes have at most three
+// parameters.
 
 /// `Fn() -> Out`
 pub trait Fn0 {
@@ -341,7 +343,7 @@ pub trait FnMut0 {
     uses E
     type Out
 
-    fn call(mut self) -> Self::Out uses E
+    fn call_mut(mut self) -> Self::Out uses E
 }
 
 /// `FnMut(own A0) -> Out`
@@ -349,7 +351,7 @@ pub trait FnMut_o<A0> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0) -> Self::Out uses E
 }
 
 /// `FnMut(A0) -> Out`
@@ -357,7 +359,7 @@ pub trait FnMut_v<A0> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0) -> Out`
@@ -365,7 +367,7 @@ pub trait FnMut_m<A0> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, own A1) -> Out`
@@ -373,7 +375,7 @@ pub trait FnMut_oo<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: own A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: own A1) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, A1) -> Out`
@@ -381,7 +383,7 @@ pub trait FnMut_ov<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: A1) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, mut A1) -> Out`
@@ -389,7 +391,7 @@ pub trait FnMut_om<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: mut A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: mut A1) -> Self::Out uses E
 }
 
 /// `FnMut(A0, own A1) -> Out`
@@ -397,7 +399,7 @@ pub trait FnMut_vo<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: own A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: own A1) -> Self::Out uses E
 }
 
 /// `FnMut(A0, A1) -> Out`
@@ -405,7 +407,7 @@ pub trait FnMut_vv<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: A1) -> Self::Out uses E
 }
 
 /// `FnMut(A0, mut A1) -> Out`
@@ -413,7 +415,7 @@ pub trait FnMut_vm<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: mut A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: mut A1) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, own A1) -> Out`
@@ -421,7 +423,7 @@ pub trait FnMut_mo<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: own A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: own A1) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, A1) -> Out`
@@ -429,7 +431,7 @@ pub trait FnMut_mv<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: A1) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, mut A1) -> Out`
@@ -437,7 +439,7 @@ pub trait FnMut_mm<A0, A1> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: mut A1) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: mut A1) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, own A1, own A2) -> Out`
@@ -445,7 +447,7 @@ pub trait FnMut_ooo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: own A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: own A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, own A1, A2) -> Out`
@@ -453,7 +455,7 @@ pub trait FnMut_oov<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: own A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: own A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, own A1, mut A2) -> Out`
@@ -461,7 +463,7 @@ pub trait FnMut_oom<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: own A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: own A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, A1, own A2) -> Out`
@@ -469,7 +471,7 @@ pub trait FnMut_ovo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, A1, A2) -> Out`
@@ -477,7 +479,7 @@ pub trait FnMut_ovv<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, A1, mut A2) -> Out`
@@ -485,7 +487,7 @@ pub trait FnMut_ovm<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, mut A1, own A2) -> Out`
@@ -493,7 +495,7 @@ pub trait FnMut_omo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: mut A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: mut A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, mut A1, A2) -> Out`
@@ -501,7 +503,7 @@ pub trait FnMut_omv<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: mut A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: mut A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(own A0, mut A1, mut A2) -> Out`
@@ -509,7 +511,7 @@ pub trait FnMut_omm<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: own A0, _ a1: mut A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: own A0, _ a1: mut A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, own A1, own A2) -> Out`
@@ -517,7 +519,7 @@ pub trait FnMut_voo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: own A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: own A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, own A1, A2) -> Out`
@@ -525,7 +527,7 @@ pub trait FnMut_vov<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: own A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: own A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, own A1, mut A2) -> Out`
@@ -533,7 +535,7 @@ pub trait FnMut_vom<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: own A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: own A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, A1, own A2) -> Out`
@@ -541,7 +543,7 @@ pub trait FnMut_vvo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, A1, A2) -> Out`
@@ -549,7 +551,7 @@ pub trait FnMut_vvv<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, A1, mut A2) -> Out`
@@ -557,7 +559,7 @@ pub trait FnMut_vvm<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, mut A1, own A2) -> Out`
@@ -565,7 +567,7 @@ pub trait FnMut_vmo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: mut A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: mut A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, mut A1, A2) -> Out`
@@ -573,7 +575,7 @@ pub trait FnMut_vmv<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: mut A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: mut A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(A0, mut A1, mut A2) -> Out`
@@ -581,7 +583,7 @@ pub trait FnMut_vmm<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: A0, _ a1: mut A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: A0, _ a1: mut A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, own A1, own A2) -> Out`
@@ -589,7 +591,7 @@ pub trait FnMut_moo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: own A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: own A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, own A1, A2) -> Out`
@@ -597,7 +599,7 @@ pub trait FnMut_mov<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: own A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: own A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, own A1, mut A2) -> Out`
@@ -605,7 +607,7 @@ pub trait FnMut_mom<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: own A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: own A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, A1, own A2) -> Out`
@@ -613,7 +615,7 @@ pub trait FnMut_mvo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, A1, A2) -> Out`
@@ -621,7 +623,7 @@ pub trait FnMut_mvv<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, A1, mut A2) -> Out`
@@ -629,7 +631,7 @@ pub trait FnMut_mvm<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, mut A1, own A2) -> Out`
@@ -637,7 +639,7 @@ pub trait FnMut_mmo<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: mut A1, _ a2: own A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: mut A1, _ a2: own A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, mut A1, A2) -> Out`
@@ -645,7 +647,7 @@ pub trait FnMut_mmv<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: mut A1, _ a2: A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: mut A1, _ a2: A2) -> Self::Out uses E
 }
 
 /// `FnMut(mut A0, mut A1, mut A2) -> Out`
@@ -653,7 +655,7 @@ pub trait FnMut_mmm<A0, A1, A2> {
     uses E
     type Out
 
-    fn call(mut self, _ a0: mut A0, _ a1: mut A1, _ a2: mut A2) -> Self::Out uses E
+    fn call_mut(mut self, _ a0: mut A0, _ a1: mut A1, _ a2: mut A2) -> Self::Out uses E
 }
 
 /// A type constructor that can be mapped over.

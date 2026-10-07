@@ -10,7 +10,9 @@ impl<const ROOT: u256> Wrapped<ROOT> {
     }
 }
 
-fn read_wrapped(wrapped: Wrapped, key: u256) -> u256 {
+// A data parameter carries no authority, so the caller grants the authority
+// over the maps it passes.
+fn read_wrapped(wrapped: Wrapped, key: u256) -> u256 uses (storage: Field(StorageMap<u256, u256>)) {
     wrapped.into_map().get(key: key)
 }
 
@@ -36,6 +38,7 @@ pub contract C {
         }
 
         Get { lane, key } -> u256 uses (first, second) {
+            // The wrapped map is a place in the field this arm reads.
             if lane == 0 {
                 read_wrapped(wrapped: first, key: key)
             } else {

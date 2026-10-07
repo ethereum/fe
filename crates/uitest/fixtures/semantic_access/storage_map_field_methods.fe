@@ -2,7 +2,8 @@ use std::evm::{Address, StorPtr, StorageMap, TStorPtr}
 
 // A StorageMap entry lives at `keccak256(key ++ salt)`, which is never one of
 // the slots the layout allocates to a contract field. A mutable borrow of such
-// a field therefore does not conflict with the map accesses a method performs.
+// a field therefore does not conflict with the map accesses a method performs
+// under its `Field` authority.
 
 pub struct Ledger {
     pub balances: StorageMap<Address, u256>,
@@ -10,16 +11,22 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    fn balance(mut self, _ owner: Address) -> u256 {
+    fn balance(mut self, _ owner: Address) -> u256
+        uses (balances: Field(StorageMap<Address, u256>))
+    {
         self.balances.get(key: owner)
     }
 
-    fn credit(mut self, _ to: Address, amount: u256) {
+    fn credit(mut self, _ to: Address, amount: u256)
+        uses (balances: mut Field(StorageMap<Address, u256>))
+    {
         let balance = self.balances.get(key: to)
         self.balances.set(key: to, value: balance + amount)
     }
 
-    fn mint(mut self, _ to: Address, amount: u256) {
+    fn mint(mut self, _ to: Address, amount: u256)
+        uses (balances: mut Field(StorageMap<Address, u256>))
+    {
         self.total_supply += amount
         self.credit(to, amount)
     }
@@ -31,7 +38,7 @@ pub struct Salted {
 }
 
 impl Salted {
-    fn record(mut self, _ key: u256) {
+    fn record(mut self, _ key: u256) uses (entries: mut Field(StorageMap<u256, u256>)) {
         self.entries.set(key, value: self.count)
         self.count += 1
     }

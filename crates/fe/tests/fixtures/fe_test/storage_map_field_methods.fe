@@ -6,17 +6,23 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    fn credit(mut self, _ to: Address, amount: u256) {
+    fn credit(mut self, _ to: Address, amount: u256)
+        uses (storage: mut Field(StorageMap<Address, u256>))
+    {
         let balance = self.balances.get(key: to)
         self.balances.set(key: to, value: balance + amount)
     }
 
-    fn mint(mut self, _ to: Address, amount: u256) {
+    fn mint(mut self, _ to: Address, amount: u256)
+        uses (storage: mut Field(StorageMap<Address, u256>))
+    {
         self.total_supply += amount
         self.credit(to, amount)
     }
 
-    fn balance(mut self, _ owner: Address) -> u256 {
+    fn balance(mut self, _ owner: Address) -> u256
+        uses (storage: Field(StorageMap<Address, u256>))
+    {
         self.balances.get(key: owner)
     }
 }

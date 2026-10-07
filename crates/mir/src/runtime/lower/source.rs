@@ -212,6 +212,7 @@ impl<'a, 'carriers, 'roots, 'db> RuntimeSourceQuery<'a, 'carriers, 'roots, 'db> 
         }
         if provider_erases_runtime_root(
             self.env.db(),
+            self.env.body().owner(),
             provider,
             self.env.scope(),
             self.env.assumptions(),

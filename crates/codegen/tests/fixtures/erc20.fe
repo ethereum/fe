@@ -165,24 +165,32 @@ struct TokenStore {
     allowances: StorageMap<(Address, Address), u256>,
 }
 
-pub struct AccessControl {
-    roles: StorageMap<(u256, Address), bool>,
+pub struct AccessControl<const SALT: u256 = _> {
+    roles: StorageMap<(u256, Address), bool, SALT>,
 }
 
-impl AccessControl {
-    pub fn has_role(self, role: u256, account: Address) -> bool {
+impl<const SALT: u256> AccessControl<SALT> {
+    pub fn has_role(self, role: u256, account: Address) -> bool
+        uses (roles: Field(StorageMap<(u256, Address), bool, SALT>))
+    {
         self.roles.get((role, account))
     }
 
-    pub fn require(self, role: u256) uses (ctx: Ctx) {
+    pub fn require(self, role: u256)
+        uses (ctx: Ctx, roles: Field(StorageMap<(u256, Address), bool, SALT>))
+    {
         assert!(self.roles.get((role, ctx.caller())) == true)
     }
 
-    pub fn grant(mut self, role: u256, to: Address) {
+    pub fn grant(mut self, role: u256, to: Address)
+        uses (roles: mut Field(StorageMap<(u256, Address), bool, SALT>))
+    {
         self.roles.set(key: (role, to), value: true)
     }
 
-    pub fn revoke(mut self, role: u256, from: Address) {
+    pub fn revoke(mut self, role: u256, from: Address)
+        uses (roles: mut Field(StorageMap<(u256, Address), bool, SALT>))
+    {
         self.roles.set(key: (role, from), value: false)
     }
 }
