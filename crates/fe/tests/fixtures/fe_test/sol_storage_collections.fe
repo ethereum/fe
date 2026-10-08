@@ -2,6 +2,7 @@
 // Solidity 0.8 and OpenZeppelin's `EnumerableSet`. The expected slot
 // contents were produced by running the equivalent Solidity contract
 // (see `solidity_layout_parity`) and reading its storage with `vm.load`.
+use core::keccak
 use std::abi::Bytes32
 use std::abi::sol::{Uint24, Uint120}
 use std::abi::DynArray
@@ -64,6 +65,8 @@ fn solidity_layout_parity() uses (evm: mut Evm) {
         c.push(-300)
         c.push(7)
         c.pop()
+        assert(c.get(0) == -1)
+        assert(c.get(1) == -300)
 
         let s = unsafe { SolEnumerableSet<Address>::at(3) }
         assert(s.add(addr(0xa)))
@@ -96,14 +99,11 @@ fn solidity_layout_parity() uses (evm: mut Evm) {
         )
 
         // uint256[]: popped element zeroed.
-        assert(a.element_slot(0) == DATA_0)
         assert(load(DATA_0) == 44)
         assert(load(DATA_0 + 1) == 22)
         assert(load(DATA_0 + 2) == 0)
 
         // uint24[]: ten per slot; popped elements zeroed.
-        assert(b.element_slot(10) == DATA_1 + 1)
-        assert(b.element_offset(3) == 9)
         assert(
             load(DATA_1) == 0x000000000a000009000008000007000006000005abcdef000003000002000001,
         )
@@ -113,8 +113,6 @@ fn solidity_layout_parity() uses (evm: mut Evm) {
         assert(
             load(DATA_2) == 0x00000000000000000000000000000000000000000000000000000000fed4ffff,
         )
-        assert(c.get(0) == -1)
-        assert(c.get(1) == -300)
 
         // AddressSet: values [b, d, c], positions index + 1, removed ones 0.
         assert(load(DATA_3) == 0xb)
@@ -175,12 +173,92 @@ fn array_reads_and_writes() uses (evm: mut Evm) {
         assert(!flags.get(2))
         assert(flags.get(4))
         assert(flags.get(32))
-        assert(flags.element_slot(32) == flags.element_slot(0) + 1)
-        assert(flags.element_offset(32) == 0)
 
         let tags = unsafe { SolArray<Bytes32>::at(11) }
         tags.push(Bytes32 { val: u256::max() })
         assert(tags.get(0).val == u256::max())
+    }
+}
+
+// `arr[i]` is the element's place: a packed element is a lane of its slot,
+// and a struct element spans its own slots.
+struct Order {
+    amount: u256,
+    open: bool,
+    filled: u64,
+}
+
+#[test]
+fn array_element_places() uses (evm: mut Evm) {
+    with (RawStorage = evm) {
+        let small = unsafe { SolArray<i16>::at(12) }
+        small.push(-1)
+        small.push(5)
+        small[1] = -300
+        small[0] += 2
+        assert(small[0] == 1)
+        assert(small[1] == -300)
+        let lane = mut small[1]
+        lane -= 1
+        assert(small[1] == -301)
+
+        let orders = unsafe { SolArray<Order>::at(13) }
+        orders.push(Order { amount: 10, open: true, filled: 0 })
+        orders.push(Order { amount: 20, open: true, filled: 0 })
+        orders[1].filled += 7
+        orders[0].open = false
+        assert(orders[0].amount == 10 && !orders[0].open)
+        assert(orders[1].amount == 20 && orders[1].open && orders[1].filled == 7)
+        orders.pop()
+        assert(orders.len() == 1)
+
+        // Loops read and update elements in place.
+        let mut total: u256 = 0
+        for order in orders {
+            total += order.amount
+        }
+        assert(total == 10)
+        let flags = unsafe { SolArray<bool>::at(14) }
+        flags.push(true)
+        flags.push(false)
+        for flag in mut flags {
+            flag = !flag
+        }
+        assert(!flags[0] && flags[1])
+
+        // `pop` zeroed both words of the last order.
+        let data = keccak(13 as u256)
+        assert(load(data) == 10 && load(data + 2) == 0 && load(data + 3) == 0)
+    }
+}
+
+#[test]
+fn array_lanes_in_loops() uses (evm: mut Evm) {
+    with (RawStorage = evm) {
+        let counts = unsafe { SolArray<u8>::at(15) }
+        let mut i: u8 = 0
+        while i < 40 {
+            counts.push(i)
+            i += 1
+        }
+        for count in mut counts {
+            count *= 2
+        }
+        let mut sum: u256 = 0
+        for count in counts {
+            sum += count as u256
+        }
+        assert(sum == 1560)
+        assert(counts[39] == 78)
+    }
+}
+
+#[test(should_revert, panic = 0x32)]
+fn index_out_of_bounds_panics() uses (evm: mut Evm) {
+    with (RawStorage = evm) {
+        let a = unsafe { SolArray<u8>::at(0) }
+        a.push(1)
+        a[1] = 2
     }
 }
 
@@ -230,8 +308,10 @@ fn set_edge_cases() uses (evm: mut Evm) {
         assert(s.remove(7))
         assert(!s.contains(7))
         assert(s.len() == 0)
+        // The raw read reaches every slot, so the set is taken again after it.
         assert(load(DATA_OF_20) == 0)
 
+        let s = unsafe { SolEnumerableSet<u256>::at(20) }
         assert(s.add(1))
         assert(s.add(2))
         assert(s.add(3))
@@ -278,6 +358,7 @@ fn set_at_last_slot_wraps() uses (evm: mut Evm) {
         assert(load(u256::max()) == 2)
         unsafe { assert(load(std::evm::SolMapping::at(0).slot_of(5 as u256)) == 1) }
         unsafe { assert(load(std::evm::SolMapping::at(0).slot_of(6 as u256)) == 2) }
+        let s = unsafe { SolEnumerableSet<u256>::at(u256::max()) }
         assert(s.remove(5))
         assert(!s.contains(5))
         assert(s.get(0) == 6)
@@ -285,9 +366,15 @@ fn set_at_last_slot_wraps() uses (evm: mut Evm) {
     }
 }
 
+// Element slots wrap modulo 2**256 like Solidity's: with the length at its
+// maximum, the element whose slot is `2**256` is the length's own slot.
 #[test]
-fn array_element_slot_wraps() {
-    unsafe { assert(SolArray<u256>::at(0).element_slot(u256::max()) == DATA_0 - 1) }
+fn array_element_slot_wraps() uses (evm: mut Evm) {
+    with (RawStorage = evm) {
+        unsafe { SolSlot::at(0).write(offset: 0, value: u256::max()) }
+        let a = unsafe { SolArray<u256>::at(0) }
+        assert(a[u256::max() - DATA_0 + 1] == u256::max())
+    }
 }
 
 #[test]
@@ -452,8 +539,8 @@ fn word_without_slot() {
 #[test]
 fn push_to_max_length_succeeds() uses (evm: mut Evm) {
     with (RawStorage = evm) {
-        let array = unsafe { SolArray<u256>::at(0) }
         unsafe { SolSlot::at(0).write(offset: 0, value: 0xfffffffffffffffe as u256) }
+        let array = unsafe { SolArray<u256>::at(0) }
         array.push(42)
         assert(array.len() == 0xffffffffffffffff)
         assert(array.get(0xfffffffffffffffe) == 42)

@@ -5,25 +5,17 @@ expression: diags
 input_file: fixtures/semantic_access/storage_map_index.fe
 ---
 error[16-0001]: access conflict in `fn same_field`
-   ┌─ storage_map_index.fe:28:5
+   ┌─ storage_map_index.fe:25:5
    │
-27 │     let x = mut store.counts[key]
-   │                 ----------------- projection opened here
-28 │     store.counts[key + 1] = 3
-   │     ^^^^^^^^^^^^^^^^^^^^^ cannot write to this place while a `mut` projection of it is open
-
-error[16-0001]: access conflict in `fn provided_fields`
-   ┌─ storage_map_index.fe:47:5
-   │
-46 │     let x = mut store.counts[key]
-   │                 ----------------- projection opened here
-47 │     store.other[key] = 3
-   │     ^^^^^^^^^^^^^^^^ cannot write to this place while a `mut` projection of it is open
+24 │     let x = mut store.counts[key]
+   │             --------------------- access opened here
+25 │     store.counts[key + 1] = 3
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot write to this place while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn read_during_write`
-   ┌─ storage_map_index.fe:61:13
+   ┌─ storage_map_index.fe:58:13
    │
-60 │     let x = mut store.counts[key]
-   │                 ----------------- projection opened here
-61 │     let y = store.counts[key]
-   │             ^^^^^^^^^^^^^^^^^ cannot read this place while a `mut` projection of it is open
+57 │     let x = mut store.counts[key]
+   │             --------------------- access opened here
+58 │     let y = store.counts[key]
+   │             ^^^^^^^^^^^^^^^^^ cannot read this place while a `mut` access of it is open

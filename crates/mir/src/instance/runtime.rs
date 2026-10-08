@@ -10,7 +10,7 @@ use crate::{
         LowerError, LoweredRuntimeBody, RuntimeBody, RuntimeCallEdge, RuntimeClass,
         RuntimeExitBehavior, RuntimeInterfaceSignature, RuntimeSyntheticSpec,
         lower::{
-            abi::runtime_declaration_abi_plan,
+            abi::runtime_declaration_signature,
             body::lower_to_rmir,
             call::{
                 collect_referenced_code_regions, collect_referenced_const_regions,
@@ -62,7 +62,7 @@ pub struct RuntimeInstance<'db> {
 impl<'db> RuntimeInstance<'db> {
     #[salsa::tracked]
     pub fn interface_signature(self, db: &'db dyn MirDb) -> RuntimeInterfaceSignature<'db> {
-        runtime_interface_signature_for_key(db, self.key(db))
+        runtime_declaration_signature(db, self.key(db))
     }
 
     #[salsa::tracked]
@@ -112,13 +112,6 @@ impl<'db> RuntimeInstance<'db> {
             matches!(semantic.key(db).owner(db), BodyOwner::Func(func) if func.is_extern(db))
         })
     }
-}
-
-pub(crate) fn runtime_interface_signature_for_key<'db>(
-    db: &'db dyn MirDb,
-    key: RuntimeInstanceKey<'db>,
-) -> RuntimeInterfaceSignature<'db> {
-    runtime_declaration_abi_plan(db, key).signature()
 }
 
 #[salsa::tracked]

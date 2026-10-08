@@ -527,9 +527,6 @@ pub enum SyntaxKind {
     UsesParamList,
     /// a single `uses` parameter
     UsesParam,
-    /// `Field(T)`: a `uses` key naming the storage field a handle of type `T`
-    /// names.
-    UsesFieldKey,
     /// `Fn(own A, B) -> R`: the callable trait of a shape.
     FnShape,
 
@@ -843,7 +840,6 @@ impl SyntaxKind {
             SyntaxKind::UsesClause => "`uses` clause",
             SyntaxKind::UsesParamList => "`uses` parameter list",
             SyntaxKind::UsesParam => "`uses` parameter",
-            SyntaxKind::UsesFieldKey => "`Field` key",
             SyntaxKind::FnShape => "callable shape",
             SyntaxKind::RecvArmList => "recv arm list",
             SyntaxKind::RecvArm => "recv arm",

@@ -522,7 +522,6 @@ fn check_const_ty_wf<'db>(
         }
         ConstTyData::TyVar(..)
         | ConstTyData::TyParam(..)
-        | ConstTyData::Hole(..)
         | ConstTyData::Invalid(..)
         | ConstTyData::UnEvaluated { .. } => {}
     }

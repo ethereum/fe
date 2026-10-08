@@ -212,8 +212,8 @@ fn source_and_full_method_schemas_keep_inherited_keys_in_both_query_orders() {
         let file = db.new_stand_alone(
             Utf8PathBuf::from("method_schema_basis.fe"),
             r#"
-struct Slot<const ROOT: u256 = _> {}
-trait T<X> { fn f<Y>(_ value: Slot, _ extra: Y) {} }
+struct K {}
+trait T<X> { fn f<Y>(_ extra: Y) uses (k: K) {} }
 fn foreign<Z>() {}
 "#,
         );
@@ -244,8 +244,8 @@ fn foreign<Z>() {}
         assert!(
             full.keys(&db)
                 .iter()
-                .any(|key| matches!(key, ParamKey::CallableLayout { .. })),
-            "method signature did not reserve a hidden layout slot"
+                .any(|key| matches!(key, ParamKey::EffectProvider { .. })),
+            "method signature did not reserve a hidden provider slot"
         );
         let own_key = source
             .source_key(&db, SourceParamIndex(0))
@@ -285,7 +285,7 @@ fn foreign<Z>() {}
         assert_eq!(full.original_key(&db, full_own), Some(own_key));
         assert_eq!(full.original_key(&db, source_own), None);
         let hidden_key = full.key_at(&db, LoweredSlot(2)).unwrap();
-        assert!(matches!(hidden_key, ParamKey::CallableLayout { .. }));
+        assert!(matches!(hidden_key, ParamKey::EffectProvider { .. }));
         let hidden = full.formal_at(&db, LoweredSlot(2)).unwrap();
         assert_eq!(source.original_key(&db, hidden), None);
 

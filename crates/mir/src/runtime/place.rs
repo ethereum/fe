@@ -192,6 +192,29 @@ pub fn resolve_runtime_place_address_class<'db>(
     place: &crate::runtime::RuntimePlace<'db>,
 ) -> Result<RuntimeClass<'db>, VerifyError<'db>> {
     let resolved = resolve_runtime_place(db, program, body, place)?;
+    let (root_class, root_space, force_raw) =
+        runtime_place_address_root(db, body, &resolved, place)?;
+    if runtime_place_lane(db, program, body, place)?.is_some() {
+        return Err(VerifyError::InvalidPlace(resolved.result_class));
+    }
+    Ok(ref_class_for_place_result(
+        db,
+        &root_class,
+        &resolved.result_class,
+        root_space,
+        force_raw,
+    ))
+}
+
+/// The transport root an address of `place` is taken from: the class of its
+/// last dereferenced carrier, or of its root, with its space and whether it
+/// is a raw address.
+fn runtime_place_address_root<'db>(
+    db: &'db dyn MirDb,
+    body: &impl PlaceClassEnv<'db>,
+    resolved: &ResolvedRuntimePlace<'db>,
+    place: &crate::runtime::RuntimePlace<'db>,
+) -> Result<(RuntimeClass<'db>, AddressSpaceKind, bool), VerifyError<'db>> {
     let (mut root_class, mut root_space, mut force_raw) =
         runtime_place_transport_root(db, body, place)?;
     for elem in resolved.path.iter() {
@@ -201,68 +224,76 @@ pub fn resolve_runtime_place_address_class<'db>(
             force_raw = matches!(root_class, RuntimeClass::RawAddr { .. });
         }
     }
-    let view = match (place.path.split_last(), resolved.path.last()) {
-        (Some((PlaceElem::Field(field), parent_path)), Some(ResolvedPlaceElem::Field { .. })) => {
-            let parent = crate::runtime::RuntimePlace {
-                root: place.root.clone(),
-                path: parent_path.to_vec().into(),
-            };
-            let parent_class = resolve_runtime_place(db, program, body, &parent)?.result_class;
-            storage_lane_view(db, &parent_class, *field, root_space)
-        }
-        // Without a projection, the address is the root's own: a lane
-        // reference keeps viewing its lane.
-        (_, None | Some(ResolvedPlaceElem::Deref { .. })) => inherited_lane_view(&root_class),
-        _ => RefView::Whole,
+    Ok((root_class, root_space, force_raw))
+}
+
+/// The lane `place` ends at: a field packed into a storage word, which no
+/// reference can point at (see `storage_field_lane`).
+pub(crate) fn runtime_place_lane<'db>(
+    db: &'db dyn MirDb,
+    program: &impl RuntimeProgramView<'db>,
+    body: &impl PlaceClassEnv<'db>,
+    place: &crate::runtime::RuntimePlace<'db>,
+) -> Result<Option<StorageLaneView>, VerifyError<'db>> {
+    let resolved = resolve_runtime_place(db, program, body, place)?;
+    let (Some((PlaceElem::Field(field), parent_path)), Some(ResolvedPlaceElem::Field { .. })) =
+        (place.path.split_last(), resolved.path.last())
+    else {
+        return Ok(None);
     };
-    Ok(ref_class_for_place_result(
-        db,
-        &root_class,
-        &resolved.result_class,
-        root_space,
-        force_raw,
-        view,
-    ))
+    let (_, root_space, _) = runtime_place_address_root(db, body, &resolved, place)?;
+    let parent = crate::runtime::RuntimePlace {
+        root: place.root.clone(),
+        path: parent_path.to_vec().into(),
+    };
+    let parent_class = resolve_runtime_place(db, program, body, &parent)?.result_class;
+    Ok(storage_field_lane(db, &parent_class, *field, root_space))
 }
 
-/// The lane a reference keeps when its address is taken again unprojected.
-pub(crate) fn inherited_lane_view<'db>(root_class: &RuntimeClass<'db>) -> RefView<'db> {
-    match root_class {
-        RuntimeClass::Ref {
-            view: view @ RefView::StorageLane(_),
-            ..
-        } => view.clone(),
-        _ => RefView::Whole,
-    }
-}
-
-/// How a reference to field `field` of a value of class `parent` in `space`
-/// views its word: a scalar packed into a storage word with other fields, or
-/// placed anywhere but at its word's start, is a lane of that word. A packed
-/// scalar alone at the start of its word is equivalent to the whole word.
-pub(crate) fn storage_lane_view<'db>(
+/// The lane field `field` of a value of class `parent` in `space` occupies:
+/// a scalar packed into a storage word with other fields, or placed anywhere
+/// but at its word's start. A packed scalar alone at the start of its word is
+/// the whole word.
+pub(crate) fn storage_field_lane<'db>(
     db: &'db dyn MirDb,
     parent: &RuntimeClass<'db>,
     field: FieldIndex,
     space: AddressSpaceKind,
-) -> RefView<'db> {
+) -> Option<StorageLaneView> {
     if space.is_byte_addressed() {
-        return RefView::Whole;
+        return None;
     }
-    let Ok(placement) = RuntimeMemoryLayout::for_space(db, space).field_placement(parent, field)
-    else {
-        return RefView::Whole;
-    };
-    match placement.lane {
-        Some(lane) if placement.shared || lane.byte_offset != 0 => {
-            RefView::StorageLane(StorageLaneView {
-                byte_offset: lane.byte_offset as u8,
-                byte_width: lane.byte_width as u8,
-                shared: placement.shared,
-            })
-        }
-        _ => RefView::Whole,
+    let placement = RuntimeMemoryLayout::for_space(db, space)
+        .field_placement(parent, field)
+        .ok()?;
+    let lane = placement.lane?;
+    (placement.shared || lane.byte_offset != 0).then_some(StorageLaneView {
+        byte_offset: lane.byte_offset as u8,
+        byte_width: lane.byte_width as u8,
+        shared: placement.shared,
+    })
+}
+
+/// The class of a reference to a place, which is a lane when `lane`: a lane
+/// has no address, so a reference to it is a reference to a memory copy of
+/// its value, which a write-back stores into the lane. Any other place is
+/// referenced at its address (`ref_class_for_place_result`).
+pub(crate) fn place_reference_class<'db>(
+    db: &'db dyn MirDb,
+    root_class: &RuntimeClass<'db>,
+    value_class: &RuntimeClass<'db>,
+    root_space: AddressSpaceKind,
+    force_raw: bool,
+    lane: bool,
+) -> RuntimeClass<'db> {
+    if lane {
+        return RuntimeClass::Ref {
+            pointee: Box::new(value_class.clone()),
+            kind: RefKind::Object,
+            view: RefView::Whole,
+        };
     }
+    ref_class_for_place_result(db, root_class, value_class, root_space, force_raw)
 }
 
 pub(crate) fn project_place<'db>(
@@ -277,28 +308,20 @@ pub(crate) fn project_place<'db>(
 /// The reference (or raw-address) class produced by taking the address of a
 /// place whose transport root has class `root_class` and whose projected
 /// value has class `value_class`.
-///
-/// `view` says how the reference sees its target; a lane only applies to
-/// provider references into storage.
 pub(crate) fn ref_class_for_place_result<'db>(
     db: &'db dyn MirDb,
     root_class: &RuntimeClass<'db>,
     value_class: &RuntimeClass<'db>,
     root_space: AddressSpaceKind,
     force_raw: bool,
-    view: RefView<'db>,
 ) -> RuntimeClass<'db> {
     if !force_raw {
         match root_class {
             RuntimeClass::Ref { kind, .. } => {
-                let view = match (kind, view) {
-                    (RefKind::Provider { .. }, view @ RefView::StorageLane(_)) => view,
-                    _ => RefView::Whole,
-                };
                 return RuntimeClass::Ref {
                     pointee: Box::new(value_class.clone()),
                     kind: kind.clone(),
-                    view,
+                    view: RefView::Whole,
                 };
             }
             RuntimeClass::Scalar(_) | RuntimeClass::AggregateValue { .. } => {
@@ -341,13 +364,18 @@ fn runtime_place_transport_root<'db>(
             crate::runtime::AddressSpaceKind::Memory,
             false,
         ),
-        PlaceRoot::Ref(value) => (
-            body.place_value_class(*value)
+        PlaceRoot::Ref(value) => {
+            let class = body
+                .place_value_class(*value)
                 .ok_or(VerifyError::ErasedRuntimeValue(*value))?
-                .clone(),
-            crate::runtime::AddressSpaceKind::Memory,
-            false,
-        ),
+                .clone();
+            // A reference root addresses its referent's space, like a
+            // dereferenced carrier: a storage reference projects storage lanes.
+            let space = class
+                .address_space()
+                .unwrap_or(crate::runtime::AddressSpaceKind::Memory);
+            (class, space, false)
+        }
         PlaceRoot::Provider(binding) => {
             let class = body
                 .place_provider_binding(*binding)
@@ -738,26 +766,12 @@ mod tests {
             view: RefView::Whole,
         };
         assert_eq!(
-            ref_class_for_place_result(
-                &db,
-                &scalar,
-                &scalar,
-                AddressSpaceKind::Memory,
-                false,
-                RefView::Whole
-            ),
+            ref_class_for_place_result(&db, &scalar, &scalar, AddressSpaceKind::Memory, false),
             object
         );
         let pointer = RuntimeClass::raw_addr(&db, AddressSpaceKind::Memory, scalar.clone());
         assert_eq!(
-            ref_class_for_place_result(
-                &db,
-                &pointer,
-                &scalar,
-                AddressSpaceKind::Memory,
-                true,
-                RefView::Whole
-            ),
+            ref_class_for_place_result(&db, &pointer, &scalar, AddressSpaceKind::Memory, true),
             pointer
         );
     }

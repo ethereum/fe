@@ -45,8 +45,7 @@ pub mod decision_tree;
 pub mod diagnostics;
 pub mod fold;
 pub(crate) mod generic_defaults;
-pub mod layout_bundle;
-pub(crate) mod layout_holes;
+
 pub(crate) mod method_cmp;
 pub mod method_table;
 pub mod normalize;
@@ -69,20 +68,6 @@ pub mod unify;
 pub(crate) mod unsafe_check;
 pub mod visitor;
 
-pub use const_ty::CallableLayoutOwner;
-pub use layout_bundle::{
-    CallableLayoutBundleInput, CallableLayoutBundleParam, CallableLayoutBundleResult,
-    CallableLayoutBundleSignature, CallableLayoutParamPort, CallableLayoutPort,
-    LayoutBundleComponent, LayoutBundleComponentId, LayoutBundleComponentKey,
-    LayoutBundleComponentTransport, LayoutBundleInterface, LayoutBundleInterfaceError,
-    LayoutBundlePath, LayoutBundlePathStep, LayoutBundleSchema, LayoutBundleSchemaError,
-    LayoutBundleTransport, LayoutBundleUnrepresentable, LayoutBundleViewMapping,
-    LayoutEvidencePath, LayoutEvidencePathStep, LayoutPortKey, LayoutRootPort, LayoutViewAlias,
-};
-pub use layout_holes::{
-    LayoutShapeKey, layout_root_descends_from, layout_root_id, layout_root_placeholder,
-    layout_shape_key, layout_shape_ty, ty_contains_const_hole,
-};
 pub use msg_selector::MsgAnalysisPass;
 pub use provider::{
     ProviderAddressSpace, ProviderKind, ProviderSemantics, ProviderTransport,
@@ -128,8 +113,8 @@ pub fn ty_is_copy<'db>(
 }
 
 /// Whether a view parameter takes a value of `ty` by copy, a *snapshot*: a
-/// primitive scalar, a raw pointer, a handle (an effect handle or a static
-/// slot such as a storage map), or a `core::marker::Snapshot` type such as
+/// primitive scalar, a raw pointer, an effect handle, or a
+/// `core::marker::Snapshot` type such as
 /// `Address`. Every other value, `Copy` or not, is viewed in place
 /// (`ViewTransport`).
 pub fn ty_is_snapshot<'db>(
@@ -148,10 +133,6 @@ pub fn ty_is_snapshot<'db>(
             provider::resolve_effect_handle(db, scope, assumptions, ty),
             provider::EffectHandleResolution::NotHandle
         )
-        || !matches!(
-            provider::resolve_static_slot_layout(db, scope, assumptions, ty),
-            provider::StaticSlotLayoutResolution::NotStaticSlot
-        )
     {
         return true;
     }
@@ -165,6 +146,37 @@ pub fn ty_is_snapshot<'db>(
             GoalSatisfiability::Satisfied(_)
         )
     })
+}
+
+/// The key and element types of a collection whose elements are places
+/// (`core::ops::PlaceIndex`): for such a `ty`, `c[k]` is a path step, an
+/// entry, rather than a call.
+pub fn place_index_tys<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Option<(TyId<'db>, TyId<'db>)> {
+    let ty = normalize::normalize_ty(db, ty, scope, assumptions);
+    let place_index = corelib::resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
+    let inst = trait_def::TraitInstId::new_simple(db, place_index, vec![ty]);
+    if !matches!(
+        is_goal_satisfiable(
+            db,
+            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+            inst,
+        ),
+        GoalSatisfiability::Satisfied(_)
+    ) {
+        return None;
+    }
+    let assoc = |name: &str| {
+        let projected = inst
+            .trait_ref(db)
+            .project_assoc_ty(db, IdentId::new(db, name.to_string()))?;
+        Some(normalize::normalize_ty(db, projected, scope, assumptions))
+    };
+    Some((assoc("Key")?, assoc("Output")?))
 }
 
 #[salsa::tracked]
@@ -851,6 +863,12 @@ impl ModuleAnalysisPass for ContractAnalysisPass {
 
             diags.extend(
                 ty_check::check_contract_field_address_spaces(db, contract)
+                    .iter()
+                    .map(|diag| diag.to_voucher()),
+            );
+
+            diags.extend(
+                ty_check::check_contract_field_slots(db, contract)
                     .iter()
                     .map(|diag| diag.to_voucher()),
             );

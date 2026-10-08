@@ -9,9 +9,8 @@ use hir::{
         ty_check::{EffectParamSite, LocalBinding, ParamSite},
     },
     core::semantic::{
-        ContractFieldId, ContractLayoutEntry, ContractLayoutEntryKind,
-        ContractLayoutParameterOrigin, ContractLayoutValue, EffectEnvView, FieldView,
-        ProviderSource,
+        ContractFieldId, ContractLayoutEntry, ContractLayoutEntryKind, ContractLayoutValue,
+        EffectEnvView, FieldView, ProviderSource,
         reference::{ReferenceView, Target},
     },
     hir_def::{Contract, FieldParent, ItemKind, PathId, scope_graph::ScopeId},
@@ -212,13 +211,8 @@ fn layout_entry_markdown(db: &DriverDataBase, entry: &ContractLayoutEntry<'_>) -
     });
     let kind = match entry.kind {
         ContractLayoutEntryKind::InlineField => "inline field",
+        ContractLayoutEntryKind::Collection => "storage collection",
         ContractLayoutEntryKind::EnumTag => "enum tag",
-        ContractLayoutEntryKind::Parameter(ContractLayoutParameterOrigin::Explicit) => {
-            "explicit parameter"
-        }
-        ContractLayoutEntryKind::Parameter(ContractLayoutParameterOrigin::Inferred) => {
-            "inferred parameter"
-        }
     };
     // A packed field names the bytes of its slot, counted from the low-order
     // end like Solidity's storage layout `offset`.

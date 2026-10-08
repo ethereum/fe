@@ -11,7 +11,7 @@ use crate::{
         },
         ty::{
             adt_def::instantiate_adt_field_shape,
-            const_ty::CallableInputLayoutHoleOrigin,
+            const_ty::CallableInputOrigin,
             normalize::normalize_ty,
             provider::provider_semantics,
             ty_check::{LocalBinding, ParamSite, ReturnProjectionStep, ReturnProvenance},
@@ -279,7 +279,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let mut out = Vec::new();
         for return_source in return_sources {
             let (base_ty, base_sources) = match return_source.origin {
-                CallableInputLayoutHoleOrigin::Receiver => {
+                CallableInputOrigin::Receiver => {
                     let Some(base) = args.first().map(|arg| arg.value) else {
                         continue;
                     };
@@ -288,7 +288,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         self.local_layout_backing_sources(base),
                     )
                 }
-                CallableInputLayoutHoleOrigin::ValueParam(param_idx) => {
+                CallableInputOrigin::ValueParam(param_idx) => {
                     let Some(base) = args.get(param_idx).map(|arg| arg.value) else {
                         continue;
                     };
@@ -297,7 +297,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         self.local_layout_backing_sources(base),
                     )
                 }
-                CallableInputLayoutHoleOrigin::Effect(effect_idx) => {
+                CallableInputOrigin::Effect(effect_idx) => {
                     let Some(effect_arg) = effect_args
                         .iter()
                         .find(|arg| arg.binding_idx as usize == effect_idx)
@@ -428,6 +428,15 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         &self,
         place: &SPlace<'db>,
     ) -> Vec<LayoutBackingSource<'db>> {
+        // An entry lies at a slot computed at runtime, so nothing of its
+        // collection's layout backs it.
+        if place
+            .path
+            .iter()
+            .any(|projection| matches!(projection, Projection::Entry(_)))
+        {
+            return Vec::new();
+        }
         let base_sources = self.local_layout_backing_sources(place.local);
         let projected = layout_backing_query(&place.path)
             .map_or_else(Vec::new, |(target, path)| {

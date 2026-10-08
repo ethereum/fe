@@ -55,8 +55,8 @@ pub fn normalize_semantic_body<'db>(
     artifacts_from_admission(db, semantic_body_admission(db, instance))
 }
 
-/// The verified body with constant-evaluable operations folded. Layout evidence
-/// and runtime lowering share it; ownership is checked on
+/// The verified body with constant-evaluable operations folded, which runtime
+/// lowering uses; ownership is checked on
 /// [`normalize_semantic_body`] instead.
 pub fn normalize_runtime_semantic_body<'db>(
     db: &'db dyn HirAnalysisDb,

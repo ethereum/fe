@@ -1008,10 +1008,11 @@ fn test_it() {
         let file = db.new_stand_alone(
             Utf8PathBuf::from("storage_map_accepts_address_key_and_value.fe"),
             r#"
-use std::evm::{RawStorage, StorageMap}
+use std::evm::StorageMap
 
-fn test_it() uses (storage: mut RawStorage) {
-    let _map: StorageMap<Address, Address, 0> = StorageMap::new()
+fn test_it(_ map: mut StorageMap<Address, Address>, _ key: Address) -> Address {
+    map[key] = key
+    map.get(key)
 }
 "#,
         );

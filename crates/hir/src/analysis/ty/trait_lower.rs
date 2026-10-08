@@ -2,9 +2,9 @@
 
 use crate::{
     core::hir_def::{
-        AssocTypeGenericArg, ConstGenericArgValue, HirIngot, IdentId, ImplTrait, ItemKind, Partial,
-        PathId, Trait, TraitRefId, TypeId as HirTyId, TypeKind as HirTyKind, TypeMode,
-        params::GenericArg, scope_graph::ScopeId,
+        AssocTypeGenericArg, HirIngot, IdentId, ImplTrait, ItemKind, Partial, PathId, Trait,
+        TraitRefId, TypeId as HirTyId, TypeKind as HirTyKind, TypeMode, params::GenericArg,
+        scope_graph::ScopeId,
     },
     hir_def::Func,
 };
@@ -15,8 +15,7 @@ use salsa::Update;
 use super::{
     binder::Binder,
     const_ty::{
-        ConstBodyLowering, ConstCaptureEnv, ConstTyId, HoleAnchor, LoweringContext,
-        UnevaluatedConstPolicy,
+        ConstBodyLowering, ConstCaptureEnv, ConstTyId, LoweringContext, UnevaluatedConstPolicy,
     },
     fold::{TyFoldable, TyFolder},
     generic_defaults::DefaultApplication,
@@ -426,18 +425,11 @@ fn lower_trait_ref_inner<'db>(
     owner_self: Option<TyId<'db>>,
     const_bodies: ConstBodyLowering,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
-    let Partial::Present(path) = trait_ref.path(db) else {
+    if !trait_ref.path(db).is_present() {
         return Err(TraitRefLowerError::Ignored);
-    };
+    }
 
-    let minter = LoweringContext::for_const_bodies(
-        HoleAnchor::TemplatePath {
-            path,
-            scope,
-            assumptions,
-        },
-        const_bodies,
-    );
+    let lowering_cx = LoweringContext::for_const_bodies(const_bodies);
 
     lower_trait_ref_with_minter(
         db,
@@ -446,7 +438,7 @@ fn lower_trait_ref_inner<'db>(
         scope,
         assumptions,
         owner_self,
-        &minter,
+        &lowering_cx,
     )
 }
 
@@ -457,15 +449,16 @@ pub(crate) fn lower_trait_ref_with_minter<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     owner_self: Option<TyId<'db>>,
-    minter: &LoweringContext<'db>,
+    lowering_cx: &LoweringContext<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
     let Partial::Present(path) = trait_ref.path(db) else {
         return Err(TraitRefLowerError::Ignored);
     };
     let self_subst = owner_self.unwrap_or(self_ty);
-    let resolved = match resolve_path_with_minter(db, path, scope, assumptions, false, minter) {
+    let resolved = match resolve_path_with_minter(db, path, scope, assumptions, false, lowering_cx)
+    {
         Ok(res @ PathRes::Ty(_)) => {
-            match resolve_shadowed_trait_ref(db, &res, path, scope, assumptions, minter) {
+            match resolve_shadowed_trait_ref(db, &res, path, scope, assumptions, lowering_cx) {
                 Some(trait_res) => Ok(trait_res),
                 None => Ok(res),
             }
@@ -523,7 +516,7 @@ fn resolve_shadowed_trait_ref<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    minter: &LoweringContext<'db>,
+    lowering_cx: &LoweringContext<'db>,
 ) -> Option<PathRes<'db>> {
     if path.parent(db).is_some() {
         return None;
@@ -560,7 +553,7 @@ fn resolve_shadowed_trait_ref<'db>(
         return None;
     }
 
-    resolve_name_res_with_minter(db, nameres, None, path, scope, assumptions, minter).ok()
+    resolve_name_res_with_minter(db, nameres, None, path, scope, assumptions, lowering_cx).ok()
 }
 
 fn lower_trait_ref_cycle_initial<'db>(
@@ -602,26 +595,7 @@ pub(crate) enum TraitArgError<'db> {
         expected: Option<TyId<'db>>,
         given: Option<TyId<'db>>,
     },
-    ConstHoleNotAllowed {
-        arg_idx: usize,
-    },
     Ignored,
-}
-
-#[cfg(test)]
-pub(crate) fn lower_trait_ref_impl<'db>(
-    db: &'db (dyn HirAnalysisDb + 'static),
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    t: Trait<'db>,
-) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
-    let minter = LoweringContext::new(HoleAnchor::TemplatePath {
-        path,
-        scope,
-        assumptions,
-    });
-    lower_trait_ref_impl_with_minter(db, path, scope, assumptions, t, &minter)
 }
 
 pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
@@ -630,43 +604,40 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     t: Trait<'db>,
-    minter: &LoweringContext<'db>,
+    lowering_cx: &LoweringContext<'db>,
 ) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
     let trait_params: &[TyId<'db>] = t.params(db);
     let args = path.generic_args(db).data(db);
     // Lower provided explicit args (excluding Self)
     let mut provided_explicit = Vec::new();
     let mut assoc_bindings = IndexMap::new();
-    for (arg_idx, arg) in args.iter().enumerate() {
+    for arg in args {
         match arg {
             GenericArg::Type(ty_arg) => {
-                let ty = lower_opt_hir_ty_with_minter(db, ty_arg.ty, scope, assumptions, minter);
+                let ty =
+                    lower_opt_hir_ty_with_minter(db, ty_arg.ty, scope, assumptions, lowering_cx);
                 provided_explicit.push(ty);
             }
-            GenericArg::Const(const_arg) => match const_arg.value {
-                ConstGenericArgValue::Expr(body) => {
-                    let const_ty = match minter.const_bodies() {
-                        ConstBodyLowering::Eager => ConstTyId::from_opt_body(db, body),
-                        ConstBodyLowering::Deferred => ConstTyId::unevaluated(
-                            db,
-                            body,
-                            None,
-                            None,
-                            body.to_opt().map_or(ConstCaptureEnv::Empty, |body| {
-                                ConstCaptureEnv::identity_for_body(db, body, Some(minter))
-                            }),
-                            UnevaluatedConstPolicy::DeferValidation,
-                        ),
-                    };
-                    provided_explicit.push(TyId::const_ty(db, const_ty));
-                }
-                ConstGenericArgValue::Hole => {
-                    return Err(TraitArgError::ConstHoleNotAllowed { arg_idx });
-                }
-            },
+            GenericArg::Const(const_arg) => {
+                let body = const_arg.value;
+                let const_ty = match lowering_cx.const_bodies() {
+                    ConstBodyLowering::Eager => ConstTyId::from_opt_body(db, body),
+                    ConstBodyLowering::Deferred => ConstTyId::unevaluated(
+                        db,
+                        body,
+                        None,
+                        None,
+                        body.to_opt().map_or(ConstCaptureEnv::Empty, |body| {
+                            ConstCaptureEnv::identity_for_body(db, body, Some(lowering_cx))
+                        }),
+                        UnevaluatedConstPolicy::DeferValidation,
+                    ),
+                };
+                provided_explicit.push(TyId::const_ty(db, const_ty));
+            }
             GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
                 if let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) {
-                    let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, minter);
+                    let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);
                     assoc_bindings.insert(name, ty);
                 }
             }
@@ -680,9 +651,9 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
             db,
             &[t.self_param(db)],
             &provided_explicit,
-            match minter.const_bodies() {
-                ConstBodyLowering::Eager => DefaultApplication::Evaluate(minter),
-                ConstBodyLowering::Deferred => DefaultApplication::StructuralMetadata(minter),
+            match lowering_cx.const_bodies() {
+                ConstBodyLowering::Eager => DefaultApplication::Evaluate(lowering_cx),
+                ConstBodyLowering::Deferred => DefaultApplication::StructuralMetadata(lowering_cx),
             },
         )
         .map_err(|error| match error.cause {
@@ -720,82 +691,6 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     final_args.extend(non_self_completed);
 
     Ok(TraitInstId::new(db, t, final_args, assoc_bindings))
-}
-
-#[cfg(test)]
-mod layout_hole_tests {
-    use camino::Utf8PathBuf;
-
-    use super::lower_trait_ref_impl;
-    use crate::analysis::ty::{
-        const_ty::{ConstTyData, HoleId},
-        trait_resolution::PredicateListId,
-        ty_def::TyData,
-    };
-    use crate::hir_def::{ItemKind, PathId};
-    use crate::test_db::HirAnalysisTestDb;
-
-    #[test]
-    fn omitted_trait_hole_defaults_keep_distinct_path_arg_identity() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("omitted_trait_hole_defaults_keep_distinct_path_arg_identity.fe"),
-            r#"
-trait Cap<const LEFT: u256 = _, const RIGHT: u256 = _> {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-
-        let trait_ = top_mod
-            .children_non_nested(&db)
-            .find_map(|item| match item {
-                ItemKind::Trait(trait_)
-                    if trait_
-                        .name(&db)
-                        .to_opt()
-                        .is_some_and(|name| name.data(&db) == "Cap") =>
-                {
-                    Some(trait_)
-                }
-                _ => None,
-            })
-            .expect("missing `Cap` trait");
-        let name = trait_.name(&db).to_opt().expect("trait must have a name");
-        let path = PathId::from_ident(&db, name);
-        let inst = match lower_trait_ref_impl(
-            &db,
-            path,
-            trait_.scope(),
-            PredicateListId::empty_list(&db),
-            trait_,
-        ) {
-            Ok(inst) => inst,
-            Err(_) => panic!("failed to lower trait ref"),
-        };
-        let args = inst.args(&db);
-
-        assert_eq!(args.len(), 3);
-        let left = args[1];
-        let right = args[2];
-        assert_ne!(left, right);
-
-        let TyData::ConstTy(left) = left.data(&db) else {
-            panic!("expected left arg to be a const hole");
-        };
-        let TyData::ConstTy(right) = right.data(&db) else {
-            panic!("expected right arg to be a const hole");
-        };
-
-        assert!(matches!(
-            left.data(&db),
-            ConstTyData::Hole(_, HoleId::Structural(_),)
-        ));
-        assert!(matches!(
-            right.data(&db),
-            ConstTyData::Hole(_, HoleId::Structural(_),)
-        ));
-    }
 }
 
 #[salsa::tracked(return_ref)]

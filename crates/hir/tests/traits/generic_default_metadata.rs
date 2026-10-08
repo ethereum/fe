@@ -304,21 +304,6 @@ fn f(x: Alias) {}
 }
 
 #[test]
-fn type_alias_explicit_const_holes_validate_with_expected_const_type() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from("type_alias_explicit_const_holes_validate_with_expected_const_type.fe"),
-        r#"
-type Alias<const N: u256> = bool
-
-fn f(x: Alias<_>) {}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
-}
-
-#[test]
 fn type_alias_explicit_const_args_still_validate_type_mismatches() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(

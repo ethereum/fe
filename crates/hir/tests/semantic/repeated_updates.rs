@@ -115,13 +115,13 @@ fn cached_answers(
 }
 
 #[test]
-fn cached_parameter_types_follow_signature_layout_and_const_edits() {
+fn cached_parameter_types_follow_signature_and_const_edits() {
     let versions = [
         "struct S {}\nfn target(_ x: S) {}\nfn caller() { target(S {}) }",
         "struct S { value: u256 }\nfn target(_ x: S) {}\nfn caller() { target(S { value: 1 }) }",
         "struct S {}\nfn target(_ x: S, _ y: bool) {}\nfn caller() { target(S {}, true) }",
-        "struct S<const N: usize = _> {}\nfn target(_ x: S) {}\nfn caller() { target(S<3> {}) }",
-        "struct S<const N: usize = _> {}\nfn target(_ x: S, _ y: S) {}\nfn caller() { target(S<3> {}, S<4> {}) }",
+        "struct S<const N: usize> {}\nfn target<const N: usize>(_ x: S<N>) {}\nfn caller() { target(S<3> {}) }",
+        "struct S<const N: usize> {}\nfn target<const N: usize, const M: usize>(_ x: S<N>, _ y: S<M>) {}\nfn caller() { target(S<3> {}, S<4> {}) }",
         "const N: usize = 2\nfn target(_ x: [u256; N]) {}\nfn caller() { target([1, 2]) }",
         "const N: usize = 3\nfn target(_ x: [u256; N]) {}\nfn caller() { target([1, 2, 3]) }",
         "enum S { Value(u256) }\nfn target(_ x: S) {}\nfn caller() { target(S::Value(1)) }",

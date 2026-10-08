@@ -234,12 +234,15 @@ impl<'db> NormalAttr<'db> {
 }
 
 impl<'db> AttrArg<'db> {
-    /// Pretty-prints an attribute argument like `key` or `key = value`.
+    /// Pretty-prints an attribute argument like `key`, `key = value` or an
+    /// expression.
     pub fn pretty_print(&self, db: &'db dyn HirDb) -> String {
-        let key = unwrap_partial(self.key, "AttrArg::key").pretty_print(db);
-        match &self.value {
-            Some(value) => format!("{} = {}", key, value.pretty_print(db)),
-            None => key,
+        match (self.key, &self.value) {
+            (Partial::Present(key), Some(value)) => {
+                format!("{} = {}", key.pretty_print(db), value.pretty_print(db))
+            }
+            (Partial::Absent, Some(value)) => value.pretty_print(db),
+            (key, None) => unwrap_partial(key, "AttrArg::key").pretty_print(db),
         }
     }
 }
@@ -250,6 +253,7 @@ impl<'db> AttrArgValue<'db> {
         match self {
             AttrArgValue::Ident(ident) => ident.data(db).to_string(),
             AttrArgValue::Lit(lit) => lit.pretty_print(db),
+            AttrArgValue::Expr(source) => source.data(db).clone(),
         }
     }
 }

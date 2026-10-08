@@ -3,25 +3,22 @@ use common::indexmap::IndexMap;
 use crate::analysis::HirAnalysisDb;
 use crate::analysis::name_resolution::{PathRes, resolve_path_with_minter};
 use crate::analysis::ty::const_ty::{
-    ConstCanonEnv, ConstCanonMode, HoleAnchor, HoleId, LayoutHoleArgSite, LayoutIntroSite,
-    LoweringContext, StructuralHoleOrigin, canonicalize_trait_inst_for_mode,
+    ConstCanonEnv, ConstCanonMode, LoweringContext, canonicalize_trait_inst_for_mode,
     canonicalize_ty_for_mode,
 };
 use crate::analysis::ty::fold::TyFoldable;
-use crate::analysis::ty::layout_holes::layout_hole_with_fallback_ty;
 use crate::analysis::ty::normalize::normalize_from_assumptions;
 use crate::analysis::ty::subst::substitute_complete;
 use crate::analysis::ty::trait_def::TraitInstId;
 use crate::analysis::ty::trait_resolution::{PredicateListId, constraint::resolve_assoc_item_path};
 use crate::analysis::ty::ty_check::Callable;
-use crate::analysis::ty::ty_def::{TyBase, TyData, TyId};
+use crate::analysis::ty::ty_def::TyId;
 use crate::analysis::ty::ty_lower::{
-    CompleteSubst, LoweredSlot, ParamDomainId, ParamSchemaId, collect_generic_params,
-    func_implicit_param_plan, lower_hir_ty_with_minter,
+    CompleteSubst, LoweredSlot, ParamDomainId, ParamSchemaId, func_implicit_param_plan,
+    lower_hir_ty_with_minter,
 };
-use crate::core::hir_def::GenericParamOwner;
 use crate::hir_def::scope_graph::ScopeId;
-use crate::hir_def::{CallableDef, Func, Partial, PathId, TypeId as HirTypeId, TypeKind};
+use crate::hir_def::{Func, Partial, PathId, TypeId as HirTypeId, TypeKind};
 
 pub mod elaborate;
 pub mod match_;
@@ -198,12 +195,8 @@ pub(crate) fn resolve_effect_key<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> ResolvedEffectKey<'db> {
-    let minter = LoweringContext::new(HoleAnchor::TemplateTy {
-        ty: key_ty,
-        scope,
-        assumptions,
-    });
-    match lower_effect_key_schema(db, key_ty, scope, assumptions, &minter) {
+    let lowering_cx = LoweringContext::new();
+    match lower_effect_key_schema(db, key_ty, scope, assumptions, &lowering_cx) {
         ResolvedEffectKey::Type(schema) if !type_key_schema_is_well_formed(db, schema) => {
             ResolvedEffectKey::Invalid
         }
@@ -225,23 +218,19 @@ pub(crate) fn resolve_effect_path<'db>(
 }
 
 /// Lower a key's declaration shape without requiring it to be a valid effect.
-/// A deferred minter lets slot planning retain layout holes before const bodies
-/// and bounds are checked using the completed callable parameter list.
+/// A deferred lowering context keeps const bodies unevaluated until bounds
+/// are checked against the completed callable parameter list.
 pub(crate) fn lower_effect_key_schema<'db>(
     db: &'db dyn HirAnalysisDb,
     key_ty: HirTypeId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    minter: &LoweringContext<'db>,
+    lowering_cx: &LoweringContext<'db>,
 ) -> ResolvedEffectKey<'db> {
-    // `Field(T)` is keyed by the handle type `T`.
-    if let Some(handle) = key_ty.field_key_handle(db) {
-        return lower_effect_key_schema(db, handle, scope, assumptions, minter);
-    }
     let TypeKind::Path(path) = key_ty.data(db) else {
         let carrier = normalize_from_assumptions(
             db,
-            lower_hir_ty_with_minter(db, key_ty, scope, assumptions, minter),
+            lower_hir_ty_with_minter(db, key_ty, scope, assumptions, lowering_cx),
             scope,
             assumptions,
         );
@@ -254,19 +243,10 @@ pub(crate) fn lower_effect_key_schema<'db>(
     let Some(key_path) = path.to_opt() else {
         return ResolvedEffectKey::Other;
     };
-    match resolve_path_with_minter(db, key_path, scope, assumptions, false, minter) {
+    match resolve_path_with_minter(db, key_path, scope, assumptions, false, lowering_cx) {
         Ok(PathRes::Ty(ty)) if ty.is_star_kind(db) => {
             let ty = normalize_from_assumptions(db, ty, scope, assumptions);
-            let schema = TypeKeySchema {
-                carrier: existentialize_omitted_const_args_in_effect_key(
-                    db,
-                    key_path,
-                    scope,
-                    assumptions,
-                    ty,
-                ),
-            };
-            ResolvedEffectKey::Type(schema)
+            ResolvedEffectKey::Type(TypeKeySchema { carrier: ty })
         }
         Ok(PathRes::TyAlias(_, ty)) if ty.is_star_kind(db) => {
             let schema = TypeKeySchema {
@@ -275,8 +255,7 @@ pub(crate) fn lower_effect_key_schema<'db>(
             ResolvedEffectKey::Type(schema)
         }
         Ok(PathRes::Trait(trait_inst)) => {
-            // Associated equalities can expose layout holes. Normalize before
-            // callable input binding so slot discovery sees those holes too.
+            // Normalize associated equalities so the key names its arguments.
             let trait_inst = normalize_from_assumptions(db, trait_inst, scope, assumptions);
             let schema = TraitKeySchema::from_canonical_trait_binding(db, trait_inst);
             ResolvedEffectKey::Trait(schema)
@@ -296,108 +275,6 @@ pub(crate) fn lower_effect_key_schema<'db>(
             })
         }),
     }
-}
-
-/// Replaces omitted trailing const generic arguments in a type effect key with typed holes.
-///
-/// Example: for `uses (map: StorageMap<K, V>)`, where `StorageMap` has
-/// `const SALT: u256 = ...`, this returns `StorageMap<K, V, _>` so later lowering can
-/// bind that const as an effect-specific inference variable.
-pub(crate) fn existentialize_omitted_const_args_in_effect_key<'db>(
-    db: &'db dyn HirAnalysisDb,
-    key_path: PathId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    ty: TyId<'db>,
-) -> TyId<'db> {
-    let (base, args) = ty.decompose_ty_app(db);
-    let TyData::TyBase(base_ty) = base.data(db) else {
-        return ty;
-    };
-
-    let (param_set, offset, owner) = match base_ty {
-        TyBase::Adt(adt) => {
-            let set = *adt.param_set(db);
-            (
-                set,
-                set.offset_to_explicit_params_position(db),
-                GenericParamOwner::from_item_opt(adt.scope(db).item()),
-            )
-        }
-        TyBase::Func(func) => match *func {
-            CallableDef::Func(def) => {
-                let set = collect_generic_params(db, def.into());
-                (
-                    set,
-                    set.offset_to_explicit_params_position(db),
-                    Some(def.into()),
-                )
-            }
-            CallableDef::VariantCtor(_) => return ty,
-        },
-        _ => return ty,
-    };
-    let explicit_param_count = param_set.explicit_param_count(db);
-    if explicit_param_count == 0 {
-        return ty;
-    }
-    let Some(owner) = owner else {
-        return ty;
-    };
-
-    let provided_explicit_len = key_path
-        .generic_args(db)
-        .data(db)
-        .len()
-        .min(explicit_param_count);
-    if provided_explicit_len >= explicit_param_count {
-        return ty;
-    }
-
-    let minter = LoweringContext::new(HoleAnchor::TemplatePath {
-        path: key_path,
-        scope,
-        assumptions,
-    });
-    let mut completed_args = args.to_vec();
-    let mut changed = false;
-    for explicit_idx in provided_explicit_len..explicit_param_count {
-        let Some(const_ty_ty) = param_set.explicit_const_param_default_hole_ty(db, explicit_idx)
-        else {
-            continue;
-        };
-
-        let arg_idx = offset + explicit_idx;
-        if arg_idx >= completed_args.len() {
-            continue;
-        }
-        let hole = layout_hole_with_fallback_ty(
-            db,
-            const_ty_ty,
-            HoleId::structural(
-                db,
-                const_ty_ty,
-                StructuralHoleOrigin::EffectKeyExistential {
-                    path: key_path,
-                    arg_idx,
-                    owner,
-                    param_idx: explicit_idx,
-                },
-                LayoutIntroSite::lowering(LayoutHoleArgSite::Path(key_path), arg_idx),
-                minter.holes().mint(db),
-            ),
-        );
-        if completed_args[arg_idx] != hole {
-            completed_args[arg_idx] = hole;
-            changed = true;
-        }
-    }
-
-    if !changed {
-        return ty;
-    }
-
-    TyId::foldl(db, base, &completed_args)
 }
 
 pub(crate) fn instantiate_trait_effect_key<'db>(

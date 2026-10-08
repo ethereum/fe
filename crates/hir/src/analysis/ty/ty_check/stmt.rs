@@ -12,7 +12,6 @@ use super::{
     env::{ExprProp, TraitObligation, TraitObligationOrigin},
 };
 use crate::analysis::ty::{
-    LayoutBundlePathStep,
     canonical::Canonicalized,
     corelib::resolve_core_trait,
     diagnostics::BodyDiag,
@@ -77,10 +76,6 @@ pub struct ForLoopPlan<'db> {
     pub binds_element: bool,
     /// The calls, in `ForLoopStep` order.
     pub calls: [ForLoopCall<'db>; 3],
-    /// The element is the indexed layout projection of the base. Semantic
-    /// lowering uses this explicit desugaring fact to retain the dynamic
-    /// array-index source on the element.
-    pub element_layout_backing_source: bool,
 }
 
 impl<'db> ForLoopPlan<'db> {
@@ -160,8 +155,7 @@ impl<'db> TyChecker<'db> {
             } else {
                 self.check_expr_unknown(*expr)
             };
-            let layout = self.pattern_layout_context(*expr);
-            self.check_pat_with_layout(*pat, prop.ty, layout.as_ref());
+            self.check_pat(*pat, prop.ty);
             if let Some(LocalBinding::Local { pat, .. }) = self.env.pat_binding(*pat) {
                 self.env
                     .set_local_borrow_provider(pat, prop.borrow_provider);
@@ -305,7 +299,7 @@ impl<'db> TyChecker<'db> {
             (driver, driver_ty)
         });
         match self.plan_for_loop(&checked, driver, mutates) {
-            Some(mut plan) => {
+            Some(plan) => {
                 // A producer advances its own copy of the driver.
                 if let Some(driver) = plan.driver
                     && plan.item == ForLoopItem::Produced
@@ -313,28 +307,7 @@ impl<'db> TyChecker<'db> {
                     self.record_implicit_move_for_owned_expr_inner(driver, None);
                 }
                 let pattern_shape = plan.pattern_shape().clone();
-                let layout = plan
-                    .driver
-                    .is_none()
-                    .then(|| {
-                        self.pattern_layout_context_for_projection(
-                            *expr,
-                            &[LayoutBundlePathStep::Index],
-                        )
-                    })
-                    .flatten()
-                    .filter(|layout| {
-                        self.projected_pattern_layout_ty(layout, &[])
-                            .is_some_and(|projected| {
-                                crate::analysis::ty::layout_shape_key(self.db, projected)
-                                    == crate::analysis::ty::layout_shape_key(
-                                        self.db,
-                                        pattern_shape.erased_ty(self.db),
-                                    )
-                            })
-                    });
-                plan.element_layout_backing_source = layout.is_some();
-                self.check_pat_with_layout(*pat, pattern_shape.erased_ty(self.db), layout.as_ref());
+                self.check_pat(*pat, pattern_shape.erased_ty(self.db));
                 if let ForLoopItem::Access(_) = plan.item {
                     let authority = bases.iter().all(|base| self.expr_has_authority(*base));
                     self.bind_pattern_accesses(*pat, &pattern_shape, authority);
@@ -507,12 +480,7 @@ impl<'db> TyChecker<'db> {
             let func_ty = this.instantiate_trait_method_to_term(method, receiver_ty, inst);
             let mut callable = Callable::new(this.db, func_ty, span.clone(), Some(inst)).ok()?;
             callable.set_checked_input_tys(inputs);
-            let args: Vec<_> = driver
-                .map(|(driver, _)| driver)
-                .into_iter()
-                .chain(bases.iter().map(|&(base, _)| base))
-                .collect();
-            let effect_args = this.resolve_callable_effects(span.clone(), &mut callable, &args);
+            let effect_args = this.resolve_callable_effects(span.clone(), &mut callable);
             Some(ForLoopCall {
                 callable,
                 effect_args,
@@ -568,7 +536,6 @@ impl<'db> TyChecker<'db> {
             item,
             binds_element,
             calls: [start, next, at],
-            element_layout_backing_source: false,
         })
     }
 

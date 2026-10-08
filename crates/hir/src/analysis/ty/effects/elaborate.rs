@@ -18,7 +18,6 @@ use crate::{
                 stored_trait_key_is_rigid, stored_type_key_is_rigid,
             },
             fold::{TyFoldable, TyFolder},
-            layout_holes::{LayoutPlaceholderPolicy, layout_hole_fallback_ty},
             trait_def::TraitInstId,
             trait_resolution::PredicateListId,
             ty_check::{Callable, TyChecker},
@@ -34,7 +33,6 @@ use crate::{
     },
 };
 use common::indexmap::IndexMap;
-use rustc_hash::FxHashMap;
 
 pub fn effect_requirement_decls_for_callable<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -56,7 +54,7 @@ pub fn build_effect_query_for_call<'db>(
     req: &EffectRequirementDecl<'db>,
 ) -> Option<EffectQuery<'db>> {
     // Call queries are pattern keys: they may carry existential slots for omitted
-    // explicit args and hidden layout holes, but `Precise` queries must not retain
+    // explicit args, but `Precise` queries must not retain
     // ordinary unresolved inference, projections, or invalid state after construction.
     let key = match &req.key {
         EffectRequirementKey::Type(schema) => {
@@ -261,7 +259,6 @@ fn wildcard_const_fallback_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) ->
             ConstTyData::TyParam(_, fallback_ty) | ConstTyData::TyVar(_, fallback_ty) => {
                 *fallback_ty
             }
-            ConstTyData::Hole(hole_ty, _) => layout_hole_fallback_ty(db, *hole_ty),
             ConstTyData::Value(..)
             | ConstTyData::Description(..)
             | ConstTyData::Invalid(..)
@@ -385,12 +382,7 @@ fn type_pattern_key_from_carrier<'db>(
     TypePatternKey {
         carrier,
         family: effect_family_for_type(db, carrier),
-        slots: PatternSlots::from_value_with_extra(
-            db,
-            carrier,
-            LayoutPlaceholderPolicy::HolesAndImplicitParams,
-            extra_slots,
-        ),
+        slots: PatternSlots::from_value_with_extra(db, carrier, extra_slots),
     }
 }
 
@@ -404,12 +396,7 @@ fn trait_pattern_key_from_inst<'db>(
         args_no_self: key.args(db)[1..].iter().copied().collect(),
         assoc_bindings: key.assoc_ty_bindings(db).into_iter().collect(),
         family: effect_family_for_trait(key.def(db)),
-        slots: PatternSlots::from_value_with_extra(
-            db,
-            key,
-            LayoutPlaceholderPolicy::HolesAndImplicitParams,
-            extra_slots,
-        ),
+        slots: PatternSlots::from_value_with_extra(db, key, extra_slots),
     }
 }
 
@@ -439,7 +426,6 @@ where
                 ConstTyData::TyParam(_, fallback_ty) | ConstTyData::TyVar(_, fallback_ty) => {
                     *fallback_ty
                 }
-                ConstTyData::Hole(hole_ty, _) => layout_hole_fallback_ty(self.db, *hole_ty),
                 _ => param,
             }
         }
@@ -550,7 +536,6 @@ pub fn finalize_stored_effect_key<'db>(
     match key {
         StoredEffectKey::Type(key) => {
             let carrier = normalize_effect_identity_ty(db, key.carrier, scope, assumptions, None);
-            let carrier = rigidify_layout_holes_for_storage(db, scope, carrier);
             let key = StoredTypeKey {
                 carrier,
                 family: effect_family_for_type(db, carrier),
@@ -619,17 +604,16 @@ fn normalize_stored_trait_key<'db>(
     let args_no_self = key
         .args_no_self
         .into_iter()
-        .map(|ty| {
-            let ty = normalize_effect_identity_ty(db, ty, scope, assumptions, None);
-            rigidify_layout_holes_for_storage(db, scope, ty)
-        })
+        .map(|ty| normalize_effect_identity_ty(db, ty, scope, assumptions, None))
         .collect();
     let mut assoc_bindings: SmallVec<[(crate::hir_def::IdentId<'db>, TyId<'db>); 2]> = key
         .assoc_bindings
         .into_iter()
         .map(|(name, ty)| {
-            let ty = normalize_effect_identity_ty(db, ty, scope, assumptions, None);
-            (name, rigidify_layout_holes_for_storage(db, scope, ty))
+            (
+                name,
+                normalize_effect_identity_ty(db, ty, scope, assumptions, None),
+            )
         })
         .collect();
     assoc_bindings.sort_by_key(|(lhs, _)| *lhs);
@@ -639,61 +623,6 @@ fn normalize_stored_trait_key<'db>(
         assoc_bindings,
         family: effect_family_for_trait(key.def),
     }
-}
-
-fn rigidify_layout_holes_for_storage<'db, T>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    value: T,
-) -> T
-where
-    T: TyFoldable<'db>,
-{
-    struct Folder<'db> {
-        db: &'db dyn HirAnalysisDb,
-        scope: ScopeId<'db>,
-        next_idx: usize,
-        replacements: FxHashMap<TyId<'db>, TyId<'db>>,
-    }
-
-    impl<'db> TyFolder<'db> for Folder<'db> {
-        fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
-            if let Some(replacement) = self.replacements.get(&ty).copied() {
-                return replacement;
-            }
-            let TyData::ConstTy(const_ty) = ty.data(db) else {
-                return ty.super_fold_with(db, self);
-            };
-            let ConstTyData::Hole(hole_ty, _) = const_ty.data(db) else {
-                return ty.super_fold_with(db, self);
-            };
-
-            let idx = self.next_idx;
-            self.next_idx += 1;
-            let param = TyParam::implicit_param(
-                IdentId::new(self.db, format!("__effect_key_{idx}")),
-                idx,
-                hole_ty.kind(db).clone(),
-                self.scope,
-            );
-            let replacement = TyId::const_ty(
-                db,
-                ConstTyId::new(db, ConstTyData::TyParam(param, *hole_ty)),
-            );
-            self.replacements.insert(ty, replacement);
-            replacement
-        }
-    }
-
-    value.fold_with(
-        db,
-        &mut Folder {
-            db,
-            scope,
-            next_idx: 0,
-            replacements: FxHashMap::default(),
-        },
-    )
 }
 
 fn resolve_trait_symbol_ignoring_args<'db>(

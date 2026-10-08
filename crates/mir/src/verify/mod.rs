@@ -77,8 +77,8 @@ pub enum VerifyError<'db> {
     },
     ContractFieldSlotMismatch {
         field: ContractFieldId<'db>,
-        expected: ContractFieldSlot,
-        actual: ContractFieldSlot,
+        expected: Box<ContractFieldSlot>,
+        actual: Box<ContractFieldSlot>,
     },
     InvalidContractFieldClass {
         field: ContractFieldId<'db>,

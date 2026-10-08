@@ -42,6 +42,7 @@ rustc-hash = "2.1.0"
 blake3 = "1"
 num-bigint = "0.4"
 num-traits = "0.2"
+ruint = "1.17.2"
 paste = "1.0.15"
 salsa = "0.20"
 smallvec = { version = "2.0.0-alpha.11" }

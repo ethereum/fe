@@ -23,8 +23,8 @@ use super::normalize::normalized_source_local_value_ty;
 /// Runtime-only representation mapping for an admitted normalized body.
 ///
 /// Semantic borrow and capability analyses consume only `NormalizedBody`.
-/// Layout evidence and rMIR lowering use this companion plan to locate the
-/// representation that carries a semantic value or root.
+/// rMIR lowering uses this companion plan to locate the representation that
+/// carries a semantic value or root.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NLayoutPlan<'db> {
     pub value_representations: Vec<NValueRepresentation>,
@@ -54,7 +54,7 @@ impl NLayoutPlan<'_> {
     }
 }
 
-/// Shared runtime homes for semantic values and their layout evidence.
+/// Shared runtime homes for semantic values.
 /// Source provenance never gives a synthetic value permission to overwrite its source.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NLayoutLocals<'db> {

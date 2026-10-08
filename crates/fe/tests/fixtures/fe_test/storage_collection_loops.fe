@@ -1,18 +1,20 @@
-// Storage collections are `Collection`s and `Bidirectional`: a loop reads
-// each element into the session, and a `mut` loop writes it back. A `Copy`
-// element is copied before the body runs, so its session, which reserves
-// storage, is finished and the body may write storage.
+// Storage collections are `Collection`s and `Bidirectional`. A `SolArray`'s
+// elements are places: a loop views each in storage, and a `mut` loop
+// updates it there. A `Copy` element is copied before the body runs, so its
+// session, which reserves the array, is finished and the body may write
+// storage.
 use std::evm::{Evm, RawStorage, SolArray, SolEnumerableSet}
 
 #[test]
 fn sol_array_loops() uses (evm: mut Evm) {
     with (RawStorage = evm) {
-        let mut a = unsafe { SolArray<u256>::at(0) }
+        // Two arrays at runtime slots at once: an unsafe split, whose grants
+        // are disjoint, so a loop over one may push onto the other.
+        let (a, doubled) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
         a.push(1)
         a.push(2)
         a.push(3)
 
-        let doubled = unsafe { SolArray<u256>::at(1) }
         for x in a {
             doubled.push(x * 2)
         }

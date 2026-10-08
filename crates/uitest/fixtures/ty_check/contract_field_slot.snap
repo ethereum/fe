@@ -1,0 +1,66 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/contract_field_slot.fe
+---
+error[12-0001]: unsupported `#[slot]` attribute on struct field
+  ┌─ contract_field_slot.fe:9:5
+  │
+9 │     #[slot(0)]
+  │     ^^^^^^^^^^ `#[slot]` is only supported on `mut` contract fields
+
+error[12-0001]: unsupported `#[slot]` attribute on immutable contract field `owner`
+   ┌─ contract_field_slot.fe:30:5
+   │
+30 │     #[slot(0)]
+   │     ^^^^^^^^^^ `#[slot]` is only supported on `mut` contract fields
+
+error[12-0002]: invalid `#[slot]` attribute form on contract field `a`
+   ┌─ contract_field_slot.fe:48:5
+   │
+48 │     #[slot]
+   │     ^^^^^^^ expected `#[slot(<slot>)]`
+
+error[12-0002]: invalid `#[slot]` attribute form on contract field `b`
+   ┌─ contract_field_slot.fe:50:5
+   │
+50 │     #[slot(1, 2)]
+   │     ^^^^^^^^^^^^^ expected `#[slot(<slot>)]`
+
+error[12-0002]: invalid `#[slot]` attribute form on contract field `c`
+   ┌─ contract_field_slot.fe:52:5
+   │
+52 │     #[slot(at = 1)]
+   │     ^^^^^^^^^^^^^^^ expected `#[slot(<slot>)]`
+
+error[12-0003]: duplicate `#[slot]` attribute on contract field `d`
+   ┌─ contract_field_slot.fe:55:5
+   │
+55 │     #[slot(2)]
+   │     ^^^^^^^^^^ remove the extra `#[slot]` attribute
+
+error[3-0025]: division by zero in const context
+   ┌─ contract_field_slot.fe:43:12
+   │
+43 │     #[slot(BASE / 0)]
+   │            ^^^^^^^^ cannot divide by zero
+
+error[3-0064]: `b` overlaps the slots of `a`
+   ┌─ contract_field_slot.fe:17:11
+   │
+17 │     #[slot(5)]
+   │           ^^^ the slots from here overlap `a`'s
+   │
+   = fields placed with `#[slot]` cannot share slots in one address space
+
+error[8-0000]: type mismatch
+   ┌─ contract_field_slot.fe:41:12
+   │
+41 │     #[slot(true)]
+   │            ^^^^ expected `u256`, but `bool` is given
+
+error[8-0012]: undefined variable
+   ┌─ contract_field_slot.fe:39:12
+   │
+39 │     #[slot(missing + 1)]
+   │            ^^^^^^^ undefined variable `missing`

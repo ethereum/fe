@@ -164,8 +164,7 @@ fn push_class_edges<'db>(
                     pending.push(Obligation::Layout(lhs.enum_layout, rhs.enum_layout));
                     lhs.index == rhs.index
                 }
-                (RefView::StorageLane(lhs), RefView::StorageLane(rhs)) => lhs == rhs,
-                (RefView::Whole | RefView::EnumVariant(_) | RefView::StorageLane(_), _) => false,
+                (RefView::Whole | RefView::EnumVariant(_), _) => false,
             };
             pending.push(Obligation::Class(*lhs_pointee, *rhs_pointee));
             views_match && lhs_kind == rhs_kind

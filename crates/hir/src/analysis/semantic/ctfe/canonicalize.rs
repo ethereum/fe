@@ -374,31 +374,21 @@ fn canonicalize_expr<'db>(
         || matches!(cx.mode, ConstCanonicalizationMode::Runtime)
             && (matches!(expr, SExpr::Call { .. }) || !preserves_layout_index)
     {
-        let has_runtime_evidence = match expr {
-            SExpr::Call { callee, .. } => callee
-                .key
-                .layout_bundle_signature(cx.db)
-                .has_runtime_evidence(),
-            _ => false,
-        };
-        if !has_runtime_evidence {
-            match attempt_optional_const_fold(cx.db, cx.body, result_ty, expr, locals, synthetic())
-            {
-                FoldAttempt::Folded(value) => {
-                    let value = canonicalize_const_value(cx.db, value.value());
-                    if let Some(value) =
-                        reify_runtime_const_for_ty(cx.db, cx.instance, result_ty, value)
-                    {
-                        return (
-                            SExpr::Const(SConst::from_trusted_source(cx.db, value)),
-                            Some(value),
-                        );
-                    }
+        match attempt_optional_const_fold(cx.db, cx.body, result_ty, expr, locals, synthetic()) {
+            FoldAttempt::Folded(value) => {
+                let value = canonicalize_const_value(cx.db, value.value());
+                if let Some(value) =
+                    reify_runtime_const_for_ty(cx.db, cx.instance, result_ty, value)
+                {
+                    return (
+                        SExpr::Const(SConst::from_trusted_source(cx.db, value)),
+                        Some(value),
+                    );
                 }
-                FoldAttempt::NotFoldable(_) => {}
-                FoldAttempt::InvariantFailure(failure) => {
-                    panic!("optional CTFE fold invariant failed: {failure:?}")
-                }
+            }
+            FoldAttempt::NotFoldable(_) => {}
+            FoldAttempt::InvariantFailure(failure) => {
+                panic!("optional CTFE fold invariant failed: {failure:?}")
             }
         }
     }
@@ -441,7 +431,7 @@ fn canonicalize_const<'db>(
     let value = canonicalize_const_value(db, value);
     match reify_runtime_const_for_ty(db, instance, result_ty, value) {
         Some(runtime) => (SConst::from_trusted_source(db, runtime), Some(runtime)),
-        // Formal layout evidence may remain symbolic here. It is not a
+        // A formal parameter's value may remain symbolic here. It is not a
         // constant fact; runtime admission checks it before lowering.
         None => (
             if matches!(constant, SConst::Evidence(_)) {

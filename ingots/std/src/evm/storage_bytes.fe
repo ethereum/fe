@@ -2,7 +2,7 @@ use core::abi::ByteInput
 use core::ptr
 
 use super::ops
-use super::effects::RawStorage
+use super::effects::{RawStorage, StorPtr}
 use super::storage_map::{StorageKey, StorageMap}
 
 fn offset(_ base: *u8, _ bytes: u256) -> *u8 {
@@ -115,47 +115,39 @@ pub fn emit_bytes_event_view<I: ByteInput>(topic0: u256, view: I) {
     unsafe { ops::log1(offset: ptr, len: total_len, topic0: topic0) }
 }
 
-/// Storage-backed dynamic bytes keyed by `K`.
-///
-/// This uses two scalar `StorageMap`s internally:
-/// - `LEN_SALT`: byte lengths
-/// - `WORD_SALT`: 32-byte payload words
-struct StorageBytesSeal {}
-
-pub struct StorageBytes<K, const LEN_SALT: u256 = _, const WORD_SALT: u256 = _> {
-    seal: StorageBytesSeal,
+/// Storage-backed dynamic bytes keyed by `K`: the byte length of each value
+/// and its 32-byte payload words, in two maps.
+pub struct StorageBytes<K> {
+    lengths: StorageMap<K, u256>,
+    words: StorageMap<(K, u256), u256>,
 }
 
-impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
-    StorageBytes<K, LEN_SALT, WORD_SALT>
-{
-    pub(ingot) fn new_unchecked() -> Self {
-        Self { seal: StorageBytesSeal {} }
-    }
-
-    pub fn new() -> Self
-    uses (storage: mut RawStorage)
-    {
-        Self::new_unchecked()
+impl<K: StorageKey + Copy> StorageBytes<K> {
+    /// The bytes whose maps take slots `slot` and `slot + 1`.
+    ///
+    /// The caller must ensure that nothing the compiler allocates, such as a
+    /// contract field, uses those slots or the entries' slots.
+    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        unsafe {
+            with (ptr) {
+                core::effect_ref::target_mut(ptr)
+            }
+        }
     }
 
     pub fn len(self, key: K) -> u256 {
-        let lengths: StorageMap<K, u256, LEN_SALT> = StorageMap::new_unchecked()
-        lengths.get_unchecked(key)
+        self.lengths[key]
     }
 
     pub fn clear(mut self, key: K) {
-        let mut lengths: StorageMap<K, u256, LEN_SALT> = StorageMap::new_unchecked()
-        let mut words: StorageMap<(K, u256), u256, WORD_SALT> = StorageMap::new_unchecked()
-
-        let len = lengths.get_unchecked(key)
-        let word_count = ceil_words(len)
+        let word_count = ceil_words(self.lengths[key])
         let mut i: u256 = 0
         while i < word_count {
-            words.set_unchecked(key: (key, i), value: 0)
+            self.words[(key, i)] = 0
             i += 1
         }
-        lengths.set_unchecked(key: key, value: 0)
+        self.lengths[key] = 0
     }
 
     /// Store bytes copied directly from calldata.
@@ -163,11 +155,7 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
     /// `data_ptr` is a raw calldata byte offset.
     pub fn store_from_calldata(mut self, key: K, data_ptr: u256, len: u256) {
         self.clear(key)
-
-        let mut lengths: StorageMap<K, u256, LEN_SALT> = StorageMap::new_unchecked()
-        let mut words: StorageMap<(K, u256), u256, WORD_SALT> = StorageMap::new_unchecked()
-
-        lengths.set_unchecked(key: key, value: len)
+        self.lengths[key] = len
         let word_count = ceil_words(len)
         let mut i: u256 = 0
         while i < word_count {
@@ -178,7 +166,7 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
                     word = word & mask_for_bytes(rem)
                 }
             }
-            words.set_unchecked(key: (key, i), value: word)
+            self.words[(key, i)] = word
             i += 1
         }
     }
@@ -186,15 +174,11 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
     /// Store bytes from an arbitrary byte input.
     pub fn store_view<I: ByteInput>(mut self, key: K, view: I) {
         self.clear(key)
-
-        let mut lengths: StorageMap<K, u256, LEN_SALT> = StorageMap::new_unchecked()
-        let mut words: StorageMap<(K, u256), u256, WORD_SALT> = StorageMap::new_unchecked()
-
-        lengths.set_unchecked(key: key, value: view.len())
+        self.lengths[key] = view.len()
         let word_count = ceil_words(view.len())
         let mut i: u256 = 0
         while i < word_count {
-            words.set_unchecked(key: (key, i), value: masked_word_at(view, i * 32))
+            self.words[(key, i)] = masked_word_at(view, i * 32)
             i += 1
         }
     }
@@ -206,10 +190,7 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
     /// deployed via `create2_raw`, etc).
     /// The trailing partial word, if any, is zero-padded.
     pub fn to_memory(self, key: K) -> ptr::MemBuffer {
-        let lengths: StorageMap<K, u256, LEN_SALT> = StorageMap::new_unchecked()
-        let words: StorageMap<(K, u256), u256, WORD_SALT> = StorageMap::new_unchecked()
-
-        let len = lengths.get_unchecked(key)
+        let len = self.lengths[key]
         let word_count = ceil_words(len)
         let mut buffer = ptr::MemBuffer::alloc(word_count * 32)
 
@@ -218,7 +199,7 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
             unsafe {
                 ops::mstore(
                     addr: ptr::offset_bytes(buffer.ptr(), i * 32),
-                    value: words.get_unchecked((key, i)),
+                    value: self.words[(key, i)],
                 )
             }
             i += 1
@@ -233,16 +214,12 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
     /// The last word of a non-word-multiple length is zero-padded; indices
     /// past `ceil_words(len(key))` read as zero.
     pub fn word_at(self, key: K, index: u256) -> u256 {
-        let words: StorageMap<(K, u256), u256, WORD_SALT> = StorageMap::new_unchecked()
-        words.get_unchecked((key, index))
+        self.words[(key, index)]
     }
 
     /// Return ABI-encoded `bytes` from storage.
     pub fn encode_return(self, key: K) -> ! {
-        let lengths: StorageMap<K, u256, LEN_SALT> = StorageMap::new_unchecked()
-        let words: StorageMap<(K, u256), u256, WORD_SALT> = StorageMap::new_unchecked()
-
-        let len = lengths.get_unchecked(key)
+        let len = self.lengths[key]
         let word_count = ceil_words(len)
         let total_len = 64 + word_count * 32
         let ptr = ptr::alloc_bytes(total_len)
@@ -253,7 +230,7 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
 
         let mut i: u256 = 0
         while i < word_count {
-            unsafe { ops::mstore(addr: offset(ptr, 64 + i * 32), value: words.get_unchecked((key, i))) }
+            unsafe { ops::mstore(addr: offset(ptr, 64 + i * 32), value: self.words[(key, i)]) }
             i += 1
         }
 

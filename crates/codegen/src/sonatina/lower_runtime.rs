@@ -16,7 +16,7 @@ use hir::{
     hir_def::{ArithBinOp, BinOp, CompBinOp, LogicalBinOp, UnOp},
     projection::IndexSource,
 };
-use mir::runtime::{RefKind, RefView};
+use mir::runtime::RefKind;
 use mir::{
     AddressSpaceKind, ArrayLayout, ConstNode, ConstRegionId, ConstScalar, FieldPlacement,
     IntrinsicArithBinOp, Layout, LayoutId, RBlockId, RExpr, RLocalId, RStmt, RTerminator,
@@ -959,16 +959,6 @@ impl PackedLane {
         })
     }
 
-    fn from_view(view: &RefView<'_>) -> Option<Self> {
-        match view {
-            RefView::StorageLane(view) => Some(Self {
-                lane: view.lane(),
-                shared: view.shared,
-            }),
-            RefView::Whole | RefView::EnumVariant(_) => None,
-        }
-    }
-
     /// Whether a reference to the whole word reaches the same scalar: a
     /// scalar alone at the start of its word.
     fn is_whole_word(self) -> bool {
@@ -1692,17 +1682,6 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 })?;
                 let value = self.local_value(*value)?;
                 match class {
-                    // A native reference names a word, not a byte range in it.
-                    RuntimeClass::Ref {
-                        view: RefView::StorageLane(_),
-                        ..
-                    } => {
-                        return Err(LowerError::Unsupported(
-                            "cannot store a reference to a storage field packed into a word \
-                             with other fields; read or write the field directly instead"
-                                .to_string(),
-                        ));
-                    }
                     RuntimeClass::Ref {
                         kind: RefKind::Native,
                         ..
@@ -2684,7 +2663,8 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                                 "contract field ref should carry a word slot, got {slot}"
                             )));
                         };
-                        self.fb.make_imm_value(I256::from(*words))
+                        self.fb
+                            .make_imm_value(I256::from_be_bytes(&words.to_be_bytes::<32>()))
                     }
                 }
             }
@@ -3060,13 +3040,12 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
             }),
             RuntimeClass::Ref {
                 kind: RefKind::Provider { space, .. },
-                view,
                 ..
             } => Ok(PlaceTerminal::Ptr {
                 addr: self.local_value(value)?,
                 space,
                 class,
-                lane: PackedLane::from_view(&view),
+                lane: None,
             }),
             RuntimeClass::AggregateValue { .. } if allow_value_carrier => {
                 Ok(PlaceTerminal::Object {
@@ -3137,12 +3116,12 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
             RuntimeClass::Ref {
                 kind: RefKind::Provider { space, .. },
                 pointee,
-                view,
+                ..
             } => Ok(PlaceTerminal::Ptr {
                 addr: value,
                 space: *space,
                 class: (**pointee).clone(),
-                lane: PackedLane::from_view(view),
+                lane: None,
             }),
             RuntimeClass::RawAddr {
                 space,
@@ -4098,23 +4077,9 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
             }
             PlaceTerminal::Ptr {
                 lane: Some(lane), ..
-            } if !lane.is_whole_word()
-                && !dst.is_some_and(|dst| {
-                    matches!(
-                        self.body.value_class(dst),
-                        Some(RuntimeClass::Ref {
-                            view: RefView::StorageLane(view),
-                            ..
-                        }) if view.lane() == lane.lane
-                    )
-                }) =>
-            {
-                Err(LowerError::Unsupported(
-                    "cannot reference a storage field packed into a word with other fields \
-                     from here; read or write the field directly instead"
-                        .to_string(),
-                ))
-            }
+            } if !lane.is_whole_word() => Err(LowerError::Internal(
+                "a storage field packed into a word with other fields has no address".to_string(),
+            )),
             PlaceTerminal::StackPtr { addr, .. } | PlaceTerminal::Ptr { addr, .. } => {
                 if let Some(dst) = dst
                     && matches!(

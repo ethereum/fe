@@ -11,18 +11,13 @@ use common::indexmap::IndexMap;
 use rustc_hash::FxHashMap;
 
 use super::{
-    binder::Binder,
     canonical::Canonical,
     canonical::Canonicalized,
     closure::closure_out_ty,
     fold::{TyFoldable, TyFolder},
-    layout_holes::LayoutRootUse,
-    trait_def::{
-        ImplementorOrigin, TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints,
-        resolve_trait_impl_instance,
-    },
+    trait_def::{TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints},
     trait_lower::complete_impl_assoc_ty,
-    trait_resolution::{PredicateListId, Selection, TraitSolveCx},
+    trait_resolution::{PredicateListId, TraitSolveCx},
     ty_def::{AssocTy, TyData, TyId, TyParam, collect_variables},
     unify::UnificationTable,
 };
@@ -80,76 +75,6 @@ where
     T: TyFoldable<'db>,
 {
     normalize_from_assumptions(db, value, scope, PredicateListId::new(db, vec![evidence]))
-}
-
-pub(crate) fn normalize_layout_root_uses<'db>(
-    db: &'db dyn HirAnalysisDb,
-    ty: TyId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Vec<LayoutRootUse<'db>> {
-    fn collect<'db>(
-        db: &'db dyn HirAnalysisDb,
-        ty: TyId<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-        visiting: &mut rustc_hash::FxHashSet<TyId<'db>>,
-        uses: &mut Vec<LayoutRootUse<'db>>,
-    ) {
-        if !visiting.insert(ty) {
-            return;
-        }
-        if let TyData::AssocTy(assoc) = ty.data(db) {
-            let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-            if let Selection::Unique(resolved) =
-                resolve_trait_impl_instance(db, solve_cx, assoc.trait_.as_predicate(db))
-                && let ImplementorOrigin::Hir(impl_trait) = resolved.selected().origin(db)
-            {
-                for root_use in resolved.assoc_ty_layout_root_uses(db, assoc.name) {
-                    let root_use = LayoutRootUse {
-                        value: Binder::bind(impl_trait.into(), root_use.value)
-                            .instantiate(db, resolved.impl_args(db)),
-                        owner: root_use.owner.map(|owner| {
-                            normalize_ty(
-                                db,
-                                Binder::bind(impl_trait.into(), owner)
-                                    .instantiate(db, resolved.impl_args(db)),
-                                scope,
-                                assumptions,
-                            )
-                        }),
-                        selector: root_use.selector,
-                    };
-                    if !uses.contains(&root_use) {
-                        uses.push(root_use);
-                    }
-                }
-                if let Some(instantiated) = resolved.instantiated_assoc_ty(db, assoc.name) {
-                    collect(db, instantiated, scope, assumptions, visiting, uses);
-                }
-            }
-        } else {
-            let (base, args) = ty.decompose_ty_app(db);
-            if base != ty {
-                collect(db, base, scope, assumptions, visiting, uses);
-            }
-            for arg in args {
-                collect(db, *arg, scope, assumptions, visiting, uses);
-            }
-        }
-        visiting.remove(&ty);
-    }
-
-    let mut uses = Vec::new();
-    collect(
-        db,
-        ty,
-        scope,
-        assumptions,
-        &mut rustc_hash::FxHashSet::default(),
-        &mut uses,
-    );
-    uses
 }
 
 pub struct TypeNormalizer<'db> {

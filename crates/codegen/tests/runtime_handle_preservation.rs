@@ -2397,3 +2397,229 @@ fn capability_gated_provider_ref_conversion_preserves_transport_in_rmir() {
         }
     );
 }
+
+/// A sum shape is not a value: the caller of a projection yielding
+/// `Option<mut T>` binds the grant where the yield takes its variant, so no
+/// enum value carries it and it needs no `Native` reference, whether it is
+/// a storage place or a memory one.
+#[test]
+fn sum_shape_grants_are_bound_without_enum_values() {
+    let source = r#"
+struct Counter { value: u256 }
+
+impl Counter {
+    fn maybe(mut self, _ present: bool) -> Option<mut u256> {
+        if present { Option::Some(mut self.value) } else { Option::None }
+    }
+}
+
+msg Msg {
+    #[selector = 1]
+    Inc -> u256,
+}
+
+pub contract C {
+    mut counter: Counter,
+
+    recv Msg {
+        Inc -> u256 uses (mut counter) {
+            match counter.maybe(true) {
+                Option::Some(mut value) => { value += 1 }
+                Option::None => {}
+            }
+            counter.value
+        }
+    }
+}
+
+#[test]
+fn in_memory() {
+    let mut counter = Counter { value: 1 }
+    if let Option::Some(value) = counter.maybe(true) {
+        value += 1
+    }
+    assert(counter.value == 2)
+}
+"#;
+    with_top_mod_for_source("sum_shapes.fe", source, |db, top_mod| {
+        for (package, symbol) in [
+            (build_runtime_package(db, top_mod), "__C_recv_0_0"),
+            (build_test_runtime_package(db, top_mod, None), "in_memory"),
+        ] {
+            let package = package.expect("the package lowers");
+            let body = runtime_body_for_symbol(db, package, symbol);
+            assert!(
+                !runtime_body_stmts(&body).any(|stmt| matches!(
+                    stmt,
+                    RStmt::Assign {
+                        expr: RExpr::NativeRef { .. },
+                        ..
+                    }
+                ) || matches!(
+                    stmt,
+                    RStmt::Assign {
+                        expr: RExpr::EnumMake { fields, .. },
+                        ..
+                    } if !fields.is_empty()
+                )),
+                "`{symbol}` builds a reference into a value: {body:#?}"
+            );
+        }
+    });
+}
+
+fn body_has_native_ref_or_enum_payload(body: &RuntimeBody<'_>) -> bool {
+    runtime_body_stmts(body).any(|stmt| {
+        matches!(
+            stmt,
+            RStmt::Assign {
+                expr: RExpr::NativeRef { .. },
+                ..
+            }
+        ) || matches!(
+            stmt,
+            RStmt::Assign {
+                expr: RExpr::EnumMake { fields, .. },
+                ..
+            } if !fields.is_empty()
+        )
+    })
+}
+
+/// Acceptance 46: a storage struct's method is one instance whichever
+/// field or caller reaches it: the slot is the receiver's transport.
+#[test]
+fn storage_struct_method_is_one_instance_for_every_caller() {
+    let source = r#"
+struct Counter { value: u256 }
+
+impl Counter {
+    fn bump(mut self) {
+        self.value += 1
+    }
+}
+
+fn twice(_ c: mut Counter) {
+    c.bump()
+    c.bump()
+}
+
+msg Msg {
+    #[selector = 1]
+    BumpA,
+    #[selector = 2]
+    BumpB,
+    #[selector = 3]
+    Twice,
+}
+
+pub contract C {
+    mut a: Counter,
+    mut b: Counter,
+
+    recv Msg {
+        BumpA uses (mut a) { a.bump() }
+        BumpB uses (mut b) { b.bump() }
+        Twice uses (mut a) { twice(mut a) }
+    }
+}
+"#;
+    with_runtime_package!("one_instance.fe", source, |db, package| {
+        let bumps = package
+            .functions(&db)
+            .iter()
+            .filter(|function| function.symbol(&db).contains("bump"))
+            .count();
+        assert_eq!(bumps, 1, "`Counter::bump` is instantiated per caller");
+    });
+}
+
+/// Acceptance 47 and 48: grants of packed `u8` lanes, from two yield sites
+/// and through `Option<mut u8>`, are write-back copies: no native
+/// reference, and no enum value carries one.
+#[test]
+fn packed_lane_grants_are_write_back_copies() {
+    let source = r#"
+struct S { a: u8, b: u8 }
+
+impl S {
+    fn pick(mut self, _ c: bool) -> mut u8 {
+        if c { mut self.b } else { mut self.a }
+    }
+
+    fn lane(mut self, _ present: bool) -> Option<mut u8> {
+        if present { Option::Some(mut self.b) } else { Option::None }
+    }
+}
+
+msg Msg {
+    #[selector = 1]
+    Pick { c: bool },
+    #[selector = 2]
+    Lane,
+}
+
+pub contract C {
+    mut s: S,
+
+    recv Msg {
+        Pick { c } uses (mut s) {
+            let x = s.pick(c)
+            x = 42
+        }
+        Lane uses (mut s) {
+            if let Option::Some(x) = s.lane(true) {
+                x += 1
+            }
+        }
+    }
+}
+"#;
+    with_runtime_package!("packed_lane_grants.fe", source, |db, package| {
+        for symbol in ["__C_recv_0_0", "__C_recv_0_1"] {
+            let body = runtime_body_for_symbol(&db, package, symbol);
+            assert!(
+                !body_has_native_ref_or_enum_payload(&body),
+                "`{symbol}` builds a reference into a value: {body:#?}"
+            );
+        }
+    });
+}
+
+/// Acceptance 49: `days[k].steps += 1` on a map of three-slot structs loads
+/// and stores the one slot it writes.
+#[test]
+fn map_entry_field_update_touches_one_slot() {
+    let source = r#"
+use std::evm::StorageMap
+
+struct DaySummary { steps: u256, distance: u256, calories: u256 }
+
+msg Msg {
+    #[selector = 1]
+    Walk { day: u256 },
+}
+
+pub contract Tracker {
+    mut days: StorageMap<u256, DaySummary>,
+
+    recv Msg {
+        Walk { day } uses (mut days) {
+            days[day].steps += 1
+        }
+    }
+}
+"#;
+    with_runtime_package!("one_slot.fe", source, |db, package| {
+        let ir = emit_runtime_package_sonatina_ir_optimized(&db, &package, OptLevel::O1)
+            .expect("Sonatina IR");
+        let count = |op: &str| {
+            sonatina_ops(&ir).into_iter().filter(|o| *o == op).count()
+                + ir.lines()
+                    .filter(|line| line.trim_start().starts_with(op))
+                    .count()
+        };
+        assert_eq!(count("evm_sload"), 1, "{ir}");
+        assert_eq!(count("evm_sstore"), 1, "{ir}");
+    });
+}

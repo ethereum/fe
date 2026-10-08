@@ -23,7 +23,7 @@ use crate::analysis::ty::ty_def::{InvalidCause, TyId};
 use crate::analysis::ty::ty_error::{collect_ty_lower_errors, emit_invalid_ty_error};
 use crate::analysis::ty::ty_lower::generic_param_owner_assumptions;
 use crate::hir_def::{
-    Contract, Enum, EnumVariant, FieldParent, Func, GenericParam, GenericParamOwner,
+    Contract, Enum, EnumVariant, FieldParent, Func, FuncParamMode, GenericParam, GenericParamOwner,
     GenericParamView, IdentId, Impl, ImplTrait, ItemKind, Partial, PathId, Struct, Trait,
     TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
 };
@@ -356,8 +356,6 @@ impl<'db> Func<'db> {
                 diags.push(TyLowerDiag::ExpectedStarKind(span).into());
             } else if ret.is_const_ty(db) {
                 diags.push(TyLowerDiag::NormalTypeExpected { span, given: ret }.into());
-            } else if ty::ty_contains_const_hole(db, ret) {
-                diags.push(TyLowerDiag::ConstHoleInValuePosition { span, ty: ret }.into());
             } else if let ty::trait_resolution::WellFormedness::IllFormed { goal, subgoal } =
                 ty::trait_resolution::check_ty_wf(
                     db,
@@ -398,6 +396,47 @@ impl<'db> Func<'db> {
         params
             .chain(ret)
             .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
+            .collect()
+    }
+
+    /// A storage-only type is never a value: no `own` parameter takes one
+    /// and no function returns one by value.
+    pub fn diags_storage_only_types(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Vec<TyDiagCollection<'db>> {
+        let normalize =
+            |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
+        let params = self.params(db).filter_map(|param| {
+            let ty = normalize(param.ty(db));
+            let collection =
+                (param.mode(db) == FuncParamMode::Own).then(|| ty.storage_collection(db))??;
+            Some((param.span().into(), ty, collection, "an `own` parameter"))
+        });
+        let ret = self
+            .return_shape(db)
+            .cloned()
+            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))))
+            .storage_only_value(db)
+            .map(|(ty, collection)| {
+                (
+                    self.span().ret_ty().into(),
+                    ty,
+                    collection,
+                    "returned by value",
+                )
+            });
+        params
+            .chain(ret)
+            .map(|(span, ty, collection, position)| {
+                TyLowerDiag::StorageOnlyValue {
+                    span,
+                    ty,
+                    collection,
+                    position,
+                }
+                .into()
+            })
             .collect()
     }
 
@@ -720,6 +759,26 @@ impl<'db> ImplTrait<'db> {
                 span: self.span().ty().into(),
                 ty,
                 mode: "`Copy`",
+            }
+            .into()
+        })
+    }
+
+    /// A storage-only type has no copies.
+    fn diags_storage_only_copy(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let ty = implementor.self_ty(db);
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        let collection = ty.storage_collection(db)?;
+        (implementor.trait_def(db) == copy).then(|| {
+            TyLowerDiag::StorageOnlyValue {
+                span: self.span().ty().into(),
+                ty,
+                collection,
+                position: "`Copy`",
             }
             .into()
         })
@@ -1765,6 +1824,7 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_param_types(db));
         out.extend(self.diags_return(db));
         out.extend(self.diags_view_types(db));
+        out.extend(self.diags_storage_only_types(db));
         // A result-space annotation names a space.
         if self
             .ret_spaces(db)
@@ -1869,6 +1929,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(implementor.diags_method_conformance(db));
         out.extend(self.diags_effect_handle_raw(db, implementor));
         out.extend(self.diags_view_copy(db, implementor));
+        out.extend(self.diags_storage_only_copy(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));

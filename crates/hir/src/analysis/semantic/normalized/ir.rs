@@ -45,6 +45,9 @@ pub struct NormalizedBody<'db> {
     pub roots: Vec<NRoot<'db>>,
     pub blocks: Vec<NBlock<'db>>,
     pub entry: NBlockId,
+    /// The carriers of each unsafe split's components, which one session
+    /// grants: disjoint by the `unsafe` block's promise.
+    pub unsafe_splits: Vec<Vec<NValueId>>,
 }
 
 impl<'db> NormalizedBody<'db> {
@@ -85,6 +88,18 @@ impl<'db> NormalizedBody<'db> {
         }
     }
 
+    /// The type of `place` after the first `len` steps of its path.
+    pub fn place_prefix_ty(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        place: &NPlace<'db>,
+        len: usize,
+    ) -> Option<TyId<'db>> {
+        let base_ty = self.place_base_ty(db, place.base)?;
+        let prefix = NDataPath::new(place.path.iter().take(len).copied().collect::<Vec<_>>());
+        super::verify::project_path_ty(db, self.owner, &self.values, base_ty, &prefix).ok()
+    }
+
     /// Values required to access a place, including the value that initializes
     /// temporary storage or supplies a handle's representation root.
     pub fn place_values<'a>(
@@ -103,19 +118,13 @@ impl<'db> NormalizedBody<'db> {
         };
         base.into_iter()
             .chain(place.path.iter().filter_map(|projection| match projection {
-                NDataProjection::Index(NIndex::Value(value)) => Some(*value),
+                NDataProjection::Index(NIndex::Value(value)) | NDataProjection::Entry(value) => {
+                    Some(*value)
+                }
                 NDataProjection::Field(_)
                 | NDataProjection::VariantField { .. }
                 | NDataProjection::Index(NIndex::Const(_)) => None,
             }))
-    }
-
-    pub(crate) fn value_is_used(&self, target: NValueId) -> bool {
-        self.value_is_used_with(target, |expr| {
-            let mut used = false;
-            expr.for_each_value_operand(|operand| used |= operand.value == target);
-            used
-        })
     }
 
     /// Test uses while allowing a consumer to refine which expression value
@@ -123,7 +132,29 @@ impl<'db> NormalizedBody<'db> {
     pub fn value_is_used_with(
         &self,
         target: NValueId,
+        expression_uses_value: impl FnMut(&NExpr<'db>) -> bool,
+    ) -> bool {
+        self.value_uses(target, expression_uses_value, true)
+    }
+
+    /// Whether anything but the `End`s of the access `target` defines uses it.
+    pub fn access_is_used(&self, target: NValueId) -> bool {
+        self.value_uses(
+            target,
+            |expr| {
+                let mut used = false;
+                expr.for_each_value_operand(|operand| used |= operand.value == target);
+                used
+            },
+            false,
+        )
+    }
+
+    fn value_uses(
+        &self,
+        target: NValueId,
         mut expression_uses_value: impl FnMut(&NExpr<'db>) -> bool,
+        end_uses: bool,
     ) -> bool {
         let place_uses_target =
             |place: &NPlace<'db>| self.place_values(place).any(|value| value == target);
@@ -134,7 +165,7 @@ impl<'db> NormalizedBody<'db> {
                         let mut used = expression_uses_value(expr);
                         if let NExpr::ProjectValue { path, .. } = expr {
                             used |= path.0.iter().any(|projection| {
-                                matches!(projection, NDataProjection::Index(NIndex::Value(value)) if *value == target)
+                                matches!(projection, NDataProjection::Index(NIndex::Value(value)) | NDataProjection::Entry(value) if *value == target)
                             });
                         }
                         expr.for_each_place_operand(|place| used |= place_uses_target(place));
@@ -143,7 +174,7 @@ impl<'db> NormalizedBody<'db> {
                     NStatementKind::Store { destination, value } => {
                         value.value == target || place_uses_target(destination)
                     }
-                    NStatementKind::End { access } => *access == target,
+                    NStatementKind::End { access } => end_uses && *access == target,
                 };
                 if used {
                     return true;
@@ -251,6 +282,10 @@ impl NDataPath {
         self.0.iter()
     }
 
+    pub fn as_slice(&self) -> &[NDataProjection] {
+        &self.0
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -288,6 +323,9 @@ pub enum NDataProjection {
         field: FieldIndex,
     },
     Index(NIndex),
+    /// The element at key `value` of a collection whose elements are places
+    /// (`core::ops::PlaceIndex`), at a slot the collection computes.
+    Entry(NValueId),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

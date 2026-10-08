@@ -13,6 +13,14 @@ extern {
     /// This is intended for compiler-generated code. Prefer using `core::keccak`.
     pub const fn __keccak256<const N: usize>(_: [u8; N]) -> u256
 
+    /// Sets the representation of `place` to zeros: its bytes in memory, its
+    /// words in storage or transient storage. A place packed into part of a
+    /// word, a lane, has only its own bits cleared.
+    ///
+    /// The caller must ensure that nothing reads `place` before it is
+    /// written again, or that the all-zero representation is a valid `T`.
+    pub unsafe fn clear<T>(_ place: mut T)
+
     /// Returns the fixed storage slot offset (in 32-byte slots) for the given contract field
     /// index within the current contract.
     ///

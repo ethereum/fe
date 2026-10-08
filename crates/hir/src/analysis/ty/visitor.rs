@@ -133,7 +133,6 @@ where
     match &const_ty.data(db) {
         ConstTyData::TyVar(var, _) => visitor.visit_var(var),
         ConstTyData::TyParam(param, ty) => visitor.visit_const_param(param, *ty),
-        ConstTyData::Hole(..) => {}
         ConstTyData::Value(value) => walk_sem_const(visitor, value.value()),
         ConstTyData::Description(value) => walk_sem_const(visitor, *value),
         ConstTyData::Computation {
@@ -412,13 +411,8 @@ impl<'db> TyVisitable<'db> for PlaceProjection<'db> {
         match self {
             PlaceProjection::Deref { result_ty }
             | PlaceProjection::Field { result_ty, .. }
-            | PlaceProjection::Index { result_ty, .. } => result_ty.visit_with(visitor),
-            PlaceProjection::VariantField {
-                enum_ty, result_ty, ..
-            } => {
-                enum_ty.visit_with(visitor);
-                result_ty.visit_with(visitor);
-            }
+            | PlaceProjection::Index { result_ty, .. }
+            | PlaceProjection::Entry { result_ty, .. } => result_ty.visit_with(visitor),
         }
     }
 }

@@ -5,9 +5,8 @@ use super::{
     binder::Binder,
     const_expr::ConstExpr,
     const_ty::{
-        CallableInputLayoutHoleOrigin, ConstCanonEnv, ConstCanonMode, ConstTyData, ConstTyId,
-        canonicalize_ty_for_mode, const_ty_from_assoc_const_use,
-        normalize_const_tys_for_comparison,
+        ConstCanonEnv, ConstCanonMode, ConstTyData, ConstTyId, canonicalize_ty_for_mode,
+        const_ty_from_assoc_const_use, normalize_const_tys_for_comparison,
     },
     diagnostics::{ImplDiag, TyDiagCollection},
     effects::{
@@ -16,10 +15,6 @@ use super::{
         rows::row_is_empty,
     },
     fold::{TyFoldable, TyFolder},
-    layout_holes::{
-        callable_input_layout_bindings_by_origin, layout_shape_key, layout_shape_ty,
-        layout_shape_value,
-    },
     normalize::{normalize_from_assumptions, normalize_ty},
     trait_def::TraitInstId,
     trait_resolution::{
@@ -34,7 +29,6 @@ use super::{
 use crate::analysis::HirAnalysisDb;
 use crate::hir_def::{CallableDef, Expr, Partial, PathKind, scope_graph::ScopeId};
 use common::indexmap::IndexMap;
-use rustc_hash::FxHashMap;
 
 /// Compares the implementation method with the trait method to ensure they
 /// match.
@@ -283,8 +277,7 @@ fn compare_ty<'db>(
         );
         // 4) Compare for equality, including the parameter's mode.
         if !impl_m_ty.has_invalid(db)
-            && (layout_shape_key(db, trait_m_ty_normalized)
-                != layout_shape_key(db, impl_m_ty_normalized)
+            && (trait_m_ty_normalized != impl_m_ty_normalized
                 || trait_m.param_mode(db, idx) != impl_m.param_mode(db, idx))
         {
             sink.push(
@@ -340,9 +333,7 @@ fn compare_ty<'db>(
     };
     if !impl_m_ret_ty.has_invalid(db)
         && !trait_m_ret_ty.has_invalid(db)
-        && (layout_shape_key(db, trait_m_ret_ty_normalized)
-            != layout_shape_key(db, impl_m_ret_ty_normalized)
-            || !same_modes)
+        && (trait_m_ret_ty_normalized != impl_m_ret_ty_normalized || !same_modes)
     {
         sink.push(
             ImplDiag::MethodRetTyMismatch {
@@ -411,51 +402,8 @@ fn trait_to_impl_param_subst<'db>(
         insert_param_mapping(db, &mut out, trait_param, impl_param);
     }
 
-    let implicit_params_by_origin = |method| {
-        callable_input_layout_bindings_by_origin(db, method)
-            .into_iter()
-            .map(|(origin, bindings)| {
-                (
-                    origin,
-                    bindings
-                        .into_iter()
-                        .map(|(_, implicit_param)| implicit_param)
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect::<FxHashMap<_, _>>()
-    };
-    let trait_layout = implicit_params_by_origin(trait_m);
-    let impl_layout = implicit_params_by_origin(impl_m);
-
-    // Map receiver/value-param layout implicit const params by stable origin.
-    for (&origin, trait_params) in &trait_layout {
-        match origin {
-            CallableInputLayoutHoleOrigin::Receiver
-            | CallableInputLayoutHoleOrigin::ValueParam(_) => {
-                let Some(impl_params) = impl_layout.get(&origin) else {
-                    continue;
-                };
-                if trait_params.len() != impl_params.len() {
-                    continue;
-                }
-                for (&trait_p, &impl_p) in trait_params.iter().zip(impl_params.iter()) {
-                    insert_param_mapping(db, &mut out, trait_p, impl_p);
-                }
-            }
-            CallableInputLayoutHoleOrigin::Effect(_) => {}
-        }
-    }
-
-    let (effect_pairs, effects_paired) = map_effect_provider_params_by_identity(
-        db,
-        &mut out,
-        impl_m,
-        trait_m,
-        trait_inst,
-        &trait_layout,
-        &impl_layout,
-    );
+    let (effect_pairs, effects_paired) =
+        map_effect_provider_params_by_identity(db, &mut out, impl_m, trait_m, trait_inst);
 
     (out, effect_pairs, effects_paired)
 }
@@ -510,8 +458,6 @@ fn map_effect_provider_params_by_identity<'db>(
     impl_m: CallableDef<'db>,
     trait_m: CallableDef<'db>,
     trait_inst: TraitInstId<'db>,
-    trait_layout: &FxHashMap<CallableInputLayoutHoleOrigin, Vec<TyId<'db>>>,
-    impl_layout: &FxHashMap<CallableInputLayoutHoleOrigin, Vec<TyId<'db>>>,
 ) -> (Vec<(usize, usize)>, bool) {
     let assumptions = collect_func_def_constraints(db, impl_m, true).instantiate_identity();
     // An impl method splices the impl's own rows into its effects: a trait
@@ -567,20 +513,6 @@ fn map_effect_provider_params_by_identity<'db>(
             (trait_entry.provider_param, impl_entry.provider_param)
         {
             insert_param_mapping(db, out, trait_param, impl_param);
-        }
-
-        let trait_origin = CallableInputLayoutHoleOrigin::Effect(trait_entry.effect_idx);
-        let impl_origin = CallableInputLayoutHoleOrigin::Effect(impl_entry.effect_idx);
-        if let (Some(trait_params), Some(impl_params)) = (
-            trait_layout.get(&trait_origin),
-            impl_layout.get(&impl_origin),
-        ) {
-            if trait_params.len() != impl_params.len() {
-                continue;
-            }
-            for (&trait_p, &impl_p) in trait_params.iter().zip(impl_params.iter()) {
-                insert_param_mapping(db, out, trait_p, impl_p);
-            }
         }
     }
     let paired = effect_pairs.len() == trait_effects;
@@ -696,8 +628,6 @@ pub(crate) fn trait_effect_key_matches_with<'db>(
         return false;
     }
 
-    let expected = layout_shape_value(db, expected);
-    let actual = layout_shape_value(db, actual);
     let expected_assoc = expected.assoc_type_bindings(db);
     let actual_assoc = actual.assoc_type_bindings(db);
     if expected_assoc.len() != actual_assoc.len() {
@@ -774,9 +704,7 @@ fn effect_identity_tys_match<'db>(
     expected: TyId<'db>,
     actual: TyId<'db>,
 ) -> bool {
-    UnificationTable::new(db)
-        .unify(layout_shape_ty(db, expected), layout_shape_ty(db, actual))
-        .is_ok()
+    UnificationTable::new(db).unify(expected, actual).is_ok()
 }
 
 fn instantiate_trait_method_template<'db, T>(

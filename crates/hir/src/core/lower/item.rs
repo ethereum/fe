@@ -9,7 +9,7 @@ use crate::{
     hir_def::{
         AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId, GenericArg,
         GenericArgListId, GenericParamListId, IdentId, Partial, PathId, TraitRefId, TupleTypeId,
-        TypeBound, TypeGenericArg, TypeId, TypeKind, WhereClauseId, item::*,
+        TypeBound, TypeId, WhereClauseId, item::*,
     },
     lower::msg::lower_msg_as_mod,
     span::HirOrigin,
@@ -115,6 +115,7 @@ const ERROR_TARGETS: &str = "structs";
 const ABI_TARGETS: &str = "structs";
 const MUST_USE_TARGETS: &str = "functions, structs, and enums";
 const VIEW_TARGETS: &str = "structs and enums";
+const STORAGE_ONLY_TARGETS: &str = "structs and enums";
 const PAYABLE_TARGETS: &str = "init blocks and recv arms";
 const INDEXED_TARGETS: &str = "event fields";
 
@@ -180,6 +181,7 @@ fn validate_func_attrs<'db>(
             AttrRule::supported("inline", INLINE_FORM, INLINE_EXPECTED),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
             AttrRule::unsupported("view", VIEW_TARGETS),
+            AttrRule::unsupported("storage_only", STORAGE_ONLY_TARGETS),
             AttrRule::unsupported("event", EVENT_TARGETS),
             AttrRule::unsupported("error", ERROR_TARGETS),
             AttrRule::unsupported("abi", ABI_TARGETS),
@@ -204,6 +206,7 @@ fn validate_struct_attrs<'db>(
             AttrRule::supported("abi", BARE_FORM, "`#[abi]`"),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
             AttrRule::supported("view", BARE_FORM, "`#[view]`"),
+            AttrRule::supported("storage_only", BARE_FORM, "`#[storage_only]`"),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );
@@ -225,6 +228,7 @@ fn validate_enum_attrs<'db>(
             AttrRule::unsupported("abi", ABI_TARGETS),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
             AttrRule::supported("view", BARE_FORM, "`#[view]`"),
+            AttrRule::supported("storage_only", BARE_FORM, "`#[storage_only]`"),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );
@@ -610,29 +614,10 @@ fn lower_uses_params<'db>(
         .into_iter()
         .flatten()
         .chain(param)
-        .map(|p| {
-            let key_ty = TypeId::lower_ast_partial(ctxt, p.ty());
-            // `Field(T)` is the core marker `Field<T>`.
-            let key_ty = match (p.field_key(), key_ty) {
-                (Some(_), Partial::Present(handle)) => {
-                    let db = ctxt.db();
-                    let args = GenericArgListId::new(
-                        db,
-                        vec![GenericArg::Type(TypeGenericArg {
-                            ty: Partial::Present(handle),
-                        })],
-                        true,
-                    );
-                    let path = ctxt.core_path().push_str_args(db, "Field", args);
-                    Partial::Present(TypeId::new(db, TypeKind::Path(Partial::Present(path))))
-                }
-                (_, key_ty) => key_ty,
-            };
-            EffectParam {
-                name: p.name().map(|n| IdentId::lower_token(ctxt, n.syntax())),
-                key_ty,
-                is_mut: p.mut_token().is_some(),
-            }
+        .map(|p| EffectParam {
+            name: p.name().map(|n| IdentId::lower_token(ctxt, n.syntax())),
+            key_ty: TypeId::lower_ast_partial(ctxt, p.ty()),
+            is_mut: p.mut_token().is_some(),
         })
         .collect();
     EffectParamListId::new(ctxt.db(), data)
@@ -1196,6 +1181,13 @@ impl<'db> FieldDef<'db> {
         field_kind: &'static str,
     ) -> Self {
         report_payable_on_unsupported_target(ctxt, ast.attr_list(), "field", None);
+        report_unsupported_attr(
+            ctxt,
+            ast.attr_list(),
+            "slot",
+            target(field_kind, None),
+            super::contract::SLOT_TARGETS,
+        );
         report_unsupported_field_mut(ctxt, &ast, field_kind);
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let name = IdentId::lower_token_partial(ctxt, ast.name());

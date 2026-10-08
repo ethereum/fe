@@ -8,33 +8,36 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::{TypedBody, owner::BodyOwner};
 
 use num_traits::ToPrimitive;
+use ruint::aliases::U256;
 
 use crate::{
     analysis::{
         HirAnalysisDb,
         name_resolution::{ExpectedPathKind, PathRes, resolve_path},
         semantic::{
-            EvalOutcome, GenericSubst, SemConstScalar, SemConstValue,
+            ConstUsePolicy, EvalOutcome, GenericSubst, SemConstScalar, SemConstValue,
             contract_init_assigned_fields, eval_body_owner_const,
         },
         ty::{
             adt_def::AdtRef,
             canonical::Canonical,
             corelib::resolve_core_trait,
-            diagnostics::{BodyDiag, FuncBodyDiag, TraitConstraintDiag, TyDiagCollection},
+            diagnostics::{
+                BodyDiag, FuncBodyDiag, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
+            },
             provider::ProviderAddressSpace,
             trait_def::TraitInstId,
             trait_def::impls_for_ty,
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, TraitSolveCx, is_goal_satisfiable,
             },
-            ty_check::check_body,
+            ty_check::{check_anon_const_body, check_body, const_body_ctfe_diags},
             ty_def::{PrimTy, TyBase, TyData, TyId},
         },
     },
     core::semantic::FieldStorageLayout,
     hir_def::{
-        Contract, FieldParent, IdentId, ItemKind, Mod, PathId, Struct, scope_graph::ScopeId,
+        Body, Contract, FieldParent, IdentId, ItemKind, Mod, PathId, Struct, scope_graph::ScopeId,
     },
     semantic::FieldView,
     span::{DynLazySpan, path::LazyPathSpan},
@@ -789,6 +792,58 @@ pub fn check_contract_recv_arm_body<'db>(
     )
 }
 
+/// The root slot a contract field's `#[slot(e)]` names: `e` evaluated as a
+/// `u256`, or the diagnostics explaining why it is not one.
+pub(crate) fn contract_field_slot<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+) -> Result<U256, Vec<FuncBodyDiag<'db>>> {
+    let u256 = TyId::u256(db);
+    let diags = &check_anon_const_body(db, body, u256).0;
+    if !diags.is_empty() {
+        return Err(diags.clone());
+    }
+    let diags = const_body_ctfe_diags(db, body, u256, ConstUsePolicy::RequireValue);
+    if !diags.is_empty() {
+        return Err(diags);
+    }
+    let owner = BodyOwner::AnonConstBody {
+        body,
+        expected: u256,
+    };
+    if let EvalOutcome::Ready(value) = eval_body_owner_const(db, owner, GenericSubst::none(db))
+        && let SemConstValue::Scalar {
+            value: SemConstScalar::Int { value },
+            ..
+        } = value.value(db)
+        && let Some(value) = value.to_biguint()
+        && let Some(slot) = U256::try_from_be_slice(&value.to_bytes_be())
+    {
+        Ok(slot)
+    } else {
+        Err(vec![FuncBodyDiag::Ty(
+            TyLowerDiag::ContractFieldSlotNotConst {
+                span: body.span().into(),
+            }
+            .into(),
+        )])
+    }
+}
+
+/// Reports the `#[slot(e)]` arguments of `contract`'s fields that are not
+/// constant `u256`s.
+#[salsa::tracked(return_ref)]
+pub fn check_contract_field_slots<'db>(
+    db: &'db dyn HirAnalysisDb,
+    contract: Contract<'db>,
+) -> Vec<FuncBodyDiag<'db>> {
+    FieldParent::Contract(contract)
+        .fields(db)
+        .filter_map(|field| field.slot(db))
+        .flat_map(|body| contract_field_slot(db, body).err().unwrap_or_default())
+        .collect()
+}
+
 #[salsa::tracked(return_ref)]
 pub fn check_contract_field_address_spaces<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -823,9 +878,7 @@ fn valid_contract_fields<'db>(
     contract
         .storage_layout(db)
         .values()
-        .filter(|field| {
-            !field.declared.template.has_invalid(db) && !field.target.template.has_invalid(db)
-        })
+        .filter(|field| !field.declared.has_invalid(db) && !field.target.has_invalid(db))
         .filter(move |field| {
             FieldView {
                 parent: FieldParent::Contract(contract),

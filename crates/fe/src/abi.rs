@@ -395,13 +395,7 @@ fn collect_typed_body_event_structs<'db>(
                     name,
                 )
                 && let Some(impl_func) = method.body()
-                && let Ok(body_args) = method.complete_body_args(
-                    db,
-                    callable.generic_args(),
-                    callable.checked_input_tys(),
-                    None,
-                    &[],
-                )
+                && let Ok(body_args) = method.complete_body_args(db, callable.generic_args())
             {
                 target.func = impl_func;
                 target.generic_args = body_args.into_values();

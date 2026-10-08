@@ -1,7 +1,7 @@
 use cranelift_entity::EntityRef;
 use hir::analysis::{
     semantic::{
-        SLocal, SLocalId, SemanticLocalKind,
+        SLocal, SLocalId, SemanticInstance, SemanticLocalKind,
         normalized::{
             NDataPath, NDataProjection, NExpr, NIndex, NPlace, NPlaceBase, NRootKind,
             NStatementKind, NValueDefinition, NValueId,
@@ -38,12 +38,15 @@ pub(super) fn place_index_bounds<'db>(
 ) -> Vec<(NIndex, usize)> {
     body.normalized
         .place_base_ty(db, place.base)
-        .map(|ty| data_path_index_bounds(db, ty, &place.path))
+        .map(|ty| data_path_index_bounds(db, body.owner(), ty, &place.path))
         .unwrap_or_default()
 }
 
+/// The static bounds of `path`'s array indices. An entry's key has none: its
+/// collection checks it when it locates the element.
 pub(super) fn data_path_index_bounds<'db>(
     db: &'db dyn MirDb,
+    instance: SemanticInstance<'db>,
     mut ty: TyId<'db>,
     path: &NDataPath,
 ) -> Vec<(NIndex, usize)> {
@@ -78,6 +81,9 @@ pub(super) fn data_path_index_bounds<'db>(
                 }
                 ty.generic_args(db).first().copied()
             }
+            NDataProjection::Entry(_) => instance
+                .place_index_tys(db, ty)
+                .map(|(_, element_ty)| element_ty),
         }
         .expect("verified normalized data path");
     }
@@ -212,7 +218,6 @@ impl<'a, 'carriers, 'roots, 'db> RuntimeSourceQuery<'a, 'carriers, 'roots, 'db> 
         }
         if provider_erases_runtime_root(
             self.env.db(),
-            self.env.body().owner(),
             provider,
             self.env.scope(),
             self.env.assumptions(),

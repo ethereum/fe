@@ -202,10 +202,6 @@ impl ConstGenericParam {
     pub fn default_expr(&self) -> Option<super::Expr> {
         support::child(self.syntax())
     }
-
-    pub fn default_hole(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::Underscore)
-    }
 }
 
 ast_node! {
@@ -261,10 +257,6 @@ ast_node! {
 impl ConstGenericArg {
     pub fn expr(&self) -> Option<super::Expr> {
         support::child(self.syntax())
-    }
-
-    pub fn hole_token(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::Underscore)
     }
 }
 
@@ -408,25 +400,7 @@ impl UsesParam {
         }
     }
 
-    /// The type key of the uses parameter, or the handle type of a
-    /// `Field(T)` key.
-    pub fn ty(&self) -> Option<super::Type> {
-        support::child(self.syntax()).or_else(|| self.field_key().and_then(|key| key.ty()))
-    }
-
-    /// The `Field(T)` key, if the parameter has one.
-    pub fn field_key(&self) -> Option<UsesFieldKey> {
-        support::child(self.syntax())
-    }
-}
-
-ast_node! {
-    /// `Field(T)`: a `uses` key naming the storage field a handle of type
-    /// `T` names.
-    pub struct UsesFieldKey,
-    SK::UsesFieldKey,
-}
-impl UsesFieldKey {
+    /// The type key of the uses parameter.
     pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }

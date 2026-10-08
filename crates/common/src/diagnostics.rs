@@ -201,7 +201,6 @@ pub enum DiagnosticPass {
 
     Mir,
     SemanticAccess,
-    SemanticLayoutEvidence,
 
     ExternalAnalysis(ExternalAnalysisKey),
 }
@@ -224,7 +223,6 @@ impl DiagnosticPass {
             Self::TyCheck => 8,
             Self::Mir => 11,
             Self::SemanticAccess => 16,
-            Self::SemanticLayoutEvidence => 17,
 
             Self::ExternalAnalysis(_) => u16::MAX,
         }
@@ -258,27 +256,13 @@ mod tests {
             TyCheck,
             Mir,
             SemanticAccess,
-            SemanticLayoutEvidence,
         ];
         // Exhaustive, so that a new pass is also added to `passes`.
         for pass in &passes {
             match pass {
-                Parse
-                | MsgLower
-                | EventLower
-                | ErrorLower
-                | AbiStructLower
-                | AttrMisuse
-                | NameResolution
-                | TypeDefinition
-                | TraitDefinition
-                | ImplTraitDefinition
-                | TraitSatisfaction
-                | MethodDefinition
-                | TyCheck
-                | Mir
-                | SemanticAccess
-                | SemanticLayoutEvidence
+                Parse | MsgLower | EventLower | ErrorLower | AbiStructLower | AttrMisuse
+                | NameResolution | TypeDefinition | TraitDefinition | ImplTraitDefinition
+                | TraitSatisfaction | MethodDefinition | TyCheck | Mir | SemanticAccess
                 | ExternalAnalysis(_) => {}
             }
         }

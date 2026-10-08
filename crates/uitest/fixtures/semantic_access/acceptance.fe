@@ -1,10 +1,10 @@
-// The draft-8 acceptance list ("Acceptance tests"), numbered as the spec
+// The draft-13 acceptance list ("Acceptance tests"), numbered as the spec
 // lists it, for the cases the access/session checker decides. Type-level
 // cases are in `ty_check/acceptance.fe` and run-time results in
 // `fe_test/acceptance.fe`.
 use core::iter::{Collection, Identity, reversed}
 use core::ptr::{MemBuffer, MemSpan}
-use std::evm::{Address, Call, Evm, RawStorage}
+use std::evm::{Address, Call, Evm, RawStorage, StorageMap}
 
 fn ping() uses (call: mut Call) {
     let mut output = MemBuffer::empty()
@@ -433,6 +433,16 @@ pub contract Case33CopyArraySpace {
     }
 }
 
+// 33. Rejected: the mutable projection yields the same storage place.
+pub contract Case33CopyArrayMutSpace {
+    mut cells: [u256; 4],
+    init() uses (mut cells, call: mut Call) {
+        let x = cells.at_mut(0)
+        ping()
+        x = 1
+    }
+}
+
 fn first(_ xs: [u256; 4]) -> ref u256 {
     ref xs[0]
 }
@@ -596,4 +606,72 @@ fn case32_memory_placement() uses (call: mut Call) {
     let x = first_item(items)
     ping()
     assert(x.n == 1)
+}
+
+struct Ledger {
+    balances: StorageMap<Address, u256>,
+    total: u256,
+}
+
+fn credit(_ m: mut StorageMap<Address, u256>, _ who: Address, _ amount: u256) {
+    m[who] += amount
+}
+
+fn credit_and_reset(_ m: mut StorageMap<Address, u256>, _ who: Address) uses (ledger: mut Ledger) {
+    m[who] += 1
+    ledger.balances[who] = 0
+}
+
+struct Book {
+    owners: StorageMap<u256, Address>,
+    prices: StorageMap<u256, u256>,
+}
+
+impl Book {
+    // Both maps are reached through `self`; the method declares no effects.
+    fn list(mut self, _ id: u256, _ owner: Address, _ price: u256) {
+        self.owners[id] = owner
+        self.prices[id] = price
+    }
+}
+
+// 41. Accepted: a method on a storage struct holding two maps writes both
+// through `mut self` with no `uses` clause.
+pub contract Case41TwoMaps {
+    mut book: Book,
+    init() uses (mut book) {
+        book.list(1, Address { inner: 2 }, 3)
+    }
+}
+
+// 44. Accepted: a map passed as a `mut` argument is written through the
+// parameter.
+pub contract Case44Credit {
+    mut ledger: Ledger,
+    init() uses (mut ledger) {
+        credit(mut ledger.balances, Address { inner: 1 }, 5)
+        ledger.total += 5
+    }
+}
+
+// 44. Rejected: the caller writes the map while the call holds it, in a later
+// argument or through an effect it provides.
+pub contract Case44WriteDuringCall {
+    mut ledger: Ledger,
+    init() uses (mut ledger) {
+        let who = Address { inner: 1 }
+        credit(mut ledger.balances, who, {
+            ledger.balances[who] = 0
+            5
+        })
+    }
+}
+
+pub contract Case44EffectDuringCall {
+    mut ledger: Ledger,
+    init() uses (mut ledger) {
+        with (mut ledger) {
+            credit_and_reset(mut ledger.balances, Address { inner: 1 })
+        }
+    }
 }

@@ -28,7 +28,8 @@ error[8-0036]: missing effect `Key` required by `start`
 56 │     for x in xs by d {
    │              ^^ `start` requires effect `Key` to be in scope
    │
-   = provide it with `with (Key = value)` or require it via `uses Key`
+   = require it in this function's signature with `uses Key`, so that its callers provide it
+   = or provide it to a block of this function with `with (Key = value) { .. }`
 
 error[8-0036]: missing effect `Key` required by `next`
    ┌─ acceptance.fe:56:14
@@ -36,7 +37,8 @@ error[8-0036]: missing effect `Key` required by `next`
 56 │     for x in xs by d {
    │              ^^ `next` requires effect `Key` to be in scope
    │
-   = provide it with `with (Key = value)` or require it via `uses Key`
+   = require it in this function's signature with `uses Key`, so that its callers provide it
+   = or provide it to a block of this function with `with (Key = value) { .. }`
 
 error[8-0036]: missing effect `Key` required by `at`
    ┌─ acceptance.fe:56:14
@@ -44,7 +46,8 @@ error[8-0036]: missing effect `Key` required by `at`
 56 │     for x in xs by d {
    │              ^^ `at` requires effect `Key` to be in scope
    │
-   = provide it with `with (Key = value)` or require it via `uses Key`
+   = require it in this function's signature with `uses Key`, so that its callers provide it
+   = or provide it to a block of this function with `with (Key = value) { .. }`
 
 error[8-0105]: this call instantiates its callee at the `#[view]` type `Span`
    ┌─ acceptance.fe:99:5

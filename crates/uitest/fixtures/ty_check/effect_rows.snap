@@ -25,7 +25,8 @@ error[8-0036]: missing effect `Store` required by `bump`
 51 │     bump(mut sc)
    │     ^^^^^^^^^^^^ `bump` requires effect `Store` to be in scope
    │
-   = provide it with `with (Store = value)` or require it via `uses Store`
+   = require it in this function's signature with `uses Store`, so that its callers provide it
+   = or provide it to a block of this function with `with (Store = value) { .. }`
 
 error[8-0051]: unresolved effect
    ┌─ effect_rows.fe:46:45

@@ -1,0 +1,63 @@
+// A type holding a storage collection lives only at its storage place: it is
+// never a value in memory, so it is never copied, moved, constructed,
+// returned by value or taken as `own`.
+use std::evm::StorageMap
+
+struct Ledger {
+    balances: StorageMap<u256, u256>,
+    total: u256,
+}
+
+struct Pair<T> {
+    left: T,
+    right: T,
+}
+
+// Rejected: `Ledger` holds a map.
+impl Copy for Ledger {}
+
+// Rejected: an `own` parameter and an owned return.
+fn take(_ ledger: own Ledger) {}
+
+fn give(_ ledger: Ledger) -> Ledger {
+    ledger
+}
+
+// Accepted: view and `mut` parameters name the caller's place, and a
+// projection yields one.
+fn total(_ ledger: Ledger) -> u256 {
+    ledger.total
+}
+
+fn credit(_ ledger: mut Ledger, _ key: u256) {
+    ledger.balances[key] += 1
+}
+
+fn balances(_ ledger: Ledger) -> ref StorageMap<u256, u256> {
+    ref ledger.balances
+}
+
+fn identity<T>(_ value: own T) -> T {
+    value
+}
+
+pub contract C {
+    mut ledger: Ledger,
+    mut pair: Pair<StorageMap<u256, u256>>,
+    // Rejected: an immutable contract field lives in code.
+    frozen: StorageMap<u256, u256>,
+
+    init() uses (mut ledger, mut pair) {
+        // Rejected: binding the map by value would move it out of storage.
+        let m = ledger.balances
+        // Accepted: an access names the place.
+        let named = mut ledger.balances
+        named[1] = 2
+        // Rejected: `Pair<StorageMap<..>>` holds maps through its fields.
+        let p = pair
+        // Rejected: instantiating `identity` passes a map by value.
+        identity(ledger.balances)
+        // Rejected: a memory literal of a storage-only type.
+        total(Ledger { balances: ledger.balances, total: 0 })
+    }
+}

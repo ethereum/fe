@@ -1,8 +1,9 @@
 //! Solidity-packed state variables in a storage slot.
 //!
 //! Solidity packs consecutive small state variables into one slot, each at a
-//! byte offset counted from the low end of the word. `SolSlot` reads and
-//! writes one such field without disturbing its neighbours:
+//! byte offset counted from the low end of the word. `SolSlot`, the owner of
+//! one slot, reads and writes one such field without disturbing its
+//! neighbours:
 //!
 //! ```fe
 //! // `address owner; bool paused;` share slot 0: owner at byte 0, paused at 20.
@@ -29,10 +30,12 @@
 //! `read_bytes`/`write_bytes` (and the `string` variants) use Solidity's
 //! layout for a `bytes` or `string` state variable in the slot.
 use core::abi::{ByteInput, Bytes, DynString, store_word}
+use core::effect_ref::AddressSpace
 use core::num::IntDowncast
+use core::ops::{PlaceIndex, WrappingAdd}
 use core::ptr::{self, MemBuffer, MemSpan}
 use super::crypto::keccak256
-use super::effects::{Address, RawStorage, revert_error}
+use super::effects::{Address, RawStorage, StorPtr, revert_error}
 use super::ops::{mstore, revert_empty, signextend}
 use super::panic::{PANIC_STORAGE_ENCODING, Panic}
 
@@ -46,54 +49,73 @@ pub trait SolPacked {
     fn from_packed(_ bits: u256) -> Self
 }
 
+#[storage_only]
 pub struct SolSlot {
-    slot: u256,
+    payload: Payload,
 }
 
-impl Copy for SolSlot {}
-impl Snapshot for SolSlot {}
+/// The words of a slot's long `bytes` or `string` payload, from
+/// `keccak256(slot)` on; the slot itself holds the head.
+#[storage_only]
+struct Payload {
+    head: u256,
+}
+
+impl PlaceIndex for Payload {
+    const SPACE: AddressSpace = AddressSpace::Storage
+    type Key = u256
+    type Output = u256
+
+    fn locate(self, _ base: u256, _ word: u256, _ width: u256) -> (u256, u256) {
+        (data_slot(base).wrapping_add(word), 0)
+    }
+}
 
 impl SolSlot {
     /// The storage slot `slot`.
     ///
-    /// The caller must ensure that no compiler-allocated storage, such as a
-    /// contract field, overlaps the slots this value accesses.
-    pub unsafe fn at(_ slot: u256) -> Self {
-        SolSlot { slot }
+    /// The caller must ensure that nothing the compiler allocates, such as a
+    /// contract field, uses `slot` or the slots its payload derives.
+    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        unsafe {
+            with (ptr) {
+                core::effect_ref::target_mut(ptr)
+            }
+        }
     }
 
     /// Reads the `T` stored `offset` bytes above the low end of the slot.
     /// Reverts if the field does not fit in the slot.
-    pub fn read<T: SolPacked>(self, offset: u256) -> T uses (storage: RawStorage) {
-        let shift = field_shift(offset, bits: T::BITS)
-        unsafe { T::from_packed((storage.sload(self.slot) >> shift) & field_mask(T::BITS)) }
+    pub fn read<T: SolPacked>(self, offset: u256) -> T {
+        SolWord { word: self.payload.head }.get(offset)
     }
 
     /// Writes `value` `offset` bytes above the low end of the slot, keeping
     /// the other bytes of the slot. Reverts if the field does not fit in the
     /// slot.
-    pub fn write<T: SolPacked>(self, offset: u256, value: own T) uses (storage: mut RawStorage) {
-        let shift = field_shift(offset, bits: T::BITS)
+    pub fn write<T: SolPacked>(mut self, offset: u256, value: own T) {
         if T::BITS == 256 {
             // The field is the whole slot: nothing to preserve.
-            unsafe { storage.sstore(slot: self.slot, value: value.to_packed()) }
+            let _ = field_shift(offset, bits: T::BITS)
+            self.payload.head = value.to_packed()
         } else {
-            let mask = field_mask(T::BITS) << shift
-            let bits = (value.to_packed() << shift) & mask
-            unsafe { storage.sstore(slot: self.slot, value: (storage.sload(self.slot) & !mask) | bits) }
+            let mut word = SolWord { word: self.payload.head }
+            word.set(offset, value)
+            self.payload.head = word.word
         }
     }
 
     /// Loads the whole slot with one `sload`, for reading or updating
     /// several packed fields; see `SolWord`.
-    pub fn load(self) -> SolWord uses (storage: RawStorage) {
-        unsafe { SolWord { word: storage.sload(self.slot) } }
+    pub fn load(self) -> SolWord {
+        SolWord { word: self.payload.head }
     }
 
     /// Writes `word` to the slot with one `sstore`, replacing all of it,
     /// including changes made to the slot since `word` was loaded.
-    pub fn store(self, _ word: SolWord) uses (storage: mut RawStorage) {
-        unsafe { storage.sstore(slot: self.slot, value: word.word) }
+    pub fn store(mut self, _ word: SolWord) {
+        self.payload.head = word.word
     }
 }
 
@@ -135,30 +157,30 @@ impl SolWord {
 // `2 * len + 1` in the slot and its words from `keccak256(slot)` on.
 impl SolSlot {
     /// Reads the Solidity `bytes` stored in this slot.
-    pub fn read_bytes(self) -> Bytes uses (storage: RawStorage) {
+    pub fn read_bytes(self) -> Bytes {
         let (data, len, size) = self.load_payload()
         unsafe { Bytes::from_abi_tail(data, len, size) }
     }
 
     /// Reads the Solidity `string` stored in this slot.
-    pub fn read_string(self) -> DynString uses (storage: RawStorage) {
+    pub fn read_string(self) -> DynString {
         let (data, len, size) = self.load_payload()
         unsafe { DynString::from_abi_tail(data, len, size) }
     }
 
     /// Assigns Solidity `bytes` to this slot, clearing words a previous,
     /// longer value left behind.
-    pub fn write_bytes(self, _ value: Bytes) uses (storage: mut RawStorage) {
+    pub fn write_bytes(mut self, _ value: Bytes) {
         self.store_payload(value.payload_span())
     }
 
     /// Assigns a Solidity `string` to this slot; see `write_bytes`.
-    pub fn write_string(self, _ value: DynString) uses (storage: mut RawStorage) {
+    pub fn write_string(mut self, _ value: DynString) {
         self.store_payload(value.payload_span())
     }
 
-    fn load_payload(self) -> (*u8, u256, u256) uses (storage: RawStorage) {
-        let head = unsafe { storage.sload(self.slot) }
+    fn load_payload(self) -> (*u8, u256, u256) {
+        let head = self.payload.head
         let len = stored_len(head)
         let size = 32 + word_count(len) * 32
         let data = ptr::alloc_bytes(size)
@@ -170,10 +192,9 @@ impl SolSlot {
                     store_word(ptr: ptr::offset_bytes(data, 32), value: leading_bytes(head, count: len))
                 }
             } else {
-                let base = data_slot(self.slot)
                 let mut i: u256 = 0
                 while i < word_count(len) {
-                    let word = leading_bytes(storage.sload(base + i), count: len - i * 32)
+                    let word = leading_bytes(self.payload[i], count: len - i * 32)
                     store_word(ptr: ptr::offset_bytes(data, 32 + i * 32), value: word)
                     i += 1
                 }
@@ -182,31 +203,27 @@ impl SolSlot {
         (data, len, size)
     }
 
-    fn store_payload(self, _ payload: MemSpan) uses (storage: mut RawStorage) {
-        let old = unsafe { storage.sload(self.slot) }
+    fn store_payload(mut self, _ payload: MemSpan) {
+        let old = self.payload.head
         let old_len = stored_len(old)
         let old_words = if old & 1 == 0 { 0 } else { word_count(old_len) }
         let len = payload.len()
         let mut words: u256 = 0
         if len < 32 {
-            unsafe { storage.sstore(slot: self.slot, value: payload_word(payload, 0) | (len * 2)) }
+            self.payload.head = payload_word(payload, 0) | (len * 2)
         } else {
-            unsafe { storage.sstore(slot: self.slot, value: len * 2 + 1) }
-            let base = data_slot(self.slot)
+            self.payload.head = len * 2 + 1
             words = word_count(len)
             let mut i: u256 = 0
             while i < words {
-                unsafe { storage.sstore(slot: base + i, value: payload_word(payload, i * 32)) }
+                self.payload[i] = payload_word(payload, i * 32)
                 i += 1
             }
         }
-        if old_words > words {
-            let base = data_slot(self.slot)
-            let mut i = words
-            while i < old_words {
-                unsafe { storage.sstore(slot: base + i, value: 0) }
-                i += 1
-            }
+        let mut i = words
+        while i < old_words {
+            self.payload[i] = 0
+            i += 1
         }
     }
 }

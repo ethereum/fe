@@ -1,8 +1,5 @@
-// `map[k]` on a storage map is a session over a memory copy of the value:
-// `map[k] += v` reads it, the body updates it, and the session writes it
-// back. The map's field domain is the authority `Field(Self)` takes from the
-// handle, which lies in the `store` effect, or from a provider of the map's
-// type.
+// `map[k]` on a storage map names the entry's place: `map[k] += v` reads
+// and writes the entry's slot, under the `store` effect the map lies in.
 use std::evm::{Evm, StorageMap}
 
 msg Counter {

@@ -103,6 +103,14 @@ impl<'db> TyId<'db> {
         })
     }
 
+    /// The storage collection this type is or holds in a field, or in a
+    /// tuple or array element. Such a type is storage-only: it exists only at
+    /// storage places, never as a value in memory. A pointer or handle does
+    /// not hold its target.
+    pub fn storage_collection(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
+        super::adt_def::ty_storage_collection(db, self)
+    }
+
     /// Returns teh base type of this type.
     /// ## Example
     /// `TyApp<Adt, i32>` returns `Adt`.
@@ -240,10 +248,6 @@ impl<'db> TyId<'db> {
     /// Returns whether this type contains an unresolved trait projection.
     pub fn has_projection(self, db: &dyn HirAnalysisDb) -> bool {
         self.flags(db).contains(TyFlags::HAS_PROJECTION)
-    }
-
-    pub fn has_hole(self, db: &dyn HirAnalysisDb) -> bool {
-        self.flags(db).contains(TyFlags::HAS_HOLE)
     }
 
     /// Returns `true` if the type has a `*` kind.
@@ -677,7 +681,6 @@ impl<'db> TyId<'db> {
             TyData::ConstTy(const_ty) => match const_ty.data(db) {
                 ConstTyData::TyVar(..) => None,
                 ConstTyData::TyParam(ty_param, _) => Some(ty_param.scope(db)),
-                ConstTyData::Hole(..) => None,
                 ConstTyData::Value(..)
                 | ConstTyData::Description(..)
                 | ConstTyData::Invalid(..) => None,
@@ -835,11 +838,6 @@ impl<'db> TyId<'db> {
             (Some(expected_const_ty), TyData::ConstTy(const_ty)) => {
                 if expected_const_ty.has_invalid(db) {
                     return Err(InvalidCause::Other);
-                }
-                if let Some(retyped) =
-                    super::const_ty::retype_hole_const_ty(db, *const_ty, expected_const_ty)
-                {
-                    return Ok(TyId::const_ty(db, retyped));
                 }
                 if matches!(
                     const_ty.data(db),
@@ -2251,15 +2249,11 @@ fn pretty_print_ty_app<'db>(
                         .copied()
                         .enumerate()
                         .filter_map(|(idx, arg)| {
-                            let is_hidden = params.get(idx).is_some_and(|param_ty| match param_ty
-                                .data(db)
-                            {
-                                TyData::TyParam(param) => param.is_effect_provider(),
-                                TyData::ConstTy(const_ty) => matches!(
-                                    const_ty.data(db),
-                                    ConstTyData::TyParam(param, _) if param.is_implicit()
-                                ),
-                                _ => false,
+                            let is_hidden = params.get(idx).is_some_and(|param_ty| {
+                                matches!(
+                                    param_ty.data(db),
+                                    TyData::TyParam(param) if param.is_effect_provider()
+                                )
                             });
                             (!is_hidden).then_some(arg)
                         })
@@ -2307,7 +2301,6 @@ bitflags! {
         const HAS_VAR = 0b0000_0010;
         const HAS_PARAM = 0b0000_0100;
         const HAS_PROJECTION = 0b0000_1000;
-        const HAS_HOLE = 0b0001_0000;
     }
 }
 
@@ -2346,9 +2339,6 @@ pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlag
         }
 
         fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
-            if matches!(const_ty.data(self.db), ConstTyData::Hole(..)) {
-                self.flags.insert(TyFlags::HAS_HOLE);
-            }
             walk_const_ty(self, const_ty);
         }
     }

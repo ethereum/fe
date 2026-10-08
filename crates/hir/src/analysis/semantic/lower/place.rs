@@ -3,11 +3,10 @@ use cranelift_entity::EntityRef;
 use crate::{
     analysis::{
         place::{Place, PlaceBase, PlaceProjection, projectable_place_ty},
-        semantic::{FieldIndex, SExpr, SOperand, SPlace, SValueId, SemOrigin, VariantIndex},
+        semantic::{FieldIndex, SExpr, SOperand, SPlace, SValueId, SemOrigin},
         ty::ty_def::TyId,
     },
     hir_def::{Expr, ExprId, Partial, UnOp, expr::BinOp},
-    projection::Projection,
 };
 
 use super::body::SmirLowerCtxt;
@@ -64,7 +63,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             {
                 let mut place = self.try_lower_place_expr(*base, capture)?;
                 let index = self.lower_place_operand(*index, capture);
-                place.push_dynamic_index(index);
+                if self.typed_body.is_place_entry(expr) {
+                    place.push_entry(index);
+                } else {
+                    place.push_dynamic_index(index);
+                }
                 Some(place)
             }
             // A projection's result is a place in the grant its carrier names.
@@ -105,16 +108,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     let index = self.lower_place_operand(index_expr, capture);
                     place.push_dynamic_index(index);
                 }
-                PlaceProjection::VariantField {
-                    variant,
-                    field,
-                    enum_ty,
-                    ..
-                } => place.path.push(Projection::VariantField {
-                    variant: VariantIndex(variant),
-                    enum_ty,
-                    field_idx: field.into(),
-                }),
+                PlaceProjection::Entry { key_expr, .. } => {
+                    let key = self.lower_place_operand(key_expr, capture);
+                    place.push_entry(key);
+                }
             }
             ty = projection.result_ty();
         }

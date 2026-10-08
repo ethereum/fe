@@ -19,19 +19,3 @@ error[8-0107]: a `with` provider naming storage needs the function's own authori
    │           ^^^ this handle names storage the function's `uses` does not cover
    │
    = require it via `uses (storage: mut RawStorage)`, or vouch for it in an `unsafe` block
-
-error[8-0107]: a `with` provider naming storage needs the function's own authority
-   ┌─ with_coverage.fe:72:11
-   │
-72 │     with (counts) {
-   │           ^^^^^^ this handle names storage the function's `uses` does not cover
-   │
-   = require it via `uses (storage: RawStorage)`, or vouch for it in an `unsafe` block
-
-error[8-0107]: a `with` provider naming storage needs the function's own authority
-   ┌─ with_coverage.fe:92:11
-   │
-92 │     with (counts) {
-   │           ^^^^^^ this handle names storage the function's `uses` does not cover
-   │
-   = require it via `uses (storage: mut RawStorage)`, or vouch for it in an `unsafe` block

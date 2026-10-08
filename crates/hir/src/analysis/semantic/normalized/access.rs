@@ -179,7 +179,9 @@ impl<'db> NStatementKind<'db> {
 
 pub fn path_indices(path: &NDataPath) -> impl Iterator<Item = NValueId> + '_ {
     path.iter().filter_map(|projection| match projection {
-        NDataProjection::Index(NIndex::Value(value)) => Some(*value),
+        NDataProjection::Index(NIndex::Value(value)) | NDataProjection::Entry(value) => {
+            Some(*value)
+        }
         NDataProjection::Index(NIndex::Const(_))
         | NDataProjection::Field(_)
         | NDataProjection::VariantField { .. } => None,

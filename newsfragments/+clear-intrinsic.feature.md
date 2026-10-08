@@ -1,0 +1,1 @@
+`unsafe fn core::intrinsic::clear<T>(_ place: mut T)` zeroes a place's representation: its bytes in memory, its words in storage or transient storage, and only its own bits of a packed slot. `SolArray::pop` uses it, so it zeroes every slot of a struct element and no longer needs `T: Default`.

@@ -61,6 +61,11 @@ impl Cell {
         yield mut tmp
     }
 
+    // Warned: a value is yielded as a frame temporary holding it.
+    fn discarded_value(self) -> mut u256 {
+        self.v + 1
+    }
+
     // Rejected: projections are inlined, so they cannot recur.
     fn deep(mut self) -> mut u256 {
         if self.depth == 0 {

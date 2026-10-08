@@ -241,6 +241,7 @@ define_runtime_intrinsics! {
     PanicCode => (Core, ["panic_code"]),
     Todo => (Core, ["todo"]),
     IntrinsicKeccak256 => (Core, ["intrinsic", "__keccak256"]),
+    Clear => (Core, ["intrinsic", "clear"]),
 }
 
 #[derive(Clone, Copy)]

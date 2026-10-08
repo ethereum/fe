@@ -15,21 +15,13 @@ error[8-0018]: left-hand side of assignment is immutable
 14 │             target += 1
    │             ^^^^^^ immutable assignment
 
-error[8-0070]: an access is not a value
-   ┌─ borrow_provider_if_error.fe:13:36
+error[8-0117]: a runtime choice between accesses needs a projection
+   ┌─ borrow_provider_if_error.fe:13:26
    │
 13 │             let target = if pick { mut value } else { mut local }
-   │                                    ^^^^^^^^^ this access is used as a value
+   │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this chooses between accesses at runtime
    │
-   = bind an access with `let`, pass it to a `mut` or view parameter, or yield it from a projection
-
-error[8-0070]: an access is not a value
-   ┌─ borrow_provider_if_error.fe:13:55
-   │
-13 │             let target = if pick { mut value } else { mut local }
-   │                                                       ^^^^^^^^^ this access is used as a value
-   │
-   = bind an access with `let`, pass it to a `mut` or view parameter, or yield it from a projection
+   = move the choice into a projection, whose branches are yield sites: `fn pick(mut self, _ c: bool) -> mut T { if c { mut self.a } else { mut self.b } }`
 
 
 === EXIT CODE: 1 ===

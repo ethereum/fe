@@ -1,9 +1,10 @@
-use super::effects::{Address, RawStorage, StorPtr, StorReadPtr}
+use super::effects::{Address, RawStorage, StorPtr}
 use super::crypto::keccak256
 use ingot::evm::ops::mstore
 use core::num::IntWord
 use core::ptr
-use core::ops::{Index, IndexMut}
+use core::effect_ref::AddressSpace
+use core::ops::PlaceIndex
 
 /// Keys that can be written into the mapping preimage for keccak hashing.
 pub trait StorageKey {
@@ -189,151 +190,72 @@ impl StorageKey for bool {
     }
 }
 
-/// Seals construction of storage maps to the standard library.
-struct StorageMapSeal {}
-
-/// A storage-backed mapping from keys `K` to values `V`.
+/// A storage-backed mapping from keys `K` to values `V`, laid out like a
+/// Solidity `mapping`.
 ///
-/// Values use their native storage layout, including packed struct fields.
-/// `get`/`set` and `ptr`/`mut_ptr` access the same representation; keys use
-/// the separate, stable encoding defined by `StorageKey`.
-///
-/// `SALT` is the mapping's slot seed (the `slot` component in
-/// `keccak256(key ++ slot)`), chosen explicitly for each mapping instance to
-/// prevent collisions.
-
-pub struct StorageMap<K, V, const SALT: u256 = _> {
-    seal: StorageMapSeal,
+/// A map is a storage collection: it lives at its place in storage, which
+/// takes one slot of its container, and it is never copied or moved. The
+/// value at `key` occupies the slots from `keccak256(key ++ slot)` onwards,
+/// laid out like any value of type `V` in storage, including packed struct
+/// fields, so a map in a map's value derives its slot from its entry's. The
+/// entries are persistent wherever the map lives, even in transient state.
+/// `map[key]` names that entry's place: `map[key].f += 1` reads and writes
+/// one field, and `let e = mut map[key]` binds the entry. Keys use the stable
+/// encoding `StorageKey` defines.
+#[storage_only]
+pub struct StorageMap<K, V> {
+    /// The slot the map takes, as a Solidity mapping does: never written, its
+    /// number seeds the entries' slots.
+    seed: u256,
 }
 
-impl<K, V, const SALT: u256> Copy for StorageMap<K, V, SALT> {}
-
-// A map's entries are persistent wherever the handle lies, so its salt is
-// drawn from the storage slots even inside transient state.
-impl<K, V, const SALT: u256> core::effect_ref::StaticSlot for StorageMap<K, V, SALT> {
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Storage
-}
-
-#[inline(always)]
-fn storagemap_storage_slot_with_salt<K>(key: K, salt: u256) -> u256
-    where K: StorageKey
-{
-    // keccak256(key ++ slot) - standard Solidity mapping layout
-    // Reserve the entire preimage before encoding: key encoders may allocate.
-    let key_len = K::encoded_len(key)
-    let scratch = ptr::alloc_bytes(key_len + 32)
-    unsafe {
-        K::write_key(ptr: scratch, key)
-        mstore(addr: ptr::offset_bytes(scratch, key_len), value: salt)
-        keccak256(ptr::MemSpan::from_raw_parts(ptr: scratch, len: key_len + 32))
-    }
-}
-
-// The returned handle addresses a value that starts at `slot`, which must be
-// the result of `storagemap_storage_slot_with_salt`. Such a value never
-// overlaps a compiler-allocated contract field.
-#[inline(always)]
-fn storagemap_entry_ptr<V>(_ slot: u256) -> StorPtr<V> {
-    StorPtr::at_slot_unchecked(slot)
-}
-
-// The read-only counterpart of `storagemap_entry_ptr`, with the same trust.
-#[inline(always)]
-fn storagemap_entry_read_ptr<V>(_ slot: u256) -> StorReadPtr<V> {
-    StorReadPtr::at_slot_unchecked(slot)
-}
-
-impl<K: StorageKey, V, const SALT: u256> StorageMap<K, V, SALT> {
-    pub(ingot) fn new_unchecked() -> Self {
-        Self { seal: StorageMapSeal {} }
-    }
-
-    pub fn new() -> Self
-    uses (storage: mut RawStorage)
-    {
-        Self::new_unchecked()
-    }
-
-    /// A read-only storage place for the value at `key`.
-    ///
-    /// The value occupies the storage slots from `keccak256(key ++ SALT)`
-    /// onwards, laid out like any value of type `V` in storage. Bind the
-    /// pointer with `with (ptr) { ... }` to read individual fields without
-    /// loading the whole value.
-    #[inline(always)]
-    pub fn ptr(self, _ key: K) -> StorReadPtr<V> {
-        storagemap_entry_read_ptr(storagemap_storage_slot_with_salt(key, salt: SALT))
-    }
-
-    /// A writable storage place for the value at `key`.
-    ///
-    /// Like `ptr`, but the place can also be written, either as a whole or
-    /// one field at a time. Requires a mutable map.
-    #[inline(always)]
-    pub fn mut_ptr(mut self, _ key: K) -> StorPtr<V> {
-        storagemap_entry_ptr(storagemap_storage_slot_with_salt(key, salt: SALT))
-    }
-
-    // The entry is in the map's own key space, which `Field(Self)` covers.
-    #[inline(always)]
-    pub(ingot) fn get_unchecked(self, _ key: K) -> V
-        where V: Copy
-    {
-        let ptr = self.ptr(key)
-        unsafe {
-            with (ptr) {
-                core::effect_ref::read(ptr)
-            }
-        }
-    }
-
-    /// Copies the whole value from its native storage layout.
-    #[inline(always)]
-    pub fn get(self, _ key: K) -> V uses (storage: Field(Self))
-        where V: Copy
-    {
-        self.get_unchecked(key)
-    }
-
-    #[inline(always)]
-    pub(ingot) fn set_unchecked(mut self, key: K, value: own V) {
-        let mut ptr = self.mut_ptr(key)
-        unsafe {
-            with (ptr) {
-                core::effect_ref::write(ptr, value)
-            }
-        }
-    }
-
-    /// Replaces the whole value using the same layout as `ptr` and `mut_ptr`.
-    #[inline(always)]
-    pub fn set(mut self, key: K, value: own V) uses (storage: mut Field(Self)) {
-        self.set_unchecked(key: key, value)
-    }
-}
-
-// `map[key]` reads the key's value into the session; `map[key] = v` and
-// `map[key] += v` write it back when the session finishes.
-impl<K: StorageKey, V: Copy, const SALT: u256> Index<K> for StorageMap<K, V, SALT> {
-    uses E = (storage: Field(Self))
-    space S = memory
+impl<K: StorageKey + Copy, V> PlaceIndex for StorageMap<K, V> {
+    const SPACE: AddressSpace = AddressSpace::Storage
+    type Key = K
     type Output = V
 
     #[inline(always)]
-    fn index(self, _ key: K) -> ref V uses E {
-        let value = self.get(key)
-        ref value
+    fn locate(self, _ base: u256, _ key: K, _ width: u256) -> (u256, u256) {
+        // keccak256(key ++ slot) - standard Solidity mapping layout
+        // Reserve the entire preimage before encoding: key encoders may allocate.
+        let key_len = K::encoded_len(key)
+        let scratch = ptr::alloc_bytes(key_len + 32)
+        let slot = unsafe {
+            K::write_key(ptr: scratch, key)
+            mstore(addr: ptr::offset_bytes(scratch, key_len), value: base)
+            keccak256(ptr::MemSpan::from_raw_parts(ptr: scratch, len: key_len + 32))
+        }
+        (slot, 0)
     }
 }
 
-impl<K: StorageKey, V: Copy, const SALT: u256> IndexMut<K> for StorageMap<K, V, SALT> {
-    uses EM = (storage: mut Field(Self))
+impl<K: StorageKey + Copy, V> StorageMap<K, V> {
+    /// The map whose slot is `slot`, such as a Solidity `mapping` at a known
+    /// slot.
+    ///
+    /// The caller must ensure that nothing the compiler allocates, such as a
+    /// contract field, uses `slot` or the entries' slots.
+    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        unsafe {
+            with (ptr) {
+                core::effect_ref::target_mut(ptr)
+            }
+        }
+    }
 
+    /// Copies the value at `key` out of storage, in full.
     #[inline(always)]
-    fn index_mut(mut self, _ key: K) -> mut V uses EM {
-        let mut value = self.get(key)
-        yield mut value
-        self.set(key, value)
+    pub fn get(self, _ key: K) -> V
+        where V: Copy
+    {
+        self[key]
+    }
+
+    /// Replaces the value at `key`.
+    #[inline(always)]
+    pub fn set(mut self, key: K, value: own V) {
+        self[key] = value
     }
 }
 

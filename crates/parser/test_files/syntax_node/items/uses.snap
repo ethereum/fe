@@ -1,10 +1,11 @@
 ---
 source: crates/parser/tests/syntax_node.rs
+assertion_line: 18
 expression: node
 input_file: test_files/syntax_node/items/uses.fe
 ---
-Root@0..225
-  ItemList@0..224
+Root@0..161
+  ItemList@0..160
     Item@0..18
       Func@0..18
         FnKw@0..2 "fn"
@@ -154,50 +155,4 @@ Root@0..225
         BlockExpr@158..160
           LBrace@158..159 "{"
           RBrace@159..160 "}"
-    Newline@160..162 "\n\n"
-    Item@162..224
-      Func@162..224
-        FnKw@162..164 "fn"
-        WhiteSpace@164..165 " "
-        FuncSignature@165..221
-          Ident@165..175 "field_keys"
-          FuncParamList@175..177
-            LParen@175..176 "("
-            RParen@176..177 ")"
-          WhiteSpace@177..178 " "
-          UsesClause@178..221
-            UsesKw@178..182 "uses"
-            WhiteSpace@182..183 " "
-            UsesParamList@183..221
-              LParen@183..184 "("
-              UsesParam@184..208
-                Ident@184..191 "storage"
-                Colon@191..192 ":"
-                WhiteSpace@192..193 " "
-                MutKw@193..196 "mut"
-                WhiteSpace@196..197 " "
-                UsesFieldKey@197..208
-                  Ident@197..202 "Field"
-                  LParen@202..203 "("
-                  PathType@203..207
-                    Path@203..207
-                      PathSegment@203..207
-                        SelfTypeKw@203..207 "Self"
-                  RParen@207..208 ")"
-              Comma@208..209 ","
-              WhiteSpace@209..210 " "
-              UsesParam@210..220
-                UsesFieldKey@210..220
-                  Ident@210..215 "Field"
-                  LParen@215..216 "("
-                  PathType@216..219
-                    Path@216..219
-                      PathSegment@216..219
-                        Ident@216..219 "Map"
-                  RParen@219..220 ")"
-              RParen@220..221 ")"
-        WhiteSpace@221..222 " "
-        BlockExpr@222..224
-          LBrace@222..223 "{"
-          RBrace@223..224 "}"
-  Newline@224..225 "\n"
+  Newline@160..161 "\n"

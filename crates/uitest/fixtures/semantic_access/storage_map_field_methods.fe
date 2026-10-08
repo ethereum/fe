@@ -1,9 +1,8 @@
 use std::evm::{Address, StorPtr, StorageMap, TStorPtr}
 
-// A StorageMap entry lives at `keccak256(key ++ salt)`, which is never one of
-// the slots the layout allocates to a contract field. A mutable borrow of such
-// a field therefore does not conflict with the map accesses a method performs
-// under its `Field` authority.
+// A StorageMap's entries are paths under the map's place, apart from the
+// struct's other fields: a `mut` access of a sibling field does not conflict
+// with the map operations a method performs through `self`.
 
 pub struct Ledger {
     pub balances: StorageMap<Address, u256>,
@@ -12,35 +11,19 @@ pub struct Ledger {
 
 impl Ledger {
     fn balance(mut self, _ owner: Address) -> u256
-        uses (balances: Field(StorageMap<Address, u256>))
+       
     {
         self.balances.get(key: owner)
     }
 
-    fn credit(mut self, _ to: Address, amount: u256)
-        uses (balances: mut Field(StorageMap<Address, u256>))
-    {
+    fn credit(mut self, _ to: Address, amount: u256) {
         let balance = self.balances.get(key: to)
         self.balances.set(key: to, value: balance + amount)
     }
 
-    fn mint(mut self, _ to: Address, amount: u256)
-        uses (balances: mut Field(StorageMap<Address, u256>))
-    {
+    fn mint(mut self, _ to: Address, amount: u256) {
         self.total_supply += amount
         self.credit(to, amount)
-    }
-}
-
-pub struct Salted {
-    pub entries: StorageMap<u256, u256, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff>,
-    pub count: u256,
-}
-
-impl Salted {
-    fn record(mut self, _ key: u256) uses (entries: mut Field(StorageMap<u256, u256>)) {
-        self.entries.set(key, value: self.count)
-        self.count += 1
     }
 }
 
@@ -110,20 +93,18 @@ pub contract Forwarded {
     }
 }
 
-// Accepted: nested fields, array elements, and explicit salts.
+// Accepted: nested fields and array elements, each map at its own place.
 pub contract Nested {
     mut outer: Outer,
     mut ledgers: [Ledger; 2],
-    mut salted: Salted,
 
     recv LedgerMsg {
         Mint { to, amount } uses (mut outer, mut ledgers) {
             outer.ledger.mint(to, amount)
             ledgers[1].mint(to, amount)
         }
-        Balance { owner } -> u256 uses (mut salted) {
-            salted.record(owner.inner)
-            salted.count
+        Balance { owner } -> u256 uses (mut ledgers) {
+            ledgers[0].balance(owner)
         }
         Hold { to } -> u256 uses (mut outer) {
             outer.epoch += 1
@@ -132,8 +113,8 @@ pub contract Nested {
     }
 }
 
-// Accepted: a top-level storage handle field targets allocated slots, and a
-// transient field cannot alias persistent storage at all.
+// Accepted: a storage pointer field and a transient one hold their ledgers
+// at allocated slots of their own spaces.
 pub contract Handles {
     mut persistent: StorPtr<Ledger>,
     mut transient: TStorPtr<Ledger>,

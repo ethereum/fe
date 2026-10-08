@@ -63,8 +63,8 @@ and the receiver's access opens last. A `mut` receiver's place is guarded by a
 neither write nor move it.
 
 A view argument's transport follows its type (`ty_is_snapshot`): a snapshot,
-meaning a scalar or handle (a primitive, a raw pointer, an effect handle, a
-static slot or a `core::marker::Snapshot` type such as `Address`), is passed
+meaning a scalar or handle (a primitive, a raw pointer, an effect handle or
+a `core::marker::Snapshot` type such as `Address`), is passed
 by copy and opens no access, and a projection's snapshot parameter is a copy
 its session owns. Every other aggregate, `Copy` or not, is viewed in place:
 the call reads its place for the call's duration, a projection's session
@@ -115,21 +115,15 @@ Each operation is checked against the open tokens it is not derived from:
 
 - Place reads, writes, moves, borrows and views access their resolved places.
 - A call accesses each carrier argument for its duration with the parameter's
-  mode, and each declared effect's footprint: the supplied place or handle's
-  domain, or all persistent and transient state for a capability that can
-  start external executions (`Call`, `Create`, `Evm`) or addresses slots
+  mode, and each declared effect's footprint: the supplied place or the
+  places a handle value names, or all persistent and transient state for a
+  capability that can start external executions (`Call`, `Create`, `Evm`) or addresses slots
   directly (`RawStorage`). Immutable authority only reads.
 - Calls that start external executions themselves (call intrinsics and
   methods of the reentrant std capabilities) access all state.
-- A handle operation's `Field(Self)` effect accesses the field the handle
-  names. The type checker supplies, as its effect argument, the place within
-  an effect provider that holds the handle (a static slot handle's type names
-  its field, so a copy's is the original's), else the handle argument: a
-  dynamic domain of its space when that is a copy in memory. A `Field(T)` key
-  with open layout arguments names a dynamic domain wherever it came from. A
-  handle argument, alone or in an aggregate, is data: a callee operates
-  through it only under a `Field` effect of its own, whose footprint the call
-  carries.
+- An entry of a place-indexed collection (`m[k]`) is the collection's place
+  extended by an index step: a constant index for a literal key, `[*]` for
+  any other.
 
 So `let v = mut store.value` held across a call whose effects permit
 reentrancy is rejected, while closing the access before the call is accepted.
@@ -162,8 +156,13 @@ At runtime every projection call is inlined into its caller
 (`mir/src/runtime/lower/inline.rs`): the ramp replaces the call, each `end`
 of the session runs its own copy of the slide, and a projection with several
 yield sites records which one its ramp took. A projection's grant has the
-runtime class its body yields. Recursion through projection calls cannot be
-inlined and is rejected by the checker.
+runtime class its body yields. A sum shape is not a value: when each yield
+builds a variant and the caller only tests the variant and binds its fields,
+each yield goes straight to the caller's case for the variant it built, with
+the variant's fields as locals, so no enum value carries a grant. The class
+of a returned enum takes each variant's fields from the values built as that
+variant. Recursion through projection calls cannot be inlined and is
+rejected by the checker.
 
 ## Moves and initialization
 

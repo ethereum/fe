@@ -6,8 +6,10 @@ use std::evm::{Address, StorageKey}
 fn assert_word<K: StorageKey>(_ key: K, _ expected: u256) {
     assert(K::encoded_len(key) == 32)
     let buf = ptr::alloc_bytes(32)
-    K::write_key(ptr: buf, key)
-    assert(*ptr::cast<u8, u256>(buf) == expected)
+    unsafe {
+        K::write_key(ptr: buf, key)
+        assert(*ptr::cast<u8, u256>(buf) == expected)
+    }
 }
 
 #[test]
@@ -124,11 +126,13 @@ fn tuple_keys_keep_separate_word_components() {
     let key = (1 as u8, negative, true)
     assert(key.encoded_len() == 96)
     let buf = ptr::alloc_bytes(96)
-    <(u8, i8, bool) as StorageKey>::write_key(ptr: buf, key)
-    assert(*ptr::cast<u8, u256>(buf) == 1)
-    assert(
-        *ptr::cast<u8, u256>(ptr::offset_bytes(buf, 32))
-            == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
-    )
-    assert(*ptr::cast<u8, u256>(ptr::offset_bytes(buf, 64)) == 1)
+    unsafe {
+        <(u8, i8, bool) as StorageKey>::write_key(ptr: buf, key)
+        assert(*ptr::cast<u8, u256>(buf) == 1)
+        assert(
+            *ptr::cast<u8, u256>(ptr::offset_bytes(buf, 32))
+                == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
+        )
+        assert(*ptr::cast<u8, u256>(ptr::offset_bytes(buf, 64)) == 1)
+    }
 }

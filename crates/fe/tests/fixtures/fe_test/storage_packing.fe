@@ -109,7 +109,7 @@ pub contract Layouts {
             signed = Signed { a: -1, b: -300, c: -5 }
         }
         Slot { slot } -> u256 uses (raw: RawStorage) {
-            raw.sload(slot)
+            unsafe { raw.sload(slot) }
         }
         MixedC -> i8 uses (mixed) {
             mixed.c
@@ -201,8 +201,6 @@ fn test_packed_fields_read_and_write() uses (evm: mut Evm) {
 // Map entries, arrays, and transient storage use the same layout.
 // ---------------------------------------------------------------------------
 
-const POSITIONS_SALT: u256 = 0x7051
-
 struct Position {
     owner_flags: u8,
     leverage: u16,
@@ -238,34 +236,33 @@ msg CollectionMsg {
     Transient {} -> u256,
 }
 
-// Slots: pairs 0..4 (two `Small`s of two slots each).
+// Slots: pairs 0..4 (two `Small`s of two slots each), then the map's slot 4.
 pub contract Collections {
     mut pairs: [Small; 2],
-    mut positions: StorageMap<u256, Position, POSITIONS_SALT>,
+    mut positions: StorageMap<u256, Position>,
 
     recv CollectionMsg {
         Open { key } uses (mut positions) {
-            positions.mut_ptr(key).write(Position {
+            positions[key] = Position {
                 owner_flags: 0x0f,
                 leverage: 3,
                 opened: true,
                 size: 0x1234,
                 entry_price: 0x5678,
-            })
+            }
         }
         Raise { key, by } uses (mut positions) {
-            let mut entry = positions.mut_ptr(key)
-            with (entry) {
+            with (mut positions[key]) {
                 add_leverage(by)
             }
         }
         Leverage { key } -> u16 uses (positions) {
-            with (positions.ptr(key)) {
+            with (positions[key]) {
                 leverage()
             }
         }
         EntryWord { key, index } -> u256 uses (raw: RawStorage) {
-            raw.sload(SolMapping::at(POSITIONS_SALT).slot_of(key) + index)
+            unsafe { raw.sload(SolMapping::at(4).slot_of(key) + index) }
         }
         FillPairs {} uses (mut pairs) {
             pairs[0] = Small { a: 1, b: 2, c: 3 }
@@ -273,18 +270,20 @@ pub contract Collections {
             pairs[1].a = 7
         }
         Slot { slot } -> u256 uses (raw: RawStorage) {
-            raw.sload(slot)
+            unsafe { raw.sload(slot) }
         }
         Transient {} -> u256 uses (evm: Evm) {
-            let mut value: TStorPtr<Small> = evm.tstor_ptr<Small>(0x40)
-            value.write(Small { a: 0x11, b: 0x22, c: 0x33 })
-            with (value) {
-                set_small_b()
+            unsafe {
+                let mut value: TStorPtr<Small> = evm.tstor_ptr<Small>(0x40)
+                with (value) {
+                    core::effect_ref::write(value, Small { a: 0x11, b: 0x22, c: 0x33 })
+                    set_small_b()
+                }
+                let word: TStorPtr<u256> = evm.tstor_ptr<u256>(0x40)
+                let read_back = with (value) { core::effect_ref::read(value) }
+                assert!(read_back.a == 0x11 && read_back.b == 0x44 && read_back.c == 0x33)
+                with (word) { core::effect_ref::read(word) }
             }
-            let word: TStorPtr<u256> = evm.tstor_ptr<u256>(0x40)
-            let read_back = value.read()
-            assert!(read_back.a == 0x11 && read_back.b == 0x44 && read_back.c == 0x33)
-            word.read()
         }
     }
 }
@@ -384,7 +383,7 @@ pub contract Edges {
             gap = Gap { a: 0x11, empty: Empty {}, b: 0x22 }
         }
         Slot { slot } -> u256 uses (raw: RawStorage) {
-            raw.sload(slot)
+            unsafe { raw.sload(slot) }
         }
         GapSum -> u256 uses (gap) {
             (gap.a as u256) + (gap.b as u256)
@@ -402,26 +401,15 @@ pub contract Edges {
             lone.value.negate()
         }
         LoneNative {} uses (mut lone) {
-            let reference = Option::Some(mut lone)
-            match reference {
-                Option::Some(r) => { r.value = -1 }
-                Option::None => {}
-            }
+            let r = mut lone
+            r.value = -1
         }
         GapNative {} uses (mut gap) {
-            let reference = Option::Some(mut gap)
-            match reference {
-                Option::Some(r) => {
-                    assert(r.a == 0x11)
-                    let field = Option::Some(mut r.b)
-                    match field {
-                        Option::Some(b) => { b = 0x44 }
-                        Option::None => {}
-                    }
-                    assert(r.b == 0x44)
-                }
-                Option::None => {}
-            }
+            let r = mut gap
+            assert(r.a == 0x11)
+            let b = mut r.b
+            b = 0x44
+            assert(r.b == 0x44)
         }
         AssignScalar {} uses (mut scalar) {
             scalar = -2
@@ -468,17 +456,12 @@ fn test_narrow_signed_contract_field_keeps_its_bytes() uses (evm: mut Evm) {
 #[test]
 fn test_native_memory_narrow_field_projection() {
     let mut value = Gap { a: 0x11, empty: Empty {}, b: 0x22 }
-    let reference = Option::Some(mut value)
-    match reference {
-        Option::Some(r) => {
-            assert(r.a == 0x11)
-            assert(r.b == 0x22)
-            r.b = 0x33
-            assert(r.a == 0x11)
-            assert(r.b == 0x33)
-        }
-        Option::None => { assert(false) }
-    }
+    let r = mut value
+    assert(r.a == 0x11)
+    assert(r.b == 0x22)
+    r.b = 0x33
+    assert(r.a == 0x11)
+    assert(r.b == 0x33)
     assert(value.b == 0x33)
 }
 
@@ -495,26 +478,25 @@ fn test_storage_native_field_projection() uses (evm: mut Evm) {
 struct NativeLanes { a: u8, b: i16, c: bool }
 
 fn update_native_lanes() uses (value: mut NativeLanes) {
-    let reference = Option::Some(mut value)
-    match reference {
-        Option::Some(r) => {
-            assert(r.a == 0x11)
-            assert(r.b == -2)
-            assert(r.c)
-            r.b = -3
-            r.c = false
-            assert(r.b == -3)
-            assert(!r.c)
-        }
-        Option::None => {}
-    }
+    let r = mut value
+    assert(r.a == 0x11)
+    assert(r.b == -2)
+    assert(r.c)
+    r.b = -3
+    r.c = false
+    assert(r.b == -3)
+    assert(!r.c)
 }
 
 #[test]
 fn test_transient_native_packed_projection() uses (evm: mut Evm) {
-    let mut value: TStorPtr<NativeLanes> = evm.tstor_ptr<NativeLanes>(0x50)
-    value.write(NativeLanes { a: 0x11, b: -2, c: true })
-    with (value) { update_native_lanes() }
-    let word: TStorPtr<u256> = evm.tstor_ptr<u256>(0x50)
-    assert(word.read() == 0xfffd11)
+    unsafe {
+        let mut value: TStorPtr<NativeLanes> = evm.tstor_ptr<NativeLanes>(0x50)
+        with (value) {
+            core::effect_ref::write(value, NativeLanes { a: 0x11, b: -2, c: true })
+            update_native_lanes()
+        }
+        let word: TStorPtr<u256> = evm.tstor_ptr<u256>(0x50)
+        assert(with (word) { core::effect_ref::read(word) } == 0xfffd11)
+    }
 }

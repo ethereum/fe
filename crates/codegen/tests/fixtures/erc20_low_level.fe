@@ -3,9 +3,6 @@ use std::evm::{Address, Ctx, Evm, RawMem, RawOps, RawStorage, StorageMap, StorPt
 
 // Helpers ---------------------------------------------------------------
 
-const BALANCES_SALT: u256 = 0
-const ALLOWANCES_SALT: u256 = 1
-
 fn abi_encode_u256(value: u256) -> ! uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
     unsafe { ops.mstore(addr: data.ptr(), value) }
@@ -23,33 +20,26 @@ fn abi_encode_string(word: u256, len: u256) -> ! uses (ops: mut RawOps) {
 
 // ERC20 storage ---------------------------------------------------------
 
-struct Erc20<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256> {
-    balances: StorageMap<Address, u256, BALANCES_ROOT>,
-    allowances: StorageMap<(Address, Address), u256, ALLOWANCES_ROOT>,
+// The maps take the struct's slots 0 and 1, so their entries derive from
+// the slots of the place the struct lives at.
+struct Erc20 {
+    balances: StorageMap<Address, u256>,
+    allowances: StorageMap<(Address, Address), u256>,
     supply: u256,
     owner: Address,
 }
 
-impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
-    Copy for Erc20<BALANCES_ROOT, ALLOWANCES_ROOT> {}
+impl Erc20 {
 
-impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
-    Erc20<BALANCES_ROOT, ALLOWANCES_ROOT>
-{
-
-    fn balance_of(self, addr: Address) -> u256 uses (balances: Field(StorageMap<Address, u256, BALANCES_ROOT>)) {
+    fn balance_of(self, addr: Address) -> u256 {
         self.balances.get(key: addr)
     }
 
-    fn allowance(self, owner: Address, spender: Address) -> u256
-        uses (allowances: Field(StorageMap<(Address, Address), u256, ALLOWANCES_ROOT>))
-    {
+    fn allowance(self, owner: Address, spender: Address) -> u256 {
         self.allowances.get(key: (owner, spender))
     }
 
-    fn approve(mut self, owner: Address, spender: Address, value: u256)
-        uses (allowances: mut Field(StorageMap<(Address, Address), u256, ALLOWANCES_ROOT>))
-    {
+    fn approve(mut self, owner: Address, spender: Address, value: u256) {
         self.allowances.set(key: (owner, spender), value: value)
     }
 
@@ -67,10 +57,8 @@ impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
 
     // A receiver in storage cannot be held across a call to effects that
     // may reach it, so the methods take the caller and revert without raw
-    // storage authority. Operations on the maps take their fields' authority.
-    fn transfer(mut self, from: Address, to: Address, amount: u256)
-        uses (balances: mut Field(StorageMap<Address, u256, BALANCES_ROOT>))
-    {
+    // storage authority. They reach the maps through `self`.
+    fn transfer(mut self, from: Address, to: Address, amount: u256) {
         let from_bal = self.balance_of(addr: from)
         if from_bal < amount {
             revert_empty()
@@ -80,9 +68,7 @@ impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
         self.balances.set(key: to, value: to_bal + amount)
     }
 
-    fn transfer_from(mut self, spender: Address, owner: Address, to: Address, amount: u256)
-        uses (balances: mut Field(StorageMap<Address, u256, BALANCES_ROOT>), allowances: mut Field(StorageMap<(Address, Address), u256, ALLOWANCES_ROOT>))
-    {
+    fn transfer_from(mut self, spender: Address, owner: Address, to: Address, amount: u256) {
         let allowed = self.allowance(owner: owner, spender: spender)
         if allowed < amount {
             revert_empty()
@@ -91,9 +77,7 @@ impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
         self.allowances.set(key: (owner, spender), value: allowed - amount)
     }
 
-    fn mint(mut self, caller: Address, to: Address, amount: u256)
-        uses (balances: mut Field(StorageMap<Address, u256, BALANCES_ROOT>))
-    {
+    fn mint(mut self, caller: Address, to: Address, amount: u256) {
         if caller != self.owner {
             revert_empty()
         }
@@ -102,36 +86,36 @@ impl<const BALANCES_ROOT: u256, const ALLOWANCES_ROOT: u256>
     }
 }
 
-fn do_init() uses (erc20: mut Erc20<BALANCES_SALT, ALLOWANCES_SALT>, ctx: Ctx, ops: RawOps) {
+fn do_init() uses (erc20: mut Erc20, ctx: Ctx, ops: RawOps) {
     if !erc20.set_owner_once(owner: ctx.caller()) {
         ops.revert(data: ptr::MemSpan::empty())
     }
 }
 
-fn balance_of(addr: Address) -> u256 uses (erc20: Erc20<BALANCES_SALT, ALLOWANCES_SALT>) {
+fn balance_of(addr: Address) -> u256 uses (erc20: Erc20) {
     erc20.balances.get(key: addr)
 }
 
-fn allowance(owner: Address, spender: Address) -> u256 uses (erc20: Erc20<BALANCES_SALT, ALLOWANCES_SALT>) {
+fn allowance(owner: Address, spender: Address) -> u256 uses (erc20: Erc20) {
     erc20.allowances.get(key: (owner, spender))
 }
 
-fn transfer(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANCES_SALT, ALLOWANCES_SALT>, ctx: Ctx, ops: RawOps) {
+fn transfer(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20, ctx: Ctx, ops: RawOps) {
     erc20.transfer(from: ctx.caller(), to: to, amount: amount)
     1
 }
 
-fn approve(spender: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANCES_SALT, ALLOWANCES_SALT>, ctx: Ctx) {
+fn approve(spender: Address, amount: u256) -> u256 uses (erc20: mut Erc20, ctx: Ctx) {
     erc20.approve(owner: ctx.caller(), spender: spender, value: amount)
     1
 }
 
-fn transfer_from(from: Address, to: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANCES_SALT, ALLOWANCES_SALT>, ctx: Ctx, ops: RawOps) {
+fn transfer_from(from: Address, to: Address, amount: u256) -> u256 uses (erc20: mut Erc20, ctx: Ctx, ops: RawOps) {
     erc20.transfer_from(spender: ctx.caller(), owner: from, to: to, amount: amount)
     1
 }
 
-fn mint(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANCES_SALT, ALLOWANCES_SALT>, ctx: Ctx, ops: RawOps) {
+fn mint(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20, ctx: Ctx, ops: RawOps) {
     erc20.mint(caller: ctx.caller(), to: to, amount: amount)
     erc20.supply = erc20.supply + amount
     1
@@ -141,7 +125,7 @@ fn mint(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20<BALANCES_SALT,
 
 #[contract_init(Erc20Contract)]
 fn init() uses (evm: mut Evm) {
-    let mut erc20: StorPtr<Erc20<BALANCES_SALT, ALLOWANCES_SALT>> = unsafe { evm.stor_ptr(0) }
+    let mut erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
     with (erc20, Ctx = evm, RawOps = evm) {
         do_init()
     }
@@ -159,7 +143,7 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(Erc20Contract)]
 fn runtime() uses (evm: mut Evm) {
-    let mut erc20: StorPtr<Erc20<BALANCES_SALT, ALLOWANCES_SALT>> = unsafe { evm.stor_ptr(0) }
+    let mut erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
     let selector = evm.calldataload(0) >> 224
     with (erc20, Ctx = evm, RawOps = evm) {
         match selector {

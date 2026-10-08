@@ -18,7 +18,6 @@ use crate::{
             owner_effect_bindings, runtime_size_bytes, verify_semantic_body,
         },
         ty::{
-            CallableLayoutBundleInput, CallableLayoutBundleSignature, CallableLayoutOwner,
             adt_def::{AdtDef, AdtRef, instantiate_adt_field_shape},
             closure::closure_regions,
             corelib::{RuntimeBuiltinFuncKind, runtime_builtin_func_kind},
@@ -50,16 +49,13 @@ use crate::{
             },
             ty_def::{InvalidCause, TyData, TyId},
             ty_is_snapshot,
-            ty_lower::{
-                ParamSchemaId, SubstError, callable_layout_bundle_input_interface,
-                specialized_callable_layout_bundle_signature_with_normalizer,
-            },
+            ty_lower::{ParamSchemaId, SubstError},
         },
     },
     hir_def::{CallableDef, ExprId, FuncParamMode, scope_graph::ScopeId},
     semantic::{
-        AssignedLayoutBindingEnv, EffectEnvView, EffectRequirement, EffectRequirementKey,
-        LayoutViewKind, ProviderBinding, ProviderSource, ResolvedEffectBinding,
+        EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding, ProviderSource,
+        ResolvedEffectBinding,
     },
 };
 use common::indexmap::IndexMap;
@@ -109,69 +105,6 @@ impl<'db> SemanticInstanceKey<'db> {
 
     pub fn instantiate_typed_body(self, db: &'db dyn HirAnalysisDb) -> TypedBody<'db> {
         self.typed_body(db).clone()
-    }
-
-    pub fn layout_bundle_signature(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> CallableLayoutBundleSignature<'db> {
-        semantic_layout_bundle_signature(db, self).clone()
-    }
-}
-
-#[salsa::tracked(return_ref)]
-pub fn semantic_layout_bundle_signature<'db>(
-    db: &'db dyn HirAnalysisDb,
-    key: SemanticInstanceKey<'db>,
-) -> CallableLayoutBundleSignature<'db> {
-    let instance = SemanticInstance::new(db, key);
-    match key.owner(db) {
-        BodyOwner::Func(func) => {
-            let args = key.subst(db).generic_args(db);
-            specialized_callable_layout_bundle_signature_with_normalizer(db, func, args, |ty| {
-                instance.normalized_ty(db, ty)
-            })
-        }
-        owner => {
-            let layout_owner = match owner {
-                BodyOwner::ContractInit { contract } => {
-                    CallableLayoutOwner::ContractInit { contract }
-                }
-                BodyOwner::ContractRecvArm {
-                    contract,
-                    recv_idx,
-                    arm_idx,
-                } => CallableLayoutOwner::ContractRecvArm {
-                    contract,
-                    recv_idx,
-                    arm_idx,
-                },
-                BodyOwner::Const(_)
-                | BodyOwner::AnonConstBody { .. }
-                | BodyOwner::Closure { .. } => {
-                    return CallableLayoutBundleSignature::default();
-                }
-                BodyOwner::Func(_) => unreachable!(),
-            };
-            let inputs = owner_effect_bindings(db, owner)
-                .into_iter()
-                .filter_map(|binding| {
-                    let origin = binding.callable_input_origin(db)?;
-                    let interface = callable_layout_bundle_input_interface(
-                        db,
-                        layout_owner,
-                        origin,
-                        instance.binding_ty(db, binding),
-                    );
-                    (!interface.schema.is_empty())
-                        .then_some(CallableLayoutBundleInput { origin, interface })
-                })
-                .collect();
-            CallableLayoutBundleSignature {
-                inputs,
-                ..CallableLayoutBundleSignature::default()
-            }
-        }
     }
 }
 
@@ -1479,6 +1412,54 @@ impl<'db> SemanticInstance<'db> {
         normalize_ty(db, ty, self.normalization_scope(db), self.assumptions(db))
     }
 
+    /// The address space the elements of `ty` live in when its elements are
+    /// places (`core::ops::PlaceIndex`), in this instance.
+    #[salsa::tracked]
+    pub fn place_index_space(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+    ) -> Option<ProviderAddressSpace> {
+        crate::analysis::ty::provider::place_index_space(
+            db,
+            self.normalization_scope(db),
+            self.assumptions(db),
+            self.normalized_ty(db, ty),
+        )
+    }
+
+    /// How `ty` packs its elements into lanes when its elements are places
+    /// (`core::ops::PlaceIndex`), in this instance.
+    #[salsa::tracked]
+    pub fn place_index_lanes(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+    ) -> Option<crate::analysis::ty::provider::PlaceIndexLanes<'db>> {
+        crate::analysis::ty::provider::place_index_lanes(
+            db,
+            self.normalization_scope(db),
+            self.assumptions(db),
+            self.normalized_ty(db, ty),
+        )
+    }
+
+    /// The key and element types of `ty` when its elements are places
+    /// (`core::ops::PlaceIndex`), in this instance.
+    #[salsa::tracked]
+    pub fn place_index_tys(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+    ) -> Option<(TyId<'db>, TyId<'db>)> {
+        crate::analysis::ty::place_index_tys(
+            db,
+            self.normalization_scope(db),
+            ty,
+            self.assumptions(db),
+        )
+    }
+
     #[salsa::tracked(return_ref)]
     pub fn normalized_field_types(
         self,
@@ -1705,31 +1686,6 @@ pub fn resolved_provider_binding_for_instance_effect<'db>(
         })
 }
 
-pub(crate) fn resolved_effect_binding_ty_for_instance_effect<'db>(
-    db: &'db dyn HirAnalysisDb,
-    instance: SemanticInstance<'db>,
-    binding: LocalBinding<'db>,
-) -> Option<TyId<'db>> {
-    let env = instantiated_effect_env(db, instance)?;
-    let (binding_idx, provider_idx) = match binding {
-        LocalBinding::EffectParam {
-            idx, provider_idx, ..
-        } => (idx, Some(provider_idx)),
-        LocalBinding::Param {
-            site: ParamSite::EffectField(_),
-            idx,
-            ..
-        } => (idx, None),
-        LocalBinding::Local { .. } | LocalBinding::Param { .. } => return None,
-    };
-    Some(effect_binding_ty_from_env(
-        db,
-        Some(env),
-        binding_idx,
-        provider_idx,
-    ))
-}
-
 pub(crate) fn provisional_provider_binding_for_instance_effect<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -1849,7 +1805,6 @@ fn provisional_provider_binding_for_effect<'db>(
                         requirement_idx,
                     },
                     semantics: provider_semantics(db, func.scope(), assumptions, provider_ty),
-                    layout_env: None,
                 });
             }
             provisional_root_provider_binding(db, key, site, provider_idx)
@@ -1863,7 +1818,7 @@ fn provisional_provider_binding_for_effect<'db>(
                 .enumerate()
                 .find(|(idx, _)| *idx as u32 == provider_idx)
             {
-                let provider_ty = field.target_effect_binding_ty(db).ok()?;
+                let provider_ty = field.target;
                 return Some(ProviderBinding {
                     provider_idx,
                     provider_ty,
@@ -1885,10 +1840,6 @@ fn provisional_provider_binding_for_effect<'db>(
                         transport: ProviderTransport::ByValue,
                         evidence: ProviderLayoutEvidence::ContractField,
                     },
-                    layout_env: Some(AssignedLayoutBindingEnv {
-                        field: field.field,
-                        view: LayoutViewKind::Target,
-                    }),
                 });
             }
             provisional_root_provider_binding(db, key, site, provider_idx)
@@ -2424,7 +2375,6 @@ fn root_owner_effect_providers<'db>(
                     Some(ProviderAddressSpace::Memory),
                     ProviderTransport::ByValue,
                 ),
-                layout_env: None,
             })
         })
         .collect()
@@ -2713,10 +2663,10 @@ mod tests {
             "plain_call_plans.fe".into(),
             "struct Item { n: u256 }\n\
              impl Item { fn read(ref self) -> u256 { self.n } }\n\
-             struct Slot<const ROOT: u256 = _> {}\n\
-             fn target(_ slot: Slot) {}\n\
+             struct Slot<const ROOT: u256> {}\n\
+             fn target(_ slot: Slot<1>) {}\n\
              fn generic<T>(_ value: T) {}\n\
-             fn caller<T>(value: T, slot: Slot, item: own Item) {\n\
+             fn caller<T>(value: T, slot: Slot<1>, item: own Item) {\n\
                  target(slot)\n\
                  generic(value)\n\
                  item.read()\n\

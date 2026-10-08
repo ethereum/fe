@@ -3,13 +3,12 @@ use hir::semantic::{RecvArmAbiInfo, RecvArmView};
 use hir::{
     analysis::{
         semantic::{
-            LayoutEvidenceBase, ManualContractSection, RootSemanticInstanceError, SemanticInstance,
+            ManualContractSection, RootSemanticInstanceError, SemanticInstance,
             generated_callee_key, get_or_build_semantic_instance, root_semantic_instance_key,
             same_owner_effect_binding,
         },
         ty::{
-            CallableLayoutParamPort, LayoutEvidencePathStep,
-            const_ty::{CallableInputLayoutHoleOrigin, ConstTyData},
+            const_ty::ConstTyData,
             corelib::{resolve_core_trait, resolve_lib_func_path, resolve_lib_type_path},
             trait_def::{MethodArgMapError, TraitInstId},
             trait_resolution::PredicateListId,
@@ -826,7 +825,6 @@ fn contract_init_abi_plan<'db>(
             user_init: None,
             entry_args: EntrySemanticArgsPlan {
                 effects: Box::new([]),
-                layout_evidence: Box::new([]),
             },
             init_args: InitArgsPlan::None,
         });
@@ -2035,50 +2033,7 @@ fn entry_semantic_args_sort_key<'db>(
     db: &'db dyn MirDb,
     args: &EntrySemanticArgsPlan<'db>,
 ) -> String {
-    let effects = entry_effect_args_sort_key(db, &args.effects);
-    let evidence = args
-        .layout_evidence
-        .iter()
-        .map(|arg| {
-            let target = callable_layout_param_port_sort_key(&arg.target);
-            let base = match arg.value.base {
-                LayoutEvidenceBase::Root(root) => format!("root:{}", type_identity(db, root)),
-                LayoutEvidenceBase::Slot(slot) => format!("slot:{slot}"),
-            };
-            format!("{target}:{}:{base}", type_identity(db, arg.value.ty))
-        })
-        .collect::<Vec<_>>()
-        .join(",");
-    format!("effects[{effects}]:evidence[{evidence}]")
-}
-
-fn callable_layout_param_port_sort_key(port: &CallableLayoutParamPort) -> String {
-    let (prefix, port) = match port {
-        CallableLayoutParamPort::Input(port) => (
-            match port.origin {
-                CallableInputLayoutHoleOrigin::Receiver => "input:receiver".to_string(),
-                CallableInputLayoutHoleOrigin::ValueParam(index) => {
-                    format!("input:value:{index}")
-                }
-                CallableInputLayoutHoleOrigin::Effect(index) => {
-                    format!("input:effect:{index}")
-                }
-            },
-            &port.component,
-        ),
-        CallableLayoutParamPort::OutputWitness(port) => ("output".to_string(), port),
-    };
-    let path = port
-        .value_path
-        .iter()
-        .map(|step| match step {
-            LayoutEvidencePathStep::Field(field) => format!("f{field}"),
-            LayoutEvidencePathStep::Variant(variant) => format!("v{variant}"),
-            LayoutEvidencePathStep::EffectTarget => "t".to_string(),
-        })
-        .collect::<Vec<_>>()
-        .join(".");
-    format!("{prefix}:{path}:p{}r{}", port.root.param, port.root.ordinal,)
+    format!("effects[{}]", entry_effect_args_sort_key(db, &args.effects))
 }
 
 fn entry_effect_args_sort_key<'db>(db: &'db dyn MirDb, args: &[EntryEffectArgPlan<'db>]) -> String {
@@ -2299,10 +2254,6 @@ fn ref_view_sort_key<'db>(db: &'db dyn MirDb, view: &RefView<'db>) -> String {
             "variant:{}:{}",
             layout_sort_key(db, variant.enum_layout),
             variant.index
-        ),
-        RefView::StorageLane(lane) => format!(
-            "lane:{}:{}:{}",
-            lane.byte_offset, lane.byte_width, lane.shared
         ),
     }
 }
@@ -2666,52 +2617,6 @@ pub fn main() -> i32 {
     }
 
     #[test]
-    fn invalid_layout_evidence_returns_a_lowering_error_instead_of_panicking() {
-        let mut db = DriverDataBase::default();
-        let file_url = Url::parse("file:///invalid_layout_evidence.fe").unwrap();
-        let file = db.workspace().touch(
-            &mut db,
-            file_url,
-            Some(
-                r#"
-struct Rooted<const ROOT: u256 = _> {}
-
-fn ambiguous<const ROOT: u256>(left: Rooted<ROOT>, right: Rooted<ROOT>) -> u256 {
-    ROOT
-}
-"#
-                .to_string(),
-            ),
-        );
-        let top_mod = db.top_mod(file);
-        let func = top_mod
-            .all_funcs(&db)
-            .iter()
-            .copied()
-            .find(|func| {
-                func.name(&db)
-                    .to_opt()
-                    .is_some_and(|name| name.data(&db) == "ambiguous")
-            })
-            .expect("ambiguous function");
-        let semantic = get_or_build_semantic_instance(
-            &db,
-            hir::analysis::semantic::identity_semantic_instance_key(&db, BodyOwner::Func(func)),
-        );
-        let runtime = runtime_instance_for_semantic(&db, semantic);
-        let signature = runtime.interface_signature(&db);
-        assert_eq!(signature.params.len(), 2);
-        let error = runtime_instance_lowered_body(&db, runtime)
-            .expect_err("layout evidence lowering must fail");
-        assert!(
-            error
-                .to_string()
-                .contains("layout evidence lowering failed")
-        );
-        assert!(error.to_string().contains("AmbiguousConstBinding"));
-    }
-
-    #[test]
     fn blocked_body_keeps_a_declaration_abi_but_cannot_be_lowered() {
         let mut db = DriverDataBase::default();
         let file_url = Url::parse("file:///blocked_semantic_body.fe").unwrap();
@@ -2755,36 +2660,6 @@ fn invalid(result: mut u256) -> u256 {
         assert!(
             error.to_string().contains("semantic body is blocked by"),
             "{error}"
-        );
-    }
-
-    #[test]
-    fn usize_layout_evidence_uses_usize_scalar_constants() {
-        with_test_runtime_package(
-            "usize_layout_evidence_uses_usize_scalar_constants.fe",
-            r#"
-struct Rooted<const ROOT: usize = _> {}
-
-impl<const ROOT: usize> Copy for Rooted<ROOT> {}
-
-impl<const ROOT: usize> Rooted<ROOT> {
-    fn root(self) -> usize {
-        ROOT
-    }
-}
-
-fn select(value: Rooted) -> usize {
-    value.root()
-}
-
-#[test]
-fn usize_layout_roots_lower() {
-    let value: Rooted<7> = Rooted {}
-    assert!(select(value) == 7)
-}
-"#,
-            Some("usize_layout_roots_lower"),
-            |_, _| {},
         );
     }
 
@@ -2999,7 +2874,7 @@ pub contract NoInitBox {}
             "implicit constructor wrapper should not call a user init"
         );
         assert!(
-            plan.entry_args.effects.is_empty() && plan.entry_args.layout_evidence.is_empty(),
+            plan.entry_args.effects.is_empty(),
             "implicit constructor wrapper should not synthesize owner effect args"
         );
         assert!(

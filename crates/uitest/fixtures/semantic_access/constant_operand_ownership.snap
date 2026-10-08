@@ -53,48 +53,31 @@ error[16-0002]: move conflict in `fn call_then_move`
    │                     ^ cannot use a value after it was moved
 
 error[16-0002]: move conflict in `fn match_twice`
-   ┌─ constant_operand_ownership.fe:41:26
+   ┌─ constant_operand_ownership.fe:48:9
    │
-41 │     fn match_twice() -> u256 {
-   │ ╭────────────────────────────^
-   │ │ ╭──────────────────────────'
-42 │ │ │     let o: Option<Boxed> = Option::Some(Boxed { v: 21 })
-43 │ │ │     let a = match o {
-44 │ │ │         Option::Some(b) => b.v
-   · │ │
-51 │ │ │     a + c
-52 │ │ │ }
-   │ ╰─│─^ cannot use a value after it was moved
-   │   ╰─' value is moved here
+44 │         Option::Some(b) => b.v
+   │                      - value is moved here
+   ·
+48 │         Option::Some(b) => b.v
+   │         ^^^^^^^^^^^^^^^ cannot use a value after it was moved
 
 error[16-0002]: move conflict in `fn if_let_twice`
-   ┌─ constant_operand_ownership.fe:55:27
+   ┌─ constant_operand_ownership.fe:61:12
    │
-55 │     fn if_let_twice() -> u256 {
-   │ ╭─────────────────────────────^
-   │ │ ╭───────────────────────────'
-56 │ │ │     let o: Option<Boxed> = Option::Some(Boxed { v: 21 })
-57 │ │ │     let mut total: u256 = 0
-58 │ │ │     if let Option::Some(b) = o {
-   · │ │
-64 │ │ │     total
-65 │ │ │ }
-   │ ╰─│─^ cannot use a value after it was moved
-   │   ╰─' value is moved here
+58 │     if let Option::Some(b) = o {
+   │                         - value is moved here
+   ·
+61 │     if let Option::Some(b) = o {
+   │            ^^^^^^^^^^^^^^^ cannot use a value after it was moved
 
 error[16-0002]: move conflict in `fn nested_payload_twice`
-   ┌─ constant_operand_ownership.fe:68:35
+   ┌─ constant_operand_ownership.fe:75:9
    │
-68 │   fn nested_payload_twice() -> u256 {
-   │ ╭───────────────────────────────────^
-69 │ │     let h = Holder { inner: Option::Some(Boxed { v: 5 }) }
-70 │ │     let a = match h.inner {
-   │ │                   ------- value is moved here
-71 │ │         Option::Some(b) => b.v
-   · │
-78 │ │     a + c
-79 │ │ }
-   │ ╰─^ cannot use a value after it was moved
+70 │     let a = match h.inner {
+   │                   ------- value is moved here
+   ·
+75 │         Holder { inner: Option::Some(b) } => b.v
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot use a value after it was moved
 
 error[16-0002]: move conflict in `fn loop_move`
    ┌─ constant_operand_ownership.fe:87:26

@@ -1347,17 +1347,6 @@ impl DiagnosticVoucher for PathResDiag<'_> {
                 )
             }
 
-            Self::TraitConstHoleArg { span, ident } => primary_diag(
-                Severity::Error,
-                format!(
-                    "layout hole `_` is not allowed in trait generic arguments for `{}`",
-                    ident.data(db)
-                ),
-                "replace `_` with an explicit const argument",
-                span.resolve(db),
-                error_code,
-            ),
-
             Self::TypeMustBeKnown(span) => primary_diag(
                 Severity::Error,
                 "type must be known here",
@@ -1646,6 +1635,31 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 span.resolve(db),
                 error_code,
             ),
+
+            Self::StorageOnlyValue {
+                span,
+                ty,
+                collection,
+                position,
+            } => {
+                let ty_name = ty.pretty_print(db);
+                let collection_name = collection.pretty_print(db);
+                let mut diag = primary_diag(
+                    Severity::Error,
+                    format!("`{ty_name}` lives only in storage"),
+                    format!("a storage-only type cannot be {position}"),
+                    span.resolve(db),
+                    error_code,
+                );
+                if ty != collection {
+                    diag.notes
+                        .push(format!("`{ty_name}` holds `{collection_name}`, a storage collection"));
+                }
+                diag.notes.push(
+                    "a storage collection lives at its storage place; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter".into(),
+                );
+                diag
+            }
 
             Self::UnknownResultSpace(span) => primary_diag(
                 Severity::Error,
@@ -2039,61 +2053,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::StaticSlotSpaceUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message:
-                        "this field embeds a `StaticSlot` type whose `SPACE` does not evaluate to a concrete address space"
-                            .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot determine the address space of a static-slot field".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "`StaticSlot::SPACE` must evaluate to a concrete `core::effect_ref::AddressSpace` variant; it cannot depend on an unresolved generic parameter".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::ContractFieldNonSlotConstHole { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message:
-                        "this contract field has an inferred const (`_`) that is not a storage slot"
-                            .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "contract field has an unresolved non-slot const generic".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "only storage-slot (`u256` or `usize`) const generics may be left inferred (`_`) in a contract field; provide an explicit value".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
             Self::ContractFieldHandleSpaceUnresolved { span, ty } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
@@ -2123,87 +2082,8 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 }
             }
 
-            Self::ContractFieldExplicitConstHole { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this contract field uses an explicit inferred const (`_`)"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "explicit `_` const argument is not allowed in a contract field"
-                        .to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "a storage-slot layout hole must come from the type's `= _` parameter default; provide an explicit value here instead".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
-            Self::ContractFieldLayoutRootArray { span, element } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "the elements of this array carry storage layout roots".to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = element.name_span(db) {
-                    let type_name = element.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` carries storage layout roots"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "arrays of layout-root values are not supported".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "every element of an array has the same type, so the elements cannot have distinct layout roots".to_string(),
-                        "use separate fields, or one map whose key includes the index".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::ContractFieldConcreteLayoutRootUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this explicit storage-slot root does not evaluate to a concrete integer"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot reserve an unresolved explicit layout root".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "explicit `u256` and `usize` layout roots must evaluate before contract allocation so inferred roots can avoid every reserved slot".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
             Self::ContractFieldProviderLayoutAmbiguous { span, ty } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
@@ -2295,8 +2175,7 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
             Self::ContractFieldProviderCycle { span, ty } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: "this provider target cycle changes its layout arguments"
-                        .to_string(),
+                    message: "this provider target cycle changes its type arguments".to_string(),
                     span: span.resolve(db),
                 }];
                 if let Some(name_span) = ty.name_span(db) {
@@ -2313,19 +2192,53 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                     message: "provider target layout is not finitely recursive".to_string(),
                     sub_diagnostics,
                     notes: vec![
-                        "recursive `EffectHandle::Target` views must return to the same layout arguments or a finite permutation of them".to_string(),
+                        "recursive `EffectHandle::Target` views must return to the same type arguments or a finite permutation of them".to_string(),
                     ],
                     error_code,
                 }
             }
 
+            Self::ContractFieldSlotNotConst { span } => CompleteDiagnostic::new(
+                Severity::Error,
+                "the slot is not a constant `u256`".to_string(),
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "this must evaluate to a `u256` at compile time".to_string(),
+                    span.resolve(db),
+                )],
+                vec!["write the slot as a literal, a `const`, or a `const fn` call".to_string()],
+                error_code,
+            ),
+
+            Self::ContractFieldSlotInCode { span } => primary_diag(
+                Severity::Error,
+                "a field that lives in code has no slot",
+                "`#[slot]` places a storage or transient field",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::ContractFieldSlotOverlap { span, field, other } => CompleteDiagnostic::new(
+                Severity::Error,
+                format!(
+                    "`{}` overlaps the slots of `{}`",
+                    field.data(db),
+                    other.data(db)
+                ),
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("the slots from here overlap `{}`'s", other.data(db)),
+                    span.resolve(db),
+                )],
+                vec![
+                    "fields placed with `#[slot]` cannot share slots in one address space"
+                        .to_string(),
+                ],
+                error_code,
+            ),
+
             Self::ContractFieldLayoutInvariant { span, ty, issue } => {
                 let (message, label, note) = match issue {
-                    ContractFieldLayoutIssue::ConflictingRootSpaces => (
-                        "one layout root was routed to conflicting address spaces",
-                        "this field gives one semantic root incompatible storage spaces",
-                        "a layout root has exactly one address space",
-                    ),
                     ContractFieldLayoutIssue::ExtentOverflow => (
                         "contract-field layout extent overflowed",
                         "this field's inline span is too large",
@@ -2340,26 +2253,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                         "contract-field array length is inconsistent",
                         "this field's source expression and canonical type disagree on an array length",
                         "a concrete array length must agree across source evaluation and canonical layout",
-                    ),
-                    ContractFieldLayoutIssue::AmbiguousBindingSelector => (
-                        "layout-root selector is ambiguous",
-                        "one source root maps this selector to more than one allocation",
-                        "source-to-landing bindings never choose an arbitrary descendant",
-                    ),
-                    ContractFieldLayoutIssue::InconsistentRootType => (
-                        "layout-root const type is inconsistent",
-                        "one semantic root is used with incompatible const types",
-                        "all occurrences of one root must agree on its accepted slot-index type",
-                    ),
-                    ContractFieldLayoutIssue::RootNeedsLanding => (
-                        "layout root requires a concrete landing",
-                        "this field observes a source root with more than one structural landing",
-                        "select a concrete field or target place before requesting a scalar root value",
-                    ),
-                    ContractFieldLayoutIssue::InternalGraph => (
-                        "contract layout graph failed validation",
-                        "the compiler could not validate this field's root graph",
-                        "this is a compiler invariant failure; no provisional allocation was published",
                     ),
                 };
                 let mut sub_diagnostics = vec![SubDiagnostic {
@@ -2384,31 +2277,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 }
             }
 
-            Self::ConstHoleInValuePosition { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this type contains an inferred const (`_`)".to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "type with inferred const generic parameter `_` can not be used here".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "specify an explicit const generic argument".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
             Self::RefSelfType { span } => primary_diag(
                 Severity::Error,
@@ -2996,6 +2864,23 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
+            Self::ContractFieldNotInUses { primary, field } => {
+                let field = field.data(db);
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("contract field `{field}` is not in this handler's `uses`"),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{field}` is not reachable here"),
+                        span: primary.resolve(db),
+                    }],
+                    notes: vec![format!(
+                        "name it in the handler's `uses` clause: `uses ({field})` to read it, `uses (mut {field})` to write it"
+                    )],
+                    error_code,
+                }
+            }
+
             Self::InvalidEffectKey { owner, key, idx } => {
                 let idx = *idx;
                 let key_str = key.pretty_print(db);
@@ -3118,15 +3003,15 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         ),
                         span: primary.resolve(db),
                     }],
-                    notes: vec![match key.field_key_handle(db) {
-                        Some(_) => "the authority over the field a handle names comes from \
-                            an effect provider holding it, such as a contract field under \
-                            `uses (mut store)`, or from a `uses (storage: Field(T))` effect"
-                            .to_string(),
-                        None => format!(
-                            "provide it with `with ({key_str} = value)` or require it via `uses {key_str}`"
+                    notes: vec![
+                        format!(
+                            "require it in this function's signature with `uses {}`, so that its callers provide it",
+                            effect_clause(db, *func, *key)
                         ),
-                    }],
+                        format!(
+                            "or provide it to a block of this function with `with ({key_str} = value) {{ .. }}`"
+                        ),
+                    ],
                     error_code,
                 }
             }
@@ -3200,54 +3085,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     sub_diagnostics,
                     notes: vec![
                         "use a mutable binding or pass a mutable reference in the `with` block"
-                            .to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::FieldEffectAsValue { primary, name } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: format!("`{}` is a `Field` effect, not a value", name.data(db)),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "a `Field` effect is authority over a field".to_string(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec!["operate on the handle that names the field".to_string()],
-                error_code,
-            },
-
-            Self::LentFieldAuthority {
-                primary,
-                func,
-                key,
-                effect,
-                is_mut,
-            } => {
-                let func_name = func
-                    .name(db)
-                    .to_opt()
-                    .map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string());
-                let key_str = key.pretty_print(db);
-                let effect = effect.map_or_else(|| "an effect".to_string(), |name| {
-                    format!("its effect `{}`", name.data(db))
-                });
-                let (mode, verb) = if *is_mut { ("mut ", "write") } else { ("", "read") };
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: format!(
-                        "`{func_name}` may use `{mode}{key_str}` on the handles {effect} holds"
-                    ),
-                    sub_diagnostics: vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!(
-                            "this function's authority does not {verb} the fields those handles name"
-                        ),
-                        span: primary.resolve(db),
-                    }],
-                    notes: vec![
-                        "a call lending a `Field` authority must hold it over every handle of its shape the callee is given"
                             .to_string(),
                     ],
                     error_code,
@@ -3837,6 +3674,36 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }],
                 notes: vec![
                     "bind an access with `let`, pass it to a `mut` or view parameter, or yield it from a projection"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::AccessChoiceNeedsProjection { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a runtime choice between accesses needs a projection".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this chooses between accesses at runtime".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "move the choice into a projection, whose branches are yield sites: `fn pick(mut self, _ c: bool) -> mut T { if c { mut self.a } else { mut self.b } }`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::TupleOfAccesses { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a tuple does not hold accesses".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this tuple's elements are accesses".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "bind each access with its own `let`; accesses that are disjoint by a promise the checker cannot see form an unsafe split, `unsafe { (a, b) }`"
                         .to_string(),
                 ],
                 error_code,
@@ -5964,4 +5831,29 @@ impl DiagnosticVoucher for ImplDiag<'_> {
             }
         }
     }
+}
+
+/// The `uses` entry of `func` whose key is `key`, as a clause naming it with
+/// its mode: `(storage: mut RawStorage)`.
+fn effect_clause<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: crate::hir_def::Func<'db>,
+    key: crate::hir_def::TypeId<'db>,
+) -> String {
+    let key_str = key.pretty_print(db);
+    func.effects(db)
+        .data(db)
+        .iter()
+        .find(|param| param.key_ty.to_opt() == Some(key))
+        .map_or_else(
+            || key_str.clone(),
+            |param| {
+                let name = param
+                    .name
+                    .map(|name| format!("{}: ", name.data(db)))
+                    .unwrap_or_default();
+                let mode = if param.is_mut { "mut " } else { "" };
+                format!("({name}{mode}{key_str})")
+            },
+        )
 }

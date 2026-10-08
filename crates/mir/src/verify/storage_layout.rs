@@ -130,9 +130,7 @@ fn verify_contract_field_binding<'db>(
         .values()
         .find(|field| field.field == binding.field)
         .ok_or(VerifyError::UnknownContractField(binding.field))?;
-    let expected_ty = field
-        .target_effect_binding_ty(db)
-        .map_err(|_| VerifyError::InvalidContractFieldLayout(binding.field))?;
+    let expected_ty = field.target;
     if binding.declared_ty != expected_ty {
         return Err(VerifyError::ContractFieldTypeMismatch {
             field: binding.field,
@@ -168,8 +166,8 @@ fn verify_contract_field_binding<'db>(
     if binding.slot != expected_slot {
         return Err(VerifyError::ContractFieldSlotMismatch {
             field: binding.field,
-            expected: expected_slot,
-            actual: binding.slot,
+            expected: Box::new(expected_slot),
+            actual: Box::new(binding.slot),
         });
     }
 
@@ -193,10 +191,10 @@ fn verify_contract_field_binding<'db>(
     let mir_span = RuntimeMemoryLayout::for_space(db, AddressSpaceKind::Storage)
         .class_size(&pointee)
         .map_err(|_| VerifyError::InvalidContractFieldLayout(binding.field))?;
-    if u64::try_from(field.inline_span).ok() != Some(mir_span) {
+    if u64::try_from(field.slot_count).ok() != Some(mir_span) {
         return Err(VerifyError::ContractFieldSpanMismatch {
             field: binding.field,
-            hir_span: field.inline_span,
+            hir_span: field.slot_count,
             mir_span,
         });
     }
@@ -217,9 +215,7 @@ fn expected_contract_field_slot<'db>(
             .checked_mul(32)
             .map(ContractFieldSlot::CodeTailBytes)
     } else {
-        u128::try_from(field.slot_offset)
-            .ok()
-            .map(ContractFieldSlot::Words)
+        Some(ContractFieldSlot::Words(field.slot_offset))
     }
 }
 
@@ -240,7 +236,7 @@ fn contract_field_ref_kind<'db>(
         RuntimeClass::Scalar(_)
         | RuntimeClass::AggregateValue { .. }
         | RuntimeClass::Ref {
-            view: RefView::EnumVariant(_) | RefView::StorageLane(_),
+            view: RefView::EnumVariant(_),
             ..
         } => None,
     }
@@ -251,6 +247,7 @@ mod tests {
     use common::InputDb;
     use driver::DriverDataBase;
     use hir::{analysis::ty::ProviderAddressSpace, semantic::ContractFieldId};
+    use ruint::aliases::U256;
     use url::Url;
 
     use super::*;
@@ -271,7 +268,7 @@ mod tests {
 use std::evm::StorageMap
 use std::evm::effects::TStorPtr
 
-struct Rooted<const ROOT: u256 = _> {
+struct Word {
     value: u256,
 }
 
@@ -284,10 +281,10 @@ pub contract Layouts {
     mut words: [[u256; 2]; 2],
     mut maps: StorageMap<u256, u256>,
     mut temp: TStorPtr<u256>,
-    fixed: Rooted,
+    fixed: Word,
 
     init() uses (mut fixed) {
-        fixed = Rooted { value: 11 }
+        fixed = Word { value: 11 }
     }
 
     recv LayoutMsg {
@@ -522,7 +519,7 @@ pub contract Other {
 
             for (field, space, span) in [
                 (words, ProviderAddressSpace::Storage, 4),
-                (maps, ProviderAddressSpace::Storage, 0),
+                (maps, ProviderAddressSpace::Storage, 1),
                 (temp, ProviderAddressSpace::Transient, 1),
                 (fixed, ProviderAddressSpace::Code, 1),
             ] {
@@ -533,7 +530,7 @@ pub contract Other {
                     .expect("field layout");
                 let binding = field_binding(&recv_args, field);
                 assert_eq!(hir.address_space, space);
-                assert_eq!(hir.inline_span, span);
+                assert_eq!(hir.slot_count, span);
                 assert_eq!(
                     RuntimeMemoryLayout::for_space(db, AddressSpaceKind::Storage)
                         .class_size(&binding.class.deref_target(db).unwrap())
@@ -600,7 +597,7 @@ pub contract Other {
                     let ContractFieldSlot::Words(slot) = binding.slot else {
                         panic!("storage field should use a word slot")
                     };
-                    binding.slot = ContractFieldSlot::Words(slot + 1);
+                    binding.slot = ContractFieldSlot::Words(slot + U256::from(1));
                 }),
                 VerifyError::ContractFieldSlotMismatch { field, .. } if field == words
             ));
@@ -697,7 +694,7 @@ pub contract Other {
     }
 
     #[test]
-    fn package_verifier_rejects_array_and_hole_field_span_mutations() {
+    fn package_verifier_rejects_array_and_map_field_span_mutations() {
         with_package(|db, package| {
             let contract = contract_named(db, package, "Layouts");
             let words = field_named(db, contract, "words");
@@ -714,7 +711,7 @@ pub contract Other {
                 VerifyError::ContractFieldSpanMismatch {
                     field,
                     hir_span: 4,
-                    mir_span: 0,
+                    mir_span: 1,
                 } if field == words
             ));
 
@@ -724,7 +721,7 @@ pub contract Other {
                 }),
                 VerifyError::ContractFieldSpanMismatch {
                     field,
-                    hir_span: 0,
+                    hir_span: 1,
                     mir_span: 4,
                 } if field == maps
             ));

@@ -90,6 +90,19 @@ impl<'db> Shape<'db> {
         }
     }
 
+    /// A storage-only type this return moves out by value, with the storage
+    /// collection it holds. A projection yields a storage place instead.
+    pub fn storage_only_value(&self, db: &'db dyn HirAnalysisDb) -> Option<(TyId<'db>, TyId<'db>)> {
+        match self {
+            Self::Owned(ty) => ty
+                .storage_collection(db)
+                .map(|collection| (*ty, collection)),
+            Self::Access(..) => None,
+            Self::Tuple(elems) => elems.iter().find_map(|elem| elem.storage_only_value(db)),
+            Self::Sum { payload, .. } => payload.storage_only_value(db),
+        }
+    }
+
     /// Whether this shape grants an access, i.e. whether a function returning
     /// it is a projection.
     pub fn has_access(&self) -> bool {

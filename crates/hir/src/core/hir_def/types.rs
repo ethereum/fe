@@ -1,4 +1,4 @@
-use super::{Body, GenericArg, IdentId, Partial, PathId};
+use super::{Body, IdentId, Partial, PathId};
 use crate::HirDb;
 
 #[salsa::interned]
@@ -25,23 +25,6 @@ impl<'db> TypeId<'db> {
         }
     }
 
-    /// The handle type `T` of the `uses` key `Field(T)`, which lowers to the
-    /// core marker `Field<T>`: the authority over the storage field a handle
-    /// of type `T` names.
-    pub fn field_key_handle(self, db: &'db dyn HirDb) -> Option<Self> {
-        let path = self.as_path(db)?;
-        let root = path.parent(db)?.as_ident(db)?;
-        if !(root.is_ingot(db) || root.data(db) == "core")
-            || path.ident(db).to_opt()?.data(db) != "Field"
-        {
-            return None;
-        }
-        match path.generic_args(db).data(db).as_slice() {
-            [GenericArg::Type(arg)] => arg.ty.to_opt(),
-            _ => None,
-        }
-    }
-
     pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
         match self.data(db) {
             TypeKind::Path(path) => {
@@ -63,9 +46,6 @@ impl<'db> TypeId<'db> {
     }
 
     pub fn pretty_print(self, db: &'db dyn HirDb) -> String {
-        if let Some(handle) = self.field_key_handle(db) {
-            return format!("Field({})", handle.pretty_print(db));
-        }
         let print_ty = |t: &Partial<TypeId>| {
             t.to_opt()
                 .map_or("<missing>".into(), |t| t.pretty_print(db))

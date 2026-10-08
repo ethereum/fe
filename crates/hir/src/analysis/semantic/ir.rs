@@ -69,6 +69,8 @@ pub struct SemanticBody<'db> {
     pub entry_locals: Vec<SLocalId>,
     pub locals: Vec<SLocal<'db>>,
     pub blocks: Vec<SBlock<'db>>,
+    /// The components of each unsafe split, which one session grants.
+    pub unsafe_splits: Vec<Vec<SValueId>>,
 }
 
 impl<'db> SemanticBody<'db> {
@@ -152,7 +154,8 @@ pub(crate) fn layout_backing_query<'db>(
                 LayoutBackingProjection::Index(None)
             }
             Projection::Deref => continue,
-            Projection::Discriminant => return None,
+            // An entry lies at a slot computed at runtime.
+            Projection::Discriminant | Projection::Entry(_) => return None,
         };
         target.push(step);
         structural_path.push(projection.clone());
@@ -160,11 +163,10 @@ pub(crate) fn layout_backing_query<'db>(
     Some((target, structural_path))
 }
 
-/// Physical place provenance for layout-bearing value projections.
+/// Physical place provenance for value projections.
 ///
 /// This keeps backing storage alive and lets borrow normalization recover a
-/// projectable carrier place. It is deliberately separate from
-/// `LayoutEvidenceBody`, which transports semantic runtime-root values.
+/// projectable carrier place.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub enum LayoutBackingPlace<'db> {
     Local(SPlace<'db>),
@@ -181,7 +183,7 @@ pub enum LayoutBackingPlace<'db> {
 }
 
 /// Maps a projection in the current value to the place that physically backs
-/// it. This is carrier provenance, not runtime layout evidence.
+/// it: carrier provenance.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub struct LayoutBackingSource<'db> {
     pub target: Vec<LayoutBackingProjection>,
@@ -396,6 +398,10 @@ impl<'db> SPlace<'db> {
             .push(Projection::Index(IndexSource::Dynamic(index)));
     }
 
+    pub fn push_entry(&mut self, key: SValueId) {
+        self.path.push(Projection::Entry(key));
+    }
+
     pub fn push_deref(&mut self) {
         self.path.push(Projection::Deref);
     }
@@ -406,7 +412,9 @@ impl SPlace<'_> {
     pub fn used_locals(&self) -> Vec<SLocalId> {
         std::iter::once(self.local)
             .chain(self.path.iter().filter_map(|projection| match projection {
-                Projection::Index(IndexSource::Dynamic(index)) => Some(*index),
+                Projection::Index(IndexSource::Dynamic(index)) | Projection::Entry(index) => {
+                    Some(*index)
+                }
                 Projection::Field(_)
                 | Projection::VariantField { .. }
                 | Projection::Discriminant

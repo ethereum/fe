@@ -3,7 +3,8 @@
 // and the provider in scope where that function is called is the one the
 // body uses.
 use core::iter::Collection
-use std::evm::{Evm, RawStorage, SolArray}
+use core::option::Option
+use std::evm::Evm
 
 struct Store { n: u256 }
 
@@ -133,13 +134,40 @@ fn any_nonempty<C: Collection + Copy>(_ xs: [u256; 2], _ c: C) -> bool uses C::E
     xs.any(|x| has_start(c))
 }
 
+// The numbers below `store.n`: a collection whose row reads `Store`.
+struct BelowStore {}
+
+impl Copy for BelowStore {}
+
+impl Collection for BelowStore {
+    uses E = (store: Store)
+    space S = memory
+    type Cursor = u256
+    type Item = u256
+
+    fn start(self) -> Option<u256> uses E {
+        if store.n == 0 { Option::None } else { Option::Some(0) }
+    }
+
+    fn next(self, _ c: u256) -> Option<u256> uses E {
+        if c + 1 < store.n { Option::Some(c + 1) } else { Option::None }
+    }
+
+    fn at(self, _ c: u256) -> ref u256 uses E {
+        let value = c
+        ref value
+    }
+}
+
 #[test]
-fn enclosing_rows() uses (evm: mut Evm) {
-    with (RawStorage = evm) {
-        let a = unsafe { SolArray<u256>::at(0) }
-        assert!(!any_nonempty([1, 2], a))
-        a.push(1)
-        assert!(any_nonempty([1, 2], a))
+fn enclosing_rows() {
+    let mut s = Store { n: 0 }
+    with (Store = s) {
+        assert!(!any_nonempty([1, 2], BelowStore {}))
+    }
+    s.n = 1
+    with (Store = s) {
+        assert!(any_nonempty([1, 2], BelowStore {}))
     }
     let arr: [u256; 2] = [3, 4]
     assert!(any_nonempty([1, 2], arr))

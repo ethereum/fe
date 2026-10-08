@@ -1,0 +1,53 @@
+// An assignment evaluates its value before the target's sessions open: the
+// value may read what the target is reached through, and a compound
+// assignment opens one session on its target after the value is read.
+use core::ops::{Index, IndexMut}
+use std::evm::{Evm, StorageMap}
+
+struct Cells { cells: [u256; 2] }
+impl Index<usize> for Cells {
+    space S = memory
+    type Output = u256
+    fn index(self, _ i: usize) -> ref u256 { ref self.cells[i] }
+}
+impl IndexMut<usize> for Cells {
+    fn index_mut(mut self, _ i: usize) -> mut u256 { mut self.cells[i] }
+}
+
+#[test]
+fn value_first() {
+    let mut c = Cells { cells: [1, 2] }
+    c[0] = c[1] + 1
+    assert(c[0] == 3)
+    c[0] += c[1]
+    assert(c[0] == 5)
+    let mut a: [u256; 3] = [1, 2, 3]
+    a[0] = a[1] + a[2]
+    a[2] += a[0]
+    assert(a[0] == 5 && a[2] == 8)
+}
+
+msg Msg {
+    #[selector = 1]
+    Run -> u256,
+}
+
+pub contract C {
+    mut m: StorageMap<u256, u256>,
+
+    recv Msg {
+        Run -> u256 uses (mut m) {
+            m[1] = 4
+            m[2] = m[1] + 1
+            m[1] += m[2]
+            m[1] * 100 + m[2]
+        }
+    }
+}
+
+#[test]
+fn map_value_first() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    let v: u256 = evm.call(addr: c, gas: 300000, value: 0, message: Msg::Run {})
+    assert(v == 905)
+}

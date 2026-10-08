@@ -24,7 +24,7 @@ use crate::{
         semantic::{
             SemOrigin, SemanticInstance,
             access::{control::semantic_may_return, projection_result_spaces},
-            capability::semantics::{CapabilityClass, capability_semantics, field_handle_spaces},
+            capability::semantics::{CapabilityClass, capability_semantics},
             definite_assignment::literal_index,
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticKind, SemanticDiagnosticSpan, operand_origin,
@@ -162,6 +162,8 @@ pub(super) struct Analysis<'a, 'db> {
     ended: FxHashSet<NValueId>,
     /// The projection each session calls.
     sessions: FxHashMap<NValueId, SemanticInstance<'db>>,
+    /// Each unsafe split component's split and position in it.
+    split_of: FxHashMap<NValueId, (usize, usize)>,
     entry: Vec<Option<State>>,
     moved_at: FxHashMap<(MoveKey, Path), SemOrigin<'db>>,
     /// The statement at which each block diverges into a call that never returns.
@@ -208,6 +210,17 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 })
                 .collect(),
             sessions: FxHashMap::default(),
+            split_of: body
+                .unsafe_splits
+                .iter()
+                .enumerate()
+                .flat_map(|(split, components)| {
+                    components
+                        .iter()
+                        .enumerate()
+                        .map(move |(position, &component)| (component, (split, position)))
+                })
+                .collect(),
             entry: vec![None; body.blocks.len()],
             moved_at: FxHashMap::default(),
             divergence: vec![None; body.blocks.len()],
@@ -829,7 +842,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             reservations.push(id);
         }
         for (position, effect) in effect_args.iter().enumerate() {
-            let Some(footprint) = self.effect_footprint(func, effect, args, effect_args) else {
+            let Some(footprint) = self.effect_footprint(func, effect) else {
                 continue;
             };
             let id = self.token(
@@ -852,7 +865,40 @@ impl<'a, 'db> Analysis<'a, 'db> {
             grant.parents = reservations.clone();
             held.insert((self.token(result, Site::Grant(component), grant), path));
         }
+        // An unsafe split is one session: each component's grants derive
+        // from every component's reservations.
+        let siblings = self.split_siblings(result);
+        let of_kind = |this: &Self, tokens: &[TokenId], kind| -> TokenSet {
+            tokens
+                .iter()
+                .copied()
+                .filter(|token| this.tokens[*token as usize].kind == kind)
+                .collect()
+        };
+        let sibling_reservations = of_kind(self, &siblings, TokenKind::Reservation);
+        let sibling_grants = of_kind(self, &siblings, TokenKind::Grant);
+        for (grant, _) in held.iter() {
+            add_parents(
+                &mut self.tokens[*grant as usize].parents,
+                &sibling_reservations,
+            );
+        }
+        for grant in sibling_grants {
+            add_parents(&mut self.tokens[grant as usize].parents, &reservations);
+        }
         held
+    }
+
+    /// The tokens the components of `value`'s unsafe split before it opened:
+    /// they and `value` are one session, so never conflict.
+    fn split_siblings(&self, value: NValueId) -> TokenSet {
+        let Some(&(split, position)) = self.split_of.get(&value) else {
+            return TokenSet::new();
+        };
+        self.body.unsafe_splits[split][..position]
+            .iter()
+            .flat_map(|component| self.opened.get(component).into_iter().flatten().copied())
+            .collect()
     }
 
     /// The domains an effect argument confers authority over, with its mode:
@@ -862,8 +908,6 @@ impl<'a, 'db> Analysis<'a, 'db> {
         &mut self,
         func: crate::hir_def::Func<'db>,
         effect: &NEffectArg<'db>,
-        args: &[NOperand],
-        effect_args: &[NEffectArg<'db>],
     ) -> Option<Footprint> {
         let mode = if effect.required_mut {
             BorrowKind::Mut
@@ -882,12 +926,6 @@ impl<'a, 'db> Analysis<'a, 'db> {
             EffectRequirementKey::Type(_) => EffectRequirementKey::Type(arg_ty),
             key => key.clone(),
         });
-        // A zero-sized place holds nothing, but a field handle names its
-        // field: the handle a `Field(T)` key takes, and those a provider holds.
-        let field_key = requirement
-            .is_some_and(|requirement| requirement.binding_ty.field_key_handle(self.db).is_some());
-        let names_field = field_key
-            || !field_handle_spaces(self.db, self.scope, self.assumptions, arg_ty).is_empty();
         if let Some(key) = key
             && let Some(access) = effect_key_state_access(
                 self.db,
@@ -904,48 +942,11 @@ impl<'a, 'db> Analysis<'a, 'db> {
             });
         }
         let (regions, parents) = match &effect.arg {
-            NEffectArgValue::Place(place) if place.ty.is_zero_sized(self.db) && !names_field => {
-                return None;
-            }
+            // A zero-sized place holds nothing.
+            NEffectArgValue::Place(place) if place.ty.is_zero_sized(self.db) => return None,
             NEffectArgValue::Place(place) => {
                 let resolved = self.resolve(place);
-                let mut regions = self.named_regions(resolved.regions, arg_ty, !field_key);
-                let mut parents = resolved.direct;
-                // The callee may exercise a `Field(T)` authority over the
-                // handles its arguments and other effects hold, of whatever
-                // field: those of another type than the one supplied name
-                // other fields.
-                if field_key {
-                    let holds_handles = |this: &Self, ty: TyId<'db>| {
-                        ty != arg_ty
-                            && !field_handle_spaces(this.db, this.scope, this.assumptions, ty)
-                                .is_empty()
-                    };
-                    for arg in args {
-                        let ty = self.body.values[arg.value.index()].ty;
-                        let ty = ty.as_capability(self.db).map_or(ty, |(_, target)| target);
-                        if holds_handles(self, ty) {
-                            let (source, _) = self.source_place(arg.value);
-                            regions.extend(self.named_regions(source, ty, false));
-                            parents.extend(self.direct(arg.value));
-                        }
-                    }
-                    for other in effect_args {
-                        if let NEffectArgValue::Place(other_place) = &other.arg
-                            && other.binding_idx != effect.binding_idx
-                            && holds_handles(self, other_place.ty)
-                        {
-                            let resolved = self.resolve(other_place);
-                            regions.extend(self.named_regions(
-                                resolved.regions,
-                                other_place.ty,
-                                false,
-                            ));
-                            parents.extend(resolved.direct);
-                        }
-                    }
-                }
-                (regions, parents)
+                (resolved.regions, resolved.direct)
             }
             NEffectArgValue::Value(value) => (
                 self.values[value.value.index()]
@@ -961,39 +962,6 @@ impl<'a, 'db> Analysis<'a, 'db> {
             mode,
             parents,
         })
-    }
-
-    /// The regions an access of places holding a value of `ty` reaches:
-    /// the places themselves if `data`, and the key spaces of the static slot
-    /// handles the value holds, apart from them. A handle copied into memory
-    /// names its key space in a dynamic domain of its space. A handle whose
-    /// slot is a runtime value names its place.
-    fn named_regions(
-        &mut self,
-        regions: Vec<AbsPlace>,
-        ty: TyId<'db>,
-        data: bool,
-    ) -> Vec<AbsPlace> {
-        let spaces = field_handle_spaces(self.db, self.scope, self.assumptions, ty);
-        if spaces.is_empty() {
-            return regions;
-        }
-        let space = match spaces.as_slice() {
-            [space] => Some(*space),
-            _ => None,
-        };
-        let mut named = if data { regions.clone() } else { Vec::new() };
-        for region in regions {
-            let base = if self.space(region.base) == Some(ProviderAddressSpace::Memory) {
-                AbsPlace::new(Base::Domain(self.domains.dynamic(space)))
-            } else {
-                region
-            };
-            named.push(base.extended(&[Step::KeySpace]));
-        }
-        named.sort();
-        named.dedup();
-        named
     }
 
     /// The regions of the place a value was read from or borrowed, through
@@ -1425,19 +1393,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     ..
                 } = expr
                 {
+                    let siblings = self.split_siblings(*result);
                     let result = self.check_call(
                         callee.key.owner(self.db),
                         args,
                         effect_args,
                         state,
+                        &siblings,
                         origin,
                     );
                     self.report(result)?;
                 }
                 let opened = self.opened.get(result).cloned().unwrap_or_default();
                 if self.checking {
+                    let siblings = self.split_siblings(*result);
                     for &token in &opened {
-                        self.check_opened(token, state)?;
+                        self.check_opened(token, state, &siblings)?;
                     }
                 }
                 // Accesses no `end` closes last for the operation using them.
@@ -1750,7 +1721,14 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// Check a token a statement opens against the accesses open around it.
-    fn check_opened(&self, token: TokenId, state: &State) -> Result<(), Diag<'db>> {
+    /// Checks a reservation `token` opens against the open accesses, apart
+    /// from those `siblings`, the earlier components of its unsafe split.
+    fn check_opened(
+        &self,
+        token: TokenId,
+        state: &State,
+        siblings: &[TokenId],
+    ) -> Result<(), Diag<'db>> {
         let data = &self.tokens[token as usize];
         if data.zero_sized || data.kind != TokenKind::Reservation {
             return Ok(());
@@ -1760,12 +1738,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
             BorrowKind::Mut => MemoryAccessKind::MutAccess,
             BorrowKind::Ref => MemoryAccessKind::Read,
         };
+        let own: TokenSet = siblings.iter().copied().chain([token]).collect();
         self.check_conflicts(
             state,
             &data.regions,
             data.mode,
             &authority,
-            &[token],
+            &own,
             kind,
             data.origin,
         )
@@ -1773,12 +1752,15 @@ impl<'a, 'db> Analysis<'a, 'db> {
 
     /// A call's interference footprint: its carrier arguments for the call's
     /// duration, its effects, and the state its external executions reach.
+    /// `siblings` are the tokens of the earlier components of the call's
+    /// unsafe split, which it never conflicts with.
     fn check_call(
         &mut self,
         owner: BodyOwner<'db>,
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
         state: &State,
+        siblings: &[TokenId],
         origin: SemOrigin<'db>,
     ) -> Result<(), Diag<'db>> {
         let BodyOwner::Func(func) = owner else {
@@ -1802,7 +1784,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                         &regions,
                         BorrowKind::Ref,
                         &authority,
-                        &[],
+                        siblings,
                         MemoryAccessKind::Read,
                         arg_origin,
                     )?;
@@ -1831,11 +1813,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     hole,
                 ));
             }
-            self.check_conflicts(state, &regions, mode, &authority, &[], kind, arg_origin)?;
+            self.check_conflicts(
+                state, &regions, mode, &authority, siblings, kind, arg_origin,
+            )?;
         }
         let mut footprints: Vec<_> = effect_args
             .iter()
-            .filter_map(|effect| self.effect_footprint(func, effect, args, effect_args))
+            .filter_map(|effect| self.effect_footprint(func, effect))
             .collect();
         if let Some(access) = external_call_state_access(self.db, func) {
             footprints.push(Footprint {
@@ -1855,7 +1839,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 &footprint.regions,
                 footprint.mode,
                 &authority,
-                &[],
+                siblings,
                 kind,
                 origin,
             )?;
@@ -2134,4 +2118,13 @@ pub(super) fn check_body<'db>(
     analysis.solve();
     let spaces = analysis.check()?;
     Ok((analysis.discarded_writes(), spaces))
+}
+
+/// Adds `extra` to `parents`, once each.
+fn add_parents(parents: &mut TokenSet, extra: &[TokenId]) {
+    for &token in extra {
+        if !parents.contains(&token) {
+            parents.push(token);
+        }
+    }
 }

@@ -52,6 +52,11 @@ pub enum Projection<Ty, Var, Idx> {
     /// Array/slice index access.
     Index(IndexSource<Idx>),
 
+    /// The element at a key of a collection whose elements are places
+    /// (`core::ops::PlaceIndex`): a storage map's entry or a storage array's
+    /// element, at a slot the collection computes.
+    Entry(Idx),
+
     /// Pointer dereference.
     Deref,
 }
@@ -150,7 +155,10 @@ impl<Ty, Var, Idx> ProjectionPath<Ty, Var, Idx> {
         self.0.last().and_then(|proj| match proj {
             Projection::Field(idx) => Some(*idx),
             Projection::VariantField { field_idx, .. } => Some(*field_idx),
-            Projection::Index(_) | Projection::Deref | Projection::Discriminant => None,
+            Projection::Index(_)
+            | Projection::Entry(_)
+            | Projection::Deref
+            | Projection::Discriminant => None,
         })
     }
 

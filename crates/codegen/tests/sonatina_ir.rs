@@ -203,67 +203,26 @@ fn fixed_mem_buffer_exposes_constant_nonescaping_malloc_to_backend(fixture: Fixt
     );
 }
 
-#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "wildcard_storage_map_root_reports_runtime_root_error.fe")]
-fn wildcard_storage_map_root_reports_runtime_root_error(fixture: Fixture<&str>) {
+#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "storage_map_root_effect_reports_runtime_root_error.fe")]
+fn storage_map_root_effect_reports_runtime_root_error(fixture: Fixture<&str>) {
     let err = with_top_mod_for_source(&fixture, |db, top_mod| {
         emit_module_sonatina_ir(db, top_mod)
-            .expect_err("wildcard StorageMap roots should be rejected")
+            .expect_err("a standalone root cannot take a StorageMap effect")
     });
     let message = err.to_string();
     assert!(
-        message.contains("standalone runtime root")
-            && message.contains("inferred layout const")
-            && message.contains("no caller to supply a concrete provider")
+        message.contains("standalone root")
+            && message.contains("no caller to supply ordinary effect parameters")
             && message.contains("with (...)"),
         "unexpected error message:\n{message}"
     );
 }
 
-#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "packed_storage_field_native_reference_is_rejected.fe")]
-fn packed_storage_field_native_reference_is_rejected(fixture: Fixture<&str>) {
-    let err = with_top_mod_for_source(&fixture, |db, top_mod| {
-        emit_module_sonatina_ir(db, top_mod)
-            .expect_err("a native reference to a packed storage field should be rejected")
-    });
-    let message = err.to_string();
-    assert!(
-        message.contains("cannot store a reference to a storage field packed into a word"),
-        "unexpected error message:\n{message}"
-    );
-}
-
-#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "explicit_storage_map_root_compiles_without_a_runtime_provider.fe")]
-fn explicit_storage_map_root_compiles_without_a_runtime_provider(fixture: Fixture<&str>) {
-    let output = with_top_mod_for_source(&fixture, |db, top_mod| {
-        emit_module_sonatina_ir(db, top_mod).expect("explicit root should compile")
-    });
-    assert!(
-        output.contains("call %storagemap_storage_slot_with_salt v0 0.i256"),
-        "explicit root was not lowered as the concrete StorageMap salt:\n{output}"
-    );
-}
-
-#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "inferred_storage_map_roots_skip_explicit_contract_salts.fe")]
-fn inferred_storage_map_roots_skip_explicit_contract_salts(fixture: Fixture<&str>) {
+#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "storage_map_free_function_compiles_with_concrete_provider.fe")]
+fn storage_map_free_function_compiles_with_concrete_provider(fixture: Fixture<&str>) {
     let output = with_top_mod_for_source(&fixture, |db, top_mod| {
         emit_module_sonatina_ir(db, top_mod)
-            .expect("mixed explicit and inferred roots should compile")
-    });
-    for salt in ["0.i256", "1.i256", "2.i256"] {
-        assert!(
-            output.lines().any(|line| {
-                line.contains("call %storagemap_storage_slot_with_salt") && line.contains(salt)
-            }),
-            "missing StorageMap salt {salt}:\n{output}"
-        );
-    }
-}
-
-#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "wildcard_storage_map_free_function_compiles_with_concrete_provider.fe")]
-fn wildcard_storage_map_free_function_compiles_with_concrete_provider(fixture: Fixture<&str>) {
-    let output = with_top_mod_for_source(&fixture, |db, top_mod| {
-        emit_module_sonatina_ir(db, top_mod)
-            .expect("wildcard StorageMap helpers should compile from a concrete provider")
+            .expect("StorageMap helpers should compile from a concrete provider")
     });
     assert!(
         output.contains("func private %get_balance") && output.contains("object @C"),
@@ -428,34 +387,4 @@ fn sonatina_ir_snap(fixture: Fixture<&str>) {
     settings.bind(|| {
         _insta::assert_snapshot!(fixture_name, output);
     });
-}
-
-/// End-to-end guard for the generic-storage-field aliasing fix: a hole-bearing
-/// storage type passed as one generic argument and reused by two struct fields
-/// (`struct Pair<T> { left: T, right: T }` as `Pair<StorageMap<..>>`) must lower
-/// to *distinct* storage roots. Before the fix both fields shared one root,
-/// silently merging their storage in deployed bytecode.
-#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "repeated_generic_storage_fields_lower_to_distinct_slots.fe")]
-fn repeated_generic_storage_fields_lower_to_distinct_slots(fixture: Fixture<&str>) {
-    let ir = with_top_mod_for_source(&fixture, |db, top_mod| {
-        emit_module_sonatina_ir(db, top_mod).expect("Sonatina IR should emit")
-    });
-
-    // The read and write entry pointers derive their addresses from the
-    // two field roots. The concrete salts passed to the hash must differ.
-    let salts: Vec<_> = ir
-        .lines()
-        .filter(|line| line.contains("call %storagemap_storage_slot_with_salt"))
-        .map(|line| {
-            line.split_whitespace()
-                .find_map(|tok| {
-                    tok.trim_end_matches(';')
-                        .strip_suffix(".i256")
-                        .filter(|n| n.parse::<u64>().is_ok())
-                })
-                .unwrap_or_else(|| panic!("no salt literal on line `{line}`"))
-        })
-        .collect();
-    assert_eq!(salts.len(), 2, "expected both map entry roots:\n{ir}");
-    assert_ne!(salts[0], salts[1], "left/right storage roots aliased");
 }

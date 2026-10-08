@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 416
+assertion_line: 388
 expression: output
 input_file: crates/codegen/tests/fixtures/event_logging.fe
 ---
@@ -322,8 +322,8 @@ func private %store_word(v0.i256, v1.i256) {
         jump block1;
 
     block1:
-        v3.i256 = call %cast v0;
-        mstore v3 v1 i256;
+        v4.i256 = call %cast v0;
+        mstore v4 v1 i256;
         return;
 }
 

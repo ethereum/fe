@@ -32,9 +32,9 @@ error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or fu
  15 │     mem.mstore(addr: p, value: 1)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/evm/effects.fe:321:15
+    ┌─ src/evm/effects.fe:313:15
     │
-321 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
+313 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
     │               ------ callee defined here
 
 error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or function
@@ -43,9 +43,9 @@ error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or fu
  19 │     evm.mstore(addr: p, value: 1)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/evm/effects.fe:321:15
+    ┌─ src/evm/effects.fe:313:15
     │
-321 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
+313 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
     │               ------ callee defined here
 
 error[8-0097]: call to unsafe function `encode` requires an `unsafe` block or function

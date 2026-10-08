@@ -11,11 +11,11 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::{
-            CallSiteId, FieldIndex, LayoutBackingPlace, LayoutBackingSource, Mutability, SBlock,
-            SBlockId, SConst, SExpr, SLocal, SLocalId, SOperand, SPlace, SStmt, SStmtId, SStmtKind,
-            STerminator, STerminatorKind, SValueId, SemConstId, SemConstValue, SemOrigin,
-            SemanticBody, SemanticCodeRegionTarget, SemanticLocalRole, VariantIndex, bool_const,
-            bytes_const, consts::instantiate_const_template, int_const, reify_runtime_const_for_ty,
+            CallSiteId, FieldIndex, LayoutBackingSource, Mutability, SBlock, SBlockId, SConst,
+            SExpr, SLocal, SLocalId, SOperand, SPlace, SStmt, SStmtId, SStmtKind, STerminator,
+            STerminatorKind, SValueId, SemConstId, SemConstValue, SemOrigin, SemanticBody,
+            SemanticCodeRegionTarget, SemanticLocalRole, VariantIndex, bool_const, bytes_const,
+            consts::instantiate_const_template, int_const, reify_runtime_const_for_ty,
             runtime_size_bytes, sem_const_from_ty, struct_const, unit_const,
         },
         ty::{
@@ -41,7 +41,6 @@ use crate::{
         expr::{BinOp, LogicalBinOp, UnOp},
         params::FuncParamMode,
     },
-    projection::{IndexSource, Projection},
 };
 
 use super::{
@@ -143,6 +142,7 @@ pub(crate) fn lower_to_smir_with_call_sites<'a, 'db>(
                     kind: STerminatorKind::Return(None),
                 },
             }],
+            unsafe_splits: Vec::new(),
         };
     };
 
@@ -224,6 +224,8 @@ pub(super) struct SmirLowerCtxt<'a, 'db> {
     pub(super) yield_depth: u32,
     /// The slide of the `yield` statement being lowered.
     slide: Option<SBlockId>,
+    /// The components of each unsafe split lowered so far.
+    unsafe_splits: Vec<Vec<SValueId>>,
 }
 
 pub(super) struct BlockState<'db> {
@@ -313,6 +315,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             loop_bases: FxHashMap::default(),
             yield_depth: 0,
             slide: None,
+            unsafe_splits: Vec::new(),
         };
         cx.collect_binding_locals();
         cx.current = cx.new_block();
@@ -338,6 +341,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             entry_locals: self.entry_locals,
             locals: self.locals,
             blocks,
+            unsafe_splits: self.unsafe_splits,
         }
     }
 
@@ -565,11 +569,33 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     }
 
     /// The semantic-IR type of `expr`'s value: a projection's yield sites
-    /// carry their grants.
+    /// carry their grants. A leaf yielding an access to a value is lowered
+    /// as that value, of its own type: the grant of the frame temporary
+    /// holding it is typed by the shape (`lower_yield_leaf`). A call that
+    /// never returns yields nothing, and joins the other leaves' grants.
     pub(super) fn expr_ty(&self, expr: ExprId) -> TyId<'db> {
-        self.typed_body.yield_shape(expr).map_or_else(
-            || self.typed_body.expr_ty(self.db, expr),
-            |shape| shape.carrier_ty(self.db),
+        match self.typed_body.yield_shape(expr) {
+            Some(Shape::Access(..)) if self.is_yield_leaf(expr) && !self.never_returns(expr) => {
+                self.typed_body.expr_ty(self.db, expr)
+            }
+            Some(shape) => shape.carrier_ty(self.db),
+            None => self.typed_body.expr_ty(self.db, expr),
+        }
+    }
+
+    /// Whether `expr` calls something that never returns.
+    fn never_returns(&self, expr: ExprId) -> bool {
+        self.typed_body
+            .callable_expr(expr)
+            .is_some_and(|callable| callable.ret_ty(self.db).is_never(self.db))
+    }
+
+    /// Whether the yield site `expr` yields itself, rather than through the
+    /// branches or the tail of the block it is.
+    fn is_yield_leaf(&self, expr: ExprId) -> bool {
+        !matches!(
+            expr.data(self.db, self.body),
+            Partial::Present(Expr::Block(..) | Expr::If(..) | Expr::Match(..) | Expr::With(..))
         )
     }
 
@@ -630,6 +656,23 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 self.lower_call_like_expr(expr, ty, Some(*base), &[*index])
             }
             Partial::Present(Expr::Try(inner)) => self.lower_try(expr, *inner, ty),
+            // An unsafe split: one session granting each component.
+            Partial::Present(Expr::Tuple(elems)) if self.typed_body.is_unsafe_split(expr) => {
+                let fields: Vec<_> = elems
+                    .iter()
+                    .map(|elem| SOperand::expr(self.lower_source(*elem), *elem))
+                    .collect();
+                self.unsafe_splits
+                    .push(fields.iter().map(|field| field.value).collect());
+                self.emit_expr_with_origin(
+                    SemOrigin::Expr(expr),
+                    ty,
+                    SExpr::AggregateMake {
+                        ty,
+                        fields: fields.into(),
+                    },
+                )
+            }
             Partial::Present(Expr::Block(stmts, _)) => {
                 let (tail, head) = stmts.split_last().expect("an access block has a tail");
                 for stmt in head {
@@ -741,16 +784,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// Lowers a projection's yield site to the carrier of what it grants.
     /// Tuples and variant constructors yield through their (yield-site)
     /// elements; an access binding is re-yielded; a `ref` yield of any
-    /// other place or value views it.
+    /// other place views it, and a value is held in a frame temporary that
+    /// the yield grants.
     fn lower_yield_leaf(&mut self, expr: ExprId, shape: Shape<'db>) -> SValueId {
         if self.typed_body.expr_prop(self.db, expr).shape.is_some() {
             return self.lower_access(expr);
         }
-        if self
-            .typed_body
-            .callable_expr(expr)
-            .is_some_and(|callable| callable.ret_ty(self.db).is_never(self.db))
-        {
+        if self.never_returns(expr) {
             return self.lower_expr_inner(expr);
         }
         let Shape::Access(kind, _) = shape else {
@@ -776,11 +816,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
         let place = self.try_lower_place(expr).unwrap_or_else(|| {
             let value = self.lower_expr_inner(expr);
-            let temp = self.alloc_local(
-                self.typed_body.expr_ty(self.db, expr),
-                Mutability::Immutable,
-                None,
-            );
+            let mutability = match kind {
+                BorrowKind::Mut => Mutability::Mutable,
+                BorrowKind::Ref => Mutability::Immutable,
+            };
+            let temp = self.alloc_local(self.typed_body.expr_ty(self.db, expr), mutability, None);
             self.push_stmt(
                 origin,
                 SStmtKind::Assign {
@@ -804,12 +844,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// Lowers `expr`. A projection's yield site yields on its own path, so
     /// each path's grant has its own resume point.
     pub(super) fn lower_expr(&mut self, expr: ExprId) -> SValueId {
-        let yield_leaf = self.typed_body.yield_shape(expr).filter(|_| {
-            !matches!(
-                expr.data(self.db, self.body),
-                Partial::Present(Expr::Block(..) | Expr::If(..) | Expr::Match(..) | Expr::With(..))
-            )
-        });
+        let yield_leaf = self
+            .typed_body
+            .yield_shape(expr)
+            .filter(|_| self.is_yield_leaf(expr));
         let value = match yield_leaf {
             Some(shape) => {
                 self.yield_depth += 1;
@@ -908,6 +946,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 if self.typed_body.semantic_expr_lowering(expr).is_some() {
                     return self.lower_call_like_expr(expr, ty, Some(*base), &[*index]);
                 }
+                // An entry lives at its collection's place: a storage
+                // collection is never a temporary.
+                if self.typed_body.is_place_entry(expr) {
+                    let place = self.lower_place(expr);
+                    return self.emit_expr_with_origin(origin, ty, SExpr::ReadPlace { place });
+                }
                 if let Some(place) = self.try_lower_place(expr) {
                     return self.emit_expr_with_origin(origin, ty, SExpr::ReadPlace { place });
                 }
@@ -976,14 +1020,15 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 unreachable!("unsupported macro calls must be rejected before semantic lowering")
             }
             Expr::MethodCall(receiver, _, _, args) => self.lower_call(expr, Some(*receiver), args),
+            // The value is evaluated before the target's sessions open, so it
+            // may read what the target is reached through.
             Expr::Assign(dst, src) => {
+                let src = self.lower_expr_operand(*src);
                 if self.typed_body.semantic_expr_lowering(*dst).is_some() {
                     let dst = SPlace::new(self.lower_access(*dst));
-                    let src = self.lower_expr_operand(*src);
                     self.push_stmt(origin, SStmtKind::Store { dst, src });
                 } else {
                     let dst = self.lower_place(*dst);
-                    let src = self.lower_expr_operand(*src);
                     self.push_place_write(origin, dst, src);
                 }
                 self.unit_value()
@@ -992,6 +1037,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 if self.typed_body.semantic_expr_lowering(expr).is_some() {
                     return self.lower_call_like_expr(expr, ty, Some(*dst), &[*src]);
                 }
+                let rhs = self.lower_expr_operand(*src);
                 let dst_place = self.lower_place(*dst);
                 let lhs = if dst_place.path.is_empty() {
                     self.lower_expr_operand(*dst)
@@ -1007,7 +1053,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         *dst,
                     )
                 };
-                let rhs = self.lower_expr_operand(*src);
                 let dst_ty = self.projectable_place_ty(self.expr_ty(*dst));
                 let sum = self.emit_expr_with_origin(
                     origin,
@@ -2109,22 +2154,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             }
             ForLoopItem::Access(_) | ForLoopItem::Produced => element,
         };
-        if plan.element_layout_backing_source {
-            self.locals[element.index()].layout_backing_sources = vec![LayoutBackingSource {
-                target: Vec::new(),
-                source: LayoutBackingPlace::Local(match &bases[0].1 {
-                    LoopBase::Value(base) => SPlace::dynamic_index(*base, state),
-                    LoopBase::Place(place, _) => {
-                        let mut place = place.clone();
-                        place
-                            .path
-                            .push(Projection::Index(IndexSource::Dynamic(state)));
-                        place
-                    }
-                }),
-            }];
-            self.assigned_layout_backing_sources[element.index()] = true;
-        }
         self.bind_pattern(pat, element);
         let _ = self.lower_expr(body_expr);
         let falls_through = !self.is_terminated(self.current);

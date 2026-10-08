@@ -1,0 +1,1 @@
+A projection that returns `Option<mut T>`, `Result<mut T, E>` or another enum of grants no longer builds an enum value holding a runtime-tagged reference descriptor: the caller's `match`, `if let` or `?` binds the grant where the projection picks its variant.

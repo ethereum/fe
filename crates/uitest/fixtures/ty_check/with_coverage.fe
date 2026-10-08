@@ -32,14 +32,6 @@ fn raw_read_only(_ p: StorPtr<u256>) -> u256 uses (storage: RawStorage) {
     }
 }
 
-// Accepted: the authority over the slot a handle of this type names.
-fn field(_ p: StorPtr<u256>) -> u256 uses (storage: Field(StorPtr<u256>)) {
-    let ptr = p
-    with (ptr) {
-        read(ptr)
-    }
-}
-
 // Accepted: an `unsafe` block vouches for the provider.
 fn vouched(_ p: StorPtr<u256>) -> u256 {
     let ptr = p
@@ -65,11 +57,10 @@ fn count() -> u256 uses (counts: StorageMap<u256, u256>) {
     counts.get(0)
 }
 
-// Rejected: a storage map names its field wherever the handle lies, so a
-// copy installed as a provider needs authority over that field.
-fn uncovered_map(_ map: StorageMap<u256, u256>) -> u256 {
-    let counts = map
-    with (counts) {
+// Accepted: a map is provided by its place, and a parameter's place is in
+// the function's contract.
+fn param_map(_ map: StorageMap<u256, u256>) -> u256 {
+    with (map) {
         count()
     }
 }
@@ -78,28 +69,9 @@ struct Counts {
     counts: StorageMap<u256, u256>,
 }
 
-// Accepted: the copy names a field the function's own provider holds.
-fn copied_map() -> u256 uses (store: Counts) {
-    let counts = store.counts
-    with (counts) {
-        count()
-    }
-}
-
-// Rejected: a provider that can write needs authority that can.
-fn copied_map_mut() -> u256 uses (store: Counts) {
-    let mut counts = store.counts
-    with (counts) {
-        count()
-    }
-}
-
-// Accepted: the authority over the field a map of this type names.
-fn covered_map(_ map: StorageMap<u256, u256>) -> u256
-    uses (storage: Field(StorageMap<u256, u256>))
-{
-    let counts = map
-    with (counts) {
+// Accepted: a place in the function's own effect.
+fn effect_map() -> u256 uses (store: Counts) {
+    with (store.counts) {
         count()
     }
 }

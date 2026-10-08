@@ -8,18 +8,11 @@ use salsa::Update;
 
 use super::{
     binder::Binder,
-    const_ty::{
-        ConstBodyLowering, HoleAnchor, LayoutBoundaryIdentity, LayoutInstantiationContext,
-        LayoutInstantiationId, LayoutOccurrencePath, LoweringContext,
-    },
-    layout_holes::{
-        LayoutInstantiation, LayoutRootUse, LayoutTemplateSubst, instantiate_layout_template,
-    },
+    const_ty::ConstBodyLowering,
     trait_resolution::{PredicateListId, constraint::collect_constraints},
-    ty_def::{InvalidCause, TyId},
+    ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
     ty_lower::{
-        CompleteSubst, GenericParamTypeSet, ParamBasis, ParamDomainId, ParamSchemaId,
-        lower_hir_ty_in_mode, lower_layout_root_uses_in_hir_ty,
+        CompleteSubst, GenericParamTypeSet, ParamDomainId, ParamSchemaId, lower_hir_ty_in_mode,
     },
 };
 use crate::analysis::HirAnalysisDb;
@@ -38,6 +31,52 @@ pub struct AdtDef<'db> {
     /// Otherwise, `fields[0]` represents all fields of the struct.
     #[return_ref]
     pub fields: Vec<AdtField<'db>>,
+}
+
+/// The storage collection `ty` is or holds in a field, or in a tuple or
+/// array element; see `TyId::storage_collection`.
+#[salsa::tracked(cycle_fn = ty_storage_collection_cycle_recover, cycle_initial = ty_storage_collection_cycle_initial)]
+pub(crate) fn ty_storage_collection<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+) -> Option<TyId<'db>> {
+    match ty.base_ty(db).data(db) {
+        TyData::TyBase(TyBase::Adt(adt)) => {
+            if adt.adt_ref(db).is_storage_only(db) {
+                return Some(ty);
+            }
+            // A type not applied to all its arguments has no values.
+            let args = ty.generic_args(db);
+            if args.len() != adt.params(db).len() {
+                return None;
+            }
+            adt.fields(db)
+                .iter()
+                .flat_map(|variant| variant.iter_types(db))
+                .find_map(|field| field.instantiate(db, args).storage_collection(db))
+        }
+        TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_) | PrimTy::Array)) => ty
+            .generic_args(db)
+            .iter()
+            .find_map(|elem| elem.storage_collection(db)),
+        _ => None,
+    }
+}
+
+fn ty_storage_collection_cycle_initial<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: TyId<'db>,
+) -> Option<TyId<'db>> {
+    None
+}
+
+fn ty_storage_collection_cycle_recover<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: &Option<TyId<'db>>,
+    _: u32,
+    _: TyId<'db>,
+) -> salsa::CycleRecoveryAction<Option<TyId<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
 }
 
 impl<'db> AdtDef<'db> {
@@ -149,19 +188,6 @@ impl<'db> AdtField<'db> {
         }
     }
 
-    fn layout_root_uses(&self, db: &'db dyn HirAnalysisDb, i: usize) -> Vec<LayoutRootUse<'db>> {
-        let Some(hir_ty) = self.tys[i].to_opt() else {
-            return Vec::new();
-        };
-        let assumptions = self.assumptions(db);
-        let minter = LoweringContext::new(HoleAnchor::TemplateTy {
-            ty: hir_ty,
-            scope: self.scope,
-            assumptions,
-        });
-        lower_layout_root_uses_in_hir_ty(db, hir_ty, self.scope, assumptions, &minter)
-    }
-
     /// Iterates all field types of this variant.
     pub fn iter_types<'a>(
         &'a self,
@@ -240,6 +266,14 @@ impl<'db> AdtRef<'db> {
         }
     }
 
+    /// Whether this is a storage collection (`#[storage_only]`).
+    pub fn is_storage_only(self, db: &'db dyn HirAnalysisDb) -> bool {
+        match self {
+            AdtRef::Enum(enum_) => enum_.is_storage_only(db),
+            AdtRef::Struct(struct_) => struct_.is_storage_only(db),
+        }
+    }
+
     /// Returns the semantic ADT definition for this reference.
     /// Thin wrapper over the tracked `lower_adt` query for ergonomic use at call sites.
     pub fn as_adt(self, db: &'db dyn HirAnalysisDb) -> AdtDef<'db> {
@@ -262,9 +296,8 @@ pub struct AdtCycleMember<'db> {
     pub ty_idx: usize,
 }
 
-/// Instantiates an ADT field as a source-level type shape. This deliberately
-/// does not mint layout landings; storage walking must use
-/// [`instantiate_adt_field_layout`] instead.
+/// Instantiates an ADT field's type with `explicit_args`; omitted trailing
+/// arguments keep their declaration formals.
 pub fn instantiate_adt_field_shape<'db>(
     db: &'db dyn HirAnalysisDb,
     adt: AdtDef<'db>,
@@ -367,76 +400,4 @@ fn instantiate_adt_field_shape_in_mode<'db>(
                     .expect("ADT field uses its declaration domain")
             },
         )
-}
-
-pub(crate) fn instantiate_adt_field_layout<'db>(
-    db: &'db dyn HirAnalysisDb,
-    adt: AdtDef<'db>,
-    variant_idx: usize,
-    field_idx: usize,
-    args: &[TyId<'db>],
-    parent: LayoutInstantiationId<'db>,
-    occurrence: LayoutOccurrencePath,
-) -> LayoutInstantiation<'db> {
-    let owner = adt.as_generic_param_owner(db);
-    let schema = ParamSchemaId::full(db, owner);
-    let field = adt
-        .fields(db)
-        .get(variant_idx)
-        .filter(|variant| field_idx < variant.num_types());
-    let template = field.map_or_else(
-        || TyId::invalid(db, InvalidCause::Other),
-        |field| field.ty(db, field_idx).instantiate_identity(),
-    );
-    let template_root_uses =
-        field.map_or_else(Vec::new, |field| field.layout_root_uses(db, field_idx));
-    let domain = ParamDomainId::full(db, schema);
-    if args.len() > domain.len(db) {
-        return instantiate_layout_template(
-            db,
-            TyId::invalid(
-                db,
-                InvalidCause::TooManyGenericArgs {
-                    expected: domain.len(db),
-                    given: args.len(),
-                },
-            ),
-            None,
-            LayoutInstantiationContext::Nested(parent),
-            LayoutBoundaryIdentity::AdtApplication(adt),
-            occurrence,
-        );
-    }
-    // Layout discovery also visits incomplete applications while diagnosing
-    // invalid source. Preserve absent formals as explicit residual parameters.
-    let subst = CompleteSubst::with_prefix(db, domain, args);
-    let mut instantiated = instantiate_layout_template(
-        db,
-        template,
-        Some(LayoutTemplateSubst::new(ParamBasis::Full, subst.clone())),
-        LayoutInstantiationContext::Nested(parent),
-        LayoutBoundaryIdentity::AdtApplication(adt),
-        occurrence.clone(),
-    );
-    for root_use in template_root_uses {
-        let value = Binder::bind(owner, root_use.value).instantiate(db, subst.values());
-        if super::layout_holes::layout_root_id(db, value).is_some() {
-            continue;
-        }
-        let owner = root_use
-            .owner
-            .map(|root_owner| Binder::bind(owner, root_owner).instantiate(db, subst.values()))
-            .or(Some(instantiated.ty));
-        let mut selector = occurrence.clone();
-        selector.extend(root_use.selector);
-        let root_use = LayoutRootUse {
-            value,
-            owner,
-            selector,
-        };
-        if !instantiated.root_uses.contains(&root_use) {
-            instantiated.root_uses.push(root_use);
-        }
-    }
-    instantiated
 }

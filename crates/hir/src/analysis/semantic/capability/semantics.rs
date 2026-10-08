@@ -5,10 +5,7 @@ use crate::{
         ty::{
             adt_def::{AdtRef, instantiate_adt_field_shape},
             normalize::normalize_ty,
-            provider::{
-                EffectHandleResolution, ProviderAddressSpace, StaticSlotLayoutResolution,
-                resolve_effect_handle, resolve_static_slot_layout,
-            },
+            provider::{EffectHandleResolution, resolve_effect_handle},
             trait_resolution::PredicateListId,
             ty_def::{BorrowKind, CapabilityKind, TyId},
         },
@@ -109,79 +106,6 @@ pub fn contains_capability<'db>(
     } else {
         false
     }
-}
-
-/// The spaces of the resources the static-slot handles in a value of `ty`
-/// name, such as a storage map's entries, without following a pointer.
-#[salsa::tracked(cycle_fn=field_handle_spaces_cycle_recover, cycle_initial=field_handle_spaces_cycle_initial)]
-pub fn field_handle_spaces<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    ty: TyId<'db>,
-) -> Vec<ProviderAddressSpace> {
-    let ty = normalize_ty(db, ty, scope, assumptions);
-    match resolve_static_slot_layout(db, scope, assumptions, ty) {
-        StaticSlotLayoutResolution::Resolved(space) => return vec![space],
-        // A static slot whose space does not resolve may lie in either.
-        StaticSlotLayoutResolution::Ambiguous | StaticSlotLayoutResolution::UnresolvedSpace => {
-            return vec![
-                ProviderAddressSpace::Storage,
-                ProviderAddressSpace::Transient,
-            ];
-        }
-        StaticSlotLayoutResolution::NotStaticSlot => {}
-    }
-    let fields = if ty.is_array(db) {
-        if ArrayLength::from_ty(db, ty.generic_args(db)[1]) == Some(ArrayLength::Known(0)) {
-            Vec::new()
-        } else {
-            vec![ty.generic_args(db)[0]]
-        }
-    } else if ty.is_product(db) {
-        ty.field_types(db)
-    } else if let Some(adt) = ty.adt_def(db)
-        && matches!(adt.adt_ref(db), AdtRef::Enum(_))
-    {
-        adt.fields(db)
-            .iter()
-            .enumerate()
-            .flat_map(|(variant, fields)| {
-                (0..fields.num_types()).map(move |field| {
-                    instantiate_adt_field_shape(db, adt, variant, field, ty.generic_args(db))
-                })
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
-    let mut spaces: Vec<_> = fields
-        .into_iter()
-        .flat_map(|field| field_handle_spaces(db, scope, assumptions, field))
-        .collect();
-    spaces.sort_unstable();
-    spaces.dedup();
-    spaces
-}
-
-fn field_handle_spaces_cycle_initial<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: ScopeId<'db>,
-    _: PredicateListId<'db>,
-    _: TyId<'db>,
-) -> Vec<ProviderAddressSpace> {
-    Vec::new()
-}
-
-fn field_handle_spaces_cycle_recover<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: &Vec<ProviderAddressSpace>,
-    _: u32,
-    _: ScopeId<'db>,
-    _: PredicateListId<'db>,
-    _: TyId<'db>,
-) -> salsa::CycleRecoveryAction<Vec<ProviderAddressSpace>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 fn contains_capability_cycle_initial<'db>(

@@ -38,15 +38,11 @@ pub(super) enum Step {
     },
     /// A constant index, or `None` for a dynamic one.
     Index(Option<usize>),
-    /// The entries of the static slot handles a place holds (a map's keyed
-    /// slots), which lie apart from the place itself: it ends a path.
-    KeySpace,
 }
 
 impl Step {
     fn overlaps(self, other: Self) -> bool {
         match (self, other) {
-            (Self::KeySpace, _) | (_, Self::KeySpace) => true,
             (Self::Field(lhs), Self::Field(rhs)) => lhs == rhs,
             (
                 Self::Variant {
@@ -77,16 +73,19 @@ pub(super) fn path_of(path: &NDataPath, constant: impl Fn(NValueId) -> Option<us
                 field: field.0,
             },
             NDataProjection::Index(NIndex::Const(index)) => Step::Index(Some(index)),
-            NDataProjection::Index(NIndex::Value(value)) => Step::Index(constant(value)),
+            // An entry is an element at a key, `[*]` unless the key is a
+            // literal.
+            NDataProjection::Index(NIndex::Value(value)) | NDataProjection::Entry(value) => {
+                Step::Index(constant(value))
+            }
         })
         .collect()
 }
 
 /// Two paths from the same base overlap when neither diverges from the
-/// other, and both or neither reach the key spaces of handles.
+/// other.
 pub(super) fn paths_overlap(lhs: &[Step], rhs: &[Step]) -> bool {
-    lhs.contains(&Step::KeySpace) == rhs.contains(&Step::KeySpace)
-        && lhs.iter().zip(rhs).all(|(lhs, rhs)| lhs.overlaps(*rhs))
+    lhs.iter().zip(rhs).all(|(lhs, rhs)| lhs.overlaps(*rhs))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

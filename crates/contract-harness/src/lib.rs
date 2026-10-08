@@ -1598,7 +1598,7 @@ const CLEAR_SELECTOR: u32 = sol("clear()")
 const EMIT_SELECTOR: u32 = sol("emit(bytes)")
 const TOPIC0: u256 = 0x1234
 
-type Blobs = StorageBytes<u256, 0, 1>
+type Blobs = StorageBytes<u256>
 
 #[contract_init(StorageBytesHarness)]
 fn init() uses (evm: mut Evm) {
@@ -1609,7 +1609,8 @@ fn init() uses (evm: mut Evm) {
 fn runtime() uses (evm: mut Evm) {
     let sel = evm.selector()
     with (RawStorage = evm) {
-        let mut blobs: Blobs = Blobs::new()
+        // The blobs' maps take slots 0 and 1.
+        let blobs = unsafe { Blobs::at(0) }
 
         if sel == SET_SELECTOR {
             let view = decode_bytes_view(CallData::with_base(4))

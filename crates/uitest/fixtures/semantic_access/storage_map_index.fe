@@ -1,7 +1,7 @@
 use std::evm::{Address, StorageMap}
 
-// `map[k]` on a storage map opens a write-back session that reserves the
-// map's field domain, `Field(Self)`, until its grant ends.
+// `map[k]` on a storage map is an entry place, a path under the map's place
+// with the key as a dynamic index: an access of it ends at its last use.
 
 struct Store {
     counts: StorageMap<u256, u256>,
@@ -13,16 +13,13 @@ pub struct Ledger {
 }
 
 impl Ledger {
-    // A data parameter carries no authority, so the method declares the
-    // authority over its map's field.
-    fn credit(mut self, _ to: Address, amount: u256)
-        uses (balances: mut Field(StorageMap<Address, u256>))
-    {
+    // The method reaches the map through `self`.
+    fn credit(mut self, _ to: Address, amount: u256) {
         self.balances[to] += amount
     }
 }
 
-// Rejected: the element's session holds `counts` while it is written.
+// Rejected: entries at runtime keys may be one entry.
 fn same_field(_ key: u256) uses (store: mut Store) {
     let x = mut store.counts[key]
     store.counts[key + 1] = 3
@@ -40,22 +37,22 @@ pub contract Distinct {
     }
 }
 
-// Rejected: a provided `Store` may be a memory value holding copies of one
-// map, so its handles may name the same field.
+// Accepted: a provided `Store` lives in storage, where its two maps are
+// distinct fields.
 fn provided_fields(_ key: u256) uses (store: mut Store) {
     let x = mut store.counts[key]
     store.other[key] = 3
     x += 1
 }
 
-// Accepted: the session finishes at its grant's last use.
+// Accepted: the entry access ends at its last use.
 fn sequential(_ key: u256) uses (store: mut Store) {
     let x = mut store.counts[key]
     x += 1
     store.counts[key] += 1
 }
 
-// Rejected: a read of the field while its write-back session is open.
+// Rejected: a read of the entry while a `mut` access of it is open.
 fn read_during_write(_ key: u256) -> u256 uses (store: mut Store) {
     let x = mut store.counts[key]
     let y = store.counts[key]

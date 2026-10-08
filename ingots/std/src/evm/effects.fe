@@ -1,4 +1,5 @@
 use core::effect_ref::{EffectHandle, EffectHandleMut, EffectRef, EffectRefMut}
+use core::ops::PlaceIndex
 use core::{ptr, size_of}
 use core::abi::{
     Abi,
@@ -134,70 +135,28 @@ impl<T> EffectHandleMut for StorPtr<T> {}
 impl<T> EffectRef<T> for StorPtr<T> {}
 impl<T> EffectRefMut<T> for StorPtr<T> {}
 
-// A pointer names the slot it reaches: a contract field's pointer is reached
-// with the authority over the field, and any other with a provider of the
-// pointer, which only raw storage authority installs.
 impl<T> StorPtr<T> {
-    /// A pointer to `slot`, for std types that hand out typed storage places.
-    pub(ingot) fn at_slot_unchecked(_ slot: u256) -> Self {
-        StorPtr { handle: slot }
-    }
-
     /// Reads the pointed-at value.
-    pub fn read(self) -> T uses (storage: Field(Self))
+    pub fn read(self) -> T
         where T: Copy
     {
         let ptr = self
-        with (ptr) {
-            core::effect_ref::read(ptr)
+        // The pointer's creator vouched for its slot.
+        unsafe {
+            with (ptr) {
+                core::effect_ref::read(ptr)
+            }
         }
     }
 
     /// Writes the pointed-at value.
-    pub fn write(self, _ value: own T) uses (storage: mut Field(Self)) {
+    pub fn write(self, _ value: own T) {
         let mut ptr = self
-        with (ptr) {
-            core::effect_ref::write(ptr, value)
-        }
-    }
-}
-
-/// Read-only storage pointer/handle to a value of type `T`.
-///
-/// Like `StorPtr<T>`, but it only provides the read-only effect, so the
-/// pointed-at value can be read and not written.
-pub struct StorReadPtr<T> { handle: u256 }
-
-impl<T> Copy for StorReadPtr<T> {}
-
-impl<T> EffectHandle for StorReadPtr<T> {
-    type Target = T
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Storage
-    type Raw = u256
-
-    fn raw(self) -> u256 {
-        self.handle
-    }
-}
-
-impl<T> EffectRef<T> for StorReadPtr<T> {}
-// no EffectRefMut: read-only
-
-impl<T> StorReadPtr<T> {
-    /// A read-only pointer to `slot`, for std types that hand out typed
-    /// storage places.
-    pub(ingot) fn at_slot_unchecked(_ slot: u256) -> Self {
-        StorReadPtr { handle: slot }
-    }
-
-    /// Reads the pointed-at value.
-    pub fn read(self) -> T uses (storage: Field(Self))
-        where T: Copy
-    {
-        let ptr = self
-        with (ptr) {
-            core::effect_ref::read(ptr)
+        // The pointer's creator vouched for its slot.
+        unsafe {
+            with (ptr) {
+                core::effect_ref::write(ptr, value)
+            }
         }
     }
 }
@@ -247,60 +206,11 @@ impl<T> EffectRefMut<T> for TStorPtr<T> {}
 
 impl<T> TStorPtr<T> {
     /// Reads the pointed-at transient value.
-    pub fn read(self) -> T uses (storage: Field(Self))
+    pub fn read(self) -> T
         where T: Copy
     {
         let ptr = self
-        with (ptr) {
-            core::effect_ref::read(ptr)
-        }
-    }
-
-    /// Writes the pointed-at transient value.
-    pub fn write(self, _ value: own T) uses (storage: mut Field(Self)) {
-        let mut ptr = self
-        with (ptr) {
-            core::effect_ref::write(ptr, value)
-        }
-    }
-}
-
-/// Zero-sized pointer to a statically assigned transient storage slot.
-///
-/// `SLOT` defaults to a layout hole: when a type containing a `TSlot`
-/// reaches contract storage, the layout assigns the slot from the
-/// contract's transient slot counter — shared with `TStorPtr` provider
-/// fields, so static and runtime transient slots never collide.
-struct TSlotSeal {}
-
-pub struct TSlot<T, const SLOT: u256 = _> {
-    seal: TSlotSeal,
-}
-
-impl<T, const SLOT: u256> Copy for TSlot<T, SLOT> {}
-
-impl<T, const SLOT: u256> core::effect_ref::StaticSlot for TSlot<T, SLOT> {
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::TransientStorage
-}
-
-impl<T, const SLOT: u256> TSlot<T, SLOT> {
-    pub(ingot) fn ptr_unchecked(self) -> TStorPtr<T> {
-        TStorPtr { slot: SLOT }
-    }
-
-    /// Runtime pointer to the assigned slot.
-    pub fn ptr(mut self) -> TStorPtr<T> {
-        self.ptr_unchecked()
-    }
-
-    // The slot is the field `Self` names, so `Field(Self)` covers the
-    // pointer to it.
-
-    /// Reads the value at the assigned slot.
-    pub fn read(self) -> T uses (storage: Field(Self))
-        where T: Copy
-    {
-        let ptr = self.ptr_unchecked()
+        // The pointer's creator vouched for its slot.
         unsafe {
             with (ptr) {
                 core::effect_ref::read(ptr)
@@ -308,14 +218,51 @@ impl<T, const SLOT: u256> TSlot<T, SLOT> {
         }
     }
 
-    /// Writes the value at the assigned slot.
-    pub fn write(mut self, _ value: own T) uses (storage: mut Field(Self)) {
-        let mut ptr = self.ptr_unchecked()
+    /// Writes the pointed-at transient value.
+    pub fn write(self, _ value: own T) {
+        let mut ptr = self
+        // The pointer's creator vouched for its slot.
         unsafe {
             with (ptr) {
                 core::effect_ref::write(ptr, value)
             }
         }
+    }
+}
+
+/// A transient storage cell holding a `T`, kept in a storage struct.
+///
+/// A `TSlot` is a storage collection: it takes one slot of its container, and
+/// its value lives in transient storage at that slot's number. Storage and
+/// transient contract fields share one slot numbering, so the cell never
+/// overlaps other transient state. `slot[()]` is the value's place.
+#[storage_only]
+pub struct TSlot<T> {
+    seed: u256,
+}
+
+impl<T> PlaceIndex for TSlot<T> {
+    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::TransientStorage
+    type Key = ()
+    type Output = T
+
+    #[inline(always)]
+    fn locate(self, _ base: u256, _ key: (), _ width: u256) -> (u256, u256) {
+        (base, 0)
+    }
+}
+
+impl<T> TSlot<T> {
+    /// Reads the value.
+    pub fn read(self) -> T
+        where T: Copy
+    {
+        self[()]
+    }
+
+    /// Writes the value.
+    pub fn write(mut self, _ value: own T) {
+        self[()] = value
     }
 }
 

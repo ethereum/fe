@@ -6,9 +6,17 @@ use crate::{
         ContractRecvArm, ContractRecvArmListId, ContractRecvListId, Expr, FieldDef, FieldDefListId,
         FuncParamListId, IdentId, Pat, TrackedItemVariant, TypeId,
     },
-    lower::{FileLowerCtxt, body::BodyCtxt, item::lower_uses_clause_opt},
+    lower::{
+        FileLowerCtxt,
+        attr::{AttrForm, AttrRule, AttrTarget, validate_attr_rules},
+        body::BodyCtxt,
+        item::lower_uses_clause_opt,
+    },
     span::HirOrigin,
 };
+
+const SLOT_EXPECTED: &str = "`#[slot(<slot>)]`";
+pub(super) const SLOT_TARGETS: &str = "`mut` contract fields";
 
 impl<'db> ContractRecvArmListId<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, recv_idx: usize, ast: ast::RecvArmList) -> Self {
@@ -154,8 +162,54 @@ fn lower_contract_field_def<'db>(
     let type_ref = TypeId::lower_ast_partial(ctxt, ast.ty());
     let vis = super::lower_field_visibility(&ast);
     let is_mut = ast.mut_kw().is_some();
+    let slot = lower_slot_attr(
+        ctxt,
+        ast.attr_list(),
+        is_mut,
+        ast.name().map(|name| name.text().to_string()),
+    );
 
-    FieldDef::new(attributes, name, type_ref, vis, false, is_mut)
+    FieldDef {
+        slot,
+        ..FieldDef::new(attributes, name, type_ref, vis, false, is_mut)
+    }
+}
+
+/// Lowers a contract field's `#[slot(e)]` to the body of `e`. An immutable
+/// field has no slot: it lives in the contract's code.
+fn lower_slot_attr<'db>(
+    ctxt: &mut FileLowerCtxt<'db>,
+    attrs: Option<ast::AttrList>,
+    is_mut: bool,
+    name: Option<String>,
+) -> Option<Body<'db>> {
+    let (kind, rule) = if is_mut {
+        (
+            "contract field",
+            AttrRule::supported("slot", AttrForm::SingleExpr, SLOT_EXPECTED),
+        )
+    } else {
+        (
+            "immutable contract field",
+            AttrRule::unsupported("slot", SLOT_TARGETS),
+        )
+    };
+    validate_attr_rules(ctxt, attrs.clone(), AttrTarget::new(kind, name), &[rule]);
+    if !is_mut {
+        return None;
+    }
+    let attr = attrs?.normal_attrs_named("slot").next()?;
+    let mut args = attr.args()?.into_iter();
+    let (Some(arg), None) = (args.next(), args.next()) else {
+        return None;
+    };
+    match (arg.key(), arg.value()) {
+        (None, Some(ast::AttrArgValueKind::Expr(expr))) => {
+            Some(Body::lower_ast_nameless(ctxt, expr))
+        }
+        (Some(path), None) => Some(Body::lower_attr_path(ctxt, path, &arg)),
+        _ => None,
+    }
 }
 
 fn lower_contract_init<'db>(

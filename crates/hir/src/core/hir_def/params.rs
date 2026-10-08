@@ -68,7 +68,10 @@ impl<'db> GenericArgListId<'db> {
                 self.data(db)
                     .iter()
                     .map(|p| match p {
-                        GenericArg::Const(c) => c.value.pretty_print(db),
+                        GenericArg::Const(c) => c
+                            .value
+                            .to_opt()
+                            .map_or_else(|| "<missing>".into(), |b| b.pretty_print(db)),
                         GenericArg::Type(t) => {
                             t.ty.to_opt()
                                 .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db))
@@ -215,7 +218,7 @@ pub struct TypeGenericParam<'db> {
 pub struct ConstGenericParam<'db> {
     pub name: Partial<IdentId<'db>>,
     pub ty: Partial<TypeId<'db>>,
-    pub default: Option<ConstGenericArgValue<'db>>,
+    pub default: Option<Body<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
@@ -232,24 +235,7 @@ pub struct TypeGenericArg<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericArg<'db> {
-    pub value: ConstGenericArgValue<'db>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
-pub enum ConstGenericArgValue<'db> {
-    Expr(Partial<Body<'db>>),
-    Hole,
-}
-
-impl<'db> ConstGenericArgValue<'db> {
-    pub fn pretty_print(&self, db: &dyn HirDb) -> String {
-        match self {
-            Self::Expr(body) => body
-                .to_opt()
-                .map_or_else(|| "<missing>".into(), |b| b.pretty_print(db)),
-            Self::Hole => "_".to_string(),
-        }
-    }
+    pub value: Partial<Body<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

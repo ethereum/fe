@@ -39,7 +39,6 @@ impl<'db> ArrayLength<'db> {
                 Some(Self::Symbolic(value))
             }
             ConstTyData::TyVar(..)
-            | ConstTyData::Hole(..)
             | ConstTyData::Value(..)
             | ConstTyData::Description(..)
             | ConstTyData::Invalid(..) => None,

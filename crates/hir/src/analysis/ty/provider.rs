@@ -114,20 +114,13 @@ pub enum ProviderLayoutEvidence<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum ProviderLayoutResolution<'db> {
     NotHandle,
+    /// A handle, by `impl_instance`, to a `target` in `space`.
     Resolved {
         impl_instance: ResolvedImplInstance<'db>,
-        target_template: TyId<'db>,
+        target: TyId<'db>,
         space: ProviderAddressSpace,
     },
     Invalid(ProviderLayoutFailure),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum StaticSlotLayoutResolution {
-    NotStaticSlot,
-    Resolved(ProviderAddressSpace),
-    Ambiguous,
-    UnresolvedSpace,
 }
 
 fn can_select_effect_handle_impl<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
@@ -177,7 +170,6 @@ pub(crate) enum EffectHandleResolution<'db> {
     NotHandle,
     Resolved {
         impl_instance: ResolvedImplInstance<'db>,
-        target_template: TyId<'db>,
         target_ty: TyId<'db>,
         raw_ty: TyId<'db>,
     },
@@ -228,8 +220,7 @@ fn resolve_effect_handle_query<'db>(
         resolved.selected().origin(db),
         ImplementorOrigin::Assumption
     );
-    let Some((target_template, target_ty)) =
-        resolved_effect_handle_assoc_ty(db, resolved, trait_bound, "Target")
+    let Some(target_ty) = resolved_effect_handle_assoc_ty(db, resolved, trait_bound, "Target")
     else {
         return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget);
     };
@@ -241,8 +232,7 @@ fn resolve_effect_handle_query<'db>(
     {
         return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget);
     }
-    let Some((_, raw_ty)) = resolved_effect_handle_assoc_ty(db, resolved, trait_bound, "Raw")
-    else {
+    let Some(raw_ty) = resolved_effect_handle_assoc_ty(db, resolved, trait_bound, "Raw") else {
         return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedRaw);
     };
     let raw_ty = normalize_ty(db, raw_ty, scope, assumptions);
@@ -255,7 +245,6 @@ fn resolve_effect_handle_query<'db>(
     }
     EffectHandleResolution::Resolved {
         impl_instance: resolved,
-        target_template,
         target_ty,
         raw_ty,
     }
@@ -266,15 +255,12 @@ fn resolved_effect_handle_assoc_ty<'db>(
     resolved: ResolvedImplInstance<'db>,
     trait_bound: bool,
     name: &str,
-) -> Option<(TyId<'db>, TyId<'db>)> {
+) -> Option<TyId<'db>> {
     let ident = IdentId::new(db, name.to_string());
     let trait_ty = trait_bound
         .then(|| resolved.trait_inst().project_assoc_ty(db, ident))
         .flatten();
-    Some((
-        resolved.assoc_ty_template(db, ident).or(trait_ty)?,
-        resolved.instantiated_assoc_ty(db, ident).or(trait_ty)?,
-    ))
+    resolved.instantiated_assoc_ty(db, ident).or(trait_ty)
 }
 
 /// Returns the semantic layout value carried by a nominal effect handle.
@@ -303,17 +289,16 @@ pub fn resolve_effect_handle_layout<'db>(
     assumptions: PredicateListId<'db>,
     provider_ty: TyId<'db>,
 ) -> ProviderLayoutResolution<'db> {
-    let (impl_instance, target_template, target_ty, raw_ty) =
+    let (impl_instance, target_ty, raw_ty) =
         match resolve_effect_handle(db, scope, assumptions, provider_ty) {
             EffectHandleResolution::NotHandle => {
                 return ProviderLayoutResolution::NotHandle;
             }
             EffectHandleResolution::Resolved {
                 impl_instance,
-                target_template,
                 target_ty,
                 raw_ty,
-            } => (impl_instance, target_template, target_ty, raw_ty),
+            } => (impl_instance, target_ty, raw_ty),
             EffectHandleResolution::Invalid(failure) => {
                 return ProviderLayoutResolution::Invalid(failure);
             }
@@ -336,48 +321,9 @@ pub fn resolve_effect_handle_layout<'db>(
     }
     ProviderLayoutResolution::Resolved {
         impl_instance,
-        target_template,
+        target: target_ty,
         space,
     }
-}
-
-#[salsa::tracked]
-pub fn resolve_static_slot_layout<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    owner_ty: TyId<'db>,
-) -> StaticSlotLayoutResolution {
-    let Some(static_slot) = super::corelib::resolve_core_trait(db, scope, &["StaticSlot"]) else {
-        return StaticSlotLayoutResolution::NotStaticSlot;
-    };
-    let inst = TraitInstId::new(db, static_slot, vec![owner_ty], IndexMap::new());
-    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-    // An unresolved argument cannot instantiate an impl, only select one.
-    if owner_ty.has_var(db) {
-        return match solve_cx.select_impl(db, inst) {
-            Selection::NotFound => StaticSlotLayoutResolution::NotStaticSlot,
-            Selection::Unique(_) | Selection::Ambiguous(_) => StaticSlotLayoutResolution::Ambiguous,
-        };
-    }
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved)
-            if !matches!(
-                resolved.selected().origin(db),
-                ImplementorOrigin::Assumption
-            ) =>
-        {
-            resolved
-        }
-        Selection::Unique(_) | Selection::Ambiguous(_) => {
-            return StaticSlotLayoutResolution::Ambiguous;
-        }
-        Selection::NotFound => return StaticSlotLayoutResolution::NotStaticSlot,
-    };
-    effect_space_from_resolved_trait_const(db, scope, resolved).map_or(
-        StaticSlotLayoutResolution::UnresolvedSpace,
-        StaticSlotLayoutResolution::Resolved,
-    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
@@ -649,9 +595,7 @@ pub fn provider_semantics_for_specialized_call<'db>(
 ) -> ProviderSemantics<'db> {
     let mut semantics = provider_semantics(db, scope, assumptions, provider_ty);
     let root_object_refinement = matches!(semantics.evidence, ProviderLayoutEvidence::NotHandle)
-        && target_ty.is_some_and(|target| {
-            super::layout_shape_key(db, target) == super::layout_shape_key(db, provider_ty)
-        });
+        && target_ty.is_some_and(|target| target == provider_ty);
     if matches!(
         semantics.evidence,
         ProviderLayoutEvidence::Capability
@@ -669,6 +613,72 @@ pub fn provider_semantics_for_specialized_call<'db>(
     }
     semantics.transport = transport;
     semantics
+}
+
+/// The address space the elements of a collection whose elements are places
+/// (`core::ops::PlaceIndex`) live in: its implementation's `SPACE`.
+#[salsa::tracked]
+pub fn place_index_space<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    collection_ty: TyId<'db>,
+) -> Option<ProviderAddressSpace> {
+    let place_index = super::corelib::resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
+    let inst = TraitInstId::new(db, place_index, vec![collection_ty], IndexMap::new());
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
+    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst) else {
+        return None;
+    };
+    effect_space_from_resolved_trait_const(db, scope, resolved)
+}
+
+/// How a collection whose elements are places (`core::ops::PlaceIndex`)
+/// packs its elements into lanes: its `Lanes` codec, when that codes the
+/// element type (`LaneCodec<Output>`) in at most 128 bits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub struct PlaceIndexLanes<'db> {
+    pub codec: TyId<'db>,
+    pub bits: u16,
+}
+
+#[salsa::tracked]
+pub fn place_index_lanes<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    collection_ty: TyId<'db>,
+) -> Option<PlaceIndexLanes<'db>> {
+    let place_index = super::corelib::resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
+    let inst = TraitInstId::new_simple(db, place_index, vec![collection_ty]);
+    let assoc = |name: &str| {
+        let projected = inst
+            .trait_ref(db)
+            .project_assoc_ty(db, IdentId::new(db, name.to_string()))?;
+        Some(normalize_ty(db, projected, scope, assumptions))
+    };
+    let (codec, output) = (assoc("Lanes")?, assoc("Output")?);
+    if codec == TyId::unit(db) {
+        return None;
+    }
+    let lane_codec = super::corelib::resolve_core_trait(db, scope, &["ops", "LaneCodec"])?;
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
+    let Selection::Unique(resolved) = resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        TraitInstId::new_simple(db, lane_codec, vec![codec, output]),
+    ) else {
+        return None;
+    };
+    let bits = super::const_ty::const_ty_from_resolved_trait_const(
+        db,
+        resolved,
+        IdentId::new(db, "BITS".to_string()),
+    )?
+    .evaluate(db, Some(TyId::u256(db)))
+    .integer_value(db)?;
+    let bits = u16::try_from(bits).ok()?;
+    (bits > 0 && bits <= 128 && bits % 8 == 0).then_some(PlaceIndexLanes { codec, bits })
 }
 
 fn effect_space_from_resolved_trait_const<'db>(
@@ -893,17 +903,12 @@ fn probe(value: own Ptr<u8, AddressSpace::Memory>) {}
             resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty);
         let ProviderLayoutResolution::Resolved {
             impl_instance,
-            target_template,
+            target,
             space,
         } = resolution
         else {
             panic!("expected a unique provider layout, got {resolution:?}");
         };
-
-        let target = impl_instance
-            .instantiated_assoc_ty(&db, crate::hir_def::IdentId::new(&db, "Target"))
-            .expect("missing instantiated Target");
-        assert!(target_template.has_param(&db));
         assert_eq!(target.pretty_print(&db).to_string(), "u8");
         assert_eq!(impl_instance.impl_args(&db)[0], target);
         assert_eq!(space, ProviderAddressSpace::Memory);
@@ -1003,7 +1008,7 @@ fn probe(value: own MissingTarget) {}
             r#"
 use core::effect_ref::{AddressSpace, EffectHandle}
 
-struct Ptr<T, const SP: AddressSpace = _> { raw: u256 }
+struct Ptr<T, const SP: AddressSpace> { raw: u256 }
 
 impl<T, const SP: AddressSpace> EffectHandle for Ptr<T, SP> {
     type Target = T
@@ -1013,7 +1018,7 @@ impl<T, const SP: AddressSpace> EffectHandle for Ptr<T, SP> {
     fn raw(self) -> u256 { self.raw }
 }
 
-fn probe(value: own Ptr<u8>) {}
+fn probe<const SP: AddressSpace>(value: own Ptr<u8, SP>) {}
 "#,
         );
         let (unresolved_space_mod, _) = db.top_mod(unresolved_space_file);

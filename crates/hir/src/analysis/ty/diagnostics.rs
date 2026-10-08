@@ -75,6 +75,14 @@ pub enum TyLowerDiag<'db> {
         ty: TyId<'db>,
         mode: &'static str,
     },
+    /// A storage-only type, holding the storage collection `collection`, in a
+    /// position that would make it a value: `position`.
+    StorageOnlyValue {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        collection: TyId<'db>,
+        position: &'static str,
+    },
     InvalidTypeArgKind {
         span: DynLazySpan<'db>,
         expected: Option<Kind>,
@@ -143,12 +151,6 @@ pub enum TyLowerDiag<'db> {
         given: TyId<'db>,
     },
 
-    /// Layout holes (`_`) are only allowed in callable input types and contract fields.
-    ConstHoleInValuePosition {
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    },
-
     /// `self: ref Self` is written `self`.
     RefSelfType {
         span: DynLazySpan<'db>,
@@ -206,52 +208,10 @@ pub enum TyLowerDiag<'db> {
         name: IdentId<'db>,
     },
 
-    /// A contract field's layout hole (`_`) instantiates the slot parameter of a
-    /// `core::effect_ref::StaticSlot` type whose `const SPACE` does not evaluate
-    /// to a concrete `AddressSpace`, so the slot cannot be assigned from a known
-    /// address-space counter (a silent fallback would risk a cross-space slot
-    /// collision).
-    StaticSlotSpaceUnresolved {
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    },
-
-    /// A contract field carries an unresolved const hole (`_`) whose type is not
-    /// a storage-slot index (e.g. a defaulted `const SP: AddressSpace = _`).
-    /// Contract layout only assigns slots to slot-index const holes; any other
-    /// unresolved const would be numbered as a bogus slot.
-    ContractFieldNonSlotConstHole {
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    },
-
     /// A contract field is a selected `EffectHandle` whose `const SPACE` did not
     /// resolve to a concrete `AddressSpace`, so the field's storage space is
     /// unknown (a silent fallback would mis-place the field).
     ContractFieldHandleSpaceUnresolved {
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    },
-
-    /// A contract field uses an explicit `_` const argument (e.g. `String<_>`).
-    /// Storage-slot layout holes must be declared by the type author via a `= _`
-    /// parameter default, not requested with an explicit `_` at the use site.
-    ContractFieldExplicitConstHole {
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    },
-
-    /// A contract field contains an array whose elements carry layout roots.
-    /// The elements share one type, so they cannot have distinct roots.
-    ContractFieldLayoutRootArray {
-        span: DynLazySpan<'db>,
-        element: TyId<'db>,
-    },
-
-    /// A contract field explicitly supplies a slot-root expression that remains
-    /// symbolic after normal const evaluation. Explicit roots reserve their
-    /// exact slot, so layout cannot safely allocate around an unknown value.
-    ContractFieldConcreteLayoutRootUnresolved {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
     },
@@ -282,18 +242,30 @@ pub enum TyLowerDiag<'db> {
         ty: TyId<'db>,
         issue: ContractFieldLayoutIssue,
     },
+
+    /// `#[slot(e)]` whose `e` is not a constant `u256`.
+    ContractFieldSlotNotConst {
+        span: DynLazySpan<'db>,
+    },
+
+    /// `#[slot(e)]` on a field that lives in code, which has no slots.
+    ContractFieldSlotInCode {
+        span: DynLazySpan<'db>,
+    },
+
+    /// Two fields placed with `#[slot]` in one address space share slots.
+    ContractFieldSlotOverlap {
+        span: DynLazySpan<'db>,
+        field: IdentId<'db>,
+        other: IdentId<'db>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum ContractFieldLayoutIssue {
-    ConflictingRootSpaces,
     ExtentOverflow,
     IncompleteProjection,
     InconsistentArrayLength,
-    AmbiguousBindingSelector,
-    InconsistentRootType,
-    RootNeedsLanding,
-    InternalGraph,
 }
 
 impl TyLowerDiag<'_> {
@@ -302,6 +274,7 @@ impl TyLowerDiag<'_> {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
             Self::ViewTypeMode { .. } => 59,
+            Self::StorageOnlyValue { .. } => 61,
             Self::UnknownResultSpace(_) => 60,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
@@ -317,7 +290,6 @@ impl TyLowerDiag<'_> {
             Self::ConstTyMismatch { .. } => 11,
             Self::ConstTyExpected { .. } => 12,
             Self::NormalTypeExpected { .. } => 13,
-            Self::ConstHoleInValuePosition { .. } => 32,
             Self::RefSelfType { .. } => 14,
             Self::InvalidMutParamPrefixWithoutOwnType { .. } => 31,
             Self::InvalidConstTyExpr(_) => 15,
@@ -348,17 +320,15 @@ impl TyLowerDiag<'_> {
             Self::DuplicateGenericParamName(..) => 19,
             Self::NonTrailingDefaultGenericParam(_) => 21,
             Self::GenericDefaultForwardRef { .. } => 22,
-            Self::StaticSlotSpaceUnresolved { .. } => 39,
-            Self::ContractFieldNonSlotConstHole { .. } => 40,
             Self::ContractFieldHandleSpaceUnresolved { .. } => 41,
-            Self::ContractFieldExplicitConstHole { .. } => 42,
-            Self::ContractFieldLayoutRootArray { .. } => 43,
             Self::ContractFieldProviderLayoutAmbiguous { .. } => 44,
             Self::ContractFieldProviderTargetUnresolved { .. } => 45,
             Self::ContractFieldLayoutInvariant { .. } => 46,
-            Self::ContractFieldConcreteLayoutRootUnresolved { .. } => 47,
             Self::ContractFieldProviderCycle { .. } => 48,
             Self::ContractFieldProviderRawInvalid { .. } => 49,
+            Self::ContractFieldSlotNotConst { .. } => 62,
+            Self::ContractFieldSlotInCode { .. } => 63,
+            Self::ContractFieldSlotOverlap { .. } => 64,
         }
     }
 }
@@ -457,6 +427,12 @@ pub enum BodyDiag<'db> {
     /// and whether that function takes `self`.
     UndefinedVariable(DynLazySpan<'db>, IdentId<'db>, Option<(&'static str, bool)>),
 
+    /// A `recv` arm names a contract field its `uses` clause does not.
+    ContractFieldNotInUses {
+        primary: DynLazySpan<'db>,
+        field: IdentId<'db>,
+    },
+
     InvalidEffectKey {
         owner: EffectParamOwner<'db>,
         key: HirTypeId<'db>,
@@ -501,23 +477,6 @@ pub enum BodyDiag<'db> {
         func: Func<'db>,
         key: HirTypeId<'db>,
         provided_span: Option<DynLazySpan<'db>>,
-    },
-
-    /// A `Field` effect binding named as a value: it is authority only.
-    FieldEffectAsValue {
-        primary: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    },
-
-    /// A call lends a `Field` authority its callee may exercise over the
-    /// handles another effect it is given holds, which the caller does not
-    /// cover with that authority's mode.
-    LentFieldAuthority {
-        primary: DynLazySpan<'db>,
-        func: Func<'db>,
-        key: HirTypeId<'db>,
-        effect: Option<IdentId<'db>>,
-        is_mut: bool,
     },
 
     EffectTypeMismatch {
@@ -660,6 +619,17 @@ pub enum BodyDiag<'db> {
 
     /// `ref p`, `mut p`, or a tuple or sum yield shape used as a value.
     AccessNotValue {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// An `if` or `match` outside a projection's yield whose branches end in
+    /// accesses: a runtime choice between accesses.
+    AccessChoiceNeedsProjection {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A tuple of projection grants outside an unsafe split or a yield.
+    TupleOfAccesses {
         primary: DynLazySpan<'db>,
     },
 
@@ -1105,8 +1075,6 @@ impl<'db> BodyDiag<'db> {
             Self::ContractRootEffectTypeNotZeroSized { .. } => 54,
             Self::MissingEffect { .. } => 36,
             Self::EffectMutabilityMismatch { .. } => 37,
-            Self::LentFieldAuthority { .. } => 115,
-            Self::FieldEffectAsValue { .. } => 116,
             Self::EffectTypeMismatch { .. } => 38,
             Self::EffectProviderMismatch { .. } => 52,
             Self::EffectTraitUnsatisfied { .. } => 39,
@@ -1152,6 +1120,9 @@ impl<'db> BodyDiag<'db> {
             Self::AccessCapture { .. } => 111,
             Self::MoveOutOfCapture { .. } => 112,
             Self::MixedLoopBases { .. } => 114,
+            Self::TupleOfAccesses { .. } => 115,
+            Self::ContractFieldNotInUses { .. } => 116,
+            Self::AccessChoiceNeedsProjection { .. } => 117,
             Self::MutableBindingCannotBeCapability { .. } => 73,
             Self::ArrayRepeatRequiresCopy { .. } => 71,
             Self::ArrayIndexOutOfBounds { .. } => 84,

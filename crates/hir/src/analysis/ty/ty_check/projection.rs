@@ -73,12 +73,17 @@ impl<'db> TyChecker<'db> {
                     .binding
                     .filter(|_| matches!(data, Expr::Path(..)))
                     .and_then(|binding| self.env.binding_access(&binding));
+                let is_place =
+                    self.env.expr_place(expr).is_some() || self.is_pointer_deref_expr(expr);
                 match (kind, binding_access) {
                     // Re-yield an access binding or parameter.
                     (BorrowKind::Mut, Some(access)) if access.is_mut() => {}
                     (BorrowKind::Ref, Some(_)) => {}
                     // A view of a place, or of a value held by the session.
                     (BorrowKind::Ref, None) => {}
+                    // A value held by the session. A place is granted only
+                    // when named `mut`.
+                    (BorrowKind::Mut, None) if !is_place => {}
                     _ => self.invalid_yield(expr, shape),
                 }
             }
@@ -133,13 +138,15 @@ impl<'db> TyChecker<'db> {
                 let Some(base_prop) = self.env.typed_expr(*base) else {
                     return false;
                 };
-                if base_prop.ty.is_array(self.db) {
+                if base_prop.ty.is_array(self.db) || self.env.is_place_entry(expr) {
                     self.select_mut_place(*base)
                 } else {
-                    // `index_mut` takes `mut self`: a place base must be writable.
+                    // `index_mut` takes `mut self`: a place base must be
+                    // writable, and a base an outer index grants becomes so by
+                    // that index selecting `index_mut` too.
                     let is_place =
                         self.env.expr_place(*base).is_some() || self.is_pointer_deref_expr(*base);
-                    if is_place && !self.select_mut_place(*base) {
+                    if !self.select_mut_place(*base) && is_place {
                         return false;
                     }
                     self.env.forget_call(expr);
@@ -186,6 +193,35 @@ impl<'db> TyChecker<'db> {
         });
     }
 
+    /// The expressions the branches of the `if` or `match` `expr` end in,
+    /// through blocks.
+    fn branch_tails(&self, expr: ExprId) -> Option<Vec<ExprId>> {
+        let branches = match expr.data(self.db, self.body()) {
+            Partial::Present(Expr::If(_, then, Some(else_))) => vec![*then, *else_],
+            Partial::Present(Expr::Match(_, Partial::Present(arms))) => {
+                arms.iter().map(|arm| arm.body).collect()
+            }
+            _ => return None,
+        };
+        Some(
+            branches
+                .into_iter()
+                .map(|branch| self.tail_of(branch))
+                .collect(),
+        )
+    }
+
+    /// The expression `expr` evaluates last: a block's tail, through blocks.
+    fn tail_of(&self, expr: ExprId) -> ExprId {
+        if let Partial::Present(Expr::Block(stmts, _)) = expr.data(self.db, self.body())
+            && let Some(Partial::Present(Stmt::Expr(tail))) =
+                stmts.last().map(|stmt| stmt.data(self.db, self.body()))
+        {
+            return self.tail_of(*tail);
+        }
+        expr
+    }
+
     /// `ref p`, `mut p` and tuple or sum yield shapes are not values: any use
     /// other than binding, passing, projecting or yielding them is an error.
     pub(super) fn check_access_uses(&mut self) {
@@ -205,8 +241,57 @@ impl<'db> TyChecker<'db> {
                     && !self.env.is_consumed_access(expr)
             })
             .collect::<Vec<_>>();
-        for expr in misused {
+        // An `if` or `match` whose branches end in accesses chooses one at
+        // runtime, which only a projection's yield sites can.
+        let choices = self
+            .body()
+            .exprs(self.db)
+            .keys()
+            .filter(|&expr| {
+                self.branch_tails(expr)
+                    .is_some_and(|tails| tails.iter().any(|tail| misused.contains(tail)))
+            })
+            .collect::<Vec<_>>();
+        let chosen: Vec<_> = choices
+            .iter()
+            .filter_map(|&choice| self.branch_tails(choice))
+            .flatten()
+            .collect();
+        for expr in misused.into_iter().filter(|expr| !chosen.contains(expr)) {
             self.push_diag(BodyDiag::AccessNotValue {
+                primary: expr.span(self.body()).into(),
+            });
+        }
+        for expr in choices {
+            self.push_diag(BodyDiag::AccessChoiceNeedsProjection {
+                primary: expr.span(self.body()).into(),
+            });
+        }
+        // A tuple holds accesses only as a projection's yield or an unsafe
+        // split; elsewhere its projection-call elements would be copies.
+        let tuples = self
+            .body()
+            .exprs(self.db)
+            .keys()
+            .filter(|&expr| {
+                let Partial::Present(Expr::Tuple(elems)) = expr.data(self.db, self.body()) else {
+                    return false;
+                };
+                !self.env.is_unsafe_split(expr)
+                    && !self.env.is_yield_site(expr)
+                    && elems.iter().any(|elem| {
+                        !matches!(
+                            elem.data(self.db, self.body()),
+                            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut))
+                        ) && self
+                            .env
+                            .typed_expr(*elem)
+                            .is_some_and(|prop| matches!(prop.shape, Some(Shape::Access(..))))
+                    })
+            })
+            .collect::<Vec<_>>();
+        for expr in tuples {
+            self.push_diag(BodyDiag::TupleOfAccesses {
                 primary: expr.span(self.body()).into(),
             });
         }

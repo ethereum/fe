@@ -3,6 +3,8 @@ use std::evm::{Evm, StorageKey, StorageMap}
 
 struct AllocatingKey { value: u256 }
 
+impl Copy for AllocatingKey {}
+
 impl StorageKey for AllocatingKey {
     fn encoded_len(self) -> u256 {
         32

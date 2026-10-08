@@ -28,7 +28,7 @@ use crate::analysis::{
     HirAnalysisDb,
     ty::{
         closure::closure_effect_requirements,
-        const_ty::{CallableInputLayoutHoleOrigin, const_body_assumptions},
+        const_ty::{CallableInputOrigin, const_body_assumptions},
         corelib::resolve_lib_type_path,
         effects::{
             EffectKeyKind,
@@ -42,7 +42,6 @@ use crate::analysis::{
         shape::Shape,
         trait_def::TraitInstId,
         trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
-        ty_contains_const_hole,
         ty_def::{BorrowKind, ClosureTy, InvalidCause, StringFallback, TyData, TyId, TyVarSort},
         ty_is_copy,
         ty_lower::lower_hir_ty,
@@ -119,6 +118,11 @@ pub(crate) struct TyCheckEnv<'db> {
     /// Places matched through the `mut` access their `mut` pattern bindings
     /// open.
     matched_places: FxHashSet<ExprId>,
+    /// Index expressions naming an entry of a collection whose elements are
+    /// places (`core::ops::PlaceIndex`).
+    place_entries: FxHashSet<ExprId>,
+    /// The tuples that are unsafe splits (`check_unsafe_split`).
+    unsafe_splits: FxHashSet<ExprId>,
     covered_providers: FxHashSet<ExprId>,
     /// The part of a projection's return shape each yield site grants.
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
@@ -238,6 +242,8 @@ impl<'db> TyCheckEnv<'db> {
             call_effect_args: SecondaryMap::new(),
             consumed_accesses: FxHashSet::default(),
             matched_places: FxHashSet::default(),
+            place_entries: FxHashSet::default(),
+            unsafe_splits: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
             yield_shapes: SecondaryMap::new(),
             for_loop_plans: SecondaryMap::new(),
@@ -257,9 +263,6 @@ impl<'db> TyCheckEnv<'db> {
                         });
 
                     if !ty.is_star_kind(db) {
-                        ty = TyId::invalid(db, InvalidCause::Other);
-                    }
-                    if !view.is_self_param(db) && ty_contains_const_hole(db, ty) {
                         ty = TyId::invalid(db, InvalidCause::Other);
                     }
                     let var = LocalBinding::Param {
@@ -293,9 +296,6 @@ impl<'db> TyCheckEnv<'db> {
                     };
 
                     if !ty.is_star_kind(db) {
-                        ty = TyId::invalid(db, InvalidCause::Other);
-                    }
-                    if ty_contains_const_hole(db, ty) {
                         ty = TyId::invalid(db, InvalidCause::Other);
                     }
 
@@ -578,6 +578,7 @@ impl<'db> TyCheckEnv<'db> {
             expr,
             |expr| self.typed_expr(expr).and_then(|p| p.binding),
             |expr| self.typed_expr_ty(expr),
+            |expr| self.place_entries.contains(&expr),
         )
     }
 
@@ -768,7 +769,7 @@ impl<'db> TyCheckEnv<'db> {
             BodyOwner::Func(func) => {
                 let rt = func.return_ty(self.db);
                 if func.has_explicit_return_ty(self.db) {
-                    if rt.is_star_kind(self.db) && !ty_contains_const_hole(self.db, rt) {
+                    if rt.is_star_kind(self.db) {
                         rt
                     } else {
                         TyId::invalid(self.db, InvalidCause::Other)
@@ -802,7 +803,7 @@ impl<'db> TyCheckEnv<'db> {
                 };
 
                 let ty = lower_hir_ty(self.db, ret_ty, self.owner_scope, self.assumptions());
-                if ty.is_star_kind(self.db) && !ty_contains_const_hole(self.db, ty) {
+                if ty.is_star_kind(self.db) {
                     ty
                 } else {
                     TyId::invalid(self.db, InvalidCause::Other)
@@ -850,6 +851,18 @@ impl<'db> TyCheckEnv<'db> {
         self.matched_places.contains(&expr)
     }
 
+    pub(super) fn record_place_entry(&mut self, expr: ExprId) {
+        self.place_entries.insert(expr);
+    }
+
+    pub(super) fn record_unsafe_split(&mut self, tuple: ExprId) {
+        self.unsafe_splits.insert(tuple);
+    }
+
+    pub(super) fn is_place_entry(&self, expr: ExprId) -> bool {
+        self.place_entries.contains(&expr)
+    }
+
     /// Records that the function's own authority covers the resources the
     /// `with` value `expr` names.
     pub(super) fn cover_provider(&mut self, expr: ExprId) {
@@ -858,6 +871,14 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn record_yield_shape(&mut self, expr: ExprId, shape: Shape<'db>) {
         self.yield_shapes[expr] = Some(shape);
+    }
+
+    pub(super) fn is_yield_site(&self, expr: ExprId) -> bool {
+        self.yield_shapes.get(expr).is_some_and(Option::is_some)
+    }
+
+    pub(super) fn is_unsafe_split(&self, expr: ExprId) -> bool {
+        self.unsafe_splits.contains(&expr)
     }
 
     pub(super) fn forget_implicit_move(&mut self, expr: ExprId) {
@@ -1403,6 +1424,7 @@ impl<'db> TyCheckEnv<'db> {
                         |prop| prop.ty,
                     )
                 },
+                |expr| self.place_entries.contains(&expr),
             ) {
                 let place_id = expr_places.push(place);
                 expr_place[expr] = place_id.into();
@@ -1421,6 +1443,8 @@ impl<'db> TyCheckEnv<'db> {
             expr_ty: self.expr_ty,
             yield_shapes: self.yield_shapes,
             implicit_moves,
+            place_entries: self.place_entries,
+            unsafe_splits: self.unsafe_splits,
             covered_providers: self.covered_providers,
             const_refs: self.const_refs,
             value_path_refs: self.value_path_refs,
@@ -1606,9 +1630,7 @@ impl<'db> TyChecker<'db> {
         };
         let span = match provider.origin {
             EffectOrigin::Param { site, index, .. } => effect_param_span(self.db, site, index),
-            EffectOrigin::With { value_expr } | EffectOrigin::Arg { expr: value_expr } => {
-                value_expr.span(self.body()).into()
-            }
+            EffectOrigin::With { value_expr } => value_expr.span(self.body()).into(),
         };
         let Some((witness, commit)) = self
             .build_keyed_witness_from_pattern_in_scope(
@@ -1783,18 +1805,11 @@ pub(super) fn effect_param_span<'db>(
             .span()
             .effects()
             .param_idx(func.effect_origin(db, idx))
-            .name()
             .into(),
-        EffectParamSite::Contract(contract) => {
-            contract.span().effects().param_idx(idx).name().into()
+        EffectParamSite::Contract(contract) => contract.span().effects().param_idx(idx).into(),
+        EffectParamSite::ContractInit { contract } => {
+            contract.span().init_block().effects().param_idx(idx).into()
         }
-        EffectParamSite::ContractInit { contract } => contract
-            .span()
-            .init_block()
-            .effects()
-            .param_idx(idx)
-            .name()
-            .into(),
         EffectParamSite::ContractRecvArm {
             contract,
             recv_idx,
@@ -1806,7 +1821,6 @@ pub(super) fn effect_param_span<'db>(
             .arm(arm_idx as usize)
             .effects()
             .param_idx(idx)
-            .name()
             .into(),
         EffectParamSite::Closure(def) => def.expr.span(def.body).into(),
     }
@@ -1829,13 +1843,6 @@ pub(crate) enum EffectOrigin<'db> {
     },
     With {
         value_expr: ExprId,
-    },
-    /// A call's argument holding the handle a `Field(T)` authority names,
-    /// passed as its effect argument: a handle whose slot is a runtime value,
-    /// lying in an effect provider, or one an array element of a provider
-    /// holds, which has no place of its own.
-    Arg {
-        expr: ExprId,
     },
 }
 
@@ -1998,26 +2005,23 @@ impl<'db> LocalBinding<'db> {
         }
     }
 
-    pub fn callable_input_origin(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Option<CallableInputLayoutHoleOrigin> {
+    pub fn callable_input_origin(self, db: &'db dyn HirAnalysisDb) -> Option<CallableInputOrigin> {
         match self {
             Self::Param {
                 site: ParamSite::Func(func),
                 idx,
                 ..
             } => Some(if func.is_method(db) && idx == 0 {
-                CallableInputLayoutHoleOrigin::Receiver
+                CallableInputOrigin::Receiver
             } else {
-                CallableInputLayoutHoleOrigin::ValueParam(idx)
+                CallableInputOrigin::ValueParam(idx)
             }),
             Self::Param {
                 site: ParamSite::EffectField(_),
                 idx,
                 ..
             }
-            | Self::EffectParam { idx, .. } => Some(CallableInputLayoutHoleOrigin::Effect(idx)),
+            | Self::EffectParam { idx, .. } => Some(CallableInputOrigin::Effect(idx)),
             Self::Local { .. }
             | Self::Param {
                 site: ParamSite::ContractInit(_) | ParamSite::Closure(_) | ParamSite::ClosureEnv(_),

@@ -29,8 +29,7 @@ use crate::{
     db::MirDb,
     instance::{RuntimeInstanceKey, RuntimeInstanceSource},
     runtime::place::{
-        inherited_lane_view, project_field_class, project_index_class, ref_class_for_place_result,
-        storage_lane_view,
+        place_reference_class, project_field_class, project_index_class, storage_field_lane,
     },
     runtime::{
         AddressSpaceKind, BorrowAccess, Layout, LayoutId, RefKind, RuntimeBoundarySpec,
@@ -75,6 +74,26 @@ use super::{
         top_level_class_for_ty_in_env,
     },
 };
+
+/// What a reference to a place is taken from: the transport root of its
+/// address, or a memory copy when the place is a lane.
+struct PlaceReference<'db> {
+    root_class: RuntimeClass<'db>,
+    root_space: AddressSpaceKind,
+    force_raw: bool,
+    lane: bool,
+}
+
+/// The last entry a place reaches, from which it is classified.
+pub(crate) struct EntryRoot<'db> {
+    element_ty: TyId<'db>,
+    space: AddressSpaceKind,
+    /// Whether the collection packs the element into a lane, which is
+    /// accessed through a memory copy of the element.
+    pub(crate) lane: bool,
+    /// The path after the entry.
+    path: NDataPath,
+}
 
 #[derive(Clone)]
 pub(crate) struct BodyStaticFacts<'db> {
@@ -798,8 +817,44 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
         carriers: &[RuntimeCarrier<'db>],
         place: &NPlace<'db>,
     ) -> Option<RuntimeClass<'db>> {
+        if let Some(entry) = self.place_entry_root(place) {
+            let EntryRoot {
+                element_ty, path, ..
+            } = entry?;
+            let element = stored_class_for_ty_in_env(self.db, self.type_env(), element_ty);
+            return Some(self.walk_data_path_class(element, &path));
+        }
         let root = normalized_place_root_class_in_context(self, place.base, carriers)?;
         Some(self.walk_data_path_class(root, &place.path))
+    }
+
+    /// For a place that reaches an entry of a collection whose elements are
+    /// places, its last entry: the element at the slot the collection
+    /// computes, in the space the collection keeps its elements in, and the
+    /// path after it. `None` for a place without entries.
+    pub(crate) fn place_entry_root(self, place: &NPlace<'db>) -> Option<Option<EntryRoot<'db>>> {
+        let path = place.path.as_slice();
+        let index = path
+            .iter()
+            .rposition(|projection| matches!(projection, NDataProjection::Entry(_)))?;
+        Some((|| {
+            let collection_ty = self
+                .body
+                .normalized
+                .place_prefix_ty(self.db, place, index)?;
+            let owner = self.body.owner();
+            let space =
+                provider_address_space_to_runtime(owner.place_index_space(self.db, collection_ty)?);
+            Some(EntryRoot {
+                element_ty: self
+                    .body
+                    .normalized
+                    .place_prefix_ty(self.db, place, index + 1)?,
+                space,
+                lane: owner.place_index_lanes(self.db, collection_ty).is_some(),
+                path: NDataPath::new(&path[index + 1..]),
+            })
+        })())
     }
 
     fn walk_data_path_class(
@@ -813,6 +868,9 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
                 NDataProjection::Index(_) => project_index_class(self.db, current),
                 NDataProjection::VariantField { variant, field } => {
                     project_variant_field_place_class(self.db, current, *variant, *field)
+                }
+                NDataProjection::Entry(_) => {
+                    unreachable!("a place is classified from its last entry")
                 }
             };
             if index + 1 < path.len()
@@ -866,12 +924,66 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
         self.normalized_place_address_class(carriers, place)
     }
 
+    /// Whether `place` is a lane: an element its collection packs, or a
+    /// field packed into a storage word.
+    pub(crate) fn normalized_place_is_lane(
+        self,
+        carriers: &[RuntimeCarrier<'db>],
+        place: &NPlace<'db>,
+    ) -> Option<bool> {
+        Some(self.normalized_place_reference(carriers, place)?.lane)
+    }
+
     pub(crate) fn normalized_place_address_class(
         self,
         carriers: &[RuntimeCarrier<'db>],
         place: &NPlace<'db>,
     ) -> Option<RuntimeClass<'db>> {
         let value_class = self.normalized_place_class(carriers, place)?;
+        let reference = self.normalized_place_reference(carriers, place)?;
+        Some(place_reference_class(
+            self.db,
+            &reference.root_class,
+            &value_class,
+            reference.root_space,
+            reference.force_raw,
+            reference.lane,
+        ))
+    }
+
+    /// The transport root an address of `place` is taken from, and whether
+    /// the place is a lane, which has no address.
+    fn normalized_place_reference(
+        self,
+        carriers: &[RuntimeCarrier<'db>],
+        place: &NPlace<'db>,
+    ) -> Option<PlaceReference<'db>> {
+        if let Some(entry) = self.place_entry_root(place) {
+            let EntryRoot {
+                element_ty,
+                space,
+                lane,
+                path,
+            } = entry?;
+            let root = || {
+                Some(stored_class_for_ty_in_env(
+                    self.db,
+                    self.type_env(),
+                    element_ty,
+                ))
+            };
+            return Some(PlaceReference {
+                root_class: provider_class_for_target_in_env(
+                    self.db,
+                    self.type_env(),
+                    Some(element_ty),
+                    space,
+                ),
+                root_space: space,
+                force_raw: false,
+                lane: lane || self.place_is_lane(root, &path, space)?,
+            });
+        }
         let root_class =
             normalized_place_root_transport_class_in_context(self, place.base, carriers)?;
         let (root_space, force_raw) = match place.base {
@@ -896,29 +1008,35 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
                 ),
             },
         };
-        let projections: Vec<_> = place.path.iter().cloned().collect();
-        let view = match projections.split_last() {
-            Some((NDataProjection::Field(field), parent_path)) => {
-                let root = normalized_place_root_class_in_context(self, place.base, carriers)?;
-                let mut parent = self.walk_data_path_class(root, &NDataPath::new(parent_path));
-                if !parent_path.is_empty()
-                    && let Some(target) = parent.deref_target(self.db)
-                {
-                    parent = target;
-                }
-                storage_lane_view(self.db, &parent, *field, root_space)
-            }
-            None => inherited_lane_view(&root_class),
-            _ => crate::runtime::RefView::Whole,
-        };
-        Some(ref_class_for_place_result(
-            self.db,
-            &root_class,
-            &value_class,
+        let root = || normalized_place_root_class_in_context(self, place.base, carriers);
+        let lane = self.place_is_lane(root, &place.path, root_space)?;
+        Some(PlaceReference {
+            root_class,
             root_space,
             force_raw,
-            view,
-        ))
+            lane,
+        })
+    }
+
+    /// Whether the place reached from a root of class `root` by `path` is a
+    /// lane: a field packed into a storage word of `root_space`.
+    fn place_is_lane(
+        self,
+        root: impl FnOnce() -> Option<RuntimeClass<'db>>,
+        path: &NDataPath,
+        root_space: AddressSpaceKind,
+    ) -> Option<bool> {
+        let projections: Vec<_> = path.iter().cloned().collect();
+        let Some((NDataProjection::Field(field), parent_path)) = projections.split_last() else {
+            return Some(false);
+        };
+        let mut parent = self.walk_data_path_class(root()?, &NDataPath::new(parent_path));
+        if !parent_path.is_empty()
+            && let Some(target) = parent.deref_target(self.db)
+        {
+            parent = target;
+        }
+        Some(storage_field_lane(self.db, &parent, *field, root_space).is_some())
     }
 
     pub(crate) fn specialize_boundary_for_source(
@@ -1445,7 +1563,6 @@ impl<'db> ExprStaticFactsBuilder<'_, 'db> {
                                 ..
                             }) if provider_erases_runtime_root(
                                 db,
-                                body.owner(),
                                 binding,
                                 type_env.scope,
                                 type_env.assumptions,
@@ -1734,50 +1851,20 @@ pub(crate) fn provider_source_erases_zero_sized_effect_value<'db>(
     }
 }
 
-/// Whether effect `idx` of `site` is a `Field(T)` effect: authority only,
-/// which no code reads, so it has no runtime value.
-fn is_field_effect<'db>(db: &'db dyn MirDb, site: EffectParamSite<'db>, idx: u32) -> bool {
-    let EffectParamSite::Func(func) = site else {
-        return false;
-    };
-    func.effect_requirements(db).iter().any(|requirement| {
-        requirement.binding_idx == idx && requirement.binding_ty.field_key_handle(db).is_some()
-    })
-}
-
-/// Whether `provider` supplies one of `semantic`'s `Field(T)` effects.
-fn provider_is_field_effect<'db>(
-    db: &'db dyn MirDb,
-    semantic: SemanticInstance<'db>,
-    provider: &ProviderBinding<'db>,
-) -> bool {
-    semantic.effect_bindings(db).into_iter().any(|binding| {
-        matches!(binding, LocalBinding::EffectParam { site, idx, provider_idx, .. }
-            if provider_idx == provider.provider_idx && is_field_effect(db, site, idx as u32))
-    })
-}
-
-/// Whether `provider`, supplying an effect of `semantic`, has no runtime
-/// root: a `Field` authority, or a value that needs no storage.
+/// Whether `provider` has no runtime root: a value that needs no storage.
 pub(crate) fn provider_erases_runtime_root<'db>(
     db: &'db dyn MirDb,
-    semantic: SemanticInstance<'db>,
     provider: &ProviderBinding<'db>,
     scope: Option<hir::hir_def::scope_graph::ScopeId<'db>>,
     assumptions: PredicateListId<'db>,
 ) -> bool {
-    if provider_is_field_effect(db, semantic, provider) {
-        return true;
-    }
     if let ProviderSource::ContractField { field: field_id } = provider.source {
         return field_id
             .contract
             .storage_layout(db)
             .values()
             .find(|field| field.field == field_id)
-            .is_none_or(|field| {
-                field.inline_span == 0 && field.cells.iter().all(|cell| cell.allocation.is_none())
-            });
+            .is_none_or(|field| field.slot_count == 0);
     }
 
     let value_ty = provider.semantics.target_ty.unwrap_or(provider.provider_ty);
@@ -1796,12 +1883,9 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
     semantic: SemanticInstance<'db>,
     binding: LocalBinding<'db>,
 ) -> Option<RuntimeEffectBindingPlan<'db>> {
-    let LocalBinding::EffectParam { site, idx, .. } = binding else {
+    let LocalBinding::EffectParam { .. } = binding else {
         return None;
     };
-    if is_field_effect(db, site, idx as u32) {
-        return None;
-    }
     let env = RuntimeTypeEnv::for_semantic(db, semantic);
     let binding_ty = semantic.binding_ty(db, binding);
     if effect_handle_transport_class_for_ty_in_env(db, env, binding_ty).is_some()
@@ -1815,7 +1899,7 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
             provenance: ValueProvenance::RootProvider(provider),
         } => {
             let value_ty = provider.semantics.target_ty.unwrap_or(binding_ty);
-            if provider_erases_runtime_root(db, semantic, &provider, env.scope, env.assumptions) {
+            if provider_erases_runtime_root(db, &provider, env.scope, env.assumptions) {
                 return None;
             }
             let class = runtime_class_for_provider_value_ty_in_env(db, env, &provider, value_ty)?;
@@ -1891,7 +1975,7 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
             provider: Some(provider),
             value_ty,
         } => {
-            if provider_erases_runtime_root(db, semantic, &provider, env.scope, env.assumptions) {
+            if provider_erases_runtime_root(db, &provider, env.scope, env.assumptions) {
                 return None;
             }
             let class = runtime_class_for_provider_value_ty_in_env(db, env, &provider, value_ty)?;
@@ -1921,7 +2005,7 @@ pub(crate) fn runtime_effect_binding_plan<'db>(
             provenance: hir::analysis::semantic::PlaceProvenance::RootProvider(provider),
             value_ty,
         } => {
-            if provider_erases_runtime_root(db, semantic, &provider, env.scope, env.assumptions) {
+            if provider_erases_runtime_root(db, &provider, env.scope, env.assumptions) {
                 return None;
             }
             let class = runtime_class_for_provider_value_ty_in_env(db, env, &provider, value_ty)?;
@@ -2197,16 +2281,6 @@ fn aggregate_make_class_from_facts<'db>(
     let mut field_classes = Vec::with_capacity(fields.len());
     let mut evaluator = RuntimeArgSelector::new(env, carriers, class_cache);
     for (field, field_facts) in fields.iter().copied().zip(facts.fields.iter()) {
-        if matches!(
-            field_facts.stored_class,
-            RuntimeClass::Ref {
-                kind: RefKind::Native,
-                ..
-            }
-        ) {
-            field_classes.push(field_facts.stored_class.clone());
-            continue;
-        }
         let field = env.body.runtime_operand(field)?;
         let selected = if let Some(boundary) = field_facts.boundary.as_ref() {
             let mut boundary_sites = BoundarySiteAllocator::default();
@@ -2558,13 +2632,7 @@ fn normalized_place_root_transport_class_in_context<'db>(
             NRootKind::Provider { binding } => {
                 let actual = env.actual_runtime_visible_root_provider_class(carriers, binding);
                 if actual.is_none()
-                    && provider_erases_runtime_root(
-                        env.db,
-                        env.body.owner(),
-                        binding,
-                        env.scope(),
-                        env.assumptions(),
-                    )
+                    && provider_erases_runtime_root(env.db, binding, env.scope(), env.assumptions())
                 {
                     return None;
                 }
@@ -2616,13 +2684,7 @@ fn normalized_place_root_class_in_context<'db>(
                 let value_ty = env.body.normalized.root(root)?.ty;
                 let actual = env.actual_runtime_visible_root_provider_class(carriers, binding);
                 if actual.is_none()
-                    && provider_erases_runtime_root(
-                        env.db,
-                        env.body.owner(),
-                        binding,
-                        env.scope(),
-                        env.assumptions(),
-                    )
+                    && provider_erases_runtime_root(env.db, binding, env.scope(), env.assumptions())
                 {
                     return None;
                 }
@@ -3067,8 +3129,8 @@ mod tests {
     use driver::DriverDataBase;
     use hir::{
         analysis::semantic::{
-            EffectProviderSubst, GenericSubst, ImplEnv, NEffectArg, NPlace, NPlaceBase, NRootKind,
-            NStatementKind, SemanticCalleeRef, SemanticInstance, SemanticInstanceKey,
+            EffectProviderSubst, GenericSubst, ImplEnv, NEffectArg, NStatementKind,
+            SemanticCalleeRef, SemanticInstance, SemanticInstanceKey,
             get_or_build_semantic_instance, owner_effect_bindings,
             resolved_provider_binding_for_instance_effect, root_semantic_instance_key,
         },
@@ -3081,14 +3143,11 @@ mod tests {
     use url::Url;
 
     use super::super::{
-        abi::runtime_declaration_abi_plan,
+        abi::runtime_declaration_signature,
         arg_selector::RuntimeArgSelector,
         body::check_runtime_body_supported,
         boundary::BoundarySiteAllocator,
-        call_input::{
-            CompiledCallInputPlan, CompiledEffectArgPlan, compile_call_input_plan_for_semantic,
-        },
-        realize::{RuntimeArgSource, SelectedRuntimeArg},
+        call_input::{CompiledCallInputPlan, compile_call_input_plan_for_semantic},
     };
     use super::*;
     use crate::runtime::lower::boundary::BoundaryMatcher;
@@ -3240,11 +3299,11 @@ fn frame(flag: bool) -> Frame {
             file_url.clone(),
             Some(
                 r#"
-struct Slot<const ROOT: u256 = _> {}
+struct Slot<const ROOT: u256> {}
 trait Has { type Item; fn take(_ x: Self::Item) }
 impl Has for bool {
-    type Item = Slot
-    fn take(_ x: Slot) {}
+    type Item = Slot<7>
+    fn take(_ x: Slot<7>) {}
 }
 fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
 "#
@@ -3615,7 +3674,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
     }
 
     #[test]
-    fn specialized_grant_callee_erases_self_after_root_assignment() {
+    fn grant_callee_passes_its_storage_receiver_slot() {
         let mut db = DriverDataBase::default();
         let file_url =
             Url::parse("file:///specialized_grant_callee_keeps_self_runtime_visible.fe").unwrap();
@@ -3664,31 +3723,29 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
         let self_role = semantic.binding_role(&db, self_binding);
         let param_plans = runtime_param_plans(&db, semantic);
         let plans = runtime_visible_binding_plans(&db, semantic);
-        let abi = runtime_declaration_abi_plan(&db, callee.key(&db));
         let signature = callee.interface_signature(&db);
 
+        // A map takes a slot, so a storage receiver holding one passes the
+        // slot of its place, beside the two arguments. Nothing is passed for
+        // its layout.
         assert_eq!(
             plans.len(),
-            2,
-            "specialized grant callee should expose only its two non-ZST arguments after the assigned root becomes concrete:\nself_role={self_role:#?}\nparam_plans={param_plans:#?}\nplans={plans:#?}\nsignature={signature:#?}"
+            3,
+            "grant should pass its receiver's slot and its two arguments:\nself_role={self_role:#?}\nparam_plans={param_plans:#?}\nplans={plans:#?}\nsignature={signature:#?}"
         );
         assert!(
-            matches!(param_plans.first(), Some(RuntimeParamPlan::Erased)),
-            "specialized grant receiver should erase once its nested layout root is a concrete assigned literal:\nself_role={self_role:#?}\nparam_plans={param_plans:#?}\nplans={plans:#?}\nsignature={signature:#?}"
+            !matches!(param_plans.first(), Some(RuntimeParamPlan::Erased)),
+            "a storage receiver holding a map is its place's slot:\nself_role={self_role:#?}\nparam_plans={param_plans:#?}\nplans={plans:#?}\nsignature={signature:#?}"
         );
         assert_eq!(
-            abi.visible_params.len(),
-            2,
-            "specialized grant visible ABI should omit the inert receiver:\nself_role={self_role:#?}\nparam_plans={param_plans:#?}\nplans={plans:#?}\nabi={abi:#?}"
+            signature.params.len(),
+            3,
+            "grant's ABI takes the receiver:\nsignature={signature:#?}"
         );
-        // `grant`'s `Field` authority has no runtime value, but its layout
-        // is still passed.
         assert_eq!(
-            abi.evidence_params.len(),
-            2,
-            "the declared receiver layout must remain an explicit evidence parameter:\nabi={abi:#?}"
+            signature,
+            runtime_declaration_signature(&db, callee.key(&db))
         );
-        assert_eq!(signature, abi.signature());
     }
 
     #[test]
@@ -3794,7 +3851,7 @@ uses (slot: Slot<u256>)
             "generic zero-sized uses providers should have no runtime payload"
         );
         assert!(
-            provider_erases_runtime_root(&db, semantic, &provider, env.scope, env.assumptions),
+            provider_erases_runtime_root(&db, &provider, env.scope, env.assumptions),
             "root effect planning must erase the same generic zero-sized provider"
         );
     }
@@ -3962,8 +4019,8 @@ uses (slot: Slot<u256>)
                 };
                 let receiver_plan = runtime_param_plans(&db, call_facts.semantic).first();
                 assert!(
-                    matches!(receiver_plan, Some(RuntimeParamPlan::Erased)),
-                    "non-forwarding `{name}` must erase its zero-width receiver and use only hidden layout roots:\nplans={:#?}",
+                    !matches!(receiver_plan, Some(RuntimeParamPlan::Erased)),
+                    "`{name}`'s receiver holds a map, which takes a slot, so it is its place's slot:\nplans={:#?}",
                     runtime_param_plans(&db, call_facts.semantic),
                 );
                 let receiver = args.first().and_then(|arg| normalized.operand_local(*arg));
@@ -4030,315 +4087,6 @@ uses (slot: Slot<u256>)
         let _ = instance.body(&db);
     }
 
-    #[test]
-    fn concrete_zero_width_storage_map_effect_args_erase_from_runtime_calls() {
-        let mut db = DriverDataBase::default();
-        let file_url = Url::parse(
-            "file:///concrete_zero_width_storage_map_effect_args_erase_from_runtime_calls.fe",
-        )
-        .unwrap();
-        db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(
-                include_str!("../../../../codegen/tests/fixtures/storage_map_contract.fe")
-                    .to_string(),
-            ),
-        );
-        let file = db
-            .workspace()
-            .get(&db, &file_url)
-            .expect("file should be loaded");
-        let top_mod = db.top_mod(file);
-        let runtime = semantic_instance_for_named_func(&db, top_mod, "runtime");
-        let mut owners = vec![("runtime".to_string(), runtime)];
-        let mut checked_calls = 0;
-        let mut owner_idx = 0;
-
-        while owner_idx < owners.len() {
-            let (owner_name, semantic) = owners[owner_idx].clone();
-            owner_idx += 1;
-            let instance = runtime_instance_for_semantic(&db, semantic);
-            let normalized = normalize_semantic_body(&db, semantic)
-                .unwrap_or_else(|err| panic!("failed to normalize {owner_name}: {err:?}"));
-            let facts = BodyStaticFacts::new(&db, &normalized);
-            let env = BodyEnv::new(&db, &normalized, &facts);
-            let params = instance.key(&db).params(&db);
-            let inferred = LocalStateInferer::new(
-                env,
-                params,
-                &runtime_param_locals(&db, semantic, &normalized.source, params),
-            )
-            .run();
-
-            for (block_idx, block) in normalized.normalized.blocks.iter().enumerate() {
-                for (stmt_idx, stmt) in block.statements.iter().enumerate() {
-                    let NStatementKind::Define { expr, .. } = &stmt.kind else {
-                        continue;
-                    };
-                    let NExpr::Call {
-                        callee,
-                        args,
-                        effect_args,
-                        ..
-                    } = expr
-                    else {
-                        continue;
-                    };
-                    let BodyOwner::Func(func) = callee.key.owner(&db) else {
-                        continue;
-                    };
-                    let Some(name) = func.name(&db).to_opt().map(|name| name.data(&db)) else {
-                        continue;
-                    };
-                    let is_storage_map_call = matches!(
-                        name.as_str(),
-                        "new"
-                            | "get"
-                            | "set"
-                            | "get_unchecked"
-                            | "set_unchecked"
-                            | "get_balance"
-                            | "set_balance"
-                            | "get_allowance"
-                            | "set_allowance"
-                            | "transfer"
-                    );
-                    if !is_storage_map_call {
-                        continue;
-                    }
-                    let ExprStaticFacts::Call(call_facts) =
-                        facts.expr(block_idx, stmt_idx).unwrap_or_else(|| {
-                            panic!("missing staged call facts for {block_idx}:{stmt_idx}")
-                        })
-                    else {
-                        panic!("{name} expression should keep staged call facts");
-                    };
-                    if func.is_method(&db) {
-                        assert!(
-                            matches!(
-                                runtime_param_plans(&db, call_facts.semantic).first(),
-                                Some(RuntimeParamPlan::Erased)
-                            ),
-                            "zero-width StorageMap receiver should erase independently of its explicit runtime layout-root ABI for `{owner_name}` -> `{name}`:\nplans={:#?}",
-                            runtime_param_plans(&db, call_facts.semantic),
-                        );
-                    }
-                    let input_plan =
-                        call_input_plan_for_test(&db, &normalized, call_facts, effect_args);
-
-                    assert!(
-                        input_plan
-                            .effect_plans
-                            .iter()
-                            .all(|plan| matches!(plan, CompiledEffectArgPlan::Erased)),
-                        "StorageMap effect arg should erase for `{owner_name}` -> `{name}`:\nargs={args:#?}\neffect_args={effect_args:#?}\ninput_plan={input_plan:#?}",
-                    );
-
-                    let mut class_cache = InferClassCache::new(normalized.locals.len());
-                    let selected =
-                        RuntimeArgSelector::new(env, &inferred.carriers, Some(&mut class_cache))
-                            .with_concrete_roots(&inferred.roots)
-                            .selected_call_inputs(args, effect_args, &input_plan);
-                    for selected_arg in &selected {
-                        let erased_place = selected_erased_place_root(
-                            &normalized,
-                            &inferred.carriers,
-                            &inferred.roots,
-                            selected_arg,
-                        );
-                        assert!(
-                            erased_place.is_none(),
-                            "selected runtime input for `{owner_name}` -> `{name}` would lower an erased place root:\nerased_place={erased_place:#?}\nselected={selected:#?}",
-                        );
-                    }
-                    if !owners
-                        .iter()
-                        .any(|(_, existing)| existing.key(&db) == call_facts.semantic.key(&db))
-                    {
-                        owners.push((name.to_string(), call_facts.semantic));
-                    }
-                    checked_calls += 1;
-                }
-            }
-        }
-
-        assert!(
-            checked_calls >= 5,
-            "runtime should contain all StorageMap helper calls; checked {checked_calls}"
-        );
-    }
-
-    #[test]
-    fn concrete_zero_width_storage_packed_array_effect_args_erase_from_runtime_calls() {
-        let mut db = DriverDataBase::default();
-        let file_url = Url::parse(
-            "file:///concrete_zero_width_storage_packed_array_effect_args_erase_from_runtime_calls.fe",
-        )
-        .unwrap();
-        db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(
-                include_str!("../../../../codegen/tests/fixtures/storage_packed_array.fe")
-                    .to_string(),
-            ),
-        );
-        let file = db
-            .workspace()
-            .get(&db, &file_url)
-            .expect("file should be loaded");
-        let top_mod = db.top_mod(file);
-        let owners = [
-            ("get_status", 1usize),
-            ("set_status", 2usize),
-            ("search_status", 3usize),
-        ];
-        let mut checked_calls = 0;
-
-        for (owner_name, expected_params) in owners {
-            let semantic = semantic_instance_for_named_func(&db, top_mod, owner_name);
-            let instance = runtime_instance_for_semantic(&db, semantic);
-            let signature = instance.interface_signature(&db);
-            assert_eq!(
-                signature.params.len(),
-                expected_params,
-                "`{owner_name}` should not expose its StoragePackedArray effect as a runtime param:\n{signature:#?}",
-            );
-            assert!(
-                runtime_visible_binding_plans(&db, semantic)
-                    .iter()
-                    .all(|entry| !matches!(entry.binding, LocalBinding::EffectParam { .. })),
-                "`{owner_name}` should not keep zero-width StoragePackedArray effects runtime-visible",
-            );
-
-            let normalized = normalize_semantic_body(&db, semantic)
-                .unwrap_or_else(|err| panic!("failed to normalize {owner_name}: {err:?}"));
-            let facts = BodyStaticFacts::new(&db, &normalized);
-            let env = BodyEnv::new(&db, &normalized, &facts);
-            let params = instance.key(&db).params(&db);
-            let inferred = LocalStateInferer::new(
-                env,
-                params,
-                &runtime_param_locals(&db, semantic, &normalized.source, params),
-            )
-            .run();
-
-            for (block_idx, block) in normalized.normalized.blocks.iter().enumerate() {
-                for (stmt_idx, stmt) in block.statements.iter().enumerate() {
-                    let NStatementKind::Define { expr, .. } = &stmt.kind else {
-                        continue;
-                    };
-                    let NExpr::Call {
-                        callee,
-                        args,
-                        effect_args,
-                        ..
-                    } = expr
-                    else {
-                        continue;
-                    };
-                    let BodyOwner::Func(func) = callee.key.owner(&db) else {
-                        continue;
-                    };
-                    let Some(name) = func.name(&db).to_opt().map(|name| name.data(&db)) else {
-                        continue;
-                    };
-                    if !matches!(name.as_str(), "get" | "set" | "search") {
-                        continue;
-                    }
-                    let ExprStaticFacts::Call(call_facts) =
-                        facts.expr(block_idx, stmt_idx).unwrap_or_else(|| {
-                            panic!("missing staged call facts for {block_idx}:{stmt_idx}")
-                        })
-                    else {
-                        panic!("{name} expression should keep staged call facts");
-                    };
-                    let input_plan =
-                        call_input_plan_for_test(&db, &normalized, call_facts, effect_args);
-                    assert!(
-                        input_plan
-                            .effect_plans
-                            .iter()
-                            .all(|plan| matches!(plan, CompiledEffectArgPlan::Erased)),
-                        "StoragePackedArray effect arg should erase for `{owner_name}` -> `{name}`:\nargs={args:#?}\neffect_args={effect_args:#?}\ninput_plan={input_plan:#?}",
-                    );
-
-                    let mut class_cache = InferClassCache::new(normalized.locals.len());
-                    let selected =
-                        RuntimeArgSelector::new(env, &inferred.carriers, Some(&mut class_cache))
-                            .with_concrete_roots(&inferred.roots)
-                            .selected_call_inputs(args, effect_args, &input_plan);
-                    for selected_arg in &selected {
-                        let erased_place = selected_erased_place_root(
-                            &normalized,
-                            &inferred.carriers,
-                            &inferred.roots,
-                            selected_arg,
-                        );
-                        assert!(
-                            erased_place.is_none(),
-                            "selected runtime input for `{owner_name}` -> `{name}` would lower an erased place root:\nerased_place={erased_place:#?}\nselected={selected:#?}",
-                        );
-                    }
-                    checked_calls += 1;
-                }
-            }
-
-            let _ = instance.body(&db);
-        }
-
-        assert_eq!(
-            checked_calls, 3,
-            "StoragePackedArray helpers should contain get/set/search calls; checked {checked_calls}",
-        );
-    }
-
-    fn selected_erased_place_root<'db>(
-        body: &RuntimeSemanticBody<'db>,
-        carriers: &[RuntimeCarrier<'db>],
-        roots: &[RuntimeLocalRoot<'db>],
-        selected: &SelectedRuntimeArg<'db>,
-    ) -> Option<SLocalId> {
-        let local = match &selected.source {
-            RuntimeArgSource::PlaceAddress(place, _)
-            | RuntimeArgSource::PlaceValue(place, _)
-            | RuntimeArgSource::ValueExtract { place, .. } => place_root_local(body, place)?,
-            RuntimeArgSource::SemanticPlaceAddress(local, _) => *local,
-            RuntimeArgSource::SemanticOperand(_)
-            | RuntimeArgSource::DirectValueMaterialization { .. }
-            | RuntimeArgSource::RuntimeValue(_)
-            | RuntimeArgSource::HandleLikeValue(_)
-            | RuntimeArgSource::AggregateFromRuntimeSource(_)
-            | RuntimeArgSource::Placeholder(_) => return None,
-        };
-        matches!(carriers.get(local.index()), Some(RuntimeCarrier::Erased))
-            .then_some(local)
-            .filter(|local| {
-                matches!(
-                    roots.get(local.index()),
-                    Some(RuntimeLocalRoot::None) | None
-                )
-            })
-    }
-
-    fn place_root_local<'db>(
-        body: &RuntimeSemanticBody<'db>,
-        place: &NPlace<'db>,
-    ) -> Option<SLocalId> {
-        match place.base {
-            NPlaceBase::CapabilityTarget { carrier } => body.value_local(carrier),
-            NPlaceBase::Root(root) => match body.normalized.root(root).map(|root| &root.kind) {
-                Some(
-                    NRootKind::ParamPlace { .. }
-                    | NRootKind::LocalSlot { .. }
-                    | NRootKind::Temporary { .. },
-                ) => body.root_local(root),
-                Some(NRootKind::Provider { .. } | NRootKind::CapabilityRepresentation { .. })
-                | None => None,
-            },
-        }
-    }
     #[test]
     fn own_scalar_call_inputs_materialize_provider_backed_direct_values() {
         let mut db = DriverDataBase::default();

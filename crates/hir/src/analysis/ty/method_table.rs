@@ -340,12 +340,11 @@ fn saturate_ty_for_method_probe<'db>(
             break;
         };
 
-        // Fresh vars, not invalid/hole placeholders: the padding args can be
+        // Fresh vars, not invalid placeholders: the padding args can be
         // unified into the candidate's binder args during the probe, and the
         // bound candidate is part of the probe's result — a baked invalid
         // type poisons downstream bound checks (goals containing invalids
-        // are skipped) and a baked layout hole pins a const arg that the
-        // call site would otherwise infer.
+        // are skipped).
         let arg = table.new_var_for(prop);
 
         ty = TyId::app(db, ty, arg);

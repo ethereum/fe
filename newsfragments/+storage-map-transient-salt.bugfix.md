@@ -1,1 +1,0 @@
-A `StorageMap` held inside transient state, such as behind a `TStorPtr` contract field, now draws its salt from the persistent slot counter. It previously took the transient counter, so it could share a salt, and therefore its entries, with a persistent map.

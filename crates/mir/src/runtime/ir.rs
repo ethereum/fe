@@ -1,12 +1,13 @@
 use common::layout::enum_tag_bits;
 use cranelift_entity::{EntityRef, entity_impl};
 use hir::analysis::{
-    semantic::{FieldIndex, LayoutEvidenceConstant, SemOrigin, SemanticInstance},
-    ty::{CallableLayoutParamPort, ty_def::TyId},
+    semantic::{FieldIndex, SemOrigin, SemanticInstance},
+    ty::ty_def::TyId,
 };
 use hir::hir_def::{BinOp, Contract, Func, TopLevelMod, UnOp};
 use hir::projection::IndexSource;
 use hir::semantic::{ContractFieldId, ProviderBinding};
+use ruint::aliases::U256;
 use salsa::Update;
 
 use crate::{
@@ -337,12 +338,11 @@ pub enum RefKind<'db> {
 pub enum RefView<'db> {
     Whole,
     EnumVariant(VariantId<'db>),
-    /// A scalar struct field packed into part of a storage word.
-    StorageLane(StorageLaneView),
 }
 
-/// The bytes of a storage word that hold a packed scalar struct field,
-/// counted from the low-order end (see `common::layout::storage_fields_layout`).
+/// The bytes of a storage word that hold a packed scalar struct field, a
+/// lane, counted from the low-order end (see
+/// `common::layout::storage_fields_layout`). A lane has no address.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub struct StorageLaneView {
     pub byte_offset: u8,
@@ -974,18 +974,10 @@ pub struct ContractRecvAbiPlan<'db> {
 }
 
 /// Runtime arguments that a synthetic boundary supplies on behalf of a
-/// semantic owner. Physical effect carriers and layout evidence are separate
-/// ABI lanes and are deliberately planned independently.
+/// semantic owner: its physical effect carriers.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub struct EntrySemanticArgsPlan<'db> {
     pub effects: Box<[EntryEffectArgPlan<'db>]>,
-    pub layout_evidence: Box<[EntryLayoutEvidenceArgPlan<'db>]>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
-pub struct EntryLayoutEvidenceArgPlan<'db> {
-    pub target: CallableLayoutParamPort,
-    pub value: LayoutEvidenceConstant<'db>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
@@ -999,7 +991,7 @@ pub enum EntryEffectArgPlan<'db> {
 pub enum ContractFieldSlot {
     /// Word offset within the field's address space (storage, transient, or
     /// the init-time memory immutables buffer).
-    Words(u128),
+    Words(U256),
     /// Byte offset relative to the end of the deployed code (always
     /// negative), addressing the immutable data section appended after the
     /// runtime bytecode.

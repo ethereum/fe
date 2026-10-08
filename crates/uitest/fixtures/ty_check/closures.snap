@@ -1,5 +1,6 @@
 ---
 source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/closures.fe
 ---
@@ -26,7 +27,8 @@ error[8-0036]: missing effect `Store` required by `any`
 70 │     xs.any(|x| x == read())
    │     ^^^^^^^^^^^^^^^^^^^^^^^ `any` requires effect `Store` to be in scope
    │
-   = provide it with `with (Store = value)` or require it via `uses Store`
+   = require it in this function's signature with `uses Store`, so that its callers provide it
+   = or provide it to a block of this function with `with (Store = value) { .. }`
 
 error[8-0108]: closures cannot be used in constant contexts
    ┌─ closures.fe:64:13

@@ -222,7 +222,6 @@ fn verify_sem_const_children<'db>(
         if !expected_ty.has_param(db)
             && !expected_ty.has_var(db)
             && !expected_ty.has_projection(db)
-            && !expected_ty.has_hole(db)
             && actual_ty != expected_ty
             && const_identity_ty(db, actual_ty) != const_identity_ty(db, expected_ty)
         {
@@ -562,24 +561,6 @@ pub(crate) fn instantiate_const_template<'db>(
     *const_ty
 }
 
-/// The synthetic contract entry has no semantic instance to reify against.
-/// Its static layout root is already closed and must become a concrete scalar
-/// before MIR scalar lowering; formal runtime evidence uses a separate path.
-pub fn prepare_static_layout_root_value<'db>(
-    db: &'db dyn HirAnalysisDb,
-    root: TyId<'db>,
-    scalar_ty: TyId<'db>,
-) -> Option<SemConstId<'db>> {
-    let TyData::ConstTy(term) = root.data(db) else {
-        return None;
-    };
-    let evaluated = evaluate_type_level_const_ty(db, *term, Some(scalar_ty));
-    let value = sem_const_from_ty(db, TyId::const_ty(db, evaluated))?;
-    (sem_const_ty(db, value) == scalar_ty
-        && matches!(value.value(db), SemConstValue::Scalar { .. }))
-    .then_some(value)
-}
-
 pub fn sem_const_from_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: TyId<'db>,
@@ -594,7 +575,6 @@ pub fn sem_const_from_ty<'db>(
         ConstTyData::Invalid(_) => None,
         ConstTyData::TyVar(..)
         | ConstTyData::TyParam(..)
-        | ConstTyData::Hole(..)
         | ConstTyData::Abstract(..)
         | ConstTyData::Computation { .. }
         | ConstTyData::UnEvaluated { ty: Some(..), .. } => {

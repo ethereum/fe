@@ -8,7 +8,10 @@ use fe_hir::analysis::ty::{
     trait_resolution::{GoalSatisfiability, TraitSolveCx, is_goal_satisfiable},
     ty_check::check_func_body,
 };
-use fe_hir::hir_def::{Expr, HirIngot, ItemKind, LitKind, Partial, Pat, attr::Attr};
+use fe_hir::hir_def::{
+    Expr, HirIngot, ItemKind, LitKind, Partial, Pat,
+    attr::{Attr, AttrArgValue},
+};
 use fe_hir::test_db::HirAnalysisTestDb;
 use salsa::Setter;
 use url::Url;
@@ -455,9 +458,14 @@ Good
                 );
             }
             for attr in ItemKind::Func(*func).attrs(&db).unwrap().data(&db) {
+                // An expression value keeps its source; only a literal is
+                // decoded into a string.
+                let is_string = |value: &Option<AttrArgValue>| {
+                    matches!(value, Some(AttrArgValue::Lit(LitKind::String(_))))
+                };
                 if let Attr::Normal(attr) = attr {
-                    assert!(attr.value.is_none(), "{src}");
-                    assert!(attr.args.iter().all(|arg| arg.value.is_none()), "{src}");
+                    assert!(!is_string(&attr.value), "{src}");
+                    assert!(!attr.args.iter().any(|arg| is_string(&arg.value)), "{src}");
                 }
             }
         }

@@ -3,10 +3,6 @@ use crate::{
         HirAnalysisDb,
         ty::{
             const_ty::{ConstTyData, ConstTyId},
-            layout_holes::{
-                LayoutPlaceholderPolicy, collect_unique_layout_placeholders_in_order_with_policy,
-                layout_hole_fallback_ty,
-            },
             trait_def::TraitInstId,
             ty_def::{InvalidCause, TyData, TyId},
             visitor::{TyVisitable, TyVisitor, walk_const_ty, walk_ty},
@@ -16,6 +12,7 @@ use crate::{
     span::DynLazySpan,
 };
 use common::indexmap::IndexMap;
+use rustc_hash::FxHashSet;
 use smallvec1::SmallVec;
 
 use crate::core::semantic::{
@@ -89,7 +86,7 @@ pub struct PatternSlotId(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PatternSlotKind {
-    LayoutPlaceholder,
+    ImplicitParam,
     OmittedExplicitArg,
 }
 
@@ -267,7 +264,6 @@ impl<'db> PatternSlots<'db> {
     pub(crate) fn from_value_with_extra<T>(
         db: &'db dyn HirAnalysisDb,
         value: T,
-        policy: LayoutPlaceholderPolicy,
         extra_slots: impl IntoIterator<Item = PatternSlot<'db>>,
     ) -> Self
     where
@@ -276,35 +272,33 @@ impl<'db> PatternSlots<'db> {
         let mut extra_slots = extra_slots
             .into_iter()
             .collect::<SmallVec<[PatternSlot<'db>; 4]>>();
-        let mut entries =
-            collect_unique_layout_placeholders_in_order_with_policy(db, value, policy)
-                .into_iter()
-                .map(|placeholder| {
-                    if let Some(idx) = extra_slots
-                        .iter()
-                        .position(|slot| slot.placeholder == placeholder)
-                    {
-                        return extra_slots.swap_remove(idx);
-                    }
+        let mut entries = collect_implicit_const_params(db, value)
+            .into_iter()
+            .map(|placeholder| {
+                if let Some(idx) = extra_slots
+                    .iter()
+                    .position(|slot| slot.placeholder == placeholder)
+                {
+                    return extra_slots.swap_remove(idx);
+                }
 
-                    let fallback_ty = placeholder_fallback_ty(db, placeholder);
-                    if let Some(idx) = extra_slots.iter().position(|slot| {
-                        slot.kind != PatternSlotKind::LayoutPlaceholder
-                            && slot.fallback_ty == fallback_ty
-                    }) {
-                        let mut slot = extra_slots.swap_remove(idx);
-                        slot.placeholder = placeholder;
-                        return slot;
-                    }
+                let fallback_ty = placeholder_fallback_ty(db, placeholder);
+                if let Some(idx) = extra_slots.iter().position(|slot| {
+                    slot.kind != PatternSlotKind::ImplicitParam && slot.fallback_ty == fallback_ty
+                }) {
+                    let mut slot = extra_slots.swap_remove(idx);
+                    slot.placeholder = placeholder;
+                    return slot;
+                }
 
-                    PatternSlot {
-                        id: PatternSlotId(0),
-                        kind: PatternSlotKind::LayoutPlaceholder,
-                        fallback_ty,
-                        placeholder,
-                    }
-                })
-                .collect::<SmallVec<[PatternSlot<'db>; 4]>>();
+                PatternSlot {
+                    id: PatternSlotId(0),
+                    kind: PatternSlotKind::ImplicitParam,
+                    fallback_ty,
+                    placeholder,
+                }
+            })
+            .collect::<SmallVec<[PatternSlot<'db>; 4]>>();
         entries.extend(extra_slots);
         for (idx, slot) in entries.iter_mut().enumerate() {
             slot.id = PatternSlotId(idx as u32);
@@ -384,7 +378,7 @@ pub fn type_key_schema_is_well_formed<'db>(
     db: &'db dyn HirAnalysisDb,
     key: TypeKeySchema<'db>,
 ) -> bool {
-    schema_value_is_well_formed(db, key.carrier)
+    forwarded_value_is_well_formed(db, key.carrier)
 }
 
 pub fn trait_key_schema_is_well_formed<'db>(
@@ -394,11 +388,11 @@ pub fn trait_key_schema_is_well_formed<'db>(
     key.args_no_self
         .iter()
         .copied()
-        .all(|ty| schema_value_is_well_formed(db, ty))
+        .all(|ty| forwarded_value_is_well_formed(db, ty))
         && key
             .assoc_bindings
             .iter()
-            .all(|(_, ty)| schema_value_is_well_formed(db, *ty))
+            .all(|(_, ty)| forwarded_value_is_well_formed(db, *ty))
 }
 
 pub fn forwarded_type_key_is_well_formed<'db>(
@@ -426,34 +420,25 @@ pub fn stored_value_is_storage_rigid<'db>(
     db: &'db dyn HirAnalysisDb,
     value: impl TyVisitable<'db>,
 ) -> bool {
-    value_is_well_formed_with(db, value, false, false, false)
-}
-
-fn schema_value_is_well_formed<'db>(
-    db: &'db dyn HirAnalysisDb,
-    value: impl TyVisitable<'db>,
-) -> bool {
-    value_is_well_formed_with(db, value, true, true, true)
+    value_is_well_formed_with(db, value, false, false)
 }
 
 fn forwarded_value_is_well_formed<'db>(
     db: &'db dyn HirAnalysisDb,
     value: impl TyVisitable<'db>,
 ) -> bool {
-    value_is_well_formed_with(db, value, true, false, true)
+    value_is_well_formed_with(db, value, true, true)
 }
 
 fn value_is_well_formed_with<'db>(
     db: &'db dyn HirAnalysisDb,
     value: impl TyVisitable<'db>,
     allow_ty_vars: bool,
-    allow_layout_holes: bool,
     allow_untyped_const_exprs: bool,
 ) -> bool {
     struct Finder<'db> {
         db: &'db dyn HirAnalysisDb,
         allow_ty_vars: bool,
-        allow_layout_holes: bool,
         allow_untyped_const_exprs: bool,
         invalid: bool,
     }
@@ -494,7 +479,6 @@ fn value_is_well_formed_with<'db>(
 
         fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
             match const_ty.data(self.db) {
-                ConstTyData::Hole(..) if !self.allow_layout_holes => self.invalid = true,
                 ConstTyData::UnEvaluated {
                     ty: None, capture, ..
                 } if self.allow_untyped_const_exprs => {
@@ -508,7 +492,6 @@ fn value_is_well_formed_with<'db>(
     let mut finder = Finder {
         db,
         allow_ty_vars,
-        allow_layout_holes,
         allow_untyped_const_exprs,
         invalid: false,
     };
@@ -606,12 +589,52 @@ pub fn stored_value_contains_out_of_scope_params<'db>(
     finder.found
 }
 
+/// The implicit const parameters in `value`, each once, in the order they
+/// first occur: the slots of an effect pattern key.
+pub(crate) fn collect_implicit_const_params<'db, T>(
+    db: &'db dyn HirAnalysisDb,
+    value: T,
+) -> Vec<TyId<'db>>
+where
+    T: TyVisitable<'db>,
+{
+    struct Collector<'db> {
+        db: &'db dyn HirAnalysisDb,
+        seen: FxHashSet<TyId<'db>>,
+        out: Vec<TyId<'db>>,
+    }
+
+    impl<'db> TyVisitor<'db> for Collector<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_ty(&mut self, ty: TyId<'db>) {
+            if let TyData::ConstTy(const_ty) = ty.data(self.db)
+                && let ConstTyData::TyParam(param, _) = const_ty.data(self.db)
+                && param.is_implicit()
+                && self.seen.insert(ty)
+            {
+                self.out.push(ty);
+            }
+            walk_ty(self, ty);
+        }
+    }
+
+    let mut collector = Collector {
+        db,
+        seen: FxHashSet::default(),
+        out: Vec::new(),
+    };
+    value.visit_with(&mut collector);
+    collector.out
+}
+
 fn placeholder_fallback_ty<'db>(db: &'db dyn HirAnalysisDb, placeholder: TyId<'db>) -> TyId<'db> {
     let TyData::ConstTy(const_ty) = placeholder.data(db) else {
         return placeholder;
     };
     match const_ty.data(db) {
-        ConstTyData::Hole(hole_ty, _) => layout_hole_fallback_ty(db, *hole_ty),
         ConstTyData::TyParam(_, fallback_ty) => *fallback_ty,
         ConstTyData::TyVar(_, const_ty_ty) => *const_ty_ty,
         _ => placeholder,

@@ -11,7 +11,6 @@ pub(crate) mod infer;
 pub(crate) mod inline;
 pub(crate) mod interface;
 pub(crate) mod layout;
-pub(crate) mod layout_evidence;
 mod provider_space;
 pub(crate) mod realize;
 pub(crate) mod returns;
@@ -22,5 +21,4 @@ pub(crate) mod type_info;
 
 pub use body::lower_to_rmir;
 pub use call::collect_runtime_calls;
-pub(crate) use consts::const_scalar_from_value;
 pub(crate) use type_info::resolve_stored_raw_pointee;

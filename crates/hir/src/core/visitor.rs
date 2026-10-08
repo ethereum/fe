@@ -10,15 +10,15 @@ use crate::{
         transition::ChainRoot,
     },
     hir_def::{
-        Body, CallArg, Cond, CondId, Const, ConstGenericArgValue, Contract, ContractRecv,
-        ContractRecvArm, ContractRecvArmListId, EffectParam, EffectParamListId, Enum, EnumVariant,
-        Expr, ExprId, Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam,
-        FuncParamListId, FuncParamName, GenericArg, GenericArgListId, GenericParam,
-        GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind, MatchArm, Mod,
-        Partial, Pat, PatId, PathId, PathKind, StaticAssert, Stmt, StmtId, Struct, TopLevelMod,
-        Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias,
-        UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId,
-        WhereClausePredicate, WherePredicate,
+        Body, CallArg, Cond, CondId, Const, Contract, ContractRecv, ContractRecvArm,
+        ContractRecvArmListId, EffectParam, EffectParamListId, Enum, EnumVariant, Expr, ExprId,
+        Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam, FuncParamListId,
+        FuncParamName, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
+        Impl, ImplTrait, ItemKind, KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId,
+        PathKind, StaticAssert, Stmt, StmtId, Struct, TopLevelMod, Trait, TraitRefId, TupleTypeId,
+        TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId, UsePathSegment,
+        VariantDef, VariantDefListId, VariantKind, WhereClauseId, WhereClausePredicate,
+        WherePredicate,
         attr::{self, AttrArgValue},
         scope_graph::ScopeId,
     },
@@ -1601,7 +1601,9 @@ pub fn walk_attribute<'db, V>(
                                                     |ctxt| visitor.visit_lit(ctxt, l),
                                                 );
                                             }
-                                            None => {}
+                                            // The attribute's owner lowers an
+                                            // expression into its own body.
+                                            Some(AttrArgValue::Expr(_)) | None => {}
                                         }
                                     },
                                 );
@@ -1717,9 +1719,7 @@ pub fn walk_generic_arg<'db, V>(
         }
 
         GenericArg::Const(const_arg) => {
-            if let ConstGenericArgValue::Expr(body) = const_arg.value
-                && let Some(body) = body.to_opt()
-            {
+            if let Some(body) = const_arg.value.to_opt() {
                 visitor.visit_body(&mut VisitorCtxt::with_body(ctxt.db, body), body);
             }
         }

@@ -887,9 +887,8 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
     /// expression type holds. An application reported before is not reported
     /// again, and any other is reported once, at the first expression that
     /// carries it. Patterns, binding uses, blocks and branches are left out:
-    /// their types come from an expression here or from the signature, and a
-    /// signature type reaches the body with its layout holes instantiated, so
-    /// it would not match the written type that reported it.
+    /// their types come from an expression here or from the signature, whose
+    /// written types report their own failures.
     ///
     /// An expression type that `check_expr` found no failure in has none here
     /// either, since `reported` only adds to `written`, so only a function
@@ -990,10 +989,7 @@ fn generic_arg_const_bodies<'db>(
     args: GenericArgListId<'db>,
 ) -> impl Iterator<Item = Body<'db>> + 'db {
     args.data(db).iter().filter_map(|arg| match arg {
-        GenericArg::Const(arg) => match arg.value {
-            ConstGenericArgValue::Expr(Partial::Present(body)) => Some(body),
-            _ => None,
-        },
+        GenericArg::Const(arg) => arg.value.to_opt(),
         _ => None,
     })
 }
@@ -1052,7 +1048,7 @@ fn segment_const_args<'db>(
             PathRes::TyAlias(alias, _) => {
                 for (arg, param) in args.data(db).iter().zip(alias.params(db)) {
                     if let GenericArg::Const(arg) = arg
-                        && let ConstGenericArgValue::Expr(Partial::Present(body)) = arg.value
+                        && let Partial::Present(body) = arg.value
                         && let Some(expected) = param.const_ty_ty(db)
                     {
                         found.push((body, expected));
@@ -1179,18 +1175,14 @@ fn expression_const_bodies<'db>(
         };
         let definition = match expr.data(db, body).borrowed().to_opt()? {
             Expr::Path(Partial::Present(path)) => {
-                let minter = LoweringContext::deferred(HoleAnchor::TemplatePath {
-                    path: *path,
-                    scope: body.scope(),
-                    assumptions: typed.assumptions(),
-                });
+                let lowering_cx = LoweringContext::deferred();
                 match resolve_path_with_minter(
                     db,
                     *path,
                     body.scope(),
                     typed.assumptions(),
                     true,
-                    &minter,
+                    &lowering_cx,
                 )
                 .ok()?
                 {
@@ -1254,7 +1246,7 @@ fn expression_const_bodies<'db>(
                 let GenericArg::Const(arg) = arg else {
                     return None;
                 };
-                let ConstGenericArgValue::Expr(Partial::Present(body)) = arg.value else {
+                let Partial::Present(body) = arg.value else {
                     return None;
                 };
                 Some((body, expected(offset + idx)?))
@@ -1267,20 +1259,22 @@ fn expression_const_bodies<'db>(
         if path_const_bodies(db, path).is_empty() {
             return Vec::new();
         }
-        let minter = LoweringContext::deferred(HoleAnchor::TemplatePath {
-            path,
-            scope: body.scope(),
-            assumptions: typed.assumptions(),
-        })
-        .recording_resolutions();
+        let lowering_cx = LoweringContext::deferred().recording_resolutions();
         let resolve = |value| {
-            resolve_path_with_minter(db, path, body.scope(), typed.assumptions(), value, &minter)
+            resolve_path_with_minter(
+                db,
+                path,
+                body.scope(),
+                typed.assumptions(),
+                value,
+                &lowering_cx,
+            )
         };
         // A tail that is not a value can still be a type, as a record's is.
         if resolve(value).is_err() {
             let _ = resolve(!value);
         }
-        segment_const_args(db, path, &minter.into_resolutions())
+        segment_const_args(db, path, &lowering_cx.into_resolutions())
     };
 
     let mut found: Vec<(Body<'db>, TyId<'db>)> = Vec::new();
@@ -2045,14 +2039,9 @@ fn trait_ref_const_args<'db>(
     if path_const_bodies(db, path).is_empty() {
         return Vec::new();
     }
-    let minter = LoweringContext::deferred(HoleAnchor::TemplatePath {
-        path,
-        scope,
-        assumptions,
-    })
-    .recording_resolutions();
-    let _ = resolve_path_with_minter(db, path, scope, assumptions, false, &minter);
-    segment_const_args(db, path, &minter.into_resolutions())
+    let lowering_cx = LoweringContext::deferred().recording_resolutions();
+    let _ = resolve_path_with_minter(db, path, scope, assumptions, false, &lowering_cx);
+    segment_const_args(db, path, &lowering_cx.into_resolutions())
 }
 
 /// The anonymous constants written directly in `hir_ty`, each with the type

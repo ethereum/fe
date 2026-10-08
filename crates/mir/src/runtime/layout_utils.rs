@@ -324,6 +324,14 @@ pub fn storage_scalar_bytes(scalar: &ScalarClass<'_>) -> u32 {
     }
 }
 
+/// The storage width of an element of class `class` that is not a lane, as
+/// `core::ops::PlaceIndex::locate` takes it: 32 bytes per slot it spans.
+pub fn storage_element_width<'db>(db: &'db dyn MirDb, class: &RuntimeClass<'db>) -> u64 {
+    32 * RuntimeMemoryLayout::for_space(db, AddressSpaceKind::Storage)
+        .class_size(class)
+        .expect("a storage element has a size")
+}
+
 pub fn scalar_raw_memory_size_bytes(scalar: &ScalarClass<'_>) -> u64 {
     match scalar.repr {
         ScalarRepr::Bool => 1,

@@ -1,7 +1,7 @@
 use core::ptr
 use std::evm::{Evm, StorageBytes}
 
-type Blobs = StorageBytes<u256, 0, 1>
+type Blobs = StorageBytes<u256>
 
 msg BlobMsg {
     #[selector = 0x01]

@@ -19,7 +19,7 @@ use crate::analysis::{
     HirAnalysisDb,
     ty::{
         closure::{CallableShape, out_ident},
-        const_ty::{CallableInputLayoutHoleOrigin, HoleAnchor, LayoutHoleArgSite, LoweringContext},
+        const_ty::LoweringContext,
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
         fold::{TyFoldable, TyFolder},
@@ -33,10 +33,7 @@ use crate::analysis::{
         ty_def::BorrowKind,
         ty_def::{TyBase, TyData, TyFlags, TyId},
         ty_error::emit_invalid_ty_error,
-        ty_lower::{
-            collect_generic_params, lower_generic_arg_list,
-            specialized_callable_layout_bundle_signature,
-        },
+        ty_lower::{collect_generic_params, lower_generic_arg_list},
         visitor::{TyVisitable, TyVisitor, collect_flags},
     },
 };
@@ -187,21 +184,13 @@ pub(super) fn unify_explicit_call_generic_args<'db>(
     callable: &mut Callable<'db>,
     tc: &mut TyChecker<'db>,
     args: GenericArgListId<'db>,
-    anchor: HoleAnchor<'db>,
     phase: CallGenericArgPhase,
     mut unify_arg: impl FnMut(&mut TyChecker<'db>, usize, TyId<'db>, &mut TyId<'db>) -> bool,
 ) -> Result<(), CallGenericArgUnifyError<'db>> {
     let db = tc.db;
-    let minter = LoweringContext::new(anchor);
+    let lowering_cx = LoweringContext::new();
     let given_args = args.is_given(db).then(|| {
-        lower_generic_arg_list(
-            db,
-            args,
-            tc.env.scope(),
-            tc.env.assumptions(),
-            LayoutHoleArgSite::GenericArgList(args),
-            &minter,
-        )
+        lower_generic_arg_list(db, args, tc.env.scope(), tc.env.assumptions(), &lowering_cx)
     });
     let given_count = given_args.as_ref().map_or(0, Vec::len);
     let offset = callable.callable_def.offset_to_explicit_params_position(db);
@@ -233,9 +222,11 @@ pub(super) fn unify_explicit_call_generic_args<'db>(
                     provided,
                     match phase {
                         CallGenericArgPhase::Probe => {
-                            DefaultApplication::StructuralMetadata(&minter)
+                            DefaultApplication::StructuralMetadata(&lowering_cx)
                         }
-                        CallGenericArgPhase::Check => DefaultApplication::CheckedMetadata(&minter),
+                        CallGenericArgPhase::Check => {
+                            DefaultApplication::CheckedMetadata(&lowering_cx)
+                        }
                     },
                 )
                 .map_err(CallGenericArgUnifyError::InvalidArgument)?
@@ -401,32 +392,6 @@ impl<'db> Callable<'db> {
         &mut self.generic_args
     }
 
-    pub(super) fn specialize_arg_from_actual(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        arg_idx: usize,
-        actual: TyId<'db>,
-    ) {
-        let Some(expected) = self
-            .callable_def
-            .arg_tys(db)
-            .get(arg_idx)
-            .map(|ty| ty.instantiate_identity())
-        else {
-            return;
-        };
-        self.specialize_params_from_actual(db, expected, actual);
-    }
-
-    pub(super) fn specialize_params_from_actual(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        expected: TyId<'db>,
-        actual: TyId<'db>,
-    ) {
-        bind_callable_params_from_actual(db, expected, actual, &mut self.generic_args);
-    }
-
     pub fn effect_providers(&self) -> &[EffectProviderSpecialization<'db>] {
         &self.effect_providers
     }
@@ -484,14 +449,12 @@ impl<'db> Callable<'db> {
         &mut self,
         tc: &mut TyChecker<'db>,
         args: GenericArgListId<'db>,
-        anchor: HoleAnchor<'db>,
         span: LazyGenericArgListSpan<'db>,
     ) -> bool {
         match unify_explicit_call_generic_args(
             self,
             tc,
             args,
-            anchor,
             CallGenericArgPhase::Check,
             |tc, idx, given, current| {
                 *current = tc.equate_ty(given, *current, span.clone().arg(idx).into());
@@ -557,17 +520,6 @@ impl<'db> Callable<'db> {
             return;
         }
 
-        let layout_input_origins = match self.callable_def {
-            CallableDef::Func(func) => {
-                specialized_callable_layout_bundle_signature(db, func, &self.generic_args)
-                    .inputs
-                    .into_iter()
-                    .map(|input| input.origin)
-                    .collect::<Vec<_>>()
-            }
-            CallableDef::VariantCtor(_) => Vec::new(),
-        };
-
         let mut args = if let Some((receiver_expr, receiver_prop)) = receiver {
             let mut args = Vec::with_capacity(call_args.len() + 1);
             let arg = CallArg::new(
@@ -585,24 +537,17 @@ impl<'db> Callable<'db> {
 
         for (i, hir_arg) in call_args.iter().enumerate() {
             let arg_idx = if has_receiver { i + 1 } else { i };
-            let layout_origin = match self.callable_def {
-                CallableDef::Func(_) => Some(CallableInputLayoutHoleOrigin::ValueParam(arg_idx)),
-                CallableDef::VariantCtor(_) => None,
-            };
-            // Constructors for layout-bearing inputs must see the callee's specialized type so
-            // their inferred roots are anchored to the value being passed. Keep this contextual
-            // typing selective: applying it to every call argument changes ordinary inference and
-            // compile-time evaluation. `view` is an interface capability, not the type of the value
-            // constructed at the call boundary, so use its inner type as the hint.
+            // A variant constructor's arguments see the variant's field types,
+            // like a struct literal's fields. Keep this contextual typing
+            // selective: applying it to every call argument changes ordinary
+            // inference and compile-time evaluation.
             let expected_hint = self
                 .compile_time_string_literal_arg_expected(tc, hir_arg.expr, arg_idx)
                 .or_else(|| {
-                    (matches!(self.callable_def, CallableDef::VariantCtor(_))
-                        || layout_origin
-                            .is_some_and(|origin| layout_input_origins.contains(&origin)))
-                    .then(|| self.arg_ty(db, arg_idx))
-                    .flatten()
-                    .map(|ty| tc.normalize_ty(ty))
+                    matches!(self.callable_def, CallableDef::VariantCtor(_))
+                        .then(|| self.arg_ty(db, arg_idx))
+                        .flatten()
+                        .map(|ty| tc.normalize_ty(ty))
                 });
             if !already_typed
                 && matches!(
@@ -836,39 +781,6 @@ fn string_literal_tuple_bytes_hint<'db>(
         .map(|hint| hint.unwrap_or_else(|| tc.fresh_ty()))
         .collect();
     Some(TyId::tuple_with_elems(tc.db, &elem_tys))
-}
-
-fn bind_callable_params_from_actual<'db>(
-    db: &'db dyn HirAnalysisDb,
-    expected: TyId<'db>,
-    actual: TyId<'db>,
-    args: &mut [TyId<'db>],
-) {
-    match expected.data(db) {
-        TyData::TyParam(param) => {
-            if let Some(arg) = args.get_mut(param.idx) {
-                *arg = actual;
-            }
-            return;
-        }
-        TyData::ConstTy(const_ty) => {
-            if let crate::analysis::ty::const_ty::ConstTyData::TyParam(param, _) = const_ty.data(db)
-            {
-                if let Some(arg) = args.get_mut(param.idx) {
-                    *arg = actual;
-                }
-                return;
-            }
-        }
-        _ => {}
-    }
-    let (expected_base, expected_args) = expected.decompose_ty_app(db);
-    let (actual_base, actual_args) = actual.decompose_ty_app(db);
-    if expected_base == actual_base && expected_args.len() == actual_args.len() {
-        for (&expected, &actual) in expected_args.iter().zip(actual_args) {
-            bind_callable_params_from_actual(db, expected, actual, args);
-        }
-    }
 }
 
 impl<'db> CallableDef<'db> {

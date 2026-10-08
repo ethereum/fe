@@ -36,19 +36,20 @@ pub contract DelegateCaller {
 fn delegation_updates_persistent_and_transient_state_with_empty_buffers()
   uses (evm: mut Evm)
 {
-    // Initcode copies and returns nine bytes of runtime code. That runtime writes
-    // 41 to storage slot zero and 17 to transient slot zero, then stops.
-    let init_code = ptr::alloc<[u8; 19]>()
+    // Initcode copies and returns ten bytes of runtime code. That runtime writes
+    // 41 to storage slot zero and 17 to transient slot one, the caller's fields'
+    // slots (storage and transient fields share one numbering), then stops.
+    let init_code = ptr::alloc<[u8; 20]>()
     unsafe {
         *init_code = [
-            0x60, 0x09, 0x60, 0x0a, 0x5f, 0x39, 0x60, 0x09, 0x5f, 0xf3,
-            0x60, 0x29, 0x5f, 0x55, 0x60, 0x11, 0x5f, 0x5d, 0x00,
+            0x60, 0x0a, 0x60, 0x0a, 0x5f, 0x39, 0x60, 0x0a, 0x5f, 0xf3,
+            0x60, 0x29, 0x5f, 0x55, 0x60, 0x11, 0x60, 0x01, 0x5d, 0x00,
         ]
     }
     let implementation = unsafe {
         evm.create_raw(
             value: 0,
-            init_code: MemSpan::from_raw_parts(ptr: ptr::byte_ptr(init_code), len: 19),
+            init_code: MemSpan::from_raw_parts(ptr: ptr::byte_ptr(init_code), len: 20),
         )
     }
     assert!(implementation.inner != 0)

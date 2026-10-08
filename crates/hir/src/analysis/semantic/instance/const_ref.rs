@@ -1,8 +1,7 @@
 use super::{
     EffectProviderSubst, GenericSubst, ImplEnv, SemanticInstance, SemanticInstanceKey,
     provisional_provider_binding_for_instance_effect, provisional_provider_idx_for_requirement,
-    resolved_effect_binding_ty_for_instance_effect, resolved_provider_binding_for_instance_effect,
-    row_expansion_for_key,
+    resolved_provider_binding_for_instance_effect, row_expansion_for_key,
 };
 use crate::{
     analysis::{
@@ -21,7 +20,6 @@ use crate::{
                 rows::{RowExpansion, RowPath, expand_rows},
             },
             fold::{TyFoldable, TyFolder},
-            layout_holes::layout_shape_value,
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
             trait_def::{
@@ -37,10 +35,7 @@ use crate::{
                 ResolvedEffectArg,
             },
             ty_def::{TyFlags, TyId},
-            ty_lower::{
-                ParamBasis, ParamKey, ParamSchemaId, collect_layout_arg_bindings,
-                instantiate_callable_effect_layout_args, param_schema,
-            },
+            ty_lower::{ParamKey, ParamSchemaId},
             visitor::{TyVisitable, TyVisitor, collect_flags},
         },
     },
@@ -114,17 +109,6 @@ impl<'db> TyFoldable<'db> for InstantiatedMethodSignature<'db> {
             result,
             effects,
         }
-    }
-}
-
-struct LayoutBindingSubst<'db>(FxHashMap<TyId<'db>, TyId<'db>>);
-
-impl<'db> TyFolder<'db> for LayoutBindingSubst<'db> {
-    fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
-        self.0
-            .get(&ty)
-            .copied()
-            .unwrap_or_else(|| ty.super_fold_with(db, self))
     }
 }
 
@@ -276,15 +260,11 @@ fn instantiated_effects<'db>(
 }
 
 fn signatures_match<'db>(
-    db: &'db dyn HirAnalysisDb,
     nominal: &InstantiatedMethodSignature<'db>,
     body: &InstantiatedMethodSignature<'db>,
     effect_pairs: &[(usize, usize)],
-    checked_inputs: Option<&[TyId<'db>]>,
-    checked_effect_inputs: &[(usize, TyId<'db>)],
 ) -> bool {
     if nominal.inputs.len() != body.inputs.len()
-        || checked_inputs.is_some_and(|inputs| inputs.len() != nominal.inputs.len())
         || nominal.effects.len() != body.effects.len()
         || effect_pairs.len() != nominal.effects.len()
         || effect_pairs
@@ -325,36 +305,7 @@ fn signatures_match<'db>(
     };
     body.effects = ordered_effects;
 
-    // Both signatures are in nominal effect order here, so checked value and
-    // effect-key inputs bind layout holes at the same positions on each side.
-    let bind_checked_inputs = |signature: InstantiatedMethodSignature<'db>| {
-        let value_inputs = signature
-            .inputs
-            .iter()
-            .map(|&(_, formal)| formal)
-            .zip(checked_inputs.into_iter().flatten().copied());
-        let effect_inputs =
-            checked_effect_inputs.iter().filter_map(|&(idx, actual)| {
-                match signature
-                    .effects
-                    .iter()
-                    .find(|(index, ..)| *index as usize == idx)?
-                {
-                    (_, _, EffectRequirementKey::Type(formal), _) => Some((*formal, actual)),
-                    _ => None,
-                }
-            });
-        let mut bindings = Vec::new();
-        for (formal, actual) in value_inputs.chain(effect_inputs) {
-            let mut candidate = bindings.clone();
-            if collect_layout_arg_bindings(db, formal, actual, &mut candidate) {
-                bindings = candidate;
-            }
-        }
-        signature.fold_with(db, &mut LayoutBindingSubst(bindings.into_iter().collect()))
-    };
-    layout_shape_value(db, bind_checked_inputs(nominal.clone()))
-        == layout_shape_value(db, bind_checked_inputs(body))
+    *nominal == body
 }
 
 pub(crate) struct SemanticCallCallee<'db> {
@@ -418,7 +369,6 @@ pub(super) fn root_impl_env<'db>(
     };
     if !(func.containing_impl(db).is_some() || !func.is_associated_func(db))
         || !func.effect_requirements(db).is_empty()
-        || has_callable_layout_slots(db, func)
         || !is_ground(collect_flags(db, subst.generic_args(db)))
     {
         return env;
@@ -685,28 +635,8 @@ fn semantic_callee_key_with_assumptions<'db>(
                 )
                 .collect::<Vec<_>>()
         };
-        // Only the body's declared effects have layout inputs.
-        let declared_pairs = component_pairs(None);
-        let checked_effect_inputs: Vec<_> = checked_effect_inputs
-            .iter()
-            .copied()
-            .filter(|(idx, _)| {
-                declared_pairs.iter().any(|(nominal, _)| nominal == idx)
-                    || !nominal_rows
-                        .components
-                        .iter()
-                        .any(|component| component.requirement.binding_idx as usize == *idx)
-            })
-            .collect();
-        subst_args = method
-            .complete_body_args(
-                db,
-                &subst_args,
-                callable.checked_input_tys(),
-                Some(&checked_effect_inputs),
-                &declared_pairs,
-            )?
-            .into_values();
+
+        subst_args = method.complete_body_args(db, &subst_args)?.into_values();
         let (_, body_rows) =
             instantiated_effects(db, impl_func, &subst_args, impl_func.scope(), assumptions);
         effect_pairs = component_pairs(Some(&body_rows));
@@ -821,7 +751,6 @@ fn semantic_callee_key_with_assumptions<'db>(
                 collect_func_decl_constraints(db, CallableDef::Func(func), false)
                     .instantiate_identity()
                     .is_empty(db)
-                    && !has_callable_layout_slots(db, func)
             })
             && inst.args(db).len() == resolved.trait_inst().args(db).len()
             && inst
@@ -869,7 +798,6 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else if selected_trait_method.is_none()
         && (nominal_func.containing_impl(db).is_some() || !nominal_func.is_associated_func(db))
         && callable.trait_inst().is_none()
-        && !has_callable_layout_slots(db, nominal_func)
         && is_ground(
             collect_flags(db, subst_args.as_slice())
                 | collect_flags(db, effect_providers.as_slice())
@@ -975,14 +903,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         if !(collect_flags(db, nominal_signature.clone())
             | collect_flags(db, body_signature.clone()))
         .contains(TyFlags::HAS_INVALID)
-            && !signatures_match(
-                db,
-                &nominal_signature,
-                &body_signature,
-                &effect_pairs,
-                callable.checked_input_tys(),
-                &checked_effect_inputs,
-            )
+            && !signatures_match(&nominal_signature, &body_signature, &effect_pairs)
         {
             return Err(MethodArgMapError::SignatureMismatch {
                 nominal: nominal_func,
@@ -1024,13 +945,6 @@ fn is_ground(flags: TyFlags) -> bool {
     )
 }
 
-fn has_callable_layout_slots<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
-    param_schema(db, func.into(), ParamBasis::Full)
-        .keys(db)
-        .iter()
-        .any(|key| matches!(key, ParamKey::CallableLayout { .. }))
-}
-
 fn resolve_callable_effect_providers<'db>(
     db: &'db dyn HirAnalysisDb,
     caller: Option<SemanticInstance<'db>>,
@@ -1041,7 +955,6 @@ fn resolve_callable_effect_providers<'db>(
 ) -> Vec<EffectProviderSpecialization<'db>> {
     let providers =
         resolve_provider_specializations(db, caller, effect_providers, provider_resolution_mode);
-    let caller = || caller.expect("effect providers require a caller instance");
     let effect_env = EffectEnvView::new(EffectParamSite::Func(func));
     let resolution_by_req = match provider_resolution_mode {
         ProviderResolutionMode::Final => effect_env
@@ -1080,8 +993,6 @@ fn resolve_callable_effect_providers<'db>(
         if let Some(slot) = subst_args.get_mut(param_idx) {
             *slot = provider.provider.provider_ty;
         }
-        let actual_key_ty = effect_provider_target_ty(db, caller(), provider);
-        instantiate_callable_effect_layout_args(db, func, effect_idx, actual_key_ty, subst_args);
     }
     providers
 }
@@ -1126,20 +1037,6 @@ fn resolve_provider_specializations<'db>(
         .collect::<Vec<_>>();
     providers.sort_by_key(|provider| provider.provider.provider_idx);
     providers
-}
-
-fn effect_provider_target_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    caller: SemanticInstance<'db>,
-    provider: &EffectProviderSpecialization<'db>,
-) -> TyId<'db> {
-    let fallback = provider.provider.effective_target_ty();
-    let crate::analysis::ty::ty_check::EffectProviderProvenance::Binding { binding, .. } =
-        provider.provenance
-    else {
-        return fallback;
-    };
-    resolved_effect_binding_ty_for_instance_effect(db, caller, binding).unwrap_or(fallback)
 }
 
 impl ProviderResolutionMode {
@@ -1230,54 +1127,9 @@ fn semantic_const_key_for_assoc_const<'db>(
 mod tests {
     use super::{InstantiatedMethodSignature, signatures_match};
     use crate::{
-        analysis::ty::{
-            const_ty::{BoundHoleId, ConstTyId, HoleId, LayoutShapeHoleKind},
-            ty_def::TyId,
-        },
-        core::semantic::EffectRequirementKey,
-        hir_def::params::FuncParamMode,
+        analysis::ty::ty_def::TyId, core::semantic::EffectRequirementKey,
         test_db::HirAnalysisTestDb,
     };
-
-    #[test]
-    fn selected_signature_comparison_preserves_cross_input_layout_sharing() {
-        let db = HirAnalysisTestDb::default();
-        let hole = |ordinal| {
-            TyId::const_ty(
-                &db,
-                ConstTyId::hole_with_id(
-                    &db,
-                    TyId::u256(&db),
-                    HoleId::Bound(BoundHoleId::LayoutShape {
-                        ordinal,
-                        kind: LayoutShapeHoleKind::DefaultHoleParam,
-                    }),
-                ),
-            )
-        };
-        let signature = |first, second| InstantiatedMethodSignature {
-            inputs: vec![(FuncParamMode::View, first), (FuncParamMode::View, second)],
-            result: TyId::unit(&db),
-            effects: Vec::new(),
-        };
-        let nominal = signature(hole(0), hole(0));
-        assert!(signatures_match(
-            &db,
-            &nominal,
-            &signature(hole(1), hole(1)),
-            &[],
-            None,
-            &[],
-        ));
-        assert!(!signatures_match(
-            &db,
-            &nominal,
-            &signature(hole(1), hole(2)),
-            &[],
-            None,
-            &[],
-        ));
-    }
 
     #[test]
     fn selected_signature_comparison_includes_provider_types() {
@@ -1290,60 +1142,14 @@ mod tests {
         };
         let nominal = signature(TyId::u256(&db));
         assert!(signatures_match(
-            &db,
             &nominal,
             &signature(TyId::u256(&db)),
             &[(0, 0)],
-            None,
-            &[],
         ));
         assert!(!signatures_match(
-            &db,
             &nominal,
             &signature(TyId::bool(&db)),
             &[(0, 0)],
-            None,
-            &[],
-        ));
-    }
-
-    #[test]
-    fn selected_signature_comparison_binds_effect_key_layout_holes() {
-        let db = HirAnalysisTestDb::default();
-        let hole = TyId::const_ty(
-            &db,
-            ConstTyId::hole_with_id(
-                &db,
-                TyId::u256(&db),
-                HoleId::Bound(BoundHoleId::LayoutShape {
-                    ordinal: 0,
-                    kind: LayoutShapeHoleKind::DefaultHoleParam,
-                }),
-            ),
-        );
-        let concrete = TyId::const_ty(&db, ConstTyId::integer(&db, TyId::u256(&db), 7.into()));
-        let signature = |key| InstantiatedMethodSignature {
-            inputs: Vec::new(),
-            result: TyId::unit(&db),
-            effects: vec![(0, false, EffectRequirementKey::Type(key), None)],
-        };
-        let nominal = signature(hole);
-        let body = signature(concrete);
-        assert!(!signatures_match(
-            &db,
-            &nominal,
-            &body,
-            &[(0, 0)],
-            None,
-            &[]
-        ));
-        assert!(signatures_match(
-            &db,
-            &nominal,
-            &body,
-            &[(0, 0)],
-            None,
-            &[(0, concrete)],
         ));
     }
 }

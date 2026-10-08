@@ -156,12 +156,6 @@ pub fn expr_result_class<'db>(
                             | RefKind::Provider { .. },
                         view: RefView::Whole,
                         ..
-                    } | RuntimeClass::Ref {
-                        // Codegen rejects it: a native reference cannot carry
-                        // a storage lane.
-                        kind: RefKind::Provider { .. },
-                        view: RefView::StorageLane(_),
-                        ..
                     } | RuntimeClass::RawAddr { .. }
                 )
             {

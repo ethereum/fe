@@ -61,12 +61,31 @@ tail or with `yield`. The code after a `yield`, its *slide*, runs when the
 caller's last use of the access has passed. While the caller uses the
 access, the projection's session reserves the places its arguments named.
 
+A yield of a value, such as `-> ref u32 { self.word.low() }`, grants a
+temporary in the projection's frame holding it, as `let tmp = ..; ref tmp`
+would. A `ref` yield of a place views the place; a `mut` yield grants a
+place only when it is named `mut`, since `self.v` alone reads a copy. A
+`mut` yield of a frame temporary with no slide to write it back is a
+warning.
+
 A shape groups owned values and accesses, `-> (usize, ref T)`, and the
 caller destructures it with `let (i, x) = ..`. Two `mut` components must be
 structurally disjoint, as in `(mut self.a, mut self.b)`. An optional shape,
 `-> Option<mut T>` or `-> Result<mut T, E>`, is consumed with `if let`,
 `match`, `let .. else` or `?`; its empty variant may only be returned before
 the `yield`.
+
+A tuple holds accesses only as such a shape. Accesses the checker cannot see
+are disjoint form an *unsafe split*, an `unsafe` block whose tail is a tuple
+of them: one session whose reservations are all of theirs, and whose grants
+the block promises are disjoint. Two raw-slot collections are held at once
+this way, and `MemArray::pair_mut` is one inside a library function:
+
+```fe
+let (a, b) = unsafe { (SolArray<u256>::at(x), SolArray<u256>::at(y)) }
+a.push(1)                           // all storage stays reserved until both end
+b.push(2)
+```
 
 ## Views
 
@@ -76,40 +95,40 @@ result, no `own` parameter or owned result, no `Copy`, and no field of that
 type. A span such as `buffer.span()` is a `ref` projection, so it keeps the
 buffer reserved until its last use.
 
-## Storage handles
+## Storage collections
 
-A storage handle, such as a `StorageMap`, is a snapshot naming the field
-whose entries it reaches. An operation through it declares that field's
-authority, `uses (storage: Field(Self))` (`mut` to write), and accesses the
-field's entries for its duration. The entries lie apart from the place
-holding the handle, so a `mut` access of a struct holding a map does not
-overlap the map's entries.
+A storage collection, such as a `StorageMap`, `StoragePackedArray` or
+`TSlot`, is an owner at its storage place: the contract layout gives it a
+slot, and its entries lie at slots derived from that one (a map's at
+`keccak(key, slot)`). `m[k]` names an entry's place with no call
+(`core::ops::PlaceIndex`), so `store.days[k].steps += 1` reads and writes one
+slot. The access checker sees an entry as the collection's place indexed by a
+key: entries at distinct literal keys are disjoint, and any other two
+overlap. A `mut` access to a struct holding collections covers their
+entries. A collection's methods take `self` or `mut self` and declare no
+effects: the authority is the access to its place, as for any data.
 
-A static slot handle's type names its field, since distinct fields'
-handles never share a type, so the authority comes from an effect provider
-holding a value of that type: `uses (balances)` covers `balances.get(k)`, a
-copy of `balances`, the map a projection over `balances` yields and one in
-an enum payload of a provider alike. A handle whose slot is a runtime value,
-such as a `StorPtr`, has the authority of a provider of its type, or of its
-place when that lies in an effect provider. A data parameter carries none: a
-function operating on handles it is given declares
-`uses (storage: Field(StorageMap<K, V>))`, and its caller grants it.
+A collection may pack small elements into lanes of shared slots, as a
+`SolArray` does for Solidity's packed array elements. A lane is read and
+written in place, but a `mut` binding, argument, provided effect or yield of
+one works on a memory copy that is stored back into the lane when the access
+ends.
 
 ```fe
 let x = mut balances[from]
-balances.set(key: to, value: 0)     // rejected: `x`'s session holds `balances`
-let copy = balances
-let y = copy.get(to)                // rejected: the copy names the same field
+balances.set(key: to, value: 0)     // rejected: `x` holds an entry of `balances`
 x -= amount
 ```
 
-A `Field(T)` that leaves `T`'s salt open (`Field(StorageMap<K, V>)`) is
-authority over any map of that shape. A callee reaches maps only through its
-arguments and effects, so a call lending such an authority, or `Field(Self)`,
-must cover every map of that shape its arguments hold, and accesses their
-fields. A `Field` effect is authority only: it is not a value the body can
-name, and only its layout is passed at runtime. A `with` block may install a handle copy as a provider only under
-the function's own authority over its field, or raw storage authority.
+A type holding a collection is *storage-only* (`#[storage_only]`): never a
+value. It is not constructed, copied, moved out of storage or held in a
+memory aggregate; code reaches it through an access, a `mut` or view
+parameter, or an effect. A raw-slot constructor,
+`unsafe fn at(slot) -> mut Self uses (storage: mut RawStorage)`, places a
+collection at a runtime slot, and its caller vouches that nothing else uses
+that slot. A `with` block may install a provider naming storage only when its
+place lies in one of the function's effects, under raw storage authority, or
+in an `unsafe` block.
 
 ## External calls
 

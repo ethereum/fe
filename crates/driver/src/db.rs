@@ -11,10 +11,8 @@ use common::{
     },
 };
 use hir::analysis::{
-    analysis_pass::AnalysisPassManager,
-    diagnostics::DiagnosticVoucher,
-    initialize_analysis_pass,
-    semantic::{LayoutEvidenceAnalysisPass, SemanticAccessAnalysisPass},
+    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, initialize_analysis_pass,
+    semantic::SemanticAccessAnalysisPass,
 };
 use hir::{
     Ingot,
@@ -123,7 +121,6 @@ impl DriverDataBase {
 fn initialize_mir_diagnostics_pass() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
     pass_manager.add_module_pass("SemanticAccess", Box::new(SemanticAccessAnalysisPass));
-    pass_manager.add_module_pass("LayoutEvidence", Box::new(LayoutEvidenceAnalysisPass));
     pass_manager
 }
 

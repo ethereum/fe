@@ -3,19 +3,18 @@ use hir::analysis::{
     HirAnalysisDb,
     semantic::{
         ExecutableBlock, PlaceProvenance, SLocal, SLocalId, SemOrigin, SemanticBody,
-        SemanticInstance, SemanticLocalRole, layout_evidence_body,
+        SemanticInstance, SemanticLocalRole,
         normalized::{
             NBlock, NBlockId, NEffectArgValue, NExpr, NLayoutBackingSource, NLayoutLocals,
             NLayoutPlan, NOperand, NPlace, NPlaceBase, NRootId, NRootKind, NStatementKind,
             NSuccessor, NTerminator, NTerminatorKind, NValueDefinition, NValueId, NormalizedBody,
             normalize_runtime_semantic_body,
         },
-        semantic_executable_control_flow, verify_layout_evidence_runtime_compatibility,
+        semantic_executable_control_flow,
     },
 };
 use hir::hir_def::ExprId;
 
-use super::body::layout_evidence_failure;
 use crate::runtime::package::LowerError;
 
 /// The admitted semantic and representation artifacts consumed by runtime lowering.
@@ -93,22 +92,6 @@ impl<'db> RuntimeSemanticBody<'db> {
             ))
         })?;
         let source = instance.body(db).clone();
-        // Layout evidence names the operations of the complete runtime body.
-        let evidence = layout_evidence_body(db, instance)
-            .map_err(|error| layout_evidence_failure(instance.key(db), &error))?;
-        verify_layout_evidence_runtime_compatibility(
-            db,
-            &artifacts.body,
-            &artifacts.layout_plan,
-            &source,
-            evidence,
-        )
-        .map_err(|error| {
-            LowerError::Unsupported(format!(
-                "layout evidence is incompatible with runtime semantic body for {:?}: {error:?}",
-                instance.key(db)
-            ))
-        })?;
         let representations = NLayoutLocals::new(&artifacts.body, &artifacts.layout_plan, &source);
 
         // Runtime code is the control flow the borrow check proved executable,

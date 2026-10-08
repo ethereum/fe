@@ -77,6 +77,11 @@ module.exports = grammar({
     [$.path_segment, $.attribute],
     // recv arm pattern name can be identifier or path
     [$.recv_arm_pattern, $.path_segment],
+    // an attribute argument can be a key or an expression
+    [$.attribute_arg, $._expression],
+    // an attribute list after a contract field can start another field, the
+    // `init` block or a `recv` block
+    [$.contract_fields],
   ],
 
   rules: {
@@ -289,11 +294,13 @@ module.exports = grammar({
     contract_fields: $ => repeat1($._contract_field_item),
 
     _contract_field_item: $ => seq(
+      optional($.attribute_list),
       $.record_field_def,
       optional(','),
     ),
 
     contract_init: $ => seq(
+      optional($.attribute_list),
       'init',
       $.parameter_list,
       optional($.uses_clause),
@@ -301,6 +308,7 @@ module.exports = grammar({
     ),
 
     contract_recv: $ => seq(
+      optional($.attribute_list),
       'recv',
       optional(field('message_type', $.path)),
       '{',
@@ -309,6 +317,7 @@ module.exports = grammar({
     ),
 
     recv_arm: $ => seq(
+      optional($.attribute_list),
       $.recv_arm_pattern,
       optional(seq('->', field('return_type', $._type))),
       optional($.uses_clause),
@@ -378,7 +387,7 @@ module.exports = grammar({
         optional(choice('mut', 'ref', 'own')),
         field('name', choice($.identifier, '_')),
         ':',
-        choice(field('type', $._type), seq(optional('mut'), $.uses_field_key)),
+        field('type', $._type),
       ),
       // unlabeled: `Type` or `mut Type` or `Storage<T>`
       seq(
@@ -386,11 +395,7 @@ module.exports = grammar({
         field('type', $.path),
         optional($.generic_arg_list),
       ),
-      seq(optional('mut'), $.uses_field_key),
     )),
-
-    // `Field(T)`: the storage field a handle of type `T` names
-    uses_field_key: $ => seq('Field', '(', field('type', $._type), ')'),
 
     // Trait definition
     trait_definition: $ => seq(
@@ -560,7 +565,7 @@ module.exports = grammar({
       field('name', $.identifier),
       ':',
       field('type', $._type),
-      optional(seq('=', field('default', choice('_', $.block, $.literal)))),
+      optional(seq('=', field('default', choice($.block, $.literal)))),
     ),
 
     type_bound_list: $ => choice(
@@ -1450,10 +1455,8 @@ module.exports = grammar({
           field('value', $._attribute_value),
         )),
       ),
-      // Bare literal in attr args: #[selector(0x01)]
-      $.integer_literal,
-      $.string_literal,
-      $.boolean_literal,
+      // An expression argument: #[selector(0x01)], #[slot(BASE + 1)]
+      prec(-1, field('value', $._expression)),
     ),
 
     // Attribute values: literals, identifiers, paths, or call expressions

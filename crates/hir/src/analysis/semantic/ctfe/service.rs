@@ -893,7 +893,7 @@ fn force_const_term_operand_impl<'db>(
             }
             _ => force_const_term(db, *term, *ty, cx, origin, provenance),
         },
-        ConstTyData::TyParam(..) | ConstTyData::TyVar(..) | ConstTyData::Hole(..) => {
+        ConstTyData::TyParam(..) | ConstTyData::TyVar(..) => {
             Err(EvalStop::Blocked(BlockedInfo::new(
                 ConstDemandKind::Value,
                 ConstDependency::Value(operand),
@@ -1549,7 +1549,7 @@ fn force_selected_const_ty<'db>(
                 message: "selected constant has an invalid value".into(),
             }))
         }
-        ConstTyData::TyParam(..) | ConstTyData::TyVar(..) | ConstTyData::Hole(..) => {
+        ConstTyData::TyParam(..) | ConstTyData::TyVar(..) => {
             EvalOutcome::Blocked(BlockedInfo::new(
                 ConstDemandKind::Value,
                 ConstDependency::Value(TyId::new(db, TyData::ConstTy(const_ty))),

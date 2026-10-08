@@ -4,88 +4,77 @@ assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/storage_capability_boundaries.fe
 ---
-error[8-0011]: missing fields in record pattern
-   ┌─ storage_capability_boundaries.fe:13:16
-   │
-13 │     StorageMap {}
-   │                ^^
-   │                │
-   │                missing `seal`
-   │                Consider using `StorageMap { seal }` instead
+error[2-0003]: `seed` is not visible
+    ┌─ storage_capability_boundaries.fe:9:35
+    │
+  9 │     store.balances = StorageMap { seed: 0 }
+    │                                   ^^^^^^^ `seed` is not visible
+    │
+    ┌─ src/evm/storage_map.fe:209:5
+    │
+209 │     seed: u256,
+    │     ---- `seed` is defined here
 
-error[8-0011]: missing fields in record pattern
-   ┌─ storage_capability_boundaries.fe:25:11
-   │
-25 │     TSlot {}
-   │           ^^
-   │           │
-   │           missing `seal`
-   │           Consider using `TSlot { seal }` instead
+error[2-0003]: `seed` is not visible
+    ┌─ storage_capability_boundaries.fe:22:20
+    │
+ 22 │     slot = TSlot { seed: 0 }
+    │                    ^^^^^^^ `seed` is not visible
+    │
+    ┌─ src/evm/effects.fe:241:5
+    │
+241 │     seed: u256,
+    │     ---- `seed` is defined here
 
-error[8-0036]: missing effect `RawStorage` required by `new`
-  ┌─ storage_capability_boundaries.fe:8:42
+error[3-0061]: `StorageMap<u256, u256>` lives only in storage
+  ┌─ storage_capability_boundaries.fe:9:22
   │
-8 │     let map: StorageMap<u256, u256, 0> = StorageMap::new()
-  │                                          ^^^^^^^^^^^^^^^^^ `new` requires effect `RawStorage` to be in scope
+9 │     store.balances = StorageMap { seed: 0 }
+  │                      ^^^^^^^^^^^^^^^^^^^^^^ a storage-only type cannot be constructed as a value
   │
-  = provide it with `with (RawStorage = value)` or require it via `uses RawStorage`
+  = a storage collection lives at its storage place; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
-error[8-0036]: missing effect `Field(Self)` required by `get`
-  ┌─ storage_capability_boundaries.fe:9:5
-  │
-9 │     map.get(1)
-  │     ^^^^^^^^^^ `get` requires effect `Field(Self)` to be in scope
-  │
-  = the authority over the field a handle names comes from an effect provider holding it, such as a contract field under `uses (mut store)`, or from a `uses (storage: Field(T))` effect
+error[3-0061]: `TSlot<u256>` lives only in storage
+   ┌─ storage_capability_boundaries.fe:22:12
+   │
+22 │     slot = TSlot { seed: 0 }
+   │            ^^^^^^^^^^^^^^^^^ a storage-only type cannot be constructed as a value
+   │
+   = a storage collection lives at its storage place; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
-error[8-0036]: missing effect `RawStorage` required by `new`
-   ┌─ storage_capability_boundaries.fe:17:5
+error[8-0036]: missing effect `RawStorage` required by `at`
+   ┌─ storage_capability_boundaries.fe:18:14
    │
-17 │     StorageBytes::new()
-   │     ^^^^^^^^^^^^^^^^^^^ `new` requires effect `RawStorage` to be in scope
+18 │     unsafe { StorageMap<u256, u256>::at(0).get(1) }
+   │              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `at` requires effect `RawStorage` to be in scope
    │
-   = provide it with `with (RawStorage = value)` or require it via `uses RawStorage`
-
-error[8-0036]: missing effect `RawStorage` required by `new`
-   ┌─ storage_capability_boundaries.fe:21:5
-   │
-21 │     StoragePackedArray::new()
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^ `new` requires effect `RawStorage` to be in scope
-   │
-   = provide it with `with (RawStorage = value)` or require it via `uses RawStorage`
-
-error[8-0036]: missing effect `Field(Self)` required by `write`
-   ┌─ storage_capability_boundaries.fe:29:5
-   │
-29 │     slot.write(1)
-   │     ^^^^^^^^^^^^^ `write` requires effect `Field(Self)` to be in scope
-   │
-   = the authority over the field a handle names comes from an effect provider holding it, such as a contract field under `uses (mut store)`, or from a `uses (storage: Field(T))` effect
-
-error[8-0037]: effect `Field(Self)` must be mutable when calling `set`
-   ┌─ storage_capability_boundaries.fe:35:5
-   │
-33 │ uses (store: Store)
-   │       ----- effect `Field(Self)` is provided here
-34 │ {
-35 │     store.balances.set(key: 1, value: 2)
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `set` requires `mut Field(Self)`
-   │
-   = use a mutable binding or pass a mutable reference in the `with` block
+   = require it in this function's signature with `uses (storage: mut RawStorage)`, so that its callers provide it
+   = or provide it to a block of this function with `with (RawStorage = value) { .. }`
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ storage_capability_boundaries.fe:29:5
+   ┌─ storage_capability_boundaries.fe:26:5
    │
-28 │ pub fn tslot_write_without_effect(slot: TSlot<u256, 0>) {
-   │                                   ---- `slot` does not provide mutable access
-29 │     slot.write(1)
+25 │ pub fn tslot_write_through_view(slot: TSlot<u256>) {
+   │                                 ---- `slot` does not provide mutable access
+26 │     slot.write(1)
    │     ^^^^ cannot borrow as `mut`
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ storage_capability_boundaries.fe:35:5
+   ┌─ storage_capability_boundaries.fe:32:5
    │
-33 │ uses (store: Store)
-   │       ----- `store` does not provide mutable access
-34 │ {
-35 │     store.balances.set(key: 1, value: 2)
+30 │ uses (store: Store)
+   │       ------------ `store` does not provide mutable access
+31 │ {
+32 │     store.balances.set(key: 1, value: 2)
    │     ^^^^^^^^^^^^^^ cannot borrow as `mut`
+
+error[8-0097]: call to unsafe function `at` requires an `unsafe` block or function
+    ┌─ storage_capability_boundaries.fe:14:5
+    │
+ 14 │     StorageMap<u256, u256>::at(0).get(1)
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    │
+    ┌─ src/evm/storage_map.fe:238:19
+    │
+238 │     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+    │                   -- callee defined here

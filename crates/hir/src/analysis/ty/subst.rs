@@ -267,7 +267,7 @@ mod tests {
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone(
             Utf8PathBuf::from("subst_basis.fe"),
-            "struct Slot<const ROOT: u256 = _> {}\ntrait T<X> { fn f<Y>(_ value: Slot, _ extra: Y) {} }",
+            "struct K {}\ntrait T<X> { fn f<Y>(_ extra: Y) uses (k: K) {} }",
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);

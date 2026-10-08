@@ -67,6 +67,7 @@ fn bytes_and_strings_use_solidity_layout() uses (evm: mut Evm) {
         slot.write_bytes(Bytes::from_word_prefix(word: 0xabcd << 240, len: 2))
         let second_word: u256 = unsafe { SolSlot::at(hash_words(3, 0, 1) + 1).read(offset: 0) }
         assert(second_word == 0)
+        let slot = unsafe { SolSlot::at(3) }
         assert(slot.read_bytes().len() == 2)
         assert(slot.read_bytes().byte_at(1) == 0xcd)
     }

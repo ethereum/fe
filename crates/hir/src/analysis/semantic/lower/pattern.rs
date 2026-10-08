@@ -203,7 +203,38 @@ enum DecisionTreeTarget<'a> {
     Branch {
         then_bb: SBlockId,
         else_bb: SBlockId,
+        pat: PatId,
     },
+}
+
+impl DecisionTreeTarget<'_> {
+    /// Where a test the tree makes on the way to arm `arm` is reported: that
+    /// arm's pattern.
+    fn test_origin<'db>(&self, arm: Option<usize>) -> SemOrigin<'db> {
+        match self {
+            Self::MatchArms { arms, .. } => arm
+                .and_then(|arm| arms.get(arm))
+                .map_or(SemOrigin::Synthetic, |arm| SemOrigin::Pat(arm.pat)),
+            Self::Branch { pat, .. } => SemOrigin::Pat(*pat),
+        }
+    }
+}
+
+/// The first arm `tree` can reach.
+fn first_arm(tree: &DecisionTree<'_>) -> Option<usize> {
+    match tree {
+        DecisionTree::Unreachable => None,
+        DecisionTree::Leaf(leaf) => Some(leaf.arm_index),
+        DecisionTree::Switch(switch) => switch_first_arm(switch),
+    }
+}
+
+fn switch_first_arm(switch: &SwitchNode<'_>) -> Option<usize> {
+    switch
+        .arms
+        .iter()
+        .filter_map(|(_, tree)| first_arm(tree))
+        .min()
 }
 
 impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
@@ -245,7 +276,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         self.lower_decision_tree(
             &tree,
             &mut projections,
-            DecisionTreeTarget::Branch { then_bb, else_bb },
+            DecisionTreeTarget::Branch {
+                then_bb,
+                else_bb,
+                pat,
+            },
         );
     }
 
@@ -258,6 +293,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
     fn project_pattern_field(
         &mut self,
+        origin: SemOrigin<'db>,
         base: PatternValue<'db>,
         field_idx: usize,
         assigned_ty: Option<TyId<'db>>,
@@ -269,7 +305,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 PatternProjectionStep::Field(field_idx),
             )
         });
-        let value = self.emit_expr(
+        let value = self.emit_expr_with_origin(
+            origin,
             ty,
             SExpr::Field {
                 base: SOperand::synthetic(base.value),
@@ -284,6 +321,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
     fn project_pattern_variant_field(
         &mut self,
+        origin: SemOrigin<'db>,
         base: PatternValue<'db>,
         variant: crate::hir_def::EnumVariant<'db>,
         field_idx: usize,
@@ -296,7 +334,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 PatternProjectionStep::VariantField { variant, field_idx },
             )
         });
-        let value = self.emit_expr(
+        let value = self.emit_expr_with_origin(
+            origin,
             ty,
             SExpr::ExtractEnumField {
                 value: SOperand::synthetic(base.value),
@@ -417,6 +456,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                             },
                         );
                         let field = self.project_pattern_variant_field(
+                            SemOrigin::Synthetic,
                             value,
                             variant,
                             idx,
@@ -432,7 +472,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                             field_pat,
                             PatternProjectionStep::Field(idx),
                         );
-                        let field = self.project_pattern_field(value, idx, Some(assigned_ty));
+                        let field = self.project_pattern_field(
+                            SemOrigin::Synthetic,
+                            value,
+                            idx,
+                            Some(assigned_ty),
+                        );
                         self.bind_validated_pattern(field_pat, field);
                     }
                 }
@@ -517,14 +562,21 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                             dst: result,
                             expr: SExpr::Forward(SOperand::expr(arm_value, arm.body)),
                         });
-                        self.set_synthetic_terminator(self.current, STerminatorKind::Goto(join_bb));
+                        self.set_terminator(
+                            self.current,
+                            SemOrigin::Pat(arm.pat),
+                            STerminatorKind::Goto(join_bb),
+                        );
                         true
                     }
                 }
-                DecisionTreeTarget::Branch { then_bb, else_bb } => {
+                DecisionTreeTarget::Branch {
+                    then_bb, else_bb, ..
+                } => {
                     if leaf.arm_index == 0 {
                         self.bind_decision_tree_leaf(leaf, projections);
-                        self.set_synthetic_terminator(self.current, STerminatorKind::Goto(then_bb));
+                        let origin = target.test_origin(Some(0));
+                        self.set_terminator(self.current, origin, STerminatorKind::Goto(then_bb));
                     } else {
                         self.set_synthetic_terminator(self.current, STerminatorKind::Goto(else_bb));
                     }
@@ -543,7 +595,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         projections: &mut DecisionTreeProjectionCache<'db>,
         target: DecisionTreeTarget<'_>,
     ) -> bool {
-        let occurrence = self.project_decision_tree_path(projections, &switch.occurrence);
+        let origin = target.test_origin(switch_first_arm(switch));
+        let occurrence = self.project_decision_tree_path(origin, projections, &switch.occurrence);
         let case_blocks = switch
             .arms
             .iter()
@@ -576,8 +629,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             // The switch reads the scrutinee's representation: a sum yield
             // shape's payload is a carrier.
             let enum_ty = self.projectable_place_ty(self.locals[occurrence.value.index()].ty);
-            self.set_synthetic_terminator(
+            self.set_terminator(
                 self.current,
+                origin,
                 STerminatorKind::MatchEnum {
                     value: SOperand::synthetic(occurrence.value),
                     enum_ty,
@@ -587,7 +641,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             );
         } else {
             let mut dispatch_bb = self.current;
-            for (idx, (case, _, case_bb)) in case_blocks.iter().enumerate() {
+            for (idx, (case, case_tree, case_bb)) in case_blocks.iter().enumerate() {
                 if idx > 0 {
                     self.switch_to(dispatch_bb);
                 }
@@ -625,9 +679,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                             ConstructorKind::Type(_) => unreachable!(),
                         };
                         let next_bb = self.new_block();
-                        let cond = self.emit_expr(TyId::bool(self.db), test);
-                        self.set_synthetic_terminator(
+                        let origin = target.test_origin(first_arm(case_tree));
+                        let cond = self.emit_expr_with_origin(origin, TyId::bool(self.db), test);
+                        self.set_terminator(
                             self.current,
+                            origin,
                             STerminatorKind::Branch {
                                 cond: SOperand::synthetic(cond),
                                 then_bb: *case_bb,
@@ -657,10 +713,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         for (binding_ref, path) in &leaf.bindings {
             if let Some(binding) = self.typed_body.pat_binding(binding_ref.representative_pat) {
                 let dst = self.alloc_binding_local(binding);
-                let src = self.project_decision_tree_path(projections, path);
+                let origin = SemOrigin::Pat(binding_ref.representative_pat);
+                let src = self.project_decision_tree_path(origin, projections, path);
                 self.debug_assert_pattern_binding_ty_matches(dst, src);
                 self.push_stmt(
-                    SemOrigin::Pat(binding_ref.representative_pat),
+                    origin,
                     SStmtKind::Assign {
                         dst,
                         expr: SExpr::UseValue(SOperand::inherited(src.value)),
@@ -670,8 +727,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
     }
 
+    /// The value at `path` of the scrutinee, read where `origin` reports.
     fn project_decision_tree_path(
         &mut self,
+        origin: SemOrigin<'db>,
         projections: &mut DecisionTreeProjectionCache<'db>,
         path: &ProjectionPath<'db>,
     ) -> PatternValue<'db> {
@@ -687,6 +746,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         {
             current_path.push(projection.clone());
             value = self.project_decision_tree_value(
+                origin,
                 value,
                 projection,
                 projections.carrier_ty(&current_path),
@@ -698,21 +758,27 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
     fn project_decision_tree_value(
         &mut self,
+        origin: SemOrigin<'db>,
         base: PatternValue<'db>,
         projection: &Projection<'db>,
         assigned_ty: Option<TyId<'db>>,
     ) -> PatternValue<'db> {
         match projection {
-            Projection::Field(field) => self.project_pattern_field(base, *field, assigned_ty),
+            Projection::Field(field) => {
+                self.project_pattern_field(origin, base, *field, assigned_ty)
+            }
             Projection::VariantField {
                 variant, field_idx, ..
-            } => self.project_pattern_variant_field(base, *variant, *field_idx, assigned_ty),
+            } => {
+                self.project_pattern_variant_field(origin, base, *variant, *field_idx, assigned_ty)
+            }
             Projection::Discriminant => {
                 let ty = enum_tag_ty(
                     self.db,
                     pattern_match_expected_ty(self.db, base.carrier_ty.0),
                 );
-                let value = self.emit_expr(
+                let value = self.emit_expr_with_origin(
+                    origin,
                     ty,
                     SExpr::GetEnumTag {
                         value: SOperand::synthetic(base.value),
@@ -726,7 +792,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             Projection::Deref => {
                 panic!("decision-tree lowering does not support deref projections yet")
             }
-            Projection::Index(_) => {
+            Projection::Index(_) | Projection::Entry(_) => {
                 panic!("decision-tree lowering does not support index projections yet")
             }
         }

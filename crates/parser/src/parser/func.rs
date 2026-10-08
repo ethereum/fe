@@ -278,7 +278,8 @@ impl super::Parse for UsesParamScope {
 
 fn parse_typed_uses_key<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
     if parser.bump_if(SyntaxKind::MutKw) {
-        return parse_uses_key_ty(parser);
+        parse_type(parser, None)?;
+        return Ok(());
     }
 
     if let Some(kind @ (SyntaxKind::RefKw | SyntaxKind::OwnKw)) = parser.current_kind() {
@@ -297,36 +298,6 @@ fn parse_typed_uses_key<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Re
         return Ok(());
     }
 
-    parse_uses_key_ty(parser)
-}
-
-/// A key type, or `Field(T)`, where `Field` is a keyword only here.
-fn parse_uses_key_ty<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
-    if parser.is_ident("Field")
-        && parser.peek_n_non_trivia(2).as_slice() == [SyntaxKind::Ident, SyntaxKind::LParen]
-    {
-        return parser.parse(UsesFieldKeyScope::default());
-    }
-    parse_type(parser, None).map(|_| ())
-}
-
-define_scope! { UsesFieldKeyScope, SyntaxKind::UsesFieldKey }
-impl super::Parse for UsesFieldKeyScope {
-    type Error = Recovery<ErrProof>;
-
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.bump_expected(SyntaxKind::Ident);
-        parser.bump_expected(SyntaxKind::LParen);
-        parse_type(parser, None)?;
-        if parser.find(
-            SyntaxKind::RParen,
-            ExpectedKind::ClosingBracket {
-                bracket: SyntaxKind::RParen,
-                parent: SyntaxKind::UsesFieldKey,
-            },
-        )? {
-            parser.bump();
-        }
-        Ok(())
-    }
+    parse_type(parser, None)?;
+    Ok(())
 }
