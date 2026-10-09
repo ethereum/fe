@@ -17,11 +17,11 @@ A view or `mut` argument is a place of the caller's (`bump(mut counter)`);
 an owned argument is moved, or copied if its type is `Copy`.
 
 A view argument that is a scalar or a handle (an integer, `bool`,
-`Address`, a storage map, or any `core::marker::Snapshot` type) is a
+`Address`, a raw pointer, or any `core::marker::Snapshot` type) is a
 *snapshot*: the callee gets a copy, and the caller may change the original
-during the call. Every other value, including `Copy` arrays and structs, is
-viewed in place: the caller cannot write it while the call, or a projection's
-result over it, is in use.
+during the call. Every other value, including `Copy` arrays and structs and
+storage collections, is viewed in place: the caller cannot write it while the
+call, or a projection's result over it, is in use.
 
 ```fe
 fn first(_ xs: [u256; 4]) -> ref u256 { ref xs[0] }
@@ -78,8 +78,13 @@ the `yield`.
 A tuple holds accesses only as such a shape. Accesses the checker cannot see
 are disjoint form an *unsafe split*, an `unsafe` block whose tail is a tuple
 of them: one session whose reservations are all of theirs, and whose grants
-the block promises are disjoint. Two raw-slot collections are held at once
-this way, and `MemArray::pair_mut` is one inside a library function:
+the block promises are disjoint. Its components are places, such as raw
+pointer dereferences, or calls of `#[raw_place]` projections: a projection
+declared `#[raw_place]` has nothing to resume after its yield, since no code
+runs there, it keeps no access or session of its own open across it, and it
+yields no place of its own frame, which is checked where it is written. Two
+raw-slot collections, whose `at` constructors are raw places, are held at
+once this way, and `MemArray::pair_mut` is one inside a library function:
 
 ```fe
 let (a, b) = unsafe { (SolArray<u256>::at(x), SolArray<u256>::at(y)) }
@@ -108,11 +113,24 @@ overlap. A `mut` access to a struct holding collections covers their
 entries. A collection's methods take `self` or `mut self` and declare no
 effects: the authority is the access to its place, as for any data.
 
+A library type becomes a collection by implementing `core::ops::PlaceIndex`:
+`SPACE` names where its entries live, `Key` and `Entry` the index and the
+element type, and `locate(root, key)` returns the entry's slot and bit
+offset for the collection rooted at slot `root`. `locate` declares no
+effects; the compiler calls it once when an access to `c[k]` opens and does
+the loads, stores and masking itself. It must keep every entry inside the
+collection's own region, hashing per entry or bounding the key, since the
+compiler trusts it to.
+
 A collection may pack small elements into lanes of shared slots, as a
-`SolArray` does for Solidity's packed array elements. A lane is read and
-written in place, but a `mut` binding, argument, provided effect or yield of
-one works on a memory copy that is stored back into the lane when the access
-ends.
+`SolArray` does for Solidity's packed array elements. Its `Lanes` codec
+(`core::ops::LaneCodec<Entry>`) packs an element coded in at most 128
+`BITS`, and `locate` can read `BITS` to step between elements. `SolArray`'s
+codec, `SolLanes`, uses an element's `SolPacked` encoding, and the compiler
+gives any other element `BITS` of 256 per slot its storage layout takes. A
+lane is read and written in place, but a `mut` binding, argument, provided
+effect or yield of one works on a memory copy that is stored back into the
+lane when the access ends.
 
 ```fe
 let x = mut balances[from]
@@ -120,10 +138,15 @@ balances.set(key: to, value: 0)     // rejected: `x` holds an entry of `balances
 x -= amount
 ```
 
-A type holding a collection is *storage-only* (`#[storage_only]`): never a
-value. It is not constructed, copied, moved out of storage or held in a
-memory aggregate; code reaches it through an access, a `mut` or view
-parameter, or an effect. A raw-slot constructor,
+A collection whose `PlaceIndex` implementation has `SPACE` storage or
+transient storage is *pinned* to that space; implementing the trait is the
+whole declaration, so a library collection is pinned the same way. A type
+holding a pinned type is *state-only*: never a value. It is not constructed,
+copied, moved out of storage or held in a memory aggregate; code reaches it
+through an access, a `mut` or view parameter, or an effect. A place's space
+follows its path: a field or element of a pinned type lies in the type's
+space, so a `TSlot` and its value lie in transient storage whatever holds
+the `TSlot`. A raw-slot constructor,
 `unsafe fn at(slot) -> mut Self uses (storage: mut RawStorage)`, places a
 collection at a runtime slot, and its caller vouches that nothing else uses
 that slot. A `with` block may install a provider naming storage only when its

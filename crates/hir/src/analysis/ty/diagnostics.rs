@@ -75,9 +75,9 @@ pub enum TyLowerDiag<'db> {
         ty: TyId<'db>,
         mode: &'static str,
     },
-    /// A storage-only type, holding the storage collection `collection`, in a
+    /// A state-only type, holding the pinned type `collection`, in a
     /// position that would make it a value: `position`.
-    StorageOnlyValue {
+    StateOnlyValue {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
         collection: TyId<'db>,
@@ -237,6 +237,21 @@ pub enum TyLowerDiag<'db> {
         ty: TyId<'db>,
     },
 
+    /// A contract field in storage or transient storage holding a memory
+    /// pointer, which no later transaction can follow.
+    ContractFieldMemoryValue {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        pointer: TyId<'db>,
+    },
+
+    /// A persistent collection inside a transient one's contents.
+    ContractFieldPersistentUnderTransient {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        collection: TyId<'db>,
+    },
+
     ContractFieldLayoutInvariant {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
@@ -274,7 +289,7 @@ impl TyLowerDiag<'_> {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
             Self::ViewTypeMode { .. } => 59,
-            Self::StorageOnlyValue { .. } => 61,
+            Self::StateOnlyValue { .. } => 61,
             Self::UnknownResultSpace(_) => 60,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
@@ -329,6 +344,8 @@ impl TyLowerDiag<'_> {
             Self::ContractFieldSlotNotConst { .. } => 62,
             Self::ContractFieldSlotInCode { .. } => 63,
             Self::ContractFieldSlotOverlap { .. } => 64,
+            Self::ContractFieldMemoryValue { .. } => 65,
+            Self::ContractFieldPersistentUnderTransient { .. } => 66,
         }
     }
 }
@@ -631,6 +648,13 @@ pub enum BodyDiag<'db> {
     /// A tuple of projection grants outside an unsafe split or a yield.
     TupleOfAccesses {
         primary: DynLazySpan<'db>,
+    },
+
+    /// An unsafe split component calling a projection not declared
+    /// `#[raw_place]`.
+    UnsafeSplitOperand {
+        primary: DynLazySpan<'db>,
+        callee: IdentId<'db>,
     },
 
     /// A tuple or sum yield shape bound to a single name.
@@ -1121,6 +1145,7 @@ impl<'db> BodyDiag<'db> {
             Self::MoveOutOfCapture { .. } => 112,
             Self::MixedLoopBases { .. } => 114,
             Self::TupleOfAccesses { .. } => 115,
+            Self::UnsafeSplitOperand { .. } => 118,
             Self::ContractFieldNotInUses { .. } => 116,
             Self::AccessChoiceNeedsProjection { .. } => 117,
             Self::MutableBindingCannotBeCapability { .. } => 73,
@@ -1421,6 +1446,12 @@ pub enum ImplDiag<'db> {
         trait_: Trait<'db>,
         name: IdentId<'db>,
     },
+
+    /// An `impl` of a trait only the compiler implements.
+    CompilerImplementedTrait {
+        primary: DynLazySpan<'db>,
+        trait_: Trait<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -1454,6 +1485,7 @@ impl ImplDiag<'_> {
             Self::TypeNotDefinedInTrait { .. } => 23,
             Self::AccessItemNotDefinedInTrait { .. } => 26,
             Self::MissingAssociatedSpace { .. } => 27,
+            Self::CompilerImplementedTrait { .. } => 28,
         }
     }
 }

@@ -1,0 +1,44 @@
+use core::effect_ref::AddressSpace
+use core::ops::PlaceIndex
+use std::evm::keccak_words
+
+// A library collection pinned to storage by its `PlaceIndex` implementation.
+// `self[k]` is a place under the receiver's access, opened with no raw
+// storage authority, and an entry's access holds the receiver.
+struct Cells {
+    len: u256,
+}
+
+impl PlaceIndex for Cells {
+    const SPACE: AddressSpace = AddressSpace::Storage
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        (keccak_words([key, root]), 0)
+    }
+}
+
+impl Cells {
+    fn touch(mut self) {}
+
+    // Accepted: an entry of the receiver, with no `RawStorage` effect.
+    fn bump(mut self, _ key: u256) {
+        let cell = mut self[key]
+        cell += 1
+    }
+
+    // Accepted: another parameter's place while the entry is open.
+    fn count(mut self, _ key: u256, _ hits: mut u256) {
+        let cell = mut self[key]
+        hits += 1
+        cell += 1
+    }
+
+    // Rejected: the receiver is accessed again while its entry is open.
+    fn conflict(mut self, _ key: u256) {
+        let cell = mut self[key]
+        self.touch()
+        cell += 1
+    }
+}

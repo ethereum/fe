@@ -239,15 +239,7 @@ pub fn check_library_requirements(db: &DriverDataBase) -> Vec<String> {
         missing.push("missing required core ingot".to_string());
     }
 
-    let std_ingot = db.builtin_std();
-    if let Ok(std_file) = std_ingot.root_file(db) {
-        let top_mod = db.top_mod(std_file);
-        missing.extend(
-            core_requirements::check_std_type_requirements(db, top_mod.scope())
-                .into_iter()
-                .map(|req| req.to_string()),
-        );
-    } else {
+    if db.builtin_std().root_file(db).is_err() {
         missing.push("missing required std ingot".to_string());
     }
 

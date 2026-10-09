@@ -18,6 +18,7 @@ use crate::{
                 AdtDef, AdtRef, ConcreteTypeView, instantiate_adt_field_for_concrete_demand,
             },
             const_ty::{ConcreteArrayLengthError, demand_concrete_array_length},
+            place_index_tys,
             provider::{
                 ProviderLayoutFailure, ProviderLayoutResolution, place_index_space,
                 resolve_effect_handle_layout,
@@ -190,6 +191,14 @@ pub enum ContractLayoutError<'db> {
     IncompleteAdtLayoutProjection {
         ty: TyId<'db>,
     },
+    /// A field in storage or transient storage holding a memory pointer.
+    MemoryValueInState {
+        pointer: TyId<'db>,
+    },
+    /// A persistent collection inside a transient collection's contents.
+    PersistentUnderTransient {
+        collection: TyId<'db>,
+    },
 }
 
 impl ContractLayoutError<'_> {
@@ -210,6 +219,10 @@ impl ContractLayoutError<'_> {
             Self::ExplicitSlotOverlap { .. } => "the explicit slots overlap another field's",
             Self::LayoutExtentOverflow => "layout extent overflowed",
             Self::IncompleteAdtLayoutProjection { .. } => "layout projection is incomplete",
+            Self::MemoryValueInState { .. } => "contract state holds a memory pointer",
+            Self::PersistentUnderTransient { .. } => {
+                "a persistent collection lies in transient storage"
+            }
         }
     }
 }
@@ -228,9 +241,10 @@ pub struct ValidatedFieldLayoutPlan<'db> {
     /// The slot `#[slot(e)]` places the field at.
     explicit_slot: Option<U256>,
     slot_count: usize,
-    /// The spaces the field's slot numbers are taken in: its own, and those
-    /// of the collections in it, which keep their contents at their own
-    /// slot numbers there (a `TSlot`'s value in transient storage).
+    /// The spaces the field's slot numbers are taken in: its own, when a
+    /// part of it lies outside a pinned type, and those its pinned types are
+    /// pinned to, which keep their contents at their own slot numbers there
+    /// (a `TSlot`'s value in transient storage).
     spaces: Vec<ProviderAddressSpace>,
     inline_leaves: Vec<InlineLayoutLeaf<'db>>,
 }
@@ -431,11 +445,13 @@ struct FieldWalker<'db> {
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     errors: Vec<ContractLayoutError<'db>>,
-    /// The spaces the collections walked keep their contents in.
+    /// The spaces the pinned types walked are pinned to.
     content_spaces: Vec<ProviderAddressSpace>,
     /// The handles whose targets are being checked, outermost first, with
     /// the implementation that selects each target.
     expanding: Vec<(TyId<'db>, ImplementorId<'db>)>,
+    /// The first memory pointer the walked value holds.
+    memory_pointer: Option<TyId<'db>>,
 }
 
 /// How a handle's target relates to the targets being checked around it.
@@ -568,20 +584,16 @@ impl<'db> FieldWalker<'db> {
         } else if let Some(adt) = ty.adt_def(self.db) {
             self.check_provider_target(ty);
             let output = self.walk_adt(views, adt, path, dimensions);
-            // A storage collection is reported at its place, which is its
-            // identity, rather than by the slots its private fields take.
-            if adt.adt_ref(self.db).is_storage_only(self.db) && output.span != 0 {
-                if let Some(space) = place_index_space(
-                    self.db,
-                    self.scope,
-                    PredicateListId::empty_list(self.db),
-                    ty,
-                ) && !self.content_spaces.contains(&space)
-                {
+            // A pinned type is reported at its place, which is its identity,
+            // rather than by the slots its private fields take. It takes whole
+            // slots, at least one even without fields: its root number derives
+            // its region, so siblings need distinct ones.
+            if let Some(space) = adt.pin(self.db) {
+                if !self.content_spaces.contains(&space) {
                     self.content_spaces.push(space);
                 }
                 WalkOutput {
-                    span: output.span,
+                    span: output.span.max(1),
                     ..WalkOutput::leaf(
                         self.db,
                         ty,
@@ -602,6 +614,9 @@ impl<'db> FieldWalker<'db> {
         {
             WalkOutput::empty()
         } else {
+            if ty.as_ptr(self.db).is_some() {
+                self.memory_pointer.get_or_insert(ty);
+            }
             WalkOutput::leaf(self.db, ty, path, dimensions, InlineLayoutLeafKind::Field)
         }
     }
@@ -1004,18 +1019,46 @@ fn collect_field_plan<'db>(
         errors: Vec::new(),
         content_spaces: Vec::new(),
         expanding: Vec::new(),
+        memory_pointer: None,
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(target), &[], &[]);
+    let in_state = walker.errors.is_empty()
+        && matches!(
+            address_space,
+            ProviderAddressSpace::Storage | ProviderAddressSpace::Transient
+        );
+    if in_state && let Some(pointer) = walker.memory_pointer {
+        walker.push_error(ContractLayoutError::MemoryValueInState { pointer });
+    }
+    if in_state
+        && let Some(collection) = persistent_under_transient(
+            db,
+            scope,
+            target,
+            address_space == ProviderAddressSpace::Transient,
+        )
+    {
+        walker.push_error(ContractLayoutError::PersistentUnderTransient { collection });
+    }
     if !walker.errors.is_empty() {
         return Some((name, Err(walker.errors)));
     }
-    let mut spaces = vec![address_space];
-    spaces.extend(
-        walker
-            .content_spaces
-            .into_iter()
-            .filter(|space| *space != address_space),
-    );
+    // The field takes its numbers in its own space only when some part of
+    // it lies outside a pinned type: a `TSlot` field leaves its storage
+    // number free.
+    let mut spaces = Vec::new();
+    if output
+        .leaves
+        .iter()
+        .any(|leaf| leaf.kind != InlineLayoutLeafKind::Collection)
+    {
+        spaces.push(address_space);
+    }
+    for space in walker.content_spaces {
+        if !spaces.contains(&space) {
+            spaces.push(space);
+        }
+    }
     Some((
         name,
         Ok(ValidatedFieldLayoutPlan {
@@ -1035,6 +1078,133 @@ fn collect_field_plan<'db>(
             inline_leaves: output.leaves,
         }),
     ))
+}
+
+/// The slots a value of `ty` takes in storage, as the layout places a
+/// contract field of its type, or `None` when `ty` has no storage layout.
+#[salsa::tracked]
+pub(crate) fn storage_slot_span<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<usize> {
+    let mut walker = FieldWalker {
+        db,
+        scope,
+        errors: Vec::new(),
+        content_spaces: Vec::new(),
+        expanding: Vec::new(),
+        memory_pointer: None,
+    };
+    let output = walker.walk_ty(ConcreteTypeView::identity(ty), &[], &[]);
+    walker.errors.is_empty().then_some(output.span)
+}
+
+/// Which fields of struct or tuple `ty` are lanes where a value of `ty` lies
+/// in storage or transient storage: packed scalars that share their word or
+/// lie above its low byte, as MIR's `storage_field_lane` decides. A retained
+/// grant to a lane is a memory copy.
+#[salsa::tracked(return_ref)]
+pub(crate) fn storage_field_lanes<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Vec<bool> {
+    if !ty.is_tuple(db) && !ty.adt_def(db).is_some_and(|adt| adt.is_struct(db)) {
+        return Vec::new();
+    }
+    let mut walker = FieldWalker {
+        db,
+        scope,
+        errors: Vec::new(),
+        content_spaces: Vec::new(),
+        expanding: Vec::new(),
+        memory_pointer: None,
+    };
+    let shapes: Vec<_> = ty
+        .field_types(db)
+        .into_iter()
+        .map(|field| {
+            let output = walker.walk_ty(ConcreteTypeView::identity(field), &[], &[]);
+            match output.packable_bytes {
+                Some(bytes) => StorageFieldShape::Scalar { bytes },
+                None => StorageFieldShape::Aggregate {
+                    slots: output.span as u64,
+                },
+            }
+        })
+        .collect();
+    let Ok(layout) = storage_fields_layout(shapes) else {
+        return Vec::new();
+    };
+    layout
+        .placements
+        .iter()
+        .map(|placement| {
+            placement
+                .lane
+                .is_some_and(|lane| placement.shared || lane.byte_offset != 0)
+        })
+        .collect()
+}
+
+/// How deep the search for a persistent collection under a transient one
+/// follows nested types: a collection's element type may grow without bound,
+/// as in `struct G<T> { m: StorageMap<u256, G<[T; 1]>> }`.
+const MAX_STATE_NESTING: usize = 64;
+
+/// The persistent collection `ty` keeps inside a transient collection's
+/// contents, as the map of a `TSlot<StorageMap<K, V>>`, whose entries would
+/// persist after the value holding them is gone. `transient` is whether `ty`
+/// itself lies in transient storage.
+fn persistent_under_transient<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+    transient: bool,
+) -> Option<TyId<'db>> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        mut transient: bool,
+        depth: usize,
+        seen: &mut FxHashSet<(TyId<'db>, bool)>,
+    ) -> Option<TyId<'db>> {
+        if depth > MAX_STATE_NESTING || !seen.insert((ty, transient)) {
+            return None;
+        }
+        let assumptions = PredicateListId::empty_list(db);
+        let mut parts = Vec::new();
+        if let Some(space) = place_index_space(db, scope, assumptions, ty) {
+            match space {
+                ProviderAddressSpace::Storage if transient => return Some(ty),
+                ProviderAddressSpace::Transient => transient = true,
+                _ => {}
+            }
+            parts.extend(place_index_tys(db, scope, ty, assumptions).map(|(_, output)| output));
+        }
+        if let Some(adt) = ty.adt_def(db) {
+            let args = ty.generic_args(db);
+            parts.extend(
+                adt.fields(db)
+                    .iter()
+                    .flat_map(|variant| variant.iter_types(db))
+                    .map(|field| field.instantiate(db, args)),
+            );
+        } else if ty.is_tuple(db) || ty.is_array(db) {
+            parts.extend(
+                ty.generic_args(db)
+                    .iter()
+                    .copied()
+                    .filter(|arg| !matches!(arg.data(db), TyData::ConstTy(_))),
+            );
+        }
+        parts
+            .into_iter()
+            .find_map(|part| walk(db, scope, part, transient, depth + 1, seen))
+    }
+    walk(db, scope, ty, transient, 0, &mut FxHashSet::default())
 }
 
 fn contract_layout_error_for_provider_failure<'db>(

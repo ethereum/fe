@@ -1,0 +1,58 @@
+use core::effect_ref::AddressSpace
+use core::ops::PlaceIndex
+use std::evm::Ctx
+
+// Implementing `PlaceIndex` with a state `SPACE` pins the implementor: it is
+// state-only. One with `SPACE` memory stays an ordinary value.
+struct Cells {
+    len: u256,
+}
+
+impl PlaceIndex for Cells {
+    const SPACE: AddressSpace = AddressSpace::Storage
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        (root + 1 + key % 8, 0)
+    }
+}
+
+struct Words {
+    base: u256,
+}
+
+impl PlaceIndex for Words {
+    const SPACE: AddressSpace = AddressSpace::Memory
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        (self.base + key * 32, 0)
+    }
+}
+
+// Rejected: a pinned type is never constructed as a memory value.
+fn make_cells() {
+    let _cells = Cells { len: 0 }
+}
+
+// Accepted: a memory collection is a value.
+fn make_words() -> Words {
+    Words { base: 0 }
+}
+
+// Rejected: `locate` declares no effects.
+struct Noisy {
+    len: u256,
+}
+
+impl PlaceIndex for Noisy {
+    const SPACE: AddressSpace = AddressSpace::Storage
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) uses (ctx: Ctx) {
+        (root + key + ctx.address().inner, 0)
+    }
+}

@@ -2,8 +2,9 @@
 // reference can point at: a `mut` access to one works on a memory copy that
 // is stored back into the lane when the access ends, whether a binding, an
 // argument, a provided effect or a projection's grant.
+use core::ops::LaneCodec
 use std::abi::sol::Uint24
-use std::evm::{Evm, SolArray}
+use std::evm::{Address, Evm, SolArray, SolLanes}
 
 msg Msg {
     #[selector = 1]
@@ -115,4 +116,28 @@ fn codec_lanes_round_trip() uses (evm: mut Evm) {
     let lanes = evm.create2<Lanes>(value: 0, args: (), salt: 1)
     let value: u256 = evm.call(addr: lanes, gas: 300000, value: 0, message: Msg::Codec {})
     assert!(value == 0x11ff * 0x1000000 + 0x22)
+}
+
+struct Order {
+    amount: u256,
+    open: bool,
+    filled: u64,
+}
+
+const ORDER_BITS: u256 = <SolLanes as LaneCodec<Order>>::BITS
+
+fn element_bits<T>() -> u256 {
+    <SolLanes as LaneCodec<T>>::BITS
+}
+
+// A `SolPacked` element's width is its encoding's; any other element takes
+// the slots its storage layout gives it, 256 bits each.
+#[test]
+fn codec_widths() {
+    assert(ORDER_BITS == 512)
+    assert(element_bits<Order>() == 512)
+    assert(element_bits<Uint24>() == 24)
+    assert(element_bits<Address>() == 160)
+    assert(element_bits<u256>() == 256)
+    assert(element_bits<[u8; 3]>() == 768)
 }

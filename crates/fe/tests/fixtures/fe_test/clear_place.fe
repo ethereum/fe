@@ -1,10 +1,13 @@
 // `core::intrinsic::clear` zeroes a place's representation: bytes in memory,
 // words in storage and transient storage, and only its own bits of a word
-// it shares.
+// it shares. Storage collections clear their elements with the safe
+// `core::ops::clear_storage`.
 use core::intrinsic::clear
 use core::keccak
 use core::effect_ref::EffectHandle
-use std::evm::{Evm, RawStorage, SolArray, StorPtr, TSlot}
+use std::evm::{
+    Address, Evm, RawStorage, SolArray, SolEnumerableSet, StorPtr, StorageMap, TSlot,
+}
 
 struct Pair {
     small: u8,
@@ -88,7 +91,10 @@ pub contract Cells {
             let other = cell[()].other as u256
             let small = cell[()].small as u256
             unsafe { clear(mut cell[()]) }
-            (small, other, cell[()].big)
+            let big = cell[()].big
+            cell[()] = Pair { small: 1, other: 2, big: 3 }
+            cell.clear()
+            (small + cell[()].small as u256, other, big + cell[()].big)
         }
     }
 }
@@ -101,4 +107,38 @@ fn clear_zeroes_transient_places() uses (evm: mut Evm) {
     assert(values.0 == 0)
     assert(values.1 == 8)
     assert(values.2 == 0)
+}
+
+#[test]
+fn collections_clear_their_elements() uses (evm: mut Evm) {
+    with (RawStorage = evm) {
+        let balances = unsafe { StorageMap<u256, u256>::at(7) }
+        balances[1] = 10
+        balances[2] = 20
+        balances.remove(1)
+        assert(balances[1] == 0 && balances[2] == 20)
+
+        let pairs = unsafe { SolArray<Pair>::at(8) }
+        pairs.push(Pair { small: 1, other: 2, big: 3 })
+        pairs.push(Pair { small: 4, other: 5, big: 6 })
+        // `clear_at` zeroes one element and leaves the length.
+        pairs.clear_at(0)
+        assert(pairs.len() == 2)
+        assert(pairs[0].small == 0 && pairs[0].big == 0 && pairs[1].big == 6)
+        pairs.clear()
+        assert(pairs.len() == 0)
+        let data = keccak(8 as u256)
+        assert(load(8) == 0)
+        assert(load(data) == 0 && load(data + 1) == 0)
+        assert(load(data + 2) == 0 && load(data + 3) == 0)
+
+        let owners = unsafe { SolEnumerableSet<Address>::at(9) }
+        assert(owners.add(Address { inner: 10 }))
+        assert(owners.add(Address { inner: 11 }))
+        owners.clear()
+        assert(owners.len() == 0)
+        assert(!owners.contains(Address { inner: 10 }))
+        assert(owners.add(Address { inner: 11 }))
+        assert(owners.len() == 1)
+    }
 }

@@ -367,7 +367,8 @@ pub(super) fn runtime_zero_sized_ty<'db>(
                         .is_some_and(|elem| runtime_zero_sized_ty(db, elem, scope, assumptions))
             });
     }
-    if repr_ty.is_product(db) {
+    // A pinned type's root number identifies its region.
+    if repr_ty.is_product(db) && repr_ty.adt_def(db).is_none_or(|adt| adt.pin(db).is_none()) {
         return repr_ty
             .field_types(db)
             .into_iter()
@@ -935,6 +936,7 @@ mod tests {
             &db,
             LayoutKey::Struct(StructLayout {
                 fields: Vec::new().into(),
+                pinned: false,
             }),
         );
         let aggregate = RuntimeClass::AggregateValue { layout };

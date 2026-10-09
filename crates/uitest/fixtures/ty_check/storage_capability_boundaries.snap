@@ -4,43 +4,23 @@ assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/storage_capability_boundaries.fe
 ---
-error[2-0003]: `seed` is not visible
-    ┌─ storage_capability_boundaries.fe:9:35
-    │
-  9 │     store.balances = StorageMap { seed: 0 }
-    │                                   ^^^^^^^ `seed` is not visible
-    │
-    ┌─ src/evm/storage_map.fe:209:5
-    │
-209 │     seed: u256,
-    │     ---- `seed` is defined here
-
-error[2-0003]: `seed` is not visible
-    ┌─ storage_capability_boundaries.fe:22:20
-    │
- 22 │     slot = TSlot { seed: 0 }
-    │                    ^^^^^^^ `seed` is not visible
-    │
-    ┌─ src/evm/effects.fe:241:5
-    │
-241 │     seed: u256,
-    │     ---- `seed` is defined here
-
-error[3-0061]: `StorageMap<u256, u256>` lives only in storage
+error[3-0061]: `StorageMap<u256, u256>` is state-only
   ┌─ storage_capability_boundaries.fe:9:22
   │
-9 │     store.balances = StorageMap { seed: 0 }
-  │                      ^^^^^^^^^^^^^^^^^^^^^^ a storage-only type cannot be constructed as a value
+9 │     store.balances = StorageMap {}
+  │                      ^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
   │
-  = a storage collection lives at its storage place; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+  = `StorageMap<u256, u256>` is pinned to storage by its `PlaceIndex` implementation
+  = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
-error[3-0061]: `TSlot<u256>` lives only in storage
+error[3-0061]: `TSlot<u256>` is state-only
    ┌─ storage_capability_boundaries.fe:22:12
    │
-22 │     slot = TSlot { seed: 0 }
-   │            ^^^^^^^^^^^^^^^^^ a storage-only type cannot be constructed as a value
+22 │     slot = TSlot {}
+   │            ^^^^^^^^ a state-only type cannot be constructed as a value
    │
-   = a storage collection lives at its storage place; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+   = `TSlot<u256>` is pinned to transient storage by its `PlaceIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
 error[8-0036]: missing effect `RawStorage` required by `at`
    ┌─ storage_capability_boundaries.fe:18:14
@@ -74,7 +54,7 @@ error[8-0097]: call to unsafe function `at` requires an `unsafe` block or functi
  14 │     StorageMap<u256, u256>::at(0).get(1)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/evm/storage_map.fe:238:19
+    ┌─ src/evm/storage_map.fe:236:19
     │
-238 │     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+236 │     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
     │                   -- callee defined here

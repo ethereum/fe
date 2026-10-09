@@ -1,6 +1,6 @@
-// A type holding a storage collection lives only at its storage place: it is
-// never a value in memory, so it is never copied, moved, constructed,
-// returned by value or taken as `own`.
+// A type holding a pinned type is state-only: it lives only at its place in
+// storage or transient storage and is never a value in memory, so it is never
+// copied, moved, constructed, returned by value or taken as `own`.
 use std::evm::StorageMap
 
 struct Ledger {

@@ -90,16 +90,14 @@ impl<'db> Shape<'db> {
         }
     }
 
-    /// A storage-only type this return moves out by value, with the storage
+    /// A state-only type this return moves out by value, with the storage
     /// collection it holds. A projection yields a storage place instead.
-    pub fn storage_only_value(&self, db: &'db dyn HirAnalysisDb) -> Option<(TyId<'db>, TyId<'db>)> {
+    pub fn state_only_value(&self, db: &'db dyn HirAnalysisDb) -> Option<(TyId<'db>, TyId<'db>)> {
         match self {
-            Self::Owned(ty) => ty
-                .storage_collection(db)
-                .map(|collection| (*ty, collection)),
+            Self::Owned(ty) => ty.pinned_part(db).map(|collection| (*ty, collection)),
             Self::Access(..) => None,
-            Self::Tuple(elems) => elems.iter().find_map(|elem| elem.storage_only_value(db)),
-            Self::Sum { payload, .. } => payload.storage_only_value(db),
+            Self::Tuple(elems) => elems.iter().find_map(|elem| elem.state_only_value(db)),
+            Self::Sum { payload, .. } => payload.state_only_value(db),
         }
     }
 

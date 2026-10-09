@@ -616,7 +616,17 @@ fn final_call_site_data<'db>(
             diagnostic: None,
         };
     };
-    // Only effects and non-memory parameters can supply non-memory places.
+    // Only effects, non-memory parameters and parameters holding a pinned
+    // type, whose paths reach the pin's space, can supply non-memory places.
+    let pinned_param = (0..)
+        .map_while(|idx| typed_body.param_binding(idx))
+        .any(|binding| {
+            let ty = instance.normalized_binding_ty(db, binding);
+            ty.as_capability(db)
+                .map_or(ty, |(_, inner)| inner)
+                .pinned_part(db)
+                .is_some()
+        });
     let refinements = if call_sites_have_effect_args(&call_sites, &for_loop_call_sites)
         || !instance
             .key(db)
@@ -624,6 +634,7 @@ fn final_call_site_data<'db>(
             .param_spaces(db)
             .is_empty()
         || !instance.effect_bindings(db).is_empty()
+        || pinned_param
     {
         match provisional_call_site_provider_refinements(db, instance).clone() {
             CallSiteRefinements::Refined(refinements) => refinements,

@@ -103,12 +103,12 @@ impl<'db> TyId<'db> {
         })
     }
 
-    /// The storage collection this type is or holds in a field, or in a
-    /// tuple or array element. Such a type is storage-only: it exists only at
-    /// storage places, never as a value in memory. A pointer or handle does
-    /// not hold its target.
-    pub fn storage_collection(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
-        super::adt_def::ty_storage_collection(db, self)
+    /// The pinned type this type is or holds in a field, or in a tuple or
+    /// array element. Such a type is state-only: it exists only at places in
+    /// storage or transient storage, never as a value in memory. A pointer or
+    /// handle does not hold its target.
+    pub fn pinned_part(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
+        super::adt_def::ty_pinned_part(db, self)
     }
 
     /// Returns teh base type of this type.
@@ -544,6 +544,7 @@ impl<'db> TyId<'db> {
     /// This is a structural check (not based on byte-size calculation):
     /// - `()` and empty structs are zero-sized
     /// - tuples/structs/arrays are zero-sized iff all elements/fields are zero-sized
+    /// - a pinned type never is: its root number identifies its region
     // Borrow checking asks about the same types repeatedly.
     #[salsa::tracked]
     pub fn is_zero_sized(self, db: &'db dyn HirAnalysisDb) -> bool {
@@ -573,9 +574,11 @@ impl<'db> TyId<'db> {
             } else if let Some(adt_def) = ty.adt_def(db)
                 && matches!(adt_def.adt_ref(db), AdtRef::Struct(_))
             {
-                ty.field_types(db)
-                    .into_iter()
-                    .all(|field_ty| inner(db, field_ty, visiting))
+                adt_def.pin(db).is_none()
+                    && ty
+                        .field_types(db)
+                        .into_iter()
+                        .all(|field_ty| inner(db, field_ty, visiting))
             } else {
                 false
             };

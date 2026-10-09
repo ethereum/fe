@@ -26,6 +26,18 @@ pub enum AddressSpace {
     TransientStorage,
 }
 
+impl AddressSpace {
+    /// Whether the space starts zeroed, as storage and transient storage
+    /// do. A slot no one wrote reads as zero there, so the all-zero
+    /// representation is a value of every type the space holds.
+    pub const fn starts_zeroed(self) -> bool {
+        match self {
+            AddressSpace::Storage | AddressSpace::TransientStorage => true,
+            AddressSpace::Memory | AddressSpace::Calldata | AddressSpace::Code => false,
+        }
+    }
+}
+
 /// Marker: `Self` can satisfy a read-only effect whose domain is `Target`.
 pub trait EffectRef<Target> {}
 
@@ -72,6 +84,7 @@ pub fn write<H: EffectHandle>(_ handle: H, _ value: own H::Target) uses (target:
 
 /// The place a handle points at, as a projection, with the handle installed
 /// by `with`. The handle argument anchors the effect key to its `Target`.
+#[raw_place]
 pub fn target_mut<H: EffectHandle>(_ handle: H) -> mut H::Target uses (target: mut H::Target) {
     mut target
 }

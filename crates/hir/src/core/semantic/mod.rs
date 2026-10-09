@@ -48,6 +48,7 @@ pub use storage_layout::{
     ContractLayoutReport, ContractLayoutValue, ContractStorageLayoutResult, FieldStorageLayout,
     ValidatedFieldLayoutPlan,
 };
+pub(crate) use storage_layout::{storage_field_lanes, storage_slot_span};
 pub use symbol::{
     IndexedReference, ReferenceIndex, SignatureWithSpan, SourceLocation, SymbolKind, SymbolView,
     item_kind_to_url_suffix, qualify_path_with_ingot_name, scope_to_doc_path,
@@ -5469,10 +5470,10 @@ impl<'db> FieldView<'db> {
         // collection can.
         if let FieldParent::Contract(_) = self.parent
             && !self.parent.fields_list(db).data(db)[self.idx].is_mut
-            && let Some(collection) = ty.storage_collection(db)
+            && let Some(collection) = ty.pinned_part(db)
         {
             out.push(
-                TyLowerDiag::StorageOnlyValue {
+                TyLowerDiag::StateOnlyValue {
                     span: span.clone(),
                     ty,
                     collection,
@@ -5547,6 +5548,20 @@ impl<'db> FieldView<'db> {
                 }
                 ContractLayoutError::NonRegularProviderCycle => {
                     TyLowerDiag::ContractFieldProviderCycle { span, ty }
+                }
+                ContractLayoutError::MemoryValueInState { pointer } => {
+                    TyLowerDiag::ContractFieldMemoryValue {
+                        span,
+                        ty,
+                        pointer: *pointer,
+                    }
+                }
+                ContractLayoutError::PersistentUnderTransient { collection } => {
+                    TyLowerDiag::ContractFieldPersistentUnderTransient {
+                        span,
+                        ty,
+                        collection: *collection,
+                    }
                 }
                 ContractLayoutError::ExplicitSlotInCode => TyLowerDiag::ContractFieldSlotInCode {
                     span: self.slot_span(db),

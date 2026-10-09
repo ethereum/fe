@@ -2,7 +2,7 @@ pub use option::Option
 pub use result::Result
 pub use default::Default
 pub use clone::Clone
-pub use marker::{Copy, Snapshot}
+pub use marker::{Clearable, Copy, Snapshot}
 pub use abi::{self, *}
 pub use message::MsgVariant
 pub use error::ErrorVariant

@@ -2231,6 +2231,11 @@ pub(super) fn const_ty_from_resolved_trait_const<'db>(
     resolved: ResolvedImplInstance<'db>,
     name: IdentId<'db>,
 ) -> Option<ConstTyId<'db>> {
+    if name.data(db) == "BITS"
+        && let Some(bits) = super::sol_codec::sol_codec_bits(db, resolved)
+    {
+        return Some(bits);
+    }
     let inst = resolved.trait_inst();
     let trait_ = inst.def(db);
     let (body, template_ty, subst) = selected_assoc_const_body_template(db, resolved, name)?;

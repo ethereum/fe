@@ -1,0 +1,28 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/place_index_pins.fe
+---
+error[3-0061]: `Cells` is state-only
+   ┌─ place_index_pins.fe:37:9
+   │
+37 │     let _cells = Cells { len: 0 }
+   │         ^^^^^^ a state-only type cannot be bound by value
+   │
+   = `Cells` is pinned to storage by its `PlaceIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cells` is state-only
+   ┌─ place_index_pins.fe:37:18
+   │
+37 │     let _cells = Cells { len: 0 }
+   │                  ^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
+   │
+   = `Cells` is pinned to storage by its `PlaceIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[6-0009]: method has stricter bounds than trait
+   ┌─ place_index_pins.fe:55:8
+   │
+55 │     fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) uses (ctx: Ctx) {
+   │        ^^^^^^ method has stricter bounds than the declared method in the trait: `ctx: Ctx`

@@ -20,10 +20,10 @@ fn set_status(id: u256, value: u256)
 fn search_status(needle: u256, start: u256, end: u256) -> u256
     uses (status: StoragePackedArray<8>)
 {
-    match status.search(needle: needle, start: start, end: end) {
-        Option::Some(i) => return i
-        Option::None => return 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    let Option::Some(i) = status.search(needle: needle, start: start, end: end) else {
+        core::panic()
     }
+    i
 }
 
 contract C {

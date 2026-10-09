@@ -10,39 +10,39 @@ error[12-0001]: unsupported `#[slot]` attribute on struct field
   │     ^^^^^^^^^^ `#[slot]` is only supported on `mut` contract fields
 
 error[12-0001]: unsupported `#[slot]` attribute on immutable contract field `owner`
-   ┌─ contract_field_slot.fe:30:5
+   ┌─ contract_field_slot.fe:41:5
    │
-30 │     #[slot(0)]
+41 │     #[slot(0)]
    │     ^^^^^^^^^^ `#[slot]` is only supported on `mut` contract fields
 
 error[12-0002]: invalid `#[slot]` attribute form on contract field `a`
-   ┌─ contract_field_slot.fe:48:5
+   ┌─ contract_field_slot.fe:59:5
    │
-48 │     #[slot]
+59 │     #[slot]
    │     ^^^^^^^ expected `#[slot(<slot>)]`
 
 error[12-0002]: invalid `#[slot]` attribute form on contract field `b`
-   ┌─ contract_field_slot.fe:50:5
+   ┌─ contract_field_slot.fe:61:5
    │
-50 │     #[slot(1, 2)]
+61 │     #[slot(1, 2)]
    │     ^^^^^^^^^^^^^ expected `#[slot(<slot>)]`
 
 error[12-0002]: invalid `#[slot]` attribute form on contract field `c`
-   ┌─ contract_field_slot.fe:52:5
+   ┌─ contract_field_slot.fe:63:5
    │
-52 │     #[slot(at = 1)]
+63 │     #[slot(at = 1)]
    │     ^^^^^^^^^^^^^^^ expected `#[slot(<slot>)]`
 
 error[12-0003]: duplicate `#[slot]` attribute on contract field `d`
-   ┌─ contract_field_slot.fe:55:5
+   ┌─ contract_field_slot.fe:66:5
    │
-55 │     #[slot(2)]
+66 │     #[slot(2)]
    │     ^^^^^^^^^^ remove the extra `#[slot]` attribute
 
 error[3-0025]: division by zero in const context
-   ┌─ contract_field_slot.fe:43:12
+   ┌─ contract_field_slot.fe:54:12
    │
-43 │     #[slot(BASE / 0)]
+54 │     #[slot(BASE / 0)]
    │            ^^^^^^^^ cannot divide by zero
 
 error[3-0064]: `b` overlaps the slots of `a`
@@ -53,14 +53,22 @@ error[3-0064]: `b` overlaps the slots of `a`
    │
    = fields placed with `#[slot]` cannot share slots in one address space
 
-error[8-0000]: type mismatch
-   ┌─ contract_field_slot.fe:41:12
+error[3-0064]: `flag` overlaps the slots of `cell`
+   ┌─ contract_field_slot.fe:36:11
    │
-41 │     #[slot(true)]
+36 │     #[slot(6)]
+   │           ^^^ the slots from here overlap `cell`'s
+   │
+   = fields placed with `#[slot]` cannot share slots in one address space
+
+error[8-0000]: type mismatch
+   ┌─ contract_field_slot.fe:52:12
+   │
+52 │     #[slot(true)]
    │            ^^^^ expected `u256`, but `bool` is given
 
 error[8-0012]: undefined variable
-   ┌─ contract_field_slot.fe:39:12
+   ┌─ contract_field_slot.fe:50:12
    │
-39 │     #[slot(missing + 1)]
+50 │     #[slot(missing + 1)]
    │            ^^^^^^^ undefined variable `missing`

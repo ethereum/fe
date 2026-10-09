@@ -112,7 +112,7 @@ pub(crate) fn provisional_call_site_provider_refinements<'db>(
                 let mut spaces = Vec::new();
                 let mut symbolic = regions.is_empty();
                 for region in &regions {
-                    match analysis.space(region.base) {
+                    match analysis.grant_space(region) {
                         Some(space) if !spaces.contains(&space) => spaces.push(space),
                         Some(_) => {}
                         None => symbolic = true,

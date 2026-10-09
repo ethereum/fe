@@ -313,12 +313,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         ),
                         SEffectArgValue::Value(value) => {
                             let base = value.value;
-                            (
-                                effect_arg
-                                    .provider_target_ty
-                                    .unwrap_or(self.locals[base.index()].ty),
-                                self.local_layout_backing_sources(base),
-                            )
+                            let value_ty = self.locals[base.index()].ty;
+                            // A handle's own backings are not its target's,
+                            // which lies wherever the handle points.
+                            if effect_arg
+                                .provider_target_ty
+                                .is_some_and(|target| target != value_ty)
+                            {
+                                continue;
+                            }
+                            (value_ty, self.local_layout_backing_sources(base))
                         }
                     }
                 }

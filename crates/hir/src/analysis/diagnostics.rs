@@ -1636,7 +1636,7 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::StorageOnlyValue {
+            Self::StateOnlyValue {
                 span,
                 ty,
                 collection,
@@ -1644,19 +1644,24 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
             } => {
                 let ty_name = ty.pretty_print(db);
                 let collection_name = collection.pretty_print(db);
+                let space = collection
+                    .adt_def(db)
+                    .and_then(|adt| adt.pin(db))
+                    .map_or("contract state", |space| space.pretty());
                 let mut diag = primary_diag(
                     Severity::Error,
-                    format!("`{ty_name}` lives only in storage"),
-                    format!("a storage-only type cannot be {position}"),
+                    format!("`{ty_name}` is state-only"),
+                    format!("a state-only type cannot be {position}"),
                     span.resolve(db),
                     error_code,
                 );
-                if ty != collection {
-                    diag.notes
-                        .push(format!("`{ty_name}` holds `{collection_name}`, a storage collection"));
-                }
+                diag.notes.push(if ty == collection {
+                    format!("`{ty_name}` is pinned to {space} by its `PlaceIndex` implementation")
+                } else {
+                    format!("`{ty_name}` holds `{collection_name}`, which is pinned to {space}")
+                });
                 diag.notes.push(
-                    "a storage collection lives at its storage place; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter".into(),
+                    "a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter".into(),
                 );
                 diag
             }
@@ -2171,6 +2176,48 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                     error_code,
                 }
             }
+
+            Self::ContractFieldMemoryValue { span, ty, pointer } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "contract state cannot hold a memory value".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "`{}` holds the memory pointer `{}`",
+                        ty.pretty_print(db),
+                        pointer.pretty_print(db)
+                    ),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "memory lasts for one transaction, so a later one could not follow the pointer"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::ContractFieldPersistentUnderTransient {
+                span,
+                ty,
+                collection,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a persistent collection cannot lie in transient storage".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "`{}` keeps `{}` in transient storage",
+                        ty.pretty_print(db),
+                        collection.pretty_print(db)
+                    ),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "its entries would persist after the transient value holding it is gone"
+                        .to_string(),
+                ],
+                error_code,
+            },
 
             Self::ContractFieldProviderCycle { span, ty } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
@@ -3689,6 +3736,22 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }],
                 notes: vec![
                     "move the choice into a projection, whose branches are yield sites: `fn pick(mut self, _ c: bool) -> mut T { if c { mut self.a } else { mut self.b } }`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::UnsafeSplitOperand { primary, callee } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "an unsafe split component is a place or a `#[raw_place]` call"
+                    .to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{}` is not declared `#[raw_place]`", callee.data(db)),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "an ordinary projection may keep accesses for code after its yield, which one split session cannot merge; bind its result with its own `let`"
                         .to_string(),
                 ],
                 error_code,
@@ -5582,6 +5645,17 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 format!(
                     "missing associated space `{}` from trait `{}`",
                     name.data(db),
+                    trait_.name(db).unwrap().data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::CompilerImplementedTrait { primary, trait_ } => primary_diag(
+                severity,
+                "trait implemented by the compiler",
+                format!(
+                    "`{}` is implemented by the compiler and cannot be implemented",
                     trait_.name(db).unwrap().data(db)
                 ),
                 primary.resolve(db),

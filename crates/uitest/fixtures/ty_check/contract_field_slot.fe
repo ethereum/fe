@@ -26,6 +26,17 @@ contract SeparateSpaces {
     mut flag: std::evm::TStorPtr<bool>,
 }
 
+// A `TSlot` takes its number only in transient storage: the storage field
+// may share slot 6, the transient one may not.
+contract PinnedSpace {
+    #[slot(6)]
+    mut cell: std::evm::TSlot<u256>,
+    #[slot(6)]
+    mut stored: u256,
+    #[slot(6)]
+    mut flag: std::evm::TStorPtr<bool>,
+}
+
 contract ImmutableField {
     #[slot(0)]
     owner: u256,

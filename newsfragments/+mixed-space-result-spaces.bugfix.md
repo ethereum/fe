@@ -1,0 +1,1 @@
+A projection's result space follows the yielded path through pinned collections: a projection of a `TSlot` entry held in a storage struct, such as `mut self.lock[()]`, exports transient storage rather than its receiver's storage, and a component whose yields lie in storage on one path and transient storage on another is rejected (16-0007).

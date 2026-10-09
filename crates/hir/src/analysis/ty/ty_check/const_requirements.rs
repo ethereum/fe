@@ -1,5 +1,7 @@
 //! Const declaration requirements are discharged after inference, for every body
-//! owner. Concrete discharge uses ordinary CTFE. Symbolic forwarding compares
+//! owner. Concrete discharge uses ordinary CTFE. A use whose arguments mention
+//! the caller's parameters is evaluated under the caller's assumptions first;
+//! when that is blocked on the parameters, symbolic forwarding compares
 //! resolved, typed expressions after substitution, without evaluating
 //! unknown parameters or assuming the obligation being checked.
 use super::*;
@@ -14,6 +16,7 @@ use crate::analysis::ty::{
     ty_lower::{CompleteSubst, SubstError, lower_hir_ty_with_resolutions, lower_type_alias},
 };
 use crate::hir_def::{GenericArg, GenericArgListId, ItemKind, UnOp, scope_graph::ScopeId};
+use crate::semantic::constraints_for;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PredicateKey<'db> {
@@ -1511,6 +1514,10 @@ fn discharge_requirement<'db>(
         FormationStatus::Recursive => return Discharge::Fails(RequirementFailure::Recursive),
     };
     let not_instantiable = Discharge::Fails(RequirementFailure::NotInstantiable);
+    // The use's arguments name the caller's parameters as its body and
+    // assumptions do; premises are stated over the caller's full parameter
+    // list instead.
+    let use_args = args.clone();
     let args = match caller {
         Some(caller) => match caller_args(db, caller, args) {
             Ok(args) => args,
@@ -1531,6 +1538,27 @@ fn discharge_requirement<'db>(
         symbolic |= arg.has_param(db);
     }
     if symbolic {
+        // Arguments that mention the caller's parameters may still decide
+        // the predicate, as `<TSlot<T> as PlaceIndex>::SPACE` does for every
+        // `T`: evaluated under the caller's assumptions, a value decides it,
+        // and only a blocked evaluation needs a premise.
+        if let Some(caller) = caller {
+            let owner = BodyOwner::const_predicate(db, predicate);
+            let impl_env = ImplEnv::new(
+                db,
+                caller.scope(),
+                constraints_for(db, ItemKind::from(caller)),
+                Vec::new(),
+            );
+            let subst = GenericSubst::for_body_owner(db, owner, use_args);
+            match condition_outcome_in(db, owner, subst, impl_env) {
+                ConditionOutcome::True => return Discharge::Holds,
+                ConditionOutcome::False => return Discharge::Fails(RequirementFailure::False),
+                ConditionOutcome::NotBool
+                | ConditionOutcome::Blocked(_)
+                | ConditionOutcome::Failed(_) => {}
+            }
+        }
         let Ok(key) = predicate_key(db, predicate, typed, &subst) else {
             return not_instantiable;
         };
@@ -1623,7 +1651,7 @@ fn assumptions_at<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> Predi
         };
         enclosing = parent;
     }
-    crate::semantic::constraints_for(db, enclosing.item())
+    constraints_for(db, enclosing.item())
 }
 
 /// The applications that the types written in `owner`'s signature and body

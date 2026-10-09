@@ -240,6 +240,9 @@ pub enum ImplementorOrigin<'db> {
     /// A closure's implementation of its callable shape traits
     /// (`ty::closure`).
     Closure,
+    /// The compiler's structural implementation of a marker trait
+    /// (`ty::clearable`).
+    Structural,
 }
 
 fn ingot_trait_env_cycle_initial<'db>(
@@ -273,6 +276,15 @@ pub struct ResolvedImplInstance<'db> {
 }
 
 impl<'db> ResolvedImplInstance<'db> {
+    /// `implementor` instantiated at its own parameters.
+    pub(crate) fn identity(db: &'db dyn HirAnalysisDb, implementor: ImplementorId<'db>) -> Self {
+        Self {
+            selected: implementor,
+            instantiated: implementor,
+            trait_inst: implementor.trait_(db),
+        }
+    }
+
     pub fn selected(self) -> ImplementorId<'db> {
         self.selected
     }
@@ -810,7 +822,9 @@ pub(crate) fn selected_assoc_const_body_template<'db>(
                     .ok()?,
                 ))
             }),
-        ImplementorOrigin::VirtualContract(_) | ImplementorOrigin::Closure => None,
+        ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Closure
+        | ImplementorOrigin::Structural => None,
         ImplementorOrigin::Assumption => return None,
     };
     explicit.or_else(|| {
@@ -980,6 +994,9 @@ impl<'db> ImplementorId<'db> {
             ImplementorOrigin::Closure => {
                 panic!("requested HIR impl-trait for a closure's builtin implementor")
             }
+            ImplementorOrigin::Structural => {
+                panic!("requested HIR impl-trait for a structural builtin implementor")
+            }
         }
     }
 
@@ -1032,7 +1049,8 @@ impl<'db> ImplementorId<'db> {
             }
             ImplementorOrigin::VirtualContract(_)
             | ImplementorOrigin::Assumption
-            | ImplementorOrigin::Closure => PredicateListId::empty_list(db),
+            | ImplementorOrigin::Closure
+            | ImplementorOrigin::Structural => PredicateListId::empty_list(db),
         }
     }
 

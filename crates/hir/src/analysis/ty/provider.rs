@@ -522,13 +522,15 @@ fn validate_effect_handle_raw<'db>(
         ImplementorOrigin::Hir(_)
         | ImplementorOrigin::VirtualContract(_)
         | ImplementorOrigin::Closure
+        | ImplementorOrigin::Structural
             if space != ProviderAddressSpace::Memory || raw_pointee != Some(target_ty) =>
         {
             Err(ProviderLayoutFailure::UntrustedRaw)
         }
         ImplementorOrigin::Hir(_)
         | ImplementorOrigin::VirtualContract(_)
-        | ImplementorOrigin::Closure => Ok(()),
+        | ImplementorOrigin::Closure
+        | ImplementorOrigin::Structural => Ok(()),
     }
 }
 
@@ -635,7 +637,8 @@ pub fn place_index_space<'db>(
 
 /// How a collection whose elements are places (`core::ops::PlaceIndex`)
 /// packs its elements into lanes: its `Lanes` codec, when that codes the
-/// element type (`LaneCodec<Output>`) in at most 128 bits.
+/// element type (`LaneCodec<Entry>`) in at most 128 bits. An element of a
+/// wider codec takes whole slots.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub struct PlaceIndexLanes<'db> {
     pub codec: TyId<'db>,
@@ -657,7 +660,7 @@ pub fn place_index_lanes<'db>(
             .project_assoc_ty(db, IdentId::new(db, name.to_string()))?;
         Some(normalize_ty(db, projected, scope, assumptions))
     };
-    let (codec, output) = (assoc("Lanes")?, assoc("Output")?);
+    let (codec, entry) = (assoc("Lanes")?, assoc("Entry")?);
     if codec == TyId::unit(db) {
         return None;
     }
@@ -666,7 +669,7 @@ pub fn place_index_lanes<'db>(
     let Selection::Unique(resolved) = resolve_trait_impl_instance(
         db,
         solve_cx,
-        TraitInstId::new_simple(db, lane_codec, vec![codec, output]),
+        TraitInstId::new_simple(db, lane_codec, vec![codec, entry]),
     ) else {
         return None;
     };
@@ -678,10 +681,10 @@ pub fn place_index_lanes<'db>(
     .evaluate(db, Some(TyId::u256(db)))
     .integer_value(db)?;
     let bits = u16::try_from(bits).ok()?;
-    (bits > 0 && bits <= 128 && bits % 8 == 0).then_some(PlaceIndexLanes { codec, bits })
+    (bits > 0 && bits <= 128).then_some(PlaceIndexLanes { codec, bits })
 }
 
-fn effect_space_from_resolved_trait_const<'db>(
+pub(crate) fn effect_space_from_resolved_trait_const<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     resolved: ResolvedImplInstance<'db>,

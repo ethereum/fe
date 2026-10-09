@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 416
+assertion_line: 388
 expression: output
 input_file: crates/codegen/tests/fixtures/for_array.fe
 ---
@@ -48,39 +48,39 @@ func private %for_array_sum() -> i64 {
         br v29 block5 block4;
 
     block2:
-        v64.i64 = phi (0.i64 block5) (v51 block6);
-        v31.i256 = phi (v38 block5) (v40 block6);
-        v32.@layout_0 = call %next v26 v31;
+        v65.i64 = phi (0.i64 block5) (v52 block6);
+        v31.i256 = phi (v39 block5) (v41 block6);
         jump block8;
 
     block3:
-        v34.i1 = enum.is_variant v32 #variant_0;
-        br v34 block6 block4;
+        v34.@layout_0 = call %next v26 v31;
+        v35.i1 = enum.is_variant v34 #variant_0;
+        br v35 block6 block4;
 
     block4:
-        v35.i64 = phi (0.i64 block1) (v51 block3);
-        return v35;
+        v36.i64 = phi (0.i64 block1) (v52 block3);
+        return v36;
 
     block5:
-        v38.i256 = enum.extract v28 #variant_0 0.i256;
+        v39.i256 = enum.extract v28 #variant_0 0.i256;
         jump block2;
 
     block6:
-        v40.i256 = enum.extract v32 #variant_0 0.i256;
+        v41.i256 = enum.extract v34 #variant_0 0.i256;
         jump block2;
 
     block7:
-        v42.i64 = const.load v48;
+        v43.i64 = const.load v49;
         jump block10;
 
     block8:
-        v45.i1 = lt v31 25.i256;
-        v46.i1 = is_zero v45;
-        br v46 block11 block12;
+        v46.i1 = lt v31 25.i256;
+        v47.i1 = is_zero v46;
+        br v47 block11 block12;
 
     block9:
-        (v51.i64, v52.i1) = uaddo v64 v42;
-        br v52 block13 block14;
+        (v52.i64, v53.i1) = uaddo v65 v43;
+        br v53 block13 block14;
 
     block10:
         jump block9;
@@ -89,7 +89,7 @@ func private %for_array_sum() -> i64 {
         evm_revert 0.i256 0.i256;
 
     block12:
-        v48.constref<i64> = const.index v26 v31;
+        v49.constref<i64> = const.index v26 v31;
         jump block7;
 
     block13:

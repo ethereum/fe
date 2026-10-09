@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 416
+assertion_line: 388
 expression: output
 input_file: crates/codegen/tests/fixtures/for_range.fe
 ---
@@ -26,38 +26,38 @@ func private %for_range_sum() -> i256 {
         br v5 block5 block4;
 
     block2:
-        v32.i256 = phi (0.i256 block5) (v20 block6);
-        v7.i256 = phi (v13 block5) (v15 block6);
-        v8.@layout_1 = call %next v3 v7;
+        v33.i256 = phi (0.i256 block5) (v21 block6);
+        v7.i256 = phi (v14 block5) (v16 block6);
         obj.store v0 v7;
         jump block8;
 
     block3:
-        v10.i1 = enum.is_variant v8 #variant_0;
-        br v10 block6 block4;
+        v10.@layout_1 = call %next v3 v7;
+        v11.i1 = enum.is_variant v10 #variant_0;
+        br v11 block6 block4;
 
     block4:
-        v11.i256 = phi (0.i256 block1) (v20 block3);
-        return v11;
+        v12.i256 = phi (0.i256 block1) (v21 block3);
+        return v12;
 
     block5:
-        v13.i256 = enum.extract v4 #variant_0 0.i256;
+        v14.i256 = enum.extract v4 #variant_0 0.i256;
         jump block2;
 
     block6:
-        v15.i256 = enum.extract v8 #variant_0 0.i256;
+        v16.i256 = enum.extract v10 #variant_0 0.i256;
         jump block2;
 
     block7:
-        v17.i256 = obj.load v0;
+        v18.i256 = obj.load v0;
         jump block10;
 
     block8:
         jump block7;
 
     block9:
-        (v20.i256, v21.i1) = uaddo v32 v17;
-        br v21 block11 block12;
+        (v21.i256, v22.i1) = uaddo v33 v18;
+        br v22 block11 block12;
 
     block10:
         jump block9;

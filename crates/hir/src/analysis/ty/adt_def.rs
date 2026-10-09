@@ -9,6 +9,9 @@ use salsa::Update;
 use super::{
     binder::Binder,
     const_ty::ConstBodyLowering,
+    corelib::resolve_core_trait,
+    provider::{ProviderAddressSpace, effect_space_from_resolved_trait_const},
+    trait_def::{ResolvedImplInstance, impls_for_trait_def},
     trait_resolution::{PredicateListId, constraint::collect_constraints},
     ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
     ty_lower::{
@@ -33,16 +36,55 @@ pub struct AdtDef<'db> {
     pub fields: Vec<AdtField<'db>>,
 }
 
-/// The storage collection `ty` is or holds in a field, or in a tuple or
-/// array element; see `TyId::storage_collection`.
-#[salsa::tracked(cycle_fn = ty_storage_collection_cycle_recover, cycle_initial = ty_storage_collection_cycle_initial)]
-pub(crate) fn ty_storage_collection<'db>(
+/// The state space `adt` is pinned to: the `SPACE` of its
+/// `core::ops::PlaceIndex` implementation when that is storage or transient
+/// storage. Implementing the trait with a state space is the pinning
+/// declaration; an implementation with `SPACE = memory` leaves the type an
+/// ordinary value.
+#[salsa::tracked(cycle_fn = adt_pin_cycle_recover, cycle_initial = adt_pin_cycle_initial)]
+pub(crate) fn adt_pin<'db>(
     db: &'db dyn HirAnalysisDb,
-    ty: TyId<'db>,
-) -> Option<TyId<'db>> {
+    adt: AdtDef<'db>,
+) -> Option<ProviderAddressSpace> {
+    let scope = adt.scope(db);
+    let place_index = resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
+    impls_for_trait_def(db, adt.ingot(db), place_index)
+        .iter()
+        .filter(|implementor| implementor.self_ty(db).adt_def(db) == Some(adt))
+        .find_map(|implementor| {
+            let resolved = ResolvedImplInstance::identity(db, *implementor);
+            effect_space_from_resolved_trait_const(db, scope, resolved).filter(|space| {
+                matches!(
+                    space,
+                    ProviderAddressSpace::Storage | ProviderAddressSpace::Transient
+                )
+            })
+        })
+}
+
+fn adt_pin_cycle_initial<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: AdtDef<'db>,
+) -> Option<ProviderAddressSpace> {
+    None
+}
+
+fn adt_pin_cycle_recover<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: &Option<ProviderAddressSpace>,
+    _: u32,
+    _: AdtDef<'db>,
+) -> salsa::CycleRecoveryAction<Option<ProviderAddressSpace>> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
+/// The pinned type `ty` is or holds in a field, or in a tuple or array
+/// element; see `TyId::pinned_part`.
+#[salsa::tracked(cycle_fn = ty_pinned_part_cycle_recover, cycle_initial = ty_pinned_part_cycle_initial)]
+pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
     match ty.base_ty(db).data(db) {
         TyData::TyBase(TyBase::Adt(adt)) => {
-            if adt.adt_ref(db).is_storage_only(db) {
+            if adt.pin(db).is_some() {
                 return Some(ty);
             }
             // A type not applied to all its arguments has no values.
@@ -53,24 +95,21 @@ pub(crate) fn ty_storage_collection<'db>(
             adt.fields(db)
                 .iter()
                 .flat_map(|variant| variant.iter_types(db))
-                .find_map(|field| field.instantiate(db, args).storage_collection(db))
+                .find_map(|field| field.instantiate(db, args).pinned_part(db))
         }
         TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_) | PrimTy::Array)) => ty
             .generic_args(db)
             .iter()
-            .find_map(|elem| elem.storage_collection(db)),
+            .find_map(|elem| elem.pinned_part(db)),
         _ => None,
     }
 }
 
-fn ty_storage_collection_cycle_initial<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: TyId<'db>,
-) -> Option<TyId<'db>> {
+fn ty_pinned_part_cycle_initial<'db>(_: &'db dyn HirAnalysisDb, _: TyId<'db>) -> Option<TyId<'db>> {
     None
 }
 
-fn ty_storage_collection_cycle_recover<'db>(
+fn ty_pinned_part_cycle_recover<'db>(
     _: &'db dyn HirAnalysisDb,
     _: &Option<TyId<'db>>,
     _: u32,
@@ -90,6 +129,11 @@ impl<'db> AdtDef<'db> {
 
     pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
+    }
+
+    /// The state space this type is pinned to; see `adt_pin`.
+    pub fn pin(self, db: &'db dyn HirAnalysisDb) -> Option<ProviderAddressSpace> {
+        adt_pin(db, self)
     }
 
     pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
@@ -263,14 +307,6 @@ impl<'db> AdtRef<'db> {
         match self {
             AdtRef::Enum(enum_) => enum_.is_view(db),
             AdtRef::Struct(struct_) => struct_.is_view(db),
-        }
-    }
-
-    /// Whether this is a storage collection (`#[storage_only]`).
-    pub fn is_storage_only(self, db: &'db dyn HirAnalysisDb) -> bool {
-        match self {
-            AdtRef::Enum(enum_) => enum_.is_storage_only(db),
-            AdtRef::Struct(struct_) => struct_.is_storage_only(db),
         }
     }
 

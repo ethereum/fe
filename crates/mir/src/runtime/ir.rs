@@ -255,7 +255,9 @@ impl<'db> RuntimeClass<'db> {
                 false
             }
             RuntimeClass::AggregateValue { layout } => match layout.data(db) {
-                Layout::Struct(data) => data.fields.iter().all(|field| field.is_zero_sized(db)),
+                Layout::Struct(data) => {
+                    !data.pinned && data.fields.iter().all(|field| field.is_zero_sized(db))
+                }
                 Layout::Array(data) => data.len == 0 || data.elem.is_zero_sized(db),
                 Layout::Enum(_) => false,
             },
@@ -503,6 +505,10 @@ pub enum Layout<'db> {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub struct StructLayout<'db> {
     pub fields: Box<[RuntimeClass<'db>]>,
+    /// The layout of a pinned type (a `PlaceIndex` implementor with a state
+    /// `SPACE`): its root number identifies its region, so it takes at least
+    /// one storage slot and is never zero-sized, even without fields.
+    pub pinned: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]

@@ -732,6 +732,14 @@ impl<'db> Func<'db> {
         self.attributes(db).has_marker_attr(db, "view")
     }
 
+    /// A `#[raw_place]` projection yields a place computed from its inputs
+    /// with nothing to resume: no code after its yield and no access of its
+    /// own kept open there, so an unsafe split may take its call as a
+    /// component.
+    pub fn is_raw_place(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "raw_place")
+    }
+
     fn inline_attr(self, db: &'db dyn HirDb) -> Option<InlineAttr> {
         self.attributes(db).inline_attr(db)
     }
@@ -872,12 +880,6 @@ impl<'db> Struct<'db> {
     /// `own` parameter and no `mut` yield.
     pub fn is_view(self, db: &'db dyn HirDb) -> bool {
         self.attributes(db).has_marker_attr(db, "view")
-    }
-
-    /// A `#[storage_only]` type is a storage collection: an owner that lives
-    /// at its place in storage, never in memory, and is never copied or moved.
-    pub fn is_storage_only(self, db: &'db dyn HirDb) -> bool {
-        self.attributes(db).has_marker_attr(db, "storage_only")
     }
 
     /// Returns the human readable string of the expected struct initializer.
@@ -1065,12 +1067,6 @@ impl<'db> Enum<'db> {
     /// `own` parameter and no `mut` yield.
     pub fn is_view(self, db: &'db dyn HirDb) -> bool {
         self.attributes(db).has_marker_attr(db, "view")
-    }
-
-    /// A `#[storage_only]` type is a storage collection: an owner that lives
-    /// at its place in storage, never in memory, and is never copied or moved.
-    pub fn is_storage_only(self, db: &'db dyn HirDb) -> bool {
-        self.attributes(db).has_marker_attr(db, "storage_only")
     }
 }
 

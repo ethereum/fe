@@ -1,5 +1,5 @@
 use core::keccak
-use std::evm::{Evm, RawStorage, SolSlot, TStorPtr}
+use std::evm::{Evm, RawStorage, SolSlot, TSlot, TStorPtr}
 
 const BASE: u256 = 0x100
 
@@ -20,6 +20,8 @@ msg M {
     Set {} -> (u256, u256, u256, u256, u256, bool),
     #[selector = 2]
     Namespaced {} -> u256,
+    #[selector = 3]
+    Cell {} -> (u256, u256, u256),
 }
 
 fn read_slot(_ slot: u256) -> u256 uses (storage: mut RawStorage) {
@@ -41,6 +43,12 @@ pub contract C uses (storage: mut RawStorage) {
     // Transient storage is its own space: slot 1 there is free.
     #[slot(1)]
     mut flag: TStorPtr<bool>,
+    // A `TSlot` takes its number only in transient storage, so a storage
+    // field may share it.
+    #[slot(BASE + 2)]
+    mut cell: TSlot<u256>,
+    #[slot(BASE + 2)]
+    mut beside: u256,
 
     recv M {
         Set {} -> (u256, u256, u256, u256, u256, bool)
@@ -66,6 +74,12 @@ pub contract C uses (storage: mut RawStorage) {
             main = 17
             read_slot(EXAMPLE_MAIN)
         }
+
+        Cell {} -> (u256, u256, u256) uses (mut cell, mut beside, mut storage) {
+            cell[()] = 21
+            beside = 22
+            (cell[()], beside, read_slot(BASE + 2))
+        }
     }
 }
 
@@ -83,4 +97,8 @@ fn explicit_slots_place_fields() uses (evm: mut Evm) {
     assert!(values.5)
     let main: u256 = evm.call(addr: c, gas: 300000, value: 0, message: M::Namespaced {})
     assert!(main == 17)
+    let cell: (u256, u256, u256) = evm.call(addr: c, gas: 300000, value: 0, message: M::Cell {})
+    assert!(cell.0 == 21)
+    assert!(cell.1 == 22)
+    assert!(cell.2 == 22)
 }

@@ -20,68 +20,69 @@
 //! ```
 use core::abi::{AbiSize, DynArray, Encode, store_word}
 use core::effect_ref::AddressSpace
-use core::intrinsic::clear
 use core::iter::{Bidirectional, Collection, CollectionMut}
-use core::ops::{LaneCodec, PlaceIndex}
+use core::marker::Clearable
+use core::ops::{LaneCodec, PlaceIndex, clear_storage}
 use core::option::Option
 use core::ptr
 use ingot::abi::{Sol, StaticAbiElement}
 use super::effects::{RawStorage, StorPtr, revert_error}
 use super::panic::{PANIC_INDEX_OUT_OF_BOUNDS, PANIC_OUT_OF_MEMORY, PANIC_POP_EMPTY, Panic}
-use super::sol_slot::{SolPacked, SolWord, data_slot}
+use super::sol_slot::{SolPacked, data_slot, field_mask}
 
 // Solidity refuses to `push` onto a storage array of 2**64 - 1 elements.
 const MAX_LEN: u256 = 0xffffffffffffffff
 
-#[storage_only]
 pub struct SolArray<T> {
     len: u256,
 }
 
 /// How a `SolArray` packs its elements: Solidity's encoding (`SolPacked`).
+/// An element without one is stored at whole slots, as its type's storage
+/// layout places it: the compiler implements `LaneCodec<T>` for such a `T`,
+/// with `BITS` 256 times the slots the layout gives it.
 pub struct SolLanes {}
 
 impl<T: SolPacked> LaneCodec<T> for SolLanes {
     const BITS: u256 = T::BITS
 
     fn get(_ word: u256, offset: u256) -> T {
-        SolWord { word }.get(offset)
+        T::from_packed((word >> offset) & field_mask(T::BITS))
     }
 
     fn set(_ word: u256, offset: u256, value: own T) -> u256 {
-        let mut packed = SolWord { word }
-        packed.set(offset, value)
-        packed.word
+        let mask = field_mask(T::BITS) << offset
+        (word & !mask) | ((value.to_packed() << offset) & mask)
     }
 }
 
 impl<T> PlaceIndex for SolArray<T> {
     const SPACE: AddressSpace = AddressSpace::Storage
     type Key = u256
-    type Output = T
+    type Entry = T
     type Lanes = SolLanes
 
-    fn locate(self, _ base: u256, _ index: u256, _ width: u256) -> (u256, u256) {
+    fn locate(self, _ root: u256, _ index: u256) -> (u256, u256) {
         if index >= self.len {
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
-        element_location(first: data_slot(base), index, width)
+        element_location(first: data_slot(root), index, bits: <Self::Lanes as LaneCodec<T>>::BITS)
     }
 }
 
-/// The slot and byte offset of element `index` of elements `width` bytes
-/// wide laid out from slot `first` on: `32 / width` to a slot below 32 bytes,
-/// else `width / 32` slots each. Wraps modulo `2**256`, like Solidity's
-/// storage slot arithmetic.
+/// The slot and bit offset of element `index` of elements `bits` wide laid
+/// out from slot `first` on: `256 / bits` to a slot when they are lanes (at
+/// most 128 bits), else a whole number of slots each. Wraps modulo `2**256`,
+/// like Solidity's storage slot arithmetic.
 #[arithmetic(unchecked)]
-fn element_location(first: u256, index: u256, width: u256) -> (u256, u256) {
-    if width == 0 {
+fn element_location(first: u256, index: u256, bits: u256) -> (u256, u256) {
+    if bits == 0 {
         (first, 0)
-    } else if width < 32 {
-        let per_slot = 32 / width
-        (first + index / per_slot, (index % per_slot) * width)
+    } else if bits <= 128 {
+        let per_slot = 256 / bits
+        (first + index / per_slot, (index % per_slot) * bits)
     } else {
-        (first + index * (width / 32), 0)
+        (first + index * ((bits + 255) / 256), 0)
     }
 }
 
@@ -90,6 +91,7 @@ impl<T> SolArray<T> {
     ///
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses `slot` or the elements' slots.
+    #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
         let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
@@ -130,15 +132,38 @@ impl<T> SolArray<T> {
 
     /// Removes the last element, zeroing its storage like Solidity's `pop()`.
     /// Reverts with `Panic(0x31)` if the array is empty.
-    pub fn pop(mut self) {
+    pub fn pop(mut self)
+        where T: Clearable
+    {
         let len = self.len
         if len == 0 {
             revert_error(Panic::from(PANIC_POP_EMPTY))
         }
-        // Past the new end, nothing reads the element before a `push`
-        // writes it.
-        unsafe { clear(mut self[len - 1]) }
+        clear_storage(mut self, len - 1)
         self.len = len - 1
+    }
+
+    /// Zeroes the element at `i`, leaving the length: it reads as its type's
+    /// zero value. Reverts with `Panic(0x32)` if `i` is out of bounds.
+    pub fn clear_at(mut self, _ i: u256)
+        where T: Clearable
+    {
+        clear_storage(mut self, i)
+    }
+
+    /// Removes every element, zeroing their storage, so that growing the
+    /// array again exposes no old element. Costs a slot write per element,
+    /// and a read too for elements packed into shared slots.
+    pub fn clear(mut self)
+        where T: Clearable
+    {
+        let len = self.len
+        let mut i: u256 = 0
+        while i < len {
+            clear_storage(mut self, i)
+            i += 1
+        }
+        self.len = 0
     }
 
     /// All elements in index order, as an ABI `T[]` in memory, like

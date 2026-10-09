@@ -127,6 +127,7 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
     ///
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses those slots or the entries' slots.
+    #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
         let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {

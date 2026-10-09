@@ -4,7 +4,8 @@ use ingot::evm::ops::mstore
 use core::num::IntWord
 use core::ptr
 use core::effect_ref::AddressSpace
-use core::ops::PlaceIndex
+use core::marker::Clearable
+use core::ops::{PlaceIndex, clear_storage}
 
 /// Keys that can be written into the mapping preimage for keccak hashing.
 pub trait StorageKey {
@@ -194,35 +195,31 @@ impl StorageKey for bool {
 /// Solidity `mapping`.
 ///
 /// A map is a storage collection: it lives at its place in storage, which
-/// takes one slot of its container, and it is never copied or moved. The
-/// value at `key` occupies the slots from `keccak256(key ++ slot)` onwards,
+/// takes one slot of its container, never written, as a Solidity mapping's
+/// does, and it is never copied or moved. The value at `key` occupies the
+/// slots from `keccak256(key ++ slot)` onwards,
 /// laid out like any value of type `V` in storage, including packed struct
 /// fields, so a map in a map's value derives its slot from its entry's. The
-/// entries are persistent wherever the map lives, even in transient state.
+/// entries are persistent, so a map cannot lie in transient storage.
 /// `map[key]` names that entry's place: `map[key].f += 1` reads and writes
 /// one field, and `let e = mut map[key]` binds the entry. Keys use the stable
 /// encoding `StorageKey` defines.
-#[storage_only]
-pub struct StorageMap<K, V> {
-    /// The slot the map takes, as a Solidity mapping does: never written, its
-    /// number seeds the entries' slots.
-    seed: u256,
-}
+pub struct StorageMap<K, V> {}
 
 impl<K: StorageKey + Copy, V> PlaceIndex for StorageMap<K, V> {
     const SPACE: AddressSpace = AddressSpace::Storage
     type Key = K
-    type Output = V
+    type Entry = V
 
     #[inline(always)]
-    fn locate(self, _ base: u256, _ key: K, _ width: u256) -> (u256, u256) {
+    fn locate(self, _ root: u256, _ key: K) -> (u256, u256) {
         // keccak256(key ++ slot) - standard Solidity mapping layout
         // Reserve the entire preimage before encoding: key encoders may allocate.
         let key_len = K::encoded_len(key)
         let scratch = ptr::alloc_bytes(key_len + 32)
         let slot = unsafe {
             K::write_key(ptr: scratch, key)
-            mstore(addr: ptr::offset_bytes(scratch, key_len), value: base)
+            mstore(addr: ptr::offset_bytes(scratch, key_len), value: root)
             keccak256(ptr::MemSpan::from_raw_parts(ptr: scratch, len: key_len + 32))
         }
         (slot, 0)
@@ -235,6 +232,7 @@ impl<K: StorageKey + Copy, V> StorageMap<K, V> {
     ///
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses `slot` or the entries' slots.
+    #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
         let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
@@ -256,6 +254,16 @@ impl<K: StorageKey + Copy, V> StorageMap<K, V> {
     #[inline(always)]
     pub fn set(mut self, key: K, value: own V) {
         self[key] = value
+    }
+
+    /// Zeroes the value at `key`: it reads as its type's zero value, as a
+    /// key no one set does. A value holding a storage collection cannot be
+    /// removed, since zeroing its slots would leave the collection's entries.
+    #[inline(always)]
+    pub fn remove(mut self, _ key: K)
+        where V: Clearable
+    {
+        clear_storage(mut self, key)
     }
 }
 

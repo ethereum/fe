@@ -2623,3 +2623,40 @@ pub contract Tracker {
         assert_eq!(count("evm_sstore"), 1, "{ir}");
     });
 }
+
+/// L-09: a mixed-space `Mutex<u256>` passed `mut` crosses as its one root
+/// number, from which the callee derives the transient lock and the storage
+/// value.
+#[test]
+fn mixed_space_mutex_passes_one_root_number() {
+    let source = r#"
+use std::evm::Mutex
+
+fn bump(_ m: mut Mutex<u256>) {
+    assert!(m.try_lock())
+    m.value_mut() += 1
+    m.unlock()
+}
+
+msg Msg {
+    #[selector = 1]
+    Bump,
+}
+
+pub contract C {
+    mut vault: Mutex<u256>,
+
+    recv Msg {
+        Bump uses (mut vault) { bump(mut vault) }
+    }
+}
+"#;
+    with_runtime_package!("mixed_space_mutex.fe", source, |db, package| {
+        let body = runtime_body_for_symbol(&db, package, "bump");
+        assert_eq!(
+            body.signature.params.len(),
+            1,
+            "`bump` should take the mutex's root number alone"
+        );
+    });
+}

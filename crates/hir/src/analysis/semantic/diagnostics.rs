@@ -196,6 +196,7 @@ impl DiagnosticVoucher for SemanticDiagnostic<'_> {
             SemanticDiagnosticKind::YieldViolation => 11,
             SemanticDiagnosticKind::DiscardedWrites => 12,
             SemanticDiagnosticKind::ProjectionRecursion => 13,
+            SemanticDiagnosticKind::RawPlaceViolation => 14,
         };
         let severity = match self.kind {
             SemanticDiagnosticKind::DiscardedWrites => Severity::Warning,
@@ -260,6 +261,10 @@ impl SemanticDiagnosticKind {
             Self::DiscardedWrites => {
                 format!("discarded writes in `fn {}`", checker_name(db, instance))
             }
+            Self::RawPlaceViolation => format!(
+                "invalid `#[raw_place]` projection `fn {}`",
+                checker_name(db, instance)
+            ),
         }
     }
 }
@@ -437,4 +442,6 @@ pub enum SemanticDiagnosticKind {
     ProjectionRecursion,
     /// A warning: writes through a yielded session-owned place are lost.
     DiscardedWrites,
+    /// A `#[raw_place]` projection with something to resume.
+    RawPlaceViolation,
 }

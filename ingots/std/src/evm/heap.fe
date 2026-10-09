@@ -26,8 +26,9 @@
 //!
 //! Heap updates visit `O(log n)` elements. Each element is read or written
 //! in full, so storage accesses also scale with its native storage footprint.
+use core::marker::Clearable
 use core::ops::{Eq, Ord}
-use super::effects::revert_error
+use super::effects::{RawStorage, StorPtr, revert_error}
 use super::storage_map::StorageMap
 
 /// `pop` or `replace` on an empty heap. Selector `0xa6ca772e`, as in
@@ -77,6 +78,22 @@ impl<T: Ord> Ord for Reverse<T> {
 /// its operations reach its items through `self`.
 pub struct StorageHeap<T> { len: u256, items: StorageMap<u256, T> }
 
+impl<T> StorageHeap<T> {
+    /// The heap whose length is stored at `slot`.
+    ///
+    /// The caller must ensure that nothing the compiler allocates, such as a
+    /// contract field, uses `slot` or the items' slots.
+    #[raw_place]
+    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        unsafe {
+            with (ptr) {
+                core::effect_ref::target_mut(ptr)
+            }
+        }
+    }
+}
+
 impl<T> StorageHeap<T> where T: Ord + Copy {
     pub fn len(self) -> u256 {
         self.len
@@ -100,15 +117,18 @@ impl<T> StorageHeap<T> where T: Ord + Copy {
         self.sift_up(index, value)
     }
 
-    /// Removes and returns the smallest element. Reverts with
-    /// `HeapIsEmpty()` if the heap is empty.
-    pub fn pop(mut self) -> T {
+    /// Removes and returns the smallest element, zeroing the slot it vacates.
+    /// Reverts with `HeapIsEmpty()` if the heap is empty.
+    pub fn pop(mut self) -> T
+        where T: Clearable
+    {
         let len = self.len
         if len == 0 {
             revert_error(HeapIsEmpty {})
         }
         let smallest = self.items.get(0)
         let last = self.items.get(len - 1)
+        self.items.remove(len - 1)
         self.len = len - 1
         if len > 1 {
             self.sift_down(0, last)

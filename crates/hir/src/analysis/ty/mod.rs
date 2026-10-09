@@ -1,7 +1,7 @@
 use crate::analysis::ty::diagnostics::BodyDiag;
 use crate::analysis::ty::effects::{ResolvedEffectKey, resolve_effect_key};
 use crate::analysis::ty::trait_resolution::{
-    GoalSatisfiability, PredicateListId, TraitSolveCx, is_goal_satisfiable,
+    GoalSatisfiability, PredicateListId, TraitSolveCx, goal_holds, is_goal_satisfiable,
 };
 use crate::analysis::ty::ty_check::EffectParamOwner;
 use crate::core::adt_lower::lower_adt;
@@ -33,6 +33,7 @@ pub mod adt_def;
 pub mod assoc_const;
 pub mod binder;
 pub mod canonical;
+pub(crate) mod clearable;
 pub(crate) mod closure;
 pub(crate) mod const_check;
 pub mod const_expr;
@@ -56,6 +57,7 @@ pub mod provider;
 pub mod result_space;
 pub(crate) mod scratch;
 pub mod shape;
+pub(crate) mod sol_codec;
 pub(crate) mod subst;
 pub mod trait_def;
 pub mod trait_lower;
@@ -137,13 +139,10 @@ pub fn ty_is_snapshot<'db>(
         return true;
     }
     corelib::resolve_core_trait(db, scope, &["marker", "Snapshot"]).is_some_and(|snapshot| {
-        matches!(
-            is_goal_satisfiable(
-                db,
-                TraitSolveCx::new(db, scope).with_assumptions(assumptions),
-                trait_def::TraitInstId::new_simple(db, snapshot, vec![ty]),
-            ),
-            GoalSatisfiability::Satisfied(_)
+        goal_holds(
+            db,
+            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+            trait_def::TraitInstId::new_simple(db, snapshot, vec![ty]),
         )
     })
 }
@@ -160,13 +159,10 @@ pub fn place_index_tys<'db>(
     let ty = normalize::normalize_ty(db, ty, scope, assumptions);
     let place_index = corelib::resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
     let inst = trait_def::TraitInstId::new_simple(db, place_index, vec![ty]);
-    if !matches!(
-        is_goal_satisfiable(
-            db,
-            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
-            inst,
-        ),
-        GoalSatisfiability::Satisfied(_)
+    if !goal_holds(
+        db,
+        TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+        inst,
     ) {
         return None;
     }
@@ -176,7 +172,7 @@ pub fn place_index_tys<'db>(
             .project_assoc_ty(db, IdentId::new(db, name.to_string()))?;
         Some(normalize::normalize_ty(db, projected, scope, assumptions))
     };
-    Some((assoc("Key")?, assoc("Output")?))
+    Some((assoc("Key")?, assoc("Entry")?))
 }
 
 #[salsa::tracked]
@@ -203,10 +199,7 @@ fn ty_is_copy_query<'db>(
     if !copy_goal_has_possible_impl(db, solve_cx, inst) {
         return false;
     }
-    matches!(
-        is_goal_satisfiable(db, solve_cx, inst),
-        GoalSatisfiability::Satisfied(_)
-    )
+    goal_holds(db, solve_cx, inst)
 }
 
 fn copy_goal_has_possible_impl<'db>(

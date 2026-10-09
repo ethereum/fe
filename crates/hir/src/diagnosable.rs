@@ -399,25 +399,22 @@ impl<'db> Func<'db> {
             .collect()
     }
 
-    /// A storage-only type is never a value: no `own` parameter takes one
+    /// A state-only type is never a value: no `own` parameter takes one
     /// and no function returns one by value.
-    pub fn diags_storage_only_types(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Vec<TyDiagCollection<'db>> {
+    pub fn diags_state_only_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let normalize =
             |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
         let params = self.params(db).filter_map(|param| {
             let ty = normalize(param.ty(db));
             let collection =
-                (param.mode(db) == FuncParamMode::Own).then(|| ty.storage_collection(db))??;
+                (param.mode(db) == FuncParamMode::Own).then(|| ty.pinned_part(db))??;
             Some((param.span().into(), ty, collection, "an `own` parameter"))
         });
         let ret = self
             .return_shape(db)
             .cloned()
             .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))))
-            .storage_only_value(db)
+            .state_only_value(db)
             .map(|(ty, collection)| {
                 (
                     self.span().ret_ty().into(),
@@ -429,7 +426,7 @@ impl<'db> Func<'db> {
         params
             .chain(ret)
             .map(|(span, ty, collection, position)| {
-                TyLowerDiag::StorageOnlyValue {
+                TyLowerDiag::StateOnlyValue {
                     span,
                     ty,
                     collection,
@@ -764,21 +761,37 @@ impl<'db> ImplTrait<'db> {
         })
     }
 
-    /// A storage-only type has no copies.
-    fn diags_storage_only_copy(
+    /// A state-only type has no copies.
+    fn diags_state_only_copy(
         self,
         db: &'db dyn HirAnalysisDb,
         implementor: ImplementorId<'db>,
     ) -> Option<TyDiagCollection<'db>> {
         let ty = implementor.self_ty(db);
         let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
-        let collection = ty.storage_collection(db)?;
+        let collection = ty.pinned_part(db)?;
         (implementor.trait_def(db) == copy).then(|| {
-            TyLowerDiag::StorageOnlyValue {
+            TyLowerDiag::StateOnlyValue {
                 span: self.span().ty().into(),
                 ty,
                 collection,
                 position: "`Copy`",
+            }
+            .into()
+        })
+    }
+
+    fn diags_compiler_implemented_trait(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let clearable =
+            ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Clearable"])?;
+        (implementor.trait_def(db) == clearable).then(|| {
+            ty::diagnostics::ImplDiag::CompilerImplementedTrait {
+                primary: self.span().trait_ref().into(),
+                trait_: clearable,
             }
             .into()
         })
@@ -1824,7 +1837,7 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_param_types(db));
         out.extend(self.diags_return(db));
         out.extend(self.diags_view_types(db));
-        out.extend(self.diags_storage_only_types(db));
+        out.extend(self.diags_state_only_types(db));
         // A result-space annotation names a space.
         if self
             .ret_spaces(db)
@@ -1929,7 +1942,8 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(implementor.diags_method_conformance(db));
         out.extend(self.diags_effect_handle_raw(db, implementor));
         out.extend(self.diags_view_copy(db, implementor));
-        out.extend(self.diags_storage_only_copy(db, implementor));
+        out.extend(self.diags_state_only_copy(db, implementor));
+        out.extend(self.diags_compiler_implemented_trait(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));

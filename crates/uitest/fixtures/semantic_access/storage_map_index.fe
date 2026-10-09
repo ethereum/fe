@@ -1,4 +1,5 @@
-use std::evm::{Address, StorageMap}
+use core::ops::PlaceIndex
+use std::evm::{Address, StorageKey, StorageMap}
 
 // `map[k]` on a storage map is an entry place, a path under the map's place
 // with the key as a dynamic index: an access of it ends at its last use.
@@ -58,4 +59,16 @@ fn read_during_write(_ key: u256) -> u256 uses (store: mut Store) {
     let y = store.counts[key]
     x += 1
     y
+}
+
+fn touch<T>(_ x: mut T) {}
+
+fn touch_entry<C: PlaceIndex>(_ c: mut C, _ key: C::Key) {
+    touch(mut c[key])
+}
+
+// Accepted: an entry of a map whose key type is still generic, reached
+// through a generic collection parameter.
+fn touch_map<K: StorageKey + Copy, V>(_ m: mut StorageMap<K, V>, _ key: K) {
+    touch_entry(mut m, key)
 }

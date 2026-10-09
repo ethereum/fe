@@ -416,6 +416,24 @@ pub fn is_goal_satisfiable<'db>(
     is_goal_query_satisfiable(db, solve_cx, &query)
 }
 
+/// Whether `goal` holds. Answers to a goal without inference variables are
+/// proofs of the one instance, so several of them, as an impl and an
+/// assumption restating its bound give, still decide it; with variables they
+/// may be different instances.
+pub fn goal_holds<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    goal: TraitInstId<'db>,
+) -> bool {
+    match is_goal_satisfiable(db, solve_cx, goal) {
+        GoalSatisfiability::Satisfied(_) => true,
+        GoalSatisfiability::NeedsConfirmation { solutions, .. } => {
+            !solutions.is_empty() && !goal.args(db).iter().any(|ty| ty.has_var(db))
+        }
+        GoalSatisfiability::ContainsInvalid | GoalSatisfiability::UnSat(_) => false,
+    }
+}
+
 /// Checks if the given type is well-formed, i.e., the arguments of the given
 /// type applications satisfies the constraints under the given assumptions.
 #[salsa::tracked]

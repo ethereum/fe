@@ -1,5 +1,6 @@
 use core::effect_ref::{EffectHandle, EffectHandleMut, EffectRef, EffectRefMut}
-use core::ops::PlaceIndex
+use core::ops::{PlaceIndex, clear_storage}
+use core::marker::Clearable
 use core::{ptr, size_of}
 use core::abi::{
     Abi,
@@ -232,23 +233,21 @@ impl<T> TStorPtr<T> {
 
 /// A transient storage cell holding a `T`, kept in a storage struct.
 ///
-/// A `TSlot` is a storage collection: it takes one slot of its container, and
-/// its value lives in transient storage at that slot's number. Storage and
-/// transient contract fields share one slot numbering, so the cell never
-/// overlaps other transient state. `slot[()]` is the value's place.
-#[storage_only]
-pub struct TSlot<T> {
-    seed: u256,
-}
+/// A `TSlot` is a storage collection: it takes one slot number of its
+/// container, and its value lives in transient storage at that number.
+/// Storage and transient contract fields share one slot numbering, so the
+/// cell never overlaps other transient state. `slot[()]` is the value's
+/// place.
+pub struct TSlot<T> {}
 
 impl<T> PlaceIndex for TSlot<T> {
     const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::TransientStorage
     type Key = ()
-    type Output = T
+    type Entry = T
 
     #[inline(always)]
-    fn locate(self, _ base: u256, _ key: (), _ width: u256) -> (u256, u256) {
-        (base, 0)
+    fn locate(self, _ root: u256, _ key: ()) -> (u256, u256) {
+        (root, 0)
     }
 }
 
@@ -263,6 +262,13 @@ impl<T> TSlot<T> {
     /// Writes the value.
     pub fn write(mut self, _ value: own T) {
         self[()] = value
+    }
+
+    /// Zeroes the value.
+    pub fn clear(mut self)
+        where T: Clearable
+    {
+        clear_storage(mut self, ())
     }
 }
 

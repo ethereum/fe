@@ -18,7 +18,8 @@ extern {
     /// word, a lane, has only its own bits cleared.
     ///
     /// The caller must ensure that nothing reads `place` before it is
-    /// written again, or that the all-zero representation is a valid `T`.
+    /// written again, or that the all-zero representation is a valid `T`, as
+    /// it is in storage (`core::ops::clear_storage`).
     pub unsafe fn clear<T>(_ place: mut T)
 
     /// Returns the fixed storage slot offset (in 32-byte slots) for the given contract field

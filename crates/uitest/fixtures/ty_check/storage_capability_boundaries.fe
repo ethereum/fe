@@ -6,7 +6,7 @@ struct Store {
 }
 
 pub fn map_literal(_ store: mut Store) {
-    store.balances = StorageMap { seed: 0 }
+    store.balances = StorageMap {}
 }
 
 // A raw-slot constructor is `unsafe` and needs raw storage authority.
@@ -19,7 +19,7 @@ pub fn raw_map_without_effect() -> u256 {
 }
 
 pub fn tslot_literal(_ slot: mut TSlot<u256>) {
-    slot = TSlot { seed: 0 }
+    slot = TSlot {}
 }
 
 pub fn tslot_write_through_view(slot: TSlot<u256>) {

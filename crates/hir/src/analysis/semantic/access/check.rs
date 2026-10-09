@@ -31,10 +31,10 @@ use crate::{
             },
             get_or_build_semantic_instance,
             normalized::{
-                HandleOrigin, NBlockId, NDataPath, NEffectArg, NEffectArgValue, NExpr, NOperand,
-                NPlace, NPlaceBase, NRootKind, NStatement, NStatementKind, NStructuralPath,
-                NTerminatorKind, NValueDefinition, NValueId, NormalizedBody, ReadMode,
-                access::AccessTarget,
+                HandleOrigin, NBlockId, NDataPath, NDataProjection, NEffectArg, NEffectArgValue,
+                NExpr, NOperand, NPlace, NPlaceBase, NRootKind, NStatement, NStatementKind,
+                NStructuralPath, NTerminatorKind, NValueDefinition, NValueId, NormalizedBody,
+                ReadMode, access::AccessTarget,
             },
         },
         ty::{
@@ -48,7 +48,7 @@ use crate::{
         },
     },
     hir_def::{CallableDef, FuncParamMode, scope_graph::ScopeId},
-    semantic::{EffectRequirementKey, ProviderSource},
+    semantic::{EffectRequirementKey, ProviderSource, storage_field_lanes},
 };
 
 type Diag<'db> = SemanticDiagnostic<'db>;
@@ -420,12 +420,70 @@ impl<'a, 'db> Analysis<'a, 'db> {
             .collect()
     }
 
+    /// Where the path of `place` takes it from `start`, the space of the
+    /// place the path is relative to: the space the innermost pinned type
+    /// (`space(P.f) = pin(F)`) or entry (its collection's `SPACE`) moves it
+    /// into, and whether it crosses a lane.
+    fn path_space(
+        &self,
+        place: &NPlace<'db>,
+        start: Option<ProviderAddressSpace>,
+    ) -> (Option<ProviderAddressSpace>, bool) {
+        let db = self.db;
+        let ty_at = |len| {
+            self.body
+                .place_prefix_ty(db, place, len)
+                .map(|ty| self.instance.normalized_ty(db, ty))
+        };
+        let pin = |ty: Option<TyId<'db>>| ty?.adt_def(db)?.pin(db);
+        let mut moved = pin(ty_at(0));
+        let mut lane = false;
+        for (index, projection) in place.path.as_slice().iter().enumerate() {
+            let Some(container) = ty_at(index) else {
+                break;
+            };
+            match projection {
+                NDataProjection::Entry(_) => {
+                    if let Some(space) = self.instance.place_index_space(db, container) {
+                        moved = Some(space);
+                    }
+                    lane |= self.instance.place_index_lanes(db, container).is_some();
+                }
+                NDataProjection::Field(field)
+                    if matches!(
+                        moved.or(start),
+                        Some(ProviderAddressSpace::Storage | ProviderAddressSpace::Transient)
+                    ) =>
+                {
+                    lane |= storage_field_lanes(db, self.scope, container)
+                        .get(field.0 as usize)
+                        .copied()
+                        .unwrap_or(false);
+                }
+                _ => {}
+            }
+            if let Some(space) = pin(ty_at(index + 1)) {
+                moved = Some(space);
+            }
+        }
+        (moved, lane)
+    }
+
     pub fn resolve(&mut self, place: &NPlace<'db>) -> Resolved {
         let path = self.path(&place.path);
+        let rooted = |this: &Self, base: Base, path: Path| {
+            let (space, lane) = this.path_space(place, this.space(base));
+            AbsPlace {
+                base,
+                path,
+                space,
+                lane,
+            }
+        };
         let (regions, direct) = match place.base {
             NPlaceBase::Root(root) => {
                 let base = self.root_domain[root.index()].map_or(Base::Root(root), Base::Domain);
-                (vec![AbsPlace { base, path }], TokenSet::new())
+                (vec![rooted(self, base, path)], TokenSet::new())
             }
             NPlaceBase::CapabilityTarget { carrier } => {
                 let carrier_ty = self.body.values[carrier.index()].ty;
@@ -433,14 +491,17 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 let mut regions: Vec<AbsPlace> = direct
                     .iter()
                     .flat_map(|token| &self.tokens[*token as usize].regions)
-                    .map(|region| region.extended(&path))
+                    .map(|region| {
+                        let (space, lane) = self.path_space(place, self.grant_space(region));
+                        region.extended(&path, space, lane)
+                    })
                     .collect();
                 if regions.is_empty() || carrier_ty.as_ptr(self.db).is_some() {
                     let base = self
                         .dynamic_handle(carrier_ty)
                         .filter(|_| carrier_ty.as_ptr(self.db).is_none())
                         .map_or(Base::Raw, Base::Domain);
-                    regions = vec![AbsPlace { base, path }];
+                    regions = vec![rooted(self, base, path)];
                 }
                 regions.sort();
                 regions.dedup();
@@ -451,6 +512,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
             regions,
             authority: self.ancestors(&direct),
             direct,
+        }
+    }
+
+    /// The space `region` lies in: its base's, unless a pinned type or an
+    /// entry along its path moved it.
+    pub fn region_space(&self, region: &AbsPlace) -> Option<ProviderAddressSpace> {
+        region.space.or_else(|| self.space(region.base))
+    }
+
+    /// The space a retained grant to `region` lies in: memory for a lane,
+    /// whose grant is a memory copy, else the region's own.
+    pub fn grant_space(&self, region: &AbsPlace) -> Option<ProviderAddressSpace> {
+        if region.lane {
+            Some(ProviderAddressSpace::Memory)
+        } else {
+            self.region_space(region)
         }
     }
 
@@ -1133,8 +1210,107 @@ impl<'a, 'db> Analysis<'a, 'db> {
             }
         }
         self.check_yield_paths()?;
+        self.check_raw_place()?;
         self.check_projection_recursion()?;
         self.check_yields()
+    }
+
+    /// A `#[raw_place]` projection yields a place computed from its inputs,
+    /// with nothing to resume: after each yield it only closes the accesses
+    /// its grant derives from, a session among them is a `#[raw_place]`
+    /// call's, and the place is not one of its own frame.
+    fn check_raw_place(&self) -> Result<(), Diag<'db>> {
+        let owner = self.instance.key(self.db).owner(self.db);
+        let BodyOwner::Func(func) = owner else {
+            return Ok(());
+        };
+        if !func.is_raw_place(self.db) {
+            return Ok(());
+        }
+        let violation = |origin, message: &str| {
+            self.diag(
+                SemanticDiagnosticKind::RawPlaceViolation,
+                origin,
+                message.into(),
+            )
+        };
+        if func.return_shape(self.db).is_none() {
+            return Err(violation(
+                SemOrigin::Body(owner),
+                "a `#[raw_place]` function must be a projection",
+            ));
+        }
+        for block in &self.body.blocks {
+            let NTerminatorKind::Yield { value, resume } = &block.terminator.kind else {
+                continue;
+            };
+            let origin = operand_origin(*value, block.terminator.origin);
+            if self.values[value.value.index()].iter().any(|(token, _)| {
+                self.tokens[*token as usize]
+                    .regions
+                    .iter()
+                    .any(|region| matches!(region.base, Base::Root(_)))
+            }) {
+                return Err(violation(
+                    origin,
+                    "a `#[raw_place]` projection yields a place of its own frame",
+                ));
+            }
+            let mut derived = FxHashSet::default();
+            let mut work = vec![value.value];
+            while let Some(value) = work.pop() {
+                if derived.insert(value)
+                    && let Some((_, expr)) = self.body.defining_expr(value)
+                {
+                    expr.for_each_value_operand(|operand| work.push(operand.value));
+                }
+            }
+            let mut next = resume.block;
+            loop {
+                let data = &self.body.blocks[next.index()];
+                for statement in &data.statements {
+                    let NStatementKind::End { access } = statement.kind else {
+                        return Err(violation(
+                            statement.origin,
+                            "a `#[raw_place]` projection runs no code after its yield",
+                        ));
+                    };
+                    let raw_session = match self.body.defining_expr(access) {
+                        Some((_, NExpr::Call { callee, .. })) => matches!(
+                            callee.key.owner(self.db),
+                            BodyOwner::Func(callee) if callee.is_raw_place(self.db)
+                        ),
+                        _ => true,
+                    };
+                    if !derived.contains(&access) || !raw_session {
+                        // Point at what opened the access rather than its end.
+                        let opened = match self.body.value(access).map(|value| value.definition) {
+                            Some(NValueDefinition::Statement { block, statement }) => {
+                                self.body.blocks[block.index()].statements[statement as usize]
+                                    .origin
+                            }
+                            _ => statement.origin,
+                        };
+                        return Err(violation(
+                            opened,
+                            "a `#[raw_place]` projection keeps no access or session of its own \
+                             open across its yield",
+                        ));
+                    }
+                }
+                match &data.terminator.kind {
+                    NTerminatorKind::Goto(successor) => next = successor.block,
+                    NTerminatorKind::Return(_) => break,
+                    _ => {
+                        return Err(violation(
+                            data.terminator.origin,
+                            "a `#[raw_place]` projection runs no code after its yield",
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Projections are inlined into their callers, so a projection may not
@@ -1561,7 +1737,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 ) = resolved
                     .regions
                     .iter()
-                    .find_map(|region| self.space(region.base))
+                    .find_map(|region| self.region_space(region))
                 {
                     return Err(self.diag(
                         SemanticDiagnosticKind::MoveConflict,
@@ -1639,7 +1815,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
     ) -> Result<(), Diag<'db>> {
         for region in regions {
             if let Some(space @ (ProviderAddressSpace::Calldata | ProviderAddressSpace::Code)) =
-                self.space(region.base)
+                self.region_space(region)
             {
                 return Err(self.diag(
                     SemanticDiagnosticKind::StorageViolation,
@@ -1950,7 +2126,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 .collect();
             for (index, component) in regions.iter().enumerate() {
                 for region in component {
-                    let Some(space) = self.space(region.base) else {
+                    let Some(space) = self.grant_space(region) else {
                         continue;
                     };
                     match spaces[index] {

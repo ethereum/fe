@@ -96,8 +96,8 @@ use crate::analysis::semantic::{
     BlockedInfo, ConstDependency, ConstUsePolicy, CtfeConfig, EffectProviderSubst, EvalOutcome,
     GenericSubst, ImplEnv, RuntimeSizeError, SemConstId, SemConstScalar, SemConstValue, SemOrigin,
     SemanticInstanceKey, const_computation_for_instance, describe_const_computation,
-    eval_body_owner_const, get_or_build_semantic_instance, reify_runtime_const_for_ty,
-    runtime_size_bytes_with_source,
+    eval_body_owner_const, eval_const_instance, get_or_build_semantic_instance,
+    reify_runtime_const_for_ty, runtime_size_bytes_with_source,
 };
 use crate::analysis::ty::ty_def::{ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
@@ -553,7 +553,29 @@ pub(super) fn condition_outcome<'db>(
     owner: BodyOwner<'db>,
     subst: GenericSubst<'db>,
 ) -> ConditionOutcome<'db> {
-    match eval_body_owner_const(db, owner, subst) {
+    condition_outcome_from(db, owner, eval_body_owner_const(db, owner, subst))
+}
+
+/// `condition_outcome` with `impl_env` deciding the impls `subst` selects:
+/// a substitution that mentions a caller's parameters selects impls under
+/// the caller's assumptions.
+pub(super) fn condition_outcome_in<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: BodyOwner<'db>,
+    subst: GenericSubst<'db>,
+    impl_env: ImplEnv<'db>,
+) -> ConditionOutcome<'db> {
+    let key = SemanticInstanceKey::new(db, owner, subst, EffectProviderSubst::empty(db), impl_env);
+    let outcome = eval_const_instance(db, get_or_build_semantic_instance(db, key));
+    condition_outcome_from(db, owner, outcome)
+}
+
+fn condition_outcome_from<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: BodyOwner<'db>,
+    outcome: EvalOutcome<'db, SemConstId<'db>>,
+) -> ConditionOutcome<'db> {
+    match outcome {
         EvalOutcome::Ready(value) => match static_assert_bool_value(db, value) {
             Some(true) => ConditionOutcome::True,
             Some(false) => ConditionOutcome::False,
@@ -5859,7 +5881,7 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
                 Some(PatBindingMode::Access { .. })
             )
         {
-            self.check_storage_only_value(ty, span.clone().into(), "bound by value");
+            self.check_state_only_value(ty, span.clone().into(), "bound by value");
         }
 
         walk_pat(self, ctxt, pat)
@@ -5915,7 +5937,7 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
             Expr::RecordInit(..) => {
                 let ty = self.body.expr_prop(self.db, expr).ty;
                 self.check_view_construction(ty, ctxt.span().unwrap().into());
-                self.check_storage_only_value(
+                self.check_state_only_value(
                     ty,
                     ctxt.span().unwrap().into(),
                     "constructed as a value",
@@ -5924,7 +5946,7 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
             Expr::Call(..) | Expr::MethodCall(..) => {
                 if let Some(callable) = self.body.callable_expr(expr).cloned() {
                     self.check_view_call(&callable, expr, ctxt.span().unwrap().into());
-                    self.check_storage_only_call(&callable, expr, ctxt.span().unwrap().into());
+                    self.check_state_only_call(&callable, expr, ctxt.span().unwrap().into());
                 }
             }
             _ => {}
@@ -6072,15 +6094,15 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
     }
 
-    /// A storage-only type is never a value: it lives at its storage place.
-    fn check_storage_only_value(
+    /// A state-only type is never a value: it lives at its storage place.
+    fn check_state_only_value(
         &mut self,
         ty: TyId<'db>,
         span: DynLazySpan<'db>,
         position: &'static str,
     ) {
-        if let Some(collection) = ty.storage_collection(self.db) {
-            let diag = TyLowerDiag::StorageOnlyValue {
+        if let Some(collection) = ty.pinned_part(self.db) {
+            let diag = TyLowerDiag::StateOnlyValue {
                 span,
                 ty,
                 collection,
@@ -6090,10 +6112,10 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
     }
 
-    /// A call constructing a storage-only value, or instantiating its callee
-    /// so that a storage-only value would pass through an `own` parameter or
+    /// A call constructing a state-only value, or instantiating its callee
+    /// so that a state-only value would pass through an `own` parameter or
     /// an owned return.
-    fn check_storage_only_call(
+    fn check_state_only_call(
         &mut self,
         callable: &Callable<'db>,
         expr: ExprId,
@@ -6102,12 +6124,12 @@ impl<'db> TyCheckerFinalizer<'db> {
         let db = self.db;
         if let CallableDef::VariantCtor(_) = callable.callable_def {
             let ty = self.body.expr_prop(db, expr).ty;
-            return self.check_storage_only_value(ty, span, "constructed as a value");
+            return self.check_state_only_value(ty, span, "constructed as a value");
         }
         // A callee's declared signature is checked where it is declared.
         let def = callable.callable_def;
         if callable.generic_args().is_empty()
-            || matches!(def, CallableDef::Func(func) if !func.diags_storage_only_types(db).is_empty())
+            || matches!(def, CallableDef::Func(func) if !func.diags_state_only_types(db).is_empty())
         {
             return;
         }
@@ -6122,16 +6144,16 @@ impl<'db> TyCheckerFinalizer<'db> {
             })
             .find_map(|(mode, ty)| {
                 (mode == FuncParamMode::Own)
-                    .then(|| ty.storage_collection(db).map(|collection| (ty, collection)))?
+                    .then(|| ty.pinned_part(db).map(|collection| (ty, collection)))?
             })
             .or_else(|| {
                 let ret = callable
                     .ret_shape(db)
                     .unwrap_or_else(|| Shape::Owned(callable.ret_ty(db)));
-                normalize_ty(db, ret, scope, assumptions).storage_only_value(db)
+                normalize_ty(db, ret, scope, assumptions).state_only_value(db)
             });
         if let Some((ty, collection)) = value {
-            let diag = TyLowerDiag::StorageOnlyValue {
+            let diag = TyLowerDiag::StateOnlyValue {
                 span,
                 ty,
                 collection,

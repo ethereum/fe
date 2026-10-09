@@ -784,6 +784,7 @@ mod tests {
             &db,
             LayoutKey::Struct(StructLayout {
                 fields: Box::new([]),
+                pinned: false,
             }),
         );
         for stored in [

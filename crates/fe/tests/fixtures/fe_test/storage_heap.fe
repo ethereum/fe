@@ -3,9 +3,10 @@
 // order, bounded top-k queues and the empty-heap error.
 
 use core::error::ErrorVariant
+use core::keccak
 use core::ops::{Eq, Ord}
 use std::abi::Sol
-use std::evm::{Address, Evm}
+use std::evm::{Address, Evm, RawStorage}
 use std::evm::heap::{Enqueued, HeapIsEmpty, Reverse, StorageHeap}
 use std::evm::returndata::is_error
 
@@ -412,3 +413,22 @@ fn orders_preserve_full_width_fields() uses (evm: mut Evm) {
     assert(second.0 == large && second.1 == large + 1)
     assert(third.0 == large && third.1 == large + 2)
 }
+
+fn load(_ slot: u256) -> u256 uses (storage: RawStorage) {
+    unsafe { storage.sload(slot) }
+}
+
+#[test]
+fn pop_zeroes_the_vacated_slot() uses (evm: mut Evm) {
+    with (RawStorage = evm) {
+        let heap = unsafe { StorageHeap<u256>::at(20) }
+        heap.push(5)
+        heap.push(3)
+        heap.push(9)
+        assert(heap.pop() == 3)
+        assert(heap.len() == 2)
+        // The items lie at `keccak256(i ++ 21)`: the third is vacated.
+        assert(load(keccak((2 as u256, 21 as u256))) == 0)
+    }
+}
+

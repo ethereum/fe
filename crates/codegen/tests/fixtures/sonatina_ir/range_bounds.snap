@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 416
+assertion_line: 388
 expression: output
 input_file: crates/codegen/tests/fixtures/range_bounds.fe
 ---
@@ -96,12 +96,12 @@ func private %sum_const() -> i256 {
     block2:
         v26.i256 = phi (0.i256 block5) (v18 block6);
         v5.i256 = phi (v11 block5) (v13 block6);
-        v6.@layout_0 = call %next v5;
         obj.store v0 v5;
         jump block8;
 
     block3:
-        v8.i1 = enum.is_variant v6 #variant_0;
+        v7.@layout_0 = call %next v5;
+        v8.i1 = enum.is_variant v7 #variant_0;
         br v8 block6 block4;
 
     block4:
@@ -113,7 +113,7 @@ func private %sum_const() -> i256 {
         jump block2;
 
     block6:
-        v13.i256 = enum.extract v6 #variant_0 0.i256;
+        v13.i256 = enum.extract v7 #variant_0 0.i256;
         jump block2;
 
     block7:

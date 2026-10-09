@@ -53,7 +53,7 @@ use crate::{
         RuntimeInterfaceSignature, RuntimeLocalRoot, RuntimePlace, RuntimeProviderBinding,
         RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole, VariantId,
         code_region::runtime_code_region_for_semantic_ref,
-        layout_utils::{RuntimeMemoryLayout, storage_element_width},
+        layout_utils::RuntimeMemoryLayout,
         package::{LowerError, generated_call_error, runtime_instance_for_semantic},
         synthetic::uint_scalar,
     },
@@ -5325,7 +5325,7 @@ impl<'db> RmirEmitter<'db> {
     }
 
     /// The element at `key` of the collection at `collection`, of type
-    /// `collection_ty`: at the slot and offset the collection's
+    /// `collection_ty`: at the slot and bit offset the collection's
     /// `PlaceIndex::locate` computes from the collection's own slot, in the
     /// space the collection keeps its elements in. An element the collection
     /// packs into a lane is that lane; any other is a reference at its slot.
@@ -5351,23 +5351,13 @@ impl<'db> RmirEmitter<'db> {
             self.lower_place_addr_of_for_class(collection_ty, bb, collection, receiver_class);
         let base = self.coerce_value(bb, receiver, &word);
         let key = self.read_normalized_value(bb, key);
-        let width = lanes.map_or_else(
-            || {
-                storage_element_width(
-                    self.db,
-                    &stored_class_for_ty_in_env(self.db, self.env, element_ty),
-                )
-            },
-            |lanes| u64::from(lanes.bits / 8),
-        );
-        let width = self.alloc_word_const(bb, width);
         let locate = self.resolve_core_method(
             &["ops", "PlaceIndex"],
             "locate",
             vec![collection_ty],
             collection_ty,
         );
-        let location = self.call_generated(bb, locate, &[receiver, base, key, width]);
+        let location = self.call_generated(bb, locate, &[receiver, base, key]);
         let mut coordinate = |index| {
             let value = self.alloc_runtime_temp(word_ty, RuntimeCarrier::Value(word.clone()));
             self.push_stmt(

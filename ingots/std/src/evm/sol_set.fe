@@ -27,7 +27,6 @@ use super::storage_map::StorageMap
 
 // Each element is stored as its `SolPacked` bits in a full word, which is
 // `bytes32(uint256(uint160(a)))` for an address, like OZ.
-#[storage_only]
 pub struct SolEnumerableSet<T> {
     values: SolArray<u256>,
     positions: StorageMap<u256, u256>,
@@ -68,6 +67,7 @@ impl<T: SolPacked> SolEnumerableSet<T> {
     ///
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses the slots the set occupies or derives.
+    #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
         let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
@@ -144,7 +144,19 @@ impl<T: SolPacked> SolEnumerableSet<T> {
             self.positions[last_word] = position
         }
         self.values.pop()
-        self.positions[word] = 0
+        self.positions.remove(word)
         true
+    }
+
+    /// Removes every element.
+    pub fn clear(mut self) {
+        let len = self.values.len()
+        let mut i: u256 = 0
+        while i < len {
+            let word = self.values[i]
+            self.positions.remove(word)
+            i += 1
+        }
+        self.values.clear()
     }
 }

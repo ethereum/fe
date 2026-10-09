@@ -2,26 +2,32 @@ use core::effect_ref::AddressSpace
 use core::ops::PlaceIndex
 use core::option::Option
 
+use super::effects::{RawStorage, StorPtr}
 use super::sol_slot::data_slot
 
 const U256_MASK: u256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
-/// A storage-backed packed array of fixed-bit-width integer lanes.
+/// A storage-backed packed array of fixed-bit-width integer lanes, indexed
+/// by any `u256`, with no length: a packed map of small integers.
 ///
-/// Multiple lanes are packed into each 256-bit storage slot, and consecutive
-/// indices live in consecutive slots — so this is only meaningful for dense
-/// integer indices (token IDs, user IDs, order IDs, sequence positions).
-/// Passing addresses or hashes as `i` would spread one value per slot and
-/// is strictly worse than `StorageMap`.
+/// Index `i` is lane `i % (256 / BITS)` of word `i / (256 / BITS)`, and word
+/// `w` lies at `keccak256(slot) + w`, from the array's slot on like a Solidity
+/// dynamic array's data. Consecutive indices share words, so dense integer
+/// indices (token IDs, user IDs, order IDs, sequence positions) pack well;
+/// addresses or hashes would take a word each and belong in a `StorageMap`.
+/// Every index reads as zero until it is set.
+///
+/// The words have no bound: the indices reach `BITS / 256` of all storage
+/// from `keccak256(slot)` on, which can include another field's slots or a
+/// map's entries. Keep indices in a range the contract controls rather than
+/// passing an untrusted `u256` through.
 ///
 /// `BITS` must be a power of two that divides 256 — one of
 /// 1, 2, 4, 8, 16, 32, 64, 128. The constraint is enforced at compile time
 /// via `PackedBits<BITS>: ValidPackedBits`; invalid widths fail type-checking
 /// with a "trait bound is not satisfied" error.
 ///
-/// The array lives at its storage place, which takes one slot, and its lanes
-/// are stored from `keccak256(slot)` on, a region of the slot space that is
-/// effectively collision-free with any other storage. A
+/// The array lives at its storage place, which takes one slot. A
 /// `StoragePackedArray` in a contract field, a struct or a map value is its
 /// own array.
 ///
@@ -37,27 +43,23 @@ const U256_MASK: u256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffff
 ///     store.order_status.set(42, 1)
 /// }
 /// ```
-#[storage_only]
 pub struct StoragePackedArray<const BITS: u256> {
     words: PackedWords,
 }
 
 /// The words of a packed array: word `w` of the array whose place starts at
 /// slot `s` is at `keccak256(s) + w`.
-#[storage_only]
-struct PackedWords {
-    seed: u256,
-}
+struct PackedWords {}
 
 impl PlaceIndex for PackedWords {
     const SPACE: AddressSpace = AddressSpace::Storage
     type Key = u256
-    type Output = u256
+    type Entry = u256
 
     #[arithmetic(unchecked)]
     #[inline(always)]
-    fn locate(self, _ base: u256, _ word: u256, _ width: u256) -> (u256, u256) {
-        (data_slot(base) + word, 0)
+    fn locate(self, _ root: u256, _ word: u256) -> (u256, u256) {
+        (data_slot(root) + word, 0)
     }
 }
 
@@ -91,6 +93,20 @@ impl<const BITS: u256> StoragePackedArray<BITS>
 
     /// Mask covering the low `BITS` bits of a lane.
     const LANE_MASK: u256 = (1 << BITS) - 1
+
+    /// The array whose slot is `slot`.
+    ///
+    /// The caller must ensure that nothing the compiler allocates, such as a
+    /// contract field, uses `slot` or the words' slots.
+    #[raw_place]
+    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        unsafe {
+            with (ptr) {
+                core::effect_ref::target_mut(ptr)
+            }
+        }
+    }
 
     /// Read the lane at index `i`. Returns the lane value zero-extended to `u256`.
     #[arithmetic(unchecked)]

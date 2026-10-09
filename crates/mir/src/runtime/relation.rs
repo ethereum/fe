@@ -279,6 +279,7 @@ mod tests {
             db,
             LayoutKey::Struct(StructLayout {
                 fields: vec![RuntimeClass::raw_addr(db, AddressSpaceKind::Memory, target)].into(),
+                pinned: false,
             }),
         )
     }

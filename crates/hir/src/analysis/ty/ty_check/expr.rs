@@ -490,6 +490,34 @@ impl<'db> TyChecker<'db> {
         if !shapes.iter().any(|shape| !matches!(shape, Shape::Owned(_))) {
             return None;
         }
+        // Access components are places or calls of `#[raw_place]`
+        // projections, which keep nothing for after their yield.
+        for (elem, shape) in elems.iter().zip(&shapes) {
+            if matches!(shape, Shape::Owned(_)) {
+                continue;
+            }
+            let mut call = *elem;
+            while let Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) =
+                self.env.expr_data(call)
+            {
+                call = *inner;
+            }
+            if matches!(
+                self.env.expr_data(call),
+                Partial::Present(Expr::Call(..) | Expr::MethodCall(..))
+            ) && let Some(CallableDef::Func(func)) = self
+                .env
+                .callable_expr(call)
+                .map(|callable| callable.callable_def)
+                && !func.is_raw_place(self.db)
+                && let Some(callee) = func.name(self.db).to_opt()
+            {
+                self.push_diag(BodyDiag::UnsafeSplitOperand {
+                    primary: elem.span(self.body()).into(),
+                    callee,
+                });
+            }
+        }
         for elem in elems {
             self.consume_access(elem);
         }

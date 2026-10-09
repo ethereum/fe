@@ -1149,6 +1149,18 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
     fn lower_const_ref(&mut self, expr: ExprId, const_ref: ConstRef<'db>) -> SValueId {
         let ty = self.expr_ty(expr);
+        // A constant is selected in the instance's environment: the bounds its
+        // use was checked under, once substituted, may hold only by the bounds
+        // of the context the instance was made for.
+        let const_ref = match const_ref {
+            ConstRef::TraitConst(use_) => {
+                ConstRef::TraitConst(use_.with_env(use_.origin_scope(), self.assumptions))
+            }
+            ConstRef::InherentConst(use_) => {
+                ConstRef::InherentConst(use_.with_env(use_.origin_scope(), self.assumptions))
+            }
+            ConstRef::Const(_) => const_ref,
+        };
         if let Some(const_ref) =
             resolve_semantic_const_ref(self.db, const_ref, ty, SemOrigin::Expr(expr))
         {
@@ -1976,8 +1988,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// Lowers `for pat in base by d { body }` to the protocol its plan
     /// selects: the collection's own, or the driver's. Each state is tested
     /// where it is produced, so only the state itself is carried around the
-    /// loop; the next state is taken before the body, and `continue` goes
-    /// straight to its test.
+    /// loop. The next state is taken at the latch, after the body and its
+    /// element's cleanup, which is where `continue` goes; `break` leaves
+    /// without advancing.
     fn lower_for(&mut self, stmt: StmtId, pat: PatId, body_expr: ExprId) {
         let sites = self
             .for_loop_call_sites
@@ -2092,8 +2105,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             has_reachable_continue: false,
         });
         self.switch_to(body_bb);
-        let args = with_state(self, state);
-        let next = call(self, ForLoopStep::Next, args, option_ty);
         let mut at_args = with_state(self, state);
         // `produce` advances the driver through a `mut` access.
         if let (Some(temp), Some(driver)) = (driver, plan.driver)
@@ -2163,11 +2174,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let scope = self.loop_stack.pop().expect("for loop scope");
         if falls_through || scope.has_reachable_continue {
             self.switch_to(latch_bb);
+            let args = with_state(self, state);
+            let next = call(self, ForLoopStep::Next, args, option_ty);
             test(self, next);
         } else {
             // Every body path leaves the loop, so nothing reaches the latch.
-            // Close it like a dead `if`/`match` join rather than leaving it to
-            // read `next` from a block unreachable from entry.
+            // Close it like a dead `if`/`match` join.
             self.set_synthetic_terminator(latch_bb, STerminatorKind::Goto(latch_bb));
         }
         self.switch_to(exit_bb);

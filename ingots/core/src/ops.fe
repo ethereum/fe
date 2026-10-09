@@ -1,3 +1,5 @@
+use ingot::marker::Clearable
+
 pub trait Add<T = Self> {
     type Output = Self
 
@@ -200,34 +202,56 @@ pub trait Ord<T = Self> {
 /// the element at `k` with no call, a path that the access checker sees as
 /// `c` indexed by a dynamic key, and `c[k].f = v` writes one field. A
 /// collection implements it by saying where an element lives; the compiler
-/// calls `locate` when it addresses the element.
+/// calls `locate` once when it opens an access to the element.
+///
+/// A state `SPACE` (storage or transient storage) pins the implementor: it
+/// lives at one number in that space, its region is its own fields at that
+/// number together with every location `locate` returns, and a type holding
+/// it is state-only. An implementor with `SPACE` memory is an ordinary value.
+/// `locate` must return locations within that region, and distinct keys
+/// separated lanes; the compiler trusts it to.
 pub trait PlaceIndex {
     /// The address space the elements live in, wherever the collection is.
     const SPACE: ingot::effect_ref::AddressSpace
+    /// The index operand, evaluated once and retained by the access.
     type Key: Copy
-    type Output
+    /// The element's type.
+    type Entry
     /// The codec of elements packed into lanes: an element is a lane of
-    /// `Lanes::BITS` bits when `Lanes: LaneCodec<Output>` with `BITS` at most
+    /// `Lanes::BITS` bits when `Lanes: LaneCodec<Entry>` with `BITS` at most
     /// 128, and otherwise keeps its type's storage layout. `()` packs none.
     type Lanes = ()
 
-    /// The slot holding the element at `key` of the collection whose place
-    /// starts at slot `base`, and the element's byte offset within that slot.
-    /// `width` is the element's size in storage: a lane's bytes, else 32
-    /// bytes per slot the element's storage layout spans.
-    fn locate(self, _ base: u256, _ key: Self::Key, _ width: u256) -> (u256, u256)
+    /// The location in `SPACE` of the element at `key` of the collection
+    /// rooted at `root`, and the element's bit offset within that word.
+    /// It declares no effects: it may read the collection's own region, such
+    /// as a length to check `key` against, and nothing else.
+    fn locate(self, _ root: u256, _ key: Self::Key) -> (u256, u256)
+}
+
+/// Zeroes the element at `key` of a collection whose elements live in a
+/// space that starts zeroed: its slots, or only its bits of a slot it shares.
+/// The element reads as its type's zero value, which in such a space every
+/// type has. The element must be `Clearable`: one holding a storage
+/// collection is not cleared by zeroing its own slots.
+pub fn clear_storage<C: PlaceIndex>(_ collection: mut C, _ key: C::Key)
+    where C::SPACE.starts_zeroed(), C::Entry: Clearable
+{
+    unsafe { ingot::intrinsic::clear(mut collection[key]) }
 }
 
 /// How a place-indexed collection encodes an element it packs into a lane:
-/// `BITS` bits of a storage word, `offset` bytes above its low end, shared
+/// `BITS` bits of a storage word, `offset` bits above its low end, shared
 /// with the neighbouring elements. Reading the element loads the word and
 /// decodes it with `get`; writing it stores the word `set` returns, so only
-/// the element's bits change.
+/// the element's bits change. A `BITS` above 128 packs nothing: the element
+/// takes whole words, `BITS / 256` rounded up, which a collection's `locate`
+/// may read to step from one element to the next.
 pub trait LaneCodec<T> {
     const BITS: u256
-    /// The element in `word`'s lane at `offset`.
+    /// The element in `word`'s lane at bit `offset`.
     fn get(_ word: u256, offset: u256) -> T
-    /// `word` with its lane at `offset` holding `value`.
+    /// `word` with its lane at bit `offset` holding `value`.
     fn set(_ word: u256, offset: u256, value: own T) -> u256
 }
 
