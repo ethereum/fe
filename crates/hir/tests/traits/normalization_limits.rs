@@ -877,3 +877,28 @@ fn a_chain_of_where_clauses_on_projections_is_checked_quickly() {
         start.elapsed()
     );
 }
+
+#[test]
+fn nested_families_report_limits_without_expanding_shared_normal_arguments() {
+    for depth in [4, 6, 8, 12] {
+        let mut receiver = "Base".to_owned();
+        for _ in 0..depth {
+            receiver = format!("Wrap<{receiver}>");
+        }
+        let source = format!(
+            "trait Tr {{ type Out<T> }}\n\
+             struct Base {{}}\nstruct Wrap<U> {{}}\n\
+             impl Tr for Base {{ type Out<T> = T }}\n\
+             impl<U: Tr> Tr for Wrap<U> {{ type Out<T> = <U as Tr>::Out<(T, T)> }}\n\
+             type W = {receiver}\n\
+             fn nested(_ x: <W as Tr>::Out<<W as Tr>::Out<u8>>) {{}}\n"
+        );
+        let mut db = HirAnalysisTestDb::default();
+        let actual = codes(&mut db, &source);
+        if depth < 8 {
+            assert!(actual.is_empty(), "depth {depth}: {actual:?}");
+        } else {
+            assert_eq!(actual, ["3-0058"], "depth {depth}");
+        }
+    }
+}
