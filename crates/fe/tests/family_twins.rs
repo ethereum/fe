@@ -88,6 +88,57 @@ fn a_family_program_behaves_like_its_plain_twin() {
     assert!(differing.is_empty(), "{}", differing.join("\n"));
 }
 
+/// An associated type defined with a kind other than the declared one is
+/// reported where it is defined, and its uses, generic or concrete, do not
+/// crash.
+#[test]
+fn a_definition_of_another_kind_is_reported_where_it_is_written() {
+    let cases = [
+        "trait Factory { type Ctor: * -> * }
+struct B {}
+impl Factory for B { type Ctor = u8 }
+fn g<F: Factory>(_ x: <F as Factory>::Ctor<u8>) {}
+fn h() { g<B>(1) }",
+        "trait Factory { type Ctor: * -> * }
+struct B {}
+impl Factory for B { type Ctor = u8 }
+fn f(_ x: <B as Factory>::Ctor<u8>) -> u8 { x }",
+        "trait Factory { type Ctor<T>: * -> * }
+struct B {}
+impl Factory for B { type Ctor<T> = (T, T) }
+fn g<F: Factory>(_ x: <F as Factory>::Ctor<bool, u8>) {}
+fn h() { g<B>(1) }",
+        "trait Factory { type Ctor<T>: * -> * }
+struct B {}
+impl Factory for B { type Ctor<T> = (T, T) }
+fn f(_ x: <B as Factory>::Ctor<bool, u8>) -> u8 { 1 }",
+        "trait Factory { type Ctor: * -> * }
+struct B {}
+impl Factory for B { type Ctor = u8 }",
+        "struct Box<T> { t: T }
+trait Factory { type Out<T> }
+struct B {}
+impl Factory for B { type Out<T> = Box }
+fn f(_ x: B::Out<u8>) {}",
+        "trait Factory { type Ctor: * -> * = u16 }
+struct B {}
+impl Factory for B {}",
+    ];
+    let dir = std::env::temp_dir().join(format!("fe-family-kind-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut wrong = Vec::new();
+    for (idx, source) in cases.iter().enumerate() {
+        let path = dir.join(format!("case{idx}.fe"));
+        std::fs::write(&path, source).unwrap();
+        let outcome = outcome(&path);
+        if outcome != "check 1: error[3-0065]" {
+            wrong.push(format!("{source}\n  gives {outcome}"));
+        }
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n\n"));
+}
+
 /// A struct or enum generic over a factory stores, once instantiated, the
 /// types its fields name: every program in `fixtures/family_passes` checks
 /// and its tests pass at both optimization levels.

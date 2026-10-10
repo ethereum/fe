@@ -228,6 +228,13 @@ pub enum TyLowerDiag<'db> {
     },
     /// A default on a type parameter of an associated type.
     AssocTypeParamDefault(DynLazySpan<'db>),
+    /// An associated type's default or definition whose kind is not the
+    /// declared one.
+    AssocTypeKindMismatch {
+        span: DynLazySpan<'db>,
+        expected: Kind,
+        given: TyId<'db>,
+    },
 
     NonTrailingDefaultGenericParam(LazyGenericParamSpan<'db>),
 
@@ -373,6 +380,7 @@ impl TyLowerDiag<'_> {
             Self::InvalidAssocTypeBound { .. } => 62,
             Self::AssocTypeNeedsAllArgs { .. } => 63,
             Self::AssocTypeParamDefault(_) => 64,
+            Self::AssocTypeKindMismatch { .. } => 65,
             Self::MixedRefSelfPrefixWithExplicitType { .. } => 28,
             Self::MixedOwnSelfPrefixWithExplicitType { .. } => 29,
             Self::InvalidMutSelfPrefixWithExplicitType { .. } => 30,

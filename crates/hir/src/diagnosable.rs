@@ -878,6 +878,17 @@ impl<'db> Trait<'db> {
             let Some(hir_ty) = assoc.default_hir_ty(db) else {
                 continue;
             };
+            if let Some(expected) = assoc.assoc_owner().body_kind_mismatch(db, default_ty) {
+                diags.push(
+                    TyLowerDiag::AssocTypeKindMismatch {
+                        span: assoc.span().ty().into(),
+                        expected,
+                        given: default_ty,
+                    }
+                    .into(),
+                );
+                continue;
+            }
             let assumptions = assoc.with_parameter_bounds(db, assumptions);
             let is_family = !assoc.generic_params(db).data(db).is_empty();
             let written = if is_family {

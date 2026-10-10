@@ -4945,6 +4945,16 @@ impl<'db> ImplAssocTypeView<'db> {
         if let Some(diag) = ty.emit_diag(db, ty_span.clone().into()) {
             return vec![diag];
         }
+        if let Some(expected) = self.assoc_owner().body_kind_mismatch(db, ty) {
+            return vec![
+                TyLowerDiag::AssocTypeKindMismatch {
+                    span: ty_span.into(),
+                    expected,
+                    given: ty,
+                }
+                .into(),
+            ];
+        }
         // A definition is a written type, checked where it is written, with
         // the impl's parameters, and a family's own, kept abstract as a
         // function signature's are: a limit found this way comes from a
@@ -5004,9 +5014,44 @@ impl<'db> AssocTypeOwner<'db> {
             .collect()
     }
 
-    /// `body`, a type written over these parameters, kept as a family of them.
+    /// `body`, a type written over these parameters, kept as a family of
+    /// them. A body whose kind is not the declared one (see
+    /// [`Self::body_kind_mismatch`]) is reported where it is written and
+    /// stands for an invalid type, so its uses are not reported again.
     pub(crate) fn bind_body(self, db: &'db dyn HirAnalysisDb, body: TyId<'db>) -> TyId<'db> {
+        if self.body_kind_mismatch(db, body).is_some() {
+            return TyId::invalid(db, InvalidCause::Other);
+        }
         TyId::type_family(db, self, body)
+    }
+
+    /// The kind the trait declares for this associated type once its own
+    /// parameters are applied: `*` unless a kind is written.
+    pub(crate) fn declared_result_kind(self, db: &'db dyn HirAnalysisDb) -> Kind {
+        let declaration = match self {
+            Self::Trait(trait_, idx) => Some(trait_.assoc_ty_by_index(db, idx as usize)),
+            Self::Impl(impl_, idx) => impl_
+                .types(db)
+                .get(idx as usize)
+                .and_then(|definition| definition.name.to_opt())
+                .and_then(|name| impl_.trait_def(db)?.assoc_ty(db, name)),
+        };
+        declaration
+            .and_then(|declaration| {
+                crate::analysis::ty::ty_lower::lower_kind_in_bounds(&declaration.bounds)
+            })
+            .unwrap_or(Kind::Star)
+    }
+
+    /// The declared kind, if `body`, the written default or definition, has
+    /// another one. Such a body is reported where it is written.
+    pub(crate) fn body_kind_mismatch(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        body: TyId<'db>,
+    ) -> Option<Kind> {
+        let expected = self.declared_result_kind(db);
+        (!body.has_invalid(db) && !body.kind(db).does_match(&expected)).then_some(expected)
     }
 
     /// The trait's declaration of this associated type, with the trait

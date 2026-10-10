@@ -2775,6 +2775,21 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 span.resolve(db),
                 error_code,
             ),
+            Self::AssocTypeKindMismatch {
+                span,
+                expected,
+                given,
+            } => primary_diag(
+                Severity::Error,
+                "associated type does not have the declared kind",
+                format!(
+                    "expected `{expected}` kind, but `{}` has `{}` kind",
+                    given.pretty_print(db),
+                    given.kind(db)
+                ),
+                span.resolve(db),
+                error_code,
+            ),
             Self::AssocTypeConstParam(span) => primary_diag(
                 Severity::Error,
                 "associated types cannot have const parameters",
