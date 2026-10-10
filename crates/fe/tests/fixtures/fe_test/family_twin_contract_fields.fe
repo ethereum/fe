@@ -1,0 +1,81 @@
+// Contract fields typed through an associated type with a parameter store
+// and load as the same fields typed through a plain associated type.
+use std::evm::{Evm, StorageMap}
+
+struct Store<T> {
+    a: T,
+    b: T,
+}
+
+trait Family {
+    type S<T>
+    type Map<V>
+    type Val<V>
+}
+
+trait Plain {
+    type PlainS
+    type PlainMap
+    type PlainVal
+}
+
+struct Fac {}
+
+impl Family for Fac {
+    type S<T> = Store<T>
+    type Map<V> = StorageMap<u256, V>
+    type Val<V> = V
+}
+
+impl Plain for Fac {
+    type PlainS = Store<u256>
+    type PlainMap = StorageMap<u256, u256>
+    type PlainVal = u256
+}
+
+msg M {
+    #[selector = 1]
+    Set { key: u256, value: u256 },
+    #[selector = 2]
+    FamilyRead { key: u256 } -> u256,
+    #[selector = 3]
+    PlainRead { key: u256 } -> u256,
+}
+
+pub contract C {
+    mut fs: Fac::S<u256>,
+    mut ps: Fac::PlainS,
+    mut fm: Fac::Map<u256>,
+    mut pm: Fac::PlainMap,
+    mut fv: StorageMap<u256, Fac::Val<u256>>,
+    mut pv: StorageMap<u256, Fac::PlainVal>,
+
+    recv M {
+        Set { key, value } uses (mut fs, mut ps, mut fm, mut pm, mut fv, mut pv) {
+            fs.a = value
+            fs.b = value + 1
+            ps.a = value
+            ps.b = value + 1
+            fm.set(key: key, value: value + 2)
+            pm.set(key: key, value: value + 2)
+            fv.set(key: key, value: value + 3)
+            pv.set(key: key, value: value + 3)
+        }
+        FamilyRead { key } -> u256 uses (fs, fm, fv) {
+            fs.a + fs.b * 10 + fm.get(key: key) * 100 + fv.get(key: key) * 1000
+        }
+        PlainRead { key } -> u256 uses (ps, pm, pv) {
+            ps.a + ps.b * 10 + pm.get(key: key) * 100 + pv.get(key: key) * 1000
+        }
+    }
+}
+
+#[test]
+fn family_fields_store_like_plain_fields() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    evm.call(addr: c, gas: 1000000, value: 0, message: M::Set { key: 7, value: 1 })
+    let family: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: M::FamilyRead { key: 7 })
+    let plain: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: M::PlainRead { key: 7 })
+    assert!(family == plain)
+    assert!(plain == 1 + 20 + 300 + 4000)
+}

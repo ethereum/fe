@@ -1,0 +1,55 @@
+// A struct field typed through an associated type with a parameter whose
+// definition is an array is indexed as the same field typed plainly.
+trait Family {
+    type Arr<T>
+}
+
+trait Plain {
+    type PlainArr
+}
+
+struct Fac {}
+
+impl Family for Fac {
+    type Arr<T> = [T; 3]
+}
+
+impl Plain for Fac {
+    type PlainArr = [u256; 3]
+}
+
+struct FamilyRec {
+    a: Fac::Arr<u256>,
+}
+
+struct PlainRec {
+    a: Fac::PlainArr,
+}
+
+fn family_sum(_ r: FamilyRec) -> u256 {
+    let mut s: u256 = 0
+    let mut i: usize = 0
+    while i < 3 {
+        s += r.a[i] * (i as u256 + 1)
+        i += 1
+    }
+    s + r.a[2]
+}
+
+fn plain_sum(_ r: PlainRec) -> u256 {
+    let mut s: u256 = 0
+    let mut i: usize = 0
+    while i < 3 {
+        s += r.a[i] * (i as u256 + 1)
+        i += 1
+    }
+    s + r.a[2]
+}
+
+#[test]
+fn family_array_fields_index_like_plain_fields() {
+    let family = family_sum(FamilyRec { a: [10, 20, 30] })
+    let plain = plain_sum(PlainRec { a: [10, 20, 30] })
+    assert!(family == plain)
+    assert!(plain == 170)
+}

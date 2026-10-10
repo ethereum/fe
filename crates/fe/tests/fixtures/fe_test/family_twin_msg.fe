@@ -1,0 +1,46 @@
+// Message fields and returns typed through an associated type with a
+// parameter round-trip as when typed through a plain associated type.
+use std::evm::Evm
+
+trait Family {
+    type Tup<T>
+}
+
+trait Plain {
+    type PlainTup
+}
+
+struct Fac {}
+
+impl Family for Fac {
+    type Tup<T> = (T, u256)
+}
+
+impl Plain for Fac {
+    type PlainTup = (u8, u256)
+}
+
+msg M {
+    #[selector = 1]
+    FamilyEcho { t: Fac::Tup<u8> } -> Fac::Tup<u8>,
+    #[selector = 2]
+    PlainEcho { t: Fac::PlainTup } -> Fac::PlainTup,
+}
+
+pub contract C {
+    recv M {
+        FamilyEcho { t } -> Fac::Tup<u8> { (t.0 + 1, t.1 * 2) }
+        PlainEcho { t } -> Fac::PlainTup { (t.0 + 1, t.1 * 2) }
+    }
+}
+
+#[test]
+fn family_messages_round_trip_like_plain_messages() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    let family: (u8, u256) = evm.call(addr: c, gas: 1000000, value: 0, message: M::FamilyEcho { t: (5, 6) })
+    let plain: (u8, u256) = evm.call(addr: c, gas: 1000000, value: 0, message: M::PlainEcho { t: (5, 6) })
+    assert!(family.0 == plain.0)
+    assert!(family.1 == plain.1)
+    assert!(plain.0 == 6)
+    assert!(plain.1 == 12)
+}

@@ -1,0 +1,56 @@
+// Enum variants whose payload is typed through an associated type with a
+// parameter are built and matched as with a plain associated type.
+trait Family {
+    type Pair<T>
+}
+
+trait Plain {
+    type PlainPair
+}
+
+struct Fac {}
+
+impl Family for Fac {
+    type Pair<T> = (bool, T)
+}
+
+impl Plain for Fac {
+    type PlainPair = (bool, u256)
+}
+
+enum FamilyE {
+    A(Fac::Pair<u256>),
+    R { p: Fac::Pair<u256> },
+    N,
+}
+
+enum PlainE {
+    A(Fac::PlainPair),
+    R { p: Fac::PlainPair },
+    N,
+}
+
+fn family_value(_ e: FamilyE) -> u256 {
+    match e {
+        FamilyE::A((b, v)) => if b { v } else { 1 }
+        FamilyE::R { p } => p.1 * 2
+        FamilyE::N => 3
+    }
+}
+
+fn plain_value(_ e: PlainE) -> u256 {
+    match e {
+        PlainE::A((b, v)) => if b { v } else { 1 }
+        PlainE::R { p } => p.1 * 2
+        PlainE::N => 3
+    }
+}
+
+#[test]
+fn family_payloads_match_plain_payloads() {
+    assert!(family_value(FamilyE::A((true, 42))) == plain_value(PlainE::A((true, 42))))
+    assert!(family_value(FamilyE::A((false, 42))) == plain_value(PlainE::A((false, 42))))
+    assert!(family_value(FamilyE::R { p: (true, 5) }) == plain_value(PlainE::R { p: (true, 5) }))
+    assert!(family_value(FamilyE::N) == plain_value(PlainE::N))
+    assert!(family_value(FamilyE::R { p: (true, 5) }) == 10)
+}

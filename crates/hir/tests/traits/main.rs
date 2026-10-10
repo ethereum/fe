@@ -17,3 +17,4 @@ mod projection_reading;
 mod trait_resolution_conformance;
 mod trait_resolution_cross_ingot;
 mod trait_sig_const_generic;
+mod twin_families;

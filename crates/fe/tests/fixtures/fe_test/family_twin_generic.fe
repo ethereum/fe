@@ -1,0 +1,80 @@
+// Generic code instantiated with associated types that take parameters
+// computes what the same code computes with plain associated types.
+trait Show {
+    fn show(self) -> u256
+}
+
+impl Show for (bool, u8) {
+    fn show(self) -> u256 { if self.0 { 100 + self.1 as u256 } else { self.1 as u256 } }
+}
+
+impl Show for (u8, bool) {
+    fn show(self) -> u256 { 1000 + self.0 as u256 }
+}
+
+trait Family {
+    type Pair<T> = (T, bool)
+    fn wrap(_ x: u8) -> Self::Pair<u8>
+}
+
+trait Plain {
+    type PlainPair = (u8, bool)
+    fn plain_wrap(_ x: u8) -> Self::PlainPair
+}
+
+struct Fwd {}
+
+impl Family for Fwd {
+    fn wrap(_ x: u8) -> Self::Pair<u8> { (x, true) }
+}
+
+impl Plain for Fwd {
+    fn plain_wrap(_ x: u8) -> Self::PlainPair { (x, true) }
+}
+
+struct Rev {}
+
+impl Family for Rev {
+    type Pair<T> = (bool, T)
+    fn wrap(_ x: u8) -> Self::Pair<u8> { (false, x) }
+}
+
+impl Plain for Rev {
+    type PlainPair = (bool, u8)
+    fn plain_wrap(_ x: u8) -> Self::PlainPair { (false, x) }
+}
+
+fn family_show<F: Family>(_ x: u8) -> u256 where F::Pair<u8>: Show {
+    F::wrap(x).show()
+}
+
+fn plain_show<F: Plain>(_ x: u8) -> u256 where F::PlainPair: Show {
+    F::plain_wrap(x).show()
+}
+
+fn through<G: * -> *>(_ x: G<u8>) -> u256 where G<u8>: Show {
+    x.show()
+}
+
+trait Chain {
+    type A<T>
+    type B<T>
+}
+
+impl Chain for Fwd {
+    type A<T> = (T, u8)
+    type B<T> = (bool, T)
+}
+
+fn chained<C: Chain>(_ v: C::A<C::B<u16>>) -> C::A<C::B<u16>> { v }
+
+#[test]
+fn generic_family_code_computes_like_plain_code() {
+    assert!(family_show<Fwd>(3) == plain_show<Fwd>(3))
+    assert!(family_show<Rev>(4) == plain_show<Rev>(4))
+    assert!(through<Fwd::Pair>((5, true)) == plain_show<Fwd>(5))
+    assert!(through<Rev::Pair>((false, 6)) == plain_show<Rev>(6))
+    let c = chained<Fwd>(((true, 300), 9))
+    assert!(c.0.1 == 300)
+    assert!(c.1 == 9)
+}

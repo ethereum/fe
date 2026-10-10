@@ -1,0 +1,74 @@
+// Impls whose header is written through an associated type with a
+// parameter are found and dispatched as those written through a plain
+// associated type. (A header that needs the impl's own parameter, as
+// `impl<T> Marker for Fac::H<T>`, is not covered here: it is not reduced
+// when written; see `trait_impl_header_own_parameter` in
+// `crates/hir/tests/traits/family_twin_cases.rs`.)
+struct Holder<T> {
+    t: T,
+}
+
+struct Box<G> {
+    x: G,
+}
+
+trait Family {
+    type H<T>
+    type P<T>
+}
+
+trait Plain {
+    type PlainH
+    type PlainP
+}
+
+struct Fac {}
+
+impl Family for Fac {
+    type H<T> = Holder<T>
+    type P<T> = (bool, T)
+}
+
+impl Plain for Fac {
+    type PlainH = Holder<bool>
+    type PlainP = (bool, u16)
+}
+
+trait Marker {
+    fn id() -> u8
+}
+
+impl Marker for Fac::H<u8> {
+    fn id() -> u8 { 1 }
+}
+
+impl Marker for Fac::PlainH {
+    fn id() -> u8 { 2 }
+}
+
+fn id<M: Marker>() -> u8 {
+    M::id()
+}
+
+impl Fac::H<u16> {
+    fn get(self) -> u16 { self.t }
+}
+
+impl Box<Fac::P<u8>> {
+    fn family_show(self) -> u8 { self.x.1 }
+}
+
+impl Box<Fac::PlainP> {
+    fn plain_show(self) -> u16 { self.x.1 }
+}
+
+#[test]
+fn family_headers_dispatch_like_plain_headers() {
+    assert!(id<Holder<u8>>() == 1)
+    assert!(id<Holder<bool>>() == 2)
+    let h = Holder<u16> { t: 9 }
+    assert!(h.get() == 9)
+    let fb = Box<(bool, u8)> { x: (true, 4) }
+    let pb = Box<(bool, u16)> { x: (true, 4) }
+    assert!(fb.family_show() as u16 == pb.plain_show())
+}
