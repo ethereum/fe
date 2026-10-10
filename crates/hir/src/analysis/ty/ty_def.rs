@@ -223,6 +223,38 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// The type a family application stands for: the family's definition
+    /// with the arguments substituted for its parameters, applied to any
+    /// further arguments. This is one step: applications in the definition
+    /// stay as they are. `None` if this is not a family given all of its
+    /// arguments.
+    pub(crate) fn reduce_family_application(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
+        let (head, args) = self.decompose_ty_app(db);
+        let TyData::TypeFamily { owner, body, .. } = head.data(db) else {
+            return None;
+        };
+        let arity = owner.generic_params(db).data(db).len();
+        let subst = super::ty_lower::CompleteSubst::for_associated_type(
+            db,
+            *owner,
+            args.get(..arity)?.to_vec(),
+        )
+        .ok()?;
+        let reduced = super::subst::substitute_complete(db, *body, &subst).ok()?;
+        Some(Self::foldl(db, reduced, &args[arity..]))
+    }
+
+    /// Whether this type, as a whole, is a use of an associated type: a
+    /// projection, or one applied to arguments, as a family application is.
+    /// Its value is known only by resolving it, so its parts must not be
+    /// compared with another type's.
+    pub(crate) fn is_associated_type_use(self, db: &'db dyn HirAnalysisDb) -> bool {
+        matches!(
+            self.decompose_ty_app(db).0.data(db),
+            TyData::AssocTy(_) | TyData::QualifiedTy(_) | TyData::TypeFamily { .. }
+        )
+    }
+
     /// Whether this is a family itself, not applied to any argument.
     pub(crate) fn is_type_family(self, db: &'db dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::TypeFamily { .. })

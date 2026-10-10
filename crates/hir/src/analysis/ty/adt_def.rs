@@ -354,12 +354,36 @@ fn instantiate_adt_field_shape_in_mode<'db>(
             |variant| {
                 // Omitted trailing arguments keep their declaration formals.
                 let subst = CompleteSubst::with_prefix(db, domain, explicit_args);
-                variant
+                let ty = variant
                     .ty_in_mode(db, field_idx, const_bodies)
                     .instantiate_subst(db, &subst)
-                    .expect("ADT field uses its declaration domain")
+                    .expect("ADT field uses its declaration domain");
+                resolve_instantiated_field(db, adt, ty)
             },
         )
+}
+
+/// A field type written over the ADT's parameters names, once they are
+/// replaced by concrete types, the associated types those select: a field
+/// `a: F::Arr<u8>` of `W<A>` is `A`'s definition of `Arr`, applied. Such a
+/// field is stored resolved, as the same field written for `A` is. A field
+/// that still names a parameter, or whose resolution reaches a limit, is kept
+/// as it is.
+fn resolve_instantiated_field<'db>(
+    db: &'db dyn HirAnalysisDb,
+    adt: AdtDef<'db>,
+    ty: TyId<'db>,
+) -> TyId<'db> {
+    if !ty.has_projection(db) || ty.has_param(db) || ty.has_var(db) || ty.has_invalid(db) {
+        return ty;
+    }
+    super::normalize::normalize_ty(
+        db,
+        ty,
+        adt.scope(db),
+        super::trait_resolution::PredicateListId::empty_list(db),
+    )
+    .unwrap_or(ty)
 }
 
 pub(crate) fn instantiate_adt_field_layout<'db>(

@@ -1,0 +1,10 @@
+trait Factory { type Out }
+struct Provider {}
+impl Factory for Provider { type Out = (u8, u8) }
+struct W1<T> {}
+enum Payload { A(Provider::Out) }
+impl W1<Provider::Out> {
+    fn m(self) -> u8 { 1 }
+}
+fn f(p: Payload) -> u8 { match p { Payload::A(x) => x.0 } }
+fn g(w: W1<(u8, u8)>) -> u8 { w.m() }

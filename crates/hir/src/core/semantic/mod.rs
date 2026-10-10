@@ -4703,6 +4703,21 @@ impl<'db> ImplTrait<'db> {
             return (None, Vec::new());
         }
 
+        // The family applications written in the self type, checked as
+        // written: lowering applies them to their definitions.
+        if let Some(hir_ty) = self.type_ref(db).to_opt() {
+            let written = crate::analysis::ty::ty_error::collect_application_requirement_errors(
+                db,
+                self.scope(),
+                hir_ty,
+                self.span().ty(),
+                constraints_for(db, self.into()),
+            );
+            if !written.is_empty() {
+                return (None, written);
+            }
+        }
+
         if let Some(diag) = check_ty_wf(
             db,
             TraitSolveCx::new(db, self.scope()).with_assumptions(param_env(db, self.into())),

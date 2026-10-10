@@ -1,8 +1,8 @@
-// An alias stands for its right-hand side, so a family application in it must
-// meet the family's bounds at each use, including a use that leaves a
-// parameter to its default. A generic alias is checked like a generic struct
-// behind an alias: its own parameters have no bounds, so the definition
-// reports an argument they do not meet.
+// A family application written in an alias is checked where the alias is
+// defined. A generic alias is checked like a generic struct: its own
+// parameters have no bounds, so the definition reports an argument they do
+// not meet. The application stands for its definition once written, so the
+// uses of an alias that fails are not reported again.
 trait Allowed {}
 impl Allowed for bool {}
 struct Other {}
@@ -23,7 +23,7 @@ type Nested<T> = Wrap<Generic<T>>
 type Defaulted<T = Other> = Provider::Out<T>
 type DefaultOk<T = bool> = Provider::Out<T>
 
-// Each of these uses is reported.
+// These use aliases whose definitions are reported.
 struct ViaConcrete { f: Concrete }
 struct Field { f: Generic<Other> }
 struct ThroughNested { f: Nested<Other> }

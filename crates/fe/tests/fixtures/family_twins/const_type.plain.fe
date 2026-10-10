@@ -1,0 +1,6 @@
+trait Factory { type I }
+struct Fac {}
+impl Factory for Fac { type I = u8 }
+const C: Fac::I = 3
+#[test]
+fn f() { assert!(C == 3) }

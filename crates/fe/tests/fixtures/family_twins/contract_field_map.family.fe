@@ -1,0 +1,43 @@
+use std::evm::{Evm, StorageMap}
+
+trait Factory {
+    type Map<V>
+}
+struct Fac {}
+impl Factory for Fac {
+    type Map<V> = StorageMap<u256, V>
+}
+
+msg M {
+    #[selector = 1]
+    SetA { key: u256, value: u256 },
+    #[selector = 2]
+    SetB { key: u256, value: u256 },
+    #[selector = 3]
+    GetA { key: u256 } -> u256,
+    #[selector = 4]
+    GetB { key: u256 } -> u256,
+}
+
+pub contract C {
+    mut a: Fac::Map<u256>,
+    mut b: Fac::Map<u256>,
+
+    recv M {
+        SetA { key, value } uses (mut a) { a.set(key: key, value: value) }
+        SetB { key, value } uses (mut b) { b.set(key: key, value: value) }
+        GetA { key } -> u256 uses (a) { a.get(key: key) }
+        GetB { key } -> u256 uses (b) { b.get(key: key) }
+    }
+}
+
+#[test]
+fn storage_family_maps_do_not_alias() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    evm.call(addr: c, gas: 200000, value: 0, message: M::SetA { key: 7, value: 11 })
+    evm.call(addr: c, gas: 200000, value: 0, message: M::SetB { key: 7, value: 22 })
+    let a: u256 = evm.call(addr: c, gas: 200000, value: 0, message: M::GetA { key: 7 })
+    let b: u256 = evm.call(addr: c, gas: 200000, value: 0, message: M::GetB { key: 7 })
+    assert!(a == 11)
+    assert!(b == 22)
+}

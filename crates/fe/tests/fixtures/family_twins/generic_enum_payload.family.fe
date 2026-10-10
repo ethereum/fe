@@ -1,0 +1,15 @@
+trait Factory { type Pair<T> }
+struct Fac {}
+impl Factory for Fac { type Pair<T> = (bool, T) }
+enum E<T> {
+    A(Fac::Pair<T>),
+    B,
+}
+fn val(_ e: E<u256>) -> u256 {
+    match e {
+        E::A(p) => p.1
+        E::B => 0
+    }
+}
+#[test]
+fn t() { assert!(val(E::A((true, 5))) == 5) }

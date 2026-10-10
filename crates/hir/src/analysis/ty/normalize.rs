@@ -831,16 +831,13 @@ impl<'db> TypeNormalizer<'db> {
     /// Reduces the family application `applied`, whose head is a family
     /// given all of its arguments, by substituting them into its definition.
     fn reduce_family_application(&mut self, applied: TyId<'db>) -> TyId<'db> {
-        let Some((owner, body, args)) = applied.as_family_application(self.db) else {
+        if applied.as_family_application(self.db).is_none() {
             return applied;
-        };
+        }
         if let Some(cached) = self.lookup(applied) {
             return cached;
         }
-        let Some(reduced) = CompleteSubst::for_associated_type(self.db, owner, args.to_vec())
-            .ok()
-            .and_then(|subst| substitute_complete(self.db, body, &subst).ok())
-        else {
+        let Some(reduced) = applied.reduce_family_application(self.db) else {
             return applied;
         };
         if self.enter_projection(applied).is_err() {

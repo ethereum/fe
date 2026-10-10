@@ -1326,9 +1326,7 @@ where
                     minter,
                 );
                 let assoc_ty = apply_associated_type_args(db, path, assoc_ty, &seg_args)?;
-                let result = PathRes::Ty(assoc_ty);
-                observer(path, &result);
-                return Ok(result);
+                return Ok(associated_type_resolution(db, path, assoc_ty, observer));
             }
 
             // Find the candidates, then decide among them by normalized type.
@@ -1514,9 +1512,7 @@ where
                     let (_, applied, _) = known()
                         .find(|&(_, _, candidate)| candidate == normalized)
                         .expect("the type is that of a candidate that applies");
-                    let r = PathRes::Ty(applied);
-                    observer(path, &r);
-                    return Ok(r);
+                    return Ok(associated_type_resolution(db, path, applied, observer));
                 }
                 AssocTyOutcome::Ambiguous => {
                     let mut distinct = IndexMap::new();
@@ -2784,6 +2780,23 @@ fn apply_args<'db>(
         return Err((*expected, *given));
     }
     Ok(applied)
+}
+
+/// The resolution of a written associated type: the type it stands for. A
+/// definition selected for it is used as it is, and a family's definition
+/// is applied to the written arguments here. Observers see the application
+/// as written, whose requirements are checked where it is written.
+fn associated_type_resolution<'db, F>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    applied: TyId<'db>,
+    observer: &mut F,
+) -> PathRes<'db>
+where
+    F: FnMut(PathId<'db>, &PathRes<'db>),
+{
+    observer(path, &PathRes::Ty(applied));
+    PathRes::Ty(applied.reduce_family_application(db).unwrap_or(applied))
 }
 
 fn apply_associated_type_args<'db>(

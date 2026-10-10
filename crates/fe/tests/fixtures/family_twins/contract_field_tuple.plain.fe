@@ -1,0 +1,29 @@
+use std::evm::Evm
+struct Slot<const ROOT: u256 = _> {}
+trait Factory { type W }
+struct Fac {}
+impl Factory for Fac { type W = (u256, u256) }
+msg M {
+    #[selector = 1]
+    Set { a: u256 },
+    #[selector = 2]
+    Get -> u256,
+}
+pub contract C {
+    mut f: Fac::W
+    init() uses (mut f) {
+        f.0 = 1
+        f.1 = 2
+    }
+    recv M {
+        Set { a } uses (mut f) { f.1 = a }
+        Get -> u256 uses (f) { f.0 * 100 + f.1 }
+    }
+}
+#[test]
+fn t() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    evm.call(addr: c, gas: 1000000, value: 0, message: M::Set { a: 5 })
+    let s: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: M::Get {})
+    assert!(s == 105)
+}

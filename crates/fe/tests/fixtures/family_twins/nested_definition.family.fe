@@ -1,0 +1,10 @@
+struct Store<T> { a: T, b: T }
+trait Factory { type Inner<T>
+ type S<T> }
+struct Fac {}
+impl Factory for Fac { type Inner<T> = (T, bool)
+ type S<T> = Store<Self::Inner<T>> }
+struct Rec { s: Fac::S<u256> }
+fn sum(_ r: Rec) -> u256 { r.s.a.0 + r.s.b.0 }
+#[test]
+fn f() { assert!(sum(Rec { s: Store { a: (1, true), b: (2, false) } }) == 3) }

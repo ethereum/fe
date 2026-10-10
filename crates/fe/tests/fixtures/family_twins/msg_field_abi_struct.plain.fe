@@ -1,0 +1,26 @@
+use std::evm::Evm
+#[abi]
+pub struct Pt {
+    pub x: u256,
+    pub y: u256,
+}
+impl Copy for Pt {}
+trait Factory { type P }
+struct Fac {}
+impl Factory for Fac { type P = Pt }
+msg M {
+    #[selector = 1]
+    Swap { p: Fac::P } -> Fac::P,
+}
+pub contract C {
+    recv M {
+        Swap { p } -> Fac::P { Pt { x: p.y, y: p.x } }
+    }
+}
+#[test]
+fn msg_abi() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    let r: Pt = evm.call(addr: c, gas: 1000000, value: 0, message: M::Swap { p: Pt { x: 1, y: 2 } })
+    assert!(r.x == 2)
+    assert!(r.y == 1)
+}

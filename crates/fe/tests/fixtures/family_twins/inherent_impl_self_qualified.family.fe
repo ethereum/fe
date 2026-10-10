@@ -1,0 +1,9 @@
+trait Factory { type Pair<T> }
+struct R {}
+impl Factory for R { type Pair<T> = (bool, T) }
+struct Holder<G> { x: G }
+impl Holder<<R as Factory>::Pair<u8>> {
+    fn show(self) -> u8 { self.x.1 }
+}
+fn f(h: Holder<(bool, u8)>) -> u8 { h.show() }
+fn g(h: Holder<R::Pair<u8>>) -> u8 { h.show() }

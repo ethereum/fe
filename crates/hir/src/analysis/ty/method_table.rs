@@ -337,7 +337,10 @@ fn match_probe_key<'db>(
             if lhs == rhs {
                 continue;
             }
-            if let (TyData::TyApp(lb, la), TyData::TyApp(rb, ra)) = (lhs.data(db), rhs.data(db)) {
+            if let (TyData::TyApp(lb, la), TyData::TyApp(rb, ra)) = (lhs.data(db), rhs.data(db))
+                && !lhs.is_associated_type_use(db)
+                && !rhs.is_associated_type_use(db)
+            {
                 pending.extend([(*la, *ra), (*lb, *rb)]);
             } else if lhs.has_projection(db) || rhs.has_projection(db) {
                 deferred.push((lhs, rhs));

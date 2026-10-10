@@ -1,0 +1,10 @@
+trait Factory { type Pair<T> }
+struct Fac {}
+impl Factory for Fac { type Pair<T> = (bool, T) }
+struct G<T> { a: Fac::Pair<T> }
+fn get<T>(_ g: own G<T>) -> T { g.a.1 }
+#[test]
+fn f() {
+    let g = G<u256> { a: (true, 7) }
+    assert!(get(g) == 7)
+}

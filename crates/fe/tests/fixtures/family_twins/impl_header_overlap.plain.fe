@@ -1,0 +1,7 @@
+struct Holder<T> { t: T }
+trait Factory { type B }
+struct A {}
+impl Factory for A { type B = Holder<u8> }
+trait Marker { fn id() -> u8 }
+impl Marker for A::B { fn id() -> u8 { 1 } }
+impl Marker for Holder<u8> { fn id() -> u8 { 2 } }
