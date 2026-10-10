@@ -3703,6 +3703,12 @@ impl<'a, 'db> LayoutParamRootUseCollector<'a, 'db> {
         if !self.visiting.insert(ty) {
             return;
         }
+        // A family's roots are those of its definition.
+        if let TyData::TypeFamily { body, .. } = ty.data(self.db) {
+            self.collect(*body, direct_owner);
+            self.visiting.remove(&ty);
+            return;
+        }
         let (_, ty_args) = ty.decompose_ty_app(self.db);
         if !ty_args.is_empty() {
             let owner =

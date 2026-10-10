@@ -414,7 +414,8 @@ where
     normalize_from_assumptions(db, value, scope, PredicateListId::new(db, vec![evidence]))
 }
 
-/// The layout roots that `ty`'s associated types expose once resolved. A
+/// The layout roots that `ty`'s associated types expose once resolved, a
+/// family application with its arguments substituted into its definition. A
 /// limit in resolving them, or in normalizing a root's owner, is returned:
 /// without it the roots could differ, and with them the layout.
 pub(crate) fn normalize_layout_root_uses<'db>(
@@ -434,7 +435,11 @@ pub(crate) fn normalize_layout_root_uses<'db>(
         if !visiting.insert(ty) {
             return Ok(());
         }
-        if let TyData::AssocTy(assoc) = ty.data(db) {
+        // A family that a projection selected stands for that projection, so
+        // both spellings of a family application are collected alike.
+        let (head, args) = ty.decompose_ty_app(db);
+        let head = head.family_as_projection(db).unwrap_or(head);
+        if let TyData::AssocTy(assoc) = head.data(db) {
             let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
             let resolved =
                 match resolve_trait_impl_instance(db, solve_cx, assoc.trait_.as_predicate(db)) {
@@ -445,18 +450,37 @@ pub(crate) fn normalize_layout_root_uses<'db>(
             if let Some(resolved) = resolved
                 && let ImplementorOrigin::Hir(impl_trait) = resolved.selected().origin(db)
             {
+                let definition = resolved.instantiated_assoc_ty(db, assoc.name);
+                // A family's own parameters, bound to the application's
+                // arguments; a family not given all of them is left unapplied.
+                let family = definition.and_then(|definition| match definition.data(db) {
+                    TyData::TypeFamily { owner, body, .. } => {
+                        let arity = owner.generic_params(db).data(db).len();
+                        let subst = CompleteSubst::for_associated_type(
+                            db,
+                            *owner,
+                            args.get(..arity)?.to_vec(),
+                        )
+                        .ok()?;
+                        Some((subst, *body, arity))
+                    }
+                    _ => None,
+                });
+                let instantiate = |ty: TyId<'db>| {
+                    let ty =
+                        Binder::bind(impl_trait.into(), ty).instantiate(db, resolved.impl_args(db));
+                    match &family {
+                        Some((subst, ..)) => substitute_complete(db, ty, subst).unwrap_or(ty),
+                        None => ty,
+                    }
+                };
                 for root_use in resolved.assoc_ty_layout_root_uses(db, assoc.name) {
                     let owner = root_use
                         .owner
-                        .map(|owner| {
-                            let owner = Binder::bind(impl_trait.into(), owner)
-                                .instantiate(db, resolved.impl_args(db));
-                            normalize_ty(db, owner, scope, assumptions)
-                        })
+                        .map(|owner| normalize_ty(db, instantiate(owner), scope, assumptions))
                         .transpose()?;
                     let root_use = LayoutRootUse {
-                        value: Binder::bind(impl_trait.into(), root_use.value)
-                            .instantiate(db, resolved.impl_args(db)),
+                        value: instantiate(root_use.value),
                         owner,
                         selector: root_use.selector,
                     };
@@ -464,18 +488,25 @@ pub(crate) fn normalize_layout_root_uses<'db>(
                         uses.push(root_use);
                     }
                 }
-                if let Some(instantiated) = resolved.instantiated_assoc_ty(db, assoc.name) {
-                    collect(db, instantiated, scope, assumptions, visiting, uses)?;
+                let applied = match &family {
+                    Some((subst, body, arity)) => {
+                        substitute_complete(db, *body, subst).ok().map(|reduced| {
+                            args[*arity..]
+                                .iter()
+                                .fold(reduced, |ty, arg| TyId::app(db, ty, *arg))
+                        })
+                    }
+                    None => definition,
+                };
+                if let Some(applied) = applied {
+                    collect(db, applied, scope, assumptions, visiting, uses)?;
                 }
             }
-        } else {
-            let (base, args) = ty.decompose_ty_app(db);
-            if base != ty {
-                collect(db, base, scope, assumptions, visiting, uses)?;
-            }
-            for arg in args {
-                collect(db, *arg, scope, assumptions, visiting, uses)?;
-            }
+        } else if head != ty {
+            collect(db, head, scope, assumptions, visiting, uses)?;
+        }
+        for arg in args {
+            collect(db, *arg, scope, assumptions, visiting, uses)?;
         }
         visiting.remove(&ty);
         Ok(())
