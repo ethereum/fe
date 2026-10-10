@@ -161,30 +161,13 @@ pub(crate) fn collect_application_requirement_errors<'db>(
     visitor.diags
 }
 
-/// As [`collect_application_requirement_errors`], for the types written as
-/// arguments of a trait reference. Trait references are lowered into trait
-/// instances, whose own checks skip subjects they cannot decide, so the
-/// written arguments are checked here on their own.
-pub(crate) fn collect_trait_ref_application_errors<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    trait_ref: crate::hir_def::TraitRefId<'db>,
-    span: LazyTraitRefSpan<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Vec<TyDiagCollection<'db>> {
-    let mut visitor = HirTyErrVisitor::new(
-        db,
-        assumptions,
-        ConstBodyLowering::Eager,
-        WrittenTypeCheck::FamilyApplications,
-    );
-    let mut ctxt = VisitorCtxt::new(db, scope, span);
-    visitor.visit_trait_ref_args(&mut ctxt, trait_ref);
-    visitor.diags
-}
-
 /// Every error in the types written as arguments of a trait reference, each
-/// at its own span, such as `Missing` in `T: Needs<Missing>`.
+/// at its own span, such as `Missing` in `T: Needs<Missing>` or in
+/// `T: Needs<V<Missing>>`, and the requirements of the family applications
+/// written in them. A trait reference lowers whatever its arguments are, and
+/// the checks of the trait instance skip arguments that are invalid or that
+/// they cannot decide, so the written arguments are checked here, wherever
+/// the reference is written.
 pub(crate) fn collect_trait_ref_arg_errors<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,

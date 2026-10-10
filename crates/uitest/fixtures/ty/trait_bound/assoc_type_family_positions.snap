@@ -118,28 +118,22 @@ error[6-0003]: trait bound is not satisfied
     │               ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:129:15
-    │
-129 │     Provider::Out<u256>: Show,
-    │               ^^^^^^^^^ `u256` doesn't implement `Allowed`
-
-error[6-0003]: trait bound is not satisfied
     ┌─ assoc_type_family_positions.fe:134:8
     │
 134 │     B::Out<u256>: Show,
     │        ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:139:8
+    ┌─ assoc_type_family_positions.fe:139:22
     │
 139 │     T: Tr2<Provider::Out<u256>>,
-    │        ^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                      ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:142:19
+    ┌─ assoc_type_family_positions.fe:142:33
     │
 142 │ fn param_bound<T: Tr2<Provider::Out<u256>>>() {}
-    │                   ^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                                 ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
     ┌─ assoc_type_family_positions.fe:144:32
@@ -154,22 +148,22 @@ error[6-0003]: trait bound is not satisfied
     │                                ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:150:8
+    ┌─ assoc_type_family_positions.fe:150:22
     │
 150 │     T: Tr2<Provider::Out<u256>>,
-    │        ^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                      ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:153:19
+    ┌─ assoc_type_family_positions.fe:153:33
     │
 153 │ struct Bounded<T: Tr2<Provider::Out<u256>>> {}
-    │                   ^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                                 ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:155:14
+    ┌─ assoc_type_family_positions.fe:155:28
     │
 155 │ trait Super: Tr2<Provider::Out<u256>> {}
-    │              ^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                            ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
     ┌─ assoc_type_family_positions.fe:159:25
@@ -184,16 +178,16 @@ error[6-0003]: trait bound is not satisfied
     │                                ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:167:6
+    ┌─ assoc_type_family_positions.fe:167:20
     │
 167 │ impl Tr2<Provider::Out<u256>> for bool {}
-    │      ^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                    ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:169:17
+    ┌─ assoc_type_family_positions.fe:169:27
     │
 169 │ impl Marker for Provider::Out<u256> {}
-    │                 ^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                           ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
     ┌─ assoc_type_family_positions.fe:173:22
@@ -208,28 +202,28 @@ error[6-0003]: trait bound is not satisfied
     │                              ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:182:8
+    ┌─ assoc_type_family_positions.fe:182:26
     │
 182 │     T: Tr4<A = Provider::Out<u256>>,
-    │        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                          ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:185:21
+    ┌─ assoc_type_family_positions.fe:185:39
     │
 185 │ fn param_binding<T: Tr4<A = Provider::Out<u256>>>() {}
-    │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                                       ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:187:15
+    ┌─ assoc_type_family_positions.fe:187:33
     │
 187 │ trait Super4: Tr4<A = Provider::Out<u256>> {}
-    │               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                                 ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
-    ┌─ assoc_type_family_positions.fe:189:9
+    ┌─ assoc_type_family_positions.fe:189:23
     │
 189 │ impl<T: Tr2<Provider::Out<u256>>> Marker for W3<T> {}
-    │         ^^^^^^^^^^^^^^^^^^^^^^^^ `u256` doesn't implement `Allowed`
+    │                       ^^^^^^^^^ `u256` doesn't implement `Allowed`
 
 error[6-0003]: trait bound is not satisfied
     ┌─ assoc_type_family_positions.fe:193:26
@@ -284,3 +278,9 @@ error[6-0003]: trait bound is not satisfied
     │
 224 │     type B: Tr4<A = Provider::Out<u256>>
     │                               ^^^^^^^^^ `u256` doesn't implement `Allowed`
+
+error[6-0005]: trait bound for concrete type is not allowed
+    ┌─ assoc_type_family_positions.fe:129:5
+    │
+129 │     Provider::Out<u256>: Show,
+    │     ^^^^^^^^^^^^^^^^^^^ `u256` is a concrete type

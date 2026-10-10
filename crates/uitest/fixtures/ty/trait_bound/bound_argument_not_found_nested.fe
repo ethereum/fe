@@ -1,0 +1,25 @@
+// A name that does not resolve anywhere inside a bound's arguments, in a
+// supertrait, or in the trait an impl implements, is reported where it is
+// written.
+trait Needs<V> {}
+struct V<T> {}
+struct W<T> {}
+struct X {}
+struct S<T: Needs<V<Missing1>>> {}
+fn c<T: Needs<V<Missing2>>>() {}
+fn d<T: Needs<(u8, Missing3)>>() {}
+fn e<T: Needs<[Missing4; 2]>>() {}
+fn g<T>() where T: Needs<V<Missing5>> {}
+impl<T: Needs<V<Missing6>>> V<T> {}
+trait Tr {
+    type Out: Needs<V<Missing7>>
+}
+trait Sup: Needs<Missing8> {}
+trait Sup2: Needs<V<Missing9>> {}
+trait Sup3: Missing10 {}
+trait Sup4 where Self: Needs<V<Missing11>> {}
+impl<T> Needs<Missing12> for V<T> {}
+impl<T> Needs<V<Missing13>> for W<T> {}
+trait Fam {
+    type F<T>: Needs<V<Missing14>>
+}

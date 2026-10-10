@@ -4687,7 +4687,7 @@ impl<'db> ImplTrait<'db> {
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> (Option<ImplementorId<'db>>, Vec<TyDiagCollection<'db>>) {
-        use crate::analysis::name_resolution::{ExpectedPathKind, diagnostics::PathResDiag};
+        use crate::analysis::name_resolution::diagnostics::PathResDiag;
         use crate::analysis::ty::diagnostics::TraitLowerDiag;
 
         // First check implementor type
@@ -4728,6 +4728,21 @@ impl<'db> ImplTrait<'db> {
             return (None, vec![diag]);
         }
 
+        // An error in the types written as the trait's arguments is reported
+        // where it is written, whether or not the trait reference lowers.
+        if let Some(trait_ref) = self.trait_ref(db).to_opt() {
+            let written = crate::analysis::ty::ty_error::collect_trait_ref_arg_errors(
+                db,
+                self.scope(),
+                trait_ref,
+                self.span().trait_ref(),
+                constraints_for(db, self.into()),
+            );
+            if !written.is_empty() {
+                return (None, written);
+            }
+        }
+
         match self.lowered_implementor(db) {
             Ok(implementor) => {
                 // The trait's arguments are written in the header: a limit in
@@ -4747,17 +4762,17 @@ impl<'db> ImplTrait<'db> {
                 match err {
                     ImplTraitLowerError::ParseError => {}
                     ImplTraitLowerError::TraitRef(lower_err) => match lower_err {
-                        TraitRefLowerError::PathResError(err) => {
+                        error @ TraitRefLowerError::PathResError(_) => {
                             if let Some(trait_ref) = self.trait_ref(db).to_opt() {
-                                let path = trait_ref.path(db).unwrap();
-                                if let Some(diag) = err.into_diag(
+                                diags.extend(crate::diagnosable::trait_bound_lowering_diags(
                                     db,
-                                    path,
-                                    self.span().trait_ref().path(),
-                                    ExpectedPathKind::Trait,
-                                ) {
-                                    diags.push(diag.into());
-                                }
+                                    trait_ref,
+                                    self.span().trait_ref(),
+                                    error,
+                                    "impl header",
+                                    self.scope(),
+                                    constraints_for(db, self.into()),
+                                ));
                             }
                         }
                         TraitRefLowerError::InvalidDomain(res) => {

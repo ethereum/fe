@@ -1,0 +1,88 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/trait_bound/bound_argument_not_found_nested.fe
+---
+error[2-0002]: `Missing1` is not found
+  ┌─ bound_argument_not_found_nested.fe:8:21
+  │
+8 │ struct S<T: Needs<V<Missing1>>> {}
+  │                     ^^^^^^^^ `Missing1` is not found
+
+error[2-0002]: `Missing2` is not found
+  ┌─ bound_argument_not_found_nested.fe:9:17
+  │
+9 │ fn c<T: Needs<V<Missing2>>>() {}
+  │                 ^^^^^^^^ `Missing2` is not found
+
+error[2-0002]: `Missing3` is not found
+   ┌─ bound_argument_not_found_nested.fe:10:20
+   │
+10 │ fn d<T: Needs<(u8, Missing3)>>() {}
+   │                    ^^^^^^^^ `Missing3` is not found
+
+error[2-0002]: `Missing4` is not found
+   ┌─ bound_argument_not_found_nested.fe:11:16
+   │
+11 │ fn e<T: Needs<[Missing4; 2]>>() {}
+   │                ^^^^^^^^ `Missing4` is not found
+
+error[2-0002]: `Missing5` is not found
+   ┌─ bound_argument_not_found_nested.fe:12:28
+   │
+12 │ fn g<T>() where T: Needs<V<Missing5>> {}
+   │                            ^^^^^^^^ `Missing5` is not found
+
+error[2-0002]: `Missing6` is not found
+   ┌─ bound_argument_not_found_nested.fe:13:17
+   │
+13 │ impl<T: Needs<V<Missing6>>> V<T> {}
+   │                 ^^^^^^^^ `Missing6` is not found
+
+error[2-0002]: `Missing7` is not found
+   ┌─ bound_argument_not_found_nested.fe:15:23
+   │
+15 │     type Out: Needs<V<Missing7>>
+   │                       ^^^^^^^^ `Missing7` is not found
+
+error[2-0002]: `Missing8` is not found
+   ┌─ bound_argument_not_found_nested.fe:17:18
+   │
+17 │ trait Sup: Needs<Missing8> {}
+   │                  ^^^^^^^^ `Missing8` is not found
+
+error[2-0002]: `Missing9` is not found
+   ┌─ bound_argument_not_found_nested.fe:18:21
+   │
+18 │ trait Sup2: Needs<V<Missing9>> {}
+   │                     ^^^^^^^^ `Missing9` is not found
+
+error[2-0002]: `Missing10` is not found
+   ┌─ bound_argument_not_found_nested.fe:19:13
+   │
+19 │ trait Sup3: Missing10 {}
+   │             ^^^^^^^^^ `Missing10` is not found
+
+error[2-0002]: `Missing11` is not found
+   ┌─ bound_argument_not_found_nested.fe:20:32
+   │
+20 │ trait Sup4 where Self: Needs<V<Missing11>> {}
+   │                                ^^^^^^^^^ `Missing11` is not found
+
+error[2-0002]: `Missing12` is not found
+   ┌─ bound_argument_not_found_nested.fe:21:15
+   │
+21 │ impl<T> Needs<Missing12> for V<T> {}
+   │               ^^^^^^^^^ `Missing12` is not found
+
+error[2-0002]: `Missing13` is not found
+   ┌─ bound_argument_not_found_nested.fe:22:17
+   │
+22 │ impl<T> Needs<V<Missing13>> for W<T> {}
+   │                 ^^^^^^^^^ `Missing13` is not found
+
+error[3-0062]: invalid bound on associated type `F`
+   ┌─ bound_argument_not_found_nested.fe:24:16
+   │
+24 │     type F<T>: Needs<V<Missing14>>
+   │                ^^^^^^^^^^^^^^^^^^^ this bound cannot be used for the associated type
