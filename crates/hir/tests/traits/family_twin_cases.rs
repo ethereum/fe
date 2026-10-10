@@ -50,13 +50,11 @@ const INTERNAL_CODES: &[&str] = &["16-0004", "17-0100", "crash"];
 enum Expect {
     /// The family program gives the codes of its plain twin.
     Agree,
-    /// Both programs are rejected with ordinary errors: no crash, no
-    /// internal error.
-    Rejected,
     /// The family program gives exactly these codes (no plain twin exists).
     Exactly(&'static [&'static str]),
-    /// Known to differ from the twin, for the reason given. Both programs
-    /// are still checked, and must not crash; the codes are not compared.
+    /// Known to differ from the twin, or not yet decided, for the reason
+    /// given. Both programs are still checked, and must not crash or give an
+    /// internal error; the codes are not compared.
     Known(&'static str),
 }
 
@@ -153,15 +151,7 @@ fn check_twin(twin: &Twin, codes: &dyn Fn(&str) -> Vec<String>, reorder: bool) -
     let internal = |c: &[String]| c.iter().any(|code| INTERNAL_CODES.contains(&code.as_str()));
     let holds = match twin.expect {
         Expect::Agree => fam_codes == plain_codes,
-        Expect::Known(_) => {
-            !fam_codes.contains(&"crash".to_string()) && !plain_codes.contains(&"crash".to_string())
-        }
-        Expect::Rejected => {
-            !fam_codes.is_empty()
-                && !plain_codes.is_empty()
-                && !internal(&fam_codes)
-                && !internal(&plain_codes)
-        }
+        Expect::Known(_) => !internal(&fam_codes) && !internal(&plain_codes),
         Expect::Exactly(expected) => {
             let mut expected: Vec<String> = expected.iter().map(|c| c.to_string()).collect();
             expected.sort();
@@ -219,8 +209,10 @@ macro_rules! twins {
 
 use Expect::*;
 
-const OWN_PARAMETER: &str = "an impl header that needs the impl's own parameter is not reduced \
-                             when written; the twin writes the type directly";
+const OWN_PARAMETER: &str = "an impl header that needs the impl's own parameter keeps the \
+                             application after lowering, so it can be neither found nor checked \
+                             for overlap; whether it is rejected at the impl or overlaps every \
+                             header is not decided (the twin writes the type directly)";
 
 twins! {
     // Positions where a type is written.
@@ -406,10 +398,13 @@ impl Marker for Holder<u8> {}";
 impl Marker for %QH { fn id() -> u8 { 7 } }
 fn get<M: Marker>() -> u8 { M::id() }
 fn f() -> u8 { get<Holder<u8>>() }";
-    trait_impl_header_own_parameter: Known(OWN_PARAMETER), "trait Marker { fn id() -> u8 }
+    trait_impl_header_own_parameter: Agree, "trait Marker { fn id() -> u8 }
 impl<T> Marker for ⟨Fac::H<T>|Holder<T>⟩ { fn id() -> u8 { 7 } }
 fn get<M: Marker>() -> u8 { M::id() }
 fn f() -> u8 { get<Holder<bool>>() }";
+    trait_impl_header_needs_impl_parameter: Known(OWN_PARAMETER), "trait Marker {}
+impl<F: Factory> Marker for ⟨F::H<u8>|F::H⟩ {}
+impl Marker for Holder<u8> {}";
     inherent_impl_header: Agree, "impl %H {
     fn get(self) -> u8 { self.t }
 }
@@ -424,7 +419,7 @@ impl Box<%QP> {
     fn show(self) -> u8 { self.x.1 }
 }
 fn f(_ b: Box<(bool, u8)>) -> u8 { b.show() }";
-    inherent_impl_own_parameter: Known(OWN_PARAMETER), "struct Box<G> { x: G }
+    inherent_impl_own_parameter: Agree, "struct Box<G> { x: G }
 impl<X> Box<⟨<Fac as Factory>::P<X>|(bool, X)⟩> {
     fn flag(self) -> bool { self.x.0 }
 }
@@ -585,24 +580,46 @@ struct S {}
 impl F1 for S { type Out⟨<T> = (T, u8)| = (bool, u8)⟩ }
 impl F2 for S { type Out⟨<T> = (T, u16)| = (bool, u16)⟩ }
 fn f(_ x: S::Out⟨<bool>|⟩) {}";
-    ambiguous_name_mixed_arity: Known("not decided whether `S::Out<bool>` is ambiguous or selects the only `Out` with a parameter; today it reports an arity error against the other"), "trait F1 { type Out⟨<T>|⟩ }
+    ambiguous_name_mixed_arity: Known("not decided whether `S::Out<bool>` is ambiguous or selects the only `Out` with a parameter; today it reports the argument count of the first candidate that applies"), "trait F1 { type Out⟨<T>|⟩ }
 trait F2 { type Out }
 struct S {}
 impl F1 for S { type Out⟨<T> = (T, u8)| = (bool, u8)⟩ }
 impl F2 for S { type Out = u16 }
 fn f(_ x: S::Out⟨<bool>|⟩) {}";
-    kind_of_definition_generic_use: Rejected, "trait Fk { type Ctor⟨<T>|⟩: * -> * }
+    // A definition of another kind than the declared one: reported where it
+    // is written (3-0065), and nothing at its uses.
+    kind_of_definition_generic_use: Exactly(&["3-0065"]), "trait Fk { type Ctor<T>: * -> * }
 struct B {}
-impl Fk for B { type Ctor⟨<T>|⟩ = u8 }
-fn g<F: Fk>(_ x: <F as Fk>::Ctor<⟨bool, |⟩u8>) {}
+impl Fk for B { type Ctor<T> = u8 }
+fn g<F: Fk>(_ x: <F as Fk>::Ctor<bool, u8>) {}
 fn h() { g<B>(1) }";
-    kind_of_definition_concrete_use: Rejected, "trait Fk { type Ctor⟨<T>|⟩: * -> * }
+    kind_of_definition_generic_use_plain: Exactly(&["3-0065"]), "trait Fk { type Ctor: * -> * }
 struct B {}
-impl Fk for B { type Ctor⟨<T>|⟩ = u8 }
-fn f(_ x: <B as Fk>::Ctor<⟨bool, |⟩u8>) -> u8 { x }";
-    kind_of_definition_unused: Rejected, "trait Fk { type Ctor⟨<T>|⟩: * -> * }
+impl Fk for B { type Ctor = u8 }
+fn g<F: Fk>(_ x: <F as Fk>::Ctor<u8>) {}
+fn h() { g<B>(1) }";
+    kind_of_definition_concrete_use: Exactly(&["3-0065"]), "trait Fk { type Ctor<T>: * -> * }
 struct B {}
-impl Fk for B { type Ctor⟨<T>|⟩ = u8 }";
+impl Fk for B { type Ctor<T> = u8 }
+fn f(_ x: <B as Fk>::Ctor<bool, u8>) -> u8 { 1 }";
+    kind_of_definition_concrete_use_plain: Exactly(&["3-0065"]), "trait Fk { type Ctor: * -> * }
+struct B {}
+impl Fk for B { type Ctor = u8 }
+fn f(_ x: <B as Fk>::Ctor<u8>) -> u8 { x }";
+    kind_of_definition_unused: Exactly(&["3-0065"]), "trait Fk { type Ctor<T>: * -> * }
+struct B {}
+impl Fk for B { type Ctor<T> = u8 }";
+    kind_of_definition_unused_plain: Exactly(&["3-0065"]), "trait Fk { type Ctor: * -> * }
+struct B {}
+impl Fk for B { type Ctor = u8 }";
+    kind_of_definition_constructor_for_type: Exactly(&["3-0065"]), "struct Box<T> { t: T }
+trait Fk { type Out<T> }
+struct B {}
+impl Fk for B { type Out<T> = Box }
+fn f(_ x: B::Out<u8>) {}";
+    kind_of_trait_default: Exactly(&["3-0065"]), "trait Fk { type Ctor: * -> * = u16 }
+struct B {}
+impl Fk for B {}";
     // Unsupported forms: one error at each declaration.
     const_parameter: Exactly(&["3-0060", "3-0060"]), "trait Fk { type Out<const N: usize> }
 impl Fk for Fac { type Out<const N: usize> = [u8; N] }";
@@ -773,9 +790,9 @@ fn nested_applications(depth: usize, family: bool) -> String {
     }
 }
 
-const NESTED_KNOWN: &str = "applications nested in arguments are resolved one after another, so \
-                            the nesting limit of 64 does not apply to them as it does to nested \
-                            plain projections";
+const NESTED_KNOWN: &str = "a written family application is resolved when it is lowered, as a \
+                            plain shorthand chain is, so no nesting limit applies to it; the twin \
+                            nests qualified projections, which normalization resolves and counts";
 
 /// Nested applications at depth 3 agree with the twin. At depth 65 they
 /// are known to differ (`NESTED_KNOWN`: the plain twin meets the nesting

@@ -1,0 +1,232 @@
+// Values whose types are written through associated types with a parameter,
+// in the remaining positions, behave as the same values typed through plain
+// associated types: a contract field holding a tuple, an `#[abi]` struct in
+// a message, a field of an array of family types, a field typed through a
+// type constructor argument, generic structs and enums holding a family
+// application, a family defined through another, a generic impl header and
+// a constant.
+use std::evm::Evm
+
+struct Holder<T> {
+    v: T,
+}
+
+struct Store<T> {
+    a: T,
+    b: T,
+}
+
+#[abi]
+pub struct Pt {
+    pub x: u256,
+    pub y: u256,
+}
+
+impl Copy for Pt {}
+
+trait Family {
+    type W<T>
+    type Abi<T>
+    type Pair<T>
+    type H<T>
+    type Inner<T>
+    type S<T>
+    type Arr<T>
+    type Id<T>
+}
+
+trait Plain {
+    type PlainW
+    type PlainAbi
+    type PlainPair
+    type PlainInner
+    type PlainS
+    type PlainArr
+    type PlainId
+}
+
+struct Fac {}
+
+impl Family for Fac {
+    type W<T> = (T, u256)
+    type Abi<T> = Pt
+    type Pair<T> = (bool, T)
+    type H<T> = Holder<T>
+    type Inner<T> = (T, bool)
+    type S<T> = Store<Self::Inner<T>>
+    type Arr<T> = [T; 2]
+    type Id<T> = T
+}
+
+impl Plain for Fac {
+    type PlainW = (u256, u256)
+    type PlainAbi = Pt
+    type PlainPair = (bool, u256)
+    type PlainInner = (u256, bool)
+    type PlainS = Store<Self::PlainInner>
+    type PlainArr = [u8; 2]
+    type PlainId = u8
+}
+
+msg M {
+    #[selector = 1]
+    Set { a: u256 },
+    #[selector = 2]
+    FamilyGet -> u256,
+    #[selector = 3]
+    PlainGet -> u256,
+    #[selector = 4]
+    FamilySwap { p: Fac::Abi<u8> } -> Fac::Abi<u8>,
+    #[selector = 5]
+    PlainSwap { p: Fac::PlainAbi } -> Fac::PlainAbi,
+}
+
+pub contract C {
+    mut fw: Fac::W<u256>,
+    mut pw: Fac::PlainW,
+
+    recv M {
+        Set { a } uses (mut fw, mut pw) {
+            fw.0 = a
+            fw.1 = a + 1
+            pw.0 = a
+            pw.1 = a + 1
+        }
+        FamilyGet -> u256 uses (fw) { fw.0 * 100 + fw.1 }
+        PlainGet -> u256 uses (pw) { pw.0 * 100 + pw.1 }
+        FamilySwap { p } -> Fac::Abi<u8> { Pt { x: p.y, y: p.x } }
+        PlainSwap { p } -> Fac::PlainAbi { Pt { x: p.y, y: p.x } }
+    }
+}
+
+#[test]
+fn family_contract_positions_behave_like_plain_ones() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    evm.call(addr: c, gas: 1000000, value: 0, message: M::Set { a: 5 })
+    let family: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: M::FamilyGet {})
+    let plain: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: M::PlainGet {})
+    assert!(family == plain)
+    assert!(plain == 506)
+    let fp: Pt = evm.call(addr: c, gas: 1000000, value: 0, message: M::FamilySwap { p: Pt { x: 1, y: 2 } })
+    let pp: Pt = evm.call(addr: c, gas: 1000000, value: 0, message: M::PlainSwap { p: Pt { x: 1, y: 2 } })
+    assert!(fp.x == pp.x)
+    assert!(fp.y == pp.y)
+    assert!(pp.x == 2)
+}
+
+struct FamilyArrays {
+    a: [Fac::Pair<u256>; 2],
+}
+
+struct PlainArrays {
+    a: [Fac::PlainPair; 2],
+}
+
+struct ThroughConstructor<G: * -> *> {
+    a: G<u256>,
+}
+
+struct FamilyGeneric<T> {
+    a: Fac::Pair<T>,
+}
+
+struct PlainGeneric<T> {
+    a: (bool, T),
+}
+
+enum FamilyEnum<T> {
+    A(Fac::Pair<T>),
+    B,
+}
+
+enum PlainEnum<T> {
+    A((bool, T)),
+    B,
+}
+
+struct FamilyNested {
+    s: Fac::S<u256>,
+}
+
+struct PlainNested {
+    s: Fac::PlainS,
+}
+
+struct OverFactory<F: Family> {
+    a: F::Arr<u8>,
+}
+
+struct OverPlainFactory<F: Plain> {
+    a: F::PlainArr,
+}
+
+fn generic_get<T>(_ g: own FamilyGeneric<T>) -> T {
+    g.a.1
+}
+
+fn plain_generic_get<T>(_ g: own PlainGeneric<T>) -> T {
+    g.a.1
+}
+
+fn family_enum_value(_ e: FamilyEnum<u256>) -> u256 {
+    match e {
+        FamilyEnum::A(p) => p.1
+        FamilyEnum::B => 0
+    }
+}
+
+fn plain_enum_value(_ e: PlainEnum<u256>) -> u256 {
+    match e {
+        PlainEnum::A(p) => p.1
+        PlainEnum::B => 0
+    }
+}
+
+trait Marker {
+    fn id() -> u8
+}
+
+impl<T> Marker for Fac::H<T> {
+    fn id() -> u8 { 7 }
+}
+
+struct PlainBox<T> {
+    v: T,
+}
+
+impl<T> Marker for PlainBox<T> {
+    fn id() -> u8 { 7 }
+}
+
+const FAMILY_C: Fac::Id<u8> = 3
+
+const PLAIN_C: Fac::PlainId = 3
+
+fn id<M: Marker>() -> u8 {
+    M::id()
+}
+
+#[test]
+fn family_value_positions_behave_like_plain_ones() {
+    let fa = FamilyArrays { a: [(true, 10), (false, 20)] }
+    let pa = PlainArrays { a: [(true, 10), (false, 20)] }
+    assert!(fa.a[0].1 + fa.a[1].1 == pa.a[0].1 + pa.a[1].1)
+
+    let through = ThroughConstructor<Fac::H> { a: Holder { v: 9 } }
+    let direct = ThroughConstructor<Holder> { a: Holder { v: 9 } }
+    assert!(through.a.v == direct.a.v)
+
+    assert!(generic_get(FamilyGeneric<u256> { a: (true, 7) }) == plain_generic_get(PlainGeneric<u256> { a: (true, 7) }))
+    assert!(family_enum_value(FamilyEnum::A((true, 5))) == plain_enum_value(PlainEnum::A((true, 5))))
+
+    let fnested = FamilyNested { s: Store { a: (1, true), b: (2, false) } }
+    let pnested = PlainNested { s: Store { a: (1, true), b: (2, false) } }
+    assert!(fnested.s.a.0 + fnested.s.b.0 == pnested.s.a.0 + pnested.s.b.0)
+
+    let over = OverFactory<Fac> { a: [3, 4] }
+    let over_plain = OverPlainFactory<Fac> { a: [3, 4] }
+    assert!(over.a[0] + over.a[1] == over_plain.a[0] + over_plain.a[1])
+
+    assert!(id<Holder<bool>>() == id<PlainBox<bool>>())
+    assert!(FAMILY_C == PLAIN_C)
+}

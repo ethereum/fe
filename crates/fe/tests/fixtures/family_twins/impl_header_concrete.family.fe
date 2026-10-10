@@ -1,9 +1,0 @@
-struct Holder<T> { t: T }
-trait Factory { type B<T> }
-struct A {}
-impl Factory for A { type B<T> = Holder<T> }
-trait Marker { fn id() -> u8 }
-impl Marker for A::B<bool> { fn id() -> u8 { 7 } }
-fn get<M: Marker>() -> u8 { M::id() }
-#[test]
-fn concrete_header() { assert!(get<Holder<bool>>() == 7) }

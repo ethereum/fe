@@ -1,8 +1,0 @@
-// A field of a struct generic over the factory, indexed.
-trait Factory { type Arr<T> }
-struct A {}
-impl Factory for A { type Arr<T> = [T; 2] }
-struct W<F: Factory> { a: F::Arr<u8> }
-fn a(_ w: W<A>) -> u8 { w.a[0] + w.a[1] }
-#[test]
-fn t() { assert!(a(W<A> { a: [3, 4] }) == 7) }

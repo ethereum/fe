@@ -51,3 +51,53 @@ fn family_rows_of_the_limit_matrix_through_the_pipeline() {
 fn nested_family_applications_through_the_pipeline() {
     check_nested_applications(&codes);
 }
+
+/// The self-checking `fe test` fixtures `fixtures/fe_test/family_twin_*.fe`,
+/// each a family and a plain version of one program asserting equal results,
+/// pass at both optimization levels (the fixture harness runs only the
+/// default one).
+#[test]
+fn family_twin_fixtures_pass_at_each_optimization_level() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/fe_test");
+    let mut paths: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|entry| Some(entry.ok()?.path()))
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("family_twin_") && name.ends_with(".fe"))
+        })
+        .collect();
+    paths.sort();
+    assert!(!paths.is_empty());
+    let runs: Vec<(String, &str)> = paths
+        .iter()
+        .flat_map(|path| ["0", "2"].map(|level| (path.display().to_string(), level)))
+        .collect();
+    let failures: Vec<String> = std::thread::scope(|scope| {
+        let handles: Vec<_> = runs
+            .iter()
+            .map(|(path, level)| {
+                scope.spawn(move || {
+                    let output = Command::new(env!("CARGO_BIN_EXE_fe"))
+                        .args(["test", "--color", "never", "--jobs", "1", "-O", level])
+                        .arg(path)
+                        .output()
+                        .expect("fe runs");
+                    (!output.status.success()).then(|| {
+                        format!(
+                            "{path} at -O {level}:\n{}{}",
+                            String::from_utf8_lossy(&output.stdout),
+                            String::from_utf8_lossy(&output.stderr)
+                        )
+                    })
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .filter_map(|h| h.join().unwrap())
+            .collect()
+    });
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

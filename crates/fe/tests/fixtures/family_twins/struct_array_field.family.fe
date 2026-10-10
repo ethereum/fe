@@ -1,7 +1,0 @@
-trait Factory { type Arr<T> }
-struct Fac {}
-impl Factory for Fac { type Arr<T> = [T; 3] }
-struct Rec { a: Fac::Arr<u256> }
-fn sum(_ r: Rec) -> u256 { r.a[0] + r.a[1] + r.a[2] }
-#[test]
-fn f() { assert!(sum(Rec { a: [10, 20, 30] }) == 60) }

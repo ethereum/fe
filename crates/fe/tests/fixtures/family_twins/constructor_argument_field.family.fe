@@ -1,8 +1,0 @@
-struct Holder<T> { v: T }
-trait Factory { type H<T> }
-struct Fac {}
-impl Factory for Fac { type H<T> = Holder<T> }
-struct W<G: * -> *> { a: G<u256> }
-fn get(_ w: W<Fac::H>) -> u256 { w.a.v }
-#[test]
-fn f() { assert!(get(W<Fac::H> { a: Holder { v: 9 } }) == 9) }

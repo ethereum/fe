@@ -1,7 +1,0 @@
-trait Factory { type Pair<T> }
-struct Fac {}
-impl Factory for Fac { type Pair<T> = (bool, T) }
-struct Rec { a: [Fac::Pair<u256>; 2] }
-fn sum(_ r: Rec) -> u256 { r.a[0].1 + r.a[1].1 }
-#[test]
-fn f() { assert!(sum(Rec { a: [(true, 10), (false, 20)] }) == 30) }

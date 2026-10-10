@@ -1,8 +1,0 @@
-// The same with a plain associated type.
-trait Factory { type Arr }
-struct A {}
-impl Factory for A { type Arr = [u8; 2] }
-struct W<F: Factory> { a: F::Arr }
-fn a(_ w: W<A>) -> u8 { w.a[0] + w.a[1] }
-#[test]
-fn t() { assert!(a(W<A> { a: [3, 4] }) == 7) }

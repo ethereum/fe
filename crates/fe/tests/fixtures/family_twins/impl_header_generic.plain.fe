@@ -1,6 +1,0 @@
-struct Holder<T> { t: T }
-trait Marker { fn id() -> u8 }
-impl<T> Marker for Holder<T> { fn id() -> u8 { 7 } }
-fn get<M: Marker>() -> u8 { M::id() }
-#[test]
-fn generic_header() { assert!(get<Holder<bool>>() == 7) }
