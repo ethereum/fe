@@ -469,7 +469,7 @@ fn identity(data: *Data) -> *Data {
     data
 }
 
-fn replace(mut _ data: own *Data, other: *Data) -> u256 {
+fn replace(var _ data: own *Data, other: *Data) -> u256 {
     data = other
     data.value
 }
@@ -713,7 +713,7 @@ fn mutated_scalar_locals_stay_rooted() {
         "mutated_scalar_locals_stay_rooted.fe",
         r#"
 fn bump(size: u256) -> u256 {
-    let mut value: u256 = size
+    var value: u256 = size
     value += 1
     value
 }
@@ -1156,7 +1156,7 @@ fn linear_probe_big_struct_keeps_array_projection_reads_place_based() {
         file_url.clone(),
         Some(
             format!(
-                "{}\nfn entry() -> u256 {{\n    let mut table = Table::empty()\n    table.set(17, 99)\n    table.get(17)\n}}\n",
+                "{}\nfn entry() -> u256 {{\n    var table = Table::empty()\n    table.set(17, 99)\n    table.get(17)\n}}\n",
                 include_str!("../../fe/tests/fixtures/fe_test/linear_probe_big_struct.fe")
             ),
         ),
@@ -1283,7 +1283,7 @@ fn materialized_scalar_uses_do_not_keep_rawaddr_runtime_carriers() {
 }
 
 fn entry() -> u8 {
-    let mut x: u8 = 2
+    var x: u8 = 2
     bump(mut x)
 }
 "#,
@@ -1398,9 +1398,8 @@ fn empty_revert_intrinsic_has_no_synthetic_pointer_operand() {
         "empty_revert_intrinsic_has_no_synthetic_pointer_operand.fe",
         r#"
 use std::abi::bytes_from_words_prefix
-use std::evm::RawMem
 
-fn trigger() uses (mem: mut RawMem) {
+fn trigger() {
     let _ = bytes_from_words_prefix<33, 1>([0])
 }
 "#,
@@ -2109,7 +2108,7 @@ fn unit_branch_mutations_do_not_use_erased_call_results() {
         r#"
 #[test]
 fn unit_branch_add_assign() {
-    let mut x: usize = 0
+    var x: usize = 0
     if true {
         x += 1
     } else {
@@ -2154,7 +2153,7 @@ fn return_array_after_projection(xs: [u8; 4]) -> [u8; 4] {
 }
 
 fn use_returned_array() -> u8 {
-    let mut xs: [u8; 4] = [1, 2, 3, 4]
+    var xs: [u8; 4] = [1, 2, 3, 4]
     xs = return_array_after_projection(xs)
     xs[0]
 }
@@ -2209,7 +2208,7 @@ fn return_array_after_projection(xs: [u8; 4]) -> [u8; 4] {
 }
 
 fn use_returned_array() -> u8 {
-    let mut xs: [u8; 4] = [1, 2, 3, 4]
+    var xs: [u8; 4] = [1, 2, 3, 4]
     xs = return_array_after_projection(xs)
     xs[0]
 }
@@ -2274,7 +2273,7 @@ fn return_array_after_projection(xs: [u256; 3]) -> [u256; 3] {
 }
 
 fn use_returned_array() -> u256 {
-    let mut xs: [u256; 3] = [1, 2, 3]
+    var xs: [u256; 3] = [1, 2, 3]
     xs = return_array_after_projection(xs)
     xs[0]
 }
@@ -2434,7 +2433,7 @@ pub contract C {
 
 #[test]
 fn in_memory() {
-    let mut counter = Counter { value: 1 }
+    var counter = Counter { value: 1 }
     if let Option::Some(value) = counter.maybe(true) {
         value += 1
     }

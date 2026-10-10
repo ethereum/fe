@@ -18,7 +18,7 @@
 //!
 //! ```fe
 //! let slot = unsafe { SolSlot::at(0) }
-//! let mut word = slot.load()
+//! var word = slot.load()
 //! let owner: Address = word.get(offset: 0)
 //! word.set(offset: 20, value: false)
 //! slot.store(word)
@@ -30,13 +30,13 @@
 //! `read_bytes`/`write_bytes` (and the `string` variants) use Solidity's
 //! layout for a `bytes` or `string` state variable in the slot.
 use core::abi::{ByteInput, Bytes, DynString, store_word}
-use core::effect_ref::AddressSpace
+use core::effect_ref::StateSpace
 use core::num::IntDowncast
-use core::ops::{PlaceIndex, WrappingAdd}
-use core::ptr::{self, MemBuffer, MemSpan}
-use super::crypto::keccak256
+use core::ops::{StateIndex, WrappingAdd}
+use core::ptr::{self, MemSpan}
+use super::crypto::keccak_words
 use super::effects::{Address, RawStorage, StorPtr, revert_error}
-use super::ops::{mstore, revert_empty, signextend}
+use super::ops::{revert_empty, signextend}
 use super::panic::{PANIC_STORAGE_ENCODING, Panic}
 
 /// A value with a fixed-width Solidity storage representation.
@@ -59,8 +59,8 @@ struct Payload {
     head: u256,
 }
 
-impl PlaceIndex for Payload {
-    const SPACE: AddressSpace = AddressSpace::Storage
+impl StateIndex for Payload {
+    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 
@@ -76,7 +76,7 @@ impl SolSlot {
     /// contract field, uses `slot` or the slots its payload derives.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
             with (ptr) {
                 core::effect_ref::target_mut(ptr)
@@ -99,7 +99,7 @@ impl SolSlot {
             let _ = field_shift(offset, bits: T::BITS)
             self.payload.head = value.to_packed()
         } else {
-            let mut word = SolWord { word: self.payload.head }
+            var word = SolWord { word: self.payload.head }
             word.set(offset, value)
             self.payload.head = word.word
         }
@@ -191,7 +191,7 @@ impl SolSlot {
                     store_word(ptr: ptr::offset_bytes(data, 32), value: leading_bytes(head, count: len))
                 }
             } else {
-                let mut i: u256 = 0
+                var i: u256 = 0
                 while i < word_count(len) {
                     let word = leading_bytes(self.payload[i], count: len - i * 32)
                     store_word(ptr: ptr::offset_bytes(data, 32 + i * 32), value: word)
@@ -207,19 +207,19 @@ impl SolSlot {
         let old_len = stored_len(old)
         let old_words = if old & 1 == 0 { 0 } else { word_count(old_len) }
         let len = payload.len()
-        let mut words: u256 = 0
+        var words: u256 = 0
         if len < 32 {
             self.payload.head = payload_word(payload, 0) | (len * 2)
         } else {
             self.payload.head = len * 2 + 1
             words = word_count(len)
-            let mut i: u256 = 0
+            var i: u256 = 0
             while i < words {
                 self.payload[i] = payload_word(payload, i * 32)
                 i += 1
             }
         }
-        let mut i = words
+        var i = words
         while i < old_words {
             self.payload[i] = 0
             i += 1
@@ -230,9 +230,7 @@ impl SolSlot {
 // First data slot of a long value (or of a dynamic array):
 // `keccak256(abi.encode(slot))`.
 pub(ingot) fn data_slot(_ slot: u256) -> u256 {
-    let buffer = MemBuffer::alloc(32)
-    unsafe { mstore(addr: buffer.ptr(), value: slot) }
-    keccak256(buffer.span())
+    keccak_words([slot])
 }
 
 // Panics like Solidity (0x22) on a head whose length contradicts its

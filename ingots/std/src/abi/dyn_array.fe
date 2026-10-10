@@ -112,7 +112,7 @@ pub fn canonical_dyn_array<T>(_ values: DynArray<T>) -> DynArray<T>
         let data = ptr::alloc_bytes(size)
         return unsafe {
             store_word(ptr: data, value: count)
-            let mut i: u256 = 0
+            var i: u256 = 0
             while i < count {
                 values.get(i).encode(ptr::offset_bytes(data, 32 + i * head))
                 i += 1
@@ -124,9 +124,9 @@ pub fn canonical_dyn_array<T>(_ values: DynArray<T>) -> DynArray<T>
     // Dynamic elements: the canonical size is only known after decoding.
     // Encode each element's tail once while sizing and copy the tails into
     // place afterwards, instead of decoding every element a second time.
-    let mut tails = unsafe { ptr::alloc_array<MemBuffer>(count) }
-    let mut size: u256 = 0
-    let mut i: u256 = 0
+    var tails = unsafe { ptr::alloc_array<MemBuffer>(count) }
+    var size: u256 = 0
+    var i: u256 = 0
     while i < count {
         let encoded = encode_alloc<Sol, T>(values.get(i))
         size += encoded.len()
@@ -298,7 +298,7 @@ impl<T> DynVec<T>
             unsafe {
                 *parts = part
                 // Every slot shares the first slot's encoding.
-                let mut i: u256 = 1
+                var i: u256 = 1
                 while i < len {
                     ptr::copy_raw(
                         ptr::byte_ptr(ptr::offset(parts, i)),
@@ -375,8 +375,8 @@ fn assemble_dyn_array<T>(_ parts: *MemBuffer, count: u256, parts_size: u256) -> 
     let data = ptr::alloc_bytes(size)
     unsafe { store_word(ptr: data, value: count) }
     let root = ptr::offset_bytes(data, 32)
-    let mut tail = count * head
-    let mut i: u256 = 0
+    var tail = count * head
+    var i: u256 = 0
     while i < count {
         let part = unsafe { ref *ptr::offset(parts, i) }
         if T::IS_DYNAMIC {

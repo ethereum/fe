@@ -324,6 +324,8 @@ Behavior:
 - **Arithmetic**: the per-ingot effective `arithmetic` values from the metadata are applied via
   the regenerated `fe.toml` files (`dependency-arithmetic` is deliberately not re-applied; the
   metadata records post-forcing values).
+- **Unsafe trust**: every regenerated dependency entry sets `allow_unsafe = true`. The recorded
+  build already passed the trust check, and trust does not affect codegen.
 - **Version check**: if `compiler.version` differs from the running compiler, a warning is printed
   to stderr (no abort); exact bytecode reproduction is only guaranteed with the same version.
 - **Output**: artifacts are selected with `--emit` as usual and written to `--out-dir`, which
@@ -382,6 +384,22 @@ When checking an ingot with dependencies, if downstream ingots have errors, `fe 
 - or `Error: Downstream ingots have errors`
 
 Then, for each dependency with errors, it prints a short header (name/version when available) and its URL, followed by emitted diagnostics.
+
+### Unsafe code in dependencies
+
+A dependency's `unsafe` code may run only if the dependency is trusted. The ingots being checked
+(and workspace members), `core` and `std` are trusted; a dependency is trusted when a trusted ingot
+declares it with `allow_unsafe = true`:
+
+```toml
+[dependencies]
+dep = { path = "../dep", allow_unsafe = true }
+```
+
+A trusted dependency's own `allow_unsafe` entries extend trust to its dependencies; an untrusted
+one's grant nothing. Only use counts: an untrusted dependency's safe functions need no trust, and
+`fe check`, `fe build` and `fe test` report an error (`16-0015`) only at a call in the checked
+ingot's code that reaches an `unsafe` block or `unsafe fn` body of an untrusted dependency.
 
 ### Optional outputs
 

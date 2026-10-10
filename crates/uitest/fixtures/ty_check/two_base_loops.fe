@@ -3,7 +3,7 @@
 use core::iter::{reversed, zip}
 
 fn mixed_modes() {
-    let mut xs: [u256; 2] = [1, 2]
+    var xs: [u256; 2] = [1, 2]
     let ys: [u256; 2] = [3, 4]
     for (x, y) in (mut xs, ys) by zip() {
         x += y

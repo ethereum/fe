@@ -53,7 +53,7 @@ pub fn inside_unsafe(p: own *Counter, handle: own Handle) {
     }
 }
 
-pub fn capability(mut counter: own Counter) {
+pub fn capability(var counter: own Counter) {
     with (mut counter) {
         bump()
     }

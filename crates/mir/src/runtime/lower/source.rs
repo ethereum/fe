@@ -82,7 +82,7 @@ pub(super) fn data_path_index_bounds<'db>(
                 ty.generic_args(db).first().copied()
             }
             NDataProjection::Entry(_) => instance
-                .place_index_tys(db, ty)
+                .state_index_tys(db, ty)
                 .map(|(_, element_ty)| element_ty),
         }
         .expect("verified normalized data path");

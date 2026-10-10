@@ -1,0 +1,5 @@
+// `allow_unsafe = true` trusts `dep`.
+#[test]
+fn allowed_unsafe_use() {
+    assert!(dep::round_trip(7) == 7)
+}

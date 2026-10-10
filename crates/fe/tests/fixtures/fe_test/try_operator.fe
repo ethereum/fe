@@ -26,7 +26,7 @@ impl Arr {
     // An early exit at one yield site and a write-back slide at the other.
     fn cached(mut self, _ i: usize) -> Option<mut u256> {
         let at = self.index(i)?
-        let mut tmp = self.xs[at]
+        var tmp = self.xs[at]
         yield Option::Some(mut tmp)
         self.xs[at] = tmp
     }
@@ -73,14 +73,14 @@ fn values() {
 
 #[test]
 fn sum_shapes() {
-    let mut a = Arr { xs: [5, 6, 7], len: 2 }
+    var a = Arr { xs: [5, 6, 7], len: 2 }
     match bump_first(mut a) {
         Option::Some(v) => assert!(v == 6)
         Option::None => assert!(false)
     }
     assert!(a.xs[0] == 6)
 
-    let mut empty = Arr { xs: [5, 6, 7], len: 0 }
+    var empty = Arr { xs: [5, 6, 7], len: 0 }
     match bump_first(mut empty) {
         Option::Some(_) => assert!(false)
         Option::None => {}

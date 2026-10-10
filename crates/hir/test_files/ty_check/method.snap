@@ -1,5 +1,6 @@
 ---
-source: crates/hir/tests/ty_check.rs
+source: crates/hir/tests/frontend/ty_check.rs
+assertion_line: 46
 expression: res
 input_file: test_files/ty_check/method.fe
 ---
@@ -271,7 +272,7 @@ note:
    │
 48 │   fn foo() -> Option<bool> {
    │ ╭──────────────────────────^
-49 │ │     let mut x: Option<i32> = Option::Some(1)
+49 │ │     var x: Option<i32> = Option::Some(1)
 50 │ │     let y: Option<i32> = Option::Some(2)
 51 │ │     let func_obj = get_t
    · │
@@ -282,26 +283,26 @@ note:
 note:
    ┌─ method.fe:49:9
    │
-49 │     let mut x: Option<i32> = Option::Some(1)
-   │         ^^^^^ Option<i32>
+49 │     var x: Option<i32> = Option::Some(1)
+   │         ^ Option<i32>
 
 note:
-   ┌─ method.fe:49:30
+   ┌─ method.fe:49:26
    │
-49 │     let mut x: Option<i32> = Option::Some(1)
-   │                              ^^^^^^^^^^^^ fn Some<i32>
+49 │     var x: Option<i32> = Option::Some(1)
+   │                          ^^^^^^^^^^^^ fn Some<i32>
 
 note:
-   ┌─ method.fe:49:30
+   ┌─ method.fe:49:26
    │
-49 │     let mut x: Option<i32> = Option::Some(1)
-   │                              ^^^^^^^^^^^^^^^ Option<i32>
+49 │     var x: Option<i32> = Option::Some(1)
+   │                          ^^^^^^^^^^^^^^^ Option<i32>
 
 note:
-   ┌─ method.fe:49:43
+   ┌─ method.fe:49:39
    │
-49 │     let mut x: Option<i32> = Option::Some(1)
-   │                                           ^ i32
+49 │     var x: Option<i32> = Option::Some(1)
+   │                                       ^ i32
 
 note:
    ┌─ method.fe:50:9

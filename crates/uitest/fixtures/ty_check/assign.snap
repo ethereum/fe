@@ -45,7 +45,7 @@ error[8-0018]: left-hand side of assignment is immutable
 error[8-0018]: left-hand side of assignment is immutable
    ┌─ assign.fe:30:5
    │
-29 │ fn foo<T>(x: i32, mut y: own u32, opt: Option<T>, opt2: Option<i32>) {
+29 │ fn foo<T>(x: i32, var y: own u32, opt: Option<T>, opt2: Option<i32>) {
    │           - try changing to `mut x`
 30 │     x = 1
    │     ^ immutable assignment
@@ -70,7 +70,7 @@ error[8-0031]: type annotation is needed
 error[8-0066]: mutable borrow requires a mutable place
    ┌─ assign.fe:43:14
    │
-29 │ fn foo<T>(x: i32, mut y: own u32, opt: Option<T>, opt2: Option<i32>) {
+29 │ fn foo<T>(x: i32, var y: own u32, opt: Option<T>, opt2: Option<i32>) {
    │                                   --- `opt` does not provide mutable access
    ·
 43 │         Some(mut t) => {

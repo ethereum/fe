@@ -47,6 +47,7 @@ use super::{
     effects::{WithBindingSource, provisional_owner_effect_bindings},
     elaborate::elaborate_ends,
     local_facts::{initial_snapshot_source, ordinary_direct_value_role},
+    pattern::PatternSource,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -606,9 +607,17 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         )
     }
 
-    /// Lowers what a pattern destructures: an access is destructured through
-    /// its carrier, so the pattern reads only the parts it binds.
-    fn lower_scrutinee(&mut self, expr: ExprId) -> SValueId {
+    /// Lowers what a pattern destructures: a place its `ref` and `mut`
+    /// bindings match is bound by component, and an access is destructured
+    /// through its carrier, so the pattern reads only the parts it binds.
+    fn lower_scrutinee(&mut self, expr: ExprId) -> PatternSource<'db> {
+        if self.typed_body.is_matched_place(expr) {
+            return PatternSource::Place {
+                place: self.lower_place(expr),
+                ty: self.expr_ty(expr),
+                provider: self.typed_body.expr_prop(self.db, expr).borrow_provider,
+            };
+        }
         if matches!(
             expr.data(self.db, self.body),
             Partial::Present(Expr::Path(_))
@@ -620,9 +629,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 .as_capability(self.db)
                 .is_some()
         {
-            return local;
+            return self.value_pattern_source(local);
         }
-        self.lower_source(expr)
+        let value = self.lower_source(expr);
+        self.value_pattern_source(value)
     }
 
     /// Lowers what a binding, scrutinee or argument receives from `expr`: the
@@ -1860,7 +1870,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         pat.data(self.db, self.body),
                         Partial::Present(Pat::Path(..))
                     ) {
-                        self.lower_source(*init)
+                        let value = self.lower_source(*init);
+                        self.value_pattern_source(value)
                     } else {
                         self.lower_scrutinee(*init)
                     };
@@ -2165,6 +2176,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             }
             ForLoopItem::Access(_) | ForLoopItem::Produced => element,
         };
+        let element = self.value_pattern_source(element);
         self.bind_pattern(pat, element);
         let _ = self.lower_expr(body_expr);
         let falls_through = !self.is_terminated(self.current);

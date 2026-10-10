@@ -53,7 +53,7 @@ pub enum Projection<Ty, Var, Idx> {
     Index(IndexSource<Idx>),
 
     /// The element at a key of a collection whose elements are places
-    /// (`core::ops::PlaceIndex`): a storage map's entry or a storage array's
+    /// (`core::ops::StateIndex`): a storage map's entry or a storage array's
     /// element, at a slot the collection computes.
     Entry(Idx),
 

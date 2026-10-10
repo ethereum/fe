@@ -1,5 +1,6 @@
 use core::ptr
-use std::evm::{Address, Call, Create, Evm, RawMem, StorageBytes, copy_returndata, decode_returndata}
+use core::abi::store_word
+use std::evm::{Address, Call, Create, Evm, StorageBytes, copy_returndata, decode_returndata}
 
 type Blobs = StorageBytes<u256>
 
@@ -31,22 +32,22 @@ uses (evm: mut Evm)
     let payload_size: u256 = 128
     let data_ptr = ptr::alloc_bytes(payload_size)
 
-    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe { store_word(ptr: data_ptr, value: payload_len) }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 32),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 32),
             value: 0x1111111111111111111111111111111111111111111111111111111111111111,
         )
     }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 64),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 64),
             value: 0x2222222222222222222222222222222222222222222222222222222222222222,
         )
     }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 96),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 96),
             value: 0x3300000000000000000000000000000000000000000000000000000000000000,
         )
     }
@@ -58,8 +59,8 @@ fn raw_get(addr: Address) -> Bytes
 uses (evm: mut Evm)
 {
     let ptr = ptr::alloc_bytes(4)
-    unsafe { evm.mstore(addr: ptr, value: (0x02 as u256) << 224) }
-    let mut ret = ptr::MemBuffer::empty()
+    unsafe { store_word(ptr: ptr, value: (0x02 as u256) << 224) }
+    var ret = ptr::MemBuffer::empty()
     let outcome = unsafe {
         evm.raw_call(
             addr: addr,

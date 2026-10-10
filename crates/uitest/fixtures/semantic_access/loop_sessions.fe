@@ -6,7 +6,7 @@ struct Item { n: u256 }
 
 // Rejected: the element session of a projected traversal holds `items`.
 fn projected(_ items: mut [Item; 2]) {
-    for item in items {
+    for ref item in items {
         items[0] = Item { n: 0 }
         assert(item.n > 0)
     }
@@ -21,7 +21,7 @@ fn mutable(_ xs: mut [u256; 2]) {
 
 // Rejected: a session the condition opens is held during the body.
 fn while_let(_ xs: mut MemArray<u256>) {
-    let mut i: usize = 0
+    var i: usize = 0
     while let Option::Some(x) = xs.get_mut(i) {
         xs[0] = 7
         x += 1

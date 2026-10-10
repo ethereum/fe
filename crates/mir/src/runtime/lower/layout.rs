@@ -58,7 +58,7 @@ pub(crate) fn layout_for_ty_in_env<'db>(
 
 /// Whether `ty` is a pinned type, whose layout takes a slot of its own.
 fn is_pinned<'db>(db: &'db dyn MirDb, ty: TyId<'db>) -> bool {
-    ty.adt_def(db).is_some_and(|adt| adt.pin(db).is_some())
+    ty.pin(db).is_some()
 }
 
 pub(crate) fn layout_for_aggregate_instance_in_env<'db>(

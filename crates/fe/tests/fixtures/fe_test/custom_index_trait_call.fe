@@ -25,7 +25,7 @@ fn custom_index_reads_lower_as_trait_call() {
 
 #[test]
 fn array_index_remains_place_projection() {
-    let mut values: [u256; 2] = [1, 2]
+    var values: [u256; 2] = [1, 2]
 
     assert!(values[1] == 2)
     values[1] = 3

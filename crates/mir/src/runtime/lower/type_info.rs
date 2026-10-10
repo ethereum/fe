@@ -368,7 +368,7 @@ pub(super) fn runtime_zero_sized_ty<'db>(
             });
     }
     // A pinned type's root number identifies its region.
-    if repr_ty.is_product(db) && repr_ty.adt_def(db).is_none_or(|adt| adt.pin(db).is_none()) {
+    if repr_ty.is_product(db) && repr_ty.pin(db).is_none() {
         return repr_ty
             .field_types(db)
             .into_iter()

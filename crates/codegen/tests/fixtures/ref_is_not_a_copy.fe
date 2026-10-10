@@ -10,7 +10,7 @@ fn live_view(_ d: Data) -> (ref u256, ref u256) {
 #[test]
 fn test_ref_is_not_a_copy() {
     let d = Data { x: 10, y: 20 }
-    let (live_x, live_y) = live_view(d)
+    let (ref live_x, ref live_y) = live_view(d)
     assert!(live_x == d.x)
     assert!(live_y == d.y)
 }

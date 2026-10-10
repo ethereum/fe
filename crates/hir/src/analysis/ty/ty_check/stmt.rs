@@ -4,11 +4,13 @@ use crate::analysis::{
     HirAnalysisDb,
     name_resolution::method_selection::{MethodCandidate, select_method_candidate},
 };
-use crate::core::hir_def::{Expr, ExprId, IdentId, Partial, Pat, PatId, Stmt, StmtId, Trait, UnOp};
+use crate::core::hir_def::{
+    BindingMarker, Expr, ExprId, IdentId, Partial, Pat, PatId, Stmt, StmtId, Trait,
+};
 use crate::span::DynLazySpan;
 
 use super::{
-    Callable, LocalBinding, TyChecker,
+    AccessBinding, Callable, LocalBinding, TyChecker,
     env::{ExprProp, TraitObligation, TraitObligationOrigin},
 };
 use crate::analysis::ty::{
@@ -161,18 +163,12 @@ impl<'db> TyChecker<'db> {
                     .set_local_borrow_provider(pat, prop.borrow_provider);
             }
 
-            // `let mut x = p.get()` binds a mutable copy of a projection's
-            // `Copy` grant (an explicit `mut p` stays an access).
-            let copies_grant = matches!(
-                pat.data(self.db, self.body()),
-                Partial::Present(Pat::Path(_, true))
-            ) && !matches!(
-                self.env.expr_data(*expr),
-                Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut))
-            ) && matches!(prop.shape, Some(Shape::Access(_, ty)) if self.ty_is_copy(ty));
-            if copies_grant {
-                self.consume_access(*expr);
-            } else if prop.shape.is_some() {
+            let prop = if prop.shape.is_none() && self.env.is_place_expr(*expr) {
+                self.open_let_place(*pat, *expr, prop)
+            } else {
+                prop
+            };
+            if prop.shape.is_some() {
                 self.bind_pattern_source(*pat, *expr, &prop);
             } else if self.pattern_binds_any(*pat) {
                 self.record_implicit_move_for_owned_expr(*expr, prop.ty);
@@ -206,51 +202,31 @@ impl<'db> TyChecker<'db> {
             }
             self.check_pat(*pat, ascription);
         }
-        self.check_mutable_pattern_bindings(*pat);
         self.env.flush_pending_bindings();
         TyId::unit(self.db)
     }
 
-    fn check_mutable_pattern_bindings(&mut self, pat: PatId) {
-        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
-            return;
-        };
-
-        match pat_data {
-            Pat::Path(_, is_mut) => {
-                if !*is_mut {
-                    return;
-                }
-
-                let Some(binding) = self.env.pat_binding(pat) else {
-                    return;
-                };
-                let ty = self.env.lookup_binding_ty(&binding);
-                if ty.has_invalid(self.db) || self.env.binding_access(&binding).is_none() {
-                    return;
-                }
-
-                self.push_diag(BodyDiag::MutableBindingCannotBeCapability {
-                    primary: pat.span(self.body()).into_path_pat().mut_token().into(),
-                    ty,
-                });
-            }
-            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
-                for &pat in pats {
-                    self.check_mutable_pattern_bindings(pat);
-                }
-            }
-            Pat::Record(_, fields) => {
-                for field in fields {
-                    self.check_mutable_pattern_bindings(field.pat);
-                }
-            }
-            Pat::Or(lhs, rhs) => {
-                self.check_mutable_pattern_bindings(*lhs);
-                self.check_mutable_pattern_bindings(*rhs);
-            }
-            Pat::WildCard | Pat::Rest | Pat::Lit(..) => {}
+    /// What a `let` of the place `expr` binds through: its components, for
+    /// `ref` and `mut` bindings, or a read access for a lone binding of a
+    /// `#[view]` type, which has no value reading. Otherwise its bindings
+    /// take the place's value.
+    fn open_let_place(&mut self, pat: PatId, expr: ExprId, prop: ExprProp<'db>) -> ExprProp<'db> {
+        let reborrows_view =
+            matches!(
+                pat.data(self.db, self.body()),
+                Partial::Present(Pat::Path(_, BindingMarker::Plain))
+            ) && matches!(self.env.pat_binding(pat), Some(LocalBinding::Local { .. }))
+                && prop.ty.fold_with(self.db, &mut self.table).is_view(self.db);
+        if !reborrows_view {
+            return self.open_matched_place(expr, prop, [pat]);
         }
+        let prop = ExprProp {
+            borrow_provider: self.access_provider(expr),
+            shape: Some(Shape::Access(BorrowKind::Ref, prop.ty)),
+            ..prop
+        };
+        self.env.type_expr(expr, prop.clone());
+        prop
     }
 
     fn check_for(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
@@ -299,7 +275,15 @@ impl<'db> TyChecker<'db> {
             (driver, driver_ty)
         });
         match self.plan_for_loop(&checked, driver, mutates) {
-            Some(plan) => {
+            Some(mut plan) => {
+                // `for ref x in c` holds each element's access, `Copy` or not.
+                if plan.item == ForLoopItem::Copy
+                    && self
+                        .first_marked_binding(*pat, BindingMarker::Ref)
+                        .is_some()
+                {
+                    plan.item = ForLoopItem::Access(BorrowKind::Ref);
+                }
                 // A producer advances its own copy of the driver.
                 if let Some(driver) = plan.driver
                     && plan.item == ForLoopItem::Produced
@@ -310,7 +294,12 @@ impl<'db> TyChecker<'db> {
                 self.check_pat(*pat, pattern_shape.erased_ty(self.db));
                 if let ForLoopItem::Access(_) = plan.item {
                     let authority = bases.iter().all(|base| self.expr_has_authority(*base));
-                    self.bind_pattern_accesses(*pat, &pattern_shape, authority);
+                    self.bind_pattern_accesses(
+                        *pat,
+                        &pattern_shape,
+                        authority,
+                        AccessBinding::Result,
+                    );
                 }
                 self.env.register_for_loop_plan(stmt, plan);
             }

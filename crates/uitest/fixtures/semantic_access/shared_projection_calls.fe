@@ -20,10 +20,10 @@ fn own_argument_moves_projection(frame: own Frame) -> u256 {
     consume(frame.memory) + frame.memory.read()
 }
 
-fn projection_view_conflicts_with_mut_argument(mut frame: own Frame) -> u256 {
+fn projection_view_conflicts_with_mut_argument(var frame: own Frame) -> u256 {
     inspect(frame.memory, mut frame)
 }
 
-fn projection_view_conflicts_with_mut_receiver(mut frame: own Frame) {
+fn projection_view_conflicts_with_mut_receiver(var frame: own Frame) {
     frame.memory.absorb(frame.memory)
 }

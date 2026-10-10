@@ -48,7 +48,7 @@ fn test_with_captures_temporary_pointer_places() {
             incr()
         }
     }
-    let mut i: usize = 0
+    var i: usize = 0
     unsafe {
         with (id(cell).counters[i]) {
             i = 1

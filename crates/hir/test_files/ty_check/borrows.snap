@@ -9,7 +9,7 @@ note:
   │
 1 │   fn borrows() {
   │ ╭──────────────^
-2 │ │     let mut x: u256 = 0
+2 │ │     var x: u256 = 0
 3 │ │     let r = ref x
 4 │ │     let m = mut x
   · │
@@ -20,14 +20,14 @@ note:
 note:
   ┌─ borrows.fe:2:9
   │
-2 │     let mut x: u256 = 0
-  │         ^^^^^ u256
+2 │     var x: u256 = 0
+  │         ^ u256
 
 note:
-  ┌─ borrows.fe:2:23
+  ┌─ borrows.fe:2:19
   │
-2 │     let mut x: u256 = 0
-  │                       ^ u256
+2 │     var x: u256 = 0
+  │                   ^ u256
 
 note:
   ┌─ borrows.fe:3:9

@@ -11,7 +11,7 @@ fn pass_ref() {
 }
 
 fn pass_mut() {
-    let mut x = NoCopy { x: 2 }
+    var x = NoCopy { x: 2 }
     let m = mut x
     consume(m)
 }

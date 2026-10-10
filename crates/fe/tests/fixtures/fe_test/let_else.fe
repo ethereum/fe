@@ -10,7 +10,7 @@ impl Cell {
         if !present {
             return Option::None
         }
-        let mut tmp = self.v
+        var tmp = self.v
         yield Option::Some(mut tmp)
         self.v = tmp
     }
@@ -24,7 +24,7 @@ fn unwrap_or(_ o: Option<u256>, _ default: u256) -> u256 {
 }
 
 fn bump(_ present: bool) -> u256 {
-    let mut cell = Cell { v: 1 }
+    var cell = Cell { v: 1 }
     let Option::Some(x) = cell.entry(present) else {
         return cell.v + 100
     }
@@ -33,8 +33,8 @@ fn bump(_ present: bool) -> u256 {
 }
 
 fn sum_even(_ n: u256) -> u256 {
-    let mut i: u256 = 0
-    let mut total: u256 = 0
+    var i: u256 = 0
+    var total: u256 = 0
     while i < n {
         i += 1
         let even: Option<u256> = if i % 2 == 0 { Option::Some(i) } else { Option::None }

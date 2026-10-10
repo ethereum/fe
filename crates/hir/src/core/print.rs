@@ -521,10 +521,13 @@ impl<'db> Pat<'db> {
                     .join(", ");
                 format!("({pats_str})")
             }
-            Pat::Path(path, is_mut) => {
+            Pat::Path(path, marker) => {
                 let mut result = String::new();
-                if *is_mut {
-                    result.push_str("mut ");
+                match marker {
+                    BindingMarker::Plain => {}
+                    BindingMarker::Mut => result.push_str("mut "),
+                    BindingMarker::Ref => result.push_str("ref "),
+                    BindingMarker::Var => result.push_str("var "),
                 }
                 let path = unwrap_partial_ref(path, "Pat::Path");
                 result.push_str(&path.pretty_print(db));
@@ -573,7 +576,7 @@ impl<'db> RecordPatField<'db> {
         };
 
         // Check if the pattern is just a binding with the same name as the label
-        if let Pat::Path(Partial::Present(path), false) = pat
+        if let Pat::Path(Partial::Present(path), BindingMarker::Plain) = pat
             && let Some(ident) = path.as_ident(db)
             && ident == label
         {
@@ -1033,7 +1036,12 @@ impl<'db> Stmt<'db> {
         match self {
             Stmt::Let(pat, ty, init, else_) => {
                 let pat = unwrap_partial_ref(pat.data(db, body), "Let::pat");
-                let mut result = format!("let {}", pat.pretty_print(db, body));
+                // `var x` prints as the statement it came from.
+                let mut result = if matches!(pat, Pat::Path(_, BindingMarker::Var)) {
+                    pat.pretty_print(db, body)
+                } else {
+                    format!("let {}", pat.pretty_print(db, body))
+                };
 
                 if let Some(ty) = ty {
                     result.push_str(": ");

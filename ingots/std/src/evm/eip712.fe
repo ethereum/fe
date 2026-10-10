@@ -41,7 +41,7 @@ pub fn domain_separator(
     chain_id: u256,
     verifying_contract: Address,
 ) -> u256 {
-    let buf = FixedMemBuffer<160>::alloc()
+    let buf = unsafe { FixedMemBuffer<160>::alloc_uninit() }
     let p = buf.ptr()
     unsafe {
         ops::mstore(addr: p, value: DOMAIN_TYPEHASH)
@@ -61,9 +61,9 @@ pub fn domain_separator(
 /// OpenZeppelin's `MessageHashUtils.toTypedDataHash`.
 ///
 /// Writes the 66-byte preimage into a fresh allocation with three word stores,
-/// without the `RawMem` effect or the packed-encoding builder.
+/// without the packed-encoding builder.
 pub fn digest(domain_separator: u256, struct_hash: u256) -> u256 {
-    let buf = FixedMemBuffer<66>::alloc()
+    let buf = unsafe { FixedMemBuffer<66>::alloc_uninit() }
     let p = buf.ptr()
     unsafe {
         ops::mstore(addr: p, value: 0x1901 << 240)

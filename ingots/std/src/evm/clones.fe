@@ -37,9 +37,7 @@ pub fn predict_deterministic_address(
     _ implementation: Address,
     salt: u256,
     deployer: Address,
-) -> Address
-uses (mem: mut super::effects::RawMem)
-{
+) -> Address {
     let code_hash = keccak256(clone_initcode(implementation))
     let hash = keccak_packed((255 as u8, deployer, salt, code_hash))
     Address { inner: hash & ((1 << 160) - 1) }

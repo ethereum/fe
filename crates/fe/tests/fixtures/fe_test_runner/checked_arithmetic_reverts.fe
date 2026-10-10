@@ -8,7 +8,7 @@ fn test_add_overflow_u8() {
 
 #[test]
 fn test_aug_assign_overflow_u8() {
-    let mut x: u8 = 255
+    var x: u8 = 255
     x += 1
 }
 

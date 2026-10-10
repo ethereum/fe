@@ -4,7 +4,7 @@
 use core::iter::{Collection, Driver, Identity, Reversed, Take, reversed, take}
 
 fn sum_by<D: Driver<[u256; 8], Item = u256, Extra = ()>>(_ arr: [u256; 8], _ d: D) -> u256 uses D::E {
-    let mut total = 0
+    var total = 0
     for x in arr by d {
         total += x
     }
@@ -24,7 +24,7 @@ fn sum_last4(_ arr: [u256; 8]) -> u256 {
 }
 
 fn sum_first4(_ arr: [u256; 8]) -> u256 {
-    let mut total = 0
+    var total = 0
     for x in arr.take(4) {
         total += x
     }

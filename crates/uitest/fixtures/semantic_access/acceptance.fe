@@ -7,7 +7,7 @@ use core::ptr::{MemBuffer, MemSpan}
 use std::evm::{Address, Call, Evm, RawStorage, StorageMap}
 
 fn ping() uses (call: mut Call) {
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let outcome = call.raw_call(
         addr: Address { inner: 1 }, gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
@@ -22,7 +22,7 @@ impl Cell {
     }
 
     fn written_back(mut self) -> mut u256 {
-        let mut tmp = self.v
+        var tmp = self.v
         yield mut tmp
         self.v = tmp
     }
@@ -31,14 +31,14 @@ impl Cell {
 // 1. Accepted: whether the body yields directly or writes back in a slide,
 // the caller uses the grant, then the receiver.
 fn case01_direct() -> u256 {
-    let mut c = Cell { v: 1 }
+    var c = Cell { v: 1 }
     let x = c.direct()
     x += 1
     c.v
 }
 
 fn case01_slide() -> u256 {
-    let mut c = Cell { v: 1 }
+    var c = Cell { v: 1 }
     let x = c.written_back()
     x += 1
     c.v
@@ -47,7 +47,7 @@ fn case01_slide() -> u256 {
 // 1. Rejected either way: the session reserves the receiver while its grant
 // is open.
 fn case01_direct_conflict() -> u256 {
-    let mut c = Cell { v: 1 }
+    var c = Cell { v: 1 }
     let x = c.direct()
     let v = c.v
     x += 1
@@ -55,7 +55,7 @@ fn case01_direct_conflict() -> u256 {
 }
 
 fn case01_slide_conflict() -> u256 {
-    let mut c = Cell { v: 1 }
+    var c = Cell { v: 1 }
     let x = c.written_back()
     let v = c.v
     x += 1
@@ -63,7 +63,7 @@ fn case01_slide_conflict() -> u256 {
 }
 
 fn counter() -> mut u256 {
-    let mut n: u256 = 0
+    var n: u256 = 0
     mut n
 }
 
@@ -98,7 +98,7 @@ impl Pair {
 // 3. Accepted: the components of a structurally disjoint split are used
 // independently.
 fn case03_split() -> u256 {
-    let mut p = Pair { a: 1, b: 2 }
+    var p = Pair { a: 1, b: 2 }
     let (a, b) = p.split()
     a = 3
     b = 4
@@ -117,7 +117,7 @@ fn outer(_ c: mut Cell) -> mut u256 {
 
 // 4. Accepted: an outer slide uses the inner grant it retains.
 fn case04_retained_inner_grant() -> u256 {
-    let mut c = Cell { v: 1 }
+    var c = Cell { v: 1 }
     let x = outer(mut c)
     x = 5
     c.v
@@ -125,8 +125,8 @@ fn case04_retained_inner_grant() -> u256 {
 
 // 5. Accepted: two independent sessions end out of creation order.
 fn case05_out_of_order() -> u256 {
-    let mut p = Cell { v: 1 }
-    let mut q = Cell { v: 2 }
+    var p = Cell { v: 1 }
+    var q = Cell { v: 2 }
     let a = p.direct()
     let b = q.direct()
     a = 3
@@ -135,7 +135,7 @@ fn case05_out_of_order() -> u256 {
 }
 
 fn ping_evm() uses (evm: mut Evm) {
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let outcome = evm.raw_call(
         addr: Address { inner: 1 }, gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
@@ -175,8 +175,8 @@ fn add(_ acc: own Totals, _ account: Account) -> Totals {
 // 9. Accepted: a fold with a non-`Copy` owned accumulator and a non-`Copy`
 // projected item.
 fn case09_fold(_ accounts: [Account; 2]) -> Totals {
-    let mut acc = Totals { sum: 0, count: 0 }
-    for account in accounts {
+    var acc = Totals { sum: 0, count: 0 }
+    for ref account in accounts {
         acc = add(acc, account)
     }
     acc
@@ -218,7 +218,7 @@ impl Slot {
 
 // 13. Rejected: an exported referent is uninitialized at the yield.
 fn case13_uninitialized() -> mut u256 {
-    let mut x: u256
+    var x: u256
     yield mut x
     x = 1
 }
@@ -229,7 +229,7 @@ fn entry(_ b: mut Balance) -> Option<mut u256> {
     if !b.has {
         return Option::None
     }
-    let mut tmp = b.amount
+    var tmp = b.amount
     yield Option::Some(mut tmp)
     b.amount = tmp
 }
@@ -249,7 +249,7 @@ pub contract Case14OptionalBeforeCall {
 struct Vault { value: u256 }
 
 fn snapshot(_ v: mut Vault) -> mut u256 {
-    let mut tmp = v.value
+    var tmp = v.value
     yield mut tmp
     v.value = tmp
 }
@@ -299,7 +299,7 @@ impl Collection for Keyed {
 // effects, which the loop's caller provides.
 fn case19_identity(_ xs: Keyed) -> u256 uses (key: Key) {
     let d = Identity {}
-    let mut sum = 0
+    var sum = 0
     for x in xs by d {
         sum += x
     }
@@ -307,7 +307,7 @@ fn case19_identity(_ xs: Keyed) -> u256 uses (key: Key) {
 }
 
 fn ramp_and_slide_call() -> mut u256 uses (call: mut Call) {
-    let mut n: u256 = 0
+    var n: u256 = 0
     ping()
     yield mut n
     ping()
@@ -318,7 +318,7 @@ fn helper_call() uses (call: mut Call) {
 }
 
 fn through_helper() -> mut u256 uses (call: mut Call) {
-    let mut n: u256 = 0
+    var n: u256 = 0
     helper_call()
     yield mut n
     helper_call()
@@ -378,7 +378,7 @@ fn consume(_ item: own Item) {}
 
 // 25. Rejected: `move a[i]; a[j] := v; move a[i]`.
 fn case25_dynamic_moves(_ i: usize, _ j: usize) {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    var items = [Item { n: 1 }, Item { n: 2 }]
     consume(items[i])
     items[j] = Item { n: 3 }
     consume(items[i])
@@ -386,7 +386,7 @@ fn case25_dynamic_moves(_ i: usize, _ j: usize) {
 
 // 25. Accepted: the same through one stable `mut a[i]` access, restored.
 fn case25_stable_access(_ i: usize) -> u256 {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    var items = [Item { n: 1 }, Item { n: 2 }]
     let slot = mut items[i]
     let saved = slot
     slot = Item { n: 3 }
@@ -403,7 +403,7 @@ fn update_state() uses (state: mut State) {
 // 27. Rejected: a local provider aliases an outstanding local view; the
 // effect's footprint is the provider's place.
 fn case27_provider_aliases_view() -> u256 {
-    let mut p = State { n: 0 }
+    var p = State { n: 0 }
     let r = ref p
     with (State = p) {
         update_state()
@@ -413,7 +413,7 @@ fn case27_provider_aliases_view() -> u256 {
 
 // 27. Accepted: the view ends before the provider is used.
 fn case27_view_closed() -> u256 {
-    let mut p = State { n: 0 }
+    var p = State { n: 0 }
     let r = ref p
     let before = r.n
     with (State = p) {
@@ -423,11 +423,12 @@ fn case27_view_closed() -> u256 {
 }
 
 // 33. Rejected: a read projection of a storage-rooted `Copy` array yields its
-// storage place, like the mutable one, so an external call conflicts with it.
+// storage place, like the mutable one, so an external call conflicts with the
+// access a `ref` binding keeps.
 pub contract Case33CopyArraySpace {
     mut cells: [u256; 4],
     init() uses (cells, call: mut Call) {
-        let x = cells.at(0)
+        let x = ref cells.at(0)
         ping()
         assert(x == 0)
     }
@@ -448,10 +449,10 @@ fn first(_ xs: [u256; 4]) -> ref u256 {
 }
 
 // 36. Rejected: a projection over a `Copy` array views it in place, so its
-// session reserves the array until the result's last use.
+// session reserves the array until the last use of a `ref` binding.
 fn case36_copy_array_view() -> u256 {
-    let mut xs: [u256; 4] = [1, 2, 3, 4]
-    let x = first(xs)
+    var xs: [u256; 4] = [1, 2, 3, 4]
+    let x = ref first(xs)
     xs[1] = 5
     x
 }
@@ -463,7 +464,7 @@ fn echo(_ n: u256) -> ref u256 {
 // 37. Accepted: a scalar is a snapshot, so the result is the session's own
 // copy and the caller may change the original.
 fn case37_scalar_snapshot() -> u256 {
-    let mut n: u256 = 1
+    var n: u256 = 1
     let x = echo(n)
     n = 2
     x + n
@@ -493,8 +494,8 @@ fn case30_write_under_read(_ p: mut Pair) -> u256 {
 // 31. Accepted: a stable access resolves its place once, so restoring through
 // it restores the element first named however the index changes.
 fn case31_stable_place() -> u256 {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
-    let mut i: usize = 0
+    var items = [Item { n: 1 }, Item { n: 2 }]
+    var i: usize = 0
     let slot = mut items[i]
     i = 1
     let saved = slot
@@ -556,7 +557,7 @@ struct Halves { left: Item, right: Item }
 // 39. Rejected: a hole opened on one branch persists past the join, so the
 // access closes with it unrestored.
 fn case39_one_branch(_ flag: bool) -> u256 {
-    let mut halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
+    var halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
     let h = mut halves
     if flag {
         consume(h.left)
@@ -566,7 +567,7 @@ fn case39_one_branch(_ flag: bool) -> u256 {
 
 // 39. Accepted: restored unconditionally after the join.
 fn case39_restored(_ flag: bool) -> u256 {
-    let mut halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
+    var halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
     let h = mut halves
     if flag {
         consume(h.left)
@@ -577,7 +578,7 @@ fn case39_restored(_ flag: bool) -> u256 {
 
 // 39. Accepted: replacing the whole referent restores every hole.
 fn case39_replaced(_ flag: bool) -> u256 {
-    let mut halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
+    var halves = Halves { left: Item { n: 1 }, right: Item { n: 2 } }
     let h = mut halves
     if flag {
         consume(h.left)
@@ -595,7 +596,7 @@ fn first_item(_ items: [Item; 2]) -> ref Item {
 pub contract Case32StoragePlacement {
     mut items: [Item; 2],
     init() uses (items, call: mut Call) {
-        let x = first_item(items)
+        let x = ref first_item(items)
         ping()
         assert(x.n == 0)
     }
@@ -603,7 +604,7 @@ pub contract Case32StoragePlacement {
 
 fn case32_memory_placement() uses (call: mut Call) {
     let items = [Item { n: 1 }, Item { n: 2 }]
-    let x = first_item(items)
+    let x = ref first_item(items)
     ping()
     assert(x.n == 1)
 }

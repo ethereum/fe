@@ -99,7 +99,7 @@ impl ByteInput for ReturnData {
         }
         // `byte_offset < len` implies `base + byte_offset < returndatasize()`.
         let available = len - byte_offset
-        let scratch = ptr::FixedMemBuffer<32>::alloc()
+        let scratch = unsafe { ptr::FixedMemBuffer<32>::alloc_uninit() }
         if available < 32 {
             unsafe {
                 store_word(ptr: scratch.ptr(), value: 0)

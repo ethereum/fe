@@ -66,7 +66,7 @@ const fn local<const N: usize, const I: usize>() -> u8 {
     values[I]
 }
 const fn changed<const N: usize, const I: usize>() -> [u8; N] {
-    let mut values = [0; N]
+    var values = [0; N]
     values[I] = 19
     values
 }
@@ -128,7 +128,7 @@ struct Pair {{ value: usize }}
 impl Copy for Pair {{}}
 struct Marker<const N: usize, const I: usize> {{}}
 const fn changed<const N: usize, const I: usize>() -> [usize; N] {{
-    let mut values = [0; N]
+    var values = [0; N]
     values[I] = 19
     values
 }}
@@ -174,13 +174,13 @@ const fn field<const N: usize, const I: usize>() -> u8 { [Pair { value: 23 }; N]
 const fn checked_index<const N: usize, const I: usize>() -> u8 { [7; N][1 / I] }
 const fn checked_element<const N: usize, const I: usize>() -> usize { [10 / I; N][I] }
 const fn store<const N: usize, const I: usize>() -> u8 {
-    let mut values = [0; N]
+    var values = [0; N]
     values[I] = 19
     values[I]
 }
 const fn changed<const N: usize, const I: usize>() -> u8 { store<N, I>() }
 const fn fixed_store<const N: usize, const I: usize>() -> u8 {
-    let mut values = [0; 3]
+    var values = [0; 3]
     values[I] = 29
     values[I]
 }
@@ -342,17 +342,17 @@ fn symbolic_repeat_stores_defer_until_specialization() {
         r#"
 struct Marker<const N: usize> { rows: [[u8; N]; 2] }
 const fn changed<const N: usize>() -> [u8; N] {
-    let mut values = [0; N]
+    var values = [0; N]
     values[0] = 1
     values
 }
 const fn changed_record<const N: usize>() -> [[u8; N]; 2] {
-    let mut value = Marker<N> { rows: [[7; N]; 2] }
+    var value = Marker<N> { rows: [[7; N]; 2] }
     value.rows[0][1] = 2
     value.rows
 }
 const fn replaced<const N: usize>() -> [u8; N] {
-    let mut values = [0; N]
+    var values = [0; N]
     values = [3; N]
     values
 }
@@ -410,7 +410,7 @@ fn symbolic_repeat_stores_preserve_bounds_checks() {
             &format!(
                 r#"
 const fn changed<const N: usize>() -> [u8; N] {{
-    let mut values = [0; N]
+    var values = [0; N]
     values[{index}] = 1
     values
 }}
@@ -457,7 +457,7 @@ const fn repeat<const N: usize, const X: u8>() -> [[u8; N]; 2] { [[X; N]; 2] }
 const fn project<const N: usize, const X: u8>() -> u8 { [X; N][1] }
 const fn checked<const N: usize, const X: u8>() -> [[u8; N]; 2] { [[10 / X; N]; 2] }
 const fn store<const N: usize>(_ value: u8) -> [[u8; N]; 2] {
-    let mut rows = [[value; N]; 2]
+    var rows = [[value; N]; 2]
     rows[0][1] = 10
     rows
 }
@@ -465,7 +465,7 @@ const fn changed<const N: usize, const X: u8>() -> [[u8; N]; 2] { store<N>(X) }
 const fn checked_changed<const N: usize, const X: u8>() -> [[u8; N]; 2] { store<N>(10 / X) }
 struct Rows<const N: usize> { values: [[u8; N]; 2] }
 const fn store_record<const N: usize>(_ value: u8) -> Rows<N> {
-    let mut rows = Rows<N> { values: [[value; N]; 2] }
+    var rows = Rows<N> { values: [[value; N]; 2] }
     rows.values[0][1] = 10
     rows
 }

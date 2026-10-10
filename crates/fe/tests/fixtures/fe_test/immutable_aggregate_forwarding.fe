@@ -28,7 +28,7 @@ fn forward(_ env: Env, _ which: u256) -> u256 uses (evm: mut Evm) {
 }
 
 #[inline(never)]
-fn changed(mut _ env: own Env) -> Env {
+fn changed(var _ env: own Env) -> Env {
     env.first = 99
     env
 }
@@ -107,7 +107,7 @@ fn mutable_copy_does_not_change_immutable_source() uses (evm: mut Evm) {
 
 #[test]
 fn memory_snapshot_is_independent() {
-    let mut original = Env { first: 11, second: 22, third: 33, flag: true, address: Address { inner: 44 } }
+    var original = Env { first: 11, second: 22, third: 33, flag: true, address: Address { inner: 44 } }
     let snapshot = original
     original.third = 99
     assert!(pick(snapshot, 22) == 33)

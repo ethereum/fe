@@ -275,7 +275,7 @@ note:
 note:
    ┌─ ops.fe:43:37
    │
-43 │   fn assign_yes(mut ok: own Ok) -> Ok {
+43 │   fn assign_yes(var ok: own Ok) -> Ok {
    │ ╭─────────────────────────────────────^
 44 │ │     ok += Ok::Yes
 45 │ │     ok
@@ -585,7 +585,7 @@ note:
 88 │ │     let c2 = Add::add(a, b)
 89 │ │     // let c3 = Add::add(a, 100) TODO: fix `type annotation is needed`
 90 │ │     let d = c + as_i32(100)
-91 │ │     let x = d[0]
+91 │ │     let x = ref d[0]
 92 │ │ }
    │ ╰─^ ()
 
@@ -682,26 +682,32 @@ note:
 note:
    ┌─ ops.fe:91:9
    │
-91 │     let x = d[0]
+91 │     let x = ref d[0]
    │         ^ Option<i32>
 
 note:
    ┌─ ops.fe:91:13
    │
-91 │     let x = d[0]
-   │             ^ Point
+91 │     let x = ref d[0]
+   │             ^^^^^^^^ Option<i32>
 
 note:
-   ┌─ ops.fe:91:13
+   ┌─ ops.fe:91:17
    │
-91 │     let x = d[0]
-   │             ^^^^ Option<i32>
+91 │     let x = ref d[0]
+   │                 ^ Point
 
 note:
-   ┌─ ops.fe:91:15
+   ┌─ ops.fe:91:17
    │
-91 │     let x = d[0]
-   │               ^ usize
+91 │     let x = ref d[0]
+   │                 ^^^^ Option<i32>
+
+note:
+   ┌─ ops.fe:91:19
+   │
+91 │     let x = ref d[0]
+   │                   ^ usize
 
 note:
    ┌─ ops.fe:94:28

@@ -10,7 +10,7 @@ impl<'db> Stmt<'db> {
     pub(super) fn push_to_body(ctxt: &mut BodyCtxt<'_, 'db>, ast: ast::Stmt) -> StmtId {
         let (stmt, origin_kind) = match ast.kind() {
             ast::StmtKind::Let(let_) => {
-                let pat = Pat::lower_ast_opt(ctxt, let_.pat());
+                let pat = Pat::lower_let_ast(ctxt, let_.pat(), let_.var_token().is_some());
                 let ty = let_
                     .type_annotation()
                     .map(|ty| TypeId::lower_ast(ctxt.f_ctxt, ty));

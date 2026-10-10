@@ -9,7 +9,7 @@ use common::{file::File, ingot::Ingot};
 use parser::ast;
 
 use super::{
-    AttrListId, Body, CompBinOp, EffectParamListId, FuncParamListId, FuncParamName,
+    AttrListId, Body, CompBinOp, EffectParamListId, FieldIndex, FuncParamListId, FuncParamName,
     GenericParamListId, HirIngot, IdentId, InlineAttr, InlineAttrErrorKind, InlineHint,
     ManualContractRootAttr, Partial, Pat, PatId, TupleTypeId, TypeBound, TypeId, UseAlias,
     WhereClauseId,
@@ -1293,18 +1293,39 @@ pub struct AccessItems<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct AssocSpace<'db> {
     pub name: Partial<IdentId<'db>>,
-    /// The space an implementation gives: a space's name, or another
-    /// associated space such as `B::S`.
-    pub value: Option<Partial<PathId<'db>>>,
+    /// The space an implementation gives: a space's name, `self` or a
+    /// sub-place of it (`self[_]`), or another associated space such as
+    /// `B::S`, with the steps after it.
+    pub value: Option<(Partial<PathId<'db>>, SpacePathId<'db>)>,
 }
 
 /// A result-space contract as written: `@S`, `@B::S`, `@memory`, `@p`,
-/// `@self`, or `@target(p)`.
+/// `@self`, `@p.f[_]`, or `@target(p)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub enum SpaceAnnotation<'db> {
-    Path(Partial<PathId<'db>>),
+    /// A space, a parameter, an effect domain or an associated space, with
+    /// the steps to the sub-place it names.
+    Path(Partial<PathId<'db>>, SpacePathId<'db>),
     /// `@target(p)`: the space of the resource the handle `p` names.
     Target(Partial<PathId<'db>>),
+}
+
+/// The steps after a result-space contract's root, `.f`, `.0` and `[_]`:
+/// the sub-place whose space the contract names. Empty for the root itself.
+#[salsa::interned]
+#[derive(Debug)]
+pub struct SpacePathId<'db> {
+    #[return_ref]
+    pub steps: Vec<SpaceStep<'db>>,
+}
+
+/// A step of a [`SpacePathId`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum SpaceStep<'db> {
+    /// `.f` or `.0`: a field or tuple component.
+    Field(FieldIndex<'db>),
+    /// `[_]`: any element of an array or a `StateIndex` collection.
+    Element,
 }
 
 /// An associated effect row: `uses E` in a trait, with an optional default

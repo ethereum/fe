@@ -269,7 +269,7 @@ note:
    │ ╭────────────────────^
 64 │ │     let ctx = MockCtx { caller: Address { inner: 0xbeef } }
 65 │ │     let owner = Address { inner: 0xfe }
-66 │ │     let mut balance = 100
+66 │ │     var balance = 100
    · │
 69 │ │     }
 70 │ │ }
@@ -320,14 +320,14 @@ note:
 note:
    ┌─ contract_effects.fe:66:9
    │
-66 │     let mut balance = 100
-   │         ^^^^^^^^^^^ u256
+66 │     var balance = 100
+   │         ^^^^^^^ u256
 
 note:
-   ┌─ contract_effects.fe:66:23
+   ┌─ contract_effects.fe:66:19
    │
-66 │     let mut balance = 100
-   │                       ^^^ u256
+66 │     var balance = 100
+   │                   ^^^ u256
 
 note:
    ┌─ contract_effects.fe:67:5

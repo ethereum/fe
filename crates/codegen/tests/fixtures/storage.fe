@@ -1,5 +1,6 @@
 use core::ptr
-use std::evm::{Evm, RawMem, RawOps, RawStorage, StorPtr}
+use core::abi::store_word
+use std::evm::{Evm, RawOps, RawStorage, StorPtr}
 
 enum User {
     Alice,
@@ -29,7 +30,7 @@ fn transfer_result_code(res: TransferResult) -> u256 {
 
 fn abi_encode(value: u256) -> ! uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
-    unsafe { ops.mstore(addr: data.ptr(), value) }
+    unsafe { store_word(ptr: data.ptr(), value) }
     ops.return_data(data: data.span())
 }
 
@@ -118,7 +119,7 @@ fn transfer_from_bob(amount: u256) -> TransferResult
 fn init() uses (evm: mut Evm) {
     let len = evm.code_region_len(runtime)
     let offset = evm.code_region_offset(runtime)
-    let mut dest = ptr::MemBuffer::alloc(len)
+    var dest = ptr::MemBuffer::alloc(len)
     evm.codecopy(
         dest: mut dest,
         dest_offset: 0,
@@ -130,8 +131,8 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(Coin)]
 fn runtime() uses (evm: mut Evm) {
-    let mut store: StorPtr<CoinStore> = unsafe { evm.stor_ptr(0) }
-    let mut supply: StorPtr<TotalSupply> = unsafe { evm.stor_ptr(2) }
+    var store: StorPtr<CoinStore> = unsafe { evm.stor_ptr(0) }
+    var supply: StorPtr<TotalSupply> = unsafe { evm.stor_ptr(2) }
     with (store, supply, RawOps = evm) {
         let selector = evm.calldataload(0) >> 224
         match selector {

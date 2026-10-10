@@ -11,12 +11,12 @@ pub fn view_param(array: MemArray<u256>) {
 }
 
 pub fn mutable_binding() {
-    let mut array = MemArray<u256>::new_zeroed(2)
+    var array = MemArray<u256>::new_zeroed(2)
     array[0] = 1
     array[1] += 1
 }
 
-pub fn owned_param(mut array: own MemArray<u256>) {
+pub fn owned_param(var array: own MemArray<u256>) {
     array[0] = 1
 }
 

@@ -47,6 +47,6 @@ fn unknown_row<C: Counter>(_ c: mut C) uses C::F {}
 
 // A concrete row needs providers for its components.
 fn no_provider() {
-    let mut sc = StoreCounter {}
+    var sc = StoreCounter {}
     bump(mut sc)
 }

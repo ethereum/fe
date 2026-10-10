@@ -7,10 +7,10 @@ fn touch(_ item: mut Item) {}
 
 // Accepted: a mutable borrow stays live across an inner loop.
 fn held_input(_ other: mut [u64; 5]) {
-    let mut x: usize = 0
+    var x: usize = 0
     while x < 5 {
         let held = mut other[x]
-        let mut y: usize = 0
+        var y: usize = 0
         while y < 5 {
             y += 1
         }
@@ -21,11 +21,11 @@ fn held_input(_ other: mut [u64; 5]) {
 
 // Accepted: the same for a local array.
 fn held_local() {
-    let mut cells: [u64; 5] = [0; 5]
-    let mut x: usize = 0
+    var cells: [u64; 5] = [0; 5]
+    var x: usize = 0
     while x < 5 {
         let held = mut cells[x]
-        let mut y: usize = 0
+        var y: usize = 0
         while y < 5 {
             y += 1
         }
@@ -36,10 +36,10 @@ fn held_local() {
 
 // Accepted: a shared borrow is read after an inner loop.
 fn shared_input(_ other: mut [u64; 5]) {
-    let mut x: usize = 0
+    var x: usize = 0
     while x < 5 {
         let held = ref other[x]
-        let mut y: usize = 0
+        var y: usize = 0
         while y < 5 {
             y += 1
         }
@@ -50,10 +50,10 @@ fn shared_input(_ other: mut [u64; 5]) {
 
 // Accepted: each outer iteration moves its own fresh value once.
 fn fresh_moved_after_inner() {
-    let mut x: u256 = 0
+    var x: u256 = 0
     while x < 2 {
-        let mut item = Item { n: x }
-        let mut y: u256 = 0
+        var item = Item { n: x }
+        var y: u256 = 0
         while y < 2 {
             y += 1
         }
@@ -65,10 +65,10 @@ fn fresh_moved_after_inner() {
 
 // Rejected: the inner loop writes the element the outer body holds borrowed.
 fn held_written_inside(_ other: mut [u64; 5]) {
-    let mut x: usize = 0
+    var x: usize = 0
     while x < 5 {
         let held = mut other[x]
-        let mut y: usize = 0
+        var y: usize = 0
         while y < 5 {
             other[x] = 2
             y += 1
@@ -80,10 +80,10 @@ fn held_written_inside(_ other: mut [u64; 5]) {
 
 // Rejected: the inner loop moves the outer value again on its next iteration.
 fn moved_inside() {
-    let mut x: u256 = 0
+    var x: u256 = 0
     while x < 2 {
         let item = Item { n: x }
-        let mut y: u256 = 0
+        var y: u256 = 0
         while y < 2 {
             consume(item)
             y += 1

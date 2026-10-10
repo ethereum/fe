@@ -5,15 +5,15 @@ use core::iter::Collection
 
 #[test]
 fn by_value_traversal_mutates_its_base() {
-    let mut xs: [u256; 3] = [1, 2, 3]
-    let mut total: u256 = 0
+    var xs: [u256; 3] = [1, 2, 3]
+    var total: u256 = 0
     for x in xs {
         xs[2] = 10
         total += x
     }
     assert(total == 1 + 2 + 10)
 
-    let mut list: MemArray<u256> = MemArray::new_zeroed(3)
+    var list: MemArray<u256> = MemArray::new_zeroed(3)
     for x in list {
         list.set(2, x + 5)
     }
@@ -22,8 +22,8 @@ fn by_value_traversal_mutates_its_base() {
 
 #[test]
 fn while_let_sessions_close_each_step() {
-    let mut xs: MemArray<u256> = MemArray::new_zeroed(3)
-    let mut i: usize = 0
+    var xs: MemArray<u256> = MemArray::new_zeroed(3)
+    var i: usize = 0
     while let Option::Some(x) = xs.get_mut(i) {
         x += i as u256 + 1
         i += 1

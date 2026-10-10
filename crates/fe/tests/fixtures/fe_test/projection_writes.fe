@@ -32,10 +32,10 @@ fn write_nested(outer: mut Outer, value: u256) {
 
 #[test]
 fn local_and_array_member_projections_write_their_places() {
-    let mut holder = Wrap { value: 0 }
+    var holder = Wrap { value: 0 }
     let handle = holder.handle()
     handle = 7
-    let mut values = [Wrap { value: 0 }]
+    var values = [Wrap { value: 0 }]
     let element = values[0].handle()
     element = 9
     assert!(holder.value == 7)
@@ -44,7 +44,7 @@ fn local_and_array_member_projections_write_their_places() {
 
 #[test]
 fn dynamic_member_projection_writes_its_element() {
-    let mut values = [Wrap { value: 0 }, Wrap { value: 0 }]
+    var values = [Wrap { value: 0 }, Wrap { value: 0 }]
     write_array(values: mut values, index: 1, value: 11)
     write_array(values: mut values, index: 0, value: 13)
     assert!(values[0].value == 13)
@@ -53,14 +53,14 @@ fn dynamic_member_projection_writes_its_element() {
 
 #[test]
 fn chained_projections_write_the_innermost_place() {
-    let mut outer = Outer { inner: Wrap { value: 0 } }
+    var outer = Outer { inner: Wrap { value: 0 } }
     write_nested(outer: mut outer, value: 17)
     assert!(outer.inner.value == 17)
 }
 
 #[test]
 fn nested_access_through_a_grant_writes_its_place() {
-    let mut holder = Wrap { value: 0 }
+    var holder = Wrap { value: 0 }
     let handle = holder.handle()
     let alias = mut handle
     alias = 19
@@ -95,6 +95,6 @@ fn write_grants(_ c: mut Cell) -> u256 {
 
 #[test]
 fn grant_places_are_assignable() {
-    let mut c = Cell { v: 0, w: (0, 0) }
+    var c = Cell { v: 0, w: (0, 0) }
     assert!(write_grants(mut c) == 11)
 }

@@ -9,7 +9,7 @@ fn length(_ span: MemSpan) -> u256 {
 
 // Rejected: the owner is written while its span is live.
 fn write_while_viewed() -> u256 {
-    let mut buffer = MemBuffer::with_capacity(4)
+    var buffer = MemBuffer::with_capacity(4)
     let span = buffer.span()
     buffer.reserve(8)
     span.len()
@@ -17,7 +17,7 @@ fn write_while_viewed() -> u256 {
 
 // Accepted: the span's last use ends its view.
 fn write_after_view() -> u256 {
-    let mut buffer = MemBuffer::with_capacity(4)
+    var buffer = MemBuffer::with_capacity(4)
     let n = buffer.span().len()
     buffer.reserve(8)
     n + buffer.len()
@@ -25,7 +25,7 @@ fn write_after_view() -> u256 {
 
 // Rejected: a span of a span still reserves the owner.
 fn sub_span_reserves_owner() -> u256 {
-    let mut buffer = MemBuffer::with_capacity(4)
+    var buffer = MemBuffer::with_capacity(4)
     let head = buffer.span().head(1)
     buffer.reserve(8)
     head.len()
@@ -45,6 +45,6 @@ fn copy_into(_ dest: mut MemBuffer, _ source: MemSpan) {
 }
 
 fn self_copy() {
-    let mut buffer = MemBuffer::with_capacity(4)
+    var buffer = MemBuffer::with_capacity(4)
     copy_into(mut buffer, buffer.span())
 }

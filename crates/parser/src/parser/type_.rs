@@ -100,7 +100,7 @@ impl super::Parse for ModeTypeScope {
     }
 }
 
-/// `@S`, `@p` or `@target(p)`, if present.
+/// `@S`, `@p`, `@p.f[_]` or `@target(p)`, if present.
 pub(crate) fn parse_space_annotation_opt<S: TokenStream>(
     parser: &mut Parser<S>,
 ) -> Result<(), Recovery<ErrProof>> {
@@ -120,8 +120,43 @@ impl super::Parse for SpaceAnnotationScope {
         if parser.bump_if(SyntaxKind::LParen) {
             parser.or_recover(|p| p.parse(PathScope::default()))?;
             parser.bump_or_recover(SyntaxKind::RParen, "expected `)`")?;
+        } else {
+            parse_space_path_opt(parser)?;
         }
         Ok(())
+    }
+}
+
+/// The steps after a result-space contract's root, if any: `.f`, `.0` and
+/// `[_]`.
+pub(crate) fn parse_space_path_opt<S: TokenStream>(
+    parser: &mut Parser<S>,
+) -> Result<(), Recovery<ErrProof>> {
+    if matches!(
+        parser.current_kind(),
+        Some(SyntaxKind::Dot | SyntaxKind::LBracket)
+    ) {
+        parser.parse(SpacePathScope::default())?;
+    }
+    Ok(())
+}
+
+define_scope!(SpacePathScope, SpacePath);
+impl super::Parse for SpacePathScope {
+    type Error = Recovery<ErrProof>;
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        loop {
+            if parser.bump_if(SyntaxKind::Dot) {
+                parser.expect(&[SyntaxKind::Ident, SyntaxKind::Int], None)?;
+                parser.bump();
+            } else if parser.bump_if(SyntaxKind::LBracket) {
+                parser.bump_or_recover(SyntaxKind::Underscore, "expected `_`")?;
+                parser.bump_or_recover(SyntaxKind::RBracket, "expected `]`")?;
+            } else {
+                return Ok(());
+            }
+        }
     }
 }
 

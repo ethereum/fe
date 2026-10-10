@@ -1,7 +1,7 @@
 use rowan::ast::{AstNode, support};
 
 use super::ast_node;
-use crate::SyntaxKind as SK;
+use crate::{SyntaxKind as SK, SyntaxToken};
 
 ast_node! {
     /// A statement.
@@ -39,6 +39,11 @@ ast_node! {
     SK::LetStmt,
 }
 impl LetStmt {
+    /// Returns the `var` keyword of a mutable value binding, `var x = e`.
+    pub fn var_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::VarKw)
+    }
+
     /// Returns the pattern of the binding.
     pub fn pat(&self) -> Option<super::Pat> {
         support::child(self.syntax())

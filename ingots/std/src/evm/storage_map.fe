@@ -3,9 +3,9 @@ use super::crypto::keccak256
 use ingot::evm::ops::mstore
 use core::num::IntWord
 use core::ptr
-use core::effect_ref::AddressSpace
+use core::effect_ref::StateSpace
 use core::marker::Clearable
-use core::ops::{PlaceIndex, clear_storage}
+use core::ops::{StateIndex, clear_storage}
 
 /// Keys that can be written into the mapping preimage for keccak hashing.
 pub trait StorageKey {
@@ -206,8 +206,8 @@ impl StorageKey for bool {
 /// encoding `StorageKey` defines.
 pub struct StorageMap<K, V> {}
 
-impl<K: StorageKey + Copy, V> PlaceIndex for StorageMap<K, V> {
-    const SPACE: AddressSpace = AddressSpace::Storage
+impl<K: StorageKey + Copy, V> StateIndex for StorageMap<K, V> {
+    const SPACE: StateSpace = StateSpace::Storage
     type Key = K
     type Entry = V
 
@@ -234,7 +234,7 @@ impl<K: StorageKey + Copy, V> StorageMap<K, V> {
     /// contract field, uses `slot` or the entries' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
             with (ptr) {
                 core::effect_ref::target_mut(ptr)

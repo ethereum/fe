@@ -154,8 +154,8 @@ fn min_heap_pops_in_ascending_order() uses (evm: mut Evm) {
         )
     assert!(!has_root)
 
-    let mut x: u256 = 7
-    let mut i: u256 = 0
+    var x: u256 = 7
+    var i: u256 = 0
     while i < 20 {
         x = (x * 1103515245 + 12345) % 2147483648
         push(heap, x % 1000)
@@ -171,9 +171,9 @@ fn min_heap_pops_in_ascending_order() uses (evm: mut Evm) {
         )
     assert!(has_root)
 
-    let mut previous = pop(heap)
+    var previous = pop(heap)
     assert!(previous == root)
-    let mut k: u256 = 1
+    var k: u256 = 1
     while k < 20 {
         let next = pop(heap)
         assert!(next >= previous)
@@ -254,8 +254,8 @@ fn push_pop_and_replace() uses (evm: mut Evm) {
 fn enqueue_keeps_the_top_values() uses (evm: mut Evm) {
     let heap = evm.create2<Heaps>(value: 0, args: (), salt: 0)
     let scores: [u256; 7] = [50, 10, 70, 30, 90, 20, 60]
-    let mut evicted_total: u256 = 0
-    let mut rejected: u256 = 0
+    var evicted_total: u256 = 0
+    var rejected: u256 = 0
     for score in scores {
         let (outcome, evicted): (u256, u256) = evm
             .call(

@@ -3162,7 +3162,7 @@ fn choose(flag: bool, lhs: u256, rhs: u256) -> u256 {
         let file = db.new_stand_alone(
             "normalized.fe".into(),
             r#"
-fn read_twice(mut _ index: own usize, values: [u256; 2]) -> u256 {
+fn read_twice(var _ index: own usize, values: [u256; 2]) -> u256 {
     let first = values[index]
     index = 1
     first + values[index]
@@ -3760,7 +3760,7 @@ fn return_value(flag: bool, value: u256) -> u256 {
     value
 }
 
-fn borrow_owned(mut _ value: own u256) -> mut u256 {
+fn borrow_owned(var _ value: own u256) -> mut u256 {
     mut value
 }
 
@@ -4271,7 +4271,7 @@ fn caller() -> u256 {
     identity(value: 1)
 }
 
-fn mutate(mut _ value: own u256) {
+fn mutate(var _ value: own u256) {
     value = 1
 }
 "#,

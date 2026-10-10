@@ -54,7 +54,7 @@ fn match_twice() -> u256 {
 // Rejected: `if let` binds the payload by value.
 fn if_let_twice() -> u256 {
     let o: Option<Boxed> = Option::Some(Boxed { v: 21 })
-    let mut total: u256 = 0
+    var total: u256 = 0
     if let Option::Some(b) = o {
         total += b.v
     }
@@ -81,8 +81,8 @@ fn nested_payload_twice() -> u256 {
 // Rejected: a move inside a loop repeats on the backedge.
 fn loop_move() -> u256 {
     let b = Boxed { v: 3 }
-    let mut total: u256 = 0
-    let mut i: u256 = 0
+    var total: u256 = 0
+    var i: u256 = 0
     while i < 2 {
         total += consume(b)
         i += 1
@@ -100,7 +100,7 @@ fn move_while_borrowed() -> u256 {
 
 // Rejected: a read while a mutable borrow is live.
 fn read_while_mut_borrowed() -> u256 {
-    let mut x: u256 = 1
+    var x: u256 = 1
     let r = mut x
     let y = x + 1
     r = 5
@@ -116,7 +116,7 @@ fn single_move() -> u256 {
 
 // Accepted: reassignment reinitializes the moved local.
 fn move_and_reinitialize() -> u256 {
-    let mut b = Boxed { v: 3 }
+    var b = Boxed { v: 3 }
     let first = b
     b = Boxed { v: 4 }
     let second = b
@@ -151,16 +151,16 @@ fn copy_reuse() -> u256 {
     a + c
 }
 
-// Accepted: matching through a `ref` access binds the payload by `ref`.
+// Accepted: a `ref` binding of the payload holds it for reading.
 fn borrowed_matches() -> u256 {
     let o: Option<Boxed> = Option::Some(Boxed { v: 21 })
     let r = ref o
-    let a = match ref r {
-        Option::Some(b) => b.v
+    let a = match r {
+        Option::Some(ref b) => b.v
         Option::None => 0
     }
-    let c = match ref r {
-        Option::Some(b) => b.v
+    let c = match r {
+        Option::Some(ref b) => b.v
         Option::None => 0
     }
     a + c

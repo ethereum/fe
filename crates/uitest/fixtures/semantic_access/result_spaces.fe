@@ -14,7 +14,7 @@ impl Counter {
 
     // Yields a frame temporary: memory whatever the counter is.
     fn written_back(mut self) -> mut u256 {
-        let mut tmp = self.m
+        var tmp = self.m
         yield mut tmp
         self.m = tmp
     }
@@ -27,7 +27,7 @@ impl Counter {
 
     // Accepted: both yield sites are memory.
     fn either_memory(mut self, _ flag: bool) -> mut u256 {
-        let mut tmp = self.n
+        var tmp = self.n
         if flag {
             yield self.written_back()
         } else {
@@ -62,7 +62,7 @@ pub contract Holder {
 
 // A memory counter instantiates `either` with both sites in memory.
 fn memory_either(_ flag: bool) -> u256 {
-    let mut counter = Counter { n: 0, m: 0 }
+    var counter = Counter { n: 0, m: 0 }
     let x = counter.either(flag)
     x += 1
     counter.n + counter.m

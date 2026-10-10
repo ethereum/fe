@@ -24,7 +24,7 @@ fn test_effect_ptr_domains() uses (st: mut RawStorage) {
         bump()
     }
 
-    let mut foo = Foo { a: 10, b: 20 }
+    var foo = Foo { a: 10, b: 20 }
     with (foo) {
         bump()
     }

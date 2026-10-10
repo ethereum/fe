@@ -100,22 +100,14 @@ func private %main_root() {
         evm_stop;
 }
 
-func private %mstore(v0.i256, v1.i256) {
-    block0:
-        jump block1;
-
-    block1:
-        mstore v0 v1 i256;
-        return;
-}
-
 func private %raw_store__g6e74(v0.i256) {
     block0:
         jump block1;
 
     block1:
         v2.i256 = call %byte_ptr v0;
-        call %mstore v2 8.i256;
+        call %store_word v2 8.i256;
+        call %sstore 0.i256 8.i256;
         return;
 }
 
@@ -125,7 +117,27 @@ func private %raw_store__g64c6(v0.i256) {
 
     block1:
         v2.i256 = call %byte_ptr v0;
-        call %mstore v2 8.i256;
+        call %store_word v2 8.i256;
+        call %sstore 0.i256 8.i256;
+        return;
+}
+
+func private %sstore(v0.i256, v1.i256) {
+    block0:
+        jump block1;
+
+    block1:
+        evm_sstore v0 v1;
+        return;
+}
+
+func private %store_word(v0.i256, v1.i256) {
+    block0:
+        jump block1;
+
+    block1:
+        v4.i256 = call %cast__g5f1e v0;
+        mstore v4 v1 i256;
         return;
 }
 

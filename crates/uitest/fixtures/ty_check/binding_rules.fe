@@ -1,0 +1,147 @@
+// A plain name takes a value: a copy of a `Copy` read result, the access of a
+// `mut` or `#[view]` one, and otherwise an error whose fix is `ref`. `var` is
+// a mutable value and never an access; `ref` and `mut` are accesses and never
+// copies.
+use core::ptr::{MemArray, MemBuffer}
+
+struct Item {
+    n: u256,
+}
+
+struct Cell {
+    word: u256,
+}
+
+impl Cell {
+    fn get_mut(mut self) -> mut u256 {
+        mut self.word
+    }
+}
+
+fn first(_ items: MemArray<Item>) -> (u256, ref Item) {
+    (0, ref items[0])
+}
+
+// S-60. Rejected: `Item` is neither `Copy` nor a view.
+fn plain_non_copy(_ items: MemArray<Item>) -> u256 {
+    let item = items[0]
+    item.n
+}
+
+// S-60. Accepted: `ref` holds the read access.
+fn ref_non_copy(_ items: MemArray<Item>) -> u256 {
+    let item = ref items[0]
+    item.n
+}
+
+// S-60. The `Copy` test is made against the body's bounds: the bounded body
+// copies, and the unbounded one needs `ref`.
+fn bounded<T: Copy>(_ a: MemArray<T>) -> T {
+    let x = a[0]
+    x
+}
+
+fn unbounded<T>(_ a: MemArray<T>) {
+    let x = a[0]
+}
+
+// Accepted: a view has no value reading, so a plain binding is its access,
+// and rebinding a view access reborrows it.
+fn plain_view(_ buf: MemBuffer) -> u256 {
+    let s = buf.span()
+    let t = s
+    t.len()
+}
+
+// Rejected: a non-`Copy` read component bound plainly.
+fn plain_component(_ items: MemArray<Item>) -> u256 {
+    let (i, x) = first(items)
+    i + x.n
+}
+
+// Accepted: the component is bound `ref`.
+fn ref_component(_ items: MemArray<Item>) -> u256 {
+    let (i, ref x) = first(items)
+    i + x.n
+}
+
+// S-61. Rejected: a loop's non-`Copy` element bound plainly, or by `var`.
+fn plain_loop(_ items: [Item; 2]) -> u256 {
+    var total = 0
+    for item in items {
+        total += item.n
+    }
+    for var item in items {
+        total += item.n
+    }
+    total
+}
+
+// S-61. Accepted: `for ref` holds each element's read access, and `for var`
+// copies a `Copy` element.
+fn ref_loop(_ items: [Item; 2], _ words: [u256; 2]) -> u256 {
+    var total = 0
+    for ref item in items {
+        total += item.n
+    }
+    for var word in words {
+        word += 1
+        total += word
+    }
+    total
+}
+
+// Rejected: an owned value or component has no access to hold.
+fn marked_owned(_ items: MemArray<Item>) -> u256 {
+    let (ref a, mut b) = (5, 6)
+    let (ref i, ref item) = first(items)
+    a + b + i + item.n
+}
+
+// Rejected: `mut` binds a mutable access, but this component is a read.
+fn mut_of_read(_ items: MemArray<Item>) -> u256 {
+    let (i, mut item) = first(items)
+    i + item.n
+}
+
+// Rejected: `var` binds a value, never the access its initializer names.
+fn var_of_access(_ cell: mut Cell) -> u256 {
+    var w = mut cell.word
+    w
+}
+
+// S-62. Warned: `var` copies the `mut` access, so the write does not reach
+// `cell`.
+fn var_of_mut(_ cell: mut Cell) {
+    var w = cell.get_mut()
+    w += 1
+}
+
+// S-62. Rejected: `mut v` on an immutable scrutinee.
+fn mut_immutable(_ o: Option<u256>) -> u256 {
+    match o {
+        Option::Some(mut v) => v
+        Option::None => 0
+    }
+}
+
+// S-62. Rejected: `let mut` and `let ref` at the top of a `let`.
+fn let_markers(_ p: Cell) -> u256 {
+    let mut x = p.word
+    let ref y = p
+    x + y.word
+}
+
+// S-63. Accepted: `var` makes an owned parameter mutable.
+fn var_own(var x: own u256) -> u256 {
+    x += 1
+    x
+}
+
+// S-63. Rejected: an owned parameter without `var`, and a view parameter,
+// are not assignable.
+fn assign_params(_ x: own u256, _ y: u256) -> u256 {
+    x = 1
+    y = 2
+    x + y
+}

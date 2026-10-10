@@ -63,7 +63,7 @@ impl ModeType {
 }
 
 ast_node! {
-    /// A result-space contract: `@S`, `@B::S`, `@p`, `@self` or
+    /// A result-space contract: `@S`, `@B::S`, `@p`, `@self`, `@p.f[_]` or
     /// `@target(p)`.
     pub struct SpaceAnnotation,
     SK::SpaceAnnotation,
@@ -78,6 +78,43 @@ impl SpaceAnnotation {
     pub fn target(&self) -> Option<super::Path> {
         support::children(self.syntax()).nth(1)
     }
+
+    /// `.f[_]` in `@p.f[_]`.
+    pub fn space_path(&self) -> Option<SpacePath> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    /// The steps after a result-space contract's root, `.f`, `.0` and
+    /// `[_]`: the sub-place whose space the contract names.
+    pub struct SpacePath,
+    SK::SpacePath,
+}
+impl SpacePath {
+    /// The steps in order.
+    pub fn steps(&self) -> impl Iterator<Item = SpacePathStep> + use<> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter_map(|token| match token.kind() {
+                SK::Ident => Some(SpacePathStep::Field(token)),
+                SK::Int => Some(SpacePathStep::Index(super::LitInt { token })),
+                SK::Underscore => Some(SpacePathStep::Element),
+                _ => None,
+            })
+    }
+}
+
+/// A step of a [`SpacePath`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SpacePathStep {
+    /// `.f`: a field, by name.
+    Field(SyntaxToken),
+    /// `.0`: a tuple component, by index.
+    Index(super::LitInt),
+    /// `[_]`: any element.
+    Element,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

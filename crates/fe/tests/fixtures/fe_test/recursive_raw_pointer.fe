@@ -80,8 +80,8 @@ fn pick(_ first: *Node, _ second: *Node, use_first: bool) -> *Node {
 }
 
 fn walk(_ start: *Node, steps: u256) -> u256 {
-    let mut p = start
-    let mut i: u256 = 0
+    var p = start
+    var i: u256 = 0
     while i < steps {
         unsafe { p = p.next }
         i += 1

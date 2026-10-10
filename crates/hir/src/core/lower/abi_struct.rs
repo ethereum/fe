@@ -13,8 +13,8 @@ use super::{
 use crate::{
     HirDb,
     hir_def::{
-        AccessItems, AssocConstDef, AttrListId, Body, BodyKind, Expr, ExprId, FieldDefListId,
-        FuncModifiers, FuncParam, FuncParamMode, FuncParamName, GenericArgListId,
+        AccessItems, AssocConstDef, AttrListId, BindingMarker, Body, BodyKind, Expr, ExprId,
+        FieldDefListId, FuncModifiers, FuncParam, FuncParamMode, FuncParamName, GenericArgListId,
         GenericParamListId, IdentId, ImplTrait, LitKind, Partial, Pat, PathId, PathKind, Stmt,
         StringId, Struct, TrackedItemVariant, TraitRefId, TupleTypeId, TypeBound, TypeId, TypeKind,
         Visibility, WhereClauseId, WhereClausePredicate, WherePredicate, expr::CallArg,
@@ -292,7 +292,7 @@ fn lower_abi_span_impl<'db>(
                 let frame_end = body.call_expr(callee, args);
                 let end_pat = body.push_pat(Pat::Path(
                     Partial::Present(PathId::from_ident(db, end_ident)),
-                    true,
+                    BindingMarker::Var,
                 ));
                 body.emit_stmt(Stmt::Let(end_pat, Some(u256_ty), Some(frame_end), None));
 

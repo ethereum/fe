@@ -22,13 +22,13 @@ impl Pair {
 }
 
 fn counter() -> mut u256 {
-    let mut n: u256 = 0
+    var n: u256 = 0
     mut n
 }
 
 // Accepted: the grant is used, then the receiver again.
 fn grant_then_receiver() -> u256 {
-    let mut p = Pair { a: 1, b: 2 }
+    var p = Pair { a: 1, b: 2 }
     let a = p.a_mut()
     a += 1
     p.a
@@ -36,7 +36,7 @@ fn grant_then_receiver() -> u256 {
 
 // Rejected: the session reserves its receiver while the grant is open.
 fn receiver_used_during_session() -> u256 {
-    let mut p = Pair { a: 1, b: 2 }
+    var p = Pair { a: 1, b: 2 }
     let a = p.a_mut()
     let b = p.b
     a = 3
@@ -46,7 +46,7 @@ fn receiver_used_during_session() -> u256 {
 // Rejected: two sessions both reserve one receiver mutably, even for
 // disjoint fields: a projection's footprint is its whole receiver.
 fn opaque_sub_places() {
-    let mut p = Pair { a: 1, b: 2 }
+    var p = Pair { a: 1, b: 2 }
     let a = p.a_mut()
     let b = p.b_mut()
     a = 1
@@ -63,8 +63,8 @@ fn shared_sessions() -> u256 {
 
 // Accepted: sessions on distinct receivers end out of creation order.
 fn sessions_end_out_of_order() -> u256 {
-    let mut p = Pair { a: 1, b: 2 }
-    let mut q = Pair { a: 3, b: 4 }
+    var p = Pair { a: 1, b: 2 }
+    var q = Pair { a: 3, b: 4 }
     let a = p.a_mut()
     let b = q.b_mut()
     a = 5
@@ -73,7 +73,7 @@ fn sessions_end_out_of_order() -> u256 {
 
 // Accepted: the components of a disjoint split are used independently.
 fn disjoint_split() -> u256 {
-    let mut p = Pair { a: 1, b: 2 }
+    var p = Pair { a: 1, b: 2 }
     let (a, b) = p.split()
     a = 3
     b = 4
@@ -82,7 +82,7 @@ fn disjoint_split() -> u256 {
 
 // Accepted: an owned component is a value, independent of the session.
 fn owned_component() -> u256 {
-    let mut p = Pair { a: 1, b: 2 }
+    var p = Pair { a: 1, b: 2 }
     let (i, b) = p.with_index(7)
     b = i
     p.b
@@ -90,7 +90,7 @@ fn owned_component() -> u256 {
 
 // Accepted: a sum shape grants its access only in the matching arm.
 fn optional_projection() -> u256 {
-    let mut p = Pair { a: 0, b: 2 }
+    var p = Pair { a: 0, b: 2 }
     if let Option::Some(x) = p.first_nonzero() {
         x += 1
     }

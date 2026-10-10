@@ -148,17 +148,17 @@ pub fn ty_is_snapshot<'db>(
 }
 
 /// The key and element types of a collection whose elements are places
-/// (`core::ops::PlaceIndex`): for such a `ty`, `c[k]` is a path step, an
+/// (`core::ops::StateIndex`): for such a `ty`, `c[k]` is a path step, an
 /// entry, rather than a call.
-pub fn place_index_tys<'db>(
+pub fn state_index_tys<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     ty: TyId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> Option<(TyId<'db>, TyId<'db>)> {
     let ty = normalize::normalize_ty(db, ty, scope, assumptions);
-    let place_index = corelib::resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
-    let inst = trait_def::TraitInstId::new_simple(db, place_index, vec![ty]);
+    let state_index = corelib::resolve_core_trait(db, scope, &["ops", "StateIndex"])?;
+    let inst = trait_def::TraitInstId::new_simple(db, state_index, vec![ty]);
     if !goal_holds(
         db,
         TraitSolveCx::new(db, scope).with_assumptions(assumptions),

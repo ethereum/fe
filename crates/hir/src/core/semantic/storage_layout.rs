@@ -18,11 +18,11 @@ use crate::{
                 AdtDef, AdtRef, ConcreteTypeView, instantiate_adt_field_for_concrete_demand,
             },
             const_ty::{ConcreteArrayLengthError, demand_concrete_array_length},
-            place_index_tys,
             provider::{
-                ProviderLayoutFailure, ProviderLayoutResolution, place_index_space,
-                resolve_effect_handle_layout,
+                ProviderLayoutFailure, ProviderLayoutResolution, resolve_effect_handle_layout,
+                state_index_space,
             },
+            state_index_tys,
             trait_def::ImplementorId,
             trait_resolution::PredicateListId,
             ty_check::contract_field_slot,
@@ -588,7 +588,7 @@ impl<'db> FieldWalker<'db> {
             // rather than by the slots its private fields take. It takes whole
             // slots, at least one even without fields: its root number derives
             // its region, so siblings need distinct ones.
-            if let Some(space) = adt.pin(self.db) {
+            if let Some(space) = ty.pin(self.db) {
                 if !self.content_spaces.contains(&space) {
                     self.content_spaces.push(space);
                 }
@@ -1176,13 +1176,13 @@ fn persistent_under_transient<'db>(
         }
         let assumptions = PredicateListId::empty_list(db);
         let mut parts = Vec::new();
-        if let Some(space) = place_index_space(db, scope, assumptions, ty) {
+        if let Some(space) = state_index_space(db, scope, assumptions, ty) {
             match space {
                 ProviderAddressSpace::Storage if transient => return Some(ty),
                 ProviderAddressSpace::Transient => transient = true,
                 _ => {}
             }
-            parts.extend(place_index_tys(db, scope, ty, assumptions).map(|(_, output)| output));
+            parts.extend(state_index_tys(db, scope, ty, assumptions).map(|(_, output)| output));
         }
         if let Some(adt) = ty.adt_def(db) {
             let args = ty.generic_args(db);

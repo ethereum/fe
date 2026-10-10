@@ -9,7 +9,7 @@ impl Counter {
         if flag {
             mut self.value
         } else {
-            let mut scratch: u256 = 0
+            var scratch: u256 = 0
             mut scratch
         }
     }
@@ -57,7 +57,7 @@ pub contract MixedYieldSpaces {
 
 // Accepted: instantiated with a memory receiver, both yields are memory.
 fn memory_pick() -> u256 {
-    let mut counter = Counter { value: 0 }
+    var counter = Counter { value: 0 }
     let value = counter.pick(false)
     value = 1
     counter.value

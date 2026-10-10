@@ -1,0 +1,107 @@
+---
+source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
+expression: diags
+input_file: fixtures/ty_check/state_index_pins.fe
+---
+error[3-0061]: `Cells` is state-only
+   ┌─ state_index_pins.fe:38:9
+   │
+38 │     let _cells = Cells { len: 0 }
+   │         ^^^^^^ a state-only type cannot be bound by value
+   │
+   = `Cells` is pinned to storage by its `StateIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cells` is state-only
+   ┌─ state_index_pins.fe:38:18
+   │
+38 │     let _cells = Cells { len: 0 }
+   │                  ^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
+   │
+   = `Cells` is pinned to storage by its `StateIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cell<InStorage>` is state-only
+   ┌─ state_index_pins.fe:89:9
+   │
+89 │     let _cell: Cell<InStorage> = Cell { base: 0 }
+   │         ^^^^^ a state-only type cannot be bound by value
+   │
+   = `Cell<InStorage>` is pinned to storage by its `StateIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cell<InStorage>` is state-only
+   ┌─ state_index_pins.fe:89:34
+   │
+89 │     let _cell: Cell<InStorage> = Cell { base: 0 }
+   │                                  ^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
+   │
+   = `Cell<InStorage>` is pinned to storage by its `StateIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cell<InTransient>` is state-only
+   ┌─ state_index_pins.fe:94:9
+   │
+94 │     let _cell: Cell<InTransient> = Cell { base: 0 }
+   │         ^^^^^ a state-only type cannot be bound by value
+   │
+   = `Cell<InTransient>` is pinned to transient storage by its `StateIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cell<InTransient>` is state-only
+   ┌─ state_index_pins.fe:94:36
+   │
+94 │     let _cell: Cell<InTransient> = Cell { base: 0 }
+   │                                    ^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
+   │
+   = `Cell<InTransient>` is pinned to transient storage by its `StateIndex` implementation
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cell<P>` is state-only
+   ┌─ state_index_pins.fe:99:9
+   │
+99 │     let _cell: Cell<P> = Cell { base: 0 }
+   │         ^^^^^ a state-only type cannot be bound by value
+   │
+   = `Cell<P>` is pinned to a state space for some of its parameters
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Cell<P>` is state-only
+   ┌─ state_index_pins.fe:99:26
+   │
+99 │     let _cell: Cell<P> = Cell { base: 0 }
+   │                          ^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
+   │
+   = `Cell<P>` is pinned to a state space for some of its parameters
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Split<InStorage>` is state-only
+    ┌─ state_index_pins.fe:125:9
+    │
+125 │     let _split: Split<InStorage> = Split { base: 0 }
+    │         ^^^^^^ a state-only type cannot be bound by value
+    │
+    = `Split<InStorage>` is pinned to storage by its `StateIndex` implementation
+    = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Split<InStorage>` is state-only
+    ┌─ state_index_pins.fe:125:36
+    │
+125 │     let _split: Split<InStorage> = Split { base: 0 }
+    │                                    ^^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
+    │
+    = `Split<InStorage>` is pinned to storage by its `StateIndex` implementation
+    = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[6-0009]: method has stricter bounds than trait
+   ┌─ state_index_pins.fe:51:8
+   │
+51 │     fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) uses (ctx: Ctx) {
+   │        ^^^^^^ method has stricter bounds than the declared method in the trait: `ctx: Ctx`
+
+error[8-0000]: type mismatch
+   ┌─ state_index_pins.fe:27:31
+   │
+27 │     const SPACE: StateSpace = AddressSpace::Memory
+   │                               ^^^^^^^^^^^^^^^^^^^^ expected `StateSpace`, but `AddressSpace` is given

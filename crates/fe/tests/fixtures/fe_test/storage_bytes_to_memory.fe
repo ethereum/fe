@@ -1,4 +1,5 @@
 use core::ptr
+use core::abi::store_word
 use std::evm::{Address, Create, Evm, StorageBytes, keccak256}
 
 type Blobs = StorageBytes<u256>
@@ -82,7 +83,7 @@ uses (evm: mut Evm)
     assert!(blob.inner != 0)
 
     let data_ptr = ptr::alloc_bytes(32)
-    unsafe { evm.mstore(addr: data_ptr, value: 0) }
+    unsafe { store_word(ptr: data_ptr, value: 0) }
     unsafe { set_bytes(addr: blob, data: Bytes::from_abi_tail(data: data_ptr, len: 0, size: 32)) }
 
     assert!(load_hash(addr: blob) == keccak256(ptr::MemSpan::empty()))
@@ -100,16 +101,16 @@ uses (evm: mut Evm)
 
     let payload_len: u256 = 64
     let data_ptr = ptr::alloc_bytes(payload_len + 32)
-    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe { store_word(ptr: data_ptr, value: payload_len) }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 32),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 32),
             value: 0x1111111111111111111111111111111111111111111111111111111111111111,
         )
     }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 64),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 64),
             value: 0x2222222222222222222222222222222222222222222222222222222222222222,
         )
     }
@@ -140,22 +141,22 @@ uses (evm: mut Evm)
 
     let payload_len: u256 = 65
     let data_ptr = ptr::alloc_bytes(128)
-    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe { store_word(ptr: data_ptr, value: payload_len) }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 32),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 32),
             value: 0x1111111111111111111111111111111111111111111111111111111111111111,
         )
     }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 64),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 64),
             value: 0x2222222222222222222222222222222222222222222222222222222222222222,
         )
     }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 96),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 96),
             value: 0x3300000000000000000000000000000000000000000000000000000000000000,
         )
     }
@@ -197,10 +198,10 @@ uses (evm: mut Evm)
     //   602a60005260206000f3      runtime: mstore(0, 42); return(0, 32)
     let payload_len: u256 = 22
     let data_ptr = ptr::alloc_bytes(64)
-    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe { store_word(ptr: data_ptr, value: payload_len) }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 32),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 32),
             value: 0x600a600c600039600a6000f3602a60005260206000f300000000000000000000,
         )
     }

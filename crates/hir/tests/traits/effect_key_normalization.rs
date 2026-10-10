@@ -3719,7 +3719,7 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
 }
 
 #[test]
-fn root_effect_bindings_specialize_rawmem_to_evm() {
+fn root_effect_bindings_specialize_raw_storage_to_evm() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
         Utf8PathBuf::from("explicit_raw_boundaries.fe"),
@@ -3744,10 +3744,10 @@ fn root_effect_bindings_specialize_rawmem_to_evm() {
                     binding_name,
                     ..
                 },
-            ) if binding_name.data(&db) == "mem" => Some(binding),
+            ) if binding_name.data(&db) == "storage" => Some(binding),
             Some(_) | None => None,
         })
-        .expect("expected root mem effect binding");
+        .expect("expected root storage effect binding");
     assert_eq!(
         root.binding_ty(&db, root_effect_binding)
             .pretty_print(&db)
@@ -3781,10 +3781,10 @@ fn root_effect_bindings_specialize_rawmem_to_evm() {
                     binding_name,
                     ..
                 },
-            ) if binding_name.data(&db) == "mem" => Some(binding),
+            ) if binding_name.data(&db) == "storage" => Some(binding),
             Some(_) | None => None,
         })
-        .expect("expected specialized raw_store mem effect binding");
+        .expect("expected specialized raw_store storage effect binding");
     assert_eq!(
         raw_store
             .binding_ty(&db, raw_store_effect_binding)
@@ -3793,7 +3793,7 @@ fn root_effect_bindings_specialize_rawmem_to_evm() {
         "Evm"
     );
 
-    let mstore = raw_store
+    let sstore = raw_store
         .body(&db)
         .blocks
         .iter()
@@ -3813,14 +3813,14 @@ fn root_effect_bindings_specialize_rawmem_to_evm() {
                     if func
                         .name(&db)
                         .to_opt()
-                        .is_some_and(|name| name.data(&db) == "mstore")
+                        .is_some_and(|name| name.data(&db) == "sstore")
                         && func.body(&db).is_some()
             )
             .then_some(instance)
         })
-        .expect("expected concrete mstore impl call");
+        .expect("expected concrete sstore impl call");
     assert!(matches!(
-        mstore.key(&db).owner(&db),
+        sstore.key(&db).owner(&db),
         BodyOwner::Func(func) if func.body(&db).is_some()
     ));
 }

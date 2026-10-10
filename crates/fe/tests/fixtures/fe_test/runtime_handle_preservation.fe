@@ -69,7 +69,7 @@ fn pointers_and_effect_handles_support_read_write() uses (evm: mut Evm) {
 
     // A pointer made at runtime is reached through a provider of it, which
     // the raw storage authority of `evm` installs.
-    let mut sp: StorPtr<u256> = unsafe { evm.stor_ptr(0xabc) }
+    var sp: StorPtr<u256> = unsafe { evm.stor_ptr(0xabc) }
     with (sp) {
         sp.write(42)
         assert!(sp.read() == 42)
@@ -175,7 +175,7 @@ fn test_checked_overflow_exprs_survive_unused_local_lowering() {
 
 #[test]
 fn test_unit_branch_mutations_do_not_use_erased_call_results() {
-    let mut x: usize = 0
+    var x: usize = 0
     if true {
         x += 1
     } else {
@@ -192,7 +192,7 @@ fn return_array_after_projection_u8(xs: [u8; 4]) -> [u8; 4] {
 }
 
 fn use_returned_array_u8() -> u8 {
-    let mut xs: [u8; 4] = [1, 2, 3, 4]
+    var xs: [u8; 4] = [1, 2, 3, 4]
     xs = return_array_after_projection_u8(xs)
     xs[0] + xs[2]
 }
@@ -204,7 +204,7 @@ fn return_array_after_projection_u256(xs: [u256; 3]) -> [u256; 3] {
 }
 
 fn use_returned_array_u256() -> u256 {
-    let mut xs: [u256; 3] = [1, 2, 3]
+    var xs: [u256; 3] = [1, 2, 3]
     xs = return_array_after_projection_u256(xs)
     xs[0] + xs[2]
 }

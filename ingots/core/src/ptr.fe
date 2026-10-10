@@ -90,7 +90,7 @@ impl<T> MemArray<T> {
 
     /// Zeroes the allocated bytes. Zero bytes do not establish native references.
     pub fn new_zeroed(_ len: u256) -> Self {
-        let mut array = unsafe { Self::new_uninit(len) }
+        var array = unsafe { Self::new_uninit(len) }
         array.zero()
         array
     }
@@ -285,7 +285,17 @@ impl MemSlice<u8> {
 }
 
 impl MemBuffer {
+    /// A buffer of `len` zero bytes.
     pub fn alloc(_ len: u256) -> Self {
+        let buffer = unsafe { Self::alloc_uninit(len) }
+        unsafe { zero_bytes(buffer.ptr, len) }
+        buffer
+    }
+
+    /// A buffer of `len` bytes holding whatever the memory held.
+    ///
+    /// The caller must write every byte before anything reads it.
+    pub unsafe fn alloc_uninit(_ len: u256) -> Self {
         Self {
             ptr: alloc_raw(len),
             len,
@@ -306,7 +316,7 @@ impl MemBuffer {
     }
 
     pub fn from_span(_ source: MemSpan) -> Self {
-        let mut buffer = Self::with_capacity(source.len())
+        var buffer = Self::with_capacity(source.len())
         buffer.extend_from(source)
         buffer
     }
@@ -353,7 +363,7 @@ impl MemBuffer {
             return
         }
 
-        let mut capacity = self.capacity
+        var capacity = self.capacity
         if capacity == 0 {
             capacity = 32
         }
@@ -420,8 +430,19 @@ impl MemBuffer {
 }
 
 impl<const N: usize> FixedMemBuffer<N> {
+    /// A buffer of `N` zero bytes.
     #[inline(always)]
     pub fn alloc() -> Self {
+        let buffer = unsafe { Self::alloc_uninit() }
+        unsafe { zero_bytes(buffer.ptr, N as u256) }
+        buffer
+    }
+
+    /// A buffer of `N` bytes holding whatever the memory held.
+    ///
+    /// The caller must write every byte before anything reads it.
+    #[inline(always)]
+    pub unsafe fn alloc_uninit() -> Self {
         Self {
             ptr: alloc_raw(N as u256),
         }

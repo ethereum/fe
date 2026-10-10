@@ -4,11 +4,18 @@ A `for` loop traverses a collection by a cursor, a value the loop holds,
 and projects each element from the collection as it goes.
 
 ```fe
-for x in xs { total += x }              // a view of each element
-for x in mut xs { x *= 2 }              // a `mut` access to each element
+for x in xs { total += x }              // a copy of each `Copy` element
+for ref a in accounts { total += a.n }  // a read access to each element
+for var x in xs { x += 1 }              // a mutable copy of each element
+for mut x in mut xs { x *= 2 }          // a `mut` access to each element
 for (i, x) in xs by enumerate() { .. }  // a driver
 for y in xs by map(|x: u256| x * 2) { .. }
 ```
+
+The loop's pattern binds each element as a `let` pattern binds a
+projection's result: a plain name copies a `Copy` element and is an error
+for any other (bind it `ref`), except that a `mut` element (`for x in mut
+xs`) or a `#[view]` one binds its access.
 
 `Collection` (`core::iter`) is the protocol: `start` and `next` move a
 cursor, `at` projects the element at it. `CollectionMut` adds `at_mut` with
@@ -17,7 +24,8 @@ reverse. Arrays, `MemArray`, `MemSlice`, ranges, `SolArray` and
 `SolEnumerableSet` are collections; a collection declares the effects its
 methods need (`uses E`) and the space of the places it yields (`space S`).
 
-A loop that copies each item (a `Copy` item, or a producer's value) holds
+A loop that copies each item (a `Copy` element bound by a plain name or
+`var`, or a producer's value) holds
 no access on its base between steps, so the body may change the collection,
 and `at` reads each element afresh. A projected or `mut` traversal holds the
 element's session during the body, which then cannot change the base; so

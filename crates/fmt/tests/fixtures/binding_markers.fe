@@ -1,0 +1,11 @@
+fn markers(c:Cells,p:Pair) {
+    for ref x in c {
+        let (i,ref y)=c.at(0)
+    }
+    match p {
+        Pair { ref a, mut b, .. } => {}
+    }
+    if let Some(ref v)=p.opt {}
+    let z=ref p
+    var w=p.a
+}

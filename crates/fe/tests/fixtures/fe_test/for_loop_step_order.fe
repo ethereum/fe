@@ -36,7 +36,7 @@ impl Collection for Tracked {
 
 impl CollectionMut for Tracked {
     fn at_mut(mut self, _ c: usize) -> mut u256 {
-        let mut item = self.items[c]
+        var item = self.items[c]
         yield mut item
         self.items[c] = item
         self.written = c + 1
@@ -46,7 +46,7 @@ impl CollectionMut for Tracked {
 #[test]
 fn break_does_not_advance() {
     let xs = Tracked { items: [1, 2, 3], written: 0, stop: 0, check_written: false }
-    let mut seen = 0
+    var seen = 0
     for x in xs {
         seen = x
         break
@@ -57,7 +57,7 @@ fn break_does_not_advance() {
 #[test]
 fn continue_advances() {
     let xs = Tracked { items: [1, 2, 3], written: 0, stop: 3, check_written: false }
-    let mut sum = 0
+    var sum = 0
     for x in xs {
         if x == 2 {
             continue
@@ -69,7 +69,7 @@ fn continue_advances() {
 
 #[test]
 fn slide_runs_before_next() {
-    let mut xs = Tracked { items: [1, 2, 3], written: 0, stop: 3, check_written: true }
+    var xs = Tracked { items: [1, 2, 3], written: 0, stop: 3, check_written: true }
     for x in mut xs {
         x += 10
     }

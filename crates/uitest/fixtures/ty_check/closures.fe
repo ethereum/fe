@@ -13,7 +13,7 @@ fn read() -> u256 uses (store: Store) {
 fn consume(_ a: own Account) {}
 
 fn write_capture(_ xs: [u256; 2]) -> u256 {
-    let mut total = 0
+    var total = 0
     let n = xs.fold(0, |acc, x| {
         total += x
         acc
@@ -22,7 +22,7 @@ fn write_capture(_ xs: [u256; 2]) -> u256 {
 }
 
 fn mut_access_of_capture() {
-    let mut a = Account { balance: 1 }
+    var a = Account { balance: 1 }
     let xs: [u256; 1] = [1]
     let _ = xs.any(|_x| {
         let r = mut a

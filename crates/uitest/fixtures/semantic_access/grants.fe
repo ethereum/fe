@@ -21,8 +21,8 @@ impl Holder {
     // Rejected: the exported `mut` access would let the caller replace the
     // enum under the payload view the slide still uses.
     fn retained_payload(mut self) -> mut Choice {
-        match ref self.c {
-            Choice::Item(item) => {
+        match self.c {
+            Choice::Item(ref item) => {
                 yield mut self.c
                 self.a = item
             }
@@ -40,7 +40,7 @@ impl Holder {
     }
 
     fn written_back(mut self) -> mut u256 {
-        let mut tmp = self.a
+        var tmp = self.a
         yield mut tmp
         self.a = tmp
     }
@@ -55,7 +55,7 @@ impl Holder {
 
     // Rejected: an uninitialized referent cannot be exported.
     fn uninitialized(self) -> mut u256 {
-        let mut tmp: u256
+        var tmp: u256
         yield mut tmp
         let _ = tmp
     }
@@ -63,13 +63,13 @@ impl Holder {
     // Rejected: the owned component moves out the value the access
     // component exports.
     fn owned_and_access(self) -> (Wrapper, mut Wrapper) {
-        let mut tmp = Wrapper { v: self.a }
+        var tmp = Wrapper { v: self.a }
         yield (tmp, mut tmp)
         let _ = tmp.v
     }
 
     fn access_and_owned(self) -> (mut Wrapper, Wrapper) {
-        let mut tmp = Wrapper { v: self.a }
+        var tmp = Wrapper { v: self.a }
         yield (mut tmp, tmp)
         let _ = tmp.v
     }

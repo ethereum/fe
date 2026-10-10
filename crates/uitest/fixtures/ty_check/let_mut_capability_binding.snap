@@ -21,10 +21,10 @@ error[8-0070]: an access is not a value
    │
    = bind an access with `let`, pass it to a `mut` or view parameter, or yield it from a projection
 
-error[8-0073]: invalid mutable local binding
+error[8-0122]: `var` binds a value, not an access
    ┌─ let_mut_capability_binding.fe:12:9
    │
-12 │     let mut h = mut x
-   │         ^^^ `let mut` binds an owned value, but this is an access to `u256`
+12 │     var h = mut x
+   │         ^ this binds a value, but its initializer names an access
    │
-   = remove `mut`: writes through a `mut` access already reach its place
+   = remove `ref` or `mut` from the initializer to copy its value, or bind the access with `let`

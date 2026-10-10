@@ -8,7 +8,7 @@ the way Solidity packs struct members. Immutable fields live in the
 contract's code, numbered by their own counter.
 
 A storage collection, such as a `StorageMap`, `SolArray` or `TSlot`, is an
-owner at its slot, pinned to the space its `PlaceIndex` implementation names.
+owner at its slot, pinned to the space its `StateIndex` implementation names.
 It takes whole slots of its own, never sharing one with packed neighbors,
 and at least one even when it has no fields, since its slot number is what
 identifies its contents: a `StorageMap`'s slot is reserved and never

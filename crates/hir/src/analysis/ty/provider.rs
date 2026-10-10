@@ -618,16 +618,16 @@ pub fn provider_semantics_for_specialized_call<'db>(
 }
 
 /// The address space the elements of a collection whose elements are places
-/// (`core::ops::PlaceIndex`) live in: its implementation's `SPACE`.
+/// (`core::ops::StateIndex`) live in: its implementation's `SPACE`.
 #[salsa::tracked]
-pub fn place_index_space<'db>(
+pub fn state_index_space<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     collection_ty: TyId<'db>,
 ) -> Option<ProviderAddressSpace> {
-    let place_index = super::corelib::resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
-    let inst = TraitInstId::new(db, place_index, vec![collection_ty], IndexMap::new());
+    let state_index = super::corelib::resolve_core_trait(db, scope, &["ops", "StateIndex"])?;
+    let inst = TraitInstId::new(db, state_index, vec![collection_ty], IndexMap::new());
     let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
     let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst) else {
         return None;
@@ -635,25 +635,25 @@ pub fn place_index_space<'db>(
     effect_space_from_resolved_trait_const(db, scope, resolved)
 }
 
-/// How a collection whose elements are places (`core::ops::PlaceIndex`)
+/// How a collection whose elements are places (`core::ops::StateIndex`)
 /// packs its elements into lanes: its `Lanes` codec, when that codes the
 /// element type (`LaneCodec<Entry>`) in at most 128 bits. An element of a
 /// wider codec takes whole slots.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub struct PlaceIndexLanes<'db> {
+pub struct StateIndexLanes<'db> {
     pub codec: TyId<'db>,
     pub bits: u16,
 }
 
 #[salsa::tracked]
-pub fn place_index_lanes<'db>(
+pub fn state_index_lanes<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     collection_ty: TyId<'db>,
-) -> Option<PlaceIndexLanes<'db>> {
-    let place_index = super::corelib::resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
-    let inst = TraitInstId::new_simple(db, place_index, vec![collection_ty]);
+) -> Option<StateIndexLanes<'db>> {
+    let state_index = super::corelib::resolve_core_trait(db, scope, &["ops", "StateIndex"])?;
+    let inst = TraitInstId::new_simple(db, state_index, vec![collection_ty]);
     let assoc = |name: &str| {
         let projected = inst
             .trait_ref(db)
@@ -681,7 +681,7 @@ pub fn place_index_lanes<'db>(
     .evaluate(db, Some(TyId::u256(db)))
     .integer_value(db)?;
     let bits = u16::try_from(bits).ok()?;
-    (bits > 0 && bits <= 128).then_some(PlaceIndexLanes { codec, bits })
+    (bits > 0 && bits <= 128).then_some(StateIndexLanes { codec, bits })
 }
 
 pub(crate) fn effect_space_from_resolved_trait_const<'db>(
@@ -706,9 +706,16 @@ pub(crate) fn effect_space_from_const_ty<'db>(
     };
     let enum_ = ty.as_enum(db)?;
 
-    let space_enum = resolve_lib_type_path(db, scope, "core::effect_ref::AddressSpace")?;
-    let space_adt = space_enum.adt_def(db)?;
-    if super::adt_def::AdtRef::Enum(enum_) != space_adt.adt_ref(db) {
+    // An effect handle's `AddressSpace`, or a `StateIndex` collection's
+    // `StateSpace`, whose variants share their names.
+    let is_space_enum = |path| {
+        resolve_lib_type_path(db, scope, path)
+            .and_then(|space| space.adt_def(db))
+            .is_some_and(|space| super::adt_def::AdtRef::Enum(enum_) == space.adt_ref(db))
+    };
+    if !is_space_enum("core::effect_ref::AddressSpace")
+        && !is_space_enum("core::effect_ref::StateSpace")
+    {
         return None;
     }
 

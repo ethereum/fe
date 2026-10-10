@@ -22,8 +22,8 @@ mod views {
     fn swap<T>(_ a: mut T, _ b: mut T) {}
 
     fn reaccess() {
-        let mut a = Span { start: 0, len: 1 }
-        let mut b = Span { start: 1, len: 1 }
+        var a = Span { start: 0, len: 1 }
+        var b = Span { start: 1, len: 1 }
         swap(mut a, mut b)
     }
 }

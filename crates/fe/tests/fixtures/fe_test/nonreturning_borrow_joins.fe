@@ -80,7 +80,7 @@ pub fn main() -> i32 {
 
     let pointer = ptr::alloc<Frame>()
     unsafe { *pointer = Frame { first: 7, value: 1000, last: 9 } }
-    let mut fallback = Frame { first: 1, value: 2, last: 3 }
+    var fallback = Frame { first: 1, value: 2, last: 3 }
     let frame = aggregate(pointer, flag: true)
     frame.value += 1
     let frame = dead_continuation(pointer, fallback: mut fallback, flag: true)

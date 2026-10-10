@@ -10,12 +10,12 @@ use crate::{
     HirDb,
     hir_def::{
         AccessItems, ArithBinOp, AssocConstDef, AssocTyDef, Attr, AttrArg, AttrListId, BinOp,
-        BlockKind, Body, BodyKind, EffectParamListId, Expr, ExprId, FieldDefListId, FieldIndex,
-        Func, FuncModifiers, FuncParam, FuncParamListId, FuncParamMode, FuncParamName, FuncReturn,
-        GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId, ImplTrait,
-        IntegerId, ItemKind, LitKind, Mod, NormalAttr, Partial, Pat, PatId, PathId, PathKind, Stmt,
-        StmtId, Struct, TopLevelMod, TrackedItemId, TrackedItemVariant, TraitRefId, TypeBound,
-        TypeGenericArg, TypeGenericParam, TypeId, TypeKind, TypeMode, UnOp, Visibility,
+        BindingMarker, BlockKind, Body, BodyKind, EffectParamListId, Expr, ExprId, FieldDefListId,
+        FieldIndex, Func, FuncModifiers, FuncParam, FuncParamListId, FuncParamMode, FuncParamName,
+        FuncReturn, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
+        ImplTrait, IntegerId, ItemKind, LitKind, Mod, NormalAttr, Partial, Pat, PatId, PathId,
+        PathKind, Stmt, StmtId, Struct, TopLevelMod, TrackedItemId, TrackedItemVariant, TraitRefId,
+        TypeBound, TypeGenericArg, TypeGenericParam, TypeId, TypeKind, TypeMode, UnOp, Visibility,
         WhereClauseId, expr::CallArg,
     },
     span::{DesugaredOrigin, HirOrigin},
@@ -791,12 +791,12 @@ where
         let head_size = self.abi_size_assoc_expr(TypeId::fallback_self_ty(db), "HEAD_SIZE");
         let tail_pat = self.push_pat(Pat::Path(
             Partial::Present(PathId::from_ident(db, tail_ident)),
-            true,
+            BindingMarker::Var,
         ));
         self.emit_stmt(Stmt::Let(tail_pat, None, Some(head_size), None));
         let head_pos_pat = self.push_pat(Pat::Path(
             Partial::Present(PathId::from_ident(db, head_pos_ident)),
-            true,
+            BindingMarker::Var,
         ));
         let zero = self.push_expr(Expr::Lit(LitKind::Int(IntegerId::from_usize(db, 0))));
         self.emit_stmt(Stmt::Let(head_pos_pat, None, Some(zero), None));
@@ -805,7 +805,7 @@ where
             let field_ident = self.generated_ident(&format!("field_{index}"));
             let field_pat = self.push_pat(Pat::Path(
                 Partial::Present(PathId::from_ident(db, field_ident)),
-                false,
+                BindingMarker::Plain,
             ));
             let receiver = self.push_expr(Expr::Field(
                 self_expr,
@@ -905,7 +905,7 @@ where
 
         let bind_pat = self.push_pat(Pat::Path(
             Partial::Present(PathId::from_ident(db, target_ident)),
-            false,
+            BindingMarker::Plain,
         ));
         self.emit_stmt(Stmt::Let(bind_pat, Some(ty), Some(decode_call), None));
     }
@@ -960,7 +960,7 @@ where
 
         let bind_pat = self.push_pat(Pat::Path(
             Partial::Present(PathId::from_ident(db, target_ident)),
-            false,
+            BindingMarker::Plain,
         ));
         self.emit_stmt(Stmt::Let(bind_pat, Some(ty), Some(decode_call), None));
     }
@@ -972,7 +972,7 @@ where
             self.method_call_expr(input_expr, IdentId::new(db, "len".to_string()), vec![]);
         let bind_pat = self.push_pat(Pat::Path(
             Partial::Present(PathId::from_ident(db, target_ident)),
-            false,
+            BindingMarker::Plain,
         ));
         let u256_ty = TypeId::new(
             db,

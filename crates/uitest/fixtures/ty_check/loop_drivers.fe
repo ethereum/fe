@@ -30,7 +30,7 @@ impl<B: Collection<Cursor = usize>> Driver<B> for Firsts {
 }
 
 fn mutates_through_reads() {
-    let mut xs: [u256; 3] = [1, 2, 3]
+    var xs: [u256; 3] = [1, 2, 3]
     let d = Firsts {}
     for x in mut xs by d {
         x += 1
@@ -44,9 +44,9 @@ fn copies(_ xs: [u256; 3]) {
     }
 }
 
-// A non-`Copy` element is a `ref` access.
+// A `ref` element is a read access.
 fn reads(_ accounts: [Account; 2]) {
-    for (_, account) in accounts.enumerate() {
+    for (_, ref account) in accounts.enumerate() {
         account.balance = 0
     }
 }

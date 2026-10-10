@@ -1,7 +1,7 @@
 // A projection may yield a local of its own frame: the session keeps the
 // frame until the caller's access ends, and the slide runs afterwards.
 const fn counter() -> mut u8 {
-    let mut x: u8 = 40
+    var x: u8 = 40
     mut x
 }
 

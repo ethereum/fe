@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 416
+assertion_line: 388
 expression: output
 input_file: crates/codegen/tests/fixtures/match_struct.fe
 ---
@@ -87,10 +87,10 @@ func private %match_struct_fields(v0.constref<@layout_0>) -> i8 {
 
     block11:
         v28.constref<i8> = const.proj v0 0.i256;
-        v29.constref<i8> = const.proj v0 1.i256;
-        v30.i8 = const.load v28;
-        v31.i8 = const.load v29;
-        (v32.i8, v33.i1) = uaddo v30 v31;
+        v29.i8 = const.load v28;
+        v30.constref<i8> = const.proj v0 1.i256;
+        v31.i8 = const.load v30;
+        (v32.i8, v33.i1) = uaddo v29 v31;
         br v33 block13 block14;
 
     block12:

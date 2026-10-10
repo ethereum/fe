@@ -6,7 +6,7 @@ struct Pair { a: [u256; 2], b: [u256; 2] }
 
 // Rejected: one place is both bases.
 fn same_base() {
-    let mut xs: [u256; 2] = [1, 2]
+    var xs: [u256; 2] = [1, 2]
     for (x, y) in (mut xs, mut xs) by zip() {
         x += y
     }
@@ -14,7 +14,7 @@ fn same_base() {
 
 // Rejected: one base contains the other.
 fn nested_bases() {
-    let mut p = Pair { a: [1, 2], b: [3, 4] }
+    var p = Pair { a: [1, 2], b: [3, 4] }
     for (x, y) in (mut p.a, mut p.a) by zip() {
         x += y
     }
@@ -22,7 +22,7 @@ fn nested_bases() {
 
 // Accepted: disjoint fields of one owner.
 fn disjoint_fields() -> u256 {
-    let mut p = Pair { a: [1, 2], b: [3, 4] }
+    var p = Pair { a: [1, 2], b: [3, 4] }
     for (x, y) in (mut p.a, mut p.b) by zip() {
         y += x
     }

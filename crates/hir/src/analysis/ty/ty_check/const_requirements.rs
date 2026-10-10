@@ -1539,7 +1539,7 @@ fn discharge_requirement<'db>(
     }
     if symbolic {
         // Arguments that mention the caller's parameters may still decide
-        // the predicate, as `<TSlot<T> as PlaceIndex>::SPACE` does for every
+        // the predicate, as `<TSlot<T> as StateIndex>::SPACE` does for every
         // `T`: evaluated under the caller's assumptions, a value decides it,
         // and only a blocked evaluation needs a premise.
         if let Some(caller) = caller {

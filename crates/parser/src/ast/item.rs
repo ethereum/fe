@@ -451,6 +451,11 @@ impl TraitSpaceItem {
     pub fn value(&self) -> Option<super::Path> {
         support::child(self.syntax())
     }
+
+    /// `[_]` in `space S = self[_]`.
+    pub fn space_path(&self) -> Option<super::SpacePath> {
+        support::child(self.syntax())
+    }
 }
 
 ast_node! {

@@ -623,7 +623,7 @@ pub struct Tower {
 
 impl Tower {
     pub fn add(mut self) -> u256 {
-        let mut scan: usize = 24
+        var scan: usize = 24
         while scan != 0 {
             scan -= 1
             if self.counts[scan] != 0 {

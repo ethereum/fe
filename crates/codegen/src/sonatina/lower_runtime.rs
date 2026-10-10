@@ -51,11 +51,11 @@ use sonatina_ir::{
             EvmCalldataSize, EvmCaller, EvmChainId, EvmClz, EvmCodeCopy, EvmCodeLoad, EvmCodeSize,
             EvmCoinBase, EvmCreate, EvmCreate2, EvmDelegateCall, EvmExp, EvmExtCodeCopy,
             EvmExtCodeHash, EvmExtCodeSize, EvmGas, EvmGasLimit, EvmGasPrice, EvmInvalid,
-            EvmKeccak256, EvmLog0, EvmLog1, EvmLog2, EvmLog3, EvmLog4, EvmMalloc, EvmMcopy,
-            EvmMsize, EvmMstore8, EvmMulMod, EvmNumber, EvmOrigin, EvmPrevRandao, EvmReturn,
-            EvmReturnDataCopy, EvmReturnDataSize, EvmRevert, EvmSdiv, EvmSelfBalance,
-            EvmSelfDestruct, EvmSignExtend, EvmSload, EvmSmod, EvmSstore, EvmStaticCall, EvmStop,
-            EvmTimestamp, EvmTload, EvmTstore, EvmUdiv, EvmUmod,
+            EvmKeccak256, EvmKeccak256Words, EvmLog0, EvmLog1, EvmLog2, EvmLog3, EvmLog4,
+            EvmMalloc, EvmMcopy, EvmMsize, EvmMstore8, EvmMulMod, EvmNumber, EvmOrigin,
+            EvmPrevRandao, EvmReturn, EvmReturnDataCopy, EvmReturnDataSize, EvmRevert, EvmSdiv,
+            EvmSelfBalance, EvmSelfDestruct, EvmSignExtend, EvmSload, EvmSmod, EvmSstore,
+            EvmStaticCall, EvmStop, EvmTimestamp, EvmTload, EvmTstore, EvmUdiv, EvmUmod,
         },
         logic::{And, Not, Or, Xor},
     },
@@ -2174,6 +2174,19 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 let len = self.local_value(*len)?;
                 self.fb.insert_inst(
                     EvmKeccak256::new(self.module.required_inst::<EvmKeccak256>()?, offset, len),
+                    Type::I256,
+                )
+            }
+            RuntimeBuiltin::KeccakWords { words } => {
+                let words = words
+                    .iter()
+                    .map(|word| self.local_value(*word))
+                    .collect::<Result<_, _>>()?;
+                self.fb.insert_inst(
+                    EvmKeccak256Words::new(
+                        self.module.required_inst::<EvmKeccak256Words>()?,
+                        words,
+                    ),
                     Type::I256,
                 )
             }

@@ -8,7 +8,7 @@ struct Cell { v: u256, w: u256 }
 
 impl Cell {
     fn cached(mut self) -> mut u256 {
-        let mut tmp = self.v
+        var tmp = self.v
         yield mut tmp
         self.v = tmp
     }

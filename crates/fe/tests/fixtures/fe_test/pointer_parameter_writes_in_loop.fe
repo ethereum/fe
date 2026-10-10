@@ -92,7 +92,7 @@ fn dispatch(_ buf: *u8, _ kind: u256, _ value: u256) -> u256 {
 
 fn settle_item(_ book: Book, order: *Order, index: u256, acc: u256, buf: *u8) -> u256 {
     let item = book.item(order, index)
-    let mut current = acc
+    var current = acc
     unsafe {
         if item.amount != 0 {
             current = dispatch(buf, item.original, item.amount)
@@ -120,8 +120,8 @@ fn check_item(_ book: Book, order: *Order, index: u256) {
 fn settle(_ book: Book, available: Arr<bool>, index: u256, acc: u256, buf: *u8) -> u256 {
     let order = book.order(index)
     unsafe { *available.at(index) = order.len != 0 }
-    let mut current = acc
-    let mut j: u256 = 0
+    var current = acc
+    var j: u256 = 0
     while j < unsafe { order.len } {
         current = settle_item(book, order, index: j, acc: current, buf)
         j += 1
@@ -136,8 +136,8 @@ fn settle(_ book: Book, available: Arr<bool>, index: u256, acc: u256, buf: *u8) 
 }
 
 fn settle_all(_ book: Book, available: Arr<bool>, acc: u256, buf: *u8) -> u256 {
-    let mut current = acc
-    let mut i: u256 = 0
+    var current = acc
+    var i: u256 = 0
     while i < book.orders.len {
         current = settle(book, available, index: i, acc: current, buf)
         i += 1
@@ -146,8 +146,8 @@ fn settle_all(_ book: Book, available: Arr<bool>, acc: u256, buf: *u8) -> u256 {
 }
 
 fn settle_rounds(_ book: Book, available: Arr<bool>, rounds: u256, buf: *u8) -> u256 {
-    let mut current: u256 = 0
-    let mut r: u256 = 0
+    var current: u256 = 0
+    var r: u256 = 0
     while r < rounds {
         current = settle_all(book, available, acc: current, buf)
         r += 1

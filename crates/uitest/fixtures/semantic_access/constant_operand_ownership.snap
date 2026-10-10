@@ -92,4 +92,4 @@ error[16-0002]: move conflict in `fn payload_moved_through_access`
     ┌─ constant_operand_ownership.fe:174:22
     │
 174 │         Option::Some(b) => b.v
-    │                      ^ cannot move out of a place reached through a `ref` access
+    │                      ^ cannot move out of a place reached through a `ref` access; bind it with `ref` to read it in place

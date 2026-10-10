@@ -1332,7 +1332,7 @@ fn canonicalize_invalidates_const_facts_for_mutating_calls() {
         r#"
 #[arithmetic(unchecked)]
 fn wraps_after_aug_assign() -> bool {
-    let mut x: u8 = 255
+    var x: u8 = 255
     x += 1
     x == 0
 }
@@ -1472,7 +1472,7 @@ fn canonicalize_tracks_mutation_through_accesses() {
         ),
         (
             "array",
-            "let mut values = [holder]\n values[index].value = 1",
+            "var values = [holder]\n values[index].value = 1",
             "values[0].value == 1",
             false,
         ),
@@ -1541,9 +1541,9 @@ fn write_mut(_ holder: mut Holder) {{ holder.value = 1 }}
 fn write_value(_ value: mut u256) {{ value = 1 }}
 fn probe(index: usize) -> bool {{
     let unrelated: u256 = 7
-    let mut counter = Counter {{ value: 0 }}
-    let mut value: u256 = 0
-    let mut holder = Holder {{ value: 0 }}
+    var counter = Counter {{ value: 0 }}
+    var value: u256 = 0
+    var holder = Holder {{ value: 0 }}
     {operation}
     {result}
 }}

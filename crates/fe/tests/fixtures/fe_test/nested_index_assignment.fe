@@ -26,7 +26,7 @@ impl IndexMut<usize> for Tables {
 
 #[test]
 fn nested_overloaded_index_assignment() {
-    let mut t = Tables { items: [Table { inner: Cells { cells: [0, 0] } }, Table { inner: Cells { cells: [0, 0] } }] }
+    var t = Tables { items: [Table { inner: Cells { cells: [0, 0] } }, Table { inner: Cells { cells: [0, 0] } }] }
     t[1].inner[0] = 11
     t[1].inner[1] += 4
     let next = t[1].inner[0] + 1

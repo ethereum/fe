@@ -15,6 +15,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use super::{
+    PathSpace,
     domain::Domains,
     place::{AbsPlace, Base, Path, Step, path_of, paths_overlap},
 };
@@ -40,6 +41,7 @@ use crate::{
         ty::{
             corelib::{MemoryAccessKind, effect_key_state_access, external_call_state_access},
             provider::{ProviderAddressSpace, provider_semantics},
+            result_space::PlaceStep,
             shape::Shape,
             trait_resolution::PredicateListId,
             ty_check::{BodyOwner, LocalBinding},
@@ -47,8 +49,8 @@ use crate::{
             ty_is_snapshot,
         },
     },
-    hir_def::{CallableDef, FuncParamMode, scope_graph::ScopeId},
-    semantic::{EffectRequirementKey, ProviderSource, storage_field_lanes},
+    hir_def::{CallableDef, FuncParamMode, Partial, Stmt, scope_graph::ScopeId},
+    semantic::{EffectRequirementKey, ProviderSource},
 };
 
 type Diag<'db> = SemanticDiagnostic<'db>;
@@ -421,62 +423,52 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// Where the path of `place` takes it from `start`, the space of the
-    /// place the path is relative to: the space the innermost pinned type
-    /// (`space(P.f) = pin(F)`) or entry (its collection's `SPACE`) moves it
-    /// into, and whether it crosses a lane.
-    fn path_space(
-        &self,
-        place: &NPlace<'db>,
-        start: Option<ProviderAddressSpace>,
-    ) -> (Option<ProviderAddressSpace>, bool) {
+    /// place the path is relative to.
+    fn path_space(&self, place: &NPlace<'db>, start: Option<ProviderAddressSpace>) -> PathSpace {
         let db = self.db;
         let ty_at = |len| {
             self.body
                 .place_prefix_ty(db, place, len)
                 .map(|ty| self.instance.normalized_ty(db, ty))
         };
-        let pin = |ty: Option<TyId<'db>>| ty?.adt_def(db)?.pin(db);
-        let mut moved = pin(ty_at(0));
-        let mut lane = false;
+        let Some(root) = ty_at(0) else {
+            return PathSpace {
+                moved: None,
+                lane: false,
+            };
+        };
+        let mut walk = PathSpace::new(db, root);
+        let mut container = root;
         for (index, projection) in place.path.as_slice().iter().enumerate() {
-            let Some(container) = ty_at(index) else {
+            let Some(result) = ty_at(index + 1) else {
                 break;
             };
-            match projection {
-                NDataProjection::Entry(_) => {
-                    if let Some(space) = self.instance.place_index_space(db, container) {
-                        moved = Some(space);
-                    }
-                    lane |= self.instance.place_index_lanes(db, container).is_some();
-                }
-                NDataProjection::Field(field)
-                    if matches!(
-                        moved.or(start),
-                        Some(ProviderAddressSpace::Storage | ProviderAddressSpace::Transient)
-                    ) =>
-                {
-                    lane |= storage_field_lanes(db, self.scope, container)
-                        .get(field.0 as usize)
-                        .copied()
-                        .unwrap_or(false);
-                }
-                _ => {}
-            }
-            if let Some(space) = pin(ty_at(index + 1)) {
-                moved = Some(space);
-            }
+            let step = match projection {
+                NDataProjection::Field(field) => PlaceStep::Field(field.0 as usize),
+                NDataProjection::VariantField { .. } => PlaceStep::Variant,
+                NDataProjection::Index(_) => PlaceStep::Index,
+                NDataProjection::Entry(_) => PlaceStep::Entry,
+            };
+            walk.step(
+                db,
+                self.instance,
+                self.scope,
+                start,
+                (container, step, result),
+            );
+            container = result;
         }
-        (moved, lane)
+        walk
     }
 
     pub fn resolve(&mut self, place: &NPlace<'db>) -> Resolved {
         let path = self.path(&place.path);
         let rooted = |this: &Self, base: Base, path: Path| {
-            let (space, lane) = this.path_space(place, this.space(base));
+            let PathSpace { moved, lane } = this.path_space(place, this.space(base));
             AbsPlace {
                 base,
                 path,
-                space,
+                space: moved,
                 lane,
             }
         };
@@ -492,8 +484,9 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     .iter()
                     .flat_map(|token| &self.tokens[*token as usize].regions)
                     .map(|region| {
-                        let (space, lane) = self.path_space(place, self.grant_space(region));
-                        region.extended(&path, space, lane)
+                        let PathSpace { moved, lane } =
+                            self.path_space(place, self.grant_space(region));
+                        region.extended(&path, moved, lane)
                     })
                     .collect();
                 if regions.is_empty() || carrier_ty.as_ptr(self.db).is_some() {
@@ -1479,6 +1472,20 @@ impl<'a, 'db> Analysis<'a, 'db> {
         SemanticDiagnostic::new(self.instance, kind, message, self.span(origin))
     }
 
+    /// Whether `origin` is a pattern binding or a `let` initializer: a value
+    /// bound by name.
+    fn binds_by_value(&self, origin: SemOrigin<'db>) -> bool {
+        match origin {
+            SemOrigin::Pat(_) => true,
+            SemOrigin::Expr(expr) => self.body.template_owner.body(self.db).is_some_and(|body| {
+                body.stmts(self.db).values().any(|stmt| {
+                    matches!(stmt, Partial::Present(Stmt::Let(_, _, Some(init), _)) if *init == expr)
+                })
+            }),
+            _ => false,
+        }
+    }
+
     fn span(&self, origin: SemOrigin<'db>) -> SemanticDiagnosticSpan<'db> {
         SemanticDiagnosticSpan::OriginWithTemplateFallback {
             owner: self.instance.key(self.db).owner(self.db),
@@ -1764,11 +1771,18 @@ impl<'a, 'db> Analysis<'a, 'db> {
             } else {
                 SemanticDiagnosticKind::AccessConflict
             };
+            // A plain binding takes a value: one that cannot move needs
+            // `ref` to be read in place.
+            let fix = if kind == MemoryAccessKind::Move && self.binds_by_value(origin) {
+                "; bind it with `ref` to read it in place"
+            } else {
+                ""
+            };
             return Err(self.diag(
                 diag_kind,
                 origin,
                 format!(
-                    "cannot {} a place reached through a `ref` access",
+                    "cannot {} a place reached through a `ref` access{fix}",
                     verb(kind)
                 ),
             ));

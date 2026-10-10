@@ -314,7 +314,7 @@ fn spin() { while true {} }
 #[test]
 fn noisy() {
     with (Write = host()) {
-        let mut i: u32 = 0
+        var i: u32 = 0
         while i < 2048 {
             write_char(65)
             i += 1
@@ -417,16 +417,16 @@ fn step() uses (handle: mut Handle) {
 fn replace(slot: mut Slot, value: mut i32) { slot = Slot { target: value } }
 fn increment(slot: mut Slot) { slot.target += 1 }
 pub fn main() -> i32 {
-    let mut first: i32 = 20
-    let mut second: i32 = 40
-    let mut handle = Handle { value: mut first, calls: 0 }
+    var first: i32 = 20
+    var second: i32 = 40
+    var handle = Handle { value: mut first, calls: 0 }
     with (handle) {
         step()
         step()
     }
     core::assert(handle.calls == 2)
     core::assert(handle.value == 22)
-    let mut slot = Slot { target: mut first }
+    var slot = Slot { target: mut first }
     increment(slot: mut slot)
     replace(slot: mut slot, value: mut second)
     increment(slot: mut slot)
@@ -463,8 +463,8 @@ fn next(_ value: Pair) -> Pair {
     Pair { low: value.low + 1, high: value.high + 3 }
 }
 pub fn main() -> i32 {
-    let mut value = Pair { low: 2, high: 7 }
-    let mut i: u64 = 0
+    var value = Pair { low: 2, high: 7 }
+    var i: u64 = 0
     while i < 17 {
         value = next(value)
         value.low = value.low + 1
@@ -503,9 +503,9 @@ fn native_process_clock_preserves_borrows_and_host_io() {
 use std::io::{HostIo, Read, Write, host}
 use std::native::cpu_clock_ticks
 pub fn main() -> i32 {
-    let mut input = host()
-    let mut output = host()
-    let mut value: i32 = 0
+    var input = host()
+    var output = host()
+    var value: i32 = 0
     let borrowed = mut value
     let start = cpu_clock_ticks()
     borrowed = input.read_char()
@@ -554,10 +554,10 @@ pub fn main(argc: i32, argv: **u8) -> i32 {
     }
     core::assert(main(argc: 0, argv) == 42)
     with (Write = host()) {
-        let mut i: usize = 1
+        var i: usize = 1
         while i < args.len() {
             let arg = args.get(i)
-            let mut j: usize = 0
+            var j: usize = 0
             while j < arg.len() {
                 write_char(arg.byte_at(j) as i32)
                 j += 1
@@ -602,8 +602,8 @@ fn native_modular_arithmetic_matches_full_precision_runtime_inputs() {
 use std::io::{HostIo, Read, Write, host, read_char}
 use std::evm::crypto::{addmod, mulmod}
 fn read_word() -> u256 uses (input: mut Read) {
-    let mut value: u256 = 0
-    let mut i: u256 = 0
+    var value: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         let byte = read_char()
         core::assert(byte >= 0)
@@ -614,7 +614,7 @@ fn read_word() -> u256 uses (input: mut Read) {
     value
 }
 fn write_word(_ value: u256) uses (output: mut HostIo) {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         output.write_char(c: ((value >> (i * 8)) & 255).downcast_unchecked())
         core::assert(!output.failed())
@@ -623,7 +623,7 @@ fn write_word(_ value: u256) uses (output: mut HostIo) {
 }
 pub fn main() -> i32 {
     with (Read = host(), HostIo = host()) {
-        let mut marker = read_char()
+        var marker = read_char()
         while marker != -1 {
             core::assert(marker == 64)
             let lhs = read_word()
@@ -725,8 +725,8 @@ fn native_bit_counts_match_runtime_inputs() {
 use std::io::{HostIo, Read, Write, host, read_char}
 use core::num::{leading_zeros, trailing_zeros}
 fn read_word() -> u256 uses (input: mut Read) {
-    let mut value: u256 = 0
-    let mut i: u256 = 0
+    var value: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         let byte = read_char()
         core::assert(byte >= 0)
@@ -737,7 +737,7 @@ fn read_word() -> u256 uses (input: mut Read) {
     value
 }
 fn write_word(_ value: u256) uses (output: mut HostIo) {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         output.write_char(c: ((value >> (i * 8)) & 255).downcast_unchecked())
         core::assert(!output.failed())
@@ -746,7 +746,7 @@ fn write_word(_ value: u256) uses (output: mut HostIo) {
 }
 pub fn main() -> i32 {
     with (Read = host(), HostIo = host()) {
-        let mut marker = read_char()
+        var marker = read_char()
         while marker != -1 {
             core::assert(marker == 64)
             let value = read_word()
@@ -900,15 +900,15 @@ fn native_byte_buffer_preserves_contents_and_reuses_zeroed_storage() {
 use std::native::ByteBuffer
 fn consume(buffer: own ByteBuffer) { buffer.release() }
 pub fn main() -> i32 {
-    let mut empty = ByteBuffer::new()
+    var empty = ByteBuffer::new()
     core::assert(empty.len() == 0 && empty.capacity() == 0)
     empty.copy_within(dest: 0, source: 0, len: 0)
     empty.release()
-    let mut round: u64 = 0
+    var round: u64 = 0
     while round < 8 {
-        let mut buffer = ByteBuffer::new()
+        var buffer = ByteBuffer::new()
         core::assert(buffer.try_resize(33))
-        let mut i: u64 = 0
+        var i: u64 = 0
         while i < 33 {
             core::assert(buffer.byte_at(i) == 0)
             buffer.set_byte(index: i, value: (i + 1).downcast_truncate())
@@ -979,14 +979,14 @@ fn native_byte_buffer_allocation_failure_is_atomic_and_storage_is_released() {
         r#"
 use std::native::ByteBuffer
 pub fn main() -> i32 {
-    let mut empty = ByteBuffer::new()
+    var empty = ByteBuffer::new()
     core::assert(!empty.try_resize(3000))
     core::assert(empty.len() == 0 && empty.capacity() == 0)
     empty.release()
-    let mut buffer = ByteBuffer::new()
+    var buffer = ByteBuffer::new()
     core::assert(buffer.try_resize(513))
     core::assert(buffer.capacity() == 1024)
-    let mut i: u64 = 0
+    var i: u64 = 0
     while i < 513 {
         core::assert(buffer.byte_at(i) == 0)
         buffer.set_byte(index: i, value: (i % 251).downcast_truncate())
@@ -1078,7 +1078,7 @@ fn forward(_ buffer: mut ByteBuffer, _ value: mut u256) {
 }
 fn run(_ frame: mut Frame) { forward(mut frame.data, mut frame.value) }
 pub fn main() -> i32 {
-    let mut frame = Frame { data: ByteBuffer::new(), value: 20 }
+    var frame = Frame { data: ByteBuffer::new(), value: 20 }
     run(mut frame)
     core::assert(frame.value == 42 && frame.data.byte_at(32) == 21)
     run(mut frame)
@@ -1117,7 +1117,7 @@ impl Frame {
         core::assert(self.data.bytes.try_resize(32))
         core::assert(state.data.bytes.try_resize(32))
         self.data.bytes.set_byte(index: 0, value: 2)
-        let mut i: u64 = 0
+        var i: u64 = 0
         while i < 32 {
             state.data.bytes.set_byte(index: i, value: 3)
             i += 1
@@ -1127,17 +1127,17 @@ impl Frame {
     fn release(own self) { self.data.bytes.release() }
 }
 fn execute(state: mut Frame) -> Frame {
-    let mut vm = Frame::new()
+    var vm = Frame::new()
     vm.run(state)
     vm
 }
 fn finish(state: mut Frame) {
-    let mut vm = Frame::new()
+    var vm = Frame::new()
     vm.run(state)
     vm.release()
 }
 pub fn main() -> i32 {
-    let mut state = Frame::new()
+    var state = Frame::new()
     let vm = execute(state: mut state)
     core::assert(vm.value == 1 && state.value == 1)
     core::assert(vm.data.bytes.byte_at(0) == 2 && state.data.bytes.byte_at(31) == 3)
@@ -1183,13 +1183,13 @@ fn write_alternating(_ first: mut ByteBuffer, _ second: mut ByteBuffer, depth: u
     }
 }
 pub fn main() -> i32 {
-    let mut buffer = ByteBuffer::new()
+    var buffer = ByteBuffer::new()
     core::assert(buffer.try_resize(32))
     write_at_depth(mut buffer, depth: 0, value: 19)
     core::assert(buffer.byte_at(31) == 19)
     write_at_depth(mut buffer, depth: 32, value: 42)
     core::assert(buffer.byte_at(31) == 42)
-    let mut other = ByteBuffer::new()
+    var other = ByteBuffer::new()
     core::assert(other.try_resize(32))
     other.set_byte(index: 31, value: 7)
     write_alternating(mut buffer, mut other, depth: 32, value: 19)
@@ -1223,7 +1223,7 @@ fn native_recursive_buffer_poststates_converge() {
 use std::native::ByteBuffer
 fn grow(_ buffer: mut ByteBuffer, depth: usize, length: u64, value: u8) {
     if depth == 0 {
-        let mut size: u64 = 1
+        var size: u64 = 1
         while size <= length {
             core::assert(buffer.try_resize(size))
             buffer.set_byte(index: size - 1, value)
@@ -1236,7 +1236,7 @@ fn clear(_ buffer: mut ByteBuffer, depth: usize) {
     else { clear(mut buffer, depth: depth - 1) }
 }
 pub fn main() -> i32 {
-    let mut buffer = ByteBuffer::new()
+    var buffer = ByteBuffer::new()
     grow(mut buffer, depth: 32, length: 32, value: 19)
     core::assert(buffer.len() == 32 && buffer.byte_at(31) == 19)
     clear(mut buffer, depth: 32)

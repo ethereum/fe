@@ -17,14 +17,14 @@ impl Cell {
 
     // The write-back form: the slide stores the session's temporary.
     fn cached(mut self) -> mut u256 {
-        let mut tmp = self.get()
+        var tmp = self.get()
         yield mut tmp
         self.set(tmp)
     }
 
     // One yield on each path; the slide runs after either.
     fn pick(mut self, _ use_tmp: bool) -> mut u256 {
-        let mut tmp = self.get()
+        var tmp = self.get()
         yield if use_tmp { mut tmp } else { mut self.v }
         self.v += 100
     }
@@ -34,7 +34,7 @@ impl Cell {
         if !present {
             return Option::None
         }
-        let mut tmp = self.get()
+        var tmp = self.get()
         yield Option::Some(mut tmp)
         self.set(tmp)
     }
@@ -60,7 +60,7 @@ impl Cell {
 }
 
 fn ended_on_two_paths(_ early: bool) -> u256 {
-    let mut cell = Cell { v: 1 }
+    var cell = Cell { v: 1 }
     let x = cell.cached()
     if early {
         x += 10
@@ -72,7 +72,7 @@ fn ended_on_two_paths(_ early: bool) -> u256 {
 
 #[test]
 fn write_back_lands_after_the_last_use() {
-    let mut cell = Cell { v: 1 }
+    var cell = Cell { v: 1 }
     let x = cell.cached()
     x += 5
     assert!(cell.v == 6)
@@ -81,12 +81,12 @@ fn write_back_lands_after_the_last_use() {
 #[test]
 fn slide_follows_either_yield() {
     // Writes to the session's temporary are not written back.
-    let mut a = Cell { v: 1 }
+    var a = Cell { v: 1 }
     let x = a.pick(true)
     x += 5
     assert!(a.v == 101)
 
-    let mut b = Cell { v: 1 }
+    var b = Cell { v: 1 }
     let y = b.pick(false)
     y += 5
     assert!(b.v == 106)
@@ -94,8 +94,8 @@ fn slide_follows_either_yield() {
 
 #[test]
 fn each_iteration_runs_its_session() {
-    let mut cell = Cell { v: 1 }
-    let mut i: u256 = 0
+    var cell = Cell { v: 1 }
+    var i: u256 = 0
     while i < 3 {
         let x = cell.cached()
         x += 1
@@ -112,7 +112,7 @@ fn every_exit_ends_the_session() {
 
 #[test]
 fn optional_projection_slides_only_when_present() {
-    let mut cell = Cell { v: 1 }
+    var cell = Cell { v: 1 }
     if let Option::Some(x) = cell.entry(true) {
         x += 2
     }
@@ -124,13 +124,13 @@ fn optional_projection_slides_only_when_present() {
 
 #[test]
 fn empty_variant_finishes_the_ramp_sessions() {
-    let mut cell = Cell { v: 1 }
+    var cell = Cell { v: 1 }
     if let Option::Some(x) = cell.maybe_via(true) {
         x += 1
     }
     assert!(cell.v == 14)
 
-    let mut other = Cell { v: 1 }
+    var other = Cell { v: 1 }
     if let Option::Some(x) = other.maybe_via(false) {
         x += 100
     }
@@ -139,7 +139,7 @@ fn empty_variant_finishes_the_ramp_sessions() {
 
 #[test]
 fn nested_sessions_end_innermost_first() {
-    let mut cell = Cell { v: 1 }
+    var cell = Cell { v: 1 }
     let x = cell.via()
     x += 1
     assert!(cell.v == 20)

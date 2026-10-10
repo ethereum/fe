@@ -227,6 +227,9 @@ pub enum SyntaxKind {
     /// `let`
     #[token("let")]
     LetKw,
+    /// `var`
+    #[token("var")]
+    VarKw,
     /// `mut`
     #[token("mut")]
     MutKw,
@@ -461,8 +464,11 @@ pub enum SyntaxKind {
     PtrType,
     /// `ref T`, `mut T`, `own T`, `ref T @S`
     ModeType,
-    /// `@S`, `@p` or `@target(p)`: a result-space contract
+    /// `@S`, `@p`, `@p.f[_]` or `@target(p)`: a result-space contract
     SpaceAnnotation,
+    /// `.f`, `.0` and `[_]` after a result-space contract's root: the
+    /// sub-place whose space it names
+    SpacePath,
     /// `foo::Type<T, U + 2>`
     PathType,
     /// `Self`
@@ -688,6 +694,7 @@ impl SyntaxKind {
             SyntaxKind::ImplKw => "`impl`",
             SyntaxKind::TypeKw => "`type`",
             SyntaxKind::LetKw => "`let`",
+            SyntaxKind::VarKw => "`var`",
             SyntaxKind::MutKw => "`mut`",
             SyntaxKind::RefKw => "`ref`",
             SyntaxKind::OwnKw => "`own`",
@@ -810,6 +817,7 @@ impl SyntaxKind {
             SyntaxKind::PtrType => "pointer type",
             SyntaxKind::ModeType => "mode type",
             SyntaxKind::SpaceAnnotation => "result space",
+            SyntaxKind::SpacePath => "result space path",
             SyntaxKind::SelfType => "`Self` type",
             SyntaxKind::TupleType => "tuple type definition",
             SyntaxKind::NeverType => "never type",
@@ -919,6 +927,7 @@ impl SyntaxKind {
                 | SyntaxKind::ImplKw
                 | SyntaxKind::TypeKw
                 | SyntaxKind::LetKw
+                | SyntaxKind::VarKw
                 | SyntaxKind::MutKw
                 | SyntaxKind::RefKw
                 | SyntaxKind::OwnKw

@@ -25,20 +25,20 @@ pub fn sum_first_class_pointers() -> u256 {
     let roundtrip = core::ptr::cast<u8, Data>(byte_ptr)
     let first = unsafe { *roundtrip }
 
-    let mut raw_array = unsafe { core::ptr::alloc_array<u256>(1) }
+    var raw_array = unsafe { core::ptr::alloc_array<u256>(1) }
     raw_array[0] = 3
 
     let byte_alloc = core::ptr::alloc_bytes(1)
     let byte_distance = 0
 
-    let mut array = unsafe { core::ptr::alloc_array<u256>(2) }
+    var array = unsafe { core::ptr::alloc_array<u256>(2) }
     array[0] = first.a
     array[1] = first.b
     let array_sum = array[0] + array[1]
 
     let bytes = array.into_bytes()
     let ptr_distance = 32
-    let mut zeroed = core::ptr::MemArray<u256>::new_zeroed(1)
+    var zeroed = core::ptr::MemArray<u256>::new_zeroed(1)
     zeroed[0] = 7
     zeroed.zero()
     let pair = core::ptr::alloc<[u256; 2]>()

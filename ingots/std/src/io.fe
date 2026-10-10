@@ -55,7 +55,7 @@ pub fn write_char(_ c: i32) uses (w: mut Write) {
 
 pub fn write_bytes<const N: usize>(_ bytes: [u8; N], _ len: usize) uses (w: mut Write) {
     core::assert(len <= N)
-    let mut i: usize = 0
+    var i: usize = 0
     while i < len {
         write_char(bytes[i] as i32)
         i += 1

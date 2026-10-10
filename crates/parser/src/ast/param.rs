@@ -35,6 +35,11 @@ impl FuncParam {
         support::token(self.syntax(), SK::MutKw)
     }
 
+    /// Returns the `var` keyword of a mutable owned parameter.
+    pub fn var_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::VarKw)
+    }
+
     /// Returns `true` if the parameter uses `_` as an argument label (e.g.
     /// `_ x: u256`), meaning it doesn't have an argument label at the call site.
     pub fn is_label_suppressed(&self) -> bool {

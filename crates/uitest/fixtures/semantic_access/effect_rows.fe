@@ -28,8 +28,8 @@ fn bump_after<C: Counter>(_ c: mut C) uses (C::E, store: mut Store) {
 }
 
 fn instantiate() {
-    let mut store = Store { total: 0 }
-    let mut sc = StoreCounter {}
+    var store = Store { total: 0 }
+    var sc = StoreCounter {}
     with (Store = store) {
         bump_while_open(mut sc)
         bump_after(mut sc)
@@ -43,8 +43,8 @@ fn bump_with<C: Counter>(_ c: mut C, _ s: mut Store) uses C::E {
 }
 
 fn aliased() {
-    let mut store = Store { total: 0 }
-    let mut sc = StoreCounter {}
+    var store = Store { total: 0 }
+    var sc = StoreCounter {}
     with (Store = store) {
         bump_with(mut sc, mut store)
     }

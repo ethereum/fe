@@ -8,7 +8,7 @@ struct Missing { n: u256 }
 
 impl Slot for Missing {
     fn slot(mut self) -> mut u256 {
-        let mut tmp = self.n
+        var tmp = self.n
         yield mut tmp
         self.n = tmp
     }
@@ -22,7 +22,7 @@ impl Slot for Unknown {
     space T = memory
     uses E = ()
     fn slot(mut self) -> mut u256 {
-        let mut tmp = self.n
+        var tmp = self.n
         yield mut tmp
         self.n = tmp
     }
@@ -47,5 +47,56 @@ impl Holder {
 
     fn trailing(mut self) -> (u256, mut u256) @self {
         (0, mut self.n)
+    }
+}
+
+// A path after a parameter names its type's fields, tuple components and
+// `[_]` elements.
+struct Pathed {
+    n: u256,
+    pair: (u256, u256),
+    cells: [u256; 2],
+}
+
+impl Pathed {
+    fn field(mut self) -> mut u256 @self.n {
+        mut self.n
+    }
+
+    fn component(mut self) -> mut u256 @self.pair.1 {
+        mut self.pair.1
+    }
+
+    fn element(mut self) -> mut u256 @self.cells[_] {
+        mut self.cells[0]
+    }
+
+    fn missing(mut self) -> mut u256 @self.nope {
+        mut self.n
+    }
+
+    fn past_scalar(mut self) -> mut u256 @self.n.m {
+        mut self.n
+    }
+
+    fn not_a_collection(mut self) -> mut u256 @self.n[_] {
+        mut self.n
+    }
+
+    fn after_a_space(mut self) -> mut u256 @memory.n {
+        mut self.n
+    }
+}
+
+// An implementation's `self` path names its type's parts too.
+struct Elements {
+    n: u256,
+}
+
+impl Slot for Elements {
+    space S = self.nope
+
+    fn slot(mut self) -> mut u256 {
+        mut self.n
     }
 }

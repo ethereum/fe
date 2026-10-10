@@ -9,7 +9,8 @@
 
 use core::keccak
 use core::ptr::MemBuffer
-use std::evm::{Address, Call, Ctx, Evm, RawMem, crypto}
+use core::abi::{load_word, store_word}
+use std::evm::{Address, Call, Ctx, Evm, crypto}
 use std::evm::eip712::{self, DOMAIN_TYPEHASH, Domain}
 
 const SEAPORT: Address = Address { inner: 0x0000000000000068f116a894984e2ddb2f0000d1 }
@@ -105,8 +106,7 @@ fn test_digest_vectors() {
     )
 }
 
-// `crypto::eip712_digest` is kept as an alias of `eip712::digest` and no
-// longer needs the `RawMem` effect.
+// `crypto::eip712_digest` is kept as an alias of `eip712::digest`.
 #[test]
 fn test_digest_matches_crypto_eip712_digest() {
     assert!(
@@ -121,9 +121,9 @@ fn test_digest_matches_crypto_eip712_digest() {
 // The preimage lives in its own allocation: memory allocated before and after
 // hashing is left intact, and the digest does not depend on it.
 #[test]
-fn test_digest_leaves_neighbouring_memory_intact() uses (mem: mut RawMem) {
+fn test_digest_leaves_neighbouring_memory_intact() {
     let before = MemBuffer::alloc(32)
-    unsafe { mem.mstore(addr: before.ptr(), value: 0xaa) }
+    unsafe { store_word(ptr: before.ptr(), value: 0xaa) }
     assert!(
         eip712::digest(
                 domain_separator: SEAPORT_SEPARATOR,
@@ -132,7 +132,7 @@ fn test_digest_leaves_neighbouring_memory_intact() uses (mem: mut RawMem) {
             == SEAPORT_DIGEST,
     )
     let after = MemBuffer::alloc(32)
-    unsafe { mem.mstore(addr: after.ptr(), value: 0xbb) }
+    unsafe { store_word(ptr: after.ptr(), value: 0xbb) }
     assert!(
         eip712::digest(
                 domain_separator: SEAPORT_SEPARATOR,
@@ -140,8 +140,8 @@ fn test_digest_leaves_neighbouring_memory_intact() uses (mem: mut RawMem) {
             )
             == SEAPORT_DIGEST,
     )
-    unsafe { assert!(mem.mload(before.ptr()) == 0xaa) }
-    unsafe { assert!(mem.mload(after.ptr()) == 0xbb) }
+    unsafe { assert!(load_word(before.ptr()) == 0xaa) }
+    unsafe { assert!(load_word(after.ptr()) == 0xbb) }
 }
 
 msg SignerMsg {

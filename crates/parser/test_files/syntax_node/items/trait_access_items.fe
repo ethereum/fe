@@ -29,3 +29,15 @@ impl<B: Collection> Collection for Identity<B> {
 impl Cache {
     fn entry(mut self, _ m: Map) -> mut u256 @target(m) {}
 }
+
+impl<T> Collection for Cells<T> {
+    space S = self[_]
+}
+
+impl Guarded {
+    fn value_mut(mut self) -> mut u256 @self.value {}
+
+    fn first(mut self) -> mut u256 @self.pair.0 {}
+
+    fn element(mut self) -> mut u256 @self.cells[_] {}
+}

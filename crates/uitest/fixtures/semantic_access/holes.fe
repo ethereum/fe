@@ -11,7 +11,7 @@ fn touch(_ item: mut Item) {}
 
 // Accepted: one stable `mut` access moves its referent out and restores it.
 fn restored(_ i: usize) -> u256 {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    var items = [Item { n: 1 }, Item { n: 2 }]
     let slot = mut items[i]
     let saved = slot
     slot = Item { n: 3 }
@@ -21,7 +21,7 @@ fn restored(_ i: usize) -> u256 {
 
 // Rejected: a move out of an element at a dynamic index.
 fn dynamic_move(_ i: usize, _ j: usize) {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    var items = [Item { n: 1 }, Item { n: 2 }]
     consume(items[i])
     items[j] = Item { n: 3 }
     consume(items[i])
@@ -29,7 +29,7 @@ fn dynamic_move(_ i: usize, _ j: usize) {
 
 // Rejected: the access ends while its referent is moved out.
 fn unrestored() -> u256 {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    var items = [Item { n: 1 }, Item { n: 2 }]
     let slot = mut items[0]
     consume(slot)
     items[1].n
@@ -37,7 +37,7 @@ fn unrestored() -> u256 {
 
 // Rejected: a `mut` argument needs an initialized referent.
 fn hole_passed() {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    var items = [Item { n: 1 }, Item { n: 2 }]
     let slot = mut items[0]
     let saved = slot
     touch(mut slot)
@@ -46,7 +46,7 @@ fn hole_passed() {
 
 // Rejected: a read through the access sees the hole.
 fn hole_read() -> u256 {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
+    var items = [Item { n: 1 }, Item { n: 2 }]
     let slot = mut items[0]
     let saved = slot
     let n = slot.n

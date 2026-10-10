@@ -51,7 +51,7 @@ fn solidity_layout_parity() uses (evm: mut Evm) {
         a.set(index: 0, value: 44)
 
         let b = unsafe { SolArray<Uint24>::at(1) }
-        let mut i: u32 = 1
+        var i: u32 = 1
         while i <= 12 {
             b.push(Uint24 { val: i })
             i += 1
@@ -77,13 +77,13 @@ fn solidity_layout_parity() uses (evm: mut Evm) {
         assert(s.add(addr(0xb)))
         assert(s.remove(addr(0xa)))
 
-        let mut st = unsafe { SolSlot::at(5).load() }
+        var st = unsafe { SolSlot::at(5).load() }
         st.set(offset: 0, value: true)
         st.set(offset: 1, value: false)
         st.set(offset: 2, value: Uint120 { val: 3 })
         st.set(offset: 17, value: Uint120 { val: 7 })
         unsafe { SolSlot::at(5).store(st) }
-        let mut st = unsafe { SolSlot::at(5).load() }
+        var st = unsafe { SolSlot::at(5).load() }
         st.set(offset: 1, value: true)
         st.set(offset: 0, value: false)
         unsafe { SolSlot::at(5).store(st) }
@@ -162,7 +162,7 @@ fn array_reads_and_writes() uses (evm: mut Evm) {
 
         // bool[]: 32 per slot; setting one keeps its neighbours.
         let flags = unsafe { SolArray<bool>::at(10) }
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < 33 {
             flags.push(i % 2 == 0)
             i += 1
@@ -213,8 +213,8 @@ fn array_element_places() uses (evm: mut Evm) {
         assert(orders.len() == 1)
 
         // Loops read and update elements in place.
-        let mut total: u256 = 0
-        for order in orders {
+        var total: u256 = 0
+        for ref order in orders {
             total += order.amount
         }
         assert(total == 10)
@@ -236,7 +236,7 @@ fn array_element_places() uses (evm: mut Evm) {
 fn array_lanes_in_loops() uses (evm: mut Evm) {
     with (RawStorage = evm) {
         let counts = unsafe { SolArray<u8>::at(15) }
-        let mut i: u8 = 0
+        var i: u8 = 0
         while i < 40 {
             counts.push(i)
             i += 1
@@ -244,7 +244,7 @@ fn array_lanes_in_loops() uses (evm: mut Evm) {
         for count in mut counts {
             count *= 2
         }
-        let mut sum: u256 = 0
+        var sum: u256 = 0
         for count in counts {
             sum += count as u256
         }
@@ -391,7 +391,7 @@ fn word_reads_and_writes_many_fields() uses (evm: mut Evm) {
         assert(operator.inner == 0xabc)
         assert(paused)
 
-        let mut word = unsafe { SolSlot::at(0).load() }
+        var word = unsafe { SolSlot::at(0).load() }
         word.set(offset: 0, value: addr(0xdef))
         word.set(offset: 20, value: false)
         // Nothing is written until `store`.
@@ -411,7 +411,7 @@ fn word_reads_and_writes_many_fields() uses (evm: mut Evm) {
 #[test(should_revert)]
 fn word_field_past_end_reverts() uses (evm: mut Evm) {
     with (RawStorage = evm) {
-        let mut word = unsafe { SolSlot::at(0).load() }
+        var word = unsafe { SolSlot::at(0).load() }
         word.set(offset: 17, value: addr(1))
     }
 }
@@ -431,7 +431,7 @@ fn array_to_dyn_array() uses (evm: mut Evm) {
 
         // uint24[]: ten per slot, so the eleventh element starts a new slot.
         let small = unsafe { SolArray<Uint24>::at(41) }
-        let mut i: u32 = 1
+        var i: u32 = 1
         while i <= 11 {
             small.push(Uint24 { val: i * 0x10101 })
             i += 1
@@ -440,7 +440,7 @@ fn array_to_dyn_array() uses (evm: mut Evm) {
         assert(values.len() == 11)
         assert(values.encoded_size() == 32 * 12)
         assert(abi_word(values, 0) == 11)
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < 11 {
             assert(abi_word(values, i + 1) == (i + 1) * 0x10101)
             assert(values.get(i).val as u256 == (i + 1) * 0x10101)
@@ -460,14 +460,14 @@ fn array_to_dyn_array() uses (evm: mut Evm) {
 
         // bool[] and address[].
         let flags = unsafe { SolArray<bool>::at(43) }
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < 33 {
             flags.push(i % 3 == 0)
             i += 1
         }
         let values = flags.to_dyn_array()
         assert(values.len() == 33)
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < 33 {
             assert(abi_word(values, i + 1) == if i % 3 == 0 { 1 } else { 0 })
             i += 1
@@ -501,7 +501,7 @@ fn set_values() uses (evm: mut Evm) {
         assert(abi_word(values, 1) == 0xb)
         assert(abi_word(values, 2) == 0xd)
         assert(abi_word(values, 3) == 0xc)
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < 3 {
             assert(values.get(i).inner == s.get(i).inner)
             i += 1
@@ -529,7 +529,7 @@ fn word_without_slot() {
     assert(!validated && cancelled)
     assert(numerator.val == 3 && denominator.val == 7)
 
-    let mut packed = SolWord { word: 0 }
+    var packed = SolWord { word: 0 }
     packed.set(offset: 1, value: true)
     packed.set(offset: 2, value: Uint120 { val: 3 })
     packed.set(offset: 17, value: Uint120 { val: 7 })

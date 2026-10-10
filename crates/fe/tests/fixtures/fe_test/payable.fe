@@ -150,7 +150,7 @@ fn test_balance() uses (evm: mut Evm) {
     assert!(evm.gasprice() == 0)
     assert!(evm.extcodesize(addr) > 0)
     assert!(evm.extcodehash(addr) != 0)
-    let mut empty = ptr::MemBuffer::empty()
+    var empty = ptr::MemBuffer::empty()
     evm.extcodecopy(
         addr: addr,
         dest: mut empty,
@@ -158,7 +158,7 @@ fn test_balance() uses (evm: mut Evm) {
         src_offset: 0,
         len: 0,
     )
-    let mut direct = ptr::MemBuffer::with_capacity(1)
+    var direct = ptr::MemBuffer::with_capacity(1)
     evm.extcodecopy(
         addr: addr,
         dest: mut direct,
@@ -166,7 +166,7 @@ fn test_balance() uses (evm: mut Evm) {
         src_offset: 1,
         len: 1,
     )
-    let mut shifted = ptr::MemBuffer::with_capacity(3)
+    var shifted = ptr::MemBuffer::with_capacity(3)
     evm.extcodecopy(
         addr: addr,
         dest: mut shifted,

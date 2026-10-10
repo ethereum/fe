@@ -7,9 +7,8 @@ input_file: fixtures/semantic_access/grants.fe
 error[16-0001]: access conflict in `fn retained_payload`
    ┌─ grants.fe:26:23
    │
-24 │         match ref self.c {
-   │               ---------- access opened here
-25 │             Choice::Item(item) => {
+25 │             Choice::Item(ref item) => {
+   │                          -------- access opened here
 26 │                 yield mut self.c
    │                       ^^^^^^^^^^ cannot mutably access this place while a `ref` access of it is open
 

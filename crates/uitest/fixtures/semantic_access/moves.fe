@@ -27,7 +27,7 @@ fn whole_after_partial_move() -> Pair {
 
 // Accepted: assigning a moved local reinitializes it.
 fn reinitialize() {
-    let mut item = Item { n: 1 }
+    var item = Item { n: 1 }
     consume(item)
     item = Item { n: 2 }
     consume(item)
@@ -45,7 +45,7 @@ fn moved_on_one_branch(_ c: bool) {
 // Rejected: a value moved in a loop body is unavailable on the next iteration.
 fn moved_in_loop() {
     let item = Item { n: 1 }
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < 2 {
         consume(item)
         i += 1
@@ -54,7 +54,7 @@ fn moved_in_loop() {
 
 // Accepted: each iteration moves the value it created.
 fn fresh_value_per_iteration() {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < 2 {
         let item = Item { n: i }
         consume(item)
@@ -64,7 +64,7 @@ fn fresh_value_per_iteration() {
 
 // Rejected: a local is read before every path initializes it.
 fn use_before_init(_ c: bool) -> u256 {
-    let mut x: u256
+    var x: u256
     if c {
         x = 1
     }
@@ -73,7 +73,7 @@ fn use_before_init(_ c: bool) -> u256 {
 
 // Accepted: a moved field is reinitialized by assigning it.
 fn reinitialize_field() -> Pair {
-    let mut pair = Pair { a: Item { n: 1 }, b: Item { n: 2 } }
+    var pair = Pair { a: Item { n: 1 }, b: Item { n: 2 } }
     consume(pair.a)
     pair.a = Item { n: 3 }
     pair
@@ -81,7 +81,7 @@ fn reinitialize_field() -> Pair {
 
 // Rejected: a field of a wholly moved aggregate cannot be assigned.
 fn assign_into_moved() {
-    let mut pair = Pair { a: Item { n: 1 }, b: Item { n: 2 } }
+    var pair = Pair { a: Item { n: 1 }, b: Item { n: 2 } }
     let moved = pair
     pair.a = Item { n: 3 }
 }
@@ -108,7 +108,7 @@ fn replace(_ slot: mut Item, _ next: own Item) -> Item {
 
 // Accepted: a `mut` parameter moved out of is reinitialized before returning.
 fn reinitialized_mut_param() -> u256 {
-    let mut item = Item { n: 1 }
+    var item = Item { n: 1 }
     let old = replace(mut item, Item { n: 2 })
     old.n + item.n
 }

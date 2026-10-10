@@ -1,9 +1,11 @@
 // A packed map as a library collection: eight 32-bit counters to a word,
 // each word hashed with its index like Solady's `LibMap`, so any key stays
-// in the map's region. Implementing `PlaceIndex` with `SPACE` storage pins
+// in the map's region. Implementing `StateIndex` with `SPACE` storage pins
 // it to storage: no attribute, and no raw storage authority at its uses.
-use core::effect_ref::AddressSpace
-use core::ops::{LaneCodec, PlaceIndex}
+use core::effect_ref::StateSpace
+use core::iter::{Collection, CollectionMut}
+use core::ops::{LaneCodec, StateIndex}
+use core::option::Option
 use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words}
 
 /// A `u32` in 32 bits of a word.
@@ -25,8 +27,8 @@ struct Counters {
     total: u256,
 }
 
-impl PlaceIndex for Counters {
-    const SPACE: AddressSpace = AddressSpace::Storage
+impl StateIndex for Counters {
+    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u32
     type Lanes = U32Lanes
@@ -44,11 +46,39 @@ impl Counters {
     }
 }
 
+// The first ten counters, as a collection whose elements are lanes: their
+// grants are memory copies, which `space S = self[_]` says.
+impl Collection for Counters {
+    space S = self[_]
+    type Cursor = u256
+    type Item = u32
+
+    fn start(self) -> Option<u256> {
+        Option::Some(0)
+    }
+
+    fn next(self, _ c: u256) -> Option<u256> {
+        if c < 9 { Option::Some(c + 1) } else { Option::None }
+    }
+
+    fn at(self, _ c: u256) -> ref u32 {
+        ref self[c]
+    }
+}
+
+impl CollectionMut for Counters {
+    fn at_mut(mut self, _ c: u256) -> mut u32 {
+        mut self[c]
+    }
+}
+
 msg M {
     #[selector = 1]
     Bump { key: u256 } -> u32,
     #[selector = 2]
     Words {} -> (u256, u256, u256, u256),
+    #[selector = 3]
+    Sweep {} -> (u256, u32),
 }
 
 fn read_slot(_ slot: u256) -> u256 uses (storage: mut RawStorage) {
@@ -68,6 +98,17 @@ pub contract C uses (storage: mut RawStorage) {
             counter += 1
             counters.total += 1
             counters.get(key)
+        }
+
+        Sweep {} -> (u256, u32) uses (mut counters) {
+            for counter in mut counters {
+                counter += 10
+            }
+            var sum: u256 = 0
+            for counter in counters {
+                sum += counter as u256
+            }
+            (sum, counters[1])
         }
 
         Words {} -> (u256, u256, u256, u256) uses (mut storage) {
@@ -100,4 +141,8 @@ fn library_collection_packs_lanes() uses (evm: mut Evm) {
     assert!(words.2 == 4)
     // `total` is the map's own slot.
     assert!(words.3 == 4)
+    // Counters 1, 7 and 9 hold 2, 1 and 1; each of the ten gains 10.
+    let swept: (u256, u32) = evm.call(addr: c, gas: 500000, value: 0, message: M::Sweep {})
+    assert!(swept.0 == 104)
+    assert!(swept.1 == 12)
 }

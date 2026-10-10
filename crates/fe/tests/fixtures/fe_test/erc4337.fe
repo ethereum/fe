@@ -283,14 +283,14 @@ fn gas_fields_unpack() {
     assert!(data.len() == 2 && data.word_at(0) >> 240 == 0xcafe)
 
     // Exactly 52 bytes: a paymaster without data.
-    let mut bare = owner_signed()
+    var bare = owner_signed()
     bare.paymaster_and_data = bytes([PAYMASTER << 96, 0x0000c35000000000000000000000000000007530 << 96], len: 52)
     assert!(bare.paymaster() == addr(PAYMASTER))
     assert!(bare.paymaster_post_op_gas_limit() == 30000)
     assert!(bare.paymaster_data().len() == 0)
 
     // Shorter than 52 bytes (including empty): no paymaster.
-    let mut short = owner_signed()
+    var short = owner_signed()
     short.paymaster_and_data = bytes([PAYMASTER << 96, 0xffffffff << 224], len: 51)
     assert!(short.paymaster() == Address::zero())
     assert!(short.paymaster_verification_gas_limit() == 0)
@@ -450,7 +450,7 @@ fn paymaster_validates_and_runs_post_op() uses (evm: mut Evm) {
     let entry_point = evm.create2<EntryPoint>(value: 0, args: (), salt: 0)
     let paymaster = evm.create2<Paymaster>(value: 0, args: (entry_point,), salt: 0)
     // Paymaster data: valid until 0x0000cafe0000 (the first six bytes).
-    let mut op = owner_signed()
+    var op = owner_signed()
     op.paymaster_and_data = bytes(
         [
             paymaster.inner << 96,

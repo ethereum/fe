@@ -44,7 +44,7 @@ impl ByteBuffer {
     pub fn try_resize(mut self, _ len: u64) -> bool {
         if len > MAX_CAPACITY { return false }
         if len > self.capacity {
-            let mut capacity: u64 = if self.capacity == 0 { 32 } else { self.capacity }
+            var capacity: u64 = if self.capacity == 0 { 32 } else { self.capacity }
             while capacity < len {
                 if capacity > MAX_CAPACITY / 2 {
                     capacity = len

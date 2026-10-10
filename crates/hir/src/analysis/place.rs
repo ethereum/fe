@@ -41,7 +41,7 @@ pub enum PlaceProjection<'db> {
         result_ty: TyId<'db>,
     },
     /// The element at a key of a collection whose elements are places
-    /// (`core::ops::PlaceIndex`), such as a storage map's entry.
+    /// (`core::ops::StateIndex`), such as a storage map's entry.
     Entry {
         key_expr: ExprId,
         result_ty: TyId<'db>,

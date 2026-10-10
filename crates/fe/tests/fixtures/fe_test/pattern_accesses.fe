@@ -64,7 +64,7 @@ pub contract Counter {
 
 #[test]
 fn test_match_payload_access() {
-    let mut a: Option<u256> = Option::Some(1)
+    var a: Option<u256> = Option::Some(1)
     assert!(bump(mut a) == 2)
     match a {
         Option::Some(mut v) => {
@@ -77,21 +77,21 @@ fn test_match_payload_access() {
         Option::None => assert!(false)
     }
 
-    let mut b: Option<Pair> = Option::Some(Pair { x: 1, y: 2 })
+    var b: Option<Pair> = Option::Some(Pair { x: 1, y: 2 })
     shift(mut b)
-    match ref b {
-        Option::Some(p) => assert!(p.x == 11 && p.y == 2)
+    match b {
+        Option::Some(ref p) => assert!(p.x == 11 && p.y == 2)
         Option::None => assert!(false)
     }
 }
 
 #[test]
 fn test_destructured_accesses() {
-    let mut p = Pair { x: 5, y: 1 }
+    var p = Pair { x: 5, y: 1 }
     assert!(destructure(mut p) == 7)
     assert!(p.x == 6)
 
-    let mut t: (u256, u256) = (5, 1)
+    var t: (u256, u256) = (5, 1)
     assert!(destructure_tuple(mut t) == 7)
     assert!(t.0 == 6)
 }

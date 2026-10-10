@@ -175,7 +175,7 @@ impl<'db> GenericParam<'db> {
 impl<'db> FuncParam<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParam) -> Self {
         let has_mut_token = ast.mut_token().is_some();
-        let mut is_mut = has_mut_token;
+        let mut is_mut = has_mut_token || ast.var_token().is_some();
         let is_ref = ast.ref_token().is_some();
         let is_own = ast.own_token().is_some();
         let is_label_suppressed = ast.is_label_suppressed();
@@ -232,6 +232,11 @@ impl<'db> FuncParam<'db> {
             Some(TypeKind::Mode(TypeMode::Mut, _)) => FuncParamMode::Mut,
             _ => FuncParamMode::View,
         };
+        // `mut` before a name, which the parser reports, is taken as `var`
+        // only where `var` is valid, so it is reported once.
+        if has_mut_token && !name_is_self && mode != FuncParamMode::Own {
+            is_mut = false;
+        }
 
         Self {
             mode,

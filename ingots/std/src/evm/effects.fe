@@ -1,5 +1,5 @@
 use core::effect_ref::{EffectHandle, EffectHandleMut, EffectRef, EffectRefMut}
-use core::ops::{PlaceIndex, clear_storage}
+use core::ops::{StateIndex, clear_storage}
 use core::marker::Clearable
 use core::{ptr, size_of}
 use core::abi::{
@@ -152,7 +152,7 @@ impl<T> StorPtr<T> {
 
     /// Writes the pointed-at value.
     pub fn write(self, _ value: own T) {
-        let mut ptr = self
+        var ptr = self
         // The pointer's creator vouched for its slot.
         unsafe {
             with (ptr) {
@@ -221,7 +221,7 @@ impl<T> TStorPtr<T> {
 
     /// Writes the pointed-at transient value.
     pub fn write(self, _ value: own T) {
-        let mut ptr = self
+        var ptr = self
         // The pointer's creator vouched for its slot.
         unsafe {
             with (ptr) {
@@ -240,8 +240,8 @@ impl<T> TStorPtr<T> {
 /// place.
 pub struct TSlot<T> {}
 
-impl<T> PlaceIndex for TSlot<T> {
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::TransientStorage
+impl<T> StateIndex for TSlot<T> {
+    const SPACE: core::effect_ref::StateSpace = core::effect_ref::StateSpace::TransientStorage
     type Key = ()
     type Entry = T
 
@@ -310,16 +310,6 @@ pub trait Ctx: EvmCapabilitySeal {
     fn gas(self) -> u256
 }
 
-/// Low-level raw memory operations.
-///
-/// Each access must lie in a live allocation: a word access covers 32 bytes
-/// at `addr`, a byte access one.
-pub trait RawMem: EvmCapabilitySeal {
-    unsafe fn mload(self, _: *u8) -> u256
-    unsafe fn mstore(mut self, addr: *u8, value: u256)
-    unsafe fn mstore8(mut self, addr: *u8, value: u8)
-}
-
 /// Low-level raw storage operations.
 ///
 /// A raw slot must not belong to anything the compiler allocated, such as a
@@ -335,7 +325,7 @@ pub trait RawStorage: EvmCapabilitySeal {
 }
 
 /// Access to low-level EVM op functions (excluding raw stack ops).
-pub trait RawOps: RawMem + RawStorage {
+pub trait RawOps: RawStorage {
     fn calldataload(self, _: u256) -> u256
     fn calldatasize(self) -> u256
     /// The caller must ensure that a valid `T` is encoded at `offset`.
@@ -479,12 +469,12 @@ fn contract_init_code<C: Contract>(_ args: own C::InitArgs) -> MemBuffer {
     let init_len = C::init_code_len()
     let init_off = C::init_code_offset()
     if !C::InitArgs::IS_DYNAMIC && C::InitArgs::HEAD_SIZE == 0 {
-        let init_code = MemBuffer::alloc(init_len)
+        let init_code = unsafe { MemBuffer::alloc_uninit(init_len) }
         unsafe { ops::codecopy(dest: init_code.ptr(), offset: init_off, len: init_len) }
         init_code
     } else {
         let encoded = encode_abi_payload<C::InitArgs>(args)
-        let init_code = MemBuffer::alloc(init_len + encoded.len())
+        let init_code = unsafe { MemBuffer::alloc_uninit(init_len + encoded.len()) }
         unsafe {
             ops::codecopy(dest: init_code.ptr(), offset: init_off, len: init_len)
             ptr::copy(
@@ -669,7 +659,7 @@ pub trait Call: EvmCapabilitySeal {
         args: MemSpan,
     ) -> Result<super::calls::InsufficientGas, RawCallOutcome> {
         let input = MemBuffer::from_span(args)
-        let mut output = MemBuffer::empty()
+        var output = MemBuffer::empty()
         if !super::calls::has_min_gas(ops::gas(), minimum, reserved) {
             return Result::Err(super::calls::InsufficientGas {})
         }
@@ -736,7 +726,7 @@ pub trait Call: EvmCapabilitySeal {
     ///
     /// The returned owner contains the complete success or revert payload.
     fn try_call_raw(mut self, addr: own Address, gas: u256, value: u256, args: MemSpan) -> CallOutcome {
-        let mut ret = MemBuffer::empty()
+        var ret = MemBuffer::empty()
         let raw = self.raw_call(addr, gas, value, args, ret: mut ret)
         copy_call_outcome(raw)
     }
@@ -754,7 +744,7 @@ pub trait Call: EvmCapabilitySeal {
     where M: MsgVariant<Sol> + Encode<Sol>
     {
         let args = encode_calldata(<M as MsgVariant<Sol>>::SELECTOR, message)
-        let mut ret = MemBuffer::empty()
+        var ret = MemBuffer::empty()
         let raw = self.raw_call(addr, gas, value, args: args.span(), ret: mut ret)
         copy_call_outcome(raw)
     }
@@ -764,7 +754,7 @@ pub trait Call: EvmCapabilitySeal {
     where M: MsgVariant<Sol> + Encode<Sol>
     {
         let args = encode_calldata(<M as MsgVariant<Sol>>::SELECTOR, message)
-        let mut ret = MemBuffer::empty()
+        var ret = MemBuffer::empty()
         let raw = self.raw_staticcall(addr, gas, args: args.span(), ret: mut ret)
         copy_call_outcome(raw)
     }
@@ -773,7 +763,7 @@ pub trait Call: EvmCapabilitySeal {
     /// `addr.call{value: value}("")`), without copying returndata or
     /// bubbling failure.
     fn send_value(mut self, addr: own Address, gas: u256, value: u256) -> RawCallOutcome {
-        let mut ret = MemBuffer::empty()
+        var ret = MemBuffer::empty()
         self.raw_call(addr, gas, value, args: MemSpan::empty(), ret: mut ret)
     }
 
@@ -816,7 +806,7 @@ pub trait Call: EvmCapabilitySeal {
     where M: MsgVariant<Sol> + Encode<Sol>
     {
         let args = encode_calldata(<M as MsgVariant<Sol>>::SELECTOR, message)
-        let mut ret = MemBuffer::empty()
+        var ret = MemBuffer::empty()
         let raw = self.raw_delegatecall(addr, gas, args: args.span(), ret: mut ret)
         copy_call_outcome(raw)
     }
@@ -1036,18 +1026,6 @@ impl Ctx for Evm {
     }
 }
 
-impl RawMem for Evm {
-    unsafe fn mload(self, _ addr: *u8) -> u256 {
-        ops::mload(addr)
-    }
-    unsafe fn mstore(mut self, addr: *u8, value: u256) {
-        ops::mstore(addr: addr, value: value)
-    }
-    unsafe fn mstore8(mut self, addr: *u8, value: u8) {
-        ops::mstore8(addr, value)
-    }
-}
-
 impl RawStorage for Evm {
     unsafe fn sload(self, _ slot: u256) -> u256 {
         ops::sload(slot)
@@ -1225,7 +1203,7 @@ where M: Encode<Sol>
     let selector_size = size_of<Sol::Selector>()
     let selector_word = (selector as u256) << 224
     let encoded = encode_abi_payload(message)
-    let buffer = MemBuffer::alloc(selector_size + encoded.len())
+    let buffer = unsafe { MemBuffer::alloc_uninit(selector_size + encoded.len()) }
     unsafe {
         ops::mstore(addr: buffer.ptr(), value: selector_word)
         ptr::copy(
@@ -1247,7 +1225,7 @@ where M: MsgVariant<Sol> + Encode<Sol>
 /// Copy the complete current returndata into a fresh owner.
 pub fn copy_returndata() -> MemBuffer {
     let ret_len = ops::returndatasize()
-    let buffer = MemBuffer::alloc(ret_len)
+    let buffer = unsafe { MemBuffer::alloc_uninit(ret_len) }
     unsafe { ops::returndatacopy(dest: buffer.ptr(), offset: 0, len: ret_len) }
     buffer
 }
@@ -1383,7 +1361,7 @@ impl ContractHost for Evm {
             self.abort()
         }
         let args_len = code_size - args_offset
-        let mut args = MemBuffer::alloc(args_len)
+        var args = MemBuffer::alloc(args_len)
         self.codecopy(
             dest: mut args,
             dest_offset: 0,
@@ -1396,7 +1374,7 @@ impl ContractHost for Evm {
     fn create_contract<F>(mut self, _ runtime: F) -> ! {
         let len = self.code_region_len(runtime)
         let offset = self.code_region_offset(runtime)
-        let mut buffer = MemBuffer::alloc(len)
+        var buffer = MemBuffer::alloc(len)
         self.codecopy(
             dest: mut buffer,
             dest_offset: 0,

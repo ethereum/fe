@@ -12,7 +12,7 @@ impl Slot for WrittenBack {
     space S = memory
 
     fn slot(mut self) -> mut u256 {
-        let mut tmp = self.n
+        var tmp = self.n
         yield mut tmp
         self.n = tmp
     }
@@ -37,7 +37,7 @@ impl Holder {
     }
 
     fn frame(mut self) -> (u256, mut u256) @memory {
-        let mut tmp = self.n
+        var tmp = self.n
         yield (0, mut tmp)
         self.n = tmp
     }

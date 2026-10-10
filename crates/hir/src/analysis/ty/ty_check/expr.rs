@@ -1305,7 +1305,7 @@ impl<'db> TyChecker<'db> {
         }
         if matches!(op, BinOp::Index) {
             let base_ty = self.normalize_ty(lhs_place_ty);
-            if let Some((key_ty, output_ty)) = crate::analysis::ty::place_index_tys(
+            if let Some((key_ty, output_ty)) = crate::analysis::ty::state_index_tys(
                 self.db,
                 self.env.scope(),
                 base_ty,

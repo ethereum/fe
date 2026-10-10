@@ -47,7 +47,7 @@ error[16-0002]: move conflict in `fn use_before_init`
    │
 66 │   fn use_before_init(_ c: bool) -> u256 {
    │ ╭───────────────────────────────────────^
-67 │ │     let mut x: u256
+67 │ │     var x: u256
 68 │ │     if c {
 69 │ │         x = 1
 70 │ │     }

@@ -23,7 +23,7 @@ pub contract C {
             m.lock()
             let after = t1
             m.unlock()
-            let mut result = 0
+            var result = 0
             if before { result += 1 }
             if after { result += 2 }
             result

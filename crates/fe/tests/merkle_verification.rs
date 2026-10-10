@@ -1,6 +1,9 @@
 //! Merkle verification regression from banteg/evm-compiler-bench, with
-//! independent ABI/Keccak expectations. Gas is EVM instruction gas, excluding
-//! transaction intrinsic costs and the calldata floor. No Solidity/Foundry needed.
+//! independent ABI/Keccak expectations. The snapshot records code size and EVM
+//! instruction gas, excluding transaction intrinsic costs and the calldata
+//! floor. No Solidity/Foundry needed.
+
+use std::fmt::Write;
 
 use contract_harness::{ExecutionOptions, HarnessError, RuntimeInstance};
 use ethers_core::{
@@ -9,6 +12,7 @@ use ethers_core::{
     utils::keccak256,
 };
 use fe::bench_support::compile_fe_sonatina_bytecode;
+use test_utils::snap_test;
 
 fn calldata(signature: &str, args: &[Token]) -> Vec<u8> {
     AbiParser::default()
@@ -24,16 +28,12 @@ fn hash_pair(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
 }
 
 #[test]
-#[allow(clippy::print_stderr)] // Report benchmark measurements with --nocapture.
 fn merkle_verification_gas_and_correctness() {
     let source = include_str!("evm_compiler_bench/merkle_verifier.fe");
     let bytecode = compile_fe_sonatina_bytecode(source, "MerkleVerifier", "MerkleVerifier")
         .expect("compile Merkle benchmark");
-    // Above Seq loops' 420 until Sonatina threads `Collection` cursor tests
-    // (issues/fe/for-loop-protocol-overhead).
-    assert!(
-        bytecode.runtime.len() <= 510,
-        "Merkle bytecode regressed to {} bytes",
+    let mut report = format!(
+        "runtime bytes: {}\nverify gas by proof length:\n",
         bytecode.runtime.len()
     );
     let mut runtime = RuntimeInstance::deploy(&hex::encode(bytecode.deploy)).unwrap();
@@ -62,14 +62,11 @@ fn merkle_verification_gas_and_correctness() {
                 ],
             );
             if valid {
+                // Includes decoding/copying the proof.
                 let gas = runtime
                     .call_raw_gas_profile(&input, ExecutionOptions::default())
                     .total_step_gas;
-                // Includes decoding/copying the proof. In particular, growing
-                // proofs must not regain per-element frame/overflow checks.
-                // A `Collection` loop keeps the proof's bounds check that a
-                // counted loop elides (issues/fe/for-loop-protocol-overhead).
-                assert!(gas <= 700 + 275 * length as u64, "proof {length}: {gas}");
+                writeln!(report, "  {length}: {gas}").unwrap();
             }
             let result = runtime
                 .call_raw(&input, ExecutionOptions::default())
@@ -124,4 +121,11 @@ fn merkle_verification_gas_and_correctness() {
             "accepted offset/count {word}"
         );
     }
+    snap_test!(
+        report,
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/evm_compiler_bench/merkle_verifier"
+        )
+    );
 }

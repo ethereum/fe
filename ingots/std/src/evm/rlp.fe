@@ -70,8 +70,8 @@ pub fn encode_bool(_ value: bool) -> Bytes {
 
 /// Encodes a list of already encoded items.
 pub fn encode_list<const N: usize>(_ items: [Bytes; N]) -> Bytes {
-    let mut len: u256 = 0
-    let mut i: usize = 0
+    var len: u256 = 0
+    var i: usize = 0
     while i < N {
         len += items[i].len()
         i += 1
@@ -79,7 +79,7 @@ pub fn encode_list<const N: usize>(_ items: [Bytes; N]) -> Bytes {
     let header = header_len(len)
     let out = ptr::alloc_bytes(header + len)
     write_header(out, offset: 0xc0, len)
-    let mut offset = header
+    var offset = header
     i = 0
     while i < N {
         let item = items[i].payload_span()
@@ -107,8 +107,8 @@ fn write_header(_ dest: *u8, offset: u256, len: u256) {
 }
 
 fn byte_len(_ value: u256) -> u256 {
-    let mut len: u256 = 0
-    let mut rest = value
+    var len: u256 = 0
+    var rest = value
     while rest != 0 {
         len += 1
         rest >>= 8
@@ -118,8 +118,8 @@ fn byte_len(_ value: u256) -> u256 {
 
 // Writes the low `len` bytes of `value` big-endian.
 fn write_be(_ dest: *u8, value: u256, _ len: u256) {
-    let mut rest = value
-    let mut i = len
+    var rest = value
+    var i = len
     while i > 0 {
         i -= 1
         unsafe { *ptr::offset_bytes(dest, i) = rest.downcast_truncate() }
@@ -189,8 +189,8 @@ impl Item {
             return Option::None
         }
         let payload = self.payload(input)
-        let mut count: u256 = 0
-        let mut pos: u256 = 0
+        var count: u256 = 0
+        var pos: u256 = 0
         while pos < self.len {
             let (_, used) = split(payload.tail(pos))?
             pos += used
@@ -198,7 +198,7 @@ impl Item {
         }
         let items = unsafe { MemArray<Item>::new_uninit(count) }
         pos = 0
-        let mut i: usize = 0
+        var i: usize = 0
         while pos < self.len {
             let (item, used) = split(payload.tail(pos))?
             let start = self.start + pos + item.start
@@ -229,8 +229,8 @@ fn split(_ input: MemSpan) -> Option<(Item, u256)> {
     }
     let is_list = prefix >= 0xc0
     let short = prefix - (if is_list { 0xc0 } else { 0x80 })
-    let mut header: u256 = 1
-    let mut payload_len = short
+    var header: u256 = 1
+    var payload_len = short
     if short >= 56 {
         let len_len = short - 55
         header = 1 + len_len
@@ -254,8 +254,8 @@ fn split(_ input: MemSpan) -> Option<(Item, u256)> {
 
 // Reads at most 32 bytes as a big-endian integer.
 fn read_be(_ bytes: MemSpan) -> u256 {
-    let mut value: u256 = 0
-    let mut i: u256 = 0
+    var value: u256 = 0
+    var i: u256 = 0
     while i < bytes.len() {
         value = (value << 8) | (bytes.byte_at(i) as u256)
         i += 1

@@ -2,7 +2,7 @@ use core::abi::{Abi, AbiDecoder, AbiSize, AbiSpan, ByteInput, Decode, Encode, st
 use core::ptr::{self, MemSpan}
 use core::num::IntDowncast
 use std::abi::{Sol, Bytes, DynString, DynArray}
-use std::evm::{Call, Evm, RawMem}
+use std::evm::{Call, Evm}
 
 fn input(_ size: u256) -> ref MemSpan {
     let p = ptr::alloc_bytes(96)
@@ -23,7 +23,7 @@ fn unpadded_bytes_all_decode_paths() {
     check(<Bytes as Decode<Sol>>::decode_from(data, 0))
     check(<Bytes as Decode<Sol>>::decode_from_bounded(input(96), 0, 65))
     check(<Bytes as Decode<Sol>>::decode_from_prechecked_head(data, 0, 65))
-    let mut d = Sol::decoder_with_base(0)
+    var d = Sol::decoder_with_base(0)
     check(<Bytes as Decode<Sol>>::decode_payload(mut d, data))
 }
 #[test]
@@ -121,7 +121,7 @@ fn unpadded_array_all_decode_paths_reencode_aligned() {
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_from(array_input(97), 0))
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_from_bounded(array_input(128), 0, 97))
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_from_prechecked_head(array_input(128), 0, 97))
-    let mut d = Sol::decoder_with_base(0)
+    var d = Sol::decoder_with_base(0)
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_payload(mut d, array_input(97)))
 }
 
@@ -157,7 +157,7 @@ fn short_string_all_decode_paths_respect_input_extent() {
     assert!(<String<1> as Decode<Sol>>::decode_from(data, 0) == "a")
     assert!(<String<1> as Decode<Sol>>::decode_from_bounded(data, 0, 33) == "a")
     assert!(<String<1> as Decode<Sol>>::decode_from_prechecked_head(data, 0, 33) == "a")
-    let mut d = Sol::decoder_with_base(0)
+    var d = Sol::decoder_with_base(0)
     assert!(<String<1> as Decode<Sol>>::decode_payload(mut d, data) == "a")
 }
 
@@ -166,7 +166,7 @@ fn partially_padded_array_all_decode_paths_clear_padding() {
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_from(array_input(110), 0))
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_from_bounded(array_input(128), 0, 110))
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_from_prechecked_head(array_input(128), 0, 110))
-    let mut d = Sol::decoder_with_base(0)
+    var d = Sol::decoder_with_base(0)
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_payload(mut d, array_input(110)))
     check_array_reencoding(<DynArray<Bytes> as Decode<Sol>>::decode_from(array_input(128), 0))
 }
@@ -213,7 +213,7 @@ fn every_byte_boundary_preserves_data_and_clears_padding() {
             let backing = unsafe { MemSpan::from_raw_parts(ptr: p, len: 192) }
             check_boundary_bytes(<Bytes as Decode<Sol>>::decode_from_bounded(backing, pos, input_len), len)
             check_boundary_bytes(<Bytes as Decode<Sol>>::decode_from_prechecked_head(data, pos, input_len), len)
-            let mut d = Sol::decoder_with_base(pos)
+            var d = Sol::decoder_with_base(pos)
             check_boundary_bytes(<Bytes as Decode<Sol>>::decode_payload(mut d, data), len)
             assert!(backing.word_at(pos) == len)
             for offset in 0..128 {
@@ -271,7 +271,7 @@ fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
     let echo = evm.create2<PayloadEcho>(value: 0, args: (), salt: 0)
     assert!(echo.inner != 0)
     let data = ptr::alloc_bytes(164)
-    let mut ret = ptr::MemBuffer::with_capacity(160)
+    var ret = ptr::MemBuffer::with_capacity(160)
     for selector in [1, 2] {
         unsafe { store_word(ptr: data, value: selector << 224) }
         unsafe { store_word(ptr: ptr::offset_bytes(data, 4), value: 32) }
@@ -282,7 +282,7 @@ fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
                 let byte: u8 = if (index as u256) < len { (index * 37 % 128).downcast_unchecked() } else { 0xff }
                 // Explicit EVM stores avoid the current borrow checker's
                 // capability-write error for pointer assignments in this loop.
-                unsafe { evm.mstore8(addr: ptr::offset_bytes(data, 68 + index as u256), value: byte) }
+                unsafe { *ptr::offset_bytes(data, 68 + index as u256) = byte }
             }
             let padded_len = (len / 32 + (len % 32 != 0) as u256) * 32
             // Construct calldata manually and inspect raw returndata, so Fe's

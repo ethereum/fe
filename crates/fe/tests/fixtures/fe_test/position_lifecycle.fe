@@ -24,7 +24,7 @@ fn read_health(_ p: ref Position) -> u256 {
 }
 
 fn settle(_ p: own Position, _ payment: u256) -> Position {
-    let mut p = p
+    var p = p
     if payment >= p.debt {
         p.collateral += payment - p.debt
         p.debt = 0
@@ -49,7 +49,7 @@ fn close_position(_ p: own Position) -> (u256, u256, u8) {
 
 #[test]
 fn test_position_lifecycle() {
-    let mut p = Position {
+    var p = Position {
         owner: 7,
         collateral: 1000,
         debt: 200,

@@ -6,7 +6,7 @@ use core::iter::zip
 struct Item { n: u256 }
 
 fn dot(_ a: [u256; 3], _ b: [u256; 3]) -> u256 {
-    let mut s = 0
+    var s = 0
     for (x, y) in (a, b) by zip() {
         s += x * y
     }
@@ -22,7 +22,7 @@ fn zips() {
     // The shorter base ends the loop.
     let short: [u256; 2] = [1, 1]
     let long: [u256; 3] = [5, 6, 7]
-    let mut n = 0
+    var n = 0
     for (x, y) in (short, long) by zip() {
         n += x + y
     }
@@ -31,14 +31,14 @@ fn zips() {
     // Non-`Copy` elements are viewed.
     let items = [Item { n: 1 }, Item { n: 2 }]
     let weights = [Item { n: 10 }, Item { n: 20 }]
-    let mut total = 0
-    for (i, w) in (items, weights) by zip() {
+    var total = 0
+    for (ref i, ref w) in (items, weights) by zip() {
         total += i.n * w.n
     }
     assert!(total == 50)
 
     // Disjoint fields of one owner are mutated together.
-    let mut p = Pair { a: [1, 2], b: [3, 4] }
+    var p = Pair { a: [1, 2], b: [3, 4] }
     for (x, y) in (mut p.a, mut p.b) by zip() {
         x += 10
         y += x

@@ -1,5 +1,6 @@
 ---
 source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/immutable_contract_field_init.fe
 ---
@@ -139,7 +140,7 @@ error[8-0086]: immutable contract field is not initialized
 159 │
 160 │       init(v: u256) uses (mut x) {
     │ ╭────────────────────────────────'
-161 │ │         let mut run = true
+161 │ │         var run = true
 162 │ │         for _ in 0..1 {
 163 │ │             run = false
     · │
@@ -238,7 +239,7 @@ error[8-0086]: immutable contract field is not initialized
 263 │
 264 │       init(v: u256) uses (mut x) {
     │ ╭────────────────────────────────'
-265 │ │         let mut b = true
+265 │ │         var b = true
 266 │ │         let r = mut b
 267 │ │         r = false
     · │
@@ -256,7 +257,7 @@ error[8-0086]: immutable contract field is not initialized
 280 │
 281 │       init(v: u256) uses (mut x) {
     │ ╭────────────────────────────────'
-282 │ │         let mut b = true
+282 │ │         var b = true
 283 │ │         make_false(b: mut b)
 284 │ │         if b {
 285 │ │             x = v

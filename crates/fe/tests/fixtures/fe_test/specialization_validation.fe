@@ -21,7 +21,7 @@ fn twice<T: Step>(value: mut u256) {
 
 #[test]
 fn concrete_specialization_validates_default_and_overridden_effects() {
-    let mut value: u256 = 0
+    var value: u256 = 0
     twice<Increment>(value: mut value)
     assert!(value == 2)
     twice<DefaultStep>(value: mut value)

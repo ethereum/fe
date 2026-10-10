@@ -1393,7 +1393,7 @@ impl Holder {
             Some(
                 r#"
 fn choose(_ flag: bool) -> u256 {
-    let mut x = 1
+    var x = 1
     if flag {
         x = 2
     }

@@ -1,14 +1,15 @@
 /// Cryptographic primitives and EVM math builtins.
 ///
 /// Safe, typed wrappers around EVM precompiles and modular arithmetic opcodes.
-/// Raw memory and call operations should go through the effects system
-/// (RawMem, RawOps, Ctx traits) instead.
+/// Raw memory goes through `core::ptr` and `core::abi` under `unsafe`; calls
+/// go through the effects system (`Call`, `Ctx`).
 ///
 /// Fixed-output precompile wrappers assume the addressed precompile exists on
 /// the active fork and intentionally do not check returndata length on the hot
 /// path. Use `Call.raw_staticcall` for fork probing or explicit handling of
 /// absent precompiles.
 
+use core::intrinsic
 use core::option::Option
 use core::ptr::{self, FixedMemBuffer, MemBuffer, MemSpan}
 use core::result::Result
@@ -74,7 +75,7 @@ fn staticcall_memory(
     args: MemSpan,
     ret_len: u256,
 ) -> Result<PrecompileError, MemBuffer> {
-    let mut out = MemBuffer::with_capacity(ret_len)
+    var out = MemBuffer::with_capacity(ret_len)
     let ok: u256 = unsafe {
         ops::staticcall_precompile(
             gas: ops::gas(),
@@ -205,14 +206,11 @@ pub fn keccak256(_ data: MemSpan) -> u256 {
 /// Keccak256 of the concatenated 32-byte words, e.g. `keccak_words([a, b])`
 /// for Solidity's `keccak256(abi.encode(a, b))` over word-sized values.
 ///
-/// Much cheaper than `keccak_packed` for word tuples: the words are written
-/// into one buffer without the packed builder's per-field bookkeeping.
-pub fn keccak_words<const N: usize>(_ words: [u256; N]) -> u256 {
-    let buffer = ptr::alloc<[u256; N]>()
-    unsafe {
-        *buffer = words
-        ops::keccak256(offset: ptr::byte_ptr(buffer), len: N as u256 * 32)
-    }
+/// Much cheaper than `keccak_packed` for word tuples. The digest is a value
+/// of the words alone: the compiler folds it when the words are known and
+/// computes it once for equal words.
+pub const fn keccak_words<const N: usize>(_ words: [u256; N]) -> u256 {
+    intrinsic::__keccak_words(words)
 }
 
 /// Address of a contract created with `CREATE2` by `deployer`:
@@ -221,7 +219,7 @@ pub fn create2_address(deployer: Address, salt: u256, init_code_hash: u256) -> A
     if deployer.inner >> 160 != 0 {
         ops::revert_empty()
     }
-    let preimage = MemBuffer::alloc(85)
+    let preimage = unsafe { MemBuffer::alloc_uninit(85) }
     unsafe {
         ops::mstore(addr: preimage.ptr(), value: (0xff << 248) | (deployer.inner << 88))
         ops::mstore(addr: offset(preimage.ptr(), 21), value: salt)
@@ -297,7 +295,7 @@ pub fn ecrecover_raw(
     r: u256,
     s: u256,
 ) -> Result<PrecompileError, Option<u256>> {
-    let buffer = FixedMemBuffer<128>::alloc()
+    let buffer = unsafe { FixedMemBuffer<128>::alloc_uninit() }
     unsafe {
         ops::mstore(addr: buffer.ptr(), value: hash)
         ops::mstore(addr: offset(buffer.ptr(), 32), value: v)
@@ -340,7 +338,7 @@ pub fn ec_add(
     bx: u256,
     by: u256,
 ) -> Result<PrecompileError, (u256, u256)> {
-    let buffer = FixedMemBuffer<128>::alloc()
+    let buffer = unsafe { FixedMemBuffer<128>::alloc_uninit() }
     unsafe {
         ops::mstore(addr: buffer.ptr(), value: ax)
         ops::mstore(addr: offset(buffer.ptr(), 32), value: ay)
@@ -360,7 +358,7 @@ pub fn ec_add(
 
 /// EC scalar multiplication on BN254 (precompile 0x07).
 pub fn ec_mul(px: u256, py: u256, s: u256) -> Result<PrecompileError, (u256, u256)> {
-    let buffer = FixedMemBuffer<96>::alloc()
+    let buffer = unsafe { FixedMemBuffer<96>::alloc_uninit() }
     unsafe {
         ops::mstore(addr: buffer.ptr(), value: px)
         ops::mstore(addr: offset(buffer.ptr(), 32), value: py)
@@ -386,7 +384,7 @@ pub fn ec_mul(px: u256, py: u256, s: u256) -> Result<PrecompileError, (u256, u25
 /// Returns true if the pairing equation holds:
 /// `e(a1, b1) * e(a2, b2) * ... * e(aN, bN) == 1`
 ///
-/// Use effects (RawMem) to build the buffer, then pass it here.
+/// Build the buffer with `core::ptr::MemBuffer`, then pass it here.
 pub fn ec_pairing(_ data: MemSpan) -> Result<PrecompileError, bool> {
     if !valid_chunks(data, chunk_len: 192, allow_empty: true) {
         return Result::Err(PrecompileError::InvalidInputLength)
@@ -400,7 +398,7 @@ pub fn ec_pairing(_ data: MemSpan) -> Result<PrecompileError, bool> {
 /// Modular exponentiation (precompile 0x05).
 /// Computes `base^exp % modulus` for u256-sized inputs.
 pub fn modexp(base: u256, exp: u256, modulus: u256) -> Result<PrecompileError, u256> {
-    let buffer = FixedMemBuffer<192>::alloc()
+    let buffer = unsafe { FixedMemBuffer<192>::alloc_uninit() }
     unsafe {
         ops::mstore(addr: buffer.ptr(), value: 32)
         ops::mstore(addr: offset(buffer.ptr(), 32), value: 32)

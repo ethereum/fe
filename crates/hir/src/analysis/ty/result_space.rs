@@ -6,12 +6,18 @@
 //! (`@memory`, `@storage`, `@transient`, `@calldata`, `@code`), `@p` or
 //! `@self` for the space of a data parameter's place, `@target(p)` for the
 //! space of the resource a handle parameter names, `@d` for an effect
-//! domain's, or an associated space, `@S` or `@B::S`. A trait declares an
-//! associated space, `space S`, and each implementation gives it: a space by
-//! name, `self` for where the implementing value lies, or another associated
-//! space (`space S = B::S`). The access check
+//! domain's, or an associated space, `@S` or `@B::S`. A parameter's or
+//! domain's contract may name a sub-place, `@self.value` or `@self[_]`, by
+//! fields, tuple components and `[_]` elements: its space is the one the
+//! path reaches, through pinned types and collection entries, and memory for
+//! a lane, whose grants are memory copies. A trait declares an associated
+//! space, `space S`, and each implementation gives it: a space by name,
+//! `self` or a sub-place of it (`self[_]`) for where the implementing value
+//! or its elements lie, or another associated space (`space S = B::S`). The
+//! access check
 //! holds each instance's yields to the contracts its signature declares, and
 //! an implementation's to its trait method's.
+use num_traits::ToPrimitive;
 use salsa::Update;
 
 use crate::{
@@ -20,17 +26,23 @@ use crate::{
         ty::{
             binder::Binder,
             fold::{TyFoldable, TyFolder},
+            normalize::normalize_ty,
             provider::ProviderAddressSpace,
+            state_index_tys,
             trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
             trait_resolution::{
                 PredicateListId, Selection, TraitSolveCx, constraint::resolve_assoc_item_path,
             },
+            ty_check::{EffectParamSite, RecordLike},
             ty_def::TyId,
             visitor::{TyVisitable, TyVisitor},
         },
     },
-    core::semantic::constraints_for,
-    hir_def::{Func, IdentId, ImplTrait, PathId, SpaceAnnotation, Trait, scope_graph::ScopeId},
+    core::semantic::{EffectRequirementKey, constraints_for, effect_requirements_for_site},
+    hir_def::{
+        FieldIndex, Func, IdentId, ImplTrait, PathId, SpaceAnnotation, SpacePathId, SpaceStep,
+        Trait, scope_graph::ScopeId,
+    },
 };
 
 /// Associated space `space` of a trait instance.
@@ -73,14 +85,78 @@ impl<'db> TyFoldable<'db> for SpaceKey<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum SpaceContract<'db> {
     Space(ProviderAddressSpace),
-    /// The space of a data parameter's place: `@p`, `@self`.
-    Param(u32),
+    /// The space of a data parameter's place, or of a sub-place of it:
+    /// `@p`, `@self`, `@self.value`.
+    Param(u32, SpacePathId<'db>),
     /// The space of the resource a handle parameter names: `@target(p)`.
     Target(u32),
-    /// The space of an effect's domain: `@d`.
-    Domain(u32),
+    /// The space of an effect's domain, or of a sub-place of its target:
+    /// `@d`, `@d.f`.
+    Domain(u32, SpacePathId<'db>),
     /// An associated space: `@S`, `@B::S`.
     Assoc(SpaceKey<'db>),
+}
+
+/// What one step of a sub-place's path is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlaceStep {
+    /// A field or tuple component, by index.
+    Field(usize),
+    /// An array element.
+    Index,
+    /// An entry of a `StateIndex` collection.
+    Entry,
+    /// A field of an enum variant's payload.
+    Variant,
+}
+
+/// The steps `path` takes from a place of type `root`, each with the type of
+/// the place it starts from and of the one it reaches. `None` when a step
+/// names no part of its type.
+pub fn space_path_steps<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    root: TyId<'db>,
+    path: SpacePathId<'db>,
+) -> Option<Vec<(TyId<'db>, PlaceStep, TyId<'db>)>> {
+    let normalize = |ty: TyId<'db>| {
+        let ty = ty.as_capability(db).map_or(ty, |(_, inner)| inner);
+        normalize_ty(db, ty, scope, assumptions)
+    };
+    let mut ty = normalize(root);
+    path.steps(db)
+        .iter()
+        .map(|step| {
+            let (kind, next) = match *step {
+                SpaceStep::Field(FieldIndex::Ident(name)) => (
+                    PlaceStep::Field(RecordLike::Type(ty).record_field_idx(db, name)?),
+                    RecordLike::Type(ty).record_field_ty(db, name)?,
+                ),
+                SpaceStep::Field(FieldIndex::Index(index)) => {
+                    let index = ToPrimitive::to_usize(index.data(db))?;
+                    let component = ty
+                        .is_tuple(db)
+                        .then(|| ty.field_types(db).get(index).copied())??;
+                    (PlaceStep::Field(index), component)
+                }
+                SpaceStep::Element if ty.is_array(db) => {
+                    (PlaceStep::Index, *ty.decompose_ty_app(db).1.first()?)
+                }
+                SpaceStep::Element => (
+                    PlaceStep::Entry,
+                    state_index_tys(db, scope, ty, assumptions)?.1,
+                ),
+            };
+            let next = normalize(next);
+            if next.has_invalid(db) {
+                return None;
+            }
+            let step = (ty, kind, next);
+            ty = next;
+            Some(step)
+        })
+        .collect()
 }
 
 /// The contracts `func`'s return declares, per access component. `None`
@@ -95,31 +171,51 @@ pub fn declared_result_spaces<'db>(
             .position(|param| param.name(db) == Some(name))
             .map(|idx| idx as u32)
     };
+    let scope = func.scope();
+    let assumptions = constraints_for(db, func.into());
+    // A sub-place names a part of its root's type.
+    let valid = |root: Option<TyId<'db>>, steps: SpacePathId<'db>| {
+        steps.steps(db).is_empty()
+            || root
+                .is_some_and(|root| space_path_steps(db, scope, assumptions, root, steps).is_some())
+    };
     func.ret_spaces(db)
         .iter()
         .map(|annotation| match (*annotation)? {
             SpaceAnnotation::Target(path) => {
                 param(path.to_opt()?.as_ident(db)?).map(SpaceContract::Target)
             }
-            SpaceAnnotation::Path(path) => {
+            SpaceAnnotation::Path(path, steps) => {
                 let path = path.to_opt()?;
                 if let Some(name) = path.as_ident(db) {
-                    let effect = func.effects(db).data(db).iter().position(|effect| {
+                    if let Some(idx) = param(name) {
+                        let root = func.params(db).nth(idx as usize).map(|param| param.ty(db));
+                        return valid(root, steps).then_some(SpaceContract::Param(idx, steps));
+                    }
+                    if let Some(idx) = func.effects(db).data(db).iter().position(|effect| {
                         effect
                             .name
                             .or_else(|| effect.key_ty.to_opt()?.as_path(db)?.as_ident(db))
                             == Some(name)
-                    });
-                    if let Some(contract) = param(name)
-                        .map(SpaceContract::Param)
-                        .or_else(|| effect.map(|idx| SpaceContract::Domain(idx as u32)))
-                        .or_else(|| named_space(db, name).map(SpaceContract::Space))
-                    {
-                        return Some(contract);
+                    }) {
+                        let root = effect_requirements_for_site(db, EffectParamSite::Func(func))
+                            .into_iter()
+                            .find(|requirement| requirement.binding_idx as usize == idx)
+                            .and_then(|requirement| match requirement.key {
+                                EffectRequirementKey::Type(ty) => Some(ty),
+                                _ => None,
+                            });
+                        return valid(root, steps)
+                            .then_some(SpaceContract::Domain(idx as u32, steps));
                     }
                 }
-                space_key(db, path, func.scope(), constraints_for(db, func.into()))
-                    .map(SpaceContract::Assoc)
+                if !steps.steps(db).is_empty() {
+                    return None;
+                }
+                path.as_ident(db)
+                    .and_then(|name| named_space(db, name))
+                    .map(SpaceContract::Space)
+                    .or_else(|| space_key(db, path, scope, assumptions).map(SpaceContract::Assoc))
             }
         })
         .collect()
@@ -171,8 +267,9 @@ fn space_key<'db>(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolvedSpace<'db> {
     Space(ProviderAddressSpace),
-    /// Where the value of this type lies: the implementation said `self`.
-    Owner(TyId<'db>),
+    /// Where the value of this type, or a sub-place of it, lies: the
+    /// implementation said `self` or `self[_]`.
+    Owner(TyId<'db>, SpacePathId<'db>),
 }
 
 /// What `key` is where the scope selects the implementations involved.
@@ -193,15 +290,14 @@ pub fn resolve_space_key<'db>(
         return None;
     };
     let name = key.name(db)?;
-    let value = impl_trait
+    let (value, steps) = impl_trait
         .spaces(db)
         .iter()
         .find(|space| space.name.to_opt() == Some(name))?
-        .value?
-        .to_opt()?;
-    match impl_space_value(db, impl_trait, value)? {
+        .value?;
+    match impl_space_value(db, impl_trait, value.to_opt()?, steps)? {
         SpaceValue::Space(space) => Some(ResolvedSpace::Space(space)),
-        SpaceValue::Owner => Some(ResolvedSpace::Owner(key.inst.self_ty(db))),
+        SpaceValue::Owner(steps) => Some(ResolvedSpace::Owner(key.inst.self_ty(db), steps)),
         SpaceValue::Assoc(inner) => {
             let inner =
                 Binder::bind(impl_trait.into(), inner).instantiate(db, resolved.impl_args(db));
@@ -214,20 +310,33 @@ pub fn resolve_space_key<'db>(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpaceValue<'db> {
     Space(ProviderAddressSpace),
-    /// `self`: where the implementing value itself lies, as for an owner
-    /// whose elements are its own parts.
-    Owner,
+    /// `self` or a sub-place of it: where the implementing value lies, or
+    /// its elements (`self[_]`), as for an owner whose elements are its own
+    /// parts.
+    Owner(SpacePathId<'db>),
     /// Another associated space: `B::S`.
     Assoc(SpaceKey<'db>),
 }
 
+/// What `space S = value steps` gives; `None` when it names no space, or a
+/// sub-place of something other than `self` or of no part of the
+/// implementing type.
 pub fn impl_space_value<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
     value: PathId<'db>,
+    steps: SpacePathId<'db>,
 ) -> Option<SpaceValue<'db>> {
     if value.as_ident(db).is_some_and(|name| name.is_self(db)) {
-        return Some(SpaceValue::Owner);
+        let owner = impl_trait.trait_inst_result(db).ok()?.self_ty(db);
+        let scope = impl_trait.scope();
+        let assumptions = constraints_for(db, impl_trait.into());
+        return (steps.steps(db).is_empty()
+            || space_path_steps(db, scope, assumptions, owner, steps).is_some())
+        .then_some(SpaceValue::Owner(steps));
+    }
+    if !steps.steps(db).is_empty() {
+        return None;
     }
     value
         .as_ident(db)

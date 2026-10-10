@@ -43,7 +43,7 @@ msg M {
 }
 
 fn call_out(_ to: Address) uses (call: mut Call) {
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let _ = call.raw_call(addr: to, gas: 0, value: 0, args: MemSpan::empty(), ret: mut output)
 }
 

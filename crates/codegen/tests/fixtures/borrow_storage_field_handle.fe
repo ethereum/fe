@@ -15,7 +15,7 @@ fn borrow_storage_field_handle() -> u256
 pub fn main() -> u256
     uses (sto: mut RawStorage)
 {
-    let mut store: StorPtr<CoinStore> = unsafe { sto.stor_ptr(0) }
+    var store: StorPtr<CoinStore> = unsafe { sto.stor_ptr(0) }
     with (store) {
         borrow_storage_field_handle()
     }

@@ -18,7 +18,7 @@ impl CounterOps for Counter {
 }
 
 fn use_receiver_modes() -> u256 {
-    let mut counter = Counter { value: 1 }
+    var counter = Counter { value: 1 }
     let value_ref = counter.value_ref()
     value_ref
 

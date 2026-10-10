@@ -29,8 +29,8 @@ pub contract VecContract uses (log: mut Log) {
 
     recv VecMsg {
         BuildRange { n } -> DynArray<u256> {
-            let mut v: MemVec<u256> = MemVec::zeroed(n)
-            let mut i: u256 = 0
+            var v: MemVec<u256> = MemVec::zeroed(n)
+            var i: u256 = 0
             while i < n {
                 v.set(index: i, value: (i + 1) * 100)
                 i += 1
@@ -39,14 +39,14 @@ pub contract VecContract uses (log: mut Log) {
         }
 
         CopyProbe { values } -> u256 {
-            let mut copy = MemVec::from_dyn_array(values)
+            var copy = MemVec::from_dyn_array(values)
             copy.set(index: 0, value: 999)
             // If the copy aliased the source payload, this would read 999.
             values.get(0)
         }
 
         PayloadHash { a, b } -> u256 uses (mut log) {
-            let mut v: MemVec<u256> = MemVec::zeroed(2)
+            var v: MemVec<u256> = MemVec::zeroed(2)
             v.set(index: 0, value: a)
             v.set(index: 1, value: b)
             let payload = encode_abi_payload((v.to_dyn_array(),))
@@ -59,7 +59,7 @@ pub contract VecContract uses (log: mut Log) {
 #[test]
 fn test_zeroed_set_get()
 {
-    let mut v: MemVec<u256> = MemVec::zeroed(3)
+    var v: MemVec<u256> = MemVec::zeroed(3)
     assert!(v.len() == 3)
     assert!(!v.is_empty())
     assert!(v.get(0) == 0)
@@ -77,7 +77,7 @@ fn test_zeroed_set_get()
 #[test]
 fn test_address_elements()
 {
-    let mut v: MemVec<Address> = MemVec::zeroed(2)
+    var v: MemVec<Address> = MemVec::zeroed(2)
     v.set(index: 1, value: Address { inner: 0xbeef })
     assert!(v.get(0).inner == 0)
     assert!(v.get(1).inner == 0xbeef)
@@ -97,18 +97,18 @@ fn test_get_out_of_bounds_panics()
 #[test(should_revert, panic = 0x32)]
 fn test_set_out_of_bounds_panics()
 {
-    let mut v: MemVec<u256> = MemVec::zeroed(2)
+    var v: MemVec<u256> = MemVec::zeroed(2)
     v.set(index: 2, value: 1)
 }
 
 #[test]
 fn test_from_dyn_array_copies_locally()
 {
-    let mut v: MemVec<u256> = MemVec::zeroed(1)
+    var v: MemVec<u256> = MemVec::zeroed(1)
     v.set(index: 0, value: 5)
     let arr = v.to_dyn_array()
 
-    let mut copy = MemVec::from_dyn_array(arr)
+    var copy = MemVec::from_dyn_array(arr)
     copy.set(index: 0, value: 6)
     assert!(copy.get(0) == 6)
     assert!(arr.get(0) == 5)
@@ -122,7 +122,7 @@ uses (evm: mut Evm)
     let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
     assert!(c.inner != 0)
 
-    let mut v: MemVec<u256> = MemVec::zeroed(2)
+    var v: MemVec<u256> = MemVec::zeroed(2)
     v.set(index: 0, value: 7)
     v.set(index: 1, value: 8)
     let original: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: VecMsg::CopyProbe { values: v.to_dyn_array() })
@@ -137,7 +137,7 @@ uses (evm: mut Evm, call: mut Call, ctx: Ctx)
     assert!(c.inner != 0)
 
     let args = encode_msg_calldata(VecMsg::BuildRange { n: 3 })
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let outcome = call.raw_call(addr: c, gas: ctx.gas(), value: 0, args: args.span(), ret: mut output)
     assert!(outcome.success())
     let ret = copy_returndata()

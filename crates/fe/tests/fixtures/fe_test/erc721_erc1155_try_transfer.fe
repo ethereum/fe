@@ -2,6 +2,7 @@
 /// transfer helpers and the `onERC721Received` receiver check.
 
 use core::ptr
+use core::abi::store_word
 use std::abi::Bytes4
 use std::evm::{RawOps, ReceiverCheck, TokenCall, bubble_last_revert, erc721, erc1155}
 
@@ -53,7 +54,7 @@ pub contract FalseNft {
     recv Erc721Msg {
         TransferFrom { from, to, tokenId } uses (raw: mut RawOps) {
             let data = ptr::MemBuffer::alloc(32)
-            unsafe { raw.mstore(addr: data.ptr(), value: 0) }
+            unsafe { store_word(ptr: data.ptr(), value: 0) }
             raw.return_data(data: data.span())
         }
     }
@@ -77,8 +78,8 @@ pub contract MultiToken {
             last.value = from.inner * 0x10000 + to.inner * 0x100 + id * value + data.len()
         }
         SafeBatchTransferFrom { from, to, ids, values, data } uses (mut last) {
-            let mut sum: u256 = 0
-            let mut i: u256 = 0
+            var sum: u256 = 0
+            var i: u256 = 0
             while i < ids.len() {
                 sum += ids.get(i) * values.get(i)
                 i += 1
@@ -128,14 +129,14 @@ pub contract Receiver {
     recv ReceiverMsg {
         OnErc721Received { operator, from, tokenId, data } -> Bytes4 uses (reply, raw: mut RawOps) {
             let expected = operator.inner == 7 && from.inner == 2 && tokenId == 42 && data.len() == 0
-            let alloc = if reply.len < 32 { 32 } else { reply.len }
-            let mut out = ptr::MemBuffer::alloc(alloc)
+            let alloc = if reply.len < 32 || reply.len == REVERT { 32 } else { reply.len }
+            var out = ptr::MemBuffer::alloc(alloc)
             if reply.len == REVERT {
-                unsafe { raw.mstore(addr: out.ptr(), value: 0xdeadbeefcafebabe << 192) }
+                unsafe { store_word(ptr: out.ptr(), value: 0xdeadbeefcafebabe << 192) }
                 unsafe { out.set_len(32) }
                 raw.revert(data: out.span())
             }
-            unsafe { raw.mstore(addr: out.ptr(), value: if expected { reply.word } else { 0 }) }
+            unsafe { store_word(ptr: out.ptr(), value: if expected { reply.word } else { 0 }) }
             unsafe { out.set_len(reply.len) }
             raw.return_data(data: out.span())
         }
@@ -178,7 +179,7 @@ fn receiver_code(_ outcome: ReceiverCheck) -> u256 {
 }
 
 fn u256_vec(_ a: u256, _ b: u256, _ c: u256) -> Vec<u256> {
-    let mut v = MemVec<u256>::zeroed(3)
+    var v = MemVec<u256>::zeroed(3)
     v.set(index: 0, value: a)
     v.set(index: 1, value: b)
     v.set(index: 2, value: c)

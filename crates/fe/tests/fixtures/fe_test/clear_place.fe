@@ -31,25 +31,25 @@ fn handle_at(_ slot: u256) -> StorPtr<u256> uses (storage: RawStorage) {
 
 #[test]
 fn clear_zeroes_memory_places() {
-    let mut word: u256 = 5
+    var word: u256 = 5
     unsafe { clear(mut word) }
     assert(word == 0)
 
-    let mut pair = Pair { small: 1, other: 2, big: 3 }
+    var pair = Pair { small: 1, other: 2, big: 3 }
     unsafe { clear(mut pair.small) }
     assert(pair.small == 0 && pair.other == 2 && pair.big == 3)
     unsafe { clear(mut pair) }
     assert(pair.other == 0 && pair.big == 0)
 
     // An enum's zero representation is its first variant.
-    let mut shape = Shape::Square(3, 4)
+    var shape = Shape::Square(3, 4)
     unsafe { clear(mut shape) }
     assert(match shape {
         Shape::Dot => true,
         _ => false,
     })
 
-    let mut items: [u256; 3] = [1, 2, 3]
+    var items: [u256; 3] = [1, 2, 3]
     unsafe { clear(mut items[1]) }
     assert(items[0] == 1 && items[1] == 0 && items[2] == 3)
 }
@@ -70,7 +70,7 @@ fn clear_zeroes_storage_places() uses (evm: mut Evm) {
         assert(load(data) == 0 && load(data + 1) == 0)
         assert(load(data + 2) == 0x0500 && load(data + 3) == 6)
         // A storage handle held in memory is its slot.
-        let mut handle = handle_at(5)
+        var handle = handle_at(5)
         unsafe { clear(mut handle) }
         assert(handle.raw() == 0)
     }

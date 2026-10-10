@@ -21,7 +21,7 @@ pub contract C {
 
     recv Msg {
         BumpViaReceiverReturn -> u256 uses (mut counter) {
-            let mut local = 100
+            var local = 100
             let target = counter.choose_self(mut local)
             target += 1
             counter.value * 1000 + local

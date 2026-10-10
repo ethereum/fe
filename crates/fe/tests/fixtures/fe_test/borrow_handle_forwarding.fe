@@ -18,7 +18,7 @@ fn consume_wallet(_ w: own Wallet) -> (u256, u8) {
 
 #[test]
 fn test_borrow_handle_forwarding() {
-    let mut w = Wallet {
+    var w = Wallet {
         balance: 100,
         nonce: 1,
     }

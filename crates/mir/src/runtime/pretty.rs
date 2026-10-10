@@ -716,6 +716,14 @@ fn format_builtin<'db>(db: &'db dyn MirDb, builtin: &RuntimeBuiltin<'db>) -> Str
             format_local_id(*offset),
             format_local_id(*len)
         ),
+        RuntimeBuiltin::KeccakWords { words } => format!(
+            "keccak_words {}",
+            words
+                .iter()
+                .map(|word| format_local_id(*word))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
         RuntimeBuiltin::AddMod { lhs, rhs, modulus } => format!(
             "addmod {}, {}, {}",
             format_local_id(*lhs),

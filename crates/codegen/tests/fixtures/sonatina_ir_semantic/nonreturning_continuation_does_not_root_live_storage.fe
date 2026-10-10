@@ -7,7 +7,7 @@ fn fail_twice() { fail_indirect() }
 fn touch(frame: mut Frame) { frame.value = 5 }
 
 fn demand(flag: bool) -> Frame {
-    let mut frame = Frame { first: 1, value: 2, last: 3 }
+    var frame = Frame { first: 1, value: 2, last: 3 }
     if flag { return frame }
     fail_twice()
     touch(frame: mut frame)

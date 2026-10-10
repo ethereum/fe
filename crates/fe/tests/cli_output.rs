@@ -403,7 +403,7 @@ pub contract Test {
 
     recv Msg {
         Check { key, next, initialized } uses (store) {
-            let mut cursor = key
+            var cursor = key
             while cursor > next {
                 assert!(!with (store.map) {
                     nested(cursor)
@@ -1275,7 +1275,7 @@ fn test_cli_build_ingot_contract_uses_effectful_library_helper() {
     .expect("write fe.toml");
     fs::write(
         src_dir.join("lib.fe"),
-        "pub use libmod::{self, *}\n\npub msg AMsg {\n    #[selector = sol(\"foo()\")]\n    Foo -> u256,\n}\n\npub contract A {\n    recv AMsg {\n        Foo -> u256 {\n            let mut value: u256 = 1\n            with (value) { needs_effect() }\n        }\n    }\n}\n",
+        "pub use libmod::{self, *}\n\npub msg AMsg {\n    #[selector = sol(\"foo()\")]\n    Foo -> u256,\n}\n\npub contract A {\n    recv AMsg {\n        Foo -> u256 {\n            var value: u256 = 1\n            with (value) { needs_effect() }\n        }\n    }\n}\n",
     )
     .expect("write lib.fe");
     fs::write(
@@ -1879,6 +1879,64 @@ fn test_cli_build_emit_metadata_disambiguates_dependency_namespace_from_root_sou
         .find(|ingot| ingot["namespace"] == "")
         .expect("root ingot");
     assert_eq!(root_ingot["dependencies"]["dep"], "src-2");
+
+    let original_runtime =
+        fs::read_to_string(out_dir.join("Foo.runtime.bin")).expect("read original runtime.bin");
+    let metadata_path = out_dir.join("Foo.metadata.json");
+    let recon = tempdir().expect("recon tempdir");
+    let recon_out = recon.path().join("out");
+    let (output, exit_code) = run_fe_main(&[
+        "build",
+        "--from-metadata",
+        metadata_path.to_str().expect("metadata utf8"),
+        "--emit",
+        "runtime-bytecode",
+        "--out-dir",
+        recon_out.to_str().expect("out utf8"),
+    ]);
+    assert_eq!(exit_code, 0, "rebuild from metadata failed:\n{output}");
+    let rebuilt_runtime =
+        fs::read_to_string(recon_out.join("Foo.runtime.bin")).expect("read rebuilt runtime.bin");
+    assert_eq!(original_runtime, rebuilt_runtime);
+}
+
+#[test]
+fn test_cli_build_from_metadata_reproduces_trusted_unsafe_dependency() {
+    let temp = tempdir().expect("tempdir");
+    let root = temp.path();
+    fs::create_dir_all(root.join("app/src")).expect("create app sources");
+    fs::create_dir_all(root.join("dep/src")).expect("create dependency sources");
+    fs::write(
+        root.join("app/fe.toml"),
+        "[ingot]\nname = \"app\"\nversion = \"0.1.0\"\n\n[dependencies]\ndep = { path = \"../dep\", allow_unsafe = true }\n",
+    )
+    .expect("write app fe.toml");
+    fs::write(
+        root.join("dep/fe.toml"),
+        "[ingot]\nname = \"dep\"\nversion = \"1.0.0\"\n",
+    )
+    .expect("write dependency fe.toml");
+    fs::write(
+        root.join("dep/src/lib.fe"),
+        "use core::abi::{load_word, store_word}\nuse core::ptr\n\npub fn round_trip(_ value: u256) -> u256 {\n    let p = ptr::alloc_bytes(32)\n    unsafe {\n        store_word(ptr: p, value)\n        load_word(p)\n    }\n}\n",
+    )
+    .expect("write dependency source");
+    fs::write(
+        root.join("app/src/main.fe"),
+        "use dep::round_trip\n\npub msg FooMsg {\n    #[selector = sol(\"run()\")]\n    Run -> u256,\n}\n\npub contract Foo {\n    recv FooMsg {\n        Run -> u256 {\n            round_trip(42)\n        }\n    }\n}\n",
+    )
+    .expect("write app main source");
+
+    let out_dir = root.join("app/out");
+    let (output, exit_code) = run_fe_main(&[
+        "build",
+        "--emit",
+        "metadata,runtime-bytecode",
+        "--out-dir",
+        out_dir.to_str().expect("out utf8"),
+        root.join("app").to_str().expect("app utf8"),
+    ]);
+    assert_eq!(exit_code, 0, "fe build failed:\n{output}");
 
     let original_runtime =
         fs::read_to_string(out_dir.join("Foo.runtime.bin")).expect("read original runtime.bin");
@@ -3526,6 +3584,62 @@ fn test_cli_test_dependency_arithmetic_defer() {
             && output.contains("1 passed"),
         "expected dependency arithmetic defer test to pass, got:\n{output}"
     );
+}
+
+#[test]
+fn test_cli_test_unsafe_trust_allows_trusted_and_safe_uses() {
+    for (fixture, test) in [
+        ("unsafe_trust_safe_api", "untrusted_safe_api"),
+        ("unsafe_trust_allowed", "allowed_unsafe_use"),
+        ("unsafe_trust_delegated", "delegated_unsafe_use"),
+    ] {
+        let fixture_dir = fe_test_runner_fixture_dir(fixture);
+        let fixture_dir = fixture_dir.to_str().expect("fixture dir utf8");
+        let (output, exit_code) = run_fe_main(&["test", fixture_dir]);
+        assert_eq!(exit_code, 0, "{fixture}: fe test failed:\n{output}");
+        assert!(
+            output.contains(&format!("PASS  [<time>] {test}")),
+            "{fixture}: expected {test} to pass, got:\n{output}"
+        );
+    }
+}
+
+#[test]
+fn test_cli_test_unsafe_trust_rejects_untrusted_unsafe_uses() {
+    for (fixture, call, fix) in [
+        (
+            "unsafe_trust_untrusted",
+            "dep::round_trip(7)",
+            "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
+        ),
+        (
+            "unsafe_trust_untrusted_voucher",
+            "mid::via_dep(7)",
+            "`mid` allows `dep` to use unsafe code but is not trusted itself",
+        ),
+        (
+            "unsafe_trust_locate",
+            "words[0]",
+            "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
+        ),
+        (
+            "unsafe_trust_locate",
+            "flags[1] = first == 0",
+            "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
+        ),
+    ] {
+        let fixture_dir = fe_test_runner_fixture_dir(fixture);
+        let fixture_dir = fixture_dir.to_str().expect("fixture dir utf8");
+        let (output, exit_code) = run_fe_main(&["test", fixture_dir]);
+        assert_ne!(exit_code, 0, "{fixture}: expected a trust error:\n{output}");
+        assert!(
+            output.contains("call reaches unsafe code in `dep`, which is not allowed to use it")
+                && output.contains(call)
+                && output.contains("unsafe code in `dep`")
+                && output.contains(fix),
+            "{fixture}: unexpected diagnostics:\n{output}"
+        );
+    }
 }
 
 #[test]

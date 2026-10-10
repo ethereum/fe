@@ -241,6 +241,7 @@ define_runtime_intrinsics! {
     PanicCode => (Core, ["panic_code"]),
     Todo => (Core, ["todo"]),
     IntrinsicKeccak256 => (Core, ["intrinsic", "__keccak256"]),
+    IntrinsicKeccakWords => (Core, ["intrinsic", "__keccak_words"]),
     Clear => (Core, ["intrinsic", "clear"]),
 }
 
@@ -288,7 +289,10 @@ pub(crate) fn ctfe_extern_intrinsic_kind<'db>(
         Some(CtfeExternIntrinsic::SizeOf)
     } else if lib_func_matches(db, func, "core::intrinsic::__as_bytes") {
         Some(CtfeExternIntrinsic::AsBytes)
-    } else if lib_func_matches(db, func, "core::intrinsic::__keccak256") {
+    } else if lib_func_matches(db, func, "core::intrinsic::__keccak256")
+        || lib_func_matches(db, func, "core::intrinsic::__keccak_words")
+    {
+        // A word array's bytes are its words, big-endian, in order.
         Some(CtfeExternIntrinsic::Keccak256)
     } else if lib_func_matches(db, func, "core::num::__bitcast") {
         Some(CtfeExternIntrinsic::Bitcast)

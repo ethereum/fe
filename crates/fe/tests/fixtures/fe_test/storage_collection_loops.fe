@@ -25,19 +25,19 @@ fn sol_array_loops() uses (evm: mut Evm) {
         }
         assert(a.get(0) == 10 && a.get(1) == 20 && a.get(2) == 30)
 
-        let mut weighted = 0
+        var weighted = 0
         for (i, x) in a.enumerate() {
             weighted += i as u256 * x
         }
         assert(weighted == 80)
 
-        let mut tail = 0
+        var tail = 0
         for x in a by core::iter::skip(1) {
             tail += x
         }
         assert(tail == 50)
 
-        let mut digits = 0
+        var digits = 0
         for x in a.reversed() {
             digits = digits * 100 + x
         }
@@ -58,13 +58,13 @@ fn sol_set_loops() uses (evm: mut Evm) {
         assert(s.add(7))
         assert(s.add(9))
         assert(s.remove(5))
-        let mut sum = 0
+        var sum = 0
         for v in s {
             sum += v
         }
         assert(sum == 16)
 
-        let mut order = 0
+        var order = 0
         for v in s.reversed() {
             order = order * 10 + v
         }

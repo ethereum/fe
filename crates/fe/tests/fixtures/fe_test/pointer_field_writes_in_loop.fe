@@ -52,7 +52,7 @@ fn step(_ pairs: Arr<Pair>, _ i: u256) {
 }
 
 fn apply(_ pairs: Arr<Pair>, n: u256) {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < n {
         step(pairs, i)
         i += 1
@@ -60,7 +60,7 @@ fn apply(_ pairs: Arr<Pair>, n: u256) {
 }
 
 fn apply_inline(_ pairs: Arr<Pair>, n: u256) {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < n {
         let pair = pairs.at(i)
         unsafe { update(pair.a, 20) }
@@ -79,7 +79,7 @@ fn apply_straight(_ pairs: Arr<Pair>) {
 
 fn pairs(_ n: u256) -> Arr<Pair> {
     let pairs = Arr<Pair>::new(n)
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < n {
         let a = Arr<Item>::new(1)
         let b = Arr<Item>::new(1)

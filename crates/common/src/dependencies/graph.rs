@@ -2,6 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use petgraph::Direction::Incoming;
 use petgraph::graph::{DiGraph, NodeIndex};
 use petgraph::visit::{Dfs, EdgeRef};
 use salsa::Setter;
@@ -195,6 +196,61 @@ impl DependencyGraph {
         self.node_map(db).contains_key(url)
     }
 
+    /// Whether `url` is the user's own code rather than a dependency: a
+    /// workspace member, an ingot nothing in the graph depends on, or one the
+    /// graph does not know (a standalone file).
+    pub fn is_trust_root(&self, db: &dyn InputDb, url: &Url) -> bool {
+        let Some(&idx) = self.node_map(db).get(url) else {
+            return true;
+        };
+        self.workspace_root_by_member(db).contains_key(url)
+            || self
+                .graph(db)
+                .edges_directed(idx, Incoming)
+                .next()
+                .is_none()
+    }
+
+    /// The ingots that depend on `url`, each with whether it declares the
+    /// dependency with `allow_unsafe = true`.
+    pub fn dependents(&self, db: &dyn InputDb, url: &Url) -> Vec<(Url, bool)> {
+        let Some(&idx) = self.node_map(db).get(url) else {
+            return Vec::new();
+        };
+        let graph = self.graph(db);
+        graph
+            .edges_directed(idx, Incoming)
+            .map(|edge| (graph[edge.source()].clone(), edge.weight().1.allow_unsafe))
+            .collect()
+    }
+
+    /// The ingots whose unsafe code trusted code may use: the trust roots,
+    /// `core` and `std`, and every dependency that a trusted ingot declares
+    /// with `allow_unsafe = true`. An untrusted ingot's `allow_unsafe` grants
+    /// nothing.
+    pub fn trusted_ingots(&self, db: &dyn InputDb) -> HashSet<Url> {
+        let graph = self.graph(db);
+        let mut pending: Vec<_> = graph
+            .node_indices()
+            .filter(|&idx| {
+                matches!(graph[idx].scheme(), "builtin-core" | "builtin-std")
+                    || self.is_trust_root(db, &graph[idx])
+            })
+            .collect();
+        let mut trusted = HashSet::new();
+        while let Some(idx) = pending.pop() {
+            if trusted.insert(graph[idx].clone()) {
+                pending.extend(
+                    graph
+                        .edges(idx)
+                        .filter(|edge| edge.weight().1.allow_unsafe)
+                        .map(|edge| edge.target()),
+                );
+            }
+        }
+        trusted
+    }
+
     pub fn force_dependency_arithmetic(
         &self,
         db: &mut dyn InputDb,
@@ -383,5 +439,39 @@ mod tests {
 
         let found = graph.ingot_by_name_version(&db, &"foo".into(), &version);
         assert_eq!(found, Some(url));
+    }
+
+    #[test]
+    fn trust_flows_only_from_trusted_ingots() {
+        let mut db = TestDatabase::default();
+        let graph = DependencyGraph::default(&db);
+        let url = |name: &str| Url::parse(&format!("file:///workspace/{name}/")).unwrap();
+        let depend = |db: &mut TestDatabase, from: &str, to: &str, allow_unsafe: bool| {
+            let arguments = DependencyArguments {
+                allow_unsafe,
+                ..Default::default()
+            };
+            graph.add_dependency(db, &url(from), &url(to), to.into(), arguments);
+        };
+        // root trusts a, which vouches for b; root does not trust c, whose
+        // vouching for d therefore grants nothing.
+        depend(&mut db, "root", "a", true);
+        depend(&mut db, "a", "b", true);
+        depend(&mut db, "root", "c", false);
+        depend(&mut db, "c", "d", true);
+
+        let trusted = graph.trusted_ingots(&db);
+        for name in ["root", "a", "b"] {
+            assert!(trusted.contains(&url(name)), "{name} should be trusted");
+        }
+        for name in ["c", "d"] {
+            assert!(
+                !trusted.contains(&url(name)),
+                "{name} should not be trusted"
+            );
+        }
+        assert!(graph.is_trust_root(&db, &url("root")));
+        assert!(!graph.is_trust_root(&db, &url("a")));
+        assert_eq!(graph.dependents(&db, &url("d")), vec![(url("c"), true)]);
     }
 }

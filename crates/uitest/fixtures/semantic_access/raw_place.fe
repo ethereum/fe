@@ -27,7 +27,7 @@ fn with_slide(_ p: mut Pair) -> mut u256 {
 // Rejected: a place of the projection's own frame.
 #[raw_place]
 fn frame_local() -> mut u256 {
-    let mut x = 0
+    var x = 0
     mut x
 }
 

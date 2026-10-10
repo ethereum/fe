@@ -324,7 +324,7 @@ pub enum NDataProjection {
     },
     Index(NIndex),
     /// The element at key `value` of a collection whose elements are places
-    /// (`core::ops::PlaceIndex`), at a slot the collection computes.
+    /// (`core::ops::StateIndex`), at a slot the collection computes.
     Entry(NValueId),
 }
 

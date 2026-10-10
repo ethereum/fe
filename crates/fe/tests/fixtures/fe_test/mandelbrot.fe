@@ -117,8 +117,8 @@ enum EscapeResult {
 // ---------- Core iteration ----------
 
 fn iterate(_ c: Complex, _ max_iter: u256) -> EscapeResult {
-    let mut z = Complex::zero()
-    let mut i: u256 = 0
+    var z = Complex::zero()
+    var i: u256 = 0
 
     while i < max_iter {
         if z.mag_sq() >= FOUR_SCALED {
@@ -152,9 +152,9 @@ fn compute_row_sum(
     width: usize,
     max_iter: u256,
 ) -> u256 {
-    let mut sum: u256 = 0
-    let mut re_mag = re_start.mag
-    let mut re_neg = re_start.neg
+    var sum: u256 = 0
+    var re_mag = re_start.mag
+    var re_neg = re_start.neg
     for _px in 0..width {
         let c = Complex {
             re: SFixed { mag: re_mag, neg: re_neg },

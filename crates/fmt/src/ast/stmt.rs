@@ -27,33 +27,33 @@ impl ToDoc for ast::Stmt {
 impl ToDoc for ast::LetStmt {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         let alloc = &ctx.alloc;
+        let keyword = if self.var_token().is_some() {
+            "var"
+        } else {
+            "let"
+        };
 
         let pat = match self.pat() {
             Some(p) => p.to_doc(ctx),
-            None => return alloc.text("let"),
+            None => return alloc.text(keyword),
         };
 
         let ty_doc = self
             .type_annotation()
             .map_or_else(|| alloc.nil(), |ty| alloc.text(": ").append(ty.to_doc(ctx)));
+        let head = alloc
+            .text(keyword)
+            .append(alloc.text(" "))
+            .append(pat)
+            .append(ty_doc);
 
         let let_doc = match self.initializer() {
             Some(init) if is_chain(&init) => {
                 // Use BlockDoc to handle the entire let statement as a unit
-                let prefix = alloc
-                    .text("let ")
-                    .append(pat)
-                    .append(ty_doc)
-                    .append(alloc.text(" = "));
-                format_chain_with_prefix(prefix, &init, ctx)
+                format_chain_with_prefix(head.append(alloc.text(" = ")), &init, ctx)
             }
-            Some(init) => alloc
-                .text("let ")
-                .append(pat)
-                .append(ty_doc)
-                .append(alloc.text(" = "))
-                .append(init.to_doc(ctx)),
-            None => alloc.text("let ").append(pat).append(ty_doc),
+            Some(init) => head.append(alloc.text(" = ")).append(init.to_doc(ctx)),
+            None => head,
         };
         match self.else_block() {
             Some(block) => let_doc

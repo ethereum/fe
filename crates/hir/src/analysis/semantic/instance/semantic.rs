@@ -8,7 +8,7 @@ use crate::{
         semantic::{
             CallSiteId, PlaceProvenance, RuntimeSizeError, SemOrigin, SemanticBody,
             SemanticCalleeRef, SemanticLocalRole, ValueProvenance, VariantIndex,
-            access::{CallSiteRefinements, provisional_call_site_provider_refinements},
+            access::{CallSiteRefinements, PathSpace, provisional_call_site_provider_refinements},
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticId, SemanticDiagnosticKind,
                 SemanticDiagnosticLabel, SemanticDiagnosticSpan,
@@ -35,6 +35,7 @@ use crate::{
             },
             result_space::{
                 ResolvedSpace, SpaceContract, SpaceKey, declared_result_spaces, resolve_space_key,
+                space_path_steps,
             },
             subst::substitute_complete,
             trait_def::{MethodArgMapError, TraitInstId},
@@ -52,7 +53,7 @@ use crate::{
             ty_lower::{ParamSchemaId, SubstError},
         },
     },
-    hir_def::{CallableDef, ExprId, FuncParamMode, scope_graph::ScopeId},
+    hir_def::{CallableDef, ExprId, FuncParamMode, SpacePathId, scope_graph::ScopeId},
     semantic::{
         EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding, ProviderSource,
         ResolvedEffectBinding,
@@ -1267,7 +1268,7 @@ impl<'db> SemanticInstance<'db> {
                                 ..key
                             }))
                         }
-                        SpaceContract::Assoc(_) | SpaceContract::Domain(_) => None,
+                        SpaceContract::Assoc(_) | SpaceContract::Domain(..) => None,
                         contract => Some(contract),
                     })
                     .collect::<Vec<_>>()
@@ -1290,7 +1291,15 @@ impl<'db> SemanticInstance<'db> {
         let key = self.key(db);
         match contract {
             SpaceContract::Space(space) => Some(space),
-            SpaceContract::Param(param) => Some(self.param_space(db, param)),
+            SpaceContract::Param(param, steps) => {
+                let binding = key.typed_body(db).param_binding(param as usize)?;
+                self.sub_place_space(
+                    db,
+                    self.param_space(db, param),
+                    self.binding_ty(db, binding),
+                    steps,
+                )
+            }
             SpaceContract::Target(param) => {
                 let binding = key.typed_body(db).param_binding(param as usize)?;
                 provider_semantics(
@@ -1301,14 +1310,21 @@ impl<'db> SemanticInstance<'db> {
                 )
                 .address_space
             }
-            SpaceContract::Domain(effect) => self
-                .effect_bindings(db)
-                .into_iter()
-                .find(|binding| {
+            SpaceContract::Domain(effect, steps) => {
+                let binding = self.effect_bindings(db).into_iter().find(|binding| {
                     matches!(binding, LocalBinding::EffectParam { idx, .. } if *idx == effect as usize)
-                })
-                .and_then(|binding| resolved_provider_binding_for_instance_effect(db, self, binding))
-                .and_then(|provider| provider.semantics.address_space),
+                })?;
+                let provider = resolved_provider_binding_for_instance_effect(db, self, binding)?;
+                self.sub_place_space(
+                    db,
+                    provider.semantics.address_space?,
+                    provider
+                        .semantics
+                        .target_ty
+                        .unwrap_or_else(|| self.binding_ty(db, binding)),
+                    steps,
+                )
+            }
             SpaceContract::Assoc(space) => match resolve_space_key(
                 db,
                 SpaceKey {
@@ -1319,19 +1335,51 @@ impl<'db> SemanticInstance<'db> {
                 self.assumptions(db),
             )? {
                 ResolvedSpace::Space(space) => Some(space),
-                // The parameter holding the owner, if one alone does.
-                ResolvedSpace::Owner(owner) => {
+                // The parameter holding the owner, if one alone does: its
+                // place, or the sub-place the implementation names.
+                ResolvedSpace::Owner(owner, steps) => {
+                    let owner = self.normalized_ty(db, owner);
                     let typed_body = key.typed_body(db);
                     let mut params = (0..)
                         .map_while(|idx| Some((idx, typed_body.param_binding(idx)?)))
-                        .filter(|(_, binding)| self.binding_ty(db, *binding) == owner);
+                        .filter(|(_, binding)| {
+                            let ty = self.binding_ty(db, *binding);
+                            self.normalized_ty(
+                                db,
+                                ty.as_capability(db).map_or(ty, |(_, inner)| inner),
+                            ) == owner
+                        });
                     match (params.next(), params.next()) {
-                        (Some((param, _)), None) => Some(self.param_space(db, param as u32)),
+                        (Some((param, _)), None) => self.sub_place_space(
+                            db,
+                            self.param_space(db, param as u32),
+                            owner,
+                            steps,
+                        ),
                         _ => None,
                     }
                 }
             },
         }
+    }
+
+    /// The space of the sub-place `steps` reaches from a place of type
+    /// `root` in `start`: a pinned type or an entry along it moves it, and a
+    /// lane's grants lie in memory.
+    fn sub_place_space(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        start: ProviderAddressSpace,
+        root: TyId<'db>,
+        steps: SpacePathId<'db>,
+    ) -> Option<ProviderAddressSpace> {
+        let scope = self.normalization_scope(db);
+        let root = self.normalized_ty(db, root.as_capability(db).map_or(root, |(_, inner)| inner));
+        let mut walk = PathSpace::new(db, root);
+        for step in space_path_steps(db, scope, self.assumptions(db), root, steps)? {
+            walk.step(db, self, scope, Some(start), step);
+        }
+        walk.grant_space(Some(start))
     }
 
     /// The bindings of the components of the rows the instance's effects
@@ -1424,14 +1472,14 @@ impl<'db> SemanticInstance<'db> {
     }
 
     /// The address space the elements of `ty` live in when its elements are
-    /// places (`core::ops::PlaceIndex`), in this instance.
+    /// places (`core::ops::StateIndex`), in this instance.
     #[salsa::tracked]
-    pub fn place_index_space(
+    pub fn state_index_space(
         self,
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
     ) -> Option<ProviderAddressSpace> {
-        crate::analysis::ty::provider::place_index_space(
+        crate::analysis::ty::provider::state_index_space(
             db,
             self.normalization_scope(db),
             self.assumptions(db),
@@ -1440,14 +1488,14 @@ impl<'db> SemanticInstance<'db> {
     }
 
     /// How `ty` packs its elements into lanes when its elements are places
-    /// (`core::ops::PlaceIndex`), in this instance.
+    /// (`core::ops::StateIndex`), in this instance.
     #[salsa::tracked]
-    pub fn place_index_lanes(
+    pub fn state_index_lanes(
         self,
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
-    ) -> Option<crate::analysis::ty::provider::PlaceIndexLanes<'db>> {
-        crate::analysis::ty::provider::place_index_lanes(
+    ) -> Option<crate::analysis::ty::provider::StateIndexLanes<'db>> {
+        crate::analysis::ty::provider::state_index_lanes(
             db,
             self.normalization_scope(db),
             self.assumptions(db),
@@ -1456,14 +1504,14 @@ impl<'db> SemanticInstance<'db> {
     }
 
     /// The key and element types of `ty` when its elements are places
-    /// (`core::ops::PlaceIndex`), in this instance.
+    /// (`core::ops::StateIndex`), in this instance.
     #[salsa::tracked]
-    pub fn place_index_tys(
+    pub fn state_index_tys(
         self,
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
     ) -> Option<(TyId<'db>, TyId<'db>)> {
-        crate::analysis::ty::place_index_tys(
+        crate::analysis::ty::state_index_tys(
             db,
             self.normalization_scope(db),
             ty,

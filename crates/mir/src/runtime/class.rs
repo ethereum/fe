@@ -469,6 +469,12 @@ fn builtin_result_class<'db>(
             verify_word_value(body, *len)?;
             Ok(Some(RuntimeClass::Scalar(word_scalar_class())))
         }
+        RuntimeBuiltin::KeccakWords { words } => {
+            for word in words {
+                verify_word_value(body, *word)?;
+            }
+            Ok(Some(RuntimeClass::Scalar(word_scalar_class())))
+        }
         RuntimeBuiltin::AddMod { lhs, rhs, modulus }
         | RuntimeBuiltin::MulMod { lhs, rhs, modulus } => {
             verify_word_value(body, *lhs)?;

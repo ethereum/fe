@@ -45,7 +45,7 @@ uses (ctx: Ctx, call: mut Call)
     if ctx.extcodesize(token) == 0 {
         return TokenCall::NoCode
     }
-    let mut ret = MemBuffer::empty()
+    var ret = MemBuffer::empty()
     let outcome = call.try_call_into(
         addr: token,
         gas: ops::gas(),
@@ -81,7 +81,7 @@ uses (ctx: Ctx, call: mut Call)
     if ctx.extcodesize(receiver) == 0 {
         return ReceiverCheck::NoCode
     }
-    let mut ret = MemBuffer::with_capacity(32)
+    var ret = MemBuffer::with_capacity(32)
     let outcome = call.try_call_into(
         addr: receiver,
         gas: ops::gas(),

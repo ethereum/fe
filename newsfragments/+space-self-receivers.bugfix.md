@@ -1,0 +1,1 @@
+A `space S = self` result-space contract was never checked for methods whose receiver is a `mut` or view parameter, so a collection could promise its own space while yielding memory copies of packed lanes or places pinned elsewhere. It is now checked, and arrays and `SolArray` declare `space S = self[_]`: `SolArray<u8>` exports memory grants and `SolArray<u256>` storage ones.

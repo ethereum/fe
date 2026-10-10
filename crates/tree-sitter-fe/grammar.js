@@ -202,19 +202,19 @@ module.exports = grammar({
       // self parameter: [mut] [ref|own] self [: Type]
       // e.g., `self`, `mut self`, `own self`, `mut own self`, `ref self`
       seq(optional('mut'), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
-      // labeled parameter: [mut|ref|own] label name : Type
-      // e.g., `from sender: address`, `_ val: u256`, `mut to recipient: address`
+      // labeled parameter: [var|ref|own] label name : Type
+      // e.g., `from sender: address`, `_ val: u256`, `var _ p: own Packed`
       seq(
-        optional(choice('mut', 'ref', 'own')),
+        optional(choice('mut', 'var', 'ref', 'own')),
         field('label', choice($.identifier, '_')),
         field('name', choice($.identifier, '_')),
         ':',
         field('type', $._type),
       ),
-      // unlabeled parameter: [mut|ref|own] name : Type
-      // e.g., `bar: i32`, `mut baz: u256`
+      // unlabeled parameter: [var|ref|own] name : Type
+      // e.g., `bar: i32`, `var baz: own u256`
       seq(
-        optional(choice('mut', 'ref', 'own')),
+        optional(choice('mut', 'var', 'ref', 'own')),
         field('name', choice($.identifier, '_')),
         ':',
         field('type', $._type),
@@ -449,12 +449,13 @@ module.exports = grammar({
       optional(seq('=', choice($.uses_param_list, $.uses_param))),
     ),
 
-    // Associated result space: `space S`, or `space S = memory`
+    // Associated result space: `space S`, `space S = memory` or
+    // `space S = self[_]`
     trait_space_item: $ => seq(
       optional($.attribute_list),
       'space',
       field('name', $.identifier),
-      optional(seq('=', field('value', $.path))),
+      optional(seq('=', field('value', $.path), optional($.space_path))),
     ),
 
     trait_type_item: $ => seq(
@@ -649,12 +650,18 @@ module.exports = grammar({
       optional(field('space', $.space_annotation)),
     )),
 
-    // Result-space contract: @S, @B::S, @self, @target(p)
+    // Result-space contract: @S, @B::S, @self, @self.f[_], @target(p)
     space_annotation: $ => prec.right(seq(
       '@',
       $.path,
-      optional(seq('(', $.path, ')')),
+      optional(choice(seq('(', $.path, ')'), $.space_path)),
     )),
+
+    // The sub-place a result-space contract names: `.f`, `.0` and `[_]`
+    space_path: $ => prec.right(repeat1(choice(
+      seq('.', choice($.identifier, $.integer_literal)),
+      seq('[', '_', ']'),
+    ))),
 
     // Qualified path: <Type as Trait>::AssocType
     qualified_path_type: $ => prec.right(seq(
@@ -1279,8 +1286,7 @@ module.exports = grammar({
     ),
 
     let_statement: $ => seq(
-      'let',
-      optional('mut'),
+      choice('let', 'var'),
       field('name', $._pattern),
       optional(seq(':', field('type', $._type))),
       optional(seq(
@@ -1332,6 +1338,8 @@ module.exports = grammar({
       $.literal_pattern,
       $.identifier_pattern,
       $.mut_pattern,
+      $.ref_pattern,
+      $.var_pattern,
       $.tuple_pattern,
       $.path_pattern,
       $.path_tuple_pattern,
@@ -1354,6 +1362,12 @@ module.exports = grammar({
 
     // Mutable binding in pattern: `Some(mut t)`, `Foo { mut x }`
     mut_pattern: $ => prec(1, seq('mut', $._pattern)),
+
+    // Read-access binding in pattern: `Some(ref t)`, `Foo { ref x }`
+    ref_pattern: $ => prec(1, seq('ref', $._pattern)),
+
+    // Mutable value binding in pattern: `Some(var t)`, `Foo { var x }`
+    var_pattern: $ => prec(1, seq('var', $._pattern)),
 
     tuple_pattern: $ => seq(
       '(',
@@ -1389,6 +1403,10 @@ module.exports = grammar({
       // Scoped path in field position: e.g., `Bar::Unit` inside `Foo { x, Bar::Unit }`
       $.scoped_path,
       field('name', $.identifier),
+      // Marked shorthand bindings: `Foo { mut x, ref y, var z }`
+      $.mut_pattern,
+      $.ref_pattern,
+      $.var_pattern,
       $.rest_pattern,
     ),
 

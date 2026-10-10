@@ -23,7 +23,7 @@ fn make() -> [u256; 3] {
 
 // Traversal order is a parameter.
 fn sum_by<C: Collection<Item = u256>, D: Driver<C, Item = u256, Extra = ()>>(_ xs: C, _ d: D) -> u256 uses (C::E, D::E) {
-    let mut s = 0
+    var s = 0
     for x in xs by d {
         s += x
     }
@@ -57,7 +57,7 @@ impl<B: Collection<Item = u256, Cursor = usize>> Producer<B> for Open {
 #[test]
 fn drivers_by_name() {
     let xs: [u256; 5] = [1, 2, 3, 4, 5]
-    let mut digits = 0
+    var digits = 0
     for x in xs by reversed() {
         digits = digits * 10 + x
     }
@@ -75,19 +75,19 @@ fn drivers_by_name() {
 #[test]
 fn method_chains() {
     let xs: [u256; 5] = [1, 2, 3, 4, 5]
-    let mut digits = 0
+    var digits = 0
     for x in xs.reversed().take(2) {
         digits = digits * 10 + x
     }
     assert!(digits == 54)
 
-    let mut weighted = 0
+    var weighted = 0
     for (i, x) in xs.enumerate() {
         weighted += i as u256 * x
     }
     assert!(weighted == 40)
 
-    let mut last = 0
+    var last = 0
     for (i, x) in xs.reversed().enumerate().skip(1).step_by(2) {
         last = i as u256 * 10 + x
     }
@@ -110,13 +110,13 @@ fn method_chains() {
 #[test]
 fn non_copy_elements() {
     let accounts = [Account { balance: 5, owner: 1 }, Account { balance: 7, owner: 2 }]
-    let mut digits = 0
-    for account in accounts by reversed() {
+    var digits = 0
+    for ref account in accounts by reversed() {
         digits = digits * 10 + account.balance
     }
     assert!(digits == 75)
-    let mut sum = 0
-    for (i, account) in accounts.enumerate() {
+    var sum = 0
+    for (i, ref account) in accounts.enumerate() {
         sum += account.owner * i as u256
     }
     assert!(sum == 2)
@@ -124,7 +124,7 @@ fn non_copy_elements() {
 
 #[test]
 fn mutating_through_drivers() {
-    let mut xs: [u256; 4] = [1, 2, 3, 4]
+    var xs: [u256; 4] = [1, 2, 3, 4]
     for x in mut xs by skip(2) {
         x *= 10
     }
@@ -138,14 +138,14 @@ fn mutating_through_drivers() {
 #[test]
 fn producers() {
     let xs: [u256; 3] = [10, 20, 30]
-    let mut sum = 0
+    var sum = 0
     for (i, x) in xs by enumerate().copied() {
         sum += i as u256 + x
     }
     assert!(sum == 63)
 
     let open = Open {}
-    let mut owned = 0
+    var owned = 0
     for account in xs by open {
         owned += account.balance * account.owner
     }

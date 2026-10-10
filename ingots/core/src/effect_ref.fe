@@ -26,16 +26,12 @@ pub enum AddressSpace {
     TransientStorage,
 }
 
-impl AddressSpace {
-    /// Whether the space starts zeroed, as storage and transient storage
-    /// do. A slot no one wrote reads as zero there, so the all-zero
-    /// representation is a value of every type the space holds.
-    pub const fn starts_zeroed(self) -> bool {
-        match self {
-            AddressSpace::Storage | AddressSpace::TransientStorage => true,
-            AddressSpace::Memory | AddressSpace::Calldata | AddressSpace::Code => false,
-        }
-    }
+/// A state space: the address spaces a `StateIndex` collection's elements
+/// live in. Both start zeroed: a slot no one wrote reads as zero, so the
+/// all-zero representation is a value of every type the space holds.
+pub enum StateSpace {
+    Storage,
+    TransientStorage,
 }
 
 /// Marker: `Self` can satisfy a read-only effect whose domain is `Target`.

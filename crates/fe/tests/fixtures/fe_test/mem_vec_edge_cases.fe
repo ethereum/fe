@@ -16,7 +16,7 @@ fn test_empty_roundtrip() {
 
 #[test]
 fn test_to_dyn_array_snapshot_isolation() {
-    let mut values: MemVec<u256> = MemVec::zeroed(2)
+    var values: MemVec<u256> = MemVec::zeroed(2)
     values.set(index: 0, value: 11)
     let first = values.to_dyn_array()
     values.set(index: 0, value: 99)
@@ -28,19 +28,19 @@ fn test_to_dyn_array_snapshot_isolation() {
 
 #[test]
 fn test_primitive_elements() {
-    let mut bools: MemVec<bool> = MemVec::zeroed(2)
+    var bools: MemVec<bool> = MemVec::zeroed(2)
     assert!(!bools.get(0))
     bools.set(index: 1, value: true)
     assert!(bools.to_dyn_array().get(1))
     assert!(!bools.get(0))
 
-    let mut unsigned: MemVec<u8> = MemVec::zeroed(2)
+    var unsigned: MemVec<u8> = MemVec::zeroed(2)
     unsigned.set(index: 0, value: 255)
     unsigned.set(index: 1, value: 42)
     assert!(unsigned.to_dyn_array().get(0) == 255)
     assert!(unsigned.get(1) == 42)
 
-    let mut signed: MemVec<i8> = MemVec::zeroed(2)
+    var signed: MemVec<i8> = MemVec::zeroed(2)
     signed.set(index: 0, value: -128)
     signed.set(index: 1, value: 127)
     let array = signed.to_dyn_array()
@@ -50,12 +50,12 @@ fn test_primitive_elements() {
 
 #[test]
 fn test_custom_int_elements() {
-    let mut unsigned: MemVec<Uint24> = MemVec::zeroed(2)
+    var unsigned: MemVec<Uint24> = MemVec::zeroed(2)
     unsigned.set(index: 0, value: Uint24 { val: 0xffffff })
     assert!(unsigned.to_dyn_array().get(0).val == 0xffffff)
     assert!(unsigned.get(1).val == 0)
 
-    let mut signed: MemVec<Int24> = MemVec::zeroed(2)
+    var signed: MemVec<Int24> = MemVec::zeroed(2)
     signed.set(index: 1, value: Int24 { val: -8388608 })
     assert!(signed.to_dyn_array().get(1).val == -8388608)
     assert!(signed.get(0).val == 0)
@@ -63,7 +63,7 @@ fn test_custom_int_elements() {
 
 #[test]
 fn test_fixed_bytes_elements() {
-    let mut values: MemVec<FixedBytes<4>> = MemVec::zeroed(2)
+    var values: MemVec<FixedBytes<4>> = MemVec::zeroed(2)
     values.set(index: 0, value: FixedBytes { val: 0x12345678 })
     values.set(index: 1, value: FixedBytes { val: 0xaabbccdd })
     let array = values.to_dyn_array()
@@ -94,18 +94,18 @@ fn test_dirty_bool_copy_get_reverts() {
 
 #[test]
 fn test_dirty_bool_can_be_replaced() {
-    let mut values = MemVec::from_dyn_array(dirty_bool())
+    var values = MemVec::from_dyn_array(dirty_bool())
     values.set(index: 0, value: true)
     assert!(values.to_dyn_array().get(0))
 }
 
 #[test]
 fn test_tuple_elements_of_every_arity() {
-    let mut single: MemVec<(u256,)> = MemVec::zeroed(2)
+    var single: MemVec<(u256,)> = MemVec::zeroed(2)
     single.set(index: 1, value: (7,))
     assert!(single.to_dyn_array().get(1).0 == 7)
 
-    let mut nine: MemVec<(u8, u8, u8, u8, u8, u8, u8, u8, u256)> = MemVec::zeroed(2)
+    var nine: MemVec<(u8, u8, u8, u8, u8, u8, u8, u8, u256)> = MemVec::zeroed(2)
     nine.set(index: 1, value: (1, 2, 3, 4, 5, 6, 7, 8, 9))
     let array = nine.to_dyn_array()
     assert!(array.encoded_size() == 32 + 2 * 9 * 32)
@@ -113,7 +113,7 @@ fn test_tuple_elements_of_every_arity() {
     assert!(array.get(0).8 == 0)
 
     // 16 is the largest tuple arity.
-    let mut sixteen: MemVec<(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u256)> = MemVec::zeroed(1)
+    var sixteen: MemVec<(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u256)> = MemVec::zeroed(1)
     sixteen.set(index: 0, value: (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
     assert!(sixteen.get(0).0 == 1)
     assert!(sixteen.to_dyn_array().get(0).15 == 16)
@@ -127,7 +127,7 @@ fn test_empty_memvec_get_panics() {
 
 #[test(should_revert, panic = 0x32)]
 fn test_empty_memvec_set_panics() {
-    let mut values: MemVec<u256> = MemVec::zeroed(0)
+    var values: MemVec<u256> = MemVec::zeroed(0)
     values.set(index: 0, value: 1)
 }
 

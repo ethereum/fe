@@ -1,0 +1,126 @@
+use core::effect_ref::{AddressSpace, StateSpace}
+use core::ops::StateIndex
+use std::evm::Ctx
+
+// Implementing `StateIndex` pins the implementor to its `SPACE`: it is
+// state-only. A memory collection implements `Index` instead.
+struct Cells {
+    len: u256,
+}
+
+impl StateIndex for Cells {
+    const SPACE: StateSpace = StateSpace::Storage
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        (root + 1 + key % 8, 0)
+    }
+}
+
+// Rejected: a `StateIndex` collection's elements live in a state space.
+struct Words {
+    base: u256,
+}
+
+impl StateIndex for Words {
+    const SPACE: StateSpace = AddressSpace::Memory
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        (self.base + key * 32, 0)
+    }
+}
+
+// Rejected: a pinned type is never constructed as a memory value.
+fn make_cells() {
+    let _cells = Cells { len: 0 }
+}
+
+// Rejected: `locate` declares no effects.
+struct Noisy {
+    len: u256,
+}
+
+impl StateIndex for Noisy {
+    const SPACE: StateSpace = StateSpace::Storage
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) uses (ctx: Ctx) {
+        (root + key + ctx.address().inner, 0)
+    }
+}
+
+// A pin belongs to the implementation that applies to each instance.
+trait Placement {
+    const SPACE: StateSpace
+}
+
+struct InStorage {}
+
+impl Placement for InStorage {
+    const SPACE: StateSpace = StateSpace::Storage
+}
+
+struct InTransient {}
+
+impl Placement for InTransient {
+    const SPACE: StateSpace = StateSpace::TransientStorage
+}
+
+struct Cell<P> {
+    base: u256,
+}
+
+impl<P: Placement> StateIndex for Cell<P> {
+    const SPACE: StateSpace = P::SPACE
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        (root + 1 + key % 4, 0)
+    }
+}
+
+// Rejected: `SPACE` is storage for `Cell<InStorage>`.
+fn make_stored_cell() {
+    let _cell: Cell<InStorage> = Cell { base: 0 }
+}
+
+// Rejected: `SPACE` is transient storage for `Cell<InTransient>`.
+fn make_transient_cell() {
+    let _cell: Cell<InTransient> = Cell { base: 0 }
+}
+
+// Rejected: some `Cell<P>` is pinned.
+fn make_any_cell<P: Placement>() {
+    let _cell: Cell<P> = Cell { base: 0 }
+}
+
+struct Split<P> {
+    base: u256,
+}
+
+impl StateIndex for Split<InStorage> {
+    const SPACE: StateSpace = StateSpace::Storage
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        (root + 1 + key % 4, 0)
+    }
+}
+
+struct Unplaced {}
+
+// Accepted: no implementation applies to `Split<Unplaced>`.
+fn make_unplaced_split() -> Split<Unplaced> {
+    Split { base: 0 }
+}
+
+// Rejected: the implementation for `Split<InStorage>` pins it.
+fn make_stored_split() {
+    let _split: Split<InStorage> = Split { base: 0 }
+}

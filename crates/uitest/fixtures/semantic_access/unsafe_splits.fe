@@ -26,7 +26,7 @@ pub contract C {
 fn external_call() uses (call: mut Call, storage: mut RawStorage) {
     let (a, b) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
     a.push(1)
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let _ = call.raw_call(addr: Address { inner: 1 }, gas: 0, value: 0, args: MemSpan::empty(), ret: mut output)
     b.push(2)
 }

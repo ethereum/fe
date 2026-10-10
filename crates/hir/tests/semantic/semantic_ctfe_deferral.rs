@@ -619,7 +619,7 @@ fn resource_limits_and_cache_environments_stay_separate() {
         r#"
 const fn recursive() -> u8 { recursive() }
 const fn count<const N: usize>() -> usize {
-    let mut i: usize = 0
+    var i: usize = 0
     while i < N { i += 1 }
     i
 }
@@ -788,7 +788,7 @@ fn blocked_mutating_requests_restart_from_original_state() {
         "blocked_mutating_requests.fe".into(),
         r#"
 const fn mutate<const N: usize>() -> u8 {
-    let mut values = [0 as u8; 2]
+    var values = [0 as u8; 2]
     values[0] = 7
     let selected = [values[0]; N][0]
     values[1] = selected
@@ -1038,7 +1038,7 @@ fn differential_strictness_projection_branch_and_loop_matrix() {
         r#"
 const fn fault<const N: usize>() -> u8 { [7 as u8; N][0] }
 const fn overwritten<const N: usize>() -> u8 {
-    let mut result = [7 as u8; N][0]
+    var result = [7 as u8; N][0]
     result = 9
     result
 }
@@ -1073,7 +1073,7 @@ const fn short_circuit<const N: usize>() -> bool {
     false && [true; N][0]
 }
 const fn counted<const N: usize>() -> usize {
-    let mut i: usize = 0
+    var i: usize = 0
     while i < N { i += 1 }
     i
 }
@@ -1358,7 +1358,7 @@ fn user_named_add_runs_its_body_after_specialization() {
         "user_named_add.fe".into(),
         r#"
 const fn add<const N: usize>(x: usize, y: usize) -> usize {
-    let mut values: [usize; N] = [0; N]
+    var values: [usize; N] = [0; N]
     values[0] = 1
     x + y + 40
 }
@@ -2702,7 +2702,7 @@ fn term_invocations_share_budget_even_when_cached() {
         "term_call_limits.fe".into(),
         r#"
 const fn work() -> usize {
-    let mut i: usize = 0
+    var i: usize = 0
     while i < 20 { i += 1 }
     i
 }
@@ -2855,8 +2855,8 @@ fn selected_const_repeat_length_keeps_its_trait_projection() {
         r#"
 use core::AsBytes
 const fn digits(value: usize) -> usize {
-    let mut remaining = value
-    let mut digits: usize = 1
+    var remaining = value
+    var digits: usize = 1
     while remaining >= 10 {
         remaining /= 10
         digits += 1
@@ -2867,7 +2867,7 @@ struct Suffix<const LEN: usize> {}
 impl<const LEN: usize> AsBytes for Suffix<LEN> {
     const N: usize = digits(value: LEN) + 2
     const fn as_bytes(self) -> [u8; Self::N] {
-        let mut out: [u8; Self::N] = [0; Self::N]
+        var out: [u8; Self::N] = [0; Self::N]
         out[0] = 91
         out
     }

@@ -55,7 +55,7 @@ fn reversed_through_a_supertrait_row() {
     let counts = Counts { values: [1, 2, 3, 4], len: 3 }
     let in_use = InUse {}
     with (counts) {
-        let mut digits = 0
+        var digits = 0
         for x in in_use.reversed() {
             digits = digits * 10 + x
         }

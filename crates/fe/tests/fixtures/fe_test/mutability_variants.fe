@@ -17,7 +17,7 @@ impl Counter {
 
 #[test]
 fn reads_and_writes_by_method() {
-    let mut xs: [u256; 3] = [1, 2, 3]
+    var xs: [u256; 3] = [1, 2, 3]
     let a = xs.at(1)
     assert(a == 2)
 
@@ -27,7 +27,7 @@ fn reads_and_writes_by_method() {
     first *= 7
     assert(xs[0] == 7 && xs[1] == 5 && xs[2] == 13)
 
-    let mut counters = [Counter { n: 0 }, Counter { n: 4 }]
+    var counters = [Counter { n: 0 }, Counter { n: 4 }]
     counters.at_mut(1).bump()
     assert(counters[1].n == 5)
     increment(xs.at_mut(1))
@@ -36,7 +36,7 @@ fn reads_and_writes_by_method() {
 
 // Generic code names the method its bound declares.
 fn bump_all<C: Collection<Item = u256> + CollectionMut>(_ xs: mut C) uses (C::E, C::EM) {
-    let mut c = xs.start()
+    var c = xs.start()
     while true {
         match c {
             Option::Some(cursor) => {
@@ -50,7 +50,7 @@ fn bump_all<C: Collection<Item = u256> + CollectionMut>(_ xs: mut C) uses (C::E,
 
 #[test]
 fn generic_variants() {
-    let mut xs: [u256; 2] = [1, 2]
+    var xs: [u256; 2] = [1, 2]
     bump_all(mut xs)
     assert(xs[0] == 2 && xs[1] == 3)
 }

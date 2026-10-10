@@ -15,7 +15,7 @@ impl Packed {
     }
 
     fn pick(mut self, _ lane: bool) -> mut u8 {
-        let mut scratch: u8 = 0
+        var scratch: u8 = 0
         if lane {
             yield mut self.a
         } else {

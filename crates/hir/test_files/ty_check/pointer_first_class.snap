@@ -583,7 +583,7 @@ note:
    │
 37 │   fn mem_array_allocation() -> u256 {
    │ ╭───────────────────────────────────^
-38 │ │     let mut array = unsafe { core::ptr::alloc_array<u256>(2) }
+38 │ │     var array = unsafe { core::ptr::alloc_array<u256>(2) }
 39 │ │     array[0] = 3
 40 │ │     array[1] = 5
    · │
@@ -594,32 +594,32 @@ note:
 note:
    ┌─ pointer_first_class.fe:38:9
    │
-38 │     let mut array = unsafe { core::ptr::alloc_array<u256>(2) }
-   │         ^^^^^^^^^ MemArray<u256>
+38 │     var array = unsafe { core::ptr::alloc_array<u256>(2) }
+   │         ^^^^^ MemArray<u256>
 
 note:
-   ┌─ pointer_first_class.fe:38:21
+   ┌─ pointer_first_class.fe:38:17
    │
-38 │     let mut array = unsafe { core::ptr::alloc_array<u256>(2) }
-   │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MemArray<u256>
+38 │     var array = unsafe { core::ptr::alloc_array<u256>(2) }
+   │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MemArray<u256>
 
 note:
-   ┌─ pointer_first_class.fe:38:30
+   ┌─ pointer_first_class.fe:38:26
    │
-38 │     let mut array = unsafe { core::ptr::alloc_array<u256>(2) }
-   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn alloc_array<u256>
+38 │     var array = unsafe { core::ptr::alloc_array<u256>(2) }
+   │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn alloc_array<u256>
 
 note:
-   ┌─ pointer_first_class.fe:38:30
+   ┌─ pointer_first_class.fe:38:26
    │
-38 │     let mut array = unsafe { core::ptr::alloc_array<u256>(2) }
-   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MemArray<u256>
+38 │     var array = unsafe { core::ptr::alloc_array<u256>(2) }
+   │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ MemArray<u256>
 
 note:
-   ┌─ pointer_first_class.fe:38:59
+   ┌─ pointer_first_class.fe:38:55
    │
-38 │     let mut array = unsafe { core::ptr::alloc_array<u256>(2) }
-   │                                                           ^ u256
+38 │     var array = unsafe { core::ptr::alloc_array<u256>(2) }
+   │                                                       ^ u256
 
 note:
    ┌─ pointer_first_class.fe:39:5

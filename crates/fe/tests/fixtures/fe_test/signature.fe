@@ -74,8 +74,8 @@ pub contract WrongMagic {
 pub contract ShortMagic {
     recv Erc1271Msg {
         IsValidSignature { hash, signature } -> u256 uses (raw: mut RawOps) {
-            let mut data = MemBuffer::alloc(32)
-            unsafe { raw.mstore(addr: data.ptr(), value: MAGIC_WORD) }
+            var data = MemBuffer::alloc(32)
+            unsafe { store_word(ptr: data.ptr(), value: MAGIC_WORD) }
             unsafe { data.set_len(4) }
             raw.return_data(data: data.span())
         }
@@ -87,7 +87,7 @@ pub contract RevertMagic {
     recv Erc1271Msg {
         IsValidSignature { hash, signature } -> u256 uses (raw: mut RawOps) {
             let data = MemBuffer::alloc(32)
-            unsafe { raw.mstore(addr: data.ptr(), value: MAGIC_WORD) }
+            unsafe { store_word(ptr: data.ptr(), value: MAGIC_WORD) }
             raw.revert(data: data.span())
         }
     }
@@ -98,8 +98,8 @@ pub contract LongMagic {
     recv Erc1271Msg {
         IsValidSignature { hash, signature } -> u256 uses (raw: mut RawOps) {
             let data = MemBuffer::alloc(64)
-            unsafe { raw.mstore(addr: data.ptr(), value: MAGIC_WORD) }
-            unsafe { raw.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: 0xdead) }
+            unsafe { store_word(ptr: data.ptr(), value: MAGIC_WORD) }
+            unsafe { store_word(ptr: ptr::offset_bytes(data.ptr(), 32), value: 0xdead) }
             raw.return_data(data: data.span())
         }
     }

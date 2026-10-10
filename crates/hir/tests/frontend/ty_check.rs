@@ -176,7 +176,7 @@ fn mutable_method_receivers_reject_immutable_owned_places() {
             "{source}\n{diags:#?}"
         );
         assert_eq!(diags.len(), 1, "{source}\n{diags:#?}");
-        assert!(!diagnostics_contain(&diags, "let mut"), "{diags:#?}");
+        assert!(!diagnostics_contain(&diags, "var"), "{diags:#?}");
         assert!(!diagnostics_contain(&diags, "normalized"), "{diags:#?}");
     }
 }
@@ -194,7 +194,7 @@ impl Wrapper {
     fn valid(mut own self) { self.counter.increment() }
 }
 fn make() -> Counter { Counter { value: 0 } }
-fn valid(mut counter: own Counter, pointer: *Counter) {
+fn valid(var counter: own Counter, pointer: *Counter) {
     counter.increment()
     unsafe { (*pointer).increment() }
     make().increment()
@@ -327,7 +327,7 @@ fn const_array_oob_write_is_rejected() {
         "const_array_oob_write_is_rejected.fe".into(),
         r#"
 fn trigger() {
-    let mut x: [u256; 3] = [10; 3]
+    var x: [u256; 3] = [10; 3]
     x[5] = 1
 }
 "#,

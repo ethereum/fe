@@ -797,6 +797,7 @@ impl super::Parse for TraitSpaceItemScope {
         }
         if parser.bump_if(SyntaxKind::Eq) {
             parser.or_recover(|p| p.parse(PathScope::default()))?;
+            super::type_::parse_space_path_opt(parser)?;
         }
         Ok(())
     }

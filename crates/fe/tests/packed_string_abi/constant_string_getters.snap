@@ -1,0 +1,9 @@
+---
+source: crates/fe/tests/packed_string_abi.rs
+assertion_line: 116
+expression: report
+---
+runtime bytes: 277
+name() gas: 502
+symbol() gas: 520
+empty() gas: 489

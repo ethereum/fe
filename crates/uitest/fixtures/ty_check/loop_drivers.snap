@@ -21,8 +21,8 @@ error[8-0018]: left-hand side of assignment is immutable
 error[8-0018]: left-hand side of assignment is immutable
    ┌─ loop_drivers.fe:50:9
    │
-49 │     for (_, account) in accounts.enumerate() {
-   │             ------- try changing to `mut account`
+49 │     for (_, ref account) in accounts.enumerate() {
+   │             ----------- try changing to `mut account`
 50 │         account.balance = 0
    │         ^^^^^^^^^^^^^^^ immutable assignment
 

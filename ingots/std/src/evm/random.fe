@@ -11,11 +11,11 @@
 //! }
 //!
 //! // in a handler: seed from the chain
-//! let mut rng = KeccakRng::seeded(ctx.prevrandao())
+//! var rng = KeccakRng::seeded(ctx.prevrandao())
 //! let winner = with (Rng = rng) { draw_winner(tickets) }
 //!
 //! // in a test: replay chosen words
-//! let mut rng = ReplayRng::new([3, 0, 7])
+//! var rng = ReplayRng::new([3, 0, 7])
 //! let winner = with (Rng = rng) { draw_winner(tickets) }
 //! ```
 //!
@@ -49,7 +49,7 @@ pub trait Rng {
             revert_error(Panic::from(PANIC_DIVISION_BY_ZERO))
         }
         let threshold = (0 - upper) % upper
-        let mut word = self.next()
+        var word = self.next()
         while word < threshold {
             word = self.next()
         }
@@ -111,7 +111,7 @@ impl<const N: usize> Rng for ReplayRng<N> {
 pub fn shuffle<T, const N: usize>(_ items: mut [T; N])
 uses (rng: mut Rng) where T: Copy
 {
-    let mut i = N
+    var i = N
     while i > 1 {
         let j = rng.uniform(i as u256) as usize
         i -= 1
@@ -127,7 +127,7 @@ uses (rng: mut Rng) where T: Copy
 /// A `MemSlice` is a read-only view: the caller must ensure that nothing else
 /// relies on the viewed memory staying unchanged.
 pub unsafe fn shuffle_slice<T>(_ items: MemSlice<T>) uses (rng: mut Rng) where T: Copy {
-    let mut i = items.len()
+    var i = items.len()
     while i > 1 {
         let j = rng.uniform(i)
         i -= 1

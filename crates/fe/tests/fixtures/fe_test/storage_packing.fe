@@ -274,7 +274,7 @@ pub contract Collections {
         }
         Transient {} -> u256 uses (evm: Evm) {
             unsafe {
-                let mut value: TStorPtr<Small> = evm.tstor_ptr<Small>(0x40)
+                var value: TStorPtr<Small> = evm.tstor_ptr<Small>(0x40)
                 with (value) {
                     core::effect_ref::write(value, Small { a: 0x11, b: 0x22, c: 0x33 })
                     set_small_b()
@@ -455,7 +455,7 @@ fn test_narrow_signed_contract_field_keeps_its_bytes() uses (evm: mut Evm) {
 
 #[test]
 fn test_native_memory_narrow_field_projection() {
-    let mut value = Gap { a: 0x11, empty: Empty {}, b: 0x22 }
+    var value = Gap { a: 0x11, empty: Empty {}, b: 0x22 }
     let r = mut value
     assert(r.a == 0x11)
     assert(r.b == 0x22)
@@ -491,7 +491,7 @@ fn update_native_lanes() uses (value: mut NativeLanes) {
 #[test]
 fn test_transient_native_packed_projection() uses (evm: mut Evm) {
     unsafe {
-        let mut value: TStorPtr<NativeLanes> = evm.tstor_ptr<NativeLanes>(0x50)
+        var value: TStorPtr<NativeLanes> = evm.tstor_ptr<NativeLanes>(0x50)
         with (value) {
             core::effect_ref::write(value, NativeLanes { a: 0x11, b: -2, c: true })
             update_native_lanes()

@@ -85,7 +85,7 @@ impl<T> StorageHeap<T> {
     /// contract field, uses `slot` or the items' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
             with (ptr) {
                 core::effect_ref::target_mut(ptr)
@@ -180,7 +180,7 @@ impl<T> StorageHeap<T> where T: Ord + Copy {
 
     // Places `value` at the hole `index`, moving it up past larger parents.
     fn sift_up(mut self, _ index: u256, _ value: T) {
-        let mut hole = index
+        var hole = index
         while hole > 0 {
             let parent = (hole - 1) / 2
             let parent_value = self.items.get(parent)
@@ -197,11 +197,11 @@ impl<T> StorageHeap<T> where T: Ord + Copy {
     // children, within the first `len` elements.
     fn sift_down(mut self, _ index: u256, _ value: T) {
         let len = self.len
-        let mut hole = index
+        var hole = index
         while true {
-            let mut child = 2 * hole + 1
+            var child = 2 * hole + 1
             if child >= len { break }
-            let mut child_value = self.items.get(child)
+            var child_value = self.items.get(child)
             if child + 1 < len {
                 let right = self.items.get(child + 1)
                 if right.lt(child_value) {

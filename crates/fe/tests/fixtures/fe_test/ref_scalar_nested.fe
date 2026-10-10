@@ -14,8 +14,8 @@ impl Reader {
 }
 
 fn sum_reader(_ r: Reader) -> u256 {
-    let mut total = 0
-    let mut i: u256 = 0
+    var total = 0
+    var i: u256 = 0
     while i < 4 {
         total += r.source().value + r.bias
         i += 1

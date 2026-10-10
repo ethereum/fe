@@ -1,4 +1,4 @@
-use core::ops::PlaceIndex
+use core::ops::StateIndex
 use std::evm::{Address, StorageKey, StorageMap}
 
 // `map[k]` on a storage map is an entry place, a path under the map's place
@@ -63,7 +63,7 @@ fn read_during_write(_ key: u256) -> u256 uses (store: mut Store) {
 
 fn touch<T>(_ x: mut T) {}
 
-fn touch_entry<C: PlaceIndex>(_ c: mut C, _ key: C::Key) {
+fn touch_entry<C: StateIndex>(_ c: mut C, _ key: C::Key) {
     touch(mut c[key])
 }
 

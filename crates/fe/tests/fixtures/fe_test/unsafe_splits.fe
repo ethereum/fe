@@ -31,7 +31,7 @@ fn swapped(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u
 
 #[test]
 fn pair_mut_forwarded_and_reordered() {
-    let mut xs = MemArray<u256>::new_zeroed(4)
+    var xs = MemArray<u256>::new_zeroed(4)
     xs[0] = 1
     xs[3] = 2
     let (first, second) = swapped(mut xs, 0, 3)

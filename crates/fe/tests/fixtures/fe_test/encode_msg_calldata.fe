@@ -4,6 +4,7 @@
 /// by `encode_msg_calldata`.
 
 use core::ptr
+use core::abi::store_word
 use std::evm::{Ctx, Evm, RawOps, copy_returndata, decode_returndata, encode_msg_calldata}
 
 msg EchoMsg {
@@ -19,7 +20,7 @@ msg EchoMsg {
 
 fn hash_calldata() -> u256 uses (raw: mut RawOps) {
     let len = raw.calldatasize()
-    let mut data = ptr::MemBuffer::alloc(len)
+    var data = ptr::MemBuffer::alloc(len)
     raw.calldatacopy(dest: mut data, dest_offset: 0, src_offset: 0, len)
     raw.keccak256(data: data.span())
 }
@@ -37,20 +38,20 @@ pub contract Echo uses (raw: mut RawOps) {
         }
 
         CopyCalldataWindow {} -> u256 uses (mut raw) {
-            let mut data = ptr::MemBuffer::with_capacity(3)
+            var data = ptr::MemBuffer::with_capacity(3)
             raw.calldatacopy(dest: mut data, dest_offset: 1, src_offset: 1, len: 2)
             assert!(data.len() == 3)
             assert!(data.span().byte_at(0) == 0)
-            let mut untouched = ptr::MemBuffer::with_capacity(3)
+            var untouched = ptr::MemBuffer::with_capacity(3)
             raw.calldatacopy(dest: mut untouched, dest_offset: 2, src_offset: 0, len: 0)
             assert!(untouched.len() == 0)
             ((data.span().byte_at(1) as u256) << 8) | (data.span().byte_at(2) as u256)
         }
 
         CopyCodeWindow {} -> u256 uses (mut raw) {
-            let mut direct = ptr::MemBuffer::with_capacity(1)
+            var direct = ptr::MemBuffer::with_capacity(1)
             raw.codecopy(dest: mut direct, dest_offset: 0, src_offset: 0, len: 1)
-            let mut shifted = ptr::MemBuffer::with_capacity(3)
+            var shifted = ptr::MemBuffer::with_capacity(3)
             raw.codecopy(dest: mut shifted, dest_offset: 2, src_offset: 0, len: 1)
             assert!(direct.len() == 1)
             assert!(shifted.len() == 3)
@@ -64,13 +65,11 @@ pub contract Echo uses (raw: mut RawOps) {
 
 /// Build a 64-byte `Bytes` payload. `data` points at the ABI tail: the
 /// length word followed by the packed content words.
-fn build_bytes() -> Bytes
-uses (mem: mut std::evm::RawMem)
-{
+fn build_bytes() -> Bytes {
     let data = ptr::alloc_bytes(96)
-    unsafe { mem.mstore(addr: data, value: 64) }
-    unsafe { mem.mstore(addr: ptr::offset_bytes(data, 32), value: 0x1234) }
-    unsafe { mem.mstore(addr: ptr::offset_bytes(data, 64), value: 0x5678) }
+    unsafe { store_word(ptr: data, value: 64) }
+    unsafe { store_word(ptr: ptr::offset_bytes(data, 32), value: 0x1234) }
+    unsafe { store_word(ptr: ptr::offset_bytes(data, 64), value: 0x5678) }
     unsafe { Bytes::from_abi_tail(data: data, len: 64, size: 96) }
 }
 
@@ -83,7 +82,7 @@ fn test_encode_msg_calldata_static_args() uses (evm: mut Evm, call: mut Call, ct
     let typed_digest: u256 = echo.call(EchoMsg::DigestStatic { a: 42, b: addr_arg })
 
     let data = encode_msg_calldata(EchoMsg::DigestStatic { a: 42, b: addr_arg })
-    let mut ret = ptr::MemBuffer::empty()
+    var ret = ptr::MemBuffer::empty()
     let outcome = call.raw_call(addr: echo, gas: ctx.gas(), value: 0, args: data.span(), ret: mut ret)
     assert!(outcome.success())
     let raw_digest: u256 = decode_returndata(copy_returndata().span())
@@ -92,14 +91,14 @@ fn test_encode_msg_calldata_static_args() uses (evm: mut Evm, call: mut Call, ct
 }
 
 #[test]
-fn test_encode_msg_calldata_dynamic_bytes() uses (evm: mut Evm, call: mut Call, ctx: Ctx, mem: mut std::evm::RawMem) {
+fn test_encode_msg_calldata_dynamic_bytes() uses (evm: mut Evm, call: mut Call, ctx: Ctx) {
     let echo = evm.create2<Echo>(value: 0, args: (), salt: 0)
     assert!(echo.inner != 0)
 
     let typed_digest: u256 = echo.call(EchoMsg::DigestDynamic { data: build_bytes() })
 
     let data = encode_msg_calldata(EchoMsg::DigestDynamic { data: build_bytes() })
-    let mut ret = ptr::MemBuffer::empty()
+    var ret = ptr::MemBuffer::empty()
     let outcome = call.raw_call(addr: echo, gas: ctx.gas(), value: 0, args: data.span(), ret: mut ret)
     assert!(outcome.success())
     let raw_digest: u256 = decode_returndata(copy_returndata().span())
@@ -121,7 +120,7 @@ uses (evm: mut Evm, call: mut Call, ctx: Ctx)
         a: 42,
         b: Address { inner: 0xabcdef },
     })
-    let mut ignored = ptr::MemBuffer::empty()
+    var ignored = ptr::MemBuffer::empty()
     let outcome = call.raw_call(
         addr: echo,
         gas: ctx.gas(),
@@ -132,9 +131,9 @@ uses (evm: mut Evm, call: mut Call, ctx: Ctx)
     assert!(outcome.success())
     assert!(evm.returndatasize() == 32)
 
-    let mut direct = ptr::MemBuffer::with_capacity(2)
+    var direct = ptr::MemBuffer::with_capacity(2)
     evm.returndatacopy(dest: mut direct, dest_offset: 0, src_offset: 30, len: 2)
-    let mut shifted = ptr::MemBuffer::with_capacity(5)
+    var shifted = ptr::MemBuffer::with_capacity(5)
     evm.returndatacopy(dest: mut shifted, dest_offset: 3, src_offset: 30, len: 2)
     assert!(direct.len() == 2)
     assert!(shifted.len() == 5)

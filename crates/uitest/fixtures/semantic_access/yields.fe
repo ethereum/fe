@@ -5,7 +5,7 @@ struct Cell { v: u256, depth: u256 }
 impl Cell {
     // Accepted: the slide writes the temporary back.
     fn written_back(mut self) -> mut u256 {
-        let mut tmp = self.v
+        var tmp = self.v
         yield mut tmp
         self.v = tmp
     }
@@ -52,12 +52,12 @@ impl Cell {
 
     // Warned: writes through a frame temporary with no slide are discarded.
     fn discarded(self) -> mut u256 {
-        let mut tmp = self.v
+        var tmp = self.v
         mut tmp
     }
 
     fn discarded_stmt(self) -> mut u256 {
-        let mut tmp = self.v
+        var tmp = self.v
         yield mut tmp
     }
 

@@ -13,6 +13,13 @@ extern {
     /// This is intended for compiler-generated code. Prefer using `core::keccak`.
     pub const fn __keccak256<const N: usize>(_: [u8; N]) -> u256
 
+    /// Computes `keccak256` over `words`, each as 32 big-endian bytes, in
+    /// order. The digest is a value of the words alone, so the compiler can
+    /// fold it and reuse it for equal words.
+    ///
+    /// This is intended for library code. Prefer using `std::evm::keccak_words`.
+    pub const fn __keccak_words<const N: usize>(_: [u256; N]) -> u256
+
     /// Sets the representation of `place` to zeros: its bytes in memory, its
     /// words in storage or transient storage. A place packed into part of a
     /// word, a lane, has only its own bits cleared.

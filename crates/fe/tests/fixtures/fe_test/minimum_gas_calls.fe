@@ -1,4 +1,5 @@
 use core::ptr
+use core::abi::load_word
 use std::evm::{calls::has_min_gas, Create, RawOps}
 
 #[test]
@@ -55,7 +56,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps, ctx: Ctx)
 {
     // GAS; PUSH0; MSTORE; PUSH1 32; PUSH0; RETURN
     let target = deploy(0x5a5f5260205ff3, 7, 0)
-    let mut output = ptr::MemBuffer::alloc(32)
+    var output = ptr::MemBuffer::alloc(32)
     let result = call
         .call_with_min_gas(
             addr: target,
@@ -69,7 +70,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps, ctx: Ctx)
         Result::Ok(outcome,) => {
             assert!(outcome.success() && outcome.returndata_len() == 32)
             raw.returndatacopy(dest: mut output, dest_offset: 0, src_offset: 0, len: 32)
-            unsafe { assert!(raw.mload(output.ptr()) == 49998) }
+            unsafe { assert!(load_word(output.ptr()) == 49998) }
             assert!(ctx.gas() > 20000)
         },
     }
@@ -179,7 +180,7 @@ fn value_stipend_and_balance()
 uses (call: mut Call, create: mut Create, raw: mut RawOps, ctx: Ctx)
 {
     let target = deploy(0x5a5f5260205ff3, 7, 0)
-    let mut output = ptr::MemBuffer::alloc(32)
+    var output = ptr::MemBuffer::alloc(32)
     match call.call_with_min_gas(
         addr: target,
         minimum: 50000,
@@ -191,7 +192,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps, ctx: Ctx)
         Result::Ok(outcome,) => {
             assert!(outcome.success())
             raw.returndatacopy(dest: mut output, dest_offset: 0, src_offset: 0, len: 32)
-            unsafe { assert!(raw.mload(output.ptr()) == 52298) }
+            unsafe { assert!(load_word(output.ptr()) == 52298) }
             assert!(ctx.balance(target) == 7)
         },
     }
@@ -205,7 +206,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps)
     let target = deploy(0x5f355f5260205ffd, 8, 0)
     let input = ptr::MemBuffer::alloc(4096)
     unsafe { core::abi::store_word(ptr: input.ptr(), value: 0xdeadbeef) }
-    let mut output = ptr::MemBuffer::alloc(32)
+    var output = ptr::MemBuffer::alloc(32)
     match call.call_with_min_gas(
         addr: target,
         minimum: 50000,
@@ -217,7 +218,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps)
         Result::Ok(outcome,) => {
             assert!(!outcome.success() && outcome.returndata_len() == 32)
             raw.returndatacopy(dest: mut output, dest_offset: 0, src_offset: 0, len: 32)
-            unsafe { assert!(raw.mload(output.ptr()) == 0xdeadbeef) }
+            unsafe { assert!(load_word(output.ptr()) == 0xdeadbeef) }
         },
     }
 }

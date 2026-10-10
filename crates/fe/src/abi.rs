@@ -810,23 +810,7 @@ fn derive_state_mutability(
         return "payable".to_string();
     }
 
-    // EVM memory is local to the call. Reading or writing RawMem cannot
-    // observe or mutate chain state and must not change ABI mutability.
-    let raw_mem = resolve_lib_trait_path(
-        db,
-        arm_view.contract(db).scope(),
-        "std::evm::effects::RawMem",
-    );
     let effects = arm_view.effective_effect_requirements(db);
-    let effects: Vec<_> = effects
-        .iter()
-        .filter(|effect| {
-            !effect
-                .key
-                .key_trait()
-                .is_some_and(|inst| Some(inst.def(db)) == raw_mem)
-        })
-        .collect();
     if effects.is_empty() {
         "pure".to_string()
     } else if effects.iter().any(|effect| effect.is_mut) {
@@ -1650,7 +1634,7 @@ pub contract Probe {
     recv ProbeMsg {
         Probe { target } -> bool uses (call: Call) {
             let args = MemBuffer::alloc(0)
-            let mut ret = MemBuffer::with_capacity(64)
+            var ret = MemBuffer::with_capacity(64)
             call.raw_staticcall(addr: target, gas: 30000, args: args.span(), ret: mut ret).success()
         }
     }
@@ -2055,15 +2039,15 @@ pub contract C {
         );
     }
     #[test]
-    fn memory_effects_do_not_change_abi_state_mutability() {
+    fn raw_memory_does_not_change_abi_state_mutability() {
         let code = r#"
+use core::abi::store_word
+use core::ptr
 use std::abi::sol
-use std::evm::{RawMem, RawStorage}
+use std::evm::RawStorage
 msg M {
     #[selector = sol("memoryOnly()")]
     MemoryOnly {},
-    #[selector = sol("readMemory()")]
-    ReadMemory {},
     #[selector = sol("readStorage()")]
     ReadStorage {},
     #[selector = sol("writeStorage()")]
@@ -2071,17 +2055,17 @@ msg M {
 }
 pub contract C {
     recv M {
-        MemoryOnly {} uses (mem: mut RawMem) {}
-        ReadMemory {} uses (mem: RawMem) {}
-        ReadStorage {} uses (mem: mut RawMem, storage: RawStorage) {}
-        WriteStorage {} uses (mem: mut RawMem, storage: mut RawStorage) {}
+        MemoryOnly {} {
+            unsafe { store_word(ptr: ptr::alloc_bytes(32), value: 1) }
+        }
+        ReadStorage {} uses (storage: RawStorage) {}
+        WriteStorage {} uses (storage: mut RawStorage) {}
     }
 }
 "#;
         let entries = abi_entries(code, "C");
         for (name, expected) in [
             ("memoryOnly", "pure"),
-            ("readMemory", "pure"),
             ("readStorage", "view"),
             ("writeStorage", "nonpayable"),
         ] {

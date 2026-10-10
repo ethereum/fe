@@ -255,7 +255,7 @@ impl ValidationData {
     /// `2^48 - 1`, so `pack` after `unpack` keeps the meaning but not the
     /// word.
     pub fn unpack(_ data: u256) -> Self {
-        let mut valid_until = (data >> 160) & MAX_U48
+        var valid_until = (data >> 160) & MAX_U48
         if valid_until == 0 {
             valid_until = MAX_U48
         }

@@ -31,14 +31,14 @@ msg ShapeMsg {
 pub contract ShapeDispatcher {
     recv ShapeMsg {
         DispatchPoint { x, y } -> u256 {
-            let mut p = Point { x: x, y: y }
+            var p = Point { x: x, y: y }
             p.x += 1
             p.y += 2
             return p.area()
         }
 
         DispatchSquare { side } -> u256 {
-            let mut s = Square { side: side }
+            var s = Square { side: side }
             s.side += 3
             return s.area()
         }

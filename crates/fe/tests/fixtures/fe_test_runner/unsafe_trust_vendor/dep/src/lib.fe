@@ -1,0 +1,35 @@
+use core::abi::{load_word, store_word}
+use core::effect_ref::StateSpace
+use core::ops::StateIndex
+use core::ptr
+
+pub fn safe_sum(_ a: u256, _ b: u256) -> u256 {
+    a + b
+}
+
+pub fn round_trip(_ value: u256) -> u256 {
+    let p = ptr::alloc_bytes(32)
+    unsafe {
+        store_word(ptr: p, value)
+        load_word(p)
+    }
+}
+
+/// Slots of storage after the collection's root. Construction is safe;
+/// only indexing runs unsafe code, in `locate`.
+pub struct Slots<T> {}
+
+impl<T> StateIndex for Slots<T> {
+    const SPACE: StateSpace = StateSpace::Storage
+    type Key = u256
+    type Entry = T
+
+    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+        let scratch = ptr::alloc_bytes(32)
+        let offset = unsafe {
+            store_word(ptr: scratch, value: key)
+            load_word(scratch)
+        }
+        (root + 1 + offset, 0)
+    }
+}

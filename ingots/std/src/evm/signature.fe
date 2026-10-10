@@ -109,7 +109,7 @@ uses (call: Call)
 {
     let len = signature.len()
     let padded = (len + 31) / 32 * 32
-    let args = MemBuffer::alloc(0x64 + padded)
+    let args = unsafe { MemBuffer::alloc_uninit(0x64 + padded) }
     unsafe {
         ops::mstore(addr: args.ptr(), value: ERC1271_MAGIC_WORD)
         ops::mstore(addr: offset(args.ptr(), 0x04), value: digest)
@@ -121,7 +121,7 @@ uses (call: Call)
     }
     unsafe { ptr::copy(offset(args.ptr(), 0x64), signature) }
 
-    let mut ret = MemBuffer::with_capacity(32)
+    var ret = MemBuffer::with_capacity(32)
     let outcome = call.raw_staticcall(addr: signer, gas: ops::gas(), args: args.span(), ret: mut ret)
     unsafe {
         outcome.success()

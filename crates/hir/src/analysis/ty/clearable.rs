@@ -56,7 +56,7 @@ fn clearable_components<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Optio
         TyData::TyBase(TyBase::Prim(PrimTy::View | PrimTy::BorrowMut | PrimTy::BorrowRef)) => None,
         TyData::TyBase(TyBase::Prim(_)) => Some(Vec::new()),
         TyData::TyBase(TyBase::Adt(adt)) => {
-            if adt.pin(db).is_some() || args.len() != adt.params(db).len() {
+            if ty.may_be_pinned(db) || args.len() != adt.params(db).len() {
                 return None;
             }
             Some(

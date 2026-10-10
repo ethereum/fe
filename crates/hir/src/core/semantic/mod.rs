@@ -1110,8 +1110,8 @@ impl<'db> FuncParamView<'db> {
             && param.is_mut
             && !matches!(hir_ty.data(db), TypeKind::Mode(TypeMode::Own, _))
         {
-            let span = self.span().mut_kw().into();
-            return vec![TyLowerDiag::InvalidMutParamPrefixWithoutOwnType { span }.into()];
+            let span = self.span().var_kw().into();
+            return vec![TyLowerDiag::VarParamNotOwned { span }.into()];
         }
 
         // Surface name-resolution errors for the parameter type first. The

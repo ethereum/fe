@@ -52,7 +52,7 @@ impl Collection for Keyed {
 // 19. Rejected: `Identity` over an effectful base needs the base's effects.
 fn case19_identity_missing(_ xs: Keyed) -> u256 {
     let d = Identity {}
-    let mut sum = 0
+    var sum = 0
     for x in xs by d {
         sum += x
     }

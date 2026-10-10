@@ -25,9 +25,9 @@ pub contract C {
 
     recv Msg {
         Inc -> u256 uses (mut counter) {
-            let mut result = counter.value
+            var result = counter.value
             match counter.maybe_value_mut(do_inc: true) {
-                Option::Some(mut value) => {
+                Option::Some(value) => {
                     value += 1
                     result = value
                 }

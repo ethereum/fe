@@ -40,24 +40,24 @@ fn non_copy_accumulator_and_items() {
 #[test]
 fn adapters() {
     let xs: [u256; 4] = [1, 2, 3, 4]
-    let mut evens = 0
+    var evens = 0
     for x in xs.filter(|x| x % 2 == 0) {
         evens += x
     }
     assert!(evens == 6)
-    let mut total = 0
+    var total = 0
     for y in xs.map(|x| x + 1) {
         total += y
     }
     assert!(total == 14)
 
     // A free adapter does not know the base, so its closure is annotated.
-    let mut odds = 0
+    var odds = 0
     for x in xs by filter(|x: u256| x % 2 == 1) {
         odds += x
     }
     assert!(odds == 4)
-    let mut doubled = 0
+    var doubled = 0
     for y in xs by map(|x: u256| x * 2) {
         doubled += y
     }
@@ -81,7 +81,7 @@ fn control_flow_in_bodies() {
         if x == 3 {
             return acc
         }
-        let mut i = 0
+        var i = 0
         while true {
             i += 1
             if i == x {
@@ -103,13 +103,13 @@ fn collect_and_chains() {
     let shifted: MemArray<u256> = MemArray::collect(xs, xs.map(|x| x + offset))
     assert!(shifted[0] == 101)
 
-    let mut weighted = 0
+    var weighted = 0
     for (i, x) in xs.filter(|x| x % 2 == 0).enumerate() {
         weighted += (i as u256 + 1) * x
     }
     assert!(weighted == 2 + 8)
 
-    let mut taken = 0
+    var taken = 0
     for x in xs.filter(|x| x > 1).take(2) {
         taken += x
     }

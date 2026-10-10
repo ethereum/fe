@@ -90,18 +90,56 @@ func private %abi_single_root_size(v0.i256) -> i256 {
 
 func private %impl_MemBuffer__alloc(v0.i256) -> @layout_0 {
     block0:
+        v1.objref<@layout_0> = obj.alloc @layout_0;
         jump block1;
 
     block1:
-        v2.*i8 = evm_malloc v0;
-        v3.i256 = ptr_to_int v2 i256;
-        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v3;
-        v8.@layout_0 = insert_value v6 1.i256 v0;
-        v10.@layout_0 = insert_value v8 2.i256 v0;
-        return v10;
+        v3.@layout_0 = call %impl_MemBuffer__alloc_uninit v0;
+        v5.objref<i256> = obj.proj v1 0.i256;
+        v6.i256 = extract_value v3 0.i256;
+        obj.store v5 v6;
+        v8.objref<i256> = obj.proj v1 1.i256;
+        v9.i256 = extract_value v3 1.i256;
+        obj.store v8 v9;
+        v11.objref<i256> = obj.proj v1 2.i256;
+        v12.i256 = extract_value v3 2.i256;
+        obj.store v11 v12;
+        v13.i256 = extract_value v3 0.i256;
+        call %zero_bytes v13 v0;
+        return v3;
 }
 
 func inline(always) private %alloc__g03ed() -> @layout_1 {
+    block0:
+        v0.objref<@layout_1> = obj.alloc @layout_1;
+        jump block1;
+
+    block1:
+        v1.@layout_1 = call %alloc_uninit__g03ed;
+        v3.objref<i256> = obj.proj v0 0.i256;
+        v4.i256 = extract_value v1 0.i256;
+        obj.store v3 v4;
+        v5.i256 = extract_value v1 0.i256;
+        call %zero_bytes v5 64.i256;
+        return v1;
+}
+
+func inline(always) private %alloc__g1d2b() -> @layout_1 {
+    block0:
+        v0.objref<@layout_1> = obj.alloc @layout_1;
+        jump block1;
+
+    block1:
+        v1.@layout_1 = call %alloc_uninit__g1d2b;
+        v3.objref<i256> = obj.proj v0 0.i256;
+        v4.i256 = extract_value v1 0.i256;
+        obj.store v3 v4;
+        v5.i256 = extract_value v1 0.i256;
+        call %zero_bytes v5 32.i256;
+        return v1;
+}
+
+func inline(always) private %alloc_uninit__g03ed() -> @layout_1 {
     block0:
         jump block1;
 
@@ -112,7 +150,7 @@ func inline(always) private %alloc__g03ed() -> @layout_1 {
         return v5;
 }
 
-func inline(always) private %alloc__g1d2b() -> @layout_1 {
+func inline(always) private %alloc_uninit__g1d2b() -> @layout_1 {
     block0:
         jump block1;
 
@@ -121,6 +159,19 @@ func inline(always) private %alloc__g1d2b() -> @layout_1 {
         v2.i256 = ptr_to_int v1 i256;
         v5.@layout_1 = insert_value undef.@layout_1 0.i256 v2;
         return v5;
+}
+
+func private %impl_MemBuffer__alloc_uninit(v0.i256) -> @layout_0 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.*i8 = evm_malloc v0;
+        v3.i256 = ptr_to_int v2 i256;
+        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v3;
+        v8.@layout_0 = insert_value v6 1.i256 v0;
+        v10.@layout_0 = insert_value v8 2.i256 v0;
+        return v10;
 }
 
 func private %cast(v0.i256) -> i256 {
@@ -698,6 +749,15 @@ func inline(always) private %validate_runtime_head(v0.i256, v1.i256, v2.i256) {
 
     block7:
         jump block4;
+}
+
+func private %zero_bytes(v0.i256, v1.i256) {
+    block0:
+        jump block1;
+
+    block1:
+        memzero v0 v1;
+        return;
 }
 
 

@@ -6,8 +6,8 @@ use hir::analysis::{
         EvalOutcome, FieldIndex, RuntimeSizeError, SConst, SLocalId, SStmtId, SemConstId,
         SemConstScalar, SemConstValue, SemOrigin, SemanticCalleeRef, SemanticCodeRegionRef,
         SemanticCodeRegionTarget, SemanticConstRef, SemanticInstance, SemanticInstanceKey,
-        SemanticLocalRole, VariantIndex, eval_const_ref, generated_callee_key,
-        get_or_build_semantic_instance,
+        SemanticLocalRole, VariantIndex, core_method_callee_key, eval_const_ref,
+        generated_callee_key, get_or_build_semantic_instance,
         normalized::{
             NBlockId, NDataPath, NDataProjection, NEffectArg, NEffectArgValue, NExpr, NIndex,
             NOperand, NPlace, NPlaceBase, NRootKind, NStatement, NStatementId, NStatementKind,
@@ -453,7 +453,7 @@ pub(super) struct RmirEmitter<'db> {
     pub(super) terminated_blocks: Vec<bool>,
 }
 
-/// An element a collection packs into a lane (`PlaceIndex::Lanes`): the
+/// An element a collection packs into a lane (`StateIndex::Lanes`): the
 /// word at `slot` holds it `offset` bytes above its low end, encoded by
 /// `codec`.
 #[derive(Clone)]
@@ -3392,6 +3392,9 @@ impl<'db> RmirEmitter<'db> {
         if let Some(ret) = self.lower_intrinsic_keccak256_call(bb, func, args) {
             return Some(ret);
         }
+        if let Some(ret) = self.lower_intrinsic_keccak_words_call(bb, func, args) {
+            return Some(ret);
+        }
         if let Some(builtin) = contract_metadata_builtin(self.db, semantic) {
             let ret_ty = semantic_return_ty(self.db, semantic);
             let class = RuntimeClass::Scalar(ScalarClass {
@@ -4437,8 +4440,70 @@ impl<'db> RmirEmitter<'db> {
             // Lowered with its payload in `lower_panic_code`, and by
             // `lower_clear`.
             RuntimeBuiltinFuncKind::PanicCode | RuntimeBuiltinFuncKind::Clear => return None,
-            RuntimeBuiltinFuncKind::IntrinsicKeccak256 => return None,
+            RuntimeBuiltinFuncKind::IntrinsicKeccak256
+            | RuntimeBuiltinFuncKind::IntrinsicKeccakWords => return None,
         })
+    }
+
+    /// Hashes the words of `__keccak_words`'s array as values: each element
+    /// is read into a scalar, so the digest depends on no memory.
+    fn lower_intrinsic_keccak_words_call(
+        &mut self,
+        bb: RBlockId,
+        func: Func<'db>,
+        args: &[NOperand],
+    ) -> Option<RLocalId> {
+        if runtime_builtin_func_kind(self.db, func)
+            != Some(RuntimeBuiltinFuncKind::IntrinsicKeccakWords)
+        {
+            return None;
+        }
+        let [words] = args else {
+            return None;
+        };
+        let words_ty = self.semantic_body.normalized.value(words.value)?.ty;
+        let layout = self.layout_for_ty(words_ty);
+        let crate::runtime::Layout::Array(array_layout) = layout.data(self.db) else {
+            panic!(
+                "__keccak_words expects a word-array argument, found {}",
+                words_ty.pretty_print(self.db)
+            );
+        };
+        let len = u32::try_from(array_layout.len).expect("too many hashed words");
+        let word_ty = TyId::u256(self.db);
+        // An empty array is erased; there is nothing to read.
+        let words = if len == 0 {
+            Box::default()
+        } else {
+            let array = self.read_semantic_operand(bb, *words);
+            let array = self.coerce_value(bb, array, &RuntimeClass::AggregateValue { layout });
+            (0..len)
+                .map(|index| {
+                    let word =
+                        self.alloc_runtime_temp(word_ty, RuntimeCarrier::Value(word_class()));
+                    self.push_stmt(
+                        bb,
+                        RStmt::Assign {
+                            dst: word,
+                            expr: RExpr::AggregateExtract {
+                                value: array,
+                                index,
+                            },
+                        },
+                    );
+                    word
+                })
+                .collect()
+        };
+        let ret = self.alloc_runtime_temp(word_ty, RuntimeCarrier::Value(word_class()));
+        self.push_stmt(
+            bb,
+            RStmt::Assign {
+                dst: ret,
+                expr: RExpr::Builtin(crate::runtime::RuntimeBuiltin::KeccakWords { words }),
+            },
+        );
+        Some(ret)
     }
 
     fn lower_intrinsic_keccak256_call(
@@ -5326,7 +5391,7 @@ impl<'db> RmirEmitter<'db> {
 
     /// The element at `key` of the collection at `collection`, of type
     /// `collection_ty`: at the slot and bit offset the collection's
-    /// `PlaceIndex::locate` computes from the collection's own slot, in the
+    /// `StateIndex::locate` computes from the collection's own slot, in the
     /// space the collection keeps its elements in. An element the collection
     /// packs into a lane is that lane; any other is a reference at its slot.
     fn lower_entry(
@@ -5340,10 +5405,10 @@ impl<'db> RmirEmitter<'db> {
         let owner = self.semantic_body.owner();
         let space = provider_address_space_to_runtime(
             owner
-                .place_index_space(self.db, collection_ty)
+                .state_index_space(self.db, collection_ty)
                 .expect("a collection whose elements are places declares their space"),
         );
-        let lanes = owner.place_index_lanes(self.db, collection_ty);
+        let lanes = owner.state_index_lanes(self.db, collection_ty);
         let word_ty = TyId::u256(self.db);
         let word = word_class();
         let receiver_class = self.place_addr_class(&collection);
@@ -5352,7 +5417,7 @@ impl<'db> RmirEmitter<'db> {
         let base = self.coerce_value(bb, receiver, &word);
         let key = self.read_normalized_value(bb, key);
         let locate = self.resolve_core_method(
-            &["ops", "PlaceIndex"],
+            &["ops", "StateIndex"],
             "locate",
             vec![collection_ty],
             collection_ty,
@@ -5403,7 +5468,7 @@ impl<'db> RmirEmitter<'db> {
                 .place_prefix_ty(self.db, place, prefix.len())?;
         self.semantic_body
             .owner()
-            .place_index_lanes(self.db, collection_ty)?;
+            .state_index_lanes(self.db, collection_ty)?;
         let collection = self.try_lower_place(
             bb,
             &NPlace {
@@ -5780,23 +5845,11 @@ impl<'db> RmirEmitter<'db> {
             .scope
             .or_else(|| scope_ty.as_scope(self.db))
             .expect("core trait resolution requires a scope");
-        let trait_def = resolve_core_trait(self.db, scope, trait_path)
-            .unwrap_or_else(|| panic!("core declares {trait_path:?}"));
-        let trait_inst = TraitInstId::new_simple(self.db, trait_def, args);
-        let func = trait_def
-            .method_defs(self.db)
-            .get(&IdentId::new(self.db, name.to_string()))
-            .copied()
-            .unwrap_or_else(|| panic!("{trait_path:?} declares {name}"));
-        let key = generated_callee_key(
-            self.db,
-            scope,
-            self.env.assumptions,
-            func,
-            Some(trait_inst),
-            &[],
-        )
-        .unwrap_or_else(|error| panic!("{}", generated_call_error(self.db, func, error)));
+        let key =
+            core_method_callee_key(self.db, scope, self.env.assumptions, trait_path, name, args)
+                .unwrap_or_else(|error| {
+                    panic!("failed to finalize generated call to `{name}`: {error:?}")
+                });
         get_or_build_semantic_instance(self.db, key)
     }
 

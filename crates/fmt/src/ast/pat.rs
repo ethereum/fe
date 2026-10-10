@@ -80,6 +80,10 @@ impl ToDoc for ast::PathPat {
 
         if self.mut_token().is_some() {
             doc = doc.append(alloc.text("mut "));
+        } else if self.ref_token().is_some() {
+            doc = doc.append(alloc.text("ref "));
+        } else if self.var_token().is_some() {
+            doc = doc.append(alloc.text("var "));
         }
 
         if let Some(path) = self.path() {

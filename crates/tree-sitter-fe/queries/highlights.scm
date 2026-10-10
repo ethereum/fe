@@ -62,6 +62,8 @@
 (uses_param name: (identifier) @variable.parameter)
 (let_statement name: (path_pattern (path (path_segment (identifier) @variable))))
 (let_statement name: (mut_pattern (path_pattern (path (path_segment (identifier) @variable)))))
+(let_statement name: (ref_pattern (path_pattern (path (path_segment (identifier) @variable)))))
+(let_statement name: (var_pattern (path_pattern (path (path_segment (identifier) @variable)))))
 
 ; === Attributes ===
 
@@ -101,6 +103,7 @@
   "unsafe"
   "use"
   "uses"
+  "var"
   "where"
   "while"
   "with"
@@ -112,6 +115,7 @@
 (yield_statement "yield" @keyword)
 (match_arm_yield "yield" @keyword)
 (let_statement "let" @keyword)
+(let_statement "var" @keyword)
 (visibility) @keyword
 
 ; === Literals ===

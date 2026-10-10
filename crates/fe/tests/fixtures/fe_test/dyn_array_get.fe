@@ -37,7 +37,7 @@ pub contract Arr {
 
 fn make_arr(a: u256, b: u256, c: u256) -> DynArray<u256>
 {
-    let mut v: MemVec<u256> = MemVec::zeroed(3)
+    var v: MemVec<u256> = MemVec::zeroed(3)
     v.set(index: 0, value: a)
     v.set(index: 1, value: b)
     v.set(index: 2, value: c)
@@ -110,7 +110,7 @@ uses (evm: mut Evm, call: mut Call, ctx: Ctx)
     let arr = evm.create2<Arr>(value: 0, args: (), salt: 0)
     assert!(arr.inner != 0)
 
-    let mut v: MemVec<Address> = MemVec::zeroed(1)
+    var v: MemVec<Address> = MemVec::zeroed(1)
     v.set(index: 0, value: Address { inner: 0xabc })
 
     // Canonical element decodes fine.
@@ -123,7 +123,7 @@ uses (evm: mut Evm, call: mut Call, ctx: Ctx)
     // AddrAt calldata: selector | offset(0x40) | index | len | element.
     let args = encode_msg_calldata(ArrMsg::AddrAt { addrs: v.to_dyn_array(), index: 0 })
     unsafe { store_word(ptr: ptr::offset_bytes(args.ptr(), 100), value: dirty) }
-    let mut ret = MemBuffer::empty()
+    var ret = MemBuffer::empty()
     let outcome = call.raw_call(addr: arr, gas: ctx.gas(), value: 0, args: args.span(), ret: mut ret)
     assert!(!outcome.success())
 

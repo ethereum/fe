@@ -40,7 +40,7 @@ fn nested(_ xs: [u256; 2]) -> u256 uses (store: Store) {
 
 #[test]
 fn captured_and_implicit_effects() {
-    let mut s = Store { n: 3 }
+    var s = Store { n: 3 }
     with (Store = s) {
         assert!(count_matching([1, 3, 3, 4]) == 2)
     }
@@ -63,7 +63,7 @@ fn captured_and_implicit_effects() {
 fn providers_inside_and_at_the_call() {
     let xs: [u256; 2] = [5, 6]
     let total = xs.fold(0, |acc, x| {
-        let mut local = Store { n: x }
+        var local = Store { n: x }
         with (Store = local) {
             bump(1)
             acc + read()
@@ -161,7 +161,7 @@ impl Collection for BelowStore {
 
 #[test]
 fn enclosing_rows() {
-    let mut s = Store { n: 0 }
+    var s = Store { n: 0 }
     with (Store = s) {
         assert!(!any_nonempty([1, 2], BelowStore {}))
     }

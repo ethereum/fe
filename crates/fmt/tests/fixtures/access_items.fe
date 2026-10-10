@@ -11,3 +11,20 @@ impl Collection for Words {
         self.get(c)
     }
 }
+
+impl Collection for Cells {
+    space S =   self [_]
+    fn at(self, _ c: u256) -> ref u256 uses E {
+        ref self.cells[c]
+    }
+}
+
+impl Guarded {
+    fn value_mut(mut self) -> mut u256   @self.value {
+        mut self.value
+    }
+
+    fn first(mut self) -> mut u256 @self . pair.0 {
+        mut self.pair.0
+    }
+}

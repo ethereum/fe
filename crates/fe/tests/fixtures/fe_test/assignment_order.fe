@@ -16,12 +16,12 @@ impl IndexMut<usize> for Cells {
 
 #[test]
 fn value_first() {
-    let mut c = Cells { cells: [1, 2] }
+    var c = Cells { cells: [1, 2] }
     c[0] = c[1] + 1
     assert(c[0] == 3)
     c[0] += c[1]
     assert(c[0] == 5)
-    let mut a: [u256; 3] = [1, 2, 3]
+    var a: [u256; 3] = [1, 2, 3]
     a[0] = a[1] + a[2]
     a[2] += a[0]
     assert(a[0] == 5 && a[2] == 8)

@@ -48,7 +48,7 @@ impl<C: Counter> Counter for Logged<C> {
 
 // An abstract row is forwarded by the caller's own.
 fn bump_n<C: Counter>(_ c: mut C, _ n: u256) uses C::E {
-    let mut i = 0
+    var i = 0
     while i < n {
         c.bump()
         i += 1
@@ -69,8 +69,8 @@ fn bump_logged<C: Counter>(_ x: mut Logged<C>) uses (C::E, log: mut Log) {
 
 #[test]
 fn concrete_rows_take_providers_in_scope() {
-    let mut store = Store { total: 0 }
-    let mut sc = StoreCounter {}
+    var store = Store { total: 0 }
+    var sc = StoreCounter {}
     with (Store = store) {
         bump_n(mut sc, 3)
         sc.bump_twice()
@@ -81,7 +81,7 @@ fn concrete_rows_take_providers_in_scope() {
 
 #[test]
 fn empty_rows_need_no_providers() {
-    let mut mc = MemCounter { n: 0 }
+    var mc = MemCounter { n: 0 }
     bump_n(mut mc, 2)
     mc.bump_twice()
     assert!(mc.n == 4)
@@ -89,10 +89,10 @@ fn empty_rows_need_no_providers() {
 
 #[test]
 fn nested_rows() {
-    let mut store = Store { total: 0 }
-    let mut log = Log { entries: 0 }
-    let mut stored = Logged { inner: StoreCounter {} }
-    let mut plain = Logged { inner: MemCounter { n: 0 } }
+    var store = Store { total: 0 }
+    var log = Log { entries: 0 }
+    var stored = Logged { inner: StoreCounter {} }
+    var plain = Logged { inner: MemCounter { n: 0 } }
     with (Store = store, Log = log) {
         bump_n(mut stored, 2)
         stored.bump_twice()

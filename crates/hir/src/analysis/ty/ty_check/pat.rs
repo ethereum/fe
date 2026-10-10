@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::core::hir_def::{
-    IdentId, LitKind, Partial, Pat, PatId, PathId, TupleTypeId, VariantKind,
+    BindingMarker, IdentId, LitKind, Partial, Pat, PatId, PathId, TupleTypeId, VariantKind,
 };
 use either::Either;
 
@@ -365,7 +365,7 @@ impl<'db> TyChecker<'db> {
         pat_data: &Pat<'db>,
         expected: TyId<'db>,
     ) -> PatCheckResult<'db> {
-        let Pat::Path(path, is_mut) = pat_data else {
+        let Pat::Path(path, marker) = pat_data else {
             unreachable!()
         };
 
@@ -419,7 +419,10 @@ impl<'db> TyChecker<'db> {
                         | PathRes::FuncParam(..))
             )
         {
-            let binding = LocalBinding::local(pat, *is_mut);
+            let binding = LocalBinding::local(
+                pat,
+                matches!(marker, BindingMarker::Var | BindingMarker::Mut),
+            );
             let mut is_valid = true;
             if let Some(LocalBinding::Local {
                 pat: conflict_with, ..

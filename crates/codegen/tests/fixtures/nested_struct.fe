@@ -1,5 +1,6 @@
 use core::ptr
-use std::evm::{Evm, RawMem, RawOps, RawStorage, StorPtr}
+use core::abi::store_word
+use std::evm::{Evm, RawOps, RawStorage, StorPtr}
 
 struct Inner {
     value: u256,
@@ -15,7 +16,7 @@ struct MemOuter {
 
 fn abi_encode(value: u256) -> ! uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
-    unsafe { ops.mstore(addr: data.ptr(), value) }
+    unsafe { store_word(ptr: data.ptr(), value) }
     ops.return_data(data: data.span())
 }
 
@@ -32,7 +33,7 @@ fn write_inner(value: u256)
 }
 
 fn mem_read(value: u256) -> u256 {
-    let mut tmp = MemOuter { inner: Inner { value: 0 } }
+    var tmp = MemOuter { inner: Inner { value: 0 } }
     tmp.inner.value = value
     tmp.inner.value
 }
@@ -41,7 +42,7 @@ fn mem_read(value: u256) -> u256 {
 fn init() uses (evm: mut Evm) {
     let len = evm.code_region_len(runtime)
     let offset = evm.code_region_offset(runtime)
-    let mut dest = ptr::MemBuffer::alloc(len)
+    var dest = ptr::MemBuffer::alloc(len)
     evm.codecopy(
         dest: mut dest,
         dest_offset: 0,
@@ -53,7 +54,7 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(NestedStruct)]
 fn runtime() uses (evm: mut Evm) {
-    let mut outer: StorPtr<Outer> = unsafe { evm.stor_ptr(0) }
+    var outer: StorPtr<Outer> = unsafe { evm.stor_ptr(0) }
     with (outer, RawOps = evm) {
         let selector = evm.calldataload(0) >> 224
         match selector {

@@ -62,8 +62,8 @@ pub trait Collection {
     fn fold<A, F: FnMut(own A, Self::Item) -> A>(self, _ init: own A, _ f: mut F) -> A
         uses (E, F::E)
     {
-        let mut acc = init
-        for x in self {
+        var acc = init
+        for ref x in self {
             acc = f.call_mut(acc, x)
         }
         acc
@@ -71,7 +71,7 @@ pub trait Collection {
 
     /// Whether `p` holds for some element.
     fn any<P: Fn(Self::Item) -> bool>(self, _ p: P) -> bool uses (E, P::E) {
-        for x in self {
+        for ref x in self {
             if p.call(x) {
                 return true
             }
@@ -81,8 +81,8 @@ pub trait Collection {
 
     /// How many elements `p` holds for.
     fn count<P: Fn(Self::Item) -> bool>(self, _ p: P) -> usize uses (E, P::E) {
-        let mut n = 0
-        for x in self {
+        var n = 0
+        for ref x in self {
             if p.call(x) {
                 n += 1
             }
@@ -92,7 +92,7 @@ pub trait Collection {
 
     /// The position of the first element `p` holds for.
     fn find<P: Fn(Self::Item) -> bool>(self, _ p: P) -> Option<Self::Cursor> uses (E, P::E) {
-        let mut cursor = self.start()
+        var cursor = self.start()
         while let Option::Some(c) = cursor {
             if p.call(Collection::at(self, c)) {
                 return Option::Some(c)
@@ -161,9 +161,10 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
-// An array's elements are its own parts, wherever it lies.
+// An array's elements are its own parts, wherever it lies, unless they are
+// pinned elsewhere.
 impl<T, const N: usize> Collection for [T; N] {
-    space S = self
+    space S = self[_]
     type Cursor = usize
     type Item = T
 
@@ -477,7 +478,7 @@ impl<B: Collection, D: Driver<B>> Driver<B> for Enumerate<D> {
 
     #[inline(always)]
     fn at(self, _ base: B, _ s: (usize, D::State)) -> (usize, ref D::Item) uses (B::E, E) {
-        let (_, item) = Driver<B>::at(self.inner, base, s.1)
+        let (_, ref item) = Driver<B>::at(self.inner, base, s.1)
         (s.0, item)
     }
 }
@@ -555,8 +556,8 @@ impl<B: Collection, D: Driver<B>> Driver<B> for Skip<D> {
 
     #[inline(always)]
     fn start(self, _ base: B) -> Option<D::State> uses (B::E, E) {
-        let mut state = self.inner.start(base)
-        let mut skipped = 0
+        var state = self.inner.start(base)
+        var skipped = 0
         while skipped < self.n {
             state = match state {
                 Option::Some(s) => self.inner.next(base, s)
@@ -606,8 +607,8 @@ impl<B: Collection, D: Driver<B>> Driver<B> for StepBy<D> {
 
     #[inline(always)]
     fn next(self, _ base: B, _ s: D::State) -> Option<D::State> uses (B::E, E) {
-        let mut state = Option::Some(s)
-        let mut stepped = 0
+        var state = Option::Some(s)
+        var stepped = 0
         while stepped < self.k {
             state = match state {
                 Option::Some(s) => self.inner.next(base, s)
@@ -677,9 +678,9 @@ fn filtered<B: Collection, D: Driver<B>, P: Fn(D::Item) -> bool>(
     _ base: B,
     _ state: own Option<D::State>,
 ) -> Option<D::State> uses (B::E, D::E, P::E) {
-    let mut state = state
+    var state = state
     while let Option::Some(s) = state {
-        let (_, item) = Driver<B>::at(d.inner, base, s)
+        let (_, ref item) = Driver<B>::at(d.inner, base, s)
         if d.p.call(item) {
             return Option::Some(s)
         }
@@ -733,7 +734,7 @@ impl<B: Collection, D: Driver<B>, F: FnMut_v<D::Item>> Producer<B> for Map<D, F>
     }
 
     fn produce(mut self, _ base: B, _ s: D::State) -> F::Out uses (B::E, E) {
-        let (_, item) = Driver<B>::at(self.inner, base, s)
+        let (_, ref item) = Driver<B>::at(self.inner, base, s)
         self.f.call_mut(item)
     }
 }
@@ -823,16 +824,16 @@ impl FromProducer for MemArray {
     fn collect<B: Collection, P: Producer<B, Out = T>, T>(_ base: B, _ p: own P) -> MemArray<T>
         uses (B::E, P::E)
     {
-        let mut p = p
-        let mut len: u256 = 0
-        let mut state = p.start(base)
+        var p = p
+        var len: u256 = 0
+        var state = p.start(base)
         while let Option::Some(s) = state {
             len += 1
             state = p.next(base, s)
         }
         // Each element is initialized below before anything reads it.
-        let mut out = unsafe { MemArray<T>::new_uninit(len) }
-        let mut i: usize = 0
+        var out = unsafe { MemArray<T>::new_uninit(len) }
+        var i: usize = 0
         state = p.start(base)
         while let Option::Some(s) = state {
             out[i] = p.produce(base, s)

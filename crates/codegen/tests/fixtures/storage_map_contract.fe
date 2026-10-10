@@ -1,9 +1,10 @@
 use core::ptr
-use std::evm::{Evm, RawMem, RawOps, RawStorage, StorageMap, StorPtr}
+use core::abi::store_word
+use std::evm::{Evm, RawOps, RawStorage, StorageMap, StorPtr}
 
 fn abi_encode(value: u256) -> ! uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
-    unsafe { ops.mstore(addr: data.ptr(), value) }
+    unsafe { store_word(ptr: data.ptr(), value) }
     ops.return_data(data: data.span())
 }
 
@@ -49,7 +50,7 @@ fn transfer(from: u256, to: u256, amount: u256) -> u256
 fn init() uses (evm: mut Evm) {
     let len = evm.code_region_len(runtime)
     let offset = evm.code_region_offset(runtime)
-    let mut dest = ptr::MemBuffer::alloc(len)
+    var dest = ptr::MemBuffer::alloc(len)
     evm.codecopy(
         dest: mut dest,
         dest_offset: 0,

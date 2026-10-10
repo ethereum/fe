@@ -6,7 +6,7 @@ struct Item { n: u256 }
 
 #[test]
 fn owner_primitives() {
-    let mut xs = unsafe { MemArray<Item>::new_uninit(3) }
+    var xs = unsafe { MemArray<Item>::new_uninit(3) }
     xs[0] = Item { n: 1 }
     xs[1] = Item { n: 2 }
     xs[2] = Item { n: 3 }

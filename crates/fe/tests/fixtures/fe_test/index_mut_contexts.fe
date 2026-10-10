@@ -15,7 +15,7 @@ impl Pair {
 
 #[test]
 fn index_mut_contexts() {
-    let mut a = MemArray<Pair>::new_zeroed(2)
+    var a = MemArray<Pair>::new_zeroed(2)
     a[0].x = 5
     let r = mut a[1]
     r.y = 3
@@ -28,7 +28,7 @@ fn index_mut_contexts() {
 
 #[test]
 fn mut_pattern_binding_through_index() {
-    let mut a = MemArray<Option<u256>>::new_zeroed(1)
+    var a = MemArray<Option<u256>>::new_zeroed(1)
     a[0] = Option::Some(1)
     match a[0] {
         Option::Some(mut v) => v += 10

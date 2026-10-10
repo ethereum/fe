@@ -7,9 +7,19 @@ fn copies(_ xs: [u256; 3]) {
     }
 }
 
-// A non-`Copy` element is a `ref` access: it cannot be written through.
-fn reads(_ accounts: [Account; 2]) {
+// A non-`Copy` element has no value reading, so it is bound as a read
+// access; plainly, it is an error.
+fn plain_non_copy(_ accounts: [Account; 2]) -> u256 {
+    var total = 0
     for account in accounts {
+        total += account.balance
+    }
+    total
+}
+
+// A `ref` element is a read access: it cannot be written through.
+fn reads(_ accounts: [Account; 2]) {
+    for ref account in accounts {
         account.balance = 0
     }
 }

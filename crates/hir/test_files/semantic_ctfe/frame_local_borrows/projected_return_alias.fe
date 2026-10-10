@@ -13,7 +13,7 @@ const fn via<T: Pick>(_ value: mut u8) -> mut u8 {
 }
 
 const fn answer() -> u8 {
-    let mut x: u8 = 0
+    var x: u8 = 0
     let a = via<Alias>(mut x)
     a = 42
     x

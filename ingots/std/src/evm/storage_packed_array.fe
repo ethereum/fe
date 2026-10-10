@@ -1,5 +1,5 @@
-use core::effect_ref::AddressSpace
-use core::ops::PlaceIndex
+use core::effect_ref::StateSpace
+use core::ops::StateIndex
 use core::option::Option
 
 use super::effects::{RawStorage, StorPtr}
@@ -51,8 +51,8 @@ pub struct StoragePackedArray<const BITS: u256> {
 /// slot `s` is at `keccak256(s) + w`.
 struct PackedWords {}
 
-impl PlaceIndex for PackedWords {
-    const SPACE: AddressSpace = AddressSpace::Storage
+impl StateIndex for PackedWords {
+    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 
@@ -100,7 +100,7 @@ impl<const BITS: u256> StoragePackedArray<BITS>
     /// contract field, uses `slot` or the words' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
             with (ptr) {
                 core::effect_ref::target_mut(ptr)
@@ -134,10 +134,10 @@ impl<const BITS: u256> StoragePackedArray<BITS>
     /// consecutive indices.
     #[arithmetic(unchecked)]
     pub fn search(self, needle: u256, start: u256, end: u256) -> Option<u256> {
-        let mut i: u256 = start
+        var i: u256 = start
         while i < end {
             let word: u256 = self.words[i / Self::LANES_PER_SLOT]
-            let mut lane: u256 = i % Self::LANES_PER_SLOT
+            var lane: u256 = i % Self::LANES_PER_SLOT
             while lane < Self::LANES_PER_SLOT && i < end {
                 if ((word >> (lane * BITS)) & Self::LANE_MASK) == needle {
                     return Option::Some(i)

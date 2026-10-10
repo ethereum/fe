@@ -1,0 +1,1 @@
+Safe memory APIs no longer read memory the caller did not initialize. `MemBuffer::alloc` and `FixedMemBuffer::alloc` now return zeroed bytes; the new `unsafe fn alloc_uninit` skips the zeroing for callers that write every byte first. Reading a `MemSpan` as ABI input reads zeros past its end, like calldata, instead of reading the memory that follows it.

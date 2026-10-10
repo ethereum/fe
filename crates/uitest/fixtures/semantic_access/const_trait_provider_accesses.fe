@@ -25,6 +25,6 @@ const fn overwrite(_ table: mut Table) -> u256 uses (provider: Lookup) {
 }
 
 const fn alias() -> u256 {
-    let mut table = Table { xs: [1, 2, 3, 4] }
+    var table = Table { xs: [1, 2, 3, 4] }
     with (Lookup = table) { overwrite(mut table) }
 }

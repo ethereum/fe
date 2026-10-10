@@ -270,7 +270,7 @@ impl SemanticDiagnosticKind {
 }
 
 impl<'db> SemanticDiagnosticSpan<'db> {
-    fn resolve(&self, db: &dyn SpannedHirAnalysisDb) -> Option<Span> {
+    pub(crate) fn resolve(&self, db: &dyn SpannedHirAnalysisDb) -> Option<Span> {
         match *self {
             Self::Origin { owner, origin } => span_for_origin_from_body(db, owner.body(db), origin),
             Self::OriginWithTemplateFallback {

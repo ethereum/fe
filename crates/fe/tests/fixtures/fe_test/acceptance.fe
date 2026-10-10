@@ -23,14 +23,14 @@ fn outer(_ c: mut Cell) -> mut u256 {
 // finishes after it: (5 + 1) * 10 + 1.
 #[test]
 fn case04_resumption_order() {
-    let mut c = Cell { v: 0 }
+    var c = Cell { v: 0 }
     let x = outer(mut c)
     x = 5
     assert!(c.v == 61)
 }
 
 fn tally(_ c: mut Cell) -> mut u256 {
-    let mut tmp = c.v
+    var tmp = c.v
     yield mut tmp
     c.v = tmp + 100
 }
@@ -38,8 +38,8 @@ fn tally(_ c: mut Cell) -> mut u256 {
 // 11. A slide-bearing session exited by `break` runs its slide once.
 #[test]
 fn case11_break_runs_slide_once() {
-    let mut c = Cell { v: 0 }
-    let mut i: u256 = 0
+    var c = Cell { v: 0 }
+    var i: u256 = 0
     while i < 3 {
         let x = tally(mut c)
         if i == 1 {
@@ -52,7 +52,7 @@ fn case11_break_runs_slide_once() {
 }
 
 fn written_back(_ c: mut Cell) -> mut u256 {
-    let mut tmp = c.v
+    var tmp = c.v
     yield mut tmp
     c.v = tmp + 1000
 }
@@ -71,7 +71,7 @@ fn optional(_ c: mut Cell, _ give: bool) -> Option<mut u256> {
 // slide.
 #[test]
 fn case15_empty_exit_cleans_up() {
-    let mut c = Cell { v: 0 }
+    var c = Cell { v: 0 }
     if let Option::Some(x) = optional(mut c, false) {
         x += 1
     }
@@ -91,7 +91,7 @@ fn replaceable(_ c: mut Cell) -> mut Cell {
 // slide sees what the caller left.
 #[test]
 fn case26_replaced_referent() {
-    let mut c = Cell { v: 1 }
+    var c = Cell { v: 1 }
     let x = replaceable(mut c)
     x = Cell { v: 40 }
     assert!(c.v == 42)
@@ -108,7 +108,7 @@ pub contract StoredWords {
     mut words: [u256; 3],
 
     init() uses (mut words) {
-        let mut next: u256 = 1
+        var next: u256 = 1
         for word in mut words by reversed() {
             word = next
             next += 1
@@ -144,8 +144,8 @@ fn consume(_ item: own Item) -> u256 {
 // however the index changes.
 #[test]
 fn case31_stable_place() {
-    let mut items = [Item { n: 1 }, Item { n: 2 }]
-    let mut i: usize = 0
+    var items = [Item { n: 1 }, Item { n: 2 }]
+    var i: usize = 0
     let slot = mut items[i]
     i = 1
     let saved = slot
@@ -162,7 +162,7 @@ fn reordered(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut
 // 34. Reordered `pair_mut` grants write the elements they name.
 #[test]
 fn case34_reordered_grants() {
-    let mut xs: MemArray<u256> = MemArray::new_zeroed(2)
+    var xs: MemArray<u256> = MemArray::new_zeroed(2)
     let (b, a) = reordered(mut xs, 0, 1)
     b = 20
     a = 10
@@ -181,7 +181,7 @@ fn bump(_ x: mut u256) {
 // helper, land in the input.
 #[test]
 fn case38_grant_writes() {
-    let mut c = Cell { v: 1 }
+    var c = Cell { v: 1 }
     let x = first_of(mut c)
     x += 1
     bump(mut x)
@@ -215,7 +215,7 @@ impl<B: Collection> Driver<B> for Tagged {
 fn case40_owned_extra() {
     let xs: [u256; 3] = [1, 2, 3]
     let d = Tagged {}
-    let mut total: u256 = 0
+    var total: u256 = 0
     for (tag, x) in xs by d {
         total += tag.n + x
     }
@@ -228,7 +228,7 @@ fn case40_owned_extra() {
 fn case20_borrowed_driver() {
     let xs: [u256; 3] = [1, 2, 3]
     let d = Tagged {}
-    let mut total: u256 = 0
+    var total: u256 = 0
     for (tag, x) in xs by d {
         total += tag.n + x
     }
@@ -239,7 +239,7 @@ fn case20_borrowed_driver() {
 }
 
 fn ping() uses (call: mut Call) {
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let outcome = call.raw_call(
         addr: Address { inner: 1 }, gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
@@ -247,7 +247,7 @@ fn ping() uses (call: mut Call) {
 }
 
 fn ramp_and_slide_call() -> mut u256 uses (call: mut Call) {
-    let mut n: u256 = 0
+    var n: u256 = 0
     ping()
     yield mut n
     ping()
@@ -258,7 +258,7 @@ fn helper_call() uses (call: mut Call) {
 }
 
 fn through_helper() -> mut u256 uses (call: mut Call) {
-    let mut n: u256 = 7
+    var n: u256 = 7
     helper_call()
     yield mut n
     helper_call()
@@ -316,7 +316,7 @@ impl Index<u256> for Scores {
 impl IndexMut<u256> for Scores {
     fn index_mut(mut self, _ i: u256) -> mut u32 {
         let shift = (i % 8) * 32
-        let mut tmp: u32 = (self.words[i / 8] >> shift).downcast_truncate()
+        var tmp: u32 = (self.words[i / 8] >> shift).downcast_truncate()
         yield mut tmp
         let cleared = self.words[i / 8] & !(0xffffffff << shift)
         self.words[i / 8] = cleared | ((tmp as u256) << shift)

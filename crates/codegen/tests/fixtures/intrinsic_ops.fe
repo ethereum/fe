@@ -1,16 +1,17 @@
 use core::ptr
-use std::evm::{RawMem, RawOps, RawStorage}
+use core::abi::{load_word, store_word}
+use std::evm::{RawOps, RawStorage}
 
-pub fn load_word(ptr: *u8) -> u256 uses (mem: RawMem) {
-    unsafe { mem.mload(ptr) }
+pub fn load_word(ptr: *u8) -> u256 {
+    unsafe { load_word(ptr) }
 }
 
-pub fn store_word(ptr: *u8, value: u256) uses (mem: mut RawMem) {
-    unsafe { mem.mstore(addr: ptr, value: value) }
+pub fn store_word(ptr: *u8, value: u256) {
+    unsafe { store_word(ptr: ptr, value: value) }
 }
 
-pub fn store_byte(ptr: *u8, value: u8) uses (mem: mut RawMem) {
-    unsafe { mem.mstore8(addr: ptr, value: value) }
+pub fn store_byte(ptr: *u8, value: u8) {
+    unsafe { *ptr = value }
 }
 
 pub fn load_slot(slot: u256) -> u256 uses (sto: RawStorage) {
@@ -30,7 +31,7 @@ pub fn finish(data: *u8, len: u256) uses (ops: RawOps) {
 }
 
 pub fn main() -> u256
-    uses (mem: mut RawMem, sto: mut RawStorage, ops: RawOps)
+    uses (sto: mut RawStorage, ops: RawOps)
 {
     let data = ptr::alloc_bytes(32)
     store_word(ptr: data, value: 1)

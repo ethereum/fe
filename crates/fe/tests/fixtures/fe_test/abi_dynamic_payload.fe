@@ -1,7 +1,7 @@
 use std::abi::{Bytes, BytesView, DynArray, DynString, bytes_from_words_prefix}
-use core::abi::prefix
+use core::abi::{load_word, prefix, store_word}
 use core::ptr
-use std::evm::{CallData, Evm, RawMem, encode_abi_payload}
+use std::evm::{CallData, Evm, encode_abi_payload}
 
 msg DynamicPayloadMsg {
     #[selector = 0x01]
@@ -82,16 +82,16 @@ uses (evm: mut Evm)
     let payload_size: u256 = 96
     let data_ptr = ptr::alloc_bytes(payload_size)
 
-    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe { store_word(ptr: data_ptr, value: payload_len) }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 32),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 32),
             value: 0x1111111111111111111111111111111111111111111111111111111111111111,
         )
     }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 64),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 64),
             value: 0x2200000000000000000000000000000000000000000000000000000000000000,
         )
     }
@@ -106,10 +106,10 @@ uses (evm: mut Evm)
     let payload_size: u256 = 64
     let data_ptr = ptr::alloc_bytes(payload_size)
 
-    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe { store_word(ptr: data_ptr, value: payload_len) }
     unsafe {
-        evm.mstore(
-            addr: ptr::offset_bytes(data_ptr, 32),
+        store_word(
+            ptr: ptr::offset_bytes(data_ptr, 32),
             value: 0x3300000000000000000000000000000000000000000000000000000000000000,
         )
     }
@@ -117,12 +117,12 @@ uses (evm: mut Evm)
     unsafe { Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size) }
 }
 
-fn oversized_one_word_bytes() -> Bytes uses (mem: mut RawMem) {
+fn oversized_one_word_bytes() -> Bytes {
     let word: u256 = 0
     bytes_from_words_prefix<33, 1>([word])
 }
 
-fn one_byte_two_word_prefix() -> Bytes uses (mem: mut RawMem) {
+fn one_byte_two_word_prefix() -> Bytes {
     bytes_from_words_prefix<1, 2>([
         0x3300000000000000000000000000000000000000000000000000000000000000,
         0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
@@ -135,13 +135,13 @@ fn test_abi_dynamic_payload_tuple_encoding() uses (evm: Evm) {
     let data = encode_abi_payload(payload)
 
     assert!(data.len() == 96)
-    unsafe { assert!(evm.mload(data.ptr()) == 0xdeadbeef) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 64) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 0) }
+    unsafe { assert!(load_word(data.ptr()) == 0xdeadbeef) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 32)) == 64) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 64)) == 0) }
 }
 
 #[test]
-fn test_bytes_from_words_prefix_uses_canonical_tail_size() uses (evm: mut Evm, mem: mut RawMem) {
+fn test_bytes_from_words_prefix_uses_canonical_tail_size() uses (evm: mut Evm) {
     let payload: (Bytes, u256, Bytes) = (
         one_byte_two_word_prefix(),
         0xabcdef,
@@ -150,13 +150,13 @@ fn test_bytes_from_words_prefix_uses_canonical_tail_size() uses (evm: mut Evm, m
     let data = encode_abi_payload(payload)
 
     assert!(data.len() == 224)
-    unsafe { assert!(evm.mload(data.ptr()) == 96) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 160) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 96)) == 1) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 128)) == 0x3300000000000000000000000000000000000000000000000000000000000000) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 160)) == 1) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 192)) == 0x3300000000000000000000000000000000000000000000000000000000000000) }
+    unsafe { assert!(load_word(data.ptr()) == 96) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 64)) == 160) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 96)) == 1) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 128)) == 0x3300000000000000000000000000000000000000000000000000000000000000) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 160)) == 1) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 192)) == 0x3300000000000000000000000000000000000000000000000000000000000000) }
 }
 
 #[test]
@@ -187,15 +187,15 @@ fn test_error_dynamic_payload_tail_encoding() uses (evm: mut Evm) {
     })
 
     assert!(data.len() == 160)
-    unsafe { assert!(evm.mload(data.ptr()) == 96) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 128) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 96)) == 0) }
-    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 128)) == 0) }
+    unsafe { assert!(load_word(data.ptr()) == 96) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 64)) == 128) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 96)) == 0) }
+    unsafe { assert!(load_word(ptr::offset_bytes(data.ptr(), 128)) == 0) }
 }
 
 #[test(should_revert)]
-fn test_bytes_from_words_prefix_rejects_oversize_len() uses (mem: mut RawMem) {
+fn test_bytes_from_words_prefix_rejects_oversize_len() {
     let _b = oversized_one_word_bytes()
 }
 
@@ -203,9 +203,9 @@ fn test_bytes_from_words_prefix_rejects_oversize_len() uses (mem: mut RawMem) {
 fn test_bytes_word_at_masks_partial_words() uses (evm: mut Evm) {
     let tail = ptr::alloc_bytes(64)
     unsafe {
-        evm.mstore(addr: tail, value: 1)
-        evm.mstore(
-            addr: ptr::offset_bytes(tail, 32),
+        store_word(ptr: tail, value: 1)
+        store_word(
+            ptr: ptr::offset_bytes(tail, 32),
             value: 0x11ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
         )
     }
@@ -216,7 +216,7 @@ fn test_bytes_word_at_masks_partial_words() uses (evm: mut Evm) {
 
 #[test]
 fn test_memory_prefix_zero_pads_short_spans() {
-    let mut backing = ptr::MemArray<u8>::new_zeroed(33)
+    var backing = ptr::MemArray<u8>::new_zeroed(33)
     backing[0] = 0x44
     backing[1] = 0xff
 
@@ -232,7 +232,7 @@ fn test_memory_prefix_zero_pads_short_spans() {
 
 #[test]
 fn test_owned_bytes_and_views_expose_explicit_spans() {
-    let mut source = ptr::MemArray<u8>::new_zeroed(3)
+    var source = ptr::MemArray<u8>::new_zeroed(3)
     source[0] = 0x11
     source[1] = 0x22
     source[2] = 0x33

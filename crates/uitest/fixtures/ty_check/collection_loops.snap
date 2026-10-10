@@ -13,17 +13,25 @@ error[8-0018]: left-hand side of assignment is immutable
   │         ^ immutable assignment
 
 error[8-0018]: left-hand side of assignment is immutable
-   ┌─ collection_loops.fe:13:9
+   ┌─ collection_loops.fe:23:9
    │
-12 │     for account in accounts {
-   │         ------- try changing to `mut account`
-13 │         account.balance = 0
+22 │     for ref account in accounts {
+   │         ----------- try changing to `mut account`
+23 │         account.balance = 0
    │         ^^^^^^^^^^^^^^^ immutable assignment
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ collection_loops.fe:19:14
+   ┌─ collection_loops.fe:29:14
    │
-18 │ fn mutates(_ xs: [u256; 3]) {
+28 │ fn mutates(_ xs: [u256; 3]) {
    │              -- `xs` does not provide mutable access
-19 │     for x in mut xs {
+29 │     for x in mut xs {
    │              ^^^^^^ cannot borrow as `mut`
+
+error[8-0119]: a read access needs a `ref` binding
+   ┌─ collection_loops.fe:14:9
+   │
+14 │     for account in accounts {
+   │         ^^^^^^^ this binds a read access of `Account`, which is not `Copy`
+   │
+   = mark the binding `ref` to hold the access, as `let x = ref …`, `(i, ref x)` or `for ref x in …`

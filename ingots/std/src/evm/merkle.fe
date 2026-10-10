@@ -85,8 +85,8 @@ pub fn process_proof<P: ProofNodes>(proof: P, leaf: u256) -> u256 {
     let len = nodes.len()
     let base = ptr::cast<u256, u8>(nodes.ptr())
     let scratch = ptr::alloc_bytes(64)
-    let mut node = leaf
-    let mut i: u256 = 0
+    var node = leaf
+    var i: u256 = 0
     while i < len {
         unsafe { node = sorted_into(scratch, node, ops::mload(ptr::offset_bytes(base, i * 32))) }
         i += 1
@@ -122,8 +122,8 @@ pub fn process_indexed_proof<P: ProofNodes>(proof: P, leaf: u256, index: u256) -
     let base = ptr::cast<u256, u8>(nodes.ptr())
     let scratch = ptr::alloc_bytes(64)
     let right_at = ptr::offset_bytes(scratch, 32)
-    let mut node = leaf
-    let mut i: u256 = 0
+    var node = leaf
+    var i: u256 = 0
     while i < len {
         let sibling = unsafe { ops::mload(ptr::offset_bytes(base, i * 32)) }
         if (index >> i) & 1 == 1 {

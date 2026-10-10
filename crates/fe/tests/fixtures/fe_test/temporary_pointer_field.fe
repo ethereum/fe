@@ -19,8 +19,8 @@ fn first(_ orders: MemArray<Order>) -> *Order {
 }
 
 fn orders_with_one_item() -> MemArray<Order> {
-    let mut orders = unsafe { MemArray<Order>::new_uninit(1) }
-    let mut items = unsafe { MemArray<Item>::new_uninit(1) }
+    var orders = unsafe { MemArray<Order>::new_uninit(1) }
+    var items = unsafe { MemArray<Item>::new_uninit(1) }
     items[0] = Item { a: 1, b: 2 }
     orders[0] = Order { items, n: 5 }
     orders
@@ -50,9 +50,9 @@ fn write_field_of_temporary_pointer() {
 
 #[test]
 fn field_through_pointer_field_of_temporary_pointer() {
-    let mut items = unsafe { MemArray<Item>::new_uninit(1) }
+    var items = unsafe { MemArray<Item>::new_uninit(1) }
     items[0] = Item { a: 3, b: 4 }
-    let mut links = unsafe { MemArray<Link>::new_uninit(1) }
+    var links = unsafe { MemArray<Link>::new_uninit(1) }
     links[0] = Link { next: items.ptr_at(0) }
     unsafe { assert(links.ptr_at(0).next.a == 3) }
     unsafe { links.ptr_at(0).next.b = 8 }

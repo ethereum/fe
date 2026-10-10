@@ -15,7 +15,7 @@ fn test_oob_read_reverts() {
 
 #[test(should_revert)]
 fn test_oob_write_reverts() {
-    let mut arr: [u256; 4] = [10, 20, 30, 40]
+    var arr: [u256; 4] = [10, 20, 30, 40]
     let i: u256 = 4
     arr[i as usize] = 99
 }
@@ -50,7 +50,7 @@ fn test_oob_dead_read_reverts() {
 
 #[test(should_revert)]
 fn test_oob_dead_write_reverts() {
-    let mut arr: [u256; 4] = [10, 20, 30, 40]
+    var arr: [u256; 4] = [10, 20, 30, 40]
     let i: u256 = 4
     arr[i as usize] = 99
 }

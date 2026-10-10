@@ -1,16 +1,16 @@
-use core::effect_ref::AddressSpace
-use core::ops::PlaceIndex
+use core::effect_ref::StateSpace
+use core::ops::StateIndex
 use std::evm::keccak_words
 
-// A library collection pinned to storage by its `PlaceIndex` implementation.
+// A library collection pinned to storage by its `StateIndex` implementation.
 // `self[k]` is a place under the receiver's access, opened with no raw
 // storage authority, and an entry's access holds the receiver.
 struct Cells {
     len: u256,
 }
 
-impl PlaceIndex for Cells {
-    const SPACE: AddressSpace = AddressSpace::Storage
+impl StateIndex for Cells {
+    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 

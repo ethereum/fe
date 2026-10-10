@@ -23,14 +23,14 @@ fn reset(_ target: mut Holder) -> u256 {
 
 // Accepted: an argument reads the receiver.
 fn argument_reads_receiver() -> u256 {
-    let mut holder = make()
+    var holder = make()
     holder.set(holder.len())
     holder.value
 }
 
 // Accepted: indexing reads the indexed array in its index.
 fn index_reads_base() -> u256 {
-    let mut values: MemArray<u256> = MemArray::new_zeroed(3)
+    var values: MemArray<u256> = MemArray::new_zeroed(3)
     values[(values.len() - 1) as usize] = 5
     values[2]
 }
@@ -44,12 +44,12 @@ fn temporary_receiver_chain() -> u256 {
 
 // Rejected: an argument writes the receiver.
 fn argument_writes_receiver() {
-    let mut holder = make()
+    var holder = make()
     holder.set(reset(mut holder))
 }
 
 // Rejected: an argument moves the receiver.
 fn argument_moves_receiver() {
-    let mut holder = make()
+    var holder = make()
     holder.set(holder.take())
 }

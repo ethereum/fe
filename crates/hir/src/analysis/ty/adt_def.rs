@@ -11,12 +11,15 @@ use super::{
     const_ty::ConstBodyLowering,
     corelib::resolve_core_trait,
     provider::{ProviderAddressSpace, effect_space_from_resolved_trait_const},
-    trait_def::{ResolvedImplInstance, impls_for_trait_def},
+    trait_def::{
+        ResolvedImplInstance, TraitInstId, impls_for_trait_def, instantiate_selected_impl,
+    },
     trait_resolution::{PredicateListId, constraint::collect_constraints},
     ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
     ty_lower::{
         CompleteSubst, GenericParamTypeSet, ParamDomainId, ParamSchemaId, lower_hir_ty_in_mode,
     },
+    unify::UnificationTable,
 };
 use crate::analysis::HirAnalysisDb;
 
@@ -36,55 +39,83 @@ pub struct AdtDef<'db> {
     pub fields: Vec<AdtField<'db>>,
 }
 
-/// The state space `adt` is pinned to: the `SPACE` of its
-/// `core::ops::PlaceIndex` implementation when that is storage or transient
-/// storage. Implementing the trait with a state space is the pinning
-/// declaration; an implementation with `SPACE = memory` leaves the type an
-/// ordinary value.
-#[salsa::tracked(cycle_fn = adt_pin_cycle_recover, cycle_initial = adt_pin_cycle_initial)]
-pub(crate) fn adt_pin<'db>(
-    db: &'db dyn HirAnalysisDb,
-    adt: AdtDef<'db>,
-) -> Option<ProviderAddressSpace> {
+/// Where a type is pinned: to the state space its `core::ops::StateIndex`
+/// implementation names as `SPACE`. Implementing the trait is the pinning
+/// declaration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+pub enum Pin {
+    /// No implementation pins the type, or any instance of it.
+    Unpinned,
+    Pinned(ProviderAddressSpace),
+    /// Whether the type is pinned depends on its parameters: separate
+    /// implementations, or a `SPACE` computed from them, pin some instances.
+    Undecided,
+}
+
+/// The pin of `ty`, from each `StateIndex` implementation that applies to
+/// some instance of it: its `SPACE`, as a constant when it does not depend
+/// on the implementation's parameters, else at the instance `ty` selects.
+/// The implementations agree on a pin, or the pin is undecided.
+#[salsa::tracked(cycle_fn = ty_pin_cycle_recover, cycle_initial = ty_pin_cycle_initial)]
+pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
+    let Some(adt) = ty.adt_def(db) else {
+        return Pin::Unpinned;
+    };
+    // A type still being inferred stands for any instance of its ADT.
+    let ty = if ty.has_var(db) {
+        TyId::foldl(db, TyId::adt(db, adt), adt.params(db))
+    } else {
+        ty
+    };
     let scope = adt.scope(db);
-    let place_index = resolve_core_trait(db, scope, &["ops", "PlaceIndex"])?;
-    impls_for_trait_def(db, adt.ingot(db), place_index)
+    let Some(state_index) = resolve_core_trait(db, scope, &["ops", "StateIndex"]) else {
+        return Pin::Unpinned;
+    };
+    let goal = TraitInstId::new_simple(db, state_index, vec![ty]);
+    let mut pins = impls_for_trait_def(db, adt.ingot(db), state_index)
         .iter()
-        .filter(|implementor| implementor.self_ty(db).adt_def(db) == Some(adt))
-        .find_map(|implementor| {
-            let resolved = ResolvedImplInstance::identity(db, *implementor);
-            effect_space_from_resolved_trait_const(db, scope, resolved).filter(|space| {
-                matches!(
-                    space,
-                    ProviderAddressSpace::Storage | ProviderAddressSpace::Transient
-                )
-            })
+        .filter(|implementor| {
+            let mut table = UnificationTable::new(db);
+            let instance = table.instantiate_with_fresh_vars(**implementor);
+            let ty = table.instantiate_with_fresh_vars(ty);
+            table.unify(instance.self_ty(db), ty).is_ok()
         })
+        .map(|implementor| {
+            let space = |resolved| effect_space_from_resolved_trait_const(db, scope, resolved);
+            space(ResolvedImplInstance::identity(db, *implementor))
+                .or_else(|| instantiate_selected_impl(db, *implementor, goal).and_then(space))
+                .map_or(Pin::Undecided, Pin::Pinned)
+        });
+    let Some(first) = pins.next() else {
+        return Pin::Unpinned;
+    };
+    if pins.all(|pin| pin == first) {
+        first
+    } else {
+        Pin::Undecided
+    }
 }
 
-fn adt_pin_cycle_initial<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: AdtDef<'db>,
-) -> Option<ProviderAddressSpace> {
-    None
+fn ty_pin_cycle_initial<'db>(_: &'db dyn HirAnalysisDb, _: TyId<'db>) -> Pin {
+    Pin::Unpinned
 }
 
-fn adt_pin_cycle_recover<'db>(
+fn ty_pin_cycle_recover<'db>(
     _: &'db dyn HirAnalysisDb,
-    _: &Option<ProviderAddressSpace>,
+    _: &Pin,
     _: u32,
-    _: AdtDef<'db>,
-) -> salsa::CycleRecoveryAction<Option<ProviderAddressSpace>> {
+    _: TyId<'db>,
+) -> salsa::CycleRecoveryAction<Pin> {
     salsa::CycleRecoveryAction::Iterate
 }
 
-/// The pinned type `ty` is or holds in a field, or in a tuple or array
-/// element; see `TyId::pinned_part`.
+/// The type that is or may be pinned that `ty` is or holds in a field, or
+/// in a tuple or array element; see `TyId::pinned_part`.
 #[salsa::tracked(cycle_fn = ty_pinned_part_cycle_recover, cycle_initial = ty_pinned_part_cycle_initial)]
 pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
     match ty.base_ty(db).data(db) {
         TyData::TyBase(TyBase::Adt(adt)) => {
-            if adt.pin(db).is_some() {
+            if ty.may_be_pinned(db) {
                 return Some(ty);
             }
             // A type not applied to all its arguments has no values.
@@ -129,11 +160,6 @@ impl<'db> AdtDef<'db> {
 
     pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
-    }
-
-    /// The state space this type is pinned to; see `adt_pin`.
-    pub fn pin(self, db: &'db dyn HirAnalysisDb) -> Option<ProviderAddressSpace> {
-        adt_pin(db, self)
     }
 
     pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {

@@ -7,9 +7,9 @@ use super::{
 };
 use crate::{
     hir_def::{
-        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId, GenericArg,
-        GenericArgListId, GenericParamListId, IdentId, Partial, PathId, TraitRefId, TupleTypeId,
-        TypeBound, TypeId, WhereClauseId, item::*,
+        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FieldIndex, FuncParamListId,
+        GenericArg, GenericArgListId, GenericParamListId, IdentId, IntegerId, Partial, PathId,
+        TraitRefId, TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
     },
     lower::msg::lower_msg_as_mod,
     span::HirOrigin,
@@ -633,11 +633,12 @@ impl<'db> AssocSpace<'db> {
             "space",
             ast.name().map(|name| name.text().to_string()),
         );
+        let steps = SpacePathId::lower_ast(ctxt, ast.space_path());
         AssocSpace {
             name: IdentId::lower_token_partial(ctxt, ast.name()),
             value: ast
                 .value()
-                .map(|value| Partial::Present(PathId::lower_ast(ctxt, value))),
+                .map(|value| (Partial::Present(PathId::lower_ast(ctxt, value)), steps)),
         }
     }
 }
@@ -645,6 +646,7 @@ impl<'db> AssocSpace<'db> {
 impl<'db> SpaceAnnotation<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::SpaceAnnotation) -> Self {
         let path = PathId::lower_ast_partial(ctxt, ast.path());
+        let steps = SpacePathId::lower_ast(ctxt, ast.space_path());
         match ast.target() {
             Some(target) => {
                 let target = Partial::Present(PathId::lower_ast(ctxt, target));
@@ -654,11 +656,30 @@ impl<'db> SpaceAnnotation<'db> {
                 {
                     Self::Target(target)
                 } else {
-                    Self::Path(Partial::Absent)
+                    Self::Path(Partial::Absent, steps)
                 }
             }
-            None => Self::Path(path),
+            None => Self::Path(path, steps),
         }
+    }
+}
+
+impl<'db> SpacePathId<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: Option<ast::SpacePath>) -> Self {
+        let steps: Vec<_> = ast
+            .into_iter()
+            .flat_map(|path| path.steps())
+            .map(|step| match step {
+                ast::SpacePathStep::Field(token) => {
+                    SpaceStep::Field(FieldIndex::Ident(IdentId::lower_token(ctxt, token)))
+                }
+                ast::SpacePathStep::Index(index) => {
+                    SpaceStep::Field(FieldIndex::Index(IntegerId::lower_ast(ctxt, index)))
+                }
+                ast::SpacePathStep::Element => SpaceStep::Element,
+            })
+            .collect();
+        SpacePathId::new(ctxt.db(), steps)
     }
 }
 

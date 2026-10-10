@@ -128,7 +128,7 @@ pub trait Eq<T = Self> {
 // Aggregate comparisons use element Eq implementations and short-circuit.
 impl<T: Eq, const N: usize> Eq for [T; N] {
     fn eq(self, _ other: [T; N]) -> bool {
-        let mut i: usize = 0
+        var i: usize = 0
         while i < N {
             if !(self[i] == other[i]) {
                 return false
@@ -198,21 +198,22 @@ pub trait Ord<T = Self> {
     fn ge(self, _ other: T) -> bool
 }
 
-/// A collection whose elements are places, as an array's are: `c[k]` names
-/// the element at `k` with no call, a path that the access checker sees as
-/// `c` indexed by a dynamic key, and `c[k].f = v` writes one field. A
-/// collection implements it by saying where an element lives; the compiler
-/// calls `locate` once when it opens an access to the element.
+/// A collection whose elements are places in a state space, as an array's
+/// are places: `c[k]` names the element at `k` with no call, a path that the
+/// access checker sees as `c` indexed by a dynamic key, and `c[k].f = v`
+/// writes one field. A collection implements it by saying where an element
+/// lives; the compiler calls `locate` once when it opens an access to the
+/// element.
 ///
-/// A state `SPACE` (storage or transient storage) pins the implementor: it
-/// lives at one number in that space, its region is its own fields at that
-/// number together with every location `locate` returns, and a type holding
-/// it is state-only. An implementor with `SPACE` memory is an ordinary value.
-/// `locate` must return locations within that region, and distinct keys
-/// separated lanes; the compiler trusts it to.
-pub trait PlaceIndex {
-    /// The address space the elements live in, wherever the collection is.
-    const SPACE: ingot::effect_ref::AddressSpace
+/// `SPACE` pins the implementor: it lives at one number in that space, its
+/// region is its own fields at that number together with every location
+/// `locate` returns, and a type holding it is state-only. `locate` must
+/// return locations within that region, and distinct keys separated lanes;
+/// the compiler trusts it to. A memory collection, whose elements live in an
+/// allocation it owns, implements `Index` and `IndexMut` instead.
+pub trait StateIndex {
+    /// The state space the elements live in, wherever the collection is.
+    const SPACE: ingot::effect_ref::StateSpace
     /// The index operand, evaluated once and retained by the access.
     type Key: Copy
     /// The element's type.
@@ -229,13 +230,13 @@ pub trait PlaceIndex {
     fn locate(self, _ root: u256, _ key: Self::Key) -> (u256, u256)
 }
 
-/// Zeroes the element at `key` of a collection whose elements live in a
-/// space that starts zeroed: its slots, or only its bits of a slot it shares.
-/// The element reads as its type's zero value, which in such a space every
-/// type has. The element must be `Clearable`: one holding a storage
-/// collection is not cleared by zeroing its own slots.
-pub fn clear_storage<C: PlaceIndex>(_ collection: mut C, _ key: C::Key)
-    where C::SPACE.starts_zeroed(), C::Entry: Clearable
+/// Zeroes the element at `key` of a collection: its slots, or only its bits
+/// of a slot it shares. A state space starts zeroed, so the element reads as
+/// its type's zero value, which there every type has. The element must be
+/// `Clearable`: one holding a storage collection is not cleared by zeroing
+/// its own slots.
+pub fn clear_storage<C: StateIndex>(_ collection: mut C, _ key: C::Key)
+    where C::Entry: Clearable
 {
     unsafe { ingot::intrinsic::clear(mut collection[key]) }
 }

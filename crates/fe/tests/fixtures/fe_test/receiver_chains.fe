@@ -32,7 +32,7 @@ impl Position {
 
 #[test]
 fn test_receiver_chains() {
-    let mut p = Position {
+    var p = Position {
         collateral: 900,
         debt: 300,
         ver: 0,

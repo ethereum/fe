@@ -1,5 +1,6 @@
 ---
 source: crates/uitest/tests/semantic_access.rs
+assertion_line: 25
 expression: diags
 input_file: fixtures/semantic_access/loop_sessions.fe
 ---
@@ -8,7 +9,7 @@ error[16-0001]: access conflict in `fn projected`
    │
  8 │   fn projected(_ items: mut [Item; 2]) {
    │ ╭──────────────────────────────────────'
- 9 │ │     for item in items {
+ 9 │ │     for ref item in items {
 10 │ │         items[0] = Item { n: 0 }
    │ │         ^^^^^^^^^^^^^^^^^^^^^^^^ cannot write to this place while a `ref` projection of it is open
 11 │ │         assert(item.n > 0)

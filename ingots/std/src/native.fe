@@ -39,7 +39,7 @@ impl Args {
     pub fn get(self, _ index: usize) -> Arg {
         core::assert(index < self.len())
         let bytes = unsafe { *ptr::offset(self.argv, index as u256) }
-        let mut len: usize = 0
+        var len: usize = 0
         while unsafe { *ptr::offset(bytes, len as u256) } != 0 {
             len += 1
         }

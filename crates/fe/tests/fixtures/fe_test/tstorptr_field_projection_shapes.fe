@@ -45,7 +45,7 @@ pub contract C {
             let direct = unsafe { with (flag) { flag_get() } }
             let via_method = s.read_plain_self()
             let raw_slot = s.flag.raw()
-            let mut result = raw_slot
+            var result = raw_slot
             if direct { result += 1 }
             if via_method { result += 2 }
             result

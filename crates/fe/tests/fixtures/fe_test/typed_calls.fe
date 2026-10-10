@@ -37,18 +37,18 @@ pub contract Plain {
 fn bounded_calls_copy_at_most_capacity() uses (evm: mut Evm) {
     let target = evm.create2<Target>(value: 0, args: (), salt: 0)
     with (Call = evm, Ctx = evm) {
-        let mut ret = MemBuffer::with_capacity(0)
+        var ret = MemBuffer::with_capacity(0)
         let outcome = evm.try_call_into(addr: target, gas: 100000, value: 0, message: TargetMsg::Words { n: 7 }, ret: mut ret)
         assert(outcome.success())
         assert(outcome.returndata_len() == 32)
         assert(ret.len() == 0)
 
-        let mut word = MemBuffer::with_capacity(32)
+        var word = MemBuffer::with_capacity(32)
         let outcome = evm.try_static_into(addr: target, gas: 100000, message: TargetMsg::Words { n: 9 }, ret: mut word)
         assert(outcome.success())
         assert(word.span().word_at(0) == 9)
 
-        let mut ignored = MemBuffer::with_capacity(0)
+        var ignored = MemBuffer::with_capacity(0)
         let failed = evm.try_call_into(addr: target, gas: 100000, value: 0, message: TargetMsg::Fail {}, ret: mut ignored)
         assert(!failed.success())
 

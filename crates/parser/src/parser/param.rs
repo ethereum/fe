@@ -80,11 +80,20 @@ impl FnParamScope {
         Ok(())
     }
 }
+/// `mut` before a parameter's name, where a mutable owned parameter writes
+/// `var`.
+fn mut_param_name_error<S: TokenStream>(parser: &mut Parser<S>) {
+    parser.error_msg_on_current_token(
+        "a mutable owned parameter is written `var x: own T`; `x: mut T` is a mutable borrow",
+    );
+}
+
 impl super::Parse for FnParamScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.bump_if(SyntaxKind::MutKw);
+        let has_mut = parser.bump_if(SyntaxKind::MutKw);
+        let has_var = !has_mut && parser.bump_if(SyntaxKind::VarKw);
         let lookahead = parser.peek_n_non_trivia(2);
         let allow_ref_self_shorthand = matches!(
             lookahead.as_slice(),
@@ -114,12 +123,20 @@ impl super::Parse for FnParamScope {
                 if !self.allow_self {
                     parser.error_msg_on_current_token("`self` is not allowed here");
                 }
+                if has_var {
+                    parser.error_msg_on_current_token(
+                        "`var` makes an owned parameter mutable, not a receiver",
+                    );
+                }
                 parser.bump_expected(SyntaxKind::SelfKw);
                 if parser.bump_if(SyntaxKind::Colon) {
                     parse_type(parser, None)?;
                 }
             }
             Some(SyntaxKind::Ident) => {
+                if has_mut {
+                    mut_param_name_error(parser);
+                }
                 parser.bump();
 
                 if matches!(
@@ -134,6 +151,9 @@ impl super::Parse for FnParamScope {
                 self.parse_param_ty(parser)?;
             }
             Some(SyntaxKind::Underscore) => {
+                if has_mut {
+                    mut_param_name_error(parser);
+                }
                 parser.bump();
 
                 // A closure parameter may be a bare `_` with an inferred type.

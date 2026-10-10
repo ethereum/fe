@@ -1,5 +1,5 @@
 fn borrows() {
-    let mut x: u256 = 0
+    var x: u256 = 0
     let r = ref x
     let m = mut x
     r

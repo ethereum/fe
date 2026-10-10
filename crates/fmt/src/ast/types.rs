@@ -937,7 +937,29 @@ impl ToDoc for ast::SpaceAnnotation {
                     .append(alloc.text(")"))
             },
         );
-        alloc.text("@").append(path).append(target)
+        let space_path = self
+            .space_path()
+            .map_or_else(|| alloc.nil(), |space_path| space_path.to_doc(ctx));
+        alloc
+            .text("@")
+            .append(path)
+            .append(target)
+            .append(space_path)
+    }
+}
+
+impl ToDoc for ast::SpacePath {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+        alloc.concat(self.steps().map(|step| match step {
+            ast::SpacePathStep::Field(token) => {
+                alloc.text(".").append(alloc.text(ctx.token(&token)))
+            }
+            ast::SpacePathStep::Index(index) => {
+                alloc.text(".").append(alloc.text(ctx.token(index.token())))
+            }
+            ast::SpacePathStep::Element => alloc.text("[_]"),
+        }))
     }
 }
 

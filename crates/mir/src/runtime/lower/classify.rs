@@ -844,14 +844,14 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
                 .place_prefix_ty(self.db, place, index)?;
             let owner = self.body.owner();
             let space =
-                provider_address_space_to_runtime(owner.place_index_space(self.db, collection_ty)?);
+                provider_address_space_to_runtime(owner.state_index_space(self.db, collection_ty)?);
             Some(EntryRoot {
                 element_ty: self
                     .body
                     .normalized
                     .place_prefix_ty(self.db, place, index + 1)?,
                 space,
-                lane: owner.place_index_lanes(self.db, collection_ty).is_some(),
+                lane: owner.state_index_lanes(self.db, collection_ty).is_some(),
                 path: NDataPath::new(&path[index + 1..]),
             })
         })())

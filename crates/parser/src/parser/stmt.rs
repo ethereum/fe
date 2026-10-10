@@ -33,7 +33,7 @@ pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery
     }
 
     match parser.current_kind() {
-        Some(LetKw) => parser
+        Some(LetKw | VarKw) => parser
             .parse_cp(LetStmtScope::default(), checkpoint)
             .map(|_| ()),
         Some(ForKw) => parser
@@ -71,8 +71,25 @@ impl super::Parse for LetStmtScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.bump_expected(SyntaxKind::LetKw);
+        use SyntaxKind::*;
+        let is_var = parser.bump_if(VarKw);
+        if !is_var {
+            parser.bump_expected(LetKw);
+        }
         parser.set_newline_as_trivia(false);
+        let misuse = match (is_var, parser.current_kind()) {
+            (false, Some(MutKw)) => Some(
+                "`let mut` is not Fe: `var x = …` binds a mutable value, and `let x = mut p` a mutable access",
+            ),
+            (false, Some(RefKw)) => {
+                Some("a read access is bound by `let x = ref p`, with `ref` on the initializer")
+            }
+            (true, Some(Ident)) | (false, _) => None,
+            (true, _) => Some("`var` binds a single name; destructure with `let (var a, b) = …`"),
+        };
+        if let Some(msg) = misuse {
+            parser.error_msg_on_current_token(msg);
+        }
         parse_pat(parser)?;
 
         if parser.current_kind() == Some(SyntaxKind::Colon) {

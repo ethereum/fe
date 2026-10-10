@@ -4,6 +4,7 @@
 /// closes the no-code-at-address hole with a codesize check.
 
 use core::ptr
+use core::abi::store_word
 use std::evm::{RawOps, erc20}
 
 msg TokenMsg {
@@ -118,8 +119,8 @@ msg MalformedTokenMsg {
 pub contract MalformedToken {
     recv MalformedTokenMsg {
         Transfer { receiver, amount } -> bool uses (raw: mut RawOps) {
-            let mut data = ptr::MemBuffer::alloc(32)
-            unsafe { raw.mstore(addr: data.ptr(), value: 0xaabbccdd << 224) }
+            var data = ptr::MemBuffer::alloc(32)
+            unsafe { store_word(ptr: data.ptr(), value: 0xaabbccdd << 224) }
             unsafe { data.set_len(4) }
             raw.return_data(data: data.span())
         }

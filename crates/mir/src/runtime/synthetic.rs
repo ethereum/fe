@@ -1695,7 +1695,7 @@ pub contract ReturnContract {
     }
 
     #[test]
-    fn test_roots_erase_inert_raw_mem_root_providers() {
+    fn test_roots_erase_inert_raw_storage_root_providers() {
         let mut db = DriverDataBase::default();
         let file_url = Url::from_file_path(
             std::env::temp_dir().join("synthetic_target_root_provider_test_root.fe"),
@@ -1706,12 +1706,11 @@ pub contract ReturnContract {
             file_url.clone(),
             Some(
                 r#"
-use core::ptr
-use std::evm::RawMem
+use std::evm::RawStorage
 
 #[test]
-fn test_raw_mem_root() uses (mem: mut RawMem) {
-    mem.mstore(addr: ptr::alloc_bytes(32), value: 1)
+fn test_raw_storage_root() uses (storage: mut RawStorage) {
+    unsafe { storage.sstore(slot: 1, value: 1) }
 }
 "#
                 .to_string(),
@@ -1722,7 +1721,7 @@ fn test_raw_mem_root() uses (mem: mut RawMem) {
             .get(&db, &file_url)
             .expect("file should be loaded");
         let top_mod = db.top_mod(file);
-        let package = build_test_runtime_package(&db, top_mod, Some("test_raw_mem_root"))
+        let package = build_test_runtime_package(&db, top_mod, Some("test_raw_storage_root"))
             .expect("test runtime package should build");
         let functions = package.functions(&db);
         let root = functions
@@ -1731,7 +1730,7 @@ fn test_raw_mem_root() uses (mem: mut RawMem) {
                 matches!(
                     function.owner(&db),
                     RuntimeFunctionOwner::Synthetic(RuntimeSyntheticSpec::TestRoot { ref name, .. })
-                        if name == "test_raw_mem_root"
+                        if name == "test_raw_storage_root"
                 )
             })
             .expect("expected synthetic test root");
@@ -1744,7 +1743,7 @@ fn test_raw_mem_root() uses (mem: mut RawMem) {
                     ..
                 }
             )),
-            "inert synthetic RawMem roots should erase instead of materializing empty providers: {body:#?}"
+            "inert synthetic RawStorage roots should erase instead of materializing empty providers: {body:#?}"
         );
         assert!(
             !body.blocks[0].stmts.iter().any(|stmt| matches!(

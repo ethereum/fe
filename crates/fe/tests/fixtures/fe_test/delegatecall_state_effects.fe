@@ -17,7 +17,7 @@ pub contract DelegateCaller {
         {
             persistent = 1
             transient = 2
-            let mut output = MemBuffer::empty()
+            var output = MemBuffer::empty()
             let outcome = call.raw_delegatecall(
                 addr: implementation,
                 gas: 100000,

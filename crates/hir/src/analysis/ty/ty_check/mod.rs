@@ -35,10 +35,10 @@ use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty};
 use crate::hir_def::{CallableDef, ImplTrait, Trait, params::FuncParamMode};
 use crate::{
     hir_def::{
-        BinOp, Body, CondId, Const, Contract, ContractRecvArm, Expr, ExprId, Func, GenericParam,
-        GenericParamOwner, LitKind, ManualContractRootAttr, Partial, Pat, PatId, PathId,
-        StaticAssert, StaticAssertComparison, Stmt, StmtId, StringId, TypeId as HirTyId, UnOp,
-        WhereClauseOwner,
+        BinOp, BindingMarker, Body, CondId, Const, Contract, ContractRecvArm, Expr, ExprId, Func,
+        GenericParam, GenericParamOwner, LitKind, ManualContractRootAttr, Partial, Pat, PatId,
+        PathId, StaticAssert, StaticAssertComparison, Stmt, StmtId, StringId, TypeId as HirTyId,
+        UnOp, WhereClauseOwner,
     },
     span::{
         DynLazySpan, expr::LazyExprSpan, pat::LazyPatSpan, path::LazyPathSpan, types::LazyTySpan,
@@ -732,7 +732,7 @@ fn diags_allow_evaluation<'db>(db: &'db dyn HirAnalysisDb, diags: &[FuncBodyDiag
             diag,
             FuncBodyDiag::Body(BodyDiag::TypeAnnotationNeeded { ty, .. })
                 if ty.is_integral_var(db)
-        )
+        ) || matches!(diag, FuncBodyDiag::Body(BodyDiag::MutAccessCopied { .. }))
     })
 }
 
@@ -791,6 +791,20 @@ pub(super) fn check_body<'db>(
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
     let CheckedBody { diags, typed, .. } = checked_body(db, owner);
     (diags, typed)
+}
+
+/// How the bindings of a pattern take what its source grants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum AccessBinding {
+    /// A place matched by component: a `ref` or `mut` binding opens that
+    /// access on its component's path, and the others take its value.
+    Place,
+    /// A single name bound to an access its initializer names (`ref p`,
+    /// `mut p`): the binding is that access.
+    Named,
+    /// A projection's result, or the components of a named access: each
+    /// binding takes a value or an access by `TyChecker::binding_access_kind`.
+    Result,
 }
 
 /// A body checked by the pipeline every kind of body takes: inference with
@@ -1265,6 +1279,7 @@ fn typed_body_for_bodyless_func<'db>(
         implicit_moves: FxHashSet::default(),
         place_entries: FxHashSet::default(),
         unsafe_splits: FxHashSet::default(),
+        matched_places: FxHashSet::default(),
         covered_providers: FxHashSet::default(),
         const_refs: SecondaryMap::new(),
         value_path_refs: SecondaryMap::new(),
@@ -1380,6 +1395,7 @@ impl<'db> TyChecker<'db> {
             }
         }
         self.check_access_uses();
+        self.check_marked_bindings();
     }
 
     /// Reports the non-`Copy` values moved out of closures' captures.
@@ -2879,17 +2895,42 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// Binds `pat` to what `source` grants: its accesses if it has a shape.
-    /// A matched place grants a `mut` access to each `mut` binding only.
+    /// Binds `pat` to what `source` grants, when it grants accesses: see
+    /// `AccessBinding` for how each kind of source binds.
     fn bind_pattern_source(&mut self, pat: PatId, source: ExprId, prop: &ExprProp<'db>) {
-        if let Some(shape) = &prop.shape {
-            self.consume_access(source);
-            let authority = self.expr_has_authority(source);
-            if self.env.is_matched_place(source) {
-                self.bind_mut_pattern_accesses(pat, authority);
-            } else {
-                self.bind_pattern_accesses(pat, shape, authority);
+        let Some(shape) = &prop.shape else {
+            return;
+        };
+        self.consume_access(source);
+        let authority = self.expr_has_authority(source);
+        let binding = if self.env.is_matched_place(source) {
+            AccessBinding::Place
+        } else if self.is_named_access(source)
+            && matches!(
+                pat.data(self.db, self.body()),
+                Partial::Present(Pat::Path(..))
+            )
+        {
+            AccessBinding::Named
+        } else {
+            AccessBinding::Result
+        };
+        self.bind_pattern_accesses(pat, shape, authority, binding);
+    }
+
+    /// Whether `expr` names the accesses it grants: `ref p`, `mut p`, an
+    /// unsafe split of them, or a block ending in one.
+    fn is_named_access(&self, expr: ExprId) -> bool {
+        match self.env.expr_data(expr) {
+            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut)) => true,
+            Partial::Present(Expr::Tuple(_)) => self.env.is_unsafe_split(expr),
+            Partial::Present(Expr::Block(stmts, _)) => {
+                matches!(
+                    stmts.last().map(|stmt| stmt.data(self.db, self.body())),
+                    Some(Partial::Present(Stmt::Expr(tail))) if self.is_named_access(*tail)
+                )
             }
+            _ => false,
         }
     }
 
@@ -2928,39 +2969,51 @@ impl<'db> TyChecker<'db> {
             })
     }
 
-    /// A `mut` binding in a pattern matched against a place opens a `mut`
-    /// access on the sub-place it binds, so the place is matched through a
-    /// `mut` access of it. Its other bindings still bind by value.
+    /// A pattern matched against a place binds its components there: a `mut`
+    /// binding opens a `mut` access on its component's path and a `ref`
+    /// binding a read access, and the other bindings take their component's
+    /// value. Index syntax `t[i]` selects `index_mut` for a `mut` binding and
+    /// is destructured as that projection's result.
     fn open_matched_place(
         &mut self,
         scrutinee: ExprId,
         prop: ExprProp<'db>,
         pats: impl IntoIterator<Item = PatId>,
     ) -> ExprProp<'db> {
-        let Some(mut_pat) = pats.into_iter().find_map(|pat| self.first_mut_binding(pat)) else {
-            return prop;
+        let pats: Vec<_> = pats.into_iter().collect();
+        let marked = |this: &Self, marker| {
+            pats.iter()
+                .find_map(|pat| this.first_marked_binding(*pat, marker))
         };
-        if !self.env.is_place_expr(scrutinee) {
+        let mut_pat = marked(self, BindingMarker::Mut);
+        if (mut_pat.is_none() && marked(self, BindingMarker::Ref).is_none())
+            || !self.env.is_place_expr(scrutinee)
+        {
             return prop;
         }
-        let prop = if !prop.is_mut && self.select_mut_place(scrutinee) {
+        let prop = if mut_pat.is_some() && !prop.is_mut && self.select_mut_place(scrutinee) {
             self.env
                 .typed_expr(scrutinee)
                 .expect("selected place is typed")
         } else {
             prop
         };
-        // A projection's result is destructured through its own access.
         if prop.shape.is_some() {
             return prop;
         }
-        if !prop.is_mut {
+        if let Some(mut_pat) = mut_pat
+            && !prop.is_mut
+        {
             self.report_cannot_borrow_mut(scrutinee, mut_pat.span(self.body()).into());
-            return prop;
         }
+        let kind = if mut_pat.is_some() {
+            BorrowKind::Mut
+        } else {
+            BorrowKind::Ref
+        };
         let prop = ExprProp {
             borrow_provider: self.access_provider(scrutinee),
-            shape: Some(Shape::Access(BorrowKind::Mut, prop.ty)),
+            shape: Some(Shape::Access(kind, prop.ty)),
             ..prop
         };
         self.env.open_matched_place(scrutinee, prop.clone());
@@ -2978,46 +3031,23 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn first_mut_binding(&self, pat: PatId) -> Option<PatId> {
+    /// The first binding in `pat` marked `marker`.
+    pub(super) fn first_marked_binding(&self, pat: PatId, marker: BindingMarker) -> Option<PatId> {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return None;
         };
         match pat_data {
-            Pat::Path(_, true) => Some(pat),
+            Pat::Path(_, binding) if *binding == marker => Some(pat),
             Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Path(..) => None,
-            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
-                pats.iter().find_map(|pat| self.first_mut_binding(*pat))
-            }
+            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => pats
+                .iter()
+                .find_map(|pat| self.first_marked_binding(*pat, marker)),
             Pat::Record(_, fields) => fields
                 .iter()
-                .find_map(|field| self.first_mut_binding(field.pat)),
+                .find_map(|field| self.first_marked_binding(field.pat, marker)),
             Pat::Or(lhs, rhs) => self
-                .first_mut_binding(*lhs)
-                .or_else(|| self.first_mut_binding(*rhs)),
-        }
-    }
-
-    fn bind_mut_pattern_accesses(&mut self, pat: PatId, authority: bool) {
-        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
-            return;
-        };
-        match pat_data {
-            Pat::Path(_, true) => self.set_pattern_access(pat, BorrowKind::Mut, authority),
-            Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Path(..) => {}
-            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
-                for pat in pats {
-                    self.bind_mut_pattern_accesses(*pat, authority);
-                }
-            }
-            Pat::Record(_, fields) => {
-                for field in fields {
-                    self.bind_mut_pattern_accesses(field.pat, authority);
-                }
-            }
-            Pat::Or(lhs, rhs) => {
-                self.bind_mut_pattern_accesses(*lhs, authority);
-                self.bind_mut_pattern_accesses(*rhs, authority);
-            }
+                .first_marked_binding(*lhs, marker)
+                .or_else(|| self.first_marked_binding(*rhs, marker)),
         }
     }
 
@@ -3026,16 +3056,22 @@ impl<'db> TyChecker<'db> {
     /// kind. Tuple and sum shapes assign their components, and owned
     /// components bind by value. A shape is not a value, so a single binding
     /// cannot hold a whole tuple or sum shape.
-    fn bind_pattern_accesses(&mut self, pat: PatId, shape: &Shape<'db>, authority: bool) {
+    pub(super) fn bind_pattern_accesses(
+        &mut self,
+        pat: PatId,
+        shape: &Shape<'db>,
+        authority: bool,
+        binding: AccessBinding,
+    ) {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return;
         };
         match (shape, pat_data) {
             (Shape::Owned(_), _) | (_, Pat::WildCard | Pat::Rest | Pat::Lit(_)) => {}
-            (Shape::Access(kind, _), _) => self.set_pattern_access(pat, *kind, authority),
+            (Shape::Access(kind, _), _) => self.set_pattern_access(pat, *kind, authority, binding),
             (_, Pat::Or(lhs, rhs)) => {
-                self.bind_pattern_accesses(*lhs, shape, authority);
-                self.bind_pattern_accesses(*rhs, shape, authority);
+                self.bind_pattern_accesses(*lhs, shape, authority, binding);
+                self.bind_pattern_accesses(*rhs, shape, authority, binding);
             }
             (Shape::Tuple(elems), Pat::Tuple(pats)) => {
                 let rest = pats
@@ -3047,7 +3083,7 @@ impl<'db> TyChecker<'db> {
                         _ => Some(idx),
                     };
                     if let Some(elem) = elem.and_then(|elem| elems.get(elem)) {
-                        self.bind_pattern_accesses(pat, elem, authority);
+                        self.bind_pattern_accesses(pat, elem, authority, binding);
                     }
                 }
             }
@@ -3060,7 +3096,7 @@ impl<'db> TyChecker<'db> {
                 if self.pattern_variant(pat) == Some(*variant)
                     && let [payload_pat] = pats.as_slice()
                 {
-                    self.bind_pattern_accesses(*payload_pat, payload, authority);
+                    self.bind_pattern_accesses(*payload_pat, payload, authority, binding);
                 }
             }
             (_, Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
@@ -3084,38 +3120,138 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn set_pattern_access(&mut self, pat: PatId, kind: BorrowKind, authority: bool) {
+    /// Gives each binding of `pat`, below an access of `kind`, what `binding`
+    /// says it takes: the access, a weaker read access, or a copy.
+    fn set_pattern_access(
+        &mut self,
+        pat: PatId,
+        kind: BorrowKind,
+        authority: bool,
+        binding: AccessBinding,
+    ) {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return;
         };
         match pat_data {
-            Pat::Path(..) => {
-                if let Some(LocalBinding::Local { .. }) = self.env.pat_binding(pat) {
-                    if kind == BorrowKind::Mut
-                        && let Some(ty) = self.env.pat_ty(pat)
-                    {
-                        let ty = ty.fold_with(self.db, &mut self.table);
-                        self.check_view_mut_access(ty, pat.span(self.body()).into());
-                    }
-                    self.env
-                        .set_pat_binding_mode(pat, PatBindingMode::Access { kind, authority });
+            Pat::Path(_, marker) => {
+                let Some(LocalBinding::Local { .. }) = self.env.pat_binding(pat) else {
+                    return;
+                };
+                let Some(ty) = self.env.pat_ty(pat) else {
+                    return;
+                };
+                let ty = ty.fold_with(self.db, &mut self.table);
+                let Some(access) = self.binding_access_kind(pat, ty, *marker, kind, binding) else {
+                    return;
+                };
+                if access == BorrowKind::Mut {
+                    self.check_view_mut_access(ty, pat.span(self.body()).into());
                 }
+                self.env.set_pat_binding_mode(
+                    pat,
+                    PatBindingMode::Access {
+                        kind: access,
+                        authority,
+                    },
+                );
             }
             Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
                 for pat in pats {
-                    self.set_pattern_access(*pat, kind, authority);
+                    self.set_pattern_access(*pat, kind, authority, binding);
                 }
             }
             Pat::Record(_, fields) => {
                 for field in fields {
-                    self.set_pattern_access(field.pat, kind, authority);
+                    self.set_pattern_access(field.pat, kind, authority, binding);
                 }
             }
             Pat::Or(lhs, rhs) => {
-                self.set_pattern_access(*lhs, kind, authority);
-                self.set_pattern_access(*rhs, kind, authority);
+                self.set_pattern_access(*lhs, kind, authority, binding);
+                self.set_pattern_access(*rhs, kind, authority, binding);
             }
             Pat::WildCard | Pat::Rest | Pat::Lit(..) => {}
+        }
+    }
+
+    /// The access a binding marked `marker`, of type `ty`, takes below an
+    /// access of `kind`, or `None` when it takes a value.
+    ///
+    /// `ref x` is a read access and `mut x` a `mut` access, never a copy;
+    /// `var x` is a mutable value. A plain name takes a value as `let x = e`
+    /// does, except that a `mut` result and a `#[view]` one (which has no
+    /// value reading) are bound as the access. A value of a projection's read
+    /// result is a copy, so a non-`Copy` one needs `ref`; one of a `mut`
+    /// result may move, as through any `mut` access.
+    fn binding_access_kind(
+        &mut self,
+        pat: PatId,
+        ty: TyId<'db>,
+        marker: BindingMarker,
+        kind: BorrowKind,
+        binding: AccessBinding,
+    ) -> Option<BorrowKind> {
+        let primary = || pat.span(self.body()).into();
+        match (binding, marker) {
+            (_, BindingMarker::Ref) => Some(BorrowKind::Ref),
+            (AccessBinding::Place, BindingMarker::Mut) => Some(BorrowKind::Mut),
+            (AccessBinding::Place, BindingMarker::Plain) if ty.is_view(self.db) => {
+                Some(BorrowKind::Ref)
+            }
+            (AccessBinding::Place, _) => None,
+            (AccessBinding::Named, BindingMarker::Var) => {
+                self.push_diag(BodyDiag::VarOfAccess { primary: primary() });
+                None
+            }
+            (AccessBinding::Named, _) => Some(kind),
+            _ if ty.has_invalid(self.db) => Some(kind),
+            (AccessBinding::Result, BindingMarker::Mut) if kind == BorrowKind::Mut => Some(kind),
+            (AccessBinding::Result, BindingMarker::Mut) => {
+                self.push_diag(BodyDiag::MutBindingOfRead { primary: primary() });
+                Some(BorrowKind::Ref)
+            }
+            (AccessBinding::Result, BindingMarker::Var) if self.ty_is_copy(ty) => {
+                if kind == BorrowKind::Mut {
+                    self.push_diag(BodyDiag::MutAccessCopied {
+                        primary: primary(),
+                        ty,
+                    });
+                }
+                None
+            }
+            (AccessBinding::Result, BindingMarker::Plain)
+                if kind == BorrowKind::Mut || ty.is_view(self.db) =>
+            {
+                Some(kind)
+            }
+            (AccessBinding::Result, BindingMarker::Plain) if self.ty_is_copy(ty) => None,
+            (AccessBinding::Result, BindingMarker::Var) if kind == BorrowKind::Mut => None,
+            (AccessBinding::Result, BindingMarker::Plain | BindingMarker::Var) => {
+                self.push_diag(BodyDiag::RefBindingRequired {
+                    primary: primary(),
+                    ty,
+                });
+                Some(BorrowKind::Ref)
+            }
+        }
+    }
+
+    /// Reports `ref` and `mut` bindings that bind a value: of an owned value
+    /// or component, or a copied element, which has no access to hold.
+    fn check_marked_bindings(&mut self) {
+        let body = self.body();
+        for (pat, data) in body.pats(self.db).iter() {
+            if let Partial::Present(Pat::Path(
+                _,
+                marker @ (BindingMarker::Ref | BindingMarker::Mut),
+            )) = data
+                && let Some(binding @ LocalBinding::Local { .. }) = self.env.pat_binding(pat)
+                && self.env.binding_access(&binding).is_none()
+            {
+                self.push_diag(BodyDiag::MarkedBindingWithoutAccess {
+                    primary: pat.span(body).into(),
+                    marker: *marker == BindingMarker::Mut,
+                });
+            }
         }
     }
 
@@ -3126,7 +3262,7 @@ impl<'db> TyChecker<'db> {
         };
 
         match pat_data {
-            Pat::Path(path, is_mut) => {
+            Pat::Path(path, marker) => {
                 let Partial::Present(path) = path else {
                     return;
                 };
@@ -3136,7 +3272,10 @@ impl<'db> TyChecker<'db> {
                 if let Some(ident) = path.as_ident(self.db) {
                     let current = self.env.current_block_idx();
                     if self.env.get_block(current).lookup_var(ident).is_none() {
-                        let binding = LocalBinding::local(pat, *is_mut);
+                        let binding = LocalBinding::local(
+                            pat,
+                            matches!(marker, BindingMarker::Var | BindingMarker::Mut),
+                        );
                         self.env.register_pending_binding(ident, binding);
                     }
                 }
@@ -3563,6 +3702,9 @@ mod typed_body_tables {
         /// The tuples that are unsafe splits: an `unsafe` block's tail tuple
         /// of accesses, granted by one session.
         pub(super) unsafe_splits: FxHashSet<ExprId>,
+        /// The places a pattern with `ref` or `mut` bindings is matched
+        /// against, which bind each component where it lies.
+        pub(super) matched_places: FxHashSet<ExprId>,
         /// `with` values whose resources the function's own authority covers.
         pub(super) covered_providers: FxHashSet<ExprId>,
         pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
@@ -4219,9 +4361,15 @@ impl<'db> TypedBody<'db> {
     }
 
     /// Whether the index expression `expr` names an entry of a collection
-    /// whose elements are places (`core::ops::PlaceIndex`), a path step.
+    /// whose elements are places (`core::ops::StateIndex`), a path step.
     pub fn is_place_entry(&self, expr: ExprId) -> bool {
         self.tables.place_entries.contains(&expr)
+    }
+
+    /// Whether `expr` is a place a pattern with `ref` or `mut` bindings is
+    /// matched against: its bindings take their components where they lie.
+    pub fn is_matched_place(&self, expr: ExprId) -> bool {
+        self.tables.matched_places.contains(&expr)
     }
 
     /// Whether the tuple `expr` is an unsafe split: one session granting
@@ -5584,6 +5732,7 @@ impl<'db> TypedBody<'db> {
             implicit_moves: FxHashSet::default(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
+            matched_places: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
             const_refs: SecondaryMap::new(),
             value_path_refs: SecondaryMap::new(),

@@ -29,7 +29,7 @@ pub contract Ledger {
         // the field an access holds.
         RawPointer { slot } -> u256 uses (mut book, raw: mut RawStorage) {
             let total = mut book.total
-            let mut p: StorPtr<Position> = unsafe { raw.stor_ptr(slot) }
+            var p: StorPtr<Position> = unsafe { raw.stor_ptr(slot) }
             unsafe { with (p) { bump_debt() } }
             total += 1
             total

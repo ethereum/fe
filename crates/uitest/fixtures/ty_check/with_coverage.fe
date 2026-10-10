@@ -26,7 +26,7 @@ fn raw(_ p: StorPtr<u256>) -> u256 uses (storage: RawStorage) {
 
 // Rejected: a provider that can write needs authority that can.
 fn raw_read_only(_ p: StorPtr<u256>) -> u256 uses (storage: RawStorage) {
-    let mut ptr = p
+    var ptr = p
     with (ptr) {
         read(ptr)
     }

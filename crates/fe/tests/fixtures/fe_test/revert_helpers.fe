@@ -3,7 +3,7 @@
 // `has_selector`, `is_error`, `decode_error_string`, `decode_panic` and the
 // `ReturnData` byte input.
 
-use core::abi::store_word
+use core::abi::{load_word, store_word}
 use core::message::MsgVariant
 use core::ptr
 use std::abi::DynString
@@ -89,7 +89,7 @@ msg ForwarderMsg {
 pub contract Forwarder uses (call: mut Call) {
     recv ForwarderMsg {
         Forward { target, data } uses (mut call) {
-            let mut ret = ptr::MemBuffer::empty()
+            var ret = ptr::MemBuffer::empty()
             let outcome = call
                 .raw_call(
                     addr: target,
@@ -427,7 +427,7 @@ uses (evm: mut Evm)
 where M: MsgVariant<Sol> + Encode<Sol>
 {
     let data = std::evm::encode_msg_calldata(message)
-    let mut ret = ptr::MemBuffer::empty()
+    var ret = ptr::MemBuffer::empty()
     evm.raw_call(
         addr: mock,
         gas: 1000000,
@@ -520,7 +520,7 @@ fn test_returndata_bounds() uses (evm: mut Evm) {
     // In-bounds copies work.
     let out = scratch(8)
     unsafe { rd.copy_to_memory(dest: out, src_offset: 32, len: 8) }
-    unsafe { assert!(evm.mload(out) == 0x2122232425262728 << 192) }
+    unsafe { assert!(load_word(out) == 0x2122232425262728 << 192) }
     // Zero-length copies at the end of a view, including an empty view
     // rebased past the end, are no-ops rather than halting.
     unsafe { rd.copy_to_memory(dest: out, src_offset: 40, len: 0) }
@@ -532,7 +532,7 @@ fn test_returndata_bounds() uses (evm: mut Evm) {
             len: 0,
         )
     }
-    unsafe { assert!(evm.mload(out) == 0x2122232425262728 << 192) }
+    unsafe { assert!(load_word(out) == 0x2122232425262728 << 192) }
 }
 
 #[test(should_revert)]

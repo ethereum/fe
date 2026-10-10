@@ -37,8 +37,8 @@ mod InnerMsg {
 
         #[inline(always)]
         unsafe fn encode(own self, _ ptr: *u8) {
-            let mut __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
-            let mut __fe_head_pos = 0
+            var __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
+            var __fe_head_pos = 0
             let __fe_field_0 = self.marker
             __fe_tail = core::abi::encode_field_at<std::abi::Sol, u256>(__fe_field_0, ptr, head_pos: __fe_head_pos, tail: __fe_tail)
             __fe_head_pos = __fe_head_pos + core::abi::abi_field_head_size<u256>()
@@ -94,8 +94,8 @@ mod OuterMsg {
 
         #[inline(always)]
         unsafe fn encode(own self, _ ptr: *u8) {
-            let mut __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
-            let mut __fe_head_pos = 0
+            var __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
+            var __fe_head_pos = 0
             let __fe_field_0 = self.inner
             core::abi::encode_field_at<std::abi::Sol, InnerMsg::Inner>(__fe_field_0, ptr, head_pos: __fe_head_pos, tail: __fe_tail)
         }

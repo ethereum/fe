@@ -2360,7 +2360,7 @@ pub contract C uses (evm: mut Evm) {
 
         // The arms' root providers, module scopes, and effect provenance
         // differ, but none of them changes a helper's body.
-        for helper in [&["bump"][..], &["store_word"], &["MemBuffer", "__alloc"]] {
+        for helper in [&["bump"][..], &["store_word"], &["MemBuffer", "__alloc("]] {
             let definitions = output
                 .lines()
                 .filter(|line| {

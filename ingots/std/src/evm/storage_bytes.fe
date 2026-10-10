@@ -53,7 +53,7 @@ fn masked_word_at<I: ByteInput>(_ input: I, _ offset: u256) -> u256 {
 
 fn copy_input_words_to_memory<I: ByteInput>(_ input: I, _ dest: *u8) {
     let word_count = ceil_words(input.len())
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < word_count {
         unsafe { ops::mstore(addr: offset(dest, i * 32), value: masked_word_at(input, i * 32)) }
         i += 1
@@ -129,7 +129,7 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
     /// contract field, uses those slots or the entries' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        let mut ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
+        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
         unsafe {
             with (ptr) {
                 core::effect_ref::target_mut(ptr)
@@ -143,7 +143,7 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
 
     pub fn clear(mut self, key: K) {
         let word_count = ceil_words(self.lengths[key])
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < word_count {
             self.words[(key, i)] = 0
             i += 1
@@ -158,9 +158,9 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
         self.clear(key)
         self.lengths[key] = len
         let word_count = ceil_words(len)
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < word_count {
-            let mut word = ops::calldataload(data_ptr + i * 32)
+            var word = ops::calldataload(data_ptr + i * 32)
             if i + 1 == word_count {
                 let rem = len % 32
                 if rem != 0 {
@@ -177,7 +177,7 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
         self.clear(key)
         self.lengths[key] = view.len()
         let word_count = ceil_words(view.len())
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < word_count {
             self.words[(key, i)] = masked_word_at(view, i * 32)
             i += 1
@@ -193,9 +193,9 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
     pub fn to_memory(self, key: K) -> ptr::MemBuffer {
         let len = self.lengths[key]
         let word_count = ceil_words(len)
-        let mut buffer = ptr::MemBuffer::alloc(word_count * 32)
+        var buffer = unsafe { ptr::MemBuffer::alloc_uninit(word_count * 32) }
 
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < word_count {
             unsafe {
                 ops::mstore(
@@ -229,7 +229,7 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
             ops::mstore(addr: offset(ptr, 32), value: len)
         }
 
-        let mut i: u256 = 0
+        var i: u256 = 0
         while i < word_count {
             unsafe { ops::mstore(addr: offset(ptr, 64 + i * 32), value: self.words[(key, i)]) }
             i += 1

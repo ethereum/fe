@@ -843,7 +843,7 @@ pub(crate) fn project_path_ty<'db>(
             }
             NDataProjection::Entry(key) => {
                 let (key_ty, output_ty) = instance
-                    .place_index_tys(db, ty)
+                    .state_index_tys(db, ty)
                     .ok_or(NormalizedBodyVerifyError::InvalidProjection)?;
                 let given = values
                     .get(key.index())

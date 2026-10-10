@@ -9,13 +9,13 @@ fn consume(_ item: own Item) {}
 
 // Rejected: an access as a field's value.
 fn field_escape() -> Holder {
-    let mut x: u256 = 1
+    var x: u256 = 1
     Holder { value: mut x }
 }
 
 // Rejected: an access as an owned argument.
 fn own_escape() {
-    let mut item = Item { n: 1 }
+    var item = Item { n: 1 }
     consume(mut item)
 }
 
@@ -28,7 +28,7 @@ fn result_escape(_ item: mut Item) -> Item {
 pub contract Store {
     mut slot: u256,
     init() uses (mut slot) {
-        let mut x: u256 = 0
+        var x: u256 = 0
         slot = mut x
     }
 }
@@ -39,7 +39,7 @@ fn field_of(_ holder: mut Holder) -> mut u256 {
 }
 
 fn yields_ok() -> u256 {
-    let mut holder = Holder { value: 1 }
+    var holder = Holder { value: 1 }
     let value = field_of(mut holder)
     value += 1
     holder.value

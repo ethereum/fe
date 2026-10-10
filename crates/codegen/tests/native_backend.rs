@@ -180,8 +180,8 @@ fn native_effect_place_preserves_its_reference_field_layout() {
 struct Handle { value: mut i32, calls: i32 }
 fn step() uses (handle: mut Handle) { handle.calls += 1 }
 pub fn main() -> i32 {
-    let mut value: i32 = 20
-    let mut handle = Handle { value: mut value, calls: 0 }
+    var value: i32 = 20
+    var handle = Handle { value: mut value, calls: 0 }
     with (handle) {
         step()
         step()

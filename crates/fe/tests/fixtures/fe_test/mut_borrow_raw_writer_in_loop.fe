@@ -77,7 +77,7 @@ fn load_word(_ at: *u8) -> u256 {
 }
 
 fn write_items(_ book: Book, w: mut Writer) {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < book.items.len {
         let item = book.items.at(i)
         unsafe { w.word(item.a) }
@@ -87,7 +87,7 @@ fn write_items(_ book: Book, w: mut Writer) {
 }
 
 fn sum_into(_ data: MemSpan, ret: mut u256) {
-    let mut offset: u256 = 0
+    var offset: u256 = 0
     while offset < data.len() {
         ret += load_word(ptr::offset_bytes(data.ptr(), offset))
         offset += 32
@@ -95,13 +95,13 @@ fn sum_into(_ data: MemSpan, ret: mut u256) {
 }
 
 fn encode(_ book: Book) -> MemBuffer {
-    let mut w = Writer::new()
+    var w = Writer::new()
     w.word(book.items.len)
     write_items(book, w: mut w)
     let tail = MemBuffer::alloc(32)
     unsafe { *ptr::cast<u8, u256>(tail.ptr()) = 0xabcd }
     w.bytes(tail.span())
-    let mut total: u256 = 0
+    var total: u256 = 0
     sum_into(w.buffer.span(), ret: mut total)
     w.word(total)
     w.finish()
@@ -123,7 +123,7 @@ fn local_writer_lent_to_a_loop_over_pointer_params() {
     unsafe { *expected.at(5) = 32 }
     unsafe { *expected.at(6) = 0xabcd }
     unsafe { *expected.at(7) = 2 + 1 + 2 + 3 + 4 + 32 + 0xabcd }
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < 8 {
         unsafe { assert(load_word(ptr::offset_bytes(out.ptr(), i * 32)) == *expected.at(i)) }
         i += 1

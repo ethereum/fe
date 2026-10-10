@@ -24,7 +24,7 @@ use salsa::Update;
 use smallvec::SmallVec;
 
 use super::{
-    adt_def::{AdtDef, instantiate_adt_field_shape},
+    adt_def::{AdtDef, Pin, instantiate_adt_field_shape},
     const_ty::{
         ConstTyData, ConstTyId, TypePrintMode, UnevaluatedConstPolicy, const_ty_from_sem_const,
     },
@@ -42,6 +42,7 @@ use crate::analysis::{
     semantic::int_const,
     ty::{
         adt_def::AdtRef,
+        provider::ProviderAddressSpace,
         trait_resolution::{TraitSolveCx, check_ty_wf},
         ty_error::emit_invalid_ty_error,
     },
@@ -109,6 +110,20 @@ impl<'db> TyId<'db> {
     /// handle does not hold its target.
     pub fn pinned_part(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
         super::adt_def::ty_pinned_part(db, self)
+    }
+
+    /// The state space this type is pinned to, when its `StateIndex`
+    /// implementation decides one; see `adt_def::Pin`.
+    pub fn pin(self, db: &'db dyn HirAnalysisDb) -> Option<ProviderAddressSpace> {
+        match super::adt_def::ty_pin(db, self) {
+            Pin::Pinned(space) => Some(space),
+            Pin::Unpinned | Pin::Undecided => None,
+        }
+    }
+
+    /// Whether this type, or some instance of it, is pinned.
+    pub fn may_be_pinned(self, db: &'db dyn HirAnalysisDb) -> bool {
+        super::adt_def::ty_pin(db, self) != Pin::Unpinned
     }
 
     /// Returns teh base type of this type.
@@ -574,7 +589,7 @@ impl<'db> TyId<'db> {
             } else if let Some(adt_def) = ty.adt_def(db)
                 && matches!(adt_def.adt_ref(db), AdtRef::Struct(_))
             {
-                adt_def.pin(db).is_none()
+                !ty.may_be_pinned(db)
                     && ty
                         .field_types(db)
                         .into_iter()

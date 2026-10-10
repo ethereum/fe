@@ -6,7 +6,7 @@ use core::ptr::{MemBuffer, MemSpan}
 use std::evm::{Address, Call, Evm, RawStorage}
 
 fn ping() uses (call: mut Call) {
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let outcome = call.raw_call(
         addr: Address { inner: 1 }, gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
@@ -14,7 +14,7 @@ fn ping() uses (call: mut Call) {
 }
 
 fn ping_evm() uses (evm: mut Evm) {
-    let mut output = MemBuffer::empty()
+    var output = MemBuffer::empty()
     let outcome = evm.raw_call(
         addr: Address { inner: 1 }, gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
@@ -33,7 +33,7 @@ pub contract CallAcrossMut {
     mut value: u256,
     init() uses (mut value, call: mut Call) {
         let held = mut value
-        let mut output = MemBuffer::empty()
+        var output = MemBuffer::empty()
         let outcome = call.raw_call(
             addr: Address { inner: 1 }, gas: 100000, value: 0,
             args: MemSpan::empty(), ret: mut output,
@@ -90,7 +90,7 @@ pub contract StaticAcrossMut {
     mut value: u256,
     init() uses (mut value, call: mut Call) {
         let held = mut value
-        let mut output = MemBuffer::empty()
+        var output = MemBuffer::empty()
         let outcome = call.raw_staticcall(
             addr: Address { inner: 1 }, gas: 100000,
             args: MemSpan::empty(), ret: mut output,
@@ -104,7 +104,7 @@ pub contract StaticAcrossRef {
     mut value: u256,
     init() uses (mut value, call: mut Call) {
         let held = ref value
-        let mut output = MemBuffer::empty()
+        var output = MemBuffer::empty()
         let outcome = call.raw_staticcall(
             addr: Address { inner: 1 }, gas: 100000,
             args: MemSpan::empty(), ret: mut output,

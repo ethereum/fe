@@ -21,8 +21,9 @@ use crate::{
                 pattern_match_expected_ty, project_pattern_child_carrier_ty,
                 project_pattern_child_source_ty,
             },
+            provider::ProviderAddressSpace,
             ty_check::PatBindingMode,
-            ty_def::{PrimTy, TyBase, TyData, TyId},
+            ty_def::{BorrowKind, PrimTy, TyBase, TyData, TyId},
         },
     },
     hir_def::{
@@ -44,10 +45,28 @@ pub(super) struct PatternValue<'db> {
     pub(super) carrier_ty: PatternCarrierTy<'db>,
 }
 
+/// What a pattern destructures: a value, or a matched place whose bindings
+/// take their components where they lie.
+#[derive(Clone)]
+pub(super) enum PatternSource<'db> {
+    Value(PatternValue<'db>),
+    /// A place matched by component: a `ref` or `mut` binding borrows its
+    /// component's path, and the others read it, so nothing is opened on the
+    /// place beyond them.
+    Place {
+        place: SPlace<'db>,
+        ty: TyId<'db>,
+        provider: Option<ProviderAddressSpace>,
+    },
+}
+
 #[derive(Clone)]
 struct DecisionTreeProjectionCache<'db> {
     entries: Vec<(ProjectionPath<'db>, PatternValue<'db>)>,
     carrier_tys: Vec<(ProjectionPath<'db>, TyId<'db>)>,
+    /// A matched place: read through a read access only when a test first
+    /// needs its value, and bound by component.
+    place: Option<(SPlace<'db>, Option<ProviderAddressSpace>)>,
 }
 
 fn assigned_pattern_child_carrier_ty<'db>(
@@ -70,18 +89,35 @@ impl<'db> DecisionTreeProjectionCache<'db> {
         db: &'db dyn HirAnalysisDb,
         pattern_store: &PatternStore<'db>,
         roots: &[ValidatedPatId],
-        root_value: PatternValue<'db>,
+        source: PatternSource<'db>,
     ) -> Self {
+        let (entries, root_ty, place) = match source {
+            PatternSource::Value(root) => (
+                vec![(ProjectionPath::default(), root)],
+                root.carrier_ty.0,
+                None,
+            ),
+            PatternSource::Place {
+                place,
+                ty,
+                provider,
+            } => (
+                Vec::new(),
+                TyId::borrow_ref_of(db, ty),
+                Some((place, provider)),
+            ),
+        };
         let mut cache = Self {
-            entries: vec![(ProjectionPath::default(), root_value)],
-            carrier_tys: vec![(ProjectionPath::default(), root_value.carrier_ty.0)],
+            entries,
+            carrier_tys: vec![(ProjectionPath::default(), root_ty)],
+            place,
         };
         for root in roots {
             cache.collect_pattern_carrier_tys(
                 db,
                 pattern_store,
                 *root,
-                root_value.carrier_ty.0,
+                root_ty,
                 &ProjectionPath::default(),
             );
         }
@@ -248,11 +284,21 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             .is_none_or(|root| self.validated_pattern_is_irrefutable(root))
     }
 
-    pub(super) fn bind_pattern(&mut self, pat: PatId, value: SValueId) {
-        if let Some(root) = self.typed_body.pattern_root(pat) {
-            let value = self.owned_pattern_value(value, self.locals[value.index()].ty);
-            self.bind_validated_pattern(root, value);
+    pub(super) fn bind_pattern(&mut self, pat: PatId, source: PatternSource<'db>) {
+        let Some(root) = self.typed_body.pattern_root(pat) else {
+            return;
+        };
+        match source {
+            PatternSource::Value(value) => self.bind_validated_pattern(root, value),
+            PatternSource::Place {
+                place, provider, ..
+            } => self.bind_validated_pattern_place(root, place, provider),
         }
+    }
+
+    /// The source of a pattern matched against `value`.
+    pub(super) fn value_pattern_source(&self, value: SValueId) -> PatternSource<'db> {
+        PatternSource::Value(self.owned_pattern_value(value, self.locals[value.index()].ty))
     }
 
     /// Test `pat` against `value`, jumping to `then_bb` with the pattern's
@@ -260,7 +306,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     pub(super) fn lower_pattern_branch(
         &mut self,
         pat: PatId,
-        value: SValueId,
+        source: PatternSource<'db>,
         then_bb: SBlockId,
         else_bb: SBlockId,
     ) {
@@ -268,11 +314,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             self.set_synthetic_terminator(self.current, STerminatorKind::Goto(then_bb));
             return;
         };
-        let value = self.owned_pattern_value(value, self.locals[value.index()].ty);
         let pattern_store = self.typed_body.pattern_store();
         let tree = build_pattern_branch_decision_tree(self.db, pattern_store, root);
         let mut projections =
-            DecisionTreeProjectionCache::new(self.db, pattern_store, &[root], value);
+            DecisionTreeProjectionCache::new(self.db, pattern_store, &[root], source);
         self.lower_decision_tree(
             &tree,
             &mut projections,
@@ -491,14 +536,77 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
     }
 
+    /// Binds `pat`'s bindings to the components of `place` where they lie.
+    fn bind_validated_pattern_place(
+        &mut self,
+        pat: ValidatedPatId,
+        place: SPlace<'db>,
+        provider: Option<ProviderAddressSpace>,
+    ) {
+        let kind = self.typed_body.pattern_store().node(pat).kind().clone();
+        match kind {
+            ValidatedPatKind::Wildcard {
+                binding: Some(binding),
+            } => self.bind_place_component(binding.representative_pat, place, provider),
+            ValidatedPatKind::Wildcard { binding: None }
+            | ValidatedPatKind::Constructor {
+                ctor: ConstructorKind::Literal(..),
+                ..
+            } => {}
+            ValidatedPatKind::Constructor { ctor, fields } => {
+                for (idx, field_pat) in fields.into_iter().enumerate() {
+                    let mut component = place.clone();
+                    component.path.push(match ctor {
+                        ConstructorKind::Variant(variant, enum_ty) => {
+                            crate::projection::Projection::VariantField {
+                                variant: VariantIndex(variant.idx),
+                                enum_ty,
+                                field_idx: idx,
+                            }
+                        }
+                        _ => crate::projection::Projection::Field(idx),
+                    });
+                    self.bind_validated_pattern_place(field_pat, component, provider);
+                }
+            }
+            ValidatedPatKind::Or(pats) => {
+                if let Some(first) = pats.first() {
+                    self.bind_validated_pattern_place(*first, place, provider);
+                }
+            }
+        }
+    }
+
+    /// Binds `pat` to the component `place`: its access for a `ref` or `mut`
+    /// binding, or its value.
+    fn bind_place_component(
+        &mut self,
+        pat: PatId,
+        place: SPlace<'db>,
+        provider: Option<ProviderAddressSpace>,
+    ) {
+        let Some(binding) = self.typed_body.pat_binding(pat) else {
+            return;
+        };
+        let dst = self.alloc_binding_local(binding);
+        let expr = match self.typed_body.pat_binding_mode(pat) {
+            Some(PatBindingMode::Access { kind, .. }) => SExpr::Borrow {
+                place,
+                kind,
+                provider,
+            },
+            _ => SExpr::ReadPlace { place },
+        };
+        self.push_stmt(SemOrigin::Pat(pat), SStmtKind::Assign { dst, expr });
+    }
+
     pub(super) fn lower_match_expr_with_decision_tree(
         &mut self,
-        value: SValueId,
+        source: PatternSource<'db>,
         result: crate::analysis::semantic::SLocalId,
         join_bb: SBlockId,
         arms: &[MatchArm],
     ) -> SValueId {
-        let value = self.owned_pattern_value(value, self.locals[value.index()].ty);
         let roots = arms
             .iter()
             .map(|arm| self.typed_body.pattern_root(arm.pat))
@@ -509,7 +617,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             self.db,
             self.typed_body.pattern_store(),
             &roots,
-            value,
+            source,
         );
         let target = DecisionTreeTarget::MatchArms {
             result,
@@ -710,6 +818,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         leaf: &LeafNode<'db>,
         projections: &mut DecisionTreeProjectionCache<'db>,
     ) {
+        if let Some((place, provider)) = projections.place.clone() {
+            for (binding_ref, path) in &leaf.bindings {
+                let mut component = place.clone();
+                for projection in path.iter() {
+                    component.path.push(semantic_projection(projection));
+                }
+                self.bind_place_component(binding_ref.representative_pat, component, provider);
+            }
+            return;
+        }
         for (binding_ref, path) in &leaf.bindings {
             if let Some(binding) = self.typed_body.pat_binding(binding_ref.representative_pat) {
                 let dst = self.alloc_binding_local(binding);
@@ -736,6 +854,32 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     ) -> PatternValue<'db> {
         if let Some(value) = projections.get(path) {
             return value;
+        }
+        // A test reads a matched place through a read access of it, which
+        // its last test closes.
+        if projections.entries.is_empty()
+            && let Some((place, provider)) = projections.place.clone()
+        {
+            let root_path = ProjectionPath::default();
+            let carrier_ty = projections
+                .carrier_ty(&root_path)
+                .expect("a matched place has a root carrier type");
+            let value = self.emit_expr_with_origin(
+                origin,
+                carrier_ty,
+                SExpr::Borrow {
+                    place,
+                    kind: BorrowKind::Ref,
+                    provider,
+                },
+            );
+            projections.insert(
+                root_path,
+                PatternValue {
+                    value,
+                    carrier_ty: PatternCarrierTy(carrier_ty),
+                },
+            );
         }
 
         let (mut current_path, mut value) = projections.longest_prefix(path);
@@ -835,4 +979,26 @@ pub(crate) fn enum_tag_ty<'db>(db: &'db dyn HirAnalysisDb, enum_ty: TyId<'db>) -
         _ => unreachable!("enum tag width must be a primitive integer width"),
     };
     TyId::new(db, TyData::TyBase(TyBase::Prim(prim)))
+}
+
+/// A decision-tree path step as a place's projection.
+fn semantic_projection<'db>(
+    projection: &Projection<'db>,
+) -> crate::projection::Projection<TyId<'db>, VariantIndex, SLocalId> {
+    match projection {
+        Projection::Field(field) => crate::projection::Projection::Field(*field),
+        Projection::VariantField {
+            variant,
+            enum_ty,
+            field_idx,
+        } => crate::projection::Projection::VariantField {
+            variant: VariantIndex(variant.idx),
+            enum_ty: *enum_ty,
+            field_idx: *field_idx,
+        },
+        Projection::Discriminant => crate::projection::Projection::Discriminant,
+        Projection::Index(_) | Projection::Entry(_) | Projection::Deref => {
+            unreachable!("a pattern binds through fields and variant fields")
+        }
+    }
 }

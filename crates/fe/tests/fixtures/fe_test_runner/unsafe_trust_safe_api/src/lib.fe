@@ -1,0 +1,5 @@
+// `dep` is not trusted, but its safe API needs no trust.
+#[test]
+fn untrusted_safe_api() {
+    assert!(dep::safe_sum(2, 3) == 5)
+}
