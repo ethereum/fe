@@ -1,0 +1,13 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: fixtures/name_resolution/qualified_path_private_trait.fe
+---
+error[2-0003]: `Tr` is not visible
+   ┌─ qualified_path_private_trait.fe:15:21
+   │
+ 4 │     trait Tr {
+   │           -- `Tr` is defined here
+   ·
+15 │ fn g(x: <m::S as m::Tr>::F) -> (u8, bool) {
+   │                     ^^ `Tr` is not visible

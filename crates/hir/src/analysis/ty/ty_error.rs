@@ -330,7 +330,10 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
 
         let mut invisible = None;
         let mut check_visibility = |path: PathId<'db>, reso: &PathRes<'db>| {
-            if invisible.is_some() {
+            // A qualified segment, `<S as m::Tr>`, has no name of its own: it
+            // is invisible through its trait, which is reported where it is
+            // written.
+            if invisible.is_some() || path.ident(self.db).to_opt().is_none() {
                 return;
             }
             if !reso.is_visible_from(self.db, scope) {
