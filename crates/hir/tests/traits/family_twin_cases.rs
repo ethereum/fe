@@ -221,11 +221,6 @@ macro_rules! twins {
 
 use Expect::*;
 
-const OWN_PARAMETER: &str = "an impl header that needs the impl's own parameter keeps the \
-                             application after lowering, so it can be neither found nor checked \
-                             for overlap; whether it is rejected at the impl or overlaps every \
-                             header is not decided (the twin writes the type directly)";
-
 twins! {
     // Positions where a type is written.
     signature: Agree, "fn f(_ x: %P) -> (bool, u8) { x }
@@ -449,9 +444,21 @@ fn f() -> u8 { get<Holder<u8>>() }";
 impl<T> Marker for ⟨Fac::H<T>|Holder<T>⟩ { fn id() -> u8 { 7 } }
 fn get<M: Marker>() -> u8 { M::id() }
 fn f() -> u8 { get<Holder<bool>>() }";
-    trait_impl_header_needs_impl_parameter: Known(OWN_PARAMETER), "trait Marker {}
+    // A header whose type names an associated type of the impl's own
+    // parameter determines nothing: the parameter is reported (6-0025), in
+    // both spellings, for the family and for the plain form.
+    trait_impl_header_needs_impl_parameter: Exactly(&["6-0025"]), "trait Marker {}
+impl<F: Factory> Marker for F::H<u8> {}
+impl Marker for Holder<u8> {}";
+    trait_impl_header_needs_impl_parameter_twin: Agree, "trait Marker {}
 impl<F: Factory> Marker for ⟨F::H<u8>|F::H⟩ {}
 impl Marker for Holder<u8> {}";
+    trait_impl_header_needs_impl_parameter_qualified: Exactly(&["6-0025"]), "trait Marker {}
+impl<F: Factory> Marker for <F as Factory>::H<u8> {}";
+    trait_impl_header_ignored_parameter: Exactly(&["6-0025"]), "trait Marker {}
+impl<X> Marker for Fac::K<X> {}";
+    trait_impl_header_ignored_parameter_qualified: Exactly(&["6-0025"]), "trait Marker {}
+impl<X> Marker for <Fac as Factory>::K<X> {}";
     inherent_impl_header: Agree, "impl %H {
     fn get(self) -> u8 { self.t }
 }
@@ -747,20 +754,6 @@ fn f(_ x: Box<%QBAD>) {}";
 struct Unmet {}
 struct Bad<T: Needed> { t: T }
 fn f() uses (x: Bad<Unmet>) {}";
-    // Unsupported forms: one error at each declaration.
-    const_parameter: Exactly(&["3-0060", "3-0060"]), "trait Fk { type Out<const N: usize> }
-impl Fk for Fac { type Out<const N: usize> = [u8; N] }";
-    parameter_default: Exactly(&["3-0064", "3-0064"]), "trait Fk { type Out<T = u8> }
-impl Fk for Fac { type Out<T = u16> = T }";
-    binding: Exactly(&["2-0021", "2-0021"]), "trait Fk { type Out<T> }
-fn f<F: Fk<Out = u8>>() {}
-fn g<F>() where F: Fk<Out = u8> {}";
-    shadowed_parameter: Exactly(&["3-0007"]), "struct G<T> {}
-trait Fk { type W<U> }
-impl<T> Fk for G<T> { type W<T> = (T, bool) }";
-    impl_parameter_bound: Exactly(&["6-0027"]), "trait Allowed {}
-trait Fk { type F<U> }
-impl Fk for Fac { type F<U: Allowed> = (U, U) }";
     // A name that does not resolve in a bound's arguments, nested or not:
     // the twin writes it directly as the argument.
     missing_name_nested_type: Agree, "trait Needs<X> {}
@@ -917,9 +910,10 @@ fn nested_applications(depth: usize, family: bool) -> String {
     }
 }
 
-const NESTED_KNOWN: &str = "a written family application is resolved when it is lowered, as a \
-                            plain shorthand chain is, so no nesting limit applies to it; the twin \
-                            nests qualified projections, which normalization resolves and counts";
+const NESTED_KNOWN: &str = "applications nested in arguments are resolved one at a time, each as \
+                            its own use, so they do not add up against the nesting limit; the \
+                            twin nests projections in self types, where each must be resolved to \
+                            select the impl of the one around it, so the limit counts them";
 
 /// Nested applications at depth 3 agree with the twin. At depth 65 they
 /// are known to differ (`NESTED_KNOWN`: the plain twin meets the nesting

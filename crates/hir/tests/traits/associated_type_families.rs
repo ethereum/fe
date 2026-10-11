@@ -783,7 +783,7 @@ fn associated_const_captures_follow_impl_arguments() {
 /// does, also when a family ignores an argument that reaches it, or when the
 /// components share applications.
 #[test]
-fn reaching_a_limit_does_not_depend_on_the_order_of_components() {
+fn family_limits_do_not_depend_on_the_order_of_components() {
     let prelude = "trait Tr {\n    type Out<T>\n    type Keep<T>\n}\nstruct Base {}\nstruct Wrap<U> {}\n\
          impl Tr for Base {\n    type Out<T> = T\n    type Keep<T> = u8\n}\n\
          impl<U: Tr> Tr for Wrap<U> {\n    type Out<T> = <U as Tr>::Out<(T, T)>\n    type Keep<T> = u8\n}\n\
