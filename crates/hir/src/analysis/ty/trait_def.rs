@@ -521,7 +521,13 @@ fn resolve_trait_impl_instance_query<'db>(
 ) -> ImplSelection<'db> {
     let assumptions = solve_cx.assumptions();
     let norm_scope = solve_cx.normalization_scope_for_trait_inst(db, inst);
-    let inst = match normalize_trait_inst_preserving_validity(db, inst, norm_scope, assumptions) {
+    let inst = match normalize_trait_inst_preserving_validity(
+        db,
+        inst,
+        norm_scope,
+        assumptions,
+        PredicateListId::empty_list(db),
+    ) {
         Ok(inst) => inst,
         Err(limit) => return ImplSelection::NormalizationLimit(limit),
     };
@@ -1336,11 +1342,29 @@ impl<'db> TraitInstId<'db> {
         scope: crate::core::hir_def::scope_graph::ScopeId<'db>,
         assumptions: PredicateListId<'db>,
     ) -> Result<Self, crate::analysis::ty::normalize::NormalizationLimit> {
+        self.normalize_with_definitions(db, scope, assumptions, PredicateListId::empty_list(db))
+    }
+
+    /// [`Self::normalize`], with associated types read as `definitions` give
+    /// them (see [`super::trait_resolution::TraitSolveCx::with_definitions`]).
+    pub(crate) fn normalize_with_definitions(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        scope: crate::core::hir_def::scope_graph::ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        definitions: PredicateListId<'db>,
+    ) -> Result<Self, crate::analysis::ty::normalize::NormalizationLimit> {
         let normalized_args = self
             .args(db)
             .iter()
             .map(|&arg| {
-                crate::analysis::ty::normalize::normalize_ty_in_solver(db, arg, scope, assumptions)
+                crate::analysis::ty::normalize::normalize_ty_in_solver(
+                    db,
+                    arg,
+                    scope,
+                    assumptions,
+                    definitions,
+                )
             })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self::new(

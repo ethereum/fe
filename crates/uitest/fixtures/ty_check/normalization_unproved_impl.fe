@@ -1,0 +1,100 @@
+// A projection stands for the type an impl gives only if the impl applies:
+// an impl whose where clause does not hold defines nothing, also when it is
+// the only impl whose header matches. `W<u16>: Ty` does not hold, as
+// `u16: Marker` does not.
+trait Show {}
+
+impl Show for u8 {}
+
+trait Marker {}
+
+struct W<T> {
+    t: T,
+}
+
+trait Ty {
+    type A
+}
+
+impl<T: Marker> Ty for W<T> {
+    type A = u8
+}
+
+// A type written in a body.
+fn in_body(x: u8) -> u8 {
+    let a: <W<u16> as Ty>::A = x
+    a
+}
+
+// A type written in a generic body, where `T: Marker` is not known.
+fn in_generic_body<T>(x: u8) -> u8 {
+    let a: <W<T> as Ty>::A = x
+    a
+}
+
+// The type of a constant.
+const C: <W<u16> as Ty>::A = 1
+
+// A where clause of an impl that a goal needs.
+trait Tr {}
+
+impl<X> Tr for X where <X as Ty>::A: Show {}
+
+fn need<X: Tr>() {}
+
+fn in_goal() {
+    need<W<u16>>()
+}
+
+// The same where clause cannot make a rival method apply: `get` is `Get`'s.
+trait Get {
+    fn get(self) -> u8
+}
+
+impl<T> Get for W<T> {
+    fn get(self) -> u8 {
+        1
+    }
+}
+
+trait Other {
+    fn get(self) -> u8
+}
+
+impl<X> Other for X where <X as Ty>::A: Show {
+    fn get(self) -> u8 {
+        2
+    }
+}
+
+fn method(w: own W<u16>) -> u8 {
+    w.get()
+}
+
+// Nor make two impls overlap.
+trait Val {
+    const V: u8
+}
+
+impl<X> Val for X where <X as Ty>::A: Show {
+    const V: u8 = 2
+}
+
+impl Val for W<u16> {
+    const V: u8 = 1
+}
+
+// An impl whose where clause names the type it defines still defines it.
+struct S {}
+
+trait Own {
+    type Out
+}
+
+impl Own for S where <S as Own>::Out: Show {
+    type Out = u8
+}
+
+fn own_type(x: <S as Own>::Out) -> u8 {
+    x
+}

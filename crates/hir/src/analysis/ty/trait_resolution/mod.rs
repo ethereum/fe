@@ -38,6 +38,10 @@ pub(crate) const TRAIT_SOLVER_ROOT_ANSWER_LIMIT: usize = 2;
 pub struct TraitSolverQuery<'db> {
     pub goal: TraitInstId<'db>,
     pub assumptions: PredicateListId<'db>,
+    /// Associated types read as given while the goal is proved, as
+    /// `S: Tr<Out = u8>`: they resolve projections only, and never prove a
+    /// goal, as assumptions do. See [`TraitSolveCx::with_definitions`].
+    pub definitions: PredicateListId<'db>,
     /// Select an implementation at this goal; obligations still use assumptions.
     pub require_impl: bool,
 }
@@ -60,6 +64,24 @@ impl<'db> CanonicalGoalQuery<'db> {
             TraitSolverQuery {
                 goal,
                 assumptions: assumptions.extend_all_bounds(db),
+                definitions: PredicateListId::empty_list(db),
+                require_impl: false,
+            },
+        )
+    }
+
+    /// The query for `goal` in `solve_cx`: its assumptions and definitions.
+    pub(crate) fn in_context(
+        db: &'db dyn HirAnalysisDb,
+        goal: TraitInstId<'db>,
+        solve_cx: TraitSolveCx<'db>,
+    ) -> Self {
+        Self::from_query(
+            db,
+            TraitSolverQuery {
+                goal,
+                assumptions: solve_cx.assumptions().extend_all_bounds(db),
+                definitions: solve_cx.definitions(),
                 require_impl: false,
             },
         )
@@ -124,6 +146,7 @@ pub enum Selection<T> {
 pub struct TraitSolveCx<'db> {
     origin_ingot: Ingot<'db>,
     assumptions: PredicateListId<'db>,
+    definitions: PredicateListId<'db>,
 }
 
 impl<'db> TraitSolveCx<'db> {
@@ -131,6 +154,7 @@ impl<'db> TraitSolveCx<'db> {
         Self {
             origin_ingot: scope.ingot(db),
             assumptions: PredicateListId::empty_list(db),
+            definitions: PredicateListId::empty_list(db),
         }
     }
 
@@ -145,6 +169,22 @@ impl<'db> TraitSolveCx<'db> {
         self.assumptions
     }
 
+    /// The context with `definitions`: associated types read as given, as
+    /// `S: Tr<Out = u8>`, while an impl that defines them is checked. They
+    /// resolve the projection they name wherever proving a goal meets it,
+    /// and never prove a goal: `S: Tr` is proved by an impl or an
+    /// assumption, as without them.
+    pub(crate) fn with_definitions(self, definitions: PredicateListId<'db>) -> Self {
+        Self {
+            definitions,
+            ..self
+        }
+    }
+
+    pub(crate) fn definitions(self) -> PredicateListId<'db> {
+        self.definitions
+    }
+
     pub(crate) fn origin_ingot(self) -> Ingot<'db> {
         self.origin_ingot
     }
@@ -155,8 +195,13 @@ impl<'db> TraitSolveCx<'db> {
         inst: TraitInstId<'db>,
     ) -> Selection<ImplementorId<'db>> {
         let scope = self.normalization_scope_for_trait_inst(db, inst);
-        let inst = match normalize_trait_inst_preserving_validity(db, inst, scope, self.assumptions)
-        {
+        let inst = match normalize_trait_inst_preserving_validity(
+            db,
+            inst,
+            scope,
+            self.assumptions,
+            self.definitions,
+        ) {
             Ok(inst) => inst,
             Err(limit) => return Selection::NormalizationLimit(limit),
         };
@@ -176,6 +221,7 @@ impl<'db> TraitSolveCx<'db> {
                 TraitSolverQuery {
                     goal: inst,
                     assumptions: self.assumptions.extend_all_bounds(db),
+                    definitions: self.definitions,
                     require_impl: true,
                 },
             );
@@ -265,8 +311,9 @@ pub(crate) fn normalize_trait_inst_preserving_validity<'db>(
     inst: TraitInstId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
+    definitions: PredicateListId<'db>,
 ) -> Result<TraitInstId<'db>, NormalizationLimit> {
-    let normalized = inst.normalize(db, scope, assumptions)?;
+    let normalized = inst.normalize_with_definitions(db, scope, assumptions, definitions)?;
     let original_has_invalid = inst.args(db).iter().copied().any(|ty| ty.has_invalid(db))
         || inst
             .assoc_type_bindings(db)

@@ -22,21 +22,25 @@
 //!   holding; if the answers differ, the answer is the limit, reported once
 //!   where the question arises.
 
-use common::indexmap::IndexSet;
+use common::indexmap::{IndexMap, IndexSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
     canonical::Canonical,
-    fold::TyFoldable,
+    fold::{TyFoldable, TyFolder},
     normalize::NormalizationLimit,
     trait_def::{
         ImplementorId, TraitInstId, contract_virtual_impls, impl_self_ty_may_match,
         impls_for_trait_and_ty, impls_for_ty, ingot_trait_env, is_std_evm_contract_trait_def,
     },
+    trait_lower::complete_impl_assoc_ty,
     trait_resolution::{
-        CanonicalGoalQuery, GoalSatisfiability, TraitSolveCx, is_goal_query_satisfiable,
+        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx,
+        is_goal_query_satisfiable,
     },
-    ty_def::TyId,
+    ty_def::{TyData, TyId},
     unify::UnificationTable,
+    visitor::{TyVisitable, TyVisitor, walk_ty},
 };
 use crate::{
     Ingot,
@@ -127,7 +131,7 @@ pub(crate) fn all_hold<'db>(
     let mut kept = false;
     for &constraint in constraints {
         let constraint = constraint.fold_with(db, table);
-        let query = CanonicalGoalQuery::new(db, constraint, solve_cx.assumptions());
+        let query = CanonicalGoalQuery::in_context(db, constraint, solve_cx);
         let count = match is_goal_query_satisfiable(db, solve_cx, &query) {
             Ok(GoalSatisfiability::Satisfied(solution)) => {
                 if counting.bind {
@@ -319,19 +323,7 @@ pub(crate) fn impl_holds<'db>(
 ) -> Holds {
     let mut table = UnificationTable::new(db);
     let inst = table.instantiate_with_fresh_vars(candidate);
-    let matches = match question.trait_ {
-        TraitFilter::Header(header) => {
-            let header = header.extract_identity(&mut table);
-            table.unify(inst.trait_(db), header).is_ok()
-        }
-        TraitFilter::Any => {
-            let ty = question.self_ty.extract_identity(&mut table);
-            let impl_ty = table.instantiate_to_term(inst.self_ty(db));
-            let ty = table.instantiate_to_term(ty);
-            table.unify(impl_ty, ty).is_ok()
-        }
-    };
-    if !matches {
+    if !header_matches(db, &mut table, question, inst) {
         return Holds::No;
     }
     all_hold(
@@ -341,6 +333,360 @@ pub(crate) fn impl_holds<'db>(
         inst.constraints(db).list(db),
         counting,
     )
+}
+
+/// Whether the impl `candidate` defines the associated type `name` for
+/// `question`, for normalization: its header matches and no where clause is
+/// refuted ([`Counting::POSSIBLE`]).
+///
+/// The clauses are proved as any goal, without assuming anything. A clause
+/// that leads back to the projection being defined, directly as
+/// `impl Tr for S where <S as Tr>::Out: Show`, through another impl's
+/// projection, or through another trait's impl, cannot be proved that way:
+/// proving it needs the projection it helps define. Only then, found by
+/// [`may_need_projection`], the projection is read as the candidate's own
+/// definition while its clauses are proved: a definition of the solver's
+/// question, which resolves the projection and never proves a goal, so
+/// `S: Tr` itself is still proved by an impl or an assumption, inductively.
+pub(crate) fn impl_defines<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    question: Question<'db>,
+    candidate: ImplementorId<'db>,
+    name: IdentId<'db>,
+) -> Holds {
+    let candidate = complete_impl_assoc_ty(db, candidate, name).unwrap_or(candidate);
+    let mut table = UnificationTable::new(db);
+    let inst = table.instantiate_with_fresh_vars(candidate);
+    if !header_matches(db, &mut table, question, inst) {
+        return Holds::No;
+    }
+    let constraints: Vec<TraitInstId<'db>> = inst
+        .constraints(db)
+        .list(db)
+        .iter()
+        .map(|constraint| constraint.fold_with(db, &mut table))
+        .collect();
+    if constraints.is_empty() {
+        return Holds::Yes;
+    }
+    let trait_inst = inst.trait_(db).fold_with(db, &mut table);
+    let definition = inst
+        .types(db)
+        .get(&name)
+        .map(|&ty| ty.fold_with(db, &mut table));
+    let complete = |ty: TyId<'db>| !ty.has_var(db) && !ty.has_invalid(db);
+    let solve_cx = match definition {
+        Some(definition)
+            if complete(definition) && trait_inst.args(db).iter().all(|&arg| complete(arg)) =>
+        {
+            let projection = TyId::assoc_ty(db, trait_inst.trait_ref(db), name);
+            if definition != projection
+                && may_need_projection(
+                    db,
+                    solve_cx,
+                    PredicateListId::new(db, constraints.clone()),
+                    projection,
+                )
+            {
+                let defined = TraitInstId::new(
+                    db,
+                    trait_inst.def(db),
+                    trait_inst.args(db).to_vec(),
+                    [(name, definition)].into_iter().collect::<IndexMap<_, _>>(),
+                );
+                let mut definitions = solve_cx.definitions().list(db).to_vec();
+                definitions.push(defined);
+                solve_cx.with_definitions(PredicateListId::new(db, definitions))
+            } else {
+                solve_cx
+            }
+        }
+        _ => solve_cx,
+    };
+    all_hold(db, solve_cx, &mut table, &constraints, Counting::POSSIBLE)
+}
+
+/// Whether the header of `inst`, an instantiated candidate, matches
+/// `question`.
+fn header_matches<'db>(
+    db: &'db dyn HirAnalysisDb,
+    table: &mut UnificationTable<'db>,
+    question: Question<'db>,
+    inst: ImplementorId<'db>,
+) -> bool {
+    match question.trait_ {
+        TraitFilter::Header(header) => {
+            let header = header.extract_identity(table);
+            table.unify(inst.trait_(db), header).is_ok()
+        }
+        TraitFilter::Any => {
+            let ty = question.self_ty.extract_identity(table);
+            let impl_ty = table.instantiate_to_term(inst.self_ty(db));
+            let ty = table.instantiate_to_term(ty);
+            table.unify(impl_ty, ty).is_ok()
+        }
+    }
+}
+
+/// How many goals and projections [`may_need_projection`] visits before it
+/// answers that the projection may be needed.
+const PROJECTION_SEARCH_NODES: usize = 1024;
+
+/// Whether proving `goals` may meet the projection `target` again. The
+/// search follows what the trait solver may do, without proving anything:
+/// a goal's types, the where clauses of the impls whose header may match it
+/// and its supertraits, and a projection's types, the where clauses of the
+/// impls that may define it and their definitions. It may answer yes where
+/// the proof would not meet `target` (an impl that is ruled out later, or a
+/// search past [`PROJECTION_SEARCH_NODES`]), never no where it would.
+#[salsa::tracked]
+pub(crate) fn may_need_projection<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    goals: PredicateListId<'db>,
+    target: TyId<'db>,
+) -> bool {
+    enum Node<'db> {
+        Goal(TraitInstId<'db>),
+        Projection(TyId<'db>),
+    }
+    let mut search = ProjectionSearch {
+        db,
+        wildcards: FxHashSet::default(),
+    };
+    let mut seen_goals = FxHashSet::default();
+    let mut seen_projections = FxHashSet::default();
+    let mut pending: Vec<Node<'db>> = goals.list(db).iter().copied().map(Node::Goal).collect();
+    for &assumption in solve_cx.assumptions().list(db) {
+        for ty in assumption
+            .args(db)
+            .iter()
+            .chain(assumption.assoc_type_bindings(db).values())
+        {
+            pending.extend(projections_in(db, *ty).into_iter().map(Node::Projection));
+        }
+    }
+    while let Some(node) = pending.pop() {
+        if seen_goals.len() + seen_projections.len() > PROJECTION_SEARCH_NODES {
+            return true;
+        }
+        match node {
+            Node::Goal(goal) => {
+                if !seen_goals.insert(goal) {
+                    continue;
+                }
+                for ty in goal
+                    .args(db)
+                    .iter()
+                    .chain(goal.assoc_type_bindings(db).values())
+                {
+                    pending.extend(projections_in(db, *ty).into_iter().map(Node::Projection));
+                }
+                for (clauses, _) in search.matching_impls(solve_cx, goal, None) {
+                    pending.extend(clauses.into_iter().map(Node::Goal));
+                }
+                for super_trait in goal.def(db).super_traits(db) {
+                    pending.push(Node::Goal(super_trait.instantiate(db, goal.args(db))));
+                }
+            }
+            Node::Projection(projection) => {
+                if !seen_projections.insert(projection) {
+                    continue;
+                }
+                if search.same_projection(projection, target) {
+                    return true;
+                }
+                let TyData::AssocTy(assoc) = projection.data(db) else {
+                    continue;
+                };
+                let trait_inst = assoc.trait_.as_predicate(db);
+                for ty in trait_inst.args(db) {
+                    pending.extend(projections_in(db, *ty).into_iter().map(Node::Projection));
+                }
+                for (clauses, definition) in
+                    search.matching_impls(solve_cx, trait_inst, Some(assoc.name))
+                {
+                    pending.extend(clauses.into_iter().map(Node::Goal));
+                    if let Some(definition) = definition {
+                        pending.extend(
+                            projections_in(db, definition)
+                                .into_iter()
+                                .map(Node::Projection),
+                        );
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// The projections in `ty`, nested ones included.
+fn projections_in<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'db>> {
+    struct Projections<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: Vec<TyId<'db>>,
+    }
+    impl<'db> TyVisitor<'db> for Projections<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+        fn visit_ty(&mut self, ty: TyId<'db>) {
+            if matches!(ty.data(self.db), TyData::AssocTy(_)) {
+                self.found.push(ty);
+            }
+            walk_ty(self, ty);
+        }
+    }
+    let mut projections = Projections {
+        db,
+        found: Vec::new(),
+    };
+    ty.visit_with(&mut projections);
+    projections.found
+}
+
+/// Matching impl headers against goals by their written structure, as
+/// [`may_need_projection`] does.
+struct ProjectionSearch<'db> {
+    db: &'db dyn HirAnalysisDb,
+    /// The parameters of impls that a match left open: they stand for any
+    /// type, as the fresh variables the solver gives them do.
+    wildcards: FxHashSet<TyId<'db>>,
+}
+
+impl<'db> ProjectionSearch<'db> {
+    /// Whether `ty` may become any type: a projection, an inference variable,
+    /// an open impl parameter, or a type the solver does not compare.
+    fn is_wildcard(&self, ty: TyId<'db>) -> bool {
+        matches!(
+            ty.data(self.db),
+            TyData::AssocTy(_)
+                | TyData::QualifiedTy(_)
+                | TyData::TyVar(_)
+                | TyData::ConstTy(_)
+                | TyData::Invalid(_)
+        ) || self.wildcards.contains(&ty)
+    }
+
+    /// Whether `pattern`, with the impl parameters `params` free, may match
+    /// `ty`; binds the parameters it fixes in `subst`.
+    fn bind(
+        &self,
+        pattern: TyId<'db>,
+        ty: TyId<'db>,
+        params: &[TyId<'db>],
+        subst: &mut FxHashMap<TyId<'db>, TyId<'db>>,
+    ) -> bool {
+        let db = self.db;
+        if params.contains(&pattern) {
+            return match subst.get(&pattern) {
+                Some(&bound) => self.may_equal(bound, ty),
+                None => {
+                    subst.insert(pattern, ty);
+                    true
+                }
+            };
+        }
+        if self.is_wildcard(ty) || self.is_wildcard(pattern) {
+            return true;
+        }
+        match (pattern.data(db), ty.data(db)) {
+            (TyData::TyApp(pattern_abs, pattern_arg), TyData::TyApp(abs, arg)) => {
+                self.bind(*pattern_abs, *abs, params, subst)
+                    && self.bind(*pattern_arg, *arg, params, subst)
+            }
+            _ => pattern == ty,
+        }
+    }
+
+    /// Whether `a` and `b` may be the same type.
+    fn may_equal(&self, a: TyId<'db>, b: TyId<'db>) -> bool {
+        self.bind(a, b, &[], &mut FxHashMap::default())
+    }
+
+    /// Whether `projection` may be `target` once its types are resolved.
+    fn same_projection(&self, projection: TyId<'db>, target: TyId<'db>) -> bool {
+        let db = self.db;
+        let (TyData::AssocTy(a), TyData::AssocTy(b)) = (projection.data(db), target.data(db))
+        else {
+            return false;
+        };
+        a.name == b.name
+            && a.trait_.def(db) == b.trait_.def(db)
+            && a.trait_
+                .args(db)
+                .iter()
+                .zip(b.trait_.args(db))
+                .all(|(&a, &b)| self.may_equal(a, b))
+    }
+
+    /// The impls whose header may match `goal`: the where clauses of each,
+    /// with the parameters the match fixes substituted, and its definition
+    /// of `name`, if asked.
+    fn matching_impls(
+        &mut self,
+        solve_cx: TraitSolveCx<'db>,
+        goal: TraitInstId<'db>,
+        name: Option<IdentId<'db>>,
+    ) -> Vec<(Vec<TraitInstId<'db>>, Option<TyId<'db>>)> {
+        let db = self.db;
+        let (primary, secondary) = solve_cx.search_ingots_for_trait_inst(db, goal);
+        let mut found = Vec::new();
+        for ingot in [Some(primary), secondary].into_iter().flatten() {
+            for implementor in ingot_trait_env(db, ingot).impls_for_trait(db, goal.def(db)) {
+                let implementor = match name {
+                    Some(name) => {
+                        complete_impl_assoc_ty(db, implementor, name).unwrap_or(implementor)
+                    }
+                    None => implementor,
+                };
+                let params = implementor.params(db).to_vec();
+                let mut subst = FxHashMap::default();
+                let header = implementor.trait_(db);
+                if !header
+                    .args(db)
+                    .iter()
+                    .zip(goal.args(db))
+                    .all(|(&pattern, &ty)| self.bind(pattern, ty, &params, &mut subst))
+                {
+                    continue;
+                }
+                for &param in &params {
+                    if !subst.contains_key(&param) {
+                        self.wildcards.insert(param);
+                    }
+                }
+                let mut folder = ParamSubst { subst: &subst };
+                let clauses = implementor
+                    .constraints(db)
+                    .list(db)
+                    .iter()
+                    .map(|clause| clause.fold_with(db, &mut folder))
+                    .collect();
+                let definition = name
+                    .and_then(|name| implementor.types(db).get(&name).copied())
+                    .map(|ty| ty.fold_with(db, &mut folder));
+                found.push((clauses, definition));
+            }
+        }
+        found
+    }
+}
+
+/// Replaces impl parameters by the types a match fixed.
+struct ParamSubst<'a, 'db> {
+    subst: &'a FxHashMap<TyId<'db>, TyId<'db>>,
+}
+
+impl<'db> TyFolder<'db> for ParamSubst<'_, 'db> {
+    fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+        match self.subst.get(&ty) {
+            Some(&replacement) => replacement,
+            None => ty.super_fold_with(db, self),
+        }
+    }
 }
 
 /// The impls of `receiver` (of `trait_`, if given) whose trait declares the

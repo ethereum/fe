@@ -1,0 +1,34 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/normalization_unproved_impl.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ normalization_unproved_impl.fe:46:5
+   │
+43 │ fn need<X: Tr>() {}
+   │            -- required by this bound on `need`
+   ·
+46 │     need<W<u16>>()
+   │     ^^^^^^^^^^^^
+   │     │
+   │     `W<u16>` doesn't implement `Tr`
+   │     trait bound `W<u16>::A: Show` is not satisfied
+
+error[8-0000]: type mismatch
+   ┌─ normalization_unproved_impl.fe:25:32
+   │
+25 │     let a: <W<u16> as Ty>::A = x
+   │                                ^ expected `W<u16>::A`, but `u8` is given
+
+error[8-0000]: type mismatch
+   ┌─ normalization_unproved_impl.fe:31:30
+   │
+31 │     let a: <W<T> as Ty>::A = x
+   │                              ^ expected `W<T>::A`, but `u8` is given
+
+error[8-0000]: type mismatch
+   ┌─ normalization_unproved_impl.fe:36:30
+   │
+36 │ const C: <W<u16> as Ty>::A = 1
+   │                              ^ expected `W<u16>::A`, but `{integer}` is given

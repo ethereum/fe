@@ -92,9 +92,10 @@ fn normalize_assoc_binding<'db>(
     ty: TyId<'db>,
     scope: ScopeId<'db>,
     assumptions: super::PredicateListId<'db>,
+    definitions: super::PredicateListId<'db>,
 ) -> Result<TyId<'db>, NormalizationLimit> {
     let ty = ty.fold_with(db, table);
-    crate::analysis::ty::normalize::normalize_ty_in_solver(db, ty, scope, assumptions)
+    crate::analysis::ty::normalize::normalize_ty_in_solver(db, ty, scope, assumptions, definitions)
 }
 
 /// Whether a candidate matches a goal. `Unknown` means the heads unify but an
@@ -112,6 +113,7 @@ fn unify_trait_inst_with_normalized_assoc_bindings<'db>(
     goal: TraitInstId<'db>,
     scope: ScopeId<'db>,
     assumptions: super::PredicateListId<'db>,
+    definitions: super::PredicateListId<'db>,
 ) -> CandidateMatch {
     if table
         .unify(trait_inst_head(db, candidate), trait_inst_head(db, goal))
@@ -133,11 +135,18 @@ fn unify_trait_inst_with_normalized_assoc_bindings<'db>(
     let mut unknown = None;
     for (name, &candidate_assoc_ty) in candidate.assoc_type_bindings(db) {
         if let Some(&goal_assoc_ty) = goal.assoc_type_bindings(db).get(name) {
-            let pair = normalize_assoc_binding(db, table, candidate_assoc_ty, scope, assumptions)
-                .and_then(|candidate| {
-                    normalize_assoc_binding(db, table, goal_assoc_ty, scope, assumptions)
-                        .map(|goal| (candidate, goal))
-                });
+            let pair = normalize_assoc_binding(
+                db,
+                table,
+                candidate_assoc_ty,
+                scope,
+                assumptions,
+                definitions,
+            )
+            .and_then(|candidate| {
+                normalize_assoc_binding(db, table, goal_assoc_ty, scope, assumptions, definitions)
+                    .map(|goal| (candidate, goal))
+            });
             match pair {
                 Ok((candidate_assoc_ty, goal_assoc_ty)) => {
                     if table.unify(candidate_assoc_ty, goal_assoc_ty).is_err() {
@@ -264,6 +273,9 @@ struct TraitResolutionContext<'db> {
     root: Option<Query<'db>>,
     /// The limit the root goal's unknown answers depend on, if any.
     root_unknown: Option<NormalizationLimit>,
+    /// The root's definitions, shared by every goal of the solve (see
+    /// [`TraitSolveCx::with_definitions`]).
+    definitions: super::PredicateListId<'db>,
 }
 
 impl<'db> TraitResolutionContext<'db> {
@@ -282,6 +294,7 @@ impl<'db> TraitResolutionContext<'db> {
             unknown_target: false,
             root: None,
             root_unknown: None,
+            definitions: root.definitions,
         }
     }
 
@@ -297,8 +310,13 @@ impl<'db> TraitResolutionContext<'db> {
             self.origin_ingot,
             query.goal,
         );
-        let normalized_goal =
-            normalize_trait_inst_preserving_validity(self.db, query.goal, scope, query.assumptions);
+        let normalized_goal = normalize_trait_inst_preserving_validity(
+            self.db,
+            query.goal,
+            scope,
+            query.assumptions,
+            self.definitions,
+        );
         let prepared = PreparedQuery {
             table,
             query,
@@ -412,6 +430,7 @@ impl<'db> TraitResolutionContext<'db> {
             goal: TraitSolverQuery {
                 goal: next_goal,
                 assumptions,
+                definitions: self.definitions,
                 require_impl: false,
             },
             state: branch,
@@ -529,6 +548,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     candidate.trait_inst(self.db),
                     scope,
                     query.assumptions,
+                    self.definitions,
                 ) {
                     Ok(candidate) => candidate,
                     Err(limit) => return Ok(self.unknown_answer(key, table, query.goal, limit)),
@@ -540,6 +560,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     normalized_goal,
                     scope,
                     query.assumptions,
+                    self.definitions,
                 ) {
                     CandidateMatch::Matches => None,
                     CandidateMatch::Mismatch => return Ok(Transition::Reject),
@@ -572,6 +593,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     normalized_goal,
                     scope,
                     query.assumptions,
+                    self.definitions,
                 ) {
                     CandidateMatch::Matches => None,
                     CandidateMatch::Mismatch => return Ok(Transition::Reject),
@@ -621,6 +643,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 pending_goal.fold_with(self.db, &mut branch.table),
                 scope,
                 rebase.assumptions(),
+                self.definitions,
             )
         };
         let normalized_solution = {
@@ -634,6 +657,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 solution.fold_with(self.db, &mut branch.table),
                 scope,
                 rebase.assumptions(),
+                self.definitions,
             )
         };
         // An answer that cannot be compared with the goal it answers leaves
@@ -661,6 +685,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     pending,
                     scope,
                     rebase.assumptions(),
+                    self.definitions,
                 ) {
                     CandidateMatch::Mismatch => return Ok(Transition::Reject),
                     CandidateMatch::Matches => {}
@@ -678,6 +703,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             TraitSolverQuery {
                 goal: resumed_root,
                 assumptions: resumed_assumptions,
+                definitions: self.definitions,
                 require_impl: parent.value().require_impl,
             },
         ) {

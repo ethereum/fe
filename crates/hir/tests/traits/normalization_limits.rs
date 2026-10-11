@@ -706,3 +706,150 @@ fn instantiated_unused_effect_keys_report_normalization_limits() {
         }
     }
 }
+
+/// Impls whose where clauses lead back to the associated type they define,
+/// directly, through another impl's projection, or through another trait.
+/// While an impl's where clauses are proved for the projection, the
+/// projection stands for the type that impl defines: the impl applies when
+/// they hold for that type, whichever use is asked first.
+#[test]
+fn a_where_clause_leading_back_to_its_own_type_is_proved_for_its_definition() {
+    let prelude = "trait Show {}\nimpl Show for u8 {}\ntrait Marker {}\ntrait Other {}\n\
+        trait Tr {\n    type Out\n}\npub struct S {}\npub struct T {}\n";
+    // The impls, and whether `S: Tr` holds with `<S as Tr>::Out = Def`.
+    let cases = [
+        (
+            "impl Tr for S where <S as Tr>::Out: Show { type Out = u8 }\n",
+            true,
+        ),
+        (
+            "impl Tr for S where <S as Tr>::Out: Show { type Out = u16 }\n",
+            false,
+        ),
+        (
+            "impl Tr for S where <S as Tr>::Out: Show, u16: Marker { type Out = u8 }\n",
+            false,
+        ),
+        (
+            "impl Tr for S where <T as Tr>::Out: Show { type Out = u8 }\n\
+             impl Tr for T where <S as Tr>::Out: Show { type Out = u8 }\n",
+            true,
+        ),
+        (
+            "impl Tr for S where <T as Tr>::Out: Show { type Out = u8 }\n\
+             impl Tr for T where <S as Tr>::Out: Show { type Out = u16 }\n",
+            false,
+        ),
+        (
+            "impl Other for S where <S as Tr>::Out: Show {}\n\
+             impl Tr for S where S: Other { type Out = u8 }\n",
+            true,
+        ),
+        (
+            "impl Other for S where <S as Tr>::Out: Show {}\n\
+             impl Tr for S where S: Other { type Out = u16 }\n",
+            false,
+        ),
+    ];
+    for (impls, holds) in cases {
+        let definition = if impls.contains("u16 }") { "u16" } else { "u8" };
+        let uses = vec![
+            format!(
+                "pub fn body(x: {definition}) -> {definition} {{\n    let a: <S as Tr>::Out = x\n    a\n}}\n"
+            ),
+            "fn need<X: Tr>() {}\npub fn goal() {\n    need<S>()\n}\n".to_string(),
+            format!("pub fn signature(x: <S as Tr>::Out) -> {definition} {{\n    x\n}}\n"),
+        ];
+        // Each use on its own is accepted exactly when the impl applies.
+        for single in &uses {
+            let src = format!("{prelude}{impls}{single}");
+            let mut db = HirAnalysisTestDb::default();
+            let found = codes(&mut db, &src);
+            assert_eq!(found.is_empty(), holds, "{src}\n{found:?}");
+        }
+        let mut expected = None;
+        for order in permutations(&uses) {
+            let src = format!("{prelude}{impls}{}", order.concat());
+            let mut db = HirAnalysisTestDb::default();
+            let found = codes(&mut db, &src);
+            let expected = expected.get_or_insert_with(|| found.clone());
+            assert_eq!(&found, expected, "{src}");
+        }
+    }
+}
+
+/// An impl whose where clause needs the trait bound it provides is proved
+/// as any goal, inductively: the bound is not assumed while it is checked, in
+/// generic code as in concrete code. So the projection does not stand for the
+/// impl's type, in either spelling.
+#[test]
+fn an_impl_that_needs_its_own_bound_does_not_define_its_type() {
+    let impls = [
+        // The impl needs its own bound.
+        "impl<T> Tr for W<T> where W<T>: Tr { type Out = u8 }\n",
+        // Two impls that need each other.
+        "trait Other {}\n\
+         impl<T> Tr for W<T> where W<T>: Other { type Out = u8 }\n\
+         impl<T> Other for W<T> where W<T>: Tr {}\n",
+        // The bound is needed beside a clause that leads back to the type.
+        "trait Show {}\nimpl Show for u8 {}\n\
+         impl<T> Tr for W<T> where W<T>: Tr, <W<T> as Tr>::Out: Show { type Out = u8 }\n",
+    ];
+    let spellings = ["<W<T> as Tr>::Out", "W<T>::Out"];
+    for impls in impls {
+        for spelling in spellings {
+            let src = format!(
+                "trait Tr {{\n    type Out\n}}\nstruct W<T> {{\n    t: T,\n}}\n{impls}\
+                 fn g<T>(x: u8) -> u8 {{\n    let a: {spelling} = x\n    a\n}}\n\
+                 fn h(x: u8) -> u8 {{\n    g<u16>(x)\n}}\n"
+            );
+            let mut db = HirAnalysisTestDb::default();
+            assert!(!codes(&mut db, &src).is_empty(), "accepted:\n{src}");
+        }
+    }
+}
+
+/// A generic impl whose where clause names the projection it defines holds
+/// exactly when the clause holds for its own definition.
+#[test]
+fn a_generic_impl_whose_clause_names_its_own_type_is_proved_for_its_definition() {
+    for (definition, holds) in [("u8", true), ("u16", false)] {
+        let src = format!(
+            "trait Show {{}}\nimpl Show for u8 {{}}\ntrait Tr {{\n    type Out\n}}\n\
+             struct W<T> {{\n    t: T,\n}}\n\
+             impl<T> Tr for W<T> where <W<T> as Tr>::Out: Show {{\n    type Out = {definition}\n}}\n\
+             fn g<T>(x: {definition}) -> {definition} {{\n    let a: <W<T> as Tr>::Out = x\n    a\n}}\n\
+             fn h(x: {definition}) -> {definition} {{\n    g<u8>(x)\n}}\n"
+        );
+        let mut db = HirAnalysisTestDb::default();
+        let found = codes(&mut db, &src);
+        assert_eq!(found.is_empty(), holds, "{src}\n{found:?}");
+    }
+}
+
+/// A chain of impls, each with a where clause on the projection it defines
+/// through, is checked in time polynomial in its depth: each level's goals
+/// are the same questions however deep the chain, and their answers are
+/// shared.
+#[test]
+fn a_chain_of_where_clauses_on_projections_is_checked_quickly() {
+    let depth = 20;
+    let chain = format!("{}u8{}", "N<".repeat(depth), ">".repeat(depth));
+    let src = format!(
+        "trait Nest {{\n    type Out\n}}\nstruct N<T> {{\n    t: T,\n}}\ntrait Show {{}}\n\
+         impl Show for u8 {{}}\n\
+         impl<T: Nest> Nest for N<T> where T::Out: Show {{\n    type Out = T::Out\n}}\n\
+         impl Nest for u8 {{\n    type Out = u8\n}}\n\
+         fn f(x: <{chain} as Nest>::Out) -> u8 {{\n    x\n}}\n"
+    );
+    let start = std::time::Instant::now();
+    let mut db = HirAnalysisTestDb::default();
+    assert_eq!(codes(&mut db, &src), Vec::<String>::new());
+    // Well under a second in a release build; the time doubled with each
+    // level when the clauses were proved under an assumption of their own.
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(60),
+        "took {:?}",
+        start.elapsed()
+    );
+}

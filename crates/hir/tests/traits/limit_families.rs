@@ -196,6 +196,10 @@ const MARKER_TR: &str = "trait Tr {}
 impl<T> Tr for W<T> {}";
 const NEED_TR: &str = "fn need<X: Tr>() {}
 fn h() { need<W<{D}>>() }";
+// An impl that defines a projection only if its where clause holds, the
+// only impl whose header matches.
+const TY: &str = "trait Ty { type A }";
+const TY_OVER_LIMIT: &str = "impl<T: Nest> Ty for W<T> where T::Out: Show { type A = u8 }";
 
 families! {
     // Method lookup: a trait that is not in scope.
@@ -559,6 +563,32 @@ impl<X> Pair<X, bool> { fn m(self) -> u8 { 1 } }",
         needs_mut()
     }
 }";
+    // A projection whose only impl has a where clause over the limit: the
+    // projection stands for the impl's type only if the clause holds, in a
+    // type written in a body, the type of a constant, and a where clause
+    // that a goal or a rival method needs.
+    projection_only_impl_in_body: Limit, TY, TY_OVER_LIMIT,
+        "fn f(x: u8) -> u8 {
+    let a: <W<{D}> as Ty>::A = x
+    a
+}";
+    projection_only_impl_const_item: Limit, TY, TY_OVER_LIMIT,
+        "const C: <W<{D}> as Ty>::A = 1";
+    projection_only_impl_in_goal: Limit,
+        "trait Ty { type A }
+trait Mark {}
+impl Mark for u8 {}
+trait Tr {}
+impl<X> Tr for X where <X as Ty>::A: Mark {}", TY_OVER_LIMIT, NEED_TR;
+    projection_only_impl_in_method_rival: Limit,
+        "trait Ty { type A }
+trait Mark {}
+impl Mark for u8 {}
+trait Get { fn get(self) -> u8 }
+impl<T> Get for W<T> { fn get(self) -> u8 { 1 } }
+trait Other { fn get(self) -> u8 }
+impl<X> Other for X where <X as Ty>::A: Mark { fn get(self) -> u8 { 2 } }", TY_OVER_LIMIT,
+        "fn f(w: own W<{D}>) -> u8 { w.get() }";
     // Effect providers: the provider named as the requirement is, among
     // others over the limit, however many.
     effect_named_among_many: Same, LOGGER, DEEP_LOGGER,

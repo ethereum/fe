@@ -313,6 +313,7 @@ impl<'db> TyVisitable<'db> for TraitSolverQuery<'db> {
     {
         self.goal.visit_with(visitor);
         self.assumptions.visit_with(visitor);
+        self.definitions.visit_with(visitor);
     }
 }
 

@@ -11,7 +11,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
     binder::Binder,
-    candidates::{self, Counting, Holds, Item, Question},
+    candidates::{self, Holds, Item, Question},
     canonical::Canonical,
     canonical::Canonicalized,
     diagnostics::{TyDiagCollection, TyLowerDiag},
@@ -125,11 +125,13 @@ pub(crate) fn normalize_ty_in_solver<'db>(
     ty: TyId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
+    definitions: PredicateListId<'db>,
 ) -> Result<TyId<'db>, NormalizationLimit> {
     if is_already_normal(db, ty) {
         return Ok(ty);
     }
     let mut normalizer = TypeNormalizer::new(db, scope, assumptions);
+    normalizer.definitions = definitions;
     let normalized = ty.fold_with(db, &mut normalizer);
     match normalizer.outcome() {
         Some(limit) => Err(limit),
@@ -486,6 +488,9 @@ pub struct TypeNormalizer<'db> {
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
+    /// Associated types read as given (see
+    /// [`super::trait_resolution::TraitSolveCx::with_definitions`]).
+    definitions: PredicateListId<'db>,
     resolve_impls: bool,
     /// Projections being resolved, and the results of those resolved.
     cache: FxHashMap<TyId<'db>, CacheEntry<'db>>,
@@ -560,6 +565,7 @@ impl<'db> TypeNormalizer<'db> {
             db,
             scope,
             assumptions,
+            definitions: PredicateListId::empty_list(db),
             resolve_impls: true,
             cache: FxHashMap::default(),
             frames: Vec::new(),
@@ -882,6 +888,15 @@ impl<'db> TypeNormalizer<'db> {
         // Equality evidence is separate from the projection's identity. Match
         // its entire trait reference before using an assumption's binding.
         let target = assoc.trait_.fold_with(self.db, self);
+        // While an impl that defines this projection is checked, the
+        // projection stands for that impl's definition.
+        for &definition in self.definitions.list(self.db) {
+            if let Some(defined) = definition.bound_assoc_ty(self.db, assoc.name)
+                && self.trait_refs_match(target, definition.trait_ref(self.db))
+            {
+                return (defined != ty).then(|| self.fold_candidate(ty, defined));
+            }
+        }
         let mut matching_bounds: IndexMap<TyId<'db>, ()> = IndexMap::new();
         for &pred in self.assumptions.list(self.db) {
             let Some(bound) = pred.bound_assoc_ty(self.db, assoc.name) else {
@@ -911,8 +926,21 @@ impl<'db> TypeNormalizer<'db> {
         // mirroring trait-method resolution. This allows normalization to succeed even
         // when the calling scope is in a different ingot (e.g., core code instantiated
         // with std types).
-        if let Some(resolved) = self.try_resolve_assoc_ty_from_impls(ty, assoc) {
-            return Some(resolved);
+        let (resolved, had_candidates) = self.try_resolve_assoc_ty_from_impls(ty, assoc);
+        if resolved.is_some() {
+            return resolved;
+        }
+        // For a self type that is neither a type parameter nor a projection,
+        // the search below finds nothing but the same impls, proved without
+        // the definition each would give: once they are decided, it is not
+        // asked again.
+        if had_candidates
+            && !matches!(
+                target.self_ty(self.db).data(self.db),
+                TyData::TyParam(_) | TyData::AssocTy(_)
+            )
+        {
+            return None;
         }
 
         //    Search by the trait's self type: `SelfTy::assoc.name`.
@@ -995,13 +1023,18 @@ impl<'db> TypeNormalizer<'db> {
         folded
     }
 
+    /// The type the impls whose header matches define the projection `ty`
+    /// as, if they agree, and whether any impl's header matched.
     fn try_resolve_assoc_ty_from_impls(
         &mut self,
         ty: TyId<'db>,
         assoc: &AssocTy<'db>,
-    ) -> Option<TyId<'db>> {
-        let trait_inst = assoc.trait_.fold_with(self.db, self).as_predicate(self.db);
-        let solve_cx = TraitSolveCx::new(self.db, self.scope).with_assumptions(self.assumptions);
+    ) -> (Option<TyId<'db>>, bool) {
+        let trait_ref = assoc.trait_.fold_with(self.db, self);
+        let trait_inst = trait_ref.as_predicate(self.db);
+        let solve_cx = TraitSolveCx::new(self.db, self.scope)
+            .with_assumptions(self.assumptions)
+            .with_definitions(self.definitions);
         let (primary, secondary) = solve_cx.search_ingots_for_trait_inst(self.db, trait_inst);
         let question = Question::header(
             self.db,
@@ -1011,72 +1044,75 @@ impl<'db> TypeNormalizer<'db> {
         );
         let candidates = candidates::impl_candidates(self.db, question);
 
-        // An impl is chosen by its header when only one header applies: its
-        // where clauses are then checked where the impl is used (where the
-        // type is written, or where `S: Tr` is needed), not here, so
-        // normalizing does not depend on proving them. Only when several
-        // headers apply do the where clauses choose among them.
-        let holds: Vec<Holds> = if candidates.len() == 1 {
-            vec![Holds::Yes]
-        } else {
-            candidates
-                .iter()
-                .map(|&candidate| {
-                    candidates::impl_holds(
-                        self.db,
-                        solve_cx,
-                        question,
-                        candidate,
-                        Counting::POSSIBLE,
-                    )
-                })
-                .collect()
-        };
-
-        // The type each candidate that may apply gives.
-        let mut types: Vec<Option<TyId<'db>>> = vec![None; candidates.len()];
+        // What each candidate defines the projection as, for this trait
+        // reference.
+        let mut definitions: Vec<Option<TyId<'db>>> = vec![None; candidates.len()];
         let canonical_target = Canonicalized::new(self.db, trait_inst);
         canonical_target.with_materialized(self.db, |cx| {
             let target_inst = cx.query();
             let original_target = cx.try_extract::<TraitInstId<'db>>(target_inst);
             for (idx, &implementor) in candidates.iter().enumerate() {
-                if holds[idx] == Holds::No {
-                    continue;
-                }
                 let Some(implementor) = complete_impl_assoc_ty(self.db, implementor, assoc.name)
                 else {
                     continue;
                 };
-                let candidate = cx.with_impl_assoc_ty(
-                    implementor,
-                    target_inst.self_ty(self.db),
-                    assoc.name,
-                    |cx, inst, assoc_ty| {
-                        cx.unify::<TraitInstId<'db>>(inst, target_inst).ok()?;
-                        if cx.try_extract::<TraitInstId<'db>>(target_inst) != original_target {
-                            return None;
-                        }
-                        let assoc_ty = cx.resolve::<TyId<'db>>(assoc_ty);
-                        cx.try_extract::<TyId<'db>>(assoc_ty)
-                    },
-                );
-
-                // Extract into the caller's inference environment before
-                // continuing normalization, so scratch-local vars never
-                // leak into the cache.
-                if let Some(Some(folded)) = candidate {
-                    // An impl that defines the projection as itself, as
-                    // `type Out = <S as Tr>::Out` in `impl Tr for S`,
-                    // needs the type it is resolving: the same cycle as
-                    // `type Out = Self::Out`.
-                    if folded == ty {
-                        self.reach(NormalizationLimit::Cycle);
-                        return;
-                    }
-                    types[idx] = Some(self.fold_candidate(ty, folded));
-                }
+                // Extracted into the caller's inference environment, so
+                // scratch-local vars never leak into the cache.
+                definitions[idx] = cx
+                    .with_impl_assoc_ty(
+                        implementor,
+                        target_inst.self_ty(self.db),
+                        assoc.name,
+                        |cx, inst, assoc_ty| {
+                            cx.unify::<TraitInstId<'db>>(inst, target_inst).ok()?;
+                            if cx.try_extract::<TraitInstId<'db>>(target_inst) != original_target {
+                                return None;
+                            }
+                            let assoc_ty = cx.resolve::<TyId<'db>>(assoc_ty);
+                            cx.try_extract::<TyId<'db>>(assoc_ty)
+                        },
+                    )
+                    .flatten();
             }
         });
+
+        // A candidate defines the projection only if its where clauses hold,
+        // also when it is the only one whose header applies: the projection
+        // of an impl that does not apply does not stand for its type.
+        let holds: Vec<Holds> = candidates
+            .iter()
+            .zip(&definitions)
+            .map(|(&candidate, definition)| match definition {
+                Some(_) => {
+                    candidates::impl_defines(self.db, solve_cx, question, candidate, assoc.name)
+                }
+                None => Holds::No,
+            })
+            .collect();
+
+        // An impl that applies and defines the projection as itself, as
+        // `type Out = <S as Tr>::Out` in `impl Tr for S`, needs the type it is
+        // resolving: the same cycle as `type Out = Self::Out`.
+        if definitions
+            .iter()
+            .zip(&holds)
+            .any(|(definition, holds)| *definition == Some(ty) && *holds != Holds::No)
+        {
+            self.reach(NormalizationLimit::Cycle);
+            return (None, true);
+        }
+
+        // The type each candidate that may apply gives.
+        let types: Vec<Option<TyId<'db>>> = definitions
+            .iter()
+            .zip(&holds)
+            .map(|(definition, holds)| match (definition, holds) {
+                (Some(definition), holds) if *holds != Holds::No => {
+                    Some(self.fold_candidate(ty, *definition))
+                }
+                _ => None,
+            })
+            .collect();
 
         // The projection stands for the one type the applying impls give.
         let unknown: Vec<_> = holds
@@ -1104,13 +1140,14 @@ impl<'db> TypeNormalizer<'db> {
                 _ => None,
             }
         });
-        match decided.or_limit() {
+        let resolved = match decided.or_limit() {
             Ok(resolved) => resolved,
             Err(limit) => {
                 self.reach(limit);
                 None
             }
-        }
+        };
+        (resolved, !candidates.is_empty())
     }
 }
 
