@@ -28,7 +28,7 @@ struct W<T> { t: T }
 ";
 
 /// Error codes that name a normalization limit.
-const LIMIT_CODES: &[&str] = &["3-0058", "2-0022"];
+const LIMIT_CODES: &[&str] = &["3-0058", "2-0022", "16-0012", "16-0013"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum AtLimit {
@@ -104,7 +104,7 @@ fn check_family(family: &Family, codes: &dyn Fn(&str) -> Vec<String>) -> Option<
 
 /// Checks every family, `threads` at a time, and fails with the tables of
 /// the families that are wrong.
-fn check_all(codes: &(dyn Fn(&str) -> Vec<String> + Sync), threads: usize) {
+fn check_all(families: &[Family], codes: &(dyn Fn(&str) -> Vec<String> + Sync), threads: usize) {
     let next = std::sync::atomic::AtomicUsize::new(0);
     let failures = std::sync::Mutex::new(Vec::new());
     std::thread::scope(|scope| {
@@ -112,7 +112,7 @@ fn check_all(codes: &(dyn Fn(&str) -> Vec<String> + Sync), threads: usize) {
             scope.spawn(|| {
                 loop {
                     let idx = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    let Some(family) = FAMILIES.get(idx) else {
+                    let Some(family) = families.get(idx) else {
                         break;
                     };
                     if let Some(failure) = check_family(family, codes) {
@@ -127,8 +127,9 @@ fn check_all(codes: &(dyn Fn(&str) -> Vec<String> + Sync), threads: usize) {
 }
 
 macro_rules! families {
-    ($($name:ident: $at_limit:ident, $main:expr, $rival:expr, $question:expr;)*) => {
-        const FAMILIES: &[Family] = &[
+    ($(#[$attr:meta])* $list:ident; $($name:ident: $at_limit:ident, $main:expr, $rival:expr, $question:expr;)*) => {
+        $(#[$attr])*
+        const $list: &[Family] = &[
             $(Family {
                 name: stringify!($name),
                 main: $main,
@@ -202,6 +203,8 @@ const TY: &str = "trait Ty { type A }";
 const TY_OVER_LIMIT: &str = "impl<T: Nest> Ty for W<T> where T::Out: Show { type A = u8 }";
 
 families! {
+    #[allow(dead_code)]
+    FAMILIES;
     // Method lookup: a trait that is not in scope.
     method_invisible_trait: Same, GET, OTHER_GET_HIDDEN,
         "fn f(w: own W<{D}>) -> u8 { w.get() }";
@@ -589,6 +592,219 @@ impl<T> Get for W<T> { fn get(self) -> u8 { 1 } }
 trait Other { fn get(self) -> u8 }
 impl<X> Other for X where <X as Ty>::A: Mark { fn get(self) -> u8 { 2 } }", TY_OVER_LIMIT,
         "fn f(w: own W<{D}>) -> u8 { w.get() }";
+    // ---- Further mechanisms, one family each. ----
+    // Operators: compound assignment, a unary operator, indexing.
+    op_compound_assign_other_operand: Same,
+        "use core::ops::AddAssign
+impl<T> AddAssign<u8> for W<T> { fn add_assign(mut self, _ other: own u8) {} }",
+        "impl<T: Nest> AddAssign<bool> for W<T> where T::Out: Show { fn add_assign(mut self, _ other: own bool) {} }",
+        "fn f(mut w: own W<{D}>, one: u8) { w += one }";
+    op_compound_assign_only_impl: Limit, "use core::ops::AddAssign",
+        "impl<T: Nest> AddAssign<u8> for W<T> where T::Out: Show { fn add_assign(mut self, _ other: own u8) {} }",
+        "fn f(mut w: own W<{D}>, one: u8) { w += one }";
+    op_unary_refuted_after_limit: Same, "use core::ops::Neg",
+        "impl<T: Nest> Neg for W<T> where T::Out: Show, T: Never { type Output = u8
+  fn neg(own self) -> u8 { 1 } }",
+        "fn f(w: own W<{D}>) -> u8 { -w }";
+    op_unary_only_impl: Limit, "use core::ops::Neg",
+        "impl<T: Nest> Neg for W<T> where T::Out: Show { type Output = u8
+  fn neg(own self) -> u8 { 1 } }",
+        "fn f(w: own W<{D}>) -> u8 { -w }";
+    op_index_other_key: Same,
+        "use core::ops::Index
+impl<T> Index<u8> for W<T> { type Output = u8
+  fn index(self, _ i: u8) -> u8 { i } }",
+        "impl<T: Nest> Index<bool> for W<T> where T::Out: Show { type Output = u8
+  fn index(self, _ i: bool) -> u8 { 2 } }",
+        "fn f(w: W<{D}>, i: u8) -> u8 { w[i] }";
+    // Methods: explicit generic arguments, where clauses on the method or the
+    // trait method, an inherent method whose where clause is over the limit,
+    // a supertrait rival, a static function by path.
+    method_explicit_generic_args: Same,
+        "trait Get { fn get<X>(self) -> u8 }
+impl<T> Get for W<T> { fn get<X>(self) -> u8 { 1 } }",
+        "mod m { use super::{W, Nest, Show}
+  pub trait Other { fn get<X>(self) -> u8 }
+  impl<T: Nest> Other for W<T> where T::Out: Show { fn get<X>(self) -> u8 { 2 } } }",
+        "fn f(w: own W<{D}>) -> u8 { w.get<u16>() }";
+    method_own_where_clause: Limit, "",
+        "impl<T> W<T> { fn get(self) -> u8 where T: Nest, T::Out: Show { 1 } }",
+        "fn f(w: own W<{D}>) -> u8 { w.get() }";
+    method_trait_method_where_clause: Limit,
+        "trait Get { fn get(self) -> u8 where Self: Gate }
+trait Gate {}
+impl<T> Get for W<T> { fn get(self) -> u8 where Self: Gate { 1 } }",
+        "impl<T: Nest> Gate for W<T> where T::Out: Show {}",
+        "fn f(w: own W<{D}>) -> u8 { w.get() }";
+    method_inherent_over_limit_before_trait: Limit,
+        "trait Get { fn get(self) -> u8 }
+impl<T> Get for W<T> { fn get(self) -> u8 { 2 } }",
+        "impl<T: Nest> W<T> where T::Out: Show { fn get(self) -> u8 { 1 } }",
+        "fn f(w: own W<{D}>) -> u8 { w.get() }";
+    method_supertrait_rival_other_name: Same, GET,
+        "trait Base {}
+impl<T: Nest> Base for W<T> where T::Out: Show {}
+trait Sub: Base { fn other(self) -> u8 }
+impl<T: Nest> Sub for W<T> where T::Out: Show { fn other(self) -> u8 { 2 } }",
+        "fn f(w: own W<{D}>) -> u8 { w.get() }";
+    static_fn_qualified: Same,
+        "trait Mk { fn mk() -> u8 }
+impl<T> Mk for W<T> { fn mk() -> u8 { 1 } }",
+        "trait Other { fn mk() -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show { fn mk() -> u8 { 2 } }",
+        "fn f() -> u8 { <W<{D}> as Mk>::mk() }";
+    static_fn_by_type_rival: Limit,
+        "trait Mk { fn mk() -> u8 }
+impl<T> Mk for W<T> { fn mk() -> u8 { 1 } }",
+        "trait Other { fn mk() -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show { fn mk() -> u8 { 2 } }",
+        "fn f() -> u8 { W<{D}>::mk() }";
+    static_fn_by_type_refuted: Same,
+        "trait Mk { fn mk() -> u8 }
+impl<T> Mk for W<T> { fn mk() -> u8 { 1 } }",
+        "trait Other { fn mk() -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show, T: Never { fn mk() -> u8 { 2 } }",
+        "fn f() -> u8 { W<{D}>::mk() }";
+    // Constants: qualified, through a bound, inherent against a trait, in an
+    // array length and a const generic argument.
+    const_qualified_rival_same_name: Same, HAS_VALUE,
+        "trait Other { const VALUE: u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show { const VALUE: u8 = 2 }",
+        "fn f() -> u8 { <W<{D}> as HasValue>::VALUE }";
+    const_through_bound: Same, HAS_VALUE,
+        "trait Other { const VALUE: u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show { const VALUE: u8 = 2 }",
+        "fn f<X: HasValue>() -> u8 { X::VALUE }
+fn g() -> u8 { f<W<{D}>>() }";
+    const_inherent_over_limit: Limit, HAS_VALUE,
+        "impl<T: Nest> W<T> where T::Out: Show { const VALUE: u8 = 1 }",
+        "fn f() -> u8 { W<{D}>::VALUE }";
+    const_inherent_refuted: Same, HAS_VALUE,
+        "impl<T: Nest> W<T> where T::Out: Show, T: Never { const VALUE: u8 = 1 }",
+        "fn f() -> u8 { W<{D}>::VALUE }";
+    const_in_types: Same,
+        "struct Holder<const L: usize> { v: u8 }
+trait Len { const L: usize }
+impl<T> Len for W<T> { const L: usize = 2 }",
+        "trait Other { const OTHER: usize }
+impl<T: Nest> Other for W<T> where T::Out: Show { const OTHER: usize = 3 }",
+        "fn f() -> u8 {
+    let a: [u8; W<{D}>::L] = [1; 2]
+    let h: Holder<W<{D}>::L> = Holder { v: a[0] }
+    h.v
+}";
+    // Associated types: a bound on the trait's associated type checked at
+    // the impl, a rival whose own type is over the limit, a rival that gives
+    // the same type through a projection, an equality bound.
+    assoc_type_declared_bound: Limit, "trait Tr { type A: Show }\nstruct Z {}",
+        "impl Tr for Z { type A = <{D} as Nest>::Out }", "";
+    type_rival_type_over_limit: Limit, HAS_ITEM,
+        "trait Other { type Item }
+impl<T: Nest> Other for W<T> { type Item = T::Out }",
+        "fn f(x: W<{D}>::Item) -> u8 { x }";
+    type_rival_same_type_by_projection: Same, HAS_ITEM,
+        "trait Other { type Item }
+impl<T: Nest> Other for W<T> where T::Out: Show { type Item = <N<u8> as Nest>::Out }",
+        "fn f(x: W<{D}>::Item) -> u8 { x }";
+    equality_bound: Same,
+        "trait Tr { type Out }
+impl<T> Tr for W<T> { type Out = u8 }",
+        "trait Other { type Out }
+impl<T: Nest> Other for W<T> where T::Out: Show { type Out = bool }",
+        "fn need<X: Tr<Out = u8>>() {}
+fn h() { need<W<{D}>>() }";
+    equality_bound_over_limit: Limit, "trait Tr { type Out }",
+        "impl<T: Nest> Tr for W<T> { type Out = T::Out }",
+        "fn need<X: Tr<Out = u8>>() {}
+fn h() { need<W<{D}>>() }";
+    // Types written with the deep type: an unused alias, a field, an enum
+    // payload matched, a default type argument, a trait's default type, an
+    // impl's where clause.
+    written_alias: Limit, "", "", "type A = <{D} as Nest>::Out";
+    written_field: Limit, "", "", "struct S { f: <{D} as Nest>::Out }";
+    written_enum_match: Limit, "", "",
+        "enum E<T: Nest> { A(T::Out), B }
+fn f(e: E<{D}>) -> u8 { match e { E::A(x) => x, E::B => 0 } }";
+    written_default_argument: Limit, "", "",
+        "struct S<T = <{D} as Nest>::Out> { t: T }
+fn f(s: S<u8>) -> u8 { s.t }";
+    written_trait_default: Limit, "", "",
+        "trait Tr { type A = <{D} as Nest>::Out }
+impl Tr for u8 {}
+fn f(x: <u8 as Tr>::A) -> u8 { x }";
+    written_impl_where_clause: Limit, "trait Tr {}", "",
+        "impl Tr for u16 where <{D} as Nest>::Out: Show {}";
+    // Bounds of structs and enums, a supertrait checked at an impl, an
+    // impl whose definition or where clause is over the limit.
+    struct_bound: Limit, "trait Tr {}",
+        "impl<T: Nest> Tr for W<T> where T::Out: Show {}",
+        "struct Need<X: Tr> { x: X }
+fn f(n: Need<W<{D}>>) {}";
+    enum_constructor_bound: Limit, "", "",
+        "enum E<T: Nest> where T::Out: Show { A(T), B }
+fn f(x: own {D}) { let _e = E::A(x) }";
+    supertrait_at_impl: Limit, "trait Base {}\ntrait Sub: Base {}",
+        "impl<T: Nest> Base for W<T> where T::Out: Show {}",
+        "impl Sub for W<{D}> {}";
+    impl_definition_over_limit: Limit, "trait Tr { type Out }", "",
+        "impl Tr for W<{D}> { type Out = <{D} as Nest>::Out }";
+    // Overlap: impls that cannot both apply, whatever the limit gives.
+    overlap_refuted: Same, "trait Tr {}\nimpl Tr for W<{D}> {}",
+        "impl<T: Nest> Tr for W<T> where T::Out: Show, T: Never {}", "";
+    overlap_other_trait_argument: Same, "trait Tr<X> {}\nimpl Tr<bool> for W<{D}> {}",
+        "impl<T: Nest> Tr<u8> for W<T> where T::Out: Show {}", "";
+    // Trait solving: an impl ruled out by its self type although its trait
+    // argument would need the limit.
+    solver_self_type_refutes: Same,
+        "trait Tr<X> {}
+impl Tr<u8> for W<u8> {}",
+        "impl<T: Nest> Tr<T::Out> for W<T> where T: Never {}",
+        "fn need<X: Tr<u8>>() {}
+fn h() { need<W<u8>>() }
+fn k(w: W<{D}>) {}";
+    // Effects: a provider in a chain of `uses`, a provider of another key,
+    // a provider through a generic function.
+    effect_through_uses_chain: Limit, LOGGER, DEEP_LOGGER,
+        "fn mid() -> u8 uses (logger: Logger) { needs_logger() }
+fn f(d: own Deep<{D}>) -> u8 {
+    with (d) { mid() }
+}";
+    effect_generic_provider: Limit, LOGGER, DEEP_LOGGER,
+        "fn g<X>(d: own Deep<X>) -> u8 where Deep<X>: Logger { with (d) { needs_logger() } }
+fn f(d: own Deep<{D}>) -> u8 { g(d) }";
+    effect_unrelated_provider_trait: Same, LOGGER,
+        "trait Store {}
+struct Deep<T> { t: T }
+impl<T: Nest> Store for Deep<T> where T::Out: Show {}",
+        "fn f(logger: own Console, d: own Deep<{D}>) -> u8 {
+    with (logger) {
+        with (d) {
+            needs_logger()
+        }
+    }
+}";
+    effect_key_type: Limit, "", "", "fn needs() -> u8 uses (x: <{D} as Nest>::Out) { x }";
+    // A message's return type.
+    message_return: Limit, "", "",
+        "msg M {
+    #[selector = 1]
+    Get -> <{D} as Nest>::Out,
+}
+contract C {
+    recv M {
+        Get -> u8 { 1 }
+    }
+}";
+    // Generic functions instantiated with the deep type.
+    // Higher-kinded and function traits.
+    functor_argument_rival: Same,
+        "use core::functional::{Fn, Functor}
+struct Box<T> { t: T }
+impl Functor for Box { fn map<T, U, F: Fn<T, U>>(self: own Self<T>, _ func: F) -> Self<U> { Box { t: func.call(self.t) } } }
+struct Id<T> { t: T }
+impl<T> Fn<u8, u8> for Id<T> { fn call(self, _ value: own u8) -> u8 { value } }",
+        "impl<T: Nest> Fn<u8, bool> for Id<T> where T::Out: Show { fn call(self, _ value: own u8) -> bool { true } }",
+        "fn f(b: own Box<u8>, id: own Id<{D}>) -> Box<u8> { b.map(id) }";
     // Effect providers: the provider named as the requirement is, among
     // others over the limit, however many.
     effect_named_among_many: Same, LOGGER, DEEP_LOGGER,
@@ -605,3 +821,36 @@ impl<X> Other for X where <X as Ty>::A: Mark { fn get(self) -> u8 { 2 } }", TY_O
 }";
 }
 
+families! {
+    /// Families whose answer at depth 70 is decided by a pass only the whole
+    /// pipeline runs (instances of generic functions, contract fields):
+    /// checked by the command-line test alone.
+    #[allow(dead_code)]
+    PIPELINE_FAMILIES;
+    contract_field: Limit, "", "", "contract C {\n    mut value: <{D} as Nest>::Out,\n}";
+    instance_body: Limit, "",
+        "fn hidden<X: Nest>() -> u8 {
+    let _y: Option<X::Out> = Option::None
+    0
+}",
+        "fn g<X: Nest>() -> u8 { hidden<N<X>>() }
+fn f() -> u8 { g<{D}>() }";
+    instance_trait_impl_method: Limit, "trait Tr { fn m(self) -> u8 }",
+        "impl<T: Nest> Tr for W<T> {
+    fn m(self) -> u8 {
+        let _y: Option<T::Out> = Option::None
+        0
+    }
+}",
+        "fn f(w: W<{D}>) -> u8 { w.m() }";
+    instance_default_method: Limit,
+        "trait Tr {
+    type A
+    fn m(self) -> u8 {
+        let _y: Option<Self::A> = Option::None
+        0
+    }
+}",
+        "impl<T: Nest> Tr for W<T> { type A = T::Out }",
+        "fn f(w: own W<{D}>) -> u8 { w.m() }";
+}

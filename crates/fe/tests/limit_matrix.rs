@@ -1,7 +1,8 @@
 //! A normalization limit decides a program only when the answer depends on
-//! it (law 5 of the limits design), through the whole pipeline that
-//! `fe check` runs, instance building and borrow checking included. The
-//! families are shared with the analysis test in
+//! it (law 5 of the limits design), for the families that only the whole
+//! pipeline `fe check` runs can decide: instance building and contract
+//! fields. The other families are checked by the analysis test in
+//! `crates/hir/tests/traits/limit_matrix.rs`; all are in
 //! `crates/hir/tests/traits/limit_families.rs`.
 
 use std::process::Command;
@@ -39,5 +40,5 @@ fn codes(src: &str) -> Vec<String> {
 
 #[test]
 fn a_limit_decides_only_answers_that_depend_on_it_through_the_pipeline() {
-    check_all(&codes, 8);
+    check_all(PIPELINE_FAMILIES, &codes, 8);
 }

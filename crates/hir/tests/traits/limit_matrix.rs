@@ -30,66 +30,158 @@ fn codes(src: &str) -> Vec<String> {
 
 #[test]
 fn a_limit_decides_only_answers_that_depend_on_it() {
-    check_all(&codes, 8);
+    check_all(FAMILIES, &codes, 8);
 }
 
-/// The unrelated trait and impl come from a dependency the caller never
-/// imports from.
-#[test]
-fn method_invisible_trait_in_another_ingot() {
+/// The error codes of `app`, an ingot that depends on the ingot `dep`.
+fn ingot_codes(dep: &str, app: &str) -> Vec<String> {
     use common::InputDb;
     fn touch(db: &mut HirAnalysisTestDb, url: &str, text: String) -> common::file::File {
         db.workspace()
             .touch(db, url::Url::parse(url).unwrap(), Some(text))
     }
-    for depth in [3, 70] {
-        let mut db = HirAnalysisTestDb::default();
-        touch(
-            &mut db,
-            "file:///limit-matrix/dep/fe.toml",
-            "[ingot]\nname = \"dep\"\nversion = \"0.1.0\"\n".to_string(),
-        );
-        touch(
-            &mut db,
-            "file:///limit-matrix/dep/src/lib.fe",
-            "pub trait Nest { type Out }
+    let mut db = HirAnalysisTestDb::default();
+    touch(
+        &mut db,
+        "file:///limit-matrix/dep/fe.toml",
+        "[ingot]\nname = \"dep\"\nversion = \"0.1.0\"\n".to_string(),
+    );
+    touch(
+        &mut db,
+        "file:///limit-matrix/dep/src/lib.fe",
+        dep.to_string(),
+    );
+    touch(
+        &mut db,
+        "file:///limit-matrix/app/fe.toml",
+        "[ingot]\nname = \"app\"\nversion = \"0.1.0\"\n\n[dependencies]\ndep = { path = \"../dep\" }\n"
+            .to_string(),
+    );
+    let app = touch(
+        &mut db,
+        "file:///limit-matrix/app/src/lib.fe",
+        app.to_string(),
+    );
+    let (top_mod, _) = db.top_mod(app);
+    let mut manager = initialize_test_analysis_pass();
+    let mut codes: Vec<String> = manager
+        .run_on_module(&db, top_mod)
+        .into_iter()
+        .map(|diag| diag.to_complete(&db).error_code.to_string())
+        .collect();
+    codes.sort();
+    codes.dedup();
+    codes
+}
+
+/// Candidates found in a dependency, or in the caller for a dependency's
+/// type, decide like local ones: at depth 70 the answer is the one at depth 3,
+/// unless it depends on the candidate over the limit.
+#[test]
+fn candidates_in_another_ingot() {
+    const DEP: &str = "pub trait Nest { type Out }
 pub struct N<T> { pub t: T }
 impl<T: Nest> Nest for N<T> { type Out = T::Out }
 impl Nest for u8 { type Out = u8 }
 pub trait Show {}
-impl Show for u8 {}
+impl Show for bool {}
+pub trait Never {}
 pub struct W<T> { pub t: T }
-pub trait Other { fn get(self) -> u8 }
+pub trait Get { fn get(self) -> u8 }
+impl<T> Get for W<T> { fn get(self) -> u8 { 1 } }
+pub trait HasItem { type Item }
+impl<T> HasItem for W<T> { type Item = u8 }
+";
+    const OTHER: &str = "pub trait Other { fn get(self) -> u8 }
 impl<T: Nest> Other for W<T> where T::Out: Show { fn get(self) -> u8 { 2 } }
+";
+    // (name, at limit, dependency's rival, caller with `{D}`)
+    let cases: &[(&str, AtLimit, String, &str)] = &[
+        (
+            "rival not imported",
+            AtLimit::Same,
+            OTHER.to_string(),
+            "use dep::{W, N, Get}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "rival imported",
+            AtLimit::Limit,
+            OTHER.to_string(),
+            "use dep::{W, N, Get, Other}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "rival refuted",
+            AtLimit::Same,
+            "pub trait Other { fn get(self) -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show, T: Never { fn get(self) -> u8 { 2 } }
 "
             .to_string(),
-        );
-        touch(
-            &mut db,
-            "file:///limit-matrix/app/fe.toml",
-            "[ingot]\nname = \"app\"\nversion = \"0.1.0\"\n\n[dependencies]\ndep = { path = \"../dep\" }\n"
-                .to_string(),
-        );
-        let app = touch(
-            &mut db,
-            "file:///limit-matrix/app/src/lib.fe",
-            format!(
-                "use dep::{{W, N}}
-trait Get {{ fn get(self) -> u8 }}
-impl<T> Get for W<T> {{ fn get(self) -> u8 {{ 1 }} }}
-pub fn f(w: own W<{}>) -> u8 {{ w.get() }}
-",
-                chain(depth)
-            ),
-        );
-        let (top_mod, _) = db.top_mod(app);
-        let mut manager = initialize_test_analysis_pass();
-        let diags: Vec<_> = manager
-            .run_on_module(&db, top_mod)
-            .into_iter()
-            .map(|diag| diag.to_complete(&db).error_code.to_string())
-            .collect();
-        assert!(diags.is_empty(), "depth {depth}: {diags:?}");
+            "use dep::{W, N, Get, Other}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "rival in the caller for the dependency's type",
+            AtLimit::Limit,
+            String::new(),
+            "use dep::{W, N, Get, Nest, Show}
+trait Other { fn get(self) -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show { fn get(self) -> u8 { 2 } }
+pub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "twelve rivals not imported",
+            AtLimit::Same,
+            (0..12)
+                .map(|i| {
+                    format!(
+                        "pub trait O{i} {{ fn get(self) -> u8 }}
+impl<T: Nest> O{i} for W<T> where T::Out: Show {{ fn get(self) -> u8 {{ 2 }} }}
+"
+                    )
+                })
+                .collect(),
+            "use dep::{W, N, Get}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "associated type rival giving the same type",
+            AtLimit::Same,
+            "pub trait Other { type Item }
+impl<T: Nest> Other for W<T> where T::Out: Show { type Item = u8 }
+"
+            .to_string(),
+            "use dep::{W, N, HasItem, Other}\npub fn f(x: W<{D}>::Item) -> u8 { x }",
+        ),
+        (
+            "associated type rival giving another type",
+            AtLimit::Limit,
+            "pub trait Other { type Item }
+impl<T: Nest> Other for W<T> where T::Out: Show { type Item = bool }
+"
+            .to_string(),
+            "use dep::{W, N, HasItem, Other}\npub fn f(x: W<{D}>::Item) -> u8 { x }",
+        ),
+        (
+            "bound with its only impl in the dependency",
+            AtLimit::Limit,
+            "pub trait Tr {}\nimpl<T: Nest> Tr for W<T> where T::Out: Show {}\n".to_string(),
+            "use dep::{W, N, Tr}\nfn need<X: Tr>() {}\npub fn h() { need<W<{D}>>() }",
+        ),
+    ];
+    for (name, at_limit, rival, app) in cases {
+        for show in [false, true] {
+            let dep = format!(
+                "{DEP}{}{rival}",
+                if show { "impl Show for u8 {}\n" } else { "" }
+            );
+            let shallow = ingot_codes(&dep, &app.replace("{D}", &chain(3)));
+            let deep = ingot_codes(&dep, &app.replace("{D}", &chain(70)));
+            match at_limit {
+                AtLimit::Same => assert_eq!(deep, shallow, "{name}, show {show}"),
+                AtLimit::Limit => assert!(
+                    !deep.is_empty() && deep.iter().all(|code| LIMIT_CODES.contains(&&**code)),
+                    "{name}, show {show}: {deep:?}"
+                ),
+            }
+        }
     }
 }
 
