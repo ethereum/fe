@@ -49,6 +49,38 @@ fn trait_inst_head<'db>(db: &'db dyn HirAnalysisDb, inst: TraitInstId<'db>) -> T
     TraitInstId::new(db, inst.def(db), inst.args(db).to_vec(), IndexMap::new())
 }
 
+/// Whether the assumption `assumption` can prove the normalized `goal`: the
+/// same trait, and arguments that may unify. Type parameters are rigid in
+/// both, as unification treats them: one unifies only with itself and with
+/// variables. Associated type bindings are compared when it is applied.
+fn assumption_may_match<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assumption: TraitInstId<'db>,
+    goal: TraitInstId<'db>,
+) -> bool {
+    fn may_unify<'db>(db: &'db dyn HirAnalysisDb, a: TyId<'db>, b: TyId<'db>) -> bool {
+        let rigid = |ty: TyId<'db>| {
+            matches!(
+                ty.data(db),
+                TyData::TyParam(_) | TyData::TyBase(_) | TyData::TyApp(..)
+            )
+        };
+        match (a.data(db), b.data(db)) {
+            (TyData::TyApp(a_abs, a_arg), TyData::TyApp(b_abs, b_arg)) => {
+                may_unify(db, *a_abs, *b_abs) && may_unify(db, *a_arg, *b_arg)
+            }
+            _ if rigid(a) && rigid(b) => a == b,
+            _ => true,
+        }
+    }
+    assumption.def(db) == goal.def(db)
+        && assumption
+            .args(db)
+            .iter()
+            .zip(goal.args(db))
+            .all(|(&assumption, &goal)| may_unify(db, assumption, goal))
+}
+
 /// Whether the impl `header` can match the normalized `goal`, checked before
 /// the header is instantiated and normalized.
 ///
@@ -509,8 +541,19 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
         clauses.extend(implementors.iter().copied().map(Clause::Implementor));
         if !prepared.query.require_impl && self.goal_can_use_assumptions(normalized_goal) {
+            // An assumption that cannot unify with the goal is left out here,
+            // as applying it would reject it.
             clauses.extend(
-                (0..prepared.query.assumptions.list(self.db).len()).map(Clause::Assumption),
+                prepared
+                    .query
+                    .assumptions
+                    .list(self.db)
+                    .iter()
+                    .enumerate()
+                    .filter(|&(_, &assumption)| {
+                        assumption_may_match(self.db, assumption, normalized_goal)
+                    })
+                    .map(|(index, _)| Clause::Assumption(index)),
             );
         }
         Ok(CallbackOutcome::Continue(clauses))
