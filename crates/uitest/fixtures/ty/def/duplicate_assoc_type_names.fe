@@ -1,0 +1,16 @@
+// An associated type is declared once per trait and defined once per impl.
+trait Factory {
+    type P
+    type P
+}
+
+trait Single {
+    type Q
+}
+
+struct Fac {}
+
+impl Single for Fac {
+    type Q = u8
+    type Q = (u8, u8)
+}

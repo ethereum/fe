@@ -1,0 +1,20 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/def/duplicate_assoc_type_names.fe
+---
+error[3-0060]: duplicate associated type name in trait `Factory`
+  ┌─ duplicate_assoc_type_names.fe:3:10
+  │
+3 │     type P
+  │          ^ `P` is defined here
+4 │     type P
+  │          - `P` is redefined here
+
+error[3-0061]: associated type `Q` is defined more than once in this impl
+   ┌─ duplicate_assoc_type_names.fe:14:10
+   │
+14 │     type Q = u8
+   │          ^ `Q` is defined here
+15 │     type Q = (u8, u8)
+   │          - `Q` is redefined here

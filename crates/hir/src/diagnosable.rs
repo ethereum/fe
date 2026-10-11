@@ -1761,6 +1761,10 @@ impl<'db> Diagnosable<'db> for Trait<'db> {
 
     fn diags(self, db: &'db dyn HirAnalysisDb) -> Vec<Self::Diagnostic> {
         let mut out = Vec::new();
+        out.extend(check_duplicate_names(
+            self.assoc_types(db).map(|assoc| assoc.name(db)),
+            |idxs| TyLowerDiag::DuplicateTraitAssocTypeName(self, idxs).into(),
+        ));
         let assumptions = constraints_for(db, self.into());
         for assoc in self.assoc_consts(db) {
             if let Some(hir_ty) = assoc.hir_ty(db) {
@@ -1801,8 +1805,13 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
     type Diagnostic = TyDiagCollection<'db>;
 
     fn diags(self, db: &'db dyn HirAnalysisDb) -> Vec<Self::Diagnostic> {
+        let duplicates =
+            check_duplicate_names(self.assoc_types(db).map(|assoc| assoc.name(db)), |idxs| {
+                TyLowerDiag::DuplicateImplAssocTypeName(self, idxs).into()
+            });
         // Early path/domain/WF checks; bail out on errors to avoid noisy follow-ups
-        let (implementor_opt, validity_diags) = self.diags_implementor_validity(db);
+        let (implementor_opt, mut validity_diags) = self.diags_implementor_validity(db);
+        validity_diags.extend(duplicates);
         let Some(implementor) = implementor_opt else {
             return validity_diags;
         };

@@ -112,6 +112,10 @@ pub enum TyLowerDiag<'db> {
     DuplicateFieldName(FieldParent<'db>, SmallVec<[u16; 4]>),
     DuplicateVariantName(Enum<'db>, SmallVec<[u16; 4]>),
     DuplicateGenericParamName(GenericParamOwner<'db>, SmallVec<[u16; 4]>),
+    /// A trait declares an associated type name more than once.
+    DuplicateTraitAssocTypeName(Trait<'db>, SmallVec<[u16; 4]>),
+    /// An impl defines an associated type more than once.
+    DuplicateImplAssocTypeName(ImplTrait<'db>, SmallVec<[u16; 4]>),
 
     InvalidConstParamTy(DynLazySpan<'db>),
     RecursiveConstParamTy(DynLazySpan<'db>),
@@ -344,6 +348,8 @@ impl TyLowerDiag<'_> {
             Self::DuplicateFieldName(..) => 17,
             Self::DuplicateVariantName(..) => 18,
             Self::DuplicateGenericParamName(..) => 19,
+            Self::DuplicateTraitAssocTypeName(..) => 60,
+            Self::DuplicateImplAssocTypeName(..) => 61,
             Self::NonTrailingDefaultGenericParam(_) => 21,
             Self::GenericDefaultForwardRef { .. } => 22,
             Self::StaticSlotSpaceUnresolved { .. } => 39,

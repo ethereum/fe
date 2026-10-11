@@ -2037,6 +2037,49 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 }
             }
 
+            Self::DuplicateTraitAssocTypeName(trait_, idxs) => {
+                let assoc_types: Vec<_> = trait_.assoc_types(db).collect();
+                let name = assoc_types[idxs[0] as usize]
+                    .name(db)
+                    .expect("a duplicate name is present")
+                    .data(db);
+                let message = match trait_.name(db).to_opt() {
+                    Some(trait_name) => format!(
+                        "duplicate associated type name in trait `{}`",
+                        trait_name.data(db)
+                    ),
+                    None => "duplicate associated type name in trait definition".into(),
+                };
+                let spans = idxs
+                    .iter()
+                    .map(|&idx| assoc_types[idx as usize].span().name().resolve(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::DuplicateImplAssocTypeName(impl_trait, idxs) => {
+                let assoc_types: Vec<_> = impl_trait.assoc_types(db).collect();
+                let name = assoc_types[idxs[0] as usize]
+                    .name(db)
+                    .expect("a duplicate name is present")
+                    .data(db);
+                let spans = idxs
+                    .iter()
+                    .map(|&idx| assoc_types[idx as usize].span().name().resolve(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("associated type `{name}` is defined more than once in this impl"),
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
             Self::InvalidConstParamTy(span) => primary_diag(
                 Severity::Error,
                 "invalid const parameter type",
