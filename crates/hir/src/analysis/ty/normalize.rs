@@ -1289,8 +1289,10 @@ impl<'db> TypeNormalizer<'db> {
 #[cfg(test)]
 mod tests {
     use crate::analysis::ty::{
-        normalize::normalize_ty_with_cost, trait_resolution::PredicateListId, ty_def::TyId,
+        normalize::normalize_ty_with_cost, trait_def::TraitInstId,
+        trait_resolution::PredicateListId, ty_def::TyId,
     };
+    use crate::hir_def::IdentId;
     use crate::test_db::{HirAnalysisTestDb, find_func};
 
     /// A type's work counts each of its projections once, the same whether
@@ -1301,17 +1303,34 @@ mod tests {
         let src = "trait Tr { type Out }\nstruct A {}\nstruct B {}\n\
             impl Tr for A { type Out = (<B as Tr>::Out, <B as Tr>::Out) }\n\
             impl Tr for B { type Out = (u8, u8) }\n\
-            fn parts(_ a: own <A as Tr>::Out, _ b: own <B as Tr>::Out, _ t: own (u8, u8)) {}\n";
+            fn parts(_ a: own A, _ b: own B, _ t: own (u8, u8)) {}\n";
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone("work_order.fe".into(), src);
         let (top_mod, _) = db.top_mod(file);
         let func = find_func(&db, top_mod, "parts");
         let arg = |idx: usize| func.arg_tys(&db)[idx].instantiate_identity();
+        // The projections are built here: a written one is resolved where it
+        // is lowered.
+        let tr = top_mod
+            .all_traits(&db)
+            .iter()
+            .copied()
+            .find(|tr| {
+                tr.name(&db)
+                    .to_opt()
+                    .is_some_and(|name| name.data(&db) == "Tr")
+            })
+            .expect("the trait `Tr`");
+        let out = IdentId::new(&db, "Out");
+        let projection = |self_ty| {
+            let inst = TraitInstId::new_simple(&db, tr, vec![self_ty]);
+            TyId::assoc_ty(&db, inst.trait_ref(&db), out)
+        };
         let tuple = arg(2).decompose_ty_app(&db).0;
         let pair = |first, second| TyId::app(&db, TyId::app(&db, tuple, first), second);
         let cost =
             |ty| normalize_ty_with_cost(&db, ty, func.scope(), PredicateListId::empty_list(&db)).1;
-        let (a, b) = (arg(0), arg(1));
+        let (a, b) = (projection(arg(0)), projection(arg(1)));
         assert!(cost(b) > 0);
         assert_eq!(cost(pair(a, b)), cost(pair(b, a)));
         assert_eq!(cost(pair(a, b)), cost(a) + cost(b));

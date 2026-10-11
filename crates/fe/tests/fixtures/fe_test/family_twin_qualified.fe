@@ -1,0 +1,119 @@
+// Types written with the qualified spelling `<Fac as Factory>::P<u256>`, of
+// an associated type with a parameter and of a plain one, behave as the same
+// types written with the shorthand in declared positions: an enum payload, a
+// struct field indexed as an array, a contract field, a message field, a
+// trait impl header and the argument of an inherent impl header.
+use std::evm::Evm
+
+struct Holder<T> {
+    t: T,
+}
+
+trait Factory {
+    type Pair<T>
+    type Arr<T>
+    type H<T>
+    type PlainPair
+    type PlainArr
+    type PlainH
+}
+
+struct Fac {}
+
+impl Factory for Fac {
+    type Pair<T> = (bool, T)
+    type Arr<T> = [T; 3]
+    type H<T> = Holder<T>
+    type PlainPair = (bool, u256)
+    type PlainArr = [u256; 3]
+    type PlainH = Holder<u16>
+}
+
+enum E {
+    Family(<Fac as Factory>::Pair<u256>),
+    Plain(<Fac as Factory>::PlainPair),
+    Short(Fac::Pair<u256>),
+}
+
+fn payload(_ e: E) -> u256 {
+    match e {
+        E::Family(p) => p.1
+        E::Plain(p) => p.1
+        E::Short(p) => p.1
+    }
+}
+
+struct Arrays {
+    family: <Fac as Factory>::Arr<u256>,
+    plain: <Fac as Factory>::PlainArr,
+    short: Fac::Arr<u256>,
+}
+
+fn sums(_ a: Arrays) -> (u256, u256, u256) {
+    (
+        a.family[0] + a.family[1] + a.family[2],
+        a.plain[0] + a.plain[1] + a.plain[2],
+        a.short[0] + a.short[1] + a.short[2],
+    )
+}
+
+trait Marker {
+    fn id() -> u8
+}
+
+impl Marker for <Fac as Factory>::H<u8> {
+    fn id() -> u8 { 7 }
+}
+
+impl Marker for <Fac as Factory>::PlainH {
+    fn id() -> u8 { 8 }
+}
+
+fn id<M: Marker>() -> u8 {
+    M::id()
+}
+
+impl Holder<<Fac as Factory>::Pair<u32>> {
+    fn get(self) -> u32 { self.t.1 }
+}
+
+#[test]
+fn qualified_types_behave_like_the_shorthand() {
+    assert!(payload(E::Family((true, 1))) == payload(E::Short((true, 1))))
+    assert!(payload(E::Plain((true, 2))) == 2)
+    let (family, plain, short) = sums(Arrays { family: [1, 2, 3], plain: [1, 2, 3], short: [1, 2, 3] })
+    assert!(family == short)
+    assert!(plain == short)
+    assert!(id<Holder<u8>>() == 7)
+    assert!(id<Holder<u16>>() == 8)
+    let h = Holder<(bool, u32)> { t: (true, 9) }
+    assert!(h.get() == 9)
+}
+
+msg M {
+    #[selector = 1]
+    Set { a: <Fac as Factory>::Pair<u256>, b: <Fac as Factory>::PlainPair },
+    #[selector = 2]
+    Get -> u256,
+}
+
+pub contract C {
+    mut family: <Fac as Factory>::Pair<u256>,
+    mut plain: <Fac as Factory>::PlainPair,
+
+    recv M {
+        Set { a, b } uses (mut family, mut plain) {
+            family.1 = a.1
+            plain.1 = b.1
+        }
+        Get -> u256 uses (family, plain) { family.1 * 100 + plain.1 }
+    }
+}
+
+#[test]
+fn qualified_contract_and_message_types_work() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 1)
+    evm.call(addr: c, gas: 1000000, value: 0, message: M::Set { a: (true, 3), b: (false, 4) })
+    let got: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: M::Get {})
+    assert!(got == 304)
+}

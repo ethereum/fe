@@ -9,7 +9,7 @@ use fe_hir::{
         normalize::{NormalizationLimit, normalize_ty},
         trait_def::TraitInstId,
         trait_resolution::PredicateListId,
-        ty_def::{TyData, TyId},
+        ty_def::TyId,
     },
     test_db::{HirAnalysisTestDb, find_func, initialize_test_analysis_pass},
 };
@@ -214,7 +214,7 @@ fn the_depth_limit_applies_to_each_use_wherever_it_is_placed() {
         "struct W<T> {{ t: T }}\nstruct Z {{}}\nstruct S<T> {{ t: T }}\n\
          trait Deep {{ type Out }}\nimpl Deep for Z {{ type Out = u8 }}\n\
          impl<T: Deep> Deep for S<T> {{ type Out = {}T::Out{} }}\n\
-         fn parts(_ w: own W<u8>, _ s: own S<Z>, _ p: own <Z as Deep>::Out, _ t: own (u8, u8)) {{}}\n",
+         fn parts(_ w: own W<u8>, _ s: own S<Z>, _ t: own (u8, u8)) {{}}\n",
         "W<".repeat(100),
         ">".repeat(100)
     );
@@ -228,10 +228,17 @@ fn the_depth_limit_applies_to_each_use_wherever_it_is_placed() {
     let w = arg(0).decompose_ty_app(&db).0;
     let s = arg(1).decompose_ty_app(&db).0;
     let z = arg(1).decompose_ty_app(&db).1[0];
-    let TyData::AssocTy(projection) = arg(2).data(&db) else {
-        panic!("expected a projection");
-    };
-    let (deep_trait, out) = (projection.trait_.def(&db), projection.name);
+    let deep_trait = top_mod
+        .all_traits(&db)
+        .iter()
+        .copied()
+        .find(|tr| {
+            tr.name(&db)
+                .to_opt()
+                .is_some_and(|name| name.data(&db) == "Deep")
+        })
+        .expect("the trait `Deep`");
+    let out = fe_hir::hir_def::IdentId::new(&db, "Out");
     // About `100 * steps` levels deep once resolved, under `levels` wrappers.
     let mut wraps = Vec::new();
     for (steps, levels) in [(6, 0), (6, 600), (11, 0)] {
@@ -240,7 +247,7 @@ fn the_depth_limit_applies_to_each_use_wherever_it_is_placed() {
         let deep = TyId::assoc_ty(&db, inst.trait_ref(&db), out);
         wraps.push((0..levels).fold(deep, |ty, _| TyId::app(&db, w, ty)));
     }
-    let tuple = arg(3).decompose_ty_app(&db).0;
+    let tuple = arg(2).decompose_ty_app(&db).0;
     let pair = |first, second| TyId::app(&db, TyId::app(&db, tuple, first), second);
     // About 600 levels under 600 written ones: each use is within the limit,
     // in both orders. About 1,100 levels in one use, which reuses the

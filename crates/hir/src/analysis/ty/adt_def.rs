@@ -10,7 +10,7 @@ use super::{
     binder::Binder,
     const_ty::{
         ConstBodyLowering, HoleAnchor, LayoutBoundaryIdentity, LayoutInstantiationContext,
-        LayoutInstantiationId, LayoutOccurrencePath, LoweringContext,
+        LayoutInstantiationId, LayoutOccurrencePath, LayoutOccurrenceStep, LoweringContext,
     },
     layout_holes::{
         LayoutInstantiation, LayoutRootUse, LayoutTemplateSubst, instantiate_layout_template,
@@ -455,5 +455,43 @@ pub(crate) fn instantiate_adt_field_layout<'db>(
             instantiated.root_uses.push(root_use);
         }
     }
-    instantiated
+    resolve_instantiated_field_layout(db, adt, instantiated)
+}
+
+/// The layout of an instantiated field whose type names associated types
+/// once the ADT's parameters are concrete: the layout of the type they stand
+/// for, as [`resolve_instantiated_field`] stores it, with the roots that its
+/// definitions expose. Other fields, and one whose resolution reaches a
+/// limit, keep their instantiated layout.
+fn resolve_instantiated_field_layout<'db>(
+    db: &'db dyn HirAnalysisDb,
+    adt: AdtDef<'db>,
+    instantiated: LayoutInstantiation<'db>,
+) -> LayoutInstantiation<'db> {
+    let ty = instantiated.ty;
+    if !ty.has_projection(db) || ty.has_param(db) || ty.has_var(db) || ty.has_invalid(db) {
+        return instantiated;
+    }
+    let scope = adt.scope(db);
+    let assumptions = PredicateListId::empty_list(db);
+    let (Ok(resolved), Ok(exposed)) = (
+        super::normalize::normalize_ty(db, ty, scope, assumptions),
+        super::normalize::normalize_layout_root_uses(db, ty, scope, assumptions),
+    ) else {
+        return instantiated;
+    };
+    let mut layout = instantiate_layout_template(
+        db,
+        resolved,
+        None,
+        LayoutInstantiationContext::Nested(instantiated.instance),
+        LayoutBoundaryIdentity::AdtApplication(adt),
+        vec![LayoutOccurrenceStep::Normalization],
+    );
+    for root_use in instantiated.root_uses.into_iter().chain(exposed) {
+        if root_use.root(db).is_none() && !layout.root_uses.contains(&root_use) {
+            layout.root_uses.push(root_use);
+        }
+    }
+    layout
 }

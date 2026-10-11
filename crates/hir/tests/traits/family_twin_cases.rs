@@ -267,6 +267,10 @@ const D: u8 = C.1";
 impl Show for (bool, u8) {}
 fn f() where %P: Show {}
 fn g() { f() }";
+    where_subject_qualified: Agree, "trait Show {}
+impl Show for (bool, u8) {}
+fn f() where ⟨%QP|%P⟩: Show {}
+fn g() { f() }";
     bound_argument: Agree, "trait Tr2<X> {}
 impl Tr2<(bool, u8)> for u8 {}
 fn f<T: Tr2<%P>>() {}
@@ -344,6 +348,37 @@ fn f() { let _n = N<{ <%H as HasK>::K }> {} }";
 pub contract C {
     recv M {
         Sum { t } -> u8 { t.1 }
+    }
+}";
+    // The qualified spelling, against the plain shorthand.
+    enum_payload_qualified: Agree, "enum E { A(⟨%QP|%P⟩), B }
+fn mk() -> E { E::A((true, 42)) }";
+    struct_array_field_qualified: Agree, "struct Rec { a: ⟨<Fac as Factory>::A<u256>|Fac::A⟩ }
+fn sum(_ r: Rec) -> u256 { r.a[0] + r.a[1] + r.a[2] }";
+    msg_field_qualified: Agree, "msg M {
+    #[selector = 2]
+    Sum { t: ⟨%QP|%P⟩ } -> u8,
+}
+pub contract C {
+    recv M {
+        Sum { t } -> u8 { t.1 }
+    }
+}";
+    contract_field_qualified: Agree, "struct Store<T> { a: T, b: T }
+trait Fs { type S⟨<T>|⟩ }
+impl Fs for Fac { type S⟨<T> = Store<T>| = Store<u256>⟩ }
+msg M {
+    #[selector = 2]
+    Sum -> u256,
+}
+pub contract C {
+    mut store: ⟨<Fac as Fs>::S<u256>|Fac::S⟩
+    init() uses (mut store) {
+        store.a = 1
+        store.b = 2
+    }
+    recv M {
+        Sum -> u256 uses (store) { store.a + store.b }
     }
 }";
     msg_return: Agree, "msg M {

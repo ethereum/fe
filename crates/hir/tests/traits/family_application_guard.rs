@@ -199,15 +199,15 @@ fn the_reduce_points_reduce() {
         lowering.contains(".reduce_family_application(db)"),
         "a written associated type is no longer reduced when it is lowered:\n{lowering}"
     );
-    for site in [
-        "associated_type_resolution(db, path, assoc_ty",
-        "associated_type_resolution(db, path, applied",
-    ] {
-        assert!(
-            resolver.contains(site),
-            "a written associated type is resolved without the reduce point `{site}`"
-        );
-    }
+    // The shorthand, `Self::F<..>` in an impl's definitions, and the
+    // qualified spelling.
+    assert_eq!(
+        resolver
+            .matches("return Ok(associated_type_resolution(")
+            .count(),
+        3,
+        "a written associated type is resolved without the reduce point"
+    );
 
     let adt = std::fs::read_to_string(crates_dir().join("hir/src/analysis/ty/adt_def.rs")).unwrap();
     let instantiation = function(&adt, "instantiate_adt_field_shape_in_mode");

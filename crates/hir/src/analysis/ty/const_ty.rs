@@ -473,6 +473,9 @@ pub(crate) struct LoweringContext<'db> {
     /// Set while lowering resolves a path that an anonymous constant's body
     /// writes (`without_recording`).
     recording_paused: std::cell::Cell<bool>,
+    /// How many qualified paths' types and arguments enclose the type being
+    /// lowered (`in_qualified_path`).
+    qualified_depth: std::cell::Cell<u32>,
 }
 
 impl<'db> LoweringContext<'db> {
@@ -498,7 +501,24 @@ impl<'db> LoweringContext<'db> {
             default_capture: None,
             resolutions: None,
             recording_paused: std::cell::Cell::new(false),
+            qualified_depth: std::cell::Cell::new(0),
         }
+    }
+
+    /// Runs `lower` on the types written inside a qualified path, its self
+    /// type, trait and arguments. A qualified path written there is resolved
+    /// with the one enclosing it, as one use (see
+    /// [`Self::inside_qualified_path`]).
+    pub(crate) fn in_qualified_path<R>(&self, lower: impl FnOnce() -> R) -> R {
+        self.qualified_depth.set(self.qualified_depth.get() + 1);
+        let result = lower();
+        self.qualified_depth.set(self.qualified_depth.get() - 1);
+        result
+    }
+
+    /// Whether the type being lowered is written inside a qualified path.
+    pub(crate) fn inside_qualified_path(&self) -> bool {
+        self.qualified_depth.get() > 0
     }
 
     /// Makes this lowering keep every path segment it resolves, with the

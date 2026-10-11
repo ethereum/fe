@@ -56,7 +56,8 @@ use super::{
 };
 use crate::analysis::name_resolution::{
     NameDomain, NameResKind, PathRes, TypePosition, path_resolver::PathResolutionResult,
-    resolve_ident_to_bucket, resolve_path_with_minter, resolve_type_position_path_with_minter,
+    resolve_ident_to_bucket, resolve_path_with_minter, resolve_path_with_observer_and_minter,
+    resolve_type_position_path_with_minter,
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -285,16 +286,56 @@ fn collect_layout_root_uses_in_hir_ty<'db>(
                 LayoutHoleArgSite::Path(path),
                 minter,
             );
-            if let Ok(PathRes::TyAlias(alias, _)) =
-                resolve_path_with_minter(db, path, scope, assumptions, false, minter)
-            {
-                let instantiated = alias.instantiate_layout(db, &args, minter);
-                uses.extend(
-                    instantiated
-                        .root_uses
-                        .into_iter()
-                        .filter(|root_use| root_use.root(db).is_none()),
-                );
+            // The associated type the path names as written, before it is
+            // replaced by the definition it stands for.
+            let mut written = None;
+            let resolved = resolve_path_with_observer_and_minter(
+                db,
+                path,
+                scope,
+                assumptions,
+                false,
+                &mut |seen, res| {
+                    if seen == path
+                        && let PathRes::Ty(ty) = res
+                    {
+                        written = Some(*ty);
+                    }
+                },
+                minter,
+            );
+            match resolved {
+                Ok(PathRes::TyAlias(alias, _)) => {
+                    let instantiated = alias.instantiate_layout(db, &args, minter);
+                    uses.extend(
+                        instantiated
+                            .root_uses
+                            .into_iter()
+                            .filter(|root_use| root_use.root(db).is_none()),
+                    );
+                }
+                // An associated type exposes the roots of the definition it
+                // stands for, as an alias does.
+                Ok(PathRes::Ty(_))
+                    if let Some(written) = written
+                        && written.is_associated_type_use(db)
+                        && !written.has_param(db)
+                        && !written.has_var(db) =>
+                {
+                    if let Ok(exposed) = super::normalize::normalize_layout_root_uses(
+                        db,
+                        written,
+                        scope,
+                        assumptions,
+                    ) {
+                        for root_use in exposed {
+                            if root_use.root(db).is_none() && !uses.contains(&root_use) {
+                                uses.push(root_use);
+                            }
+                        }
+                    }
+                }
+                _ => {}
             }
             for arg in path.generic_args(db).data(db) {
                 if let GenericArg::Type(arg) = arg

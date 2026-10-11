@@ -10,4 +10,4 @@ error[6-0003]: trait bound is not satisfied
    │     ^^^^^^^^^^^
    │     │
    │     `Holder` doesn't implement `Consume`
-   │     trait bound `Holder::Out: Tagged` is not satisfied
+   │     trait bound `Holder: Tagged` is not satisfied

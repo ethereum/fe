@@ -123,14 +123,6 @@ fn matched(x: S) {
 
 // Where-clauses, generic parameters and headers.
 
-// A written application with a selected definition stands for that
-// definition, a concrete type, as a plain projection does; the qualified
-// spelling keeps the projection.
-fn subject()
-where
-    <Provider as Factory>::Out<bool>: Show,
-{}
-
 fn generic_subject<B: Factory>()
 where
     B::Out<bool>: Show,

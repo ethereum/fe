@@ -224,10 +224,11 @@ pub(crate) fn application_requirement_diags<'db>(
 /// The error for a family application whose requirements fail: a family
 /// whose parameters have bounds, given fewer arguments than it has
 /// parameters, arguments that do not meet those bounds, or a type argument
-/// that is not well formed. Lowering replaces an application whose
-/// definition is known by the type it stands for, which no longer holds an
-/// argument that the definition ignores, so its arguments are checked here,
-/// as written. A limit is reported where the type is used.
+/// that is not well formed, or a qualified projection whose trait does not
+/// apply. Lowering replaces a use whose definition is known by the type it
+/// stands for, which no longer holds an argument that the definition
+/// ignores, or the projection's trait, so such a use is checked here, as
+/// written. A limit is reported where the type is used.
 fn family_application_diag<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
@@ -238,16 +239,34 @@ fn family_application_diag<'db>(
         return Some(TyLowerDiag::AssocTypeNeedsAllArgs { span, name }.into());
     }
     let (head, args) = ty.decompose_ty_app(db);
-    if head.is_type_family(db) {
-        for &arg in args {
-            let wf = check_ty_wf(db, solve_cx, arg);
-            if !matches!(
-                wf,
-                WellFormedness::WellFormed | WellFormedness::NormalizationLimit(_)
-            ) {
-                return wf.into_diag(span);
-            }
+    let wf = match head.data(db) {
+        // The arguments of a family whose definition is known.
+        TyData::TypeFamily { .. } => args
+            .iter()
+            .map(|&arg| check_ty_wf(db, solve_cx, arg))
+            .find(|wf| !wf.is_wf()),
+        // A projection that lowering resolves: its trait and its
+        // arguments. One that stays a projection is checked as lowered.
+        TyData::AssocTy(assoc)
+            if assoc
+                .trait_
+                .args(db)
+                .iter()
+                .all(|arg| !arg.has_param(db) && !arg.has_var(db) && !arg.has_invalid(db))
+                && normalize_ty(db, ty, solve_cx.origin_scope(db), solve_cx.assumptions())
+                    .is_ok_and(|resolved| resolved != ty) =>
+        {
+            Some(check_ty_wf(db, solve_cx, ty))
         }
+        _ => None,
+    };
+    if let Some(wf) = wf
+        && !matches!(
+            wf,
+            WellFormedness::WellFormed | WellFormedness::NormalizationLimit(_)
+        )
+    {
+        return wf.into_diag(span);
     }
     check_family_requirements(db, solve_cx, ty).into_diag(span)
 }

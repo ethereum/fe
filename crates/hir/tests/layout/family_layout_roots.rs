@@ -204,3 +204,70 @@ impl<const ROOT: u256> Factory for Holder<ROOT> { type Wrap<T> = (T, [Plain<ROOT
     assert_eq!(expected, "no report");
     assert_eq!(given, expected);
 }
+
+/// A root forwarded from an impl's parameter into the definition of an
+/// associated type is exposed by the associated type in every spelling and
+/// position, as it is by an alias that forwards its own root: shorthand or
+/// qualified, plain or with a parameter, as a contract field or as a
+/// provider's target.
+#[test]
+fn a_forwarded_root_is_exposed_in_every_spelling() {
+    let decls = "struct Plain<const ROOT: u256> {}
+struct Holder<const ROOT: u256 = _> {}
+type Pin<const R: u256 = _> = (u8, Plain<R>)
+trait Factory {
+    type Wrap
+    type Fam<T>
+}
+impl<const ROOT: u256> Factory for Holder<ROOT> {
+    type Wrap = (u8, Plain<ROOT>)
+    type Fam<T> = (T, Plain<ROOT>)
+}";
+    let field = |ty: &str| {
+        format!("{decls}\ncontract C {{\n    mut h: {ty},\n    mut arr: [u256; 10],\n}}\n")
+    };
+    let target = |ty: &str| {
+        format!(
+            "use core::effect_ref::{{AddressSpace, EffectHandle}}
+{decls}
+struct H {{ raw: u256 }}
+impl EffectHandle for H {{
+    type Target = {ty}
+    type Raw = u256
+    const SPACE: AddressSpace = AddressSpace::Storage
+    fn raw(self) -> u256 {{ self.raw }}
+}}
+contract C {{
+    mut h: H,
+    mut arr: [u256; 10],
+}}
+"
+        )
+    };
+    let spellings = [
+        "Holder<7>::Wrap",
+        "<Holder<7> as Factory>::Wrap",
+        "Holder<7>::Fam<u8>",
+        "<Holder<7> as Factory>::Fam<u8>",
+    ];
+    let mut differing = Vec::new();
+    for (position, program) in [
+        ("field", &field as &dyn Fn(&str) -> String),
+        ("target", &target),
+    ] {
+        let expected = layout(&program("Pin<7>"));
+        assert!(
+            expected.contains("Parameter(Explicit)"),
+            "{position}: {expected}"
+        );
+        for spelling in spellings {
+            let given = layout(&program(spelling));
+            if given != expected {
+                differing.push(format!(
+                    "{position} `{spelling}`:\n   {given}\nexpected\n   {expected}"
+                ));
+            }
+        }
+    }
+    assert!(differing.is_empty(), "{}", differing.join("\n\n"));
+}

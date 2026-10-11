@@ -1035,7 +1035,7 @@ where
         }
         // A path keeps the error that its single resolution reports, rather
         // than being resolved again to recover it.
-        let ty = match type_.data(db) {
+        let ty = minter.in_qualified_path(|| match type_.data(db) {
             TypeKind::Path(Partial::Present(ty_path)) => lower_type_position_path(
                 db,
                 *ty_path,
@@ -1047,9 +1047,15 @@ where
             .map_err(|inner| PathResError {
                 kind: PathResErrorKind::QualifiedTypeType(Box::new(Err(inner))),
                 failed_at: path,
-            })?,
-            _ => lower_hir_ty_with_minter(db, type_, scope, assumptions, minter),
-        };
+            }),
+            _ => Ok(lower_hir_ty_with_minter(
+                db,
+                type_,
+                scope,
+                assumptions,
+                minter,
+            )),
+        })?;
         if let Some(InvalidCause::NotAType(res)) = ty.invalid_cause(db) {
             return Err(PathResError::new(
                 PathResErrorKind::QualifiedTypeType(Box::new(Ok(res))),
@@ -1058,9 +1064,9 @@ where
         }
         let trait_inst_result = match minter.const_bodies() {
             ConstBodyLowering::Eager => lower_trait_ref(db, ty, trait_, scope, assumptions, None),
-            ConstBodyLowering::Deferred => {
+            ConstBodyLowering::Deferred => minter.in_qualified_path(|| {
                 lower_trait_ref_with_minter(db, ty, trait_, scope, assumptions, None, minter)
-            }
+            }),
         };
         let trait_inst = match trait_inst_result {
             Ok(inst) => inst,
@@ -1128,18 +1134,42 @@ where
             if let TyData::QualifiedTy(trait_inst) = ty.data(db) {
                 // Associated type projection
                 if let Some(assoc_ty) = trait_inst.project_assoc_ty(db, ident) {
-                    let args = lower_generic_arg_list(
-                        db,
-                        path.generic_args(db),
-                        scope,
-                        assumptions,
-                        LayoutHoleArgSite::Path(path),
-                        minter,
-                    );
-                    let assoc_ty = apply_associated_type_args(db, path, assoc_ty, &args)?;
-                    let r = PathRes::Ty(assoc_ty);
-                    observer(path, &r);
-                    return Ok(r);
+                    let args = minter.in_qualified_path(|| {
+                        lower_generic_arg_list(
+                            db,
+                            path.generic_args(db),
+                            scope,
+                            assumptions,
+                            LayoutHoleArgSite::Path(path),
+                            minter,
+                        )
+                    });
+                    let written = apply_associated_type_args(db, path, assoc_ty, &args)?;
+                    // A projection whose trait instance is known stands for
+                    // the type the impl that applies gives it, with its
+                    // arguments: it is resolved here, as one use, under the
+                    // limits. In an impl's definition of an associated type
+                    // it stays as written: the definition is resolved where
+                    // it is used, so a definition that names itself is a
+                    // cycle there. Written inside another qualified path, it
+                    // is resolved with that path, as one use. A use that
+                    // reaches a limit, or that does
+                    // not resolve to a valid type, stays as written too: the
+                    // limit or the error is reported where the type is used.
+                    let known = !trait_inst
+                        .args(db)
+                        .iter()
+                        .any(|arg| arg.has_param(db) || arg.has_var(db) || arg.has_invalid(db))
+                        && !matches!(minter.holes().anchor(), HoleAnchor::ImplAssocType { .. })
+                        && !minter.inside_qualified_path();
+                    let resolved =
+                        match known.then(|| normalize_ty(db, written, scope, assumptions)) {
+                            Some(Ok(resolved)) if !resolved.has_invalid(db) => resolved,
+                            _ => written,
+                        };
+                    return Ok(associated_type_resolution(
+                        db, path, written, resolved, observer,
+                    ));
                 }
 
                 // Associated function on a specific trait instance
@@ -1326,7 +1356,9 @@ where
                     minter,
                 );
                 let assoc_ty = apply_associated_type_args(db, path, assoc_ty, &seg_args)?;
-                return Ok(associated_type_resolution(db, path, assoc_ty, observer));
+                return Ok(associated_type_resolution(
+                    db, path, assoc_ty, assoc_ty, observer,
+                ));
             }
 
             // Find the candidates, then decide among them by normalized type.
@@ -1509,10 +1541,16 @@ where
                 }
                 AssocTyOutcome::Unnormalized(limit) => return Err(report(limit)),
                 AssocTyOutcome::One(normalized) => {
-                    let (_, applied, _) = known()
+                    let (inst, applied, _) = known()
                         .find(|&(_, _, candidate)| candidate == normalized)
                         .expect("the type is that of a candidate that applies");
-                    return Ok(associated_type_resolution(db, path, applied, observer));
+                    // As written, the use is the projection through the trait
+                    // that gives it, applied to the written arguments.
+                    let written =
+                        TyId::foldl(db, TyId::assoc_ty(db, inst.trait_ref(db), ident), &seg_args);
+                    return Ok(associated_type_resolution(
+                        db, path, written, applied, observer,
+                    ));
                 }
                 AssocTyOutcome::Ambiguous => {
                     let mut distinct = IndexMap::new();
@@ -2782,21 +2820,22 @@ fn apply_args<'db>(
     Ok(applied)
 }
 
-/// The resolution of a written associated type: the type it stands for. A
-/// definition selected for it is used as it is, and a family's definition
-/// is applied to the written arguments here. Observers see the application
-/// as written, whose requirements are checked where it is written.
+/// The resolution of a written associated type: `resolved`, the type it
+/// stands for, with a family's definition applied to the written arguments
+/// here. Observers see `written`, the use as written, whose requirements are
+/// checked where it is written and whose layout roots it exposes.
 fn associated_type_resolution<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
-    applied: TyId<'db>,
+    written: TyId<'db>,
+    resolved: TyId<'db>,
     observer: &mut F,
 ) -> PathRes<'db>
 where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
-    observer(path, &PathRes::Ty(applied));
-    PathRes::Ty(applied.reduce_family_application(db).unwrap_or(applied))
+    observer(path, &PathRes::Ty(written));
+    PathRes::Ty(resolved.reduce_family_application(db).unwrap_or(resolved))
 }
 
 fn apply_associated_type_args<'db>(
