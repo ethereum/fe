@@ -101,7 +101,9 @@ impl<'db> TyChecker<'db> {
 
         if let Some(expr) = expr {
             let prop = if let Some(ascription) = ascription {
-                self.check_expr(*expr, ascription)
+                let prop = self.check_expr(*expr, ascription);
+                self.bind_vars_to_reported_limit(prop.ty, ascription);
+                prop
             } else {
                 self.check_expr_unknown(*expr)
             };

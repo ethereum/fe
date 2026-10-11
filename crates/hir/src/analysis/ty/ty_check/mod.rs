@@ -124,7 +124,7 @@ use crate::analysis::{
         PathRes, PathResError, diagnostics::PathResDiag, resolve_path_with_observer_and_minter,
     },
     ty::{
-        ty_def::{TyFlags, inference_keys},
+        ty_def::{TyFlags, collect_variables, inference_keys},
         visitor::collect_flags,
     },
 };
@@ -3588,6 +3588,26 @@ impl<'db> TyChecker<'db> {
 
         self.retype_expr_or_pat(t, actual);
         actual
+    }
+
+    /// When `expected` stands for a type whose normalization limit was
+    /// reported, binds each inference variable left in `actual` to it. An
+    /// invalid type matches any type without binding anything, so without
+    /// this the variables stay unknown and the limit is followed by "type
+    /// annotation is needed".
+    fn bind_vars_to_reported_limit(&mut self, actual: TyId<'db>, expected: TyId<'db>) {
+        let expected = expected.fold_with(self.db, &mut self.table);
+        if !matches!(
+            expected.invalid_cause(self.db),
+            Some(InvalidCause::NormalizationLimit { .. })
+        ) {
+            return;
+        }
+        let actual = actual.fold_with(self.db, &mut self.table);
+        for var in collect_variables(self.db, &actual) {
+            let var = TyId::ty_var(self.db, var.sort, var.kind, var.key);
+            let _ = self.table.unify(var, expected);
+        }
     }
 
     fn retype_expr_or_pat(&mut self, typeable: Typeable<'db>, ty: TyId<'db>) {

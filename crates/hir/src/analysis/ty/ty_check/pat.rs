@@ -116,6 +116,7 @@ impl<'db> TyChecker<'db> {
         actual: TyId<'db>,
         analysis: PatternAnalysisStatus,
     ) -> PatCheckResult<'db> {
+        self.bind_vars_to_reported_limit(actual, expected);
         let ty = self.unify_ty(pat, actual, expected);
         let analysis = if ty.has_invalid(self.db) {
             PatternAnalysisStatus::Invalid

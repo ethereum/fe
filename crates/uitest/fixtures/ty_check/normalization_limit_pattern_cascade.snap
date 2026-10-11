@@ -1,0 +1,41 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/normalization_limit_pattern_cascade.fe
+---
+error[3-0058]: type normalization limit exceeded
+   ┌─ normalization_limit_pattern_cascade.fe:19:15
+   │
+19 │ fn matched(o: Option<<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out>) -> u8 {
+   │               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ resolving the associated types here needs more than 64 nested steps
+
+error[3-0058]: type normalization limit exceeded
+   ┌─ normalization_limit_pattern_cascade.fe:20:5
+   │
+20 │ ╭     match o {
+21 │ │         Option::Some(_) => 1,
+22 │ │         Option::None => 0,
+23 │ │     }
+   │ ╰─────^ resolving the associated types here needs more than 64 nested steps
+
+error[3-0058]: type normalization limit exceeded
+   ┌─ normalization_limit_pattern_cascade.fe:27:13
+   │
+27 │     let _y: Option<<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out> = Option::None
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ resolving the associated types here needs more than 64 nested steps
+
+error[3-0058]: type normalization limit exceeded
+   ┌─ normalization_limit_pattern_cascade.fe:30:20
+   │
+30 │ fn destructured(p: (<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out, u8)) -> u8 {
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ resolving the associated types here needs more than 64 nested steps
+
+error[3-0058]: type normalization limit exceeded
+   ┌─ normalization_limit_pattern_cascade.fe:30:261
+   │
+30 │   fn destructured(p: (<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out, u8)) -> u8 {
+   │ ╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────^
+31 │ │     let (_a, b) = p
+32 │ │     b
+33 │ │ }
+   │ ╰─^ resolving the associated types here needs more than 64 nested steps
