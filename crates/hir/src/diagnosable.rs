@@ -796,6 +796,103 @@ impl<'db> ImplTrait<'db> {
         self.implementor_with_errors(db)
     }
 
+    /// Diagnostics for type parameters that the impl's self type and trait
+    /// arguments do not determine. A parameter is determined where it
+    /// appears in them outside an associated type, or in a where clause whose
+    /// self type is determined: in its trait arguments, which the one impl
+    /// that applies fixes (`where W<T>: Conv<U>`), or in the type bound to an
+    /// associated type (`where I: Iterator<Item = T>`). A parameter that is
+    /// not determined, as `F` in `impl<F: Factory> Marker for F::B`, could
+    /// stand for any type each time the impl is used.
+    pub fn diags_unconstrained_params(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Vec<TyDiagCollection<'db>> {
+        use ty::{
+            diagnostics::ImplDiag,
+            ty_def::TyData,
+            visitor::{TyVisitable, TyVisitor, walk_ty},
+        };
+
+        /// The type parameters in a type, outside its associated types.
+        struct Params<'db> {
+            db: &'db dyn HirAnalysisDb,
+            found: Vec<TyId<'db>>,
+        }
+        impl<'db> TyVisitor<'db> for Params<'db> {
+            fn db(&self) -> &'db dyn HirAnalysisDb {
+                self.db
+            }
+            fn visit_ty(&mut self, ty: TyId<'db>) {
+                match ty.data(self.db) {
+                    TyData::TyParam(_) => self.found.push(ty),
+                    TyData::AssocTy(_) | TyData::QualifiedTy(_) => {}
+                    _ => walk_ty(self, ty),
+                }
+            }
+        }
+        let params_in = |tys: &[TyId<'db>]| {
+            let mut params = Params {
+                db,
+                found: Vec::new(),
+            };
+            for ty in tys {
+                ty.visit_with(&mut params);
+            }
+            params.found
+        };
+
+        let mut determined = params_in(implementor.trait_(db).args(db));
+        loop {
+            let before = determined.len();
+            for &pred in implementor.constraints(db).list(db) {
+                let self_ty = pred.self_ty(db);
+                if matches!(
+                    self_ty.data(db),
+                    TyData::AssocTy(_) | TyData::QualifiedTy(_)
+                ) || !params_in(&[self_ty])
+                    .iter()
+                    .all(|param| determined.contains(param))
+                {
+                    continue;
+                }
+                let mut tys = pred.args(db).to_vec();
+                tys.extend(pred.assoc_type_bindings(db).values().copied());
+                for param in params_in(&tys) {
+                    if !determined.contains(&param) {
+                        determined.push(param);
+                    }
+                }
+            }
+            if determined.len() == before {
+                break;
+            }
+        }
+
+        let views: Vec<_> = GenericParamOwner::ImplTrait(self).params(db).collect();
+        implementor
+            .params(db)
+            .iter()
+            .filter_map(|&param| {
+                let TyData::TyParam(ty_param) = param.data(db) else {
+                    return None;
+                };
+                if determined.contains(&param) {
+                    return None;
+                }
+                let view = views.get(ty_param.idx)?;
+                Some(
+                    ImplDiag::UnconstrainedTypeParam {
+                        primary: view.span().into(),
+                        name: ty_param.name,
+                    }
+                    .into(),
+                )
+            })
+            .collect()
+    }
+
     /// Diagnostics for missing associated types and types not declared in the trait.
     pub fn diags_assoc_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         use ty::diagnostics::ImplDiag;
@@ -1823,6 +1920,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));
+        out.extend(self.diags_unconstrained_params(db, implementor));
         out.extend(self.diags_assoc_types_bounds(db));
         out.extend(self.diags_missing_assoc_consts(db));
         out.extend(self.diags_assoc_consts(db));

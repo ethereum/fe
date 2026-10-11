@@ -1329,6 +1329,14 @@ pub enum ImplDiag<'db> {
         raw_ty: TyId<'db>,
         failure: ProviderLayoutFailure,
     },
+
+    /// A type parameter of a trait impl that its self type and trait
+    /// arguments do not determine: it appears in neither, or only inside an
+    /// associated type.
+    UnconstrainedTypeParam {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -1359,6 +1367,7 @@ impl ImplDiag<'_> {
             Self::InherentConstShadowsFn { .. } => 21,
             Self::InvalidEffectHandleRaw { .. } => 22,
             Self::TypeNotDefinedInTrait { .. } => 23,
+            Self::UnconstrainedTypeParam { .. } => 25,
         }
     }
 }

@@ -5617,6 +5617,17 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 )
             }
 
+            Self::UnconstrainedTypeParam { primary, name } => primary_diag(
+                severity,
+                "unconstrained type parameter",
+                format!(
+                    "`{}` is not determined by the impl's type or trait arguments",
+                    name.data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
             Self::TypeNotDefinedInTrait {
                 primary,
                 trait_,

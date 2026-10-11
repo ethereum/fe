@@ -1,0 +1,37 @@
+// Each type parameter of a trait impl is determined by the impl's type or
+// trait arguments, outside an associated type, or by an associated type
+// bound in a where clause whose own parameters are determined.
+trait Factory {
+    type B
+}
+
+trait Marker {}
+
+impl<F: Factory> Marker for F::B {}
+
+struct S {}
+
+trait Tr {}
+
+impl<T> Tr for S {}
+
+// Determined: in the self type, in a trait argument, through a binding.
+trait Iter {
+    type Item
+}
+
+struct Wrap<I> {
+    i: I,
+}
+
+impl<I, T> Tr for Wrap<I> where I: Iter<Item = T> {}
+
+trait Conv<X> {}
+
+impl<T, U> Conv<U> for Wrap<T> {}
+
+// Determined through a where clause whose self type is determined: the one
+// impl that applies fixes its trait arguments.
+trait Pick {}
+
+impl<T, U> Pick for Wrap<T> where Wrap<T>: Conv<U> {}
