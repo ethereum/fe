@@ -1,0 +1,16 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/normalization_limit_reported_once.fe
+---
+error[3-0058]: type normalization limit exceeded
+   ┌─ normalization_limit_reported_once.fe:19:32
+   │
+19 │ fn effect_key() -> u8 uses (x: <N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out) {
+   │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ resolving the associated types here needs more than 64 nested steps
+
+error[3-0058]: type normalization limit exceeded
+   ┌─ normalization_limit_reported_once.fe:25:12
+   │
+25 │     Get -> <N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out,
+   │            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ resolving the associated types here needs more than 64 nested steps

@@ -3013,11 +3013,12 @@ impl<'db> TyChecker<'db> {
         let variant_ret = contract::get_msg_variant_return_type(self.db, pat_ty, self.env.scope());
 
         let ret_ty = match (variant_ret, annotated) {
-            (Some(var_ty), Some(annot_ty)) => {
+            (Some((var_ty, written)), Some(annot_ty)) => {
+                let var_ty = self.msg_variant_return_ty(var_ty, written);
                 self.equate_ty(annot_ty, var_ty, arm_ret_span.into());
                 var_ty
             }
-            (Some(var_ty), None) => {
+            (Some((var_ty, written)), None) => {
                 // Only require annotation if return type is not unit
                 if var_ty != TyId::unit(self.db) {
                     self.push_diag(BodyDiag::RecvArmRetTypeMissing {
@@ -3025,13 +3026,36 @@ impl<'db> TyChecker<'db> {
                         expected: var_ty,
                     });
                 }
-                var_ty
+                self.msg_variant_return_ty(var_ty, written)
             }
             (None, Some(annot_ty)) => annot_ty,
             (None, None) => TyId::unit(self.db),
         };
 
         (pat_ty, ret_ty)
+    }
+
+    /// The return type of a message variant, for a receive arm. A
+    /// normalization limit in it is reported where the type is written in the
+    /// `msg`, which is where the message's own check reports it, so the two
+    /// reports are one diagnostic; the arm then uses the type that stands for
+    /// the limit. Without this the limit is reported again at the arm's body.
+    fn msg_variant_return_ty(
+        &mut self,
+        ty: TyId<'db>,
+        written: Option<crate::span::types::LazyTySpan<'db>>,
+    ) -> TyId<'db> {
+        let Some(written) = written else {
+            return ty;
+        };
+        match normalize_ty(self.db, ty, self.env.scope(), self.env.assumptions()) {
+            Ok(_) => ty,
+            Err(limit) => {
+                let (diag, reported) = limit.report(written.into());
+                self.push_diag(diag);
+                reported.recovery_ty(self.db)
+            }
+        }
     }
 
     fn push_diag(&mut self, diag: impl Into<FuncBodyDiag<'db>>) {

@@ -54,6 +54,9 @@ pub(crate) struct TyCheckEnv<'db> {
     /// The normalization limits in the owner's signature, reported by the
     /// checker as it starts.
     pub(super) signature_limit_diags: Vec<TyDiagCollection<'db>>,
+    /// The type that stands for an effect binding's type whose normalization
+    /// limit was reported where the type is written.
+    effect_param_limit_tys: FxHashMap<(EffectParamSite<'db>, usize), TyId<'db>>,
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
     owner_scope: ScopeId<'db>,
@@ -134,6 +137,7 @@ impl<'db> TyCheckEnv<'db> {
 
         let mut env = Self {
             signature_limit_diags: Vec::new(),
+            effect_param_limit_tys: FxHashMap::default(),
             db,
             owner,
             owner_scope,
@@ -272,11 +276,24 @@ impl<'db> TyCheckEnv<'db> {
                 continue;
             }
             let idx = binding.binding_idx as usize;
-            let Some(resolved_binding) =
-                self.resolved_effect_binding(EffectParamSite::Func(func), idx)
-            else {
+            let site = EffectParamSite::Func(func);
+            let Some(resolved_binding) = self.resolved_effect_binding(site, idx) else {
                 continue;
             };
+            // The type is written in the signature, where a limit in it is
+            // reported; reporting it here gives the same diagnostic, and the
+            // uses of the binding then use the type that stands for it, so
+            // the limit is not reported again at each use.
+            if let Some(ty) = self.resolved_effect_param_ty(site, idx) {
+                let span = self.owner.effect_param_ty_span(self.db, idx);
+                let ty = self.signature_ty(ty, span);
+                if matches!(
+                    ty.invalid_cause(self.db),
+                    Some(InvalidCause::NormalizationLimit { .. })
+                ) {
+                    self.effect_param_limit_tys.insert((site, idx), ty);
+                }
+            }
             self.var_env
                 .last_mut()
                 .expect("function scope exists")
@@ -674,7 +691,10 @@ impl<'db> TyCheckEnv<'db> {
             LocalBinding::Param { ty, .. } => *ty,
 
             LocalBinding::EffectParam { site, idx, .. } => self
-                .resolved_effect_param_ty(*site, *idx)
+                .effect_param_limit_tys
+                .get(&(*site, *idx))
+                .copied()
+                .or_else(|| self.resolved_effect_param_ty(*site, *idx))
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
         }
     }

@@ -4623,6 +4623,16 @@ impl<'db> TyChecker<'db> {
             });
         }
         let place = self.env.expr_place(expr)?;
+        // A binding whose written type reached a normalization limit, reported
+        // in the signature, has no layout to match against: its declared
+        // type would only reach the limit again.
+        let PlaceBase::Binding(binding) = &place.base;
+        if matches!(
+            self.env.lookup_binding_ty(binding).invalid_cause(self.db),
+            Some(InvalidCause::NormalizationLimit { .. })
+        ) {
+            return None;
+        }
         let (func, origin) = match place.base {
             PlaceBase::Binding(LocalBinding::Param {
                 site: ParamSite::Func(func),
