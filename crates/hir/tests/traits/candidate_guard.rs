@@ -13,7 +13,7 @@
 
 use std::path::{Path, PathBuf};
 
-fn sources() -> Vec<(PathBuf, String)> {
+pub(super) fn sources() -> Vec<(PathBuf, String)> {
     fn visit(dir: &Path, out: &mut Vec<(PathBuf, String)>) {
         for entry in std::fs::read_dir(dir).unwrap() {
             let path = entry.unwrap().path();
@@ -35,7 +35,7 @@ fn sources() -> Vec<(PathBuf, String)> {
     out
 }
 
-fn relative(path: &Path) -> String {
+pub(super) fn relative(path: &Path) -> String {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     path.strip_prefix(root)
         .unwrap()
@@ -45,7 +45,7 @@ fn relative(path: &Path) -> String {
 
 /// The source without `#[cfg(test)]` modules, which may build impl lists
 /// to inspect them.
-fn production(text: &str) -> &str {
+pub(super) fn production(text: &str) -> &str {
     text.find("#[cfg(test)]\nmod tests")
         .map_or(text, |end| &text[..end])
 }
