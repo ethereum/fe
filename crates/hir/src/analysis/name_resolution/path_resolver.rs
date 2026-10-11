@@ -1394,21 +1394,49 @@ where
 
             // The candidates whose where clauses reach a limit decide the
             // answer only if it depends on them: a rival that gives the same
-            // type changes nothing.
-            let unknown: Vec<_> = found
-                .iter()
-                .filter_map(|(_, holds)| match holds {
-                    Holds::Unknown(limit) => Some(*limit),
-                    _ => None,
-                })
+            // type changes nothing. Unknown candidates that give the same type
+            // change the answer only through whether one of them applies, so
+            // each such group is counted as one candidate, the one first by
+            // limit priority: the answer and the limit named do not depend on
+            // how many there are.
+            let limit_of = |idx: usize| match found[idx].1 {
+                Holds::Unknown(limit) => Some(limit),
+                _ => None,
+            };
+            let mut unknown: Vec<usize> = (0..found.len())
+                .filter(|&idx| limit_of(idx).is_some())
                 .collect();
-            let outcome = candidates::decide(&unknown, |setting| {
-                let mut setting = setting.iter();
+            unknown.sort_by_key(|&idx| limit_of(idx).map(NormalizationLimit::priority));
+            // What an unknown candidate gives; a candidate with the wrong
+            // number of arguments is counted on its own.
+            let gives = |idx: usize| match evaluated[idx] {
+                AssocTyEval::Ty { normalized, .. } => Some(normalized),
+                AssocTyEval::ArgNumMismatch { .. } => None,
+            };
+            let mut counted: Vec<usize> = Vec::new();
+            for idx in unknown {
+                if gives(idx).is_none() || !counted.iter().any(|&other| gives(other) == gives(idx))
+                {
+                    counted.push(idx);
+                }
+            }
+            let counted_limits: Vec<NormalizationLimit> =
+                counted.iter().filter_map(|&idx| limit_of(idx)).collect();
+            let outcome = candidates::decide(&counted_limits, |setting| {
+                // An unknown candidate applies when the one counted for what
+                // it gives does.
+                let applies_unknown = |idx: usize| {
+                    counted.iter().zip(setting).any(|(&other, &holds)| {
+                        holds
+                            && (other == idx
+                                || (gives(idx).is_some() && gives(other) == gives(idx)))
+                    })
+                };
                 let mut distinct = IndexSet::new();
                 let mut unnormalized = None;
-                for ((_, holds), eval) in found.iter().zip(&evaluated) {
+                for (idx, ((_, holds), eval)) in found.iter().zip(&evaluated).enumerate() {
                     let applies = match holds {
-                        Holds::Unknown(_) => *setting.next().unwrap(),
+                        Holds::Unknown(_) => applies_unknown(idx),
                         Holds::Yes | Holds::Undecided => true,
                         Holds::No => false,
                     };

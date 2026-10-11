@@ -495,9 +495,45 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
             .map(|cand| (cand, self.check_trait_cand(cand)))
             .collect();
         // A candidate whose check reached a limit decides the lookup only if
-        // the choice depends on it.
-        match candidates::decide(&unknown_limits(&checked), |setting| {
-            self.select_checked_trait_methods(settle(&checked, setting))
+        // the choice depends on it. Candidates of traits in scope are counted
+        // one by one. One of a trait that is not in scope can only be chosen
+        // as the only candidate left, or be listed for import when no
+        // candidate in scope is left: so the answer depends on them only
+        // through whether none, one or more of them apply. They are counted
+        // together, at most two of them, the first two by limit priority, so
+        // that the answer and the limit named do not depend on how many there
+        // are.
+        let available_traits = self.available_traits();
+        let limit_of = |idx: usize| match checked[idx].1 {
+            TraitCandidateCheck::Unknown(_, limit) => Some(limit),
+            _ => None,
+        };
+        let (visible, mut invisible): (Vec<usize>, Vec<usize>) = (0..checked.len())
+            .filter(|&idx| limit_of(idx).is_some())
+            .partition(|&idx| available_traits.contains(&checked[idx].0.trait_def(self.db)));
+        invisible.sort_by_key(|&idx| limit_of(idx).map(NormalizationLimit::priority));
+        invisible.truncate(2);
+        let mut groups: Vec<Vec<NormalizationLimit>> = visible
+            .iter()
+            .map(|&idx| limit_of(idx).into_iter().collect())
+            .collect();
+        if !invisible.is_empty() {
+            groups.push(invisible.iter().filter_map(|&idx| limit_of(idx)).collect());
+        }
+        match candidates::decide_grouped(&groups, |counts| {
+            let invisible_held = counts.get(visible.len()).copied().unwrap_or(0);
+            let held: Vec<usize> = visible
+                .iter()
+                .zip(counts)
+                .filter(|&(_, &count)| count == 1)
+                .map(|(&idx, _)| idx)
+                .chain(invisible[..invisible_held].iter().copied())
+                .collect();
+            let setting: Vec<bool> = (0..checked.len())
+                .filter(|&idx| limit_of(idx).is_some())
+                .map(|idx| held.contains(&idx))
+                .collect();
+            self.select_checked_trait_methods(settle(&checked, &setting))
         }) {
             Decided::Same(selected) => selected,
             Decided::Differs {
