@@ -125,6 +125,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "the depth of a type counts a family's definition",
     ),
     (
+        "hir/src/analysis/ty/ty_error.rs",
+        "the arguments of a written family application are checked as written, before lowering replaces the application",
+    ),
+    (
         "hir/src/analysis/diagnostics.rs",
         "a message shows a family as its projection",
     ),

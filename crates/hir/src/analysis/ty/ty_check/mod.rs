@@ -1756,8 +1756,9 @@ impl<'db> TyChecker<'db> {
             self.env.assumptions(),
         );
         // A function's effect key is written here; a normalization limit in
-        // it is reported here. A contract's keys are checked with the
-        // contract (`ContractAnalysisPass`).
+        // it, or a type in it that is not well formed, is reported here. A
+        // contract's keys are checked with the contract
+        // (`ContractAnalysisPass`).
         if diags.is_empty() && matches!(owner, EffectParamOwner::Func(_)) {
             let ty = lower_hir_ty(self.db, key_ty, scope, self.env.assumptions());
             diags.extend(super::ty_error::normalization_limit_diag(
@@ -1765,8 +1766,16 @@ impl<'db> TyChecker<'db> {
                 ty,
                 scope,
                 self.env.assumptions(),
-                span.into(),
+                span.clone().into(),
             ));
+            if diags.is_empty() {
+                let solve_cx = super::trait_resolution::TraitSolveCx::new(self.db, scope)
+                    .with_assumptions(self.env.assumptions());
+                diags.extend(
+                    super::trait_resolution::check_ty_wf(self.db, solve_cx, ty)
+                        .into_diag(span.into()),
+                );
+            }
         }
         let reported = !diags.is_empty();
         for diag in diags {

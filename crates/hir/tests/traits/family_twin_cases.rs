@@ -9,7 +9,9 @@
 // one source with `⟨family|plain⟩` alternatives, and the two programs must
 // give the same error codes, as many times each. `%P`, `%H` and `%A` stand
 // for `Fac::P<u8>`, `Fac::H<u8>` and `Fac::A<u256>` (plain: `Fac::P`, ...);
-// `%QP` and `%QH` for the qualified spellings. The prelude defines them.
+// `%QP` and `%QH` for the qualified spellings, and `%BAD` and `%QBAD` for
+// `Fac::K<Bad<Unmet>>`, whose definition ignores an argument that is not
+// well formed. The prelude defines them.
 //
 // Metamorphic checks need no oracle: each family program gives the same
 // codes with its items in reverse order (and, in the analysis test,
@@ -20,12 +22,14 @@ trait Factory {
     type P<T>
     type H<T>
     type A<T>
+    type K<T>
 }
 struct Fac {}
 impl Factory for Fac {
     type P<T> = (bool, T)
     type H<T> = Holder<T>
     type A<T> = [T; 3]
+    type K<T> = u8
 }
 ";
 
@@ -34,12 +38,14 @@ trait Factory {
     type P
     type H
     type A
+    type K
 }
 struct Fac {}
 impl Factory for Fac {
     type P = (bool, u8)
     type H = Holder<u8>
     type A = [u256; 3]
+    type K = u8
 }
 ";
 
@@ -78,6 +84,12 @@ fn variant(src: &str, family: bool) -> String {
     }
     out.push_str(rest);
     let subst: &[(&str, &str, &str)] = &[
+        (
+            "%QBAD",
+            "<Fac as Factory>::K<Bad<Unmet>>",
+            "<Fac as Factory>::K",
+        ),
+        ("%BAD", "Fac::K<Bad<Unmet>>", "Fac::K"),
         ("%QP", "<Fac as Factory>::P<u8>", "<Fac as Factory>::P"),
         ("%QH", "<Fac as Factory>::H<u8>", "<Fac as Factory>::H"),
         ("%P", "Fac::P<u8>", "Fac::P"),
@@ -620,6 +632,86 @@ fn f(_ x: B::Out<u8>) {}";
     kind_of_trait_default: Exactly(&["3-0065"]), "trait Fk { type Ctor: * -> * = u16 }
 struct B {}
 impl Fk for B {}";
+    // An argument that the definition ignores is still a written type: one
+    // that is not well formed is reported, in every position and spelling.
+    ill_formed_argument_signature: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+fn f(_ x: %BAD) {}";
+    ill_formed_argument_signature_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+fn f(_ x: %QBAD) {}";
+    ill_formed_argument_struct_field: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+struct S { a: %BAD }";
+    ill_formed_argument_struct_field_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+struct S { a: %QBAD }";
+    ill_formed_argument_enum_payload: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+enum E { A(%BAD), B }";
+    ill_formed_argument_enum_payload_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+enum E { A(%QBAD), B }";
+    ill_formed_argument_local: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+fn f() {
+    let _x: %BAD = 1
+}";
+    ill_formed_argument_local_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+fn f() {
+    let _x: %QBAD = 1
+}";
+    ill_formed_argument_trait_impl_header: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+trait Tr9 {}
+impl Tr9 for %BAD {}";
+    ill_formed_argument_trait_impl_header_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+trait Tr9 {}
+impl Tr9 for %QBAD {}";
+    ill_formed_argument_inherent_impl_argument: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+struct Box<G> { g: G }
+impl Box<%BAD> {}";
+    ill_formed_argument_inherent_impl_argument_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+struct Box<G> { g: G }
+impl Box<%QBAD> {}";
+    ill_formed_argument_effect_key: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+fn f() uses (x: %BAD) {}";
+    ill_formed_argument_effect_key_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+fn f() uses (x: %QBAD) {}";
+    ill_formed_argument_type_argument: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+struct Box<G> { g: G }
+fn f(_ x: Box<%BAD>) {}";
+    ill_formed_argument_type_argument_qualified: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+struct Box<G> { g: G }
+fn f(_ x: Box<%QBAD>) {}";
+    ill_formed_effect_key_without_associated_type: Exactly(&["6-0003"]), "trait Needed {}
+struct Unmet {}
+struct Bad<T: Needed> { t: T }
+fn f() uses (x: Bad<Unmet>) {}";
     // Unsupported forms: one error at each declaration.
     const_parameter: Exactly(&["3-0060", "3-0060"]), "trait Fk { type Out<const N: usize> }
 impl Fk for Fac { type Out<const N: usize> = [u8; N] }";

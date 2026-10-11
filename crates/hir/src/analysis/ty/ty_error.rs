@@ -17,7 +17,9 @@ use super::{
     const_ty::{ConstBodyLowering, ConstTyData, HoleAnchor, LoweringContext, ty_is_fully_ground},
     diagnostics::{TyDiagCollection, TyLowerDiag},
     normalize::normalize_ty,
-    trait_resolution::{PredicateListId, TraitSolveCx, check_family_requirements, check_ty_wf},
+    trait_resolution::{
+        PredicateListId, TraitSolveCx, WellFormedness, check_family_requirements, check_ty_wf,
+    },
     ty_def::{InvalidCause, TyData, TyId},
     ty_lower::{lower_hir_ty, lower_hir_ty_in_mode},
 };
@@ -221,7 +223,11 @@ pub(crate) fn application_requirement_diags<'db>(
 
 /// The error for a family application whose requirements fail: a family
 /// whose parameters have bounds, given fewer arguments than it has
-/// parameters, or arguments that do not meet those bounds.
+/// parameters, arguments that do not meet those bounds, or a type argument
+/// that is not well formed. Lowering replaces an application whose
+/// definition is known by the type it stands for, which no longer holds an
+/// argument that the definition ignores, so its arguments are checked here,
+/// as written. A limit is reported where the type is used.
 fn family_application_diag<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
@@ -230,6 +236,18 @@ fn family_application_diag<'db>(
 ) -> Option<TyDiagCollection<'db>> {
     if let Some(name) = ty.lacks_args_for_parameter_bounds(db) {
         return Some(TyLowerDiag::AssocTypeNeedsAllArgs { span, name }.into());
+    }
+    let (head, args) = ty.decompose_ty_app(db);
+    if head.is_type_family(db) {
+        for &arg in args {
+            let wf = check_ty_wf(db, solve_cx, arg);
+            if !matches!(
+                wf,
+                WellFormedness::WellFormed | WellFormedness::NormalizationLimit(_)
+            ) {
+                return wf.into_diag(span);
+            }
+        }
     }
     check_family_requirements(db, solve_cx, ty).into_diag(span)
 }
