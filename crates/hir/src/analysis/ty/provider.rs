@@ -130,6 +130,8 @@ pub enum StaticSlotLayoutResolution {
     NotStaticSlot,
     Resolved(ProviderAddressSpace),
     Ambiguous,
+    /// Selecting the implementation reached a limit.
+    NormalizationLimit(super::normalize::NormalizationLimit),
     UnresolvedSpace,
 }
 
@@ -388,8 +390,11 @@ pub fn resolve_static_slot_layout<'db>(
             resolved
         }
         // An undecided selection is never taken as "not a static slot".
-        Selection::Unique(_) | Selection::Ambiguous(_) | Selection::NormalizationLimit(_) => {
+        Selection::Unique(_) | Selection::Ambiguous(_) => {
             return StaticSlotLayoutResolution::Ambiguous;
+        }
+        Selection::NormalizationLimit(limit) => {
+            return StaticSlotLayoutResolution::NormalizationLimit(limit);
         }
         Selection::NotFound => return StaticSlotLayoutResolution::NotStaticSlot,
     };

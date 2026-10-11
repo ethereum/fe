@@ -5601,7 +5601,7 @@ impl<'db> FieldView<'db> {
                 .field_errors_for_id(field)
                 .and_then(|errors| errors.first())
         {
-            if let ContractLayoutError::ProviderLimit(limit) = error {
+            if let ContractLayoutError::NormalizationLimit(limit) = error {
                 return vec![limit.report(span).0];
             }
             if let ContractLayoutError::InvalidConcreteArrayLength { invalid } = error {
@@ -5700,7 +5700,7 @@ impl<'db> FieldView<'db> {
                         | ContractLayoutError::UnresolvedConcreteLayoutRoot { .. }
                         | ContractLayoutError::AmbiguousProviderLayout
                         | ContractLayoutError::UnresolvedProviderTarget
-                        | ContractLayoutError::ProviderLimit(_)
+                        | ContractLayoutError::NormalizationLimit(_)
                         | ContractLayoutError::UnresolvedProviderSpace
                         | ContractLayoutError::InvalidProviderRaw { .. }
                         | ContractLayoutError::NonRegularProviderCycle
@@ -5713,7 +5713,7 @@ impl<'db> FieldView<'db> {
                     TyLowerDiag::ContractFieldLayoutInvariant { span, ty, issue }
                 }
                 ContractLayoutError::InvalidConcreteArrayLength { .. }
-                | ContractLayoutError::ProviderLimit(_) => unreachable!(),
+                | ContractLayoutError::NormalizationLimit(_) => unreachable!(),
             };
             out.push(diag.into());
             return out;

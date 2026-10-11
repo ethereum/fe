@@ -499,7 +499,7 @@ pub enum ContractLayoutError<'db> {
     UnresolvedConcreteLayoutRoot { value: TyId<'db> },
     AmbiguousProviderLayout,
     UnresolvedProviderTarget,
-    ProviderLimit(NormalizationLimit),
+    NormalizationLimit(NormalizationLimit),
     UnresolvedProviderSpace,
     InvalidProviderRaw { failure: ProviderLayoutFailure },
     NonRegularProviderCycle,
@@ -534,7 +534,7 @@ impl ContractLayoutError<'_> {
             }
             Self::AmbiguousProviderLayout => "provider layout selection is ambiguous",
             Self::UnresolvedProviderTarget => "provider target type is unresolved",
-            Self::ProviderLimit(_) => "provider target type reaches a normalization limit",
+            Self::NormalizationLimit(_) => "a layout type reaches a normalization limit",
             Self::UnresolvedProviderSpace => "provider address space is unresolved",
             Self::InvalidProviderRaw { .. } => "provider raw transport is invalid",
             Self::NonRegularProviderCycle => {
@@ -1264,9 +1264,9 @@ fn instantiate_provider_target_layout<'db>(
         vec![LayoutOccurrenceStep::Instantiation(0)],
     );
     let normalized_root_uses = normalize_layout_root_uses(db, target.ty, scope, assumptions)
-        .map_err(ContractLayoutError::ProviderLimit)?;
+        .map_err(ContractLayoutError::NormalizationLimit)?;
     let normalized = normalize_ty(db, target.ty, scope, assumptions)
-        .map_err(ContractLayoutError::ProviderLimit)?;
+        .map_err(ContractLayoutError::NormalizationLimit)?;
     // Normalization can expose structural roots owned by another associated
     // type definition. Re-land the complete equality partition under this
     // provider occurrence so every root carries the exact provider boundary.
@@ -1294,7 +1294,7 @@ fn instantiate_provider_target_layout<'db>(
                 normalize_ty(db, owner, scope, assumptions)
             })
             .transpose()
-            .map_err(ContractLayoutError::ProviderLimit)?;
+            .map_err(ContractLayoutError::NormalizationLimit)?;
         let root_use = crate::analysis::ty::layout_holes::LayoutRootUse {
             value,
             owner,
@@ -1414,6 +1414,10 @@ impl<'db> FieldCollector<'db> {
             StaticSlotLayoutResolution::Resolved(space) => Some(space),
             StaticSlotLayoutResolution::Ambiguous => {
                 self.push_error(ContractLayoutError::AmbiguousStaticSlot { owner });
+                None
+            }
+            StaticSlotLayoutResolution::NormalizationLimit(limit) => {
+                self.push_error(ContractLayoutError::NormalizationLimit(limit));
                 None
             }
             StaticSlotLayoutResolution::UnresolvedSpace => {
@@ -2888,7 +2892,7 @@ fn contract_layout_error_for_provider_failure<'db>(
     match failure {
         ProviderLayoutFailure::Ambiguous => ContractLayoutError::AmbiguousProviderLayout,
         ProviderLayoutFailure::NormalizationLimit(limit) => {
-            ContractLayoutError::ProviderLimit(limit)
+            ContractLayoutError::NormalizationLimit(limit)
         }
         ProviderLayoutFailure::UnresolvedTarget => ContractLayoutError::UnresolvedProviderTarget,
         ProviderLayoutFailure::UnresolvedSpace => ContractLayoutError::UnresolvedProviderSpace,
@@ -3531,7 +3535,9 @@ fn owner_space_in_field<'db>(
     ) {
         StaticSlotLayoutResolution::NotStaticSlot => Some(default_space),
         StaticSlotLayoutResolution::Resolved(space) => Some(space),
-        StaticSlotLayoutResolution::Ambiguous | StaticSlotLayoutResolution::UnresolvedSpace => None,
+        StaticSlotLayoutResolution::Ambiguous
+        | StaticSlotLayoutResolution::NormalizationLimit(_)
+        | StaticSlotLayoutResolution::UnresolvedSpace => None,
     }
 }
 

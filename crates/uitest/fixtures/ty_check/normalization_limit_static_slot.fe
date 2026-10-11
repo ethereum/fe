@@ -1,0 +1,35 @@
+// Selecting the `StaticSlot` impl of a field type reaches a normalization
+// limit: the field reports the limit, not an ambiguous or unresolved slot.
+trait Nest {
+    type Out
+}
+
+struct N<T> {
+    t: T,
+}
+
+impl<T: Nest> Nest for N<T> {
+    type Out = T::Out
+}
+
+impl Nest for u8 {
+    type Out = u8
+}
+
+trait Show {}
+
+impl Show for u8 {}
+
+use core::effect_ref::{AddressSpace, StaticSlot}
+
+struct Routed<T, const ROOT: u256 = _> {
+    t: T,
+}
+
+impl<T: Nest, const ROOT: u256> StaticSlot for Routed<T, ROOT> where T::Out: Show {
+    const SPACE: AddressSpace = AddressSpace::TransientStorage
+}
+
+contract C {
+    mut f: Routed<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>,
+}
