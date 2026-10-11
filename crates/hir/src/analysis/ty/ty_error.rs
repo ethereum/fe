@@ -24,7 +24,8 @@ use super::{
     diagnostics::{TyDiagCollection, TyLowerDiag},
     normalize::normalize_ty,
     trait_resolution::{
-        PredicateListId, TraitSolveCx, WellFormedness, check_family_requirements, check_ty_wf,
+        PredicateListId, TraitSolveCx, WellFormedness, check_family_requirements,
+        check_resolved_projection_wf, check_ty_wf,
     },
     ty_def::{InvalidCause, TyData, TyId},
     ty_lower::{lower_hir_ty, lower_hir_ty_in_mode, lower_hir_ty_sharing_paths},
@@ -294,7 +295,7 @@ fn family_application_diag<'db>(
                 .all(|arg| !arg.has_param(db) && !arg.has_var(db) && !arg.has_invalid(db))
                 && resolved() =>
         {
-            Some(check_ty_wf(db, solve_cx, ty))
+            Some(check_resolved_projection_wf(db, solve_cx, ty))
         }
         _ => None,
     };

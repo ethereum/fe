@@ -804,10 +804,49 @@ pub(crate) fn check_family_requirements<'db>(
     WellFormedness::WellFormed
 }
 
+/// Checks a projection whose definition lowering already selected. Selection
+/// treats an undecided defining trait as possible, as plain projections have
+/// always done. Arguments still need to be well formed: resolving a definition
+/// must not erase an invalid or undecided argument.
+pub(crate) fn check_resolved_projection_wf<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    ty: TyId<'db>,
+) -> WellFormedness<'db> {
+    let (head, args) = ty.decompose_ty_app(db);
+    let mut join = WfJoin::default();
+    for &arg in args {
+        if let Some(wf) = join.add(check_ty_wf(db, solve_cx, arg)) {
+            return wf;
+        }
+    }
+    if let Some(wf) = join.add(check_family_requirements(db, solve_cx, ty)) {
+        return wf;
+    }
+    if let TyData::AssocTy(assoc) = head.data(db) {
+        return join.last(check_projected_trait_use_wf_inner(
+            db,
+            solve_cx,
+            assoc.trait_.as_predicate(db),
+            true,
+        ));
+    }
+    join.finish()
+}
+
 fn check_projected_trait_use_wf<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
+) -> WellFormedness<'db> {
+    check_projected_trait_use_wf_inner(db, solve_cx, inst, false)
+}
+
+fn check_projected_trait_use_wf_inner<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+    resolved_definition: bool,
 ) -> WellFormedness<'db> {
     let mut join = WfJoin::default();
     for &arg in inst.args(db) {
@@ -821,7 +860,11 @@ fn check_projected_trait_use_wf<'db>(
         }
     }
 
-    join.last(unsatisfied_goal(db, solve_cx, inst).unwrap_or(WellFormedness::WellFormed))
+    let defining_trait = unsatisfied_goal(db, solve_cx, inst).unwrap_or(WellFormedness::WellFormed);
+    join.last(match defining_trait {
+        WellFormedness::Undecided { .. } if resolved_definition => WellFormedness::WellFormed,
+        other => other,
+    })
 }
 
 fn unsatisfied_goal<'db>(

@@ -53,6 +53,43 @@ const UNSATISFIED: Option<&str> = Some("trait bound is not satisfied");
 const LIMIT: Option<&str> = Some("type normalization limit exceeded");
 const CYCLE: Option<&str> = Some("cycle detected while resolving this type");
 
+#[test]
+fn a_resolved_projection_preserves_possible_defining_traits_but_checks_arguments() {
+    let growing = "struct N<T> {}\ntrait Grow {}\nimpl<T> Grow for T where N<T>: Grow {}\n";
+    // Definition selection has always treated an undecided defining trait
+    // as possible. Rechecking a resolved written use must preserve that rule.
+    for (params, args) in [("", ""), ("<U>", "<bool>")] {
+        check_cases([(
+            format!(
+                "{growing}trait Ty {{ type A{params} }}\nimpl<T: Grow> Ty for T {{ type A{params} = u8 }}\nfn f(x: u8) -> u8 {{ let a: <u16 as Ty>::A{args} = x\n a }}"
+            ),
+            None,
+        )]);
+    }
+    // This does not relax the well-formedness of an argument erased by the
+    // definition, including the self type and a family's local argument.
+    let undecided = Some("trait bound cannot be decided");
+    check_cases([
+        (
+            format!(
+                "{growing}struct Foo<T: Grow> {{}}\ntrait Ty {{ type A }}\nimpl<T> Ty for T {{ type A = u8 }}\nfn f(x: u8) -> u8 {{ let a: <Foo<u16> as Ty>::A = x\n a }}"
+            ),
+            undecided,
+        ),
+        (
+            format!(
+                "{growing}struct Foo<T: Grow> {{}}\ntrait Ty {{ type A<U> }}\nstruct S {{}}\nimpl Ty for S {{ type A<U> = u8 }}\nfn f(x: u8) -> u8 {{ let a: <S as Ty>::A<Foo<u16>> = x\n a }}"
+            ),
+            undecided,
+        ),
+        (
+            "trait Ty { type A }\nstruct S {}\nfn f(x: u8) -> u8 { let a: <S as Ty>::A = x\n a }"
+                .to_string(),
+            MISMATCH,
+        ),
+    ]);
+}
+
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/associated_type_families",
     glob: "*.fe"
