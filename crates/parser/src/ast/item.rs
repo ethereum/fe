@@ -663,6 +663,11 @@ impl RecordFieldDef {
         support::token(self.syntax(), SK::MutKw)
     }
 
+    /// Returns the `unsafe` keyword of an `unsafe` field, if any.
+    pub fn unsafe_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::UnsafeKw)
+    }
+
     /// Returns the name of the field.
     pub fn name(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Ident)

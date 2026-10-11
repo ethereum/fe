@@ -424,7 +424,7 @@ impl super::Parse for ContractFieldsScope {
                 _ => {}
             }
 
-            parser.parse(RecordFieldDefScope::default())?;
+            parser.parse(RecordFieldDefScope::new(false))?;
 
             // Optional comma between fields
             let _ = parser.bump_if(SyntaxKind::Comma);
@@ -603,7 +603,7 @@ impl super::Parse for MsgVariantParamsScope {
             true,
             SyntaxKind::MsgVariantParams,
             (SyntaxKind::LBrace, SyntaxKind::RBrace),
-            |parser| parser.parse(RecordFieldDefScope::default()),
+            |parser| parser.parse(RecordFieldDefScope::new(false)),
         )
     }
 }

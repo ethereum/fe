@@ -123,13 +123,26 @@ impl super::Parse for FnParamScope {
                 if !self.allow_self {
                     parser.error_msg_on_current_token("`self` is not allowed here");
                 }
-                if has_var {
+                let typed = matches!(
+                    parser.peek_n_non_trivia(2).as_slice(),
+                    [_, SyntaxKind::Colon]
+                );
+                if has_mut && allow_own_self_shorthand {
                     parser.error_msg_on_current_token(
-                        "`var` makes an owned parameter mutable, not a receiver",
+                        "a mutable owned receiver is written `var own self`; `mut self` is a mutable borrow",
+                    );
+                } else if has_var && !allow_own_self_shorthand && !typed {
+                    parser.error_msg_on_current_token(
+                        "`var` makes an owned receiver mutable: `var own self`",
                     );
                 }
                 parser.bump_expected(SyntaxKind::SelfKw);
                 if parser.bump_if(SyntaxKind::Colon) {
+                    if has_mut && parser.current_kind() == Some(SyntaxKind::OwnKw) {
+                        parser.error_msg_on_current_token(
+                            "a mutable owned receiver is written `var self: own T`; `mut self` is a mutable borrow",
+                        );
+                    }
                     parse_type(parser, None)?;
                 }
             }

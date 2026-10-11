@@ -788,19 +788,24 @@ impl<I> StringView<I>
 /// `data` points at the ABI tail payload: the length word followed by packed
 /// UTF-8 bytes padded to a whole word count.
 pub struct DynString {
-    data: *u8,
-    len: u256,
-    size: u256,
+    unsafe data: *u8,
+    unsafe len: u256,
+    unsafe size: u256,
 }
 
 impl DynString {
     pub fn empty() -> Self {
         let data = ptr::alloc_bytes(32)
         unsafe { store_word(ptr: data, value: 0) }
-        Self::from_validated_abi_tail(data: data, len: 0, size: 32)
+        // A 32-byte tail holding length zero.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: 0, size: 32)
+        }
     }
 
-    fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
+    /// `data` must point to a validated ABI tail of `size` initialized
+    /// bytes in a live allocation, holding `len` elements.
+    unsafe fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
         DynString { data, len, size }
     }
 
@@ -822,14 +827,20 @@ impl DynString {
             ptr::zero_bytes(data, size)
             store_word(ptr: data, value: len)
         }
-        Self::from_validated_abi_tail(data: data, len: len, size: size)
+        // The tail was allocated and written above.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: len, size: size)
+        }
     }
 
     /// Returns the string made of the first `len` bytes of `word` (at most 32),
     /// e.g. a `bytes32` label.
     pub fn from_word_prefix(word: u256, len: u256) -> Self {
         let bytes = Bytes::from_word_prefix(word, len)
-        Self::from_validated_abi_tail(data: bytes.data, len: bytes.len, size: bytes.size)
+        // `bytes` holds a valid tail of the same layout.
+        unsafe {
+            Self::from_validated_abi_tail(data: bytes.data, len: bytes.len, size: bytes.size)
+        }
     }
 
     /// Returns a copy of the `len` bytes starting at `start`.
@@ -848,7 +859,10 @@ impl DynString {
             store_word(ptr: data, value: len)
             ptr::copy(dest: ptr::offset_bytes(data, 32), source)
         }
-        Self::from_validated_abi_tail(data: data, len: len, size: size)
+        // The tail was allocated and written above.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: len, size: size)
+        }
     }
 
     pub fn len(self) -> u256 {
@@ -877,11 +891,14 @@ impl DynString {
     }
 
     pub fn as_bytes(self) -> Bytes {
-        Bytes::from_validated_abi_tail(
-            data: self.data,
-            len: self.len,
-            size: self.size,
-        )
+        // A string's tail is a valid bytes tail.
+        unsafe {
+            Bytes::from_validated_abi_tail(
+                data: self.data,
+                len: self.len,
+                size: self.size,
+            )
+        }
     }
 
     pub fn byte_at(self, _ index: u256) -> u8 {
@@ -894,19 +911,24 @@ impl DynString {
 /// `data` points at the ABI tail payload: the length word followed by packed
 /// bytes data padded to a whole word count.
 pub struct Bytes {
-    data: *u8,
-    len: u256,
-    size: u256,
+    unsafe data: *u8,
+    unsafe len: u256,
+    unsafe size: u256,
 }
 
 impl Bytes {
     pub fn empty() -> Self {
         let data = ptr::alloc_bytes(32)
         unsafe { store_word(ptr: data, value: 0) }
-        Self::from_validated_abi_tail(data: data, len: 0, size: 32)
+        // A 32-byte tail holding length zero.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: 0, size: 32)
+        }
     }
 
-    fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
+    /// `data` must point to a validated ABI tail of `size` initialized
+    /// bytes in a live allocation, holding `len` elements.
+    unsafe fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
         Bytes { data, len, size }
     }
 
@@ -929,7 +951,10 @@ impl Bytes {
             store_word(ptr: data, value: len)
             ptr::copy(dest: ptr::offset_bytes(data, 32), source)
         }
-        Self::from_validated_abi_tail(data: data, len: len, size: size)
+        // The tail was allocated and written above.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: len, size: size)
+        }
     }
 
     /// Build up to 32 bytes from the most-significant bytes of one word.
@@ -950,7 +975,10 @@ impl Bytes {
                 value: word >> shift << shift,
             )
         }
-        Self::from_validated_abi_tail(data: data, len: len, size: 64)
+        // The tail was allocated and written above.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: len, size: 64)
+        }
     }
 
     pub fn len(self) -> u256 {
@@ -1118,19 +1146,24 @@ impl ByteInput for ptr::MemSpan {
 /// `data` points at the ABI payload for the array: the length word followed by the
 /// tuple-encoded element heads/tails.
 pub struct DynArray<T> {
-    data: *u8,
-    len: u256,
-    size: u256,
+    unsafe data: *u8,
+    unsafe len: u256,
+    unsafe size: u256,
 }
 
 impl<T> DynArray<T> {
     pub fn empty() -> Self {
         let data = ptr::alloc_bytes(32)
         unsafe { store_word(ptr: data, value: 0) }
-        Self::from_validated_abi_tail(data: data, len: 0, size: 32)
+        // A 32-byte tail holding length zero.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: 0, size: 32)
+        }
     }
 
-    fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
+    /// `data` must point to a validated ABI tail of `size` initialized
+    /// bytes in a live allocation, holding `len` elements.
+    unsafe fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
         DynArray { data, len, size }
     }
 
@@ -2008,22 +2041,28 @@ impl<A: Abi> Decode<A> for DynString {
 
         unsafe { copy_dynamic_bytes(input, payload_at, data_ptr, payload.0, payload.1) }
 
-        DynString::from_validated_abi_tail(
-            data: data_ptr,
-            len: payload.0,
-            size: payload.1,
-        )
+        // The payload was checked and copied into this tail above.
+        unsafe {
+            DynString::from_validated_abi_tail(
+                data: data_ptr,
+                len: payload.0,
+                size: payload.1,
+            )
+        }
     }
 
     #[inline(always)]
     fn decode_from<I: ByteInput>(_ input: I, _ pos: u256) -> Self {
         let payload: (*u8, u256, u256) = copy_dynamic_payload_from<A, I>(input, pos)
 
-        DynString::from_validated_abi_tail(
-            data: payload.0,
-            len: payload.1,
-            size: payload.2,
-        )
+        // The checked copy returns a complete tail.
+        unsafe {
+            DynString::from_validated_abi_tail(
+                data: payload.0,
+                len: payload.1,
+                size: payload.2,
+            )
+        }
     }
 
     #[inline(always)]
@@ -2033,22 +2072,28 @@ impl<A: Abi> Decode<A> for DynString {
 
         unsafe { copy_dynamic_bytes(input, pos, data_ptr, payload.0, payload.1) }
 
-        DynString::from_validated_abi_tail(
-            data: data_ptr,
-            len: payload.0,
-            size: payload.1,
-        )
+        // The payload was checked and copied into this tail above.
+        unsafe {
+            DynString::from_validated_abi_tail(
+                data: data_ptr,
+                len: payload.0,
+                size: payload.1,
+            )
+        }
     }
 
     #[inline(always)]
     fn decode_from_bounded<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
         let payload: (*u8, u256, u256) = copy_dynamic_payload_from_with_input_len<A, I>(input, pos, input_len)
 
-        DynString::from_validated_abi_tail(
-            data: payload.0,
-            len: payload.1,
-            size: payload.2,
-        )
+        // The checked copy returns a complete tail.
+        unsafe {
+            DynString::from_validated_abi_tail(
+                data: payload.0,
+                len: payload.1,
+                size: payload.2,
+            )
+        }
     }
 }
 
@@ -2326,22 +2371,28 @@ impl<A: Abi> Decode<A> for Bytes {
 
         unsafe { copy_dynamic_bytes(input, payload_at, data_ptr, payload.0, payload.1) }
 
-        Bytes::from_validated_abi_tail(
-            data: data_ptr,
-            len: payload.0,
-            size: payload.1,
-        )
+        // The payload was checked and copied into this tail above.
+        unsafe {
+            Bytes::from_validated_abi_tail(
+                data: data_ptr,
+                len: payload.0,
+                size: payload.1,
+            )
+        }
     }
 
     #[inline(always)]
     fn decode_from<I: ByteInput>(_ input: I, _ pos: u256) -> Self {
         let payload: (*u8, u256, u256) = copy_dynamic_payload_from<A, I>(input, pos)
 
-        Bytes::from_validated_abi_tail(
-            data: payload.0,
-            len: payload.1,
-            size: payload.2,
-        )
+        // The checked copy returns a complete tail.
+        unsafe {
+            Bytes::from_validated_abi_tail(
+                data: payload.0,
+                len: payload.1,
+                size: payload.2,
+            )
+        }
     }
 
     #[inline(always)]
@@ -2351,22 +2402,28 @@ impl<A: Abi> Decode<A> for Bytes {
 
         unsafe { copy_dynamic_bytes(input, pos, data_ptr, payload.0, payload.1) }
 
-        Bytes::from_validated_abi_tail(
-            data: data_ptr,
-            len: payload.0,
-            size: payload.1,
-        )
+        // The payload was checked and copied into this tail above.
+        unsafe {
+            Bytes::from_validated_abi_tail(
+                data: data_ptr,
+                len: payload.0,
+                size: payload.1,
+            )
+        }
     }
 
     #[inline(always)]
     fn decode_from_bounded<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
         let payload: (*u8, u256, u256) = copy_dynamic_payload_from_with_input_len<A, I>(input, pos, input_len)
 
-        Bytes::from_validated_abi_tail(
-            data: payload.0,
-            len: payload.1,
-            size: payload.2,
-        )
+        // The checked copy returns a complete tail.
+        unsafe {
+            Bytes::from_validated_abi_tail(
+                data: payload.0,
+                len: payload.1,
+                size: payload.2,
+            )
+        }
     }
 }
 
@@ -2463,11 +2520,14 @@ impl<A: Abi, T> Decode<A> for DynArray<T>
             }
         }
 
-        DynArray::from_validated_abi_tail(
-            data: data_ptr,
-            len: elem_count,
-            size: payload_size,
-        )
+        // The payload was checked and copied into this tail above.
+        unsafe {
+            DynArray::from_validated_abi_tail(
+                data: data_ptr,
+                len: elem_count,
+                size: payload_size,
+            )
+        }
     }
 
     #[inline(always)]
@@ -2493,11 +2553,14 @@ impl<A: Abi, T> Decode<A> for DynArray<T>
             }
         }
 
-        DynArray::from_validated_abi_tail(
-            data: data_ptr,
-            len: elem_count,
-            size: payload_size,
-        )
+        // The payload was checked and copied into this tail above.
+        unsafe {
+            DynArray::from_validated_abi_tail(
+                data: data_ptr,
+                len: elem_count,
+                size: payload_size,
+            )
+        }
     }
 
     #[inline(always)]

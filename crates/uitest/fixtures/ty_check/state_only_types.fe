@@ -48,16 +48,23 @@ pub contract C {
     frozen: StorageMap<u256, u256>,
 
     init() uses (mut ledger, mut pair) {
-        // Rejected: binding the map by value would move it out of storage.
+        // Accepted: a state-only type has no value reading, so a plain
+        // binding is its read access; a write through it is rejected.
         let m = ledger.balances
-        // Accepted: an access names the place.
+        let seen = m[1]
+        m[1] = seen
+        // Accepted: `mut` names the place for writing.
         let named = mut ledger.balances
         named[1] = 2
-        // Rejected: `Pair<StorageMap<..>>` holds maps through its fields.
+        // Accepted: `Pair<StorageMap<..>>` holds maps through its fields, so
+        // it too binds its read access.
         let p = pair
         // Rejected: instantiating `identity` passes a map by value.
         identity(ledger.balances)
         // Rejected: a memory literal of a storage-only type.
         total(Ledger { balances: ledger.balances, total: 0 })
+        // Rejected: an `Option` holding a map is a value outside a
+        // projection's yield site.
+        let wrapped = Option::Some(ledger.balances)
     }
 }

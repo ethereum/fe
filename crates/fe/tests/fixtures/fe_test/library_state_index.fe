@@ -101,7 +101,7 @@ pub contract C uses (storage: mut RawStorage) {
         }
 
         Sweep {} -> (u256, u32) uses (mut counters) {
-            for counter in mut counters {
+            for mut counter in counters {
                 counter += 10
             }
             var sum: u256 = 0

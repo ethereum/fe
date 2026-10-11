@@ -16,6 +16,10 @@ impl Cell {
     fn get_mut(mut self) -> mut u256 {
         mut self.word
     }
+
+    fn maybe_mut(mut self) -> Option<mut u256> {
+        Option::Some(mut self.word)
+    }
 }
 
 fn first(_ items: MemArray<Item>) -> (u256, ref Item) {
@@ -144,4 +148,23 @@ fn assign_params(_ x: own u256, _ y: u256) -> u256 {
     x = 1
     y = 2
     x + y
+}
+
+// S-71. Rejected: a plain component of a `mut` result is an immutable copy.
+fn plain_mut_component(_ cell: mut Cell) {
+    match cell.maybe_mut() {
+        Option::Some(v) => v += 1
+        Option::None => {}
+    }
+}
+
+// S-71. Accepted: `mut v` writes through, and a `let` binding a whole `mut`
+// result keeps its access.
+fn marked_mut_component(_ cell: mut Cell) {
+    match cell.maybe_mut() {
+        Option::Some(mut v) => v += 1
+        Option::None => {}
+    }
+    let w = cell.get_mut()
+    w += 1
 }

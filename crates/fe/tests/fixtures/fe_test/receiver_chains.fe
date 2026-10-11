@@ -18,7 +18,7 @@ impl Position {
         self.ver += 1
     }
 
-    fn settle(mut own self, _ payment: u256) -> Position {
+    fn settle(var own self, _ payment: u256) -> Position {
         if payment >= self.debt {
             self.collateral += payment - self.debt
             self.debt = 0

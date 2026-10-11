@@ -7,12 +7,12 @@ struct Pair<T> {
 
 impl Pair<StorageMap<u256, u256>> {
     fn get_left(self, key: u256) -> u256 {
-        let Self { ref left, .. } = self
+        let Self { left, .. } = self
         left.get(key: key)
     }
 
     fn get_right(self, key: u256) -> u256 {
-        let Self { ref right, .. } = self
+        let Self { right, .. } = self
         right.get(key: key)
     }
 }
@@ -42,7 +42,7 @@ pub contract C {
         }
 
         GetDirect { key } -> (u256, u256) uses (pair) {
-            let Pair { ref left, ref right } = pair
+            let Pair { left, right } = pair
             (left.get(key: key), right.get(key: key))
         }
     }

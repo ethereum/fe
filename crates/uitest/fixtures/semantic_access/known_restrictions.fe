@@ -40,16 +40,26 @@ fn scalar_cursor(_ xs: [u256; 3]) -> u256 {
 
 struct Item { n: u256 }
 
+impl Copy for Item {}
+
+struct Token { n: u256 }
+
 fn consume(_ item: own Item) -> u256 {
     item.n
 }
 
-// Accepted: an owned argument taken from storage is a copy; storage is never
-// moved from.
+fn spend(_ token: own Token) -> u256 {
+    token.n
+}
+
+// Accepted: an owned `Copy` argument taken from storage is a copy.
+// Rejected: a non-`Copy` one would move out of storage, which never holds a
+// hole.
 pub contract StorageCopy {
     mut item: Item,
-    init() uses (mut item) {
+    mut token: Token,
+    init() uses (mut item, mut token) {
         let n = consume(item)
-        item.n = n + 1
+        item.n = n + spend(token)
     }
 }

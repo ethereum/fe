@@ -1,11 +1,11 @@
-// `for (x, y) in (a, b) by d` needs a two-base driver, and bases both viewed
-// or both `mut`.
+// `for (x, y) in (a, b) by d` needs a two-base driver, and binds both items
+// `mut` or neither.
 use core::iter::{reversed, zip}
 
 fn mixed_modes() {
     var xs: [u256; 2] = [1, 2]
     let ys: [u256; 2] = [3, 4]
-    for (x, y) in (mut xs, ys) by zip() {
+    for (mut x, y) in (xs, ys) by zip() {
         x += y
     }
 }

@@ -72,11 +72,11 @@ fn optional(_ c: mut Cell, _ give: bool) -> Option<mut u256> {
 #[test]
 fn case15_empty_exit_cleans_up() {
     var c = Cell { v: 0 }
-    if let Option::Some(x) = optional(mut c, false) {
+    if let Option::Some(mut x) = optional(mut c, false) {
         x += 1
     }
     assert!(c.v == 1000)
-    if let Option::Some(x) = optional(mut c, true) {
+    if let Option::Some(mut x) = optional(mut c, true) {
         x += 1
     }
     assert!(c.v == 1000 + 1000 + 11)
@@ -109,12 +109,12 @@ pub contract StoredWords {
 
     init() uses (mut words) {
         var next: u256 = 1
-        for word in mut words by reversed() {
+        for mut word in words by reversed() {
             word = next
             next += 1
         }
         let d = Identity {}
-        for word in mut words by d {
+        for mut word in words by d {
             word *= 10
         }
     }
@@ -155,7 +155,7 @@ fn case31_stable_place() {
 }
 
 fn reordered(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u256) {
-    let (a, b) = xs.pair_mut(i, j)
+    let (mut a, mut b) = xs.pair_mut(i, j)
     (mut b, mut a)
 }
 
@@ -163,7 +163,7 @@ fn reordered(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut
 #[test]
 fn case34_reordered_grants() {
     var xs: MemArray<u256> = MemArray::new_zeroed(2)
-    let (b, a) = reordered(mut xs, 0, 1)
+    let (mut b, mut a) = reordered(mut xs, 0, 1)
     b = 20
     a = 10
     assert(xs[0] == 10 && xs[1] == 20)

@@ -7,7 +7,7 @@ use crate::{
         ty::{
             trait_def::TraitInstId,
             trait_resolution::{
-                GoalSatisfiability, PredicateListId, TraitSolveCx, is_goal_satisfiable,
+                GoalSatisfiability, PredicateListId, TraitSolveCx, goal_holds, is_goal_satisfiable,
             },
             ty_def::{BorrowKind, TyBase, TyData, TyId},
         },
@@ -503,6 +503,27 @@ pub fn effect_key_state_access<'db>(
         } else {
             MemoryAccessKind::Read
         })
+}
+
+/// The seal of the std EVM capabilities, which only the zero-sized
+/// `std::evm::Evm` implements.
+const EVM_CAPABILITY_SEAL: &str = "std::evm::effects::EvmCapabilitySeal";
+
+/// Whether `ty` implements the std EVM capability seal, so a place of it holds
+/// nothing even when `ty` is a type parameter bounded by `Ctx` or `Log`.
+pub fn is_sealed_evm_capability<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    ty: TyId<'db>,
+) -> bool {
+    resolve_lib_trait_path(db, scope, EVM_CAPABILITY_SEAL).is_some_and(|seal| {
+        goal_holds(
+            db,
+            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+            TraitInstId::new_simple(db, seal, vec![ty]),
+        )
+    })
 }
 
 fn runtime_builtin_func_path<'db>(

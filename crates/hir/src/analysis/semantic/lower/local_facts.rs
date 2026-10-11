@@ -91,7 +91,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             SExpr::UseValue(_) | SExpr::Borrow { .. } | SExpr::Call { .. } => {
                 self.fallback_local_role(dst_ty)
             }
-            SExpr::ReadPlace { place } => {
+            SExpr::ReadPlace { place } | SExpr::InspectPlace { place } => {
                 self.classify_projection_local_role(dst_ty, place.clone())
             }
             SExpr::Field { base, field } => {
@@ -143,7 +143,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             SExpr::Forward(value) | SExpr::UseValue(value) => {
                 self.locals[value.value.index()].snapshot_source.clone()
             }
-            SExpr::ReadPlace { place } => self.classify_projection_snapshot_source(place.clone()),
+            SExpr::ReadPlace { place } | SExpr::InspectPlace { place } => {
+                self.classify_projection_snapshot_source(place.clone())
+            }
             SExpr::Field { base, field } => {
                 self.classify_projection_snapshot_source(SPlace::field(base.value, *field))
             }
@@ -185,9 +187,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             SExpr::Forward(value) | SExpr::UseValue(value) => {
                 self.local_layout_backing_sources(value.value)
             }
-            SExpr::ReadPlace { place } | SExpr::Borrow { place, .. } => {
-                self.layout_backing_sources_for_place(place)
-            }
+            SExpr::ReadPlace { place }
+            | SExpr::InspectPlace { place }
+            | SExpr::Borrow { place, .. } => self.layout_backing_sources_for_place(place),
             SExpr::Field { base, field } => {
                 self.layout_backing_sources_for_place(&SPlace::field(base.value, *field))
             }

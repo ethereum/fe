@@ -26,7 +26,7 @@ fn reads(_ accounts: [Account; 2]) {
 
 // Mutating the elements needs a mutable base.
 fn mutates(_ xs: [u256; 3]) {
-    for x in mut xs {
+    for mut x in xs {
         x += 1
     }
 }

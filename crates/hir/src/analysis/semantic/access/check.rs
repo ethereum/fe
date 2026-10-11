@@ -39,7 +39,10 @@ use crate::{
             },
         },
         ty::{
-            corelib::{MemoryAccessKind, effect_key_state_access, external_call_state_access},
+            corelib::{
+                MemoryAccessKind, effect_key_state_access, external_call_state_access,
+                is_sealed_evm_capability,
+            },
             provider::{ProviderAddressSpace, provider_semantics},
             result_space::PlaceStep,
             shape::Shape,
@@ -54,6 +57,10 @@ use crate::{
 };
 
 type Diag<'db> = SemanticDiagnostic<'db>;
+
+/// The fix for a plain binding that moves a value out of an access it could
+/// use in place.
+const IN_PLACE_FIX: &str = "; bind it with `mut` or `ref` to use it in place";
 pub(super) type TokenId = u32;
 type TokenSet = SmallVec<TokenId, 4>;
 
@@ -287,6 +294,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
         self.instance.param_space(self.db, param)
     }
 
+    /// Whether a place of `ty` holds nothing: a zero-sized type, or a sealed
+    /// std EVM capability, whose only implementor is zero-sized.
+    fn holds_nothing(&self, ty: TyId<'db>) -> bool {
+        ty.is_zero_sized(self.db)
+            || is_sealed_evm_capability(self.db, self.scope, self.assumptions, ty)
+    }
+
     /// The domain a handle of `ty` names when its provider is unknown.
     fn dynamic_handle(&mut self, ty: TyId<'db>) -> Option<u32> {
         matches!(
@@ -316,7 +330,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 };
                 let mut input = self.new_token(TokenKind::Input, mode, origin);
                 input.regions.push(AbsPlace::new(Base::Param(param)));
-                input.zero_sized = target.is_zero_sized(self.db);
+                input.zero_sized = self.holds_nothing(target);
                 self.token(value_id, Site::Open, input)
             } else {
                 // An effect handle names its provider's domain.
@@ -862,7 +876,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
     ) -> Held {
         let resolved = self.resolve(place);
         let mut access = self.new_token(TokenKind::Access, mode, origin);
-        access.zero_sized = place.ty.is_zero_sized(self.db);
+        access.zero_sized = self.holds_nothing(place.ty);
         let id = self.token(result, Site::Open, access);
         let token = &mut self.tokens[id as usize];
         token.regions = resolved.regions;
@@ -926,7 +940,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             reservations.push(id);
         }
         let mut held = Held::new();
-        for (component, (path, mode)) in access_components(shape).into_iter().enumerate() {
+        for (component, (path, mode, _)) in access_components(shape).into_iter().enumerate() {
             let mut grant = self.new_token(TokenKind::Grant, mode, origin);
             grant.regions.push(AbsPlace::new(Base::Grant {
                 session: result,
@@ -1012,8 +1026,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
             });
         }
         let (regions, parents) = match &effect.arg {
-            // A zero-sized place holds nothing.
-            NEffectArgValue::Place(place) if place.ty.is_zero_sized(self.db) => return None,
+            // A place that holds nothing has no footprint.
+            NEffectArgValue::Place(place) if self.holds_nothing(place.ty) => return None,
             NEffectArgValue::Place(place) => {
                 let resolved = self.resolve(place);
                 (resolved.regions, resolved.direct)
@@ -1394,7 +1408,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// `mut` yields of session-owned places with no slide after them: writes
-    /// through them are discarded when the session finishes.
+    /// through them are discarded when the session finishes. A view
+    /// descriptor is exempt, since its writes reach its owner.
     fn discarded_writes(&self) -> Vec<Diag<'db>> {
         let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
             return Vec::new();
@@ -1414,9 +1429,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
             })
             .filter(|(value, _)| {
                 let held = &self.values[value.value.index()];
-                components.iter().any(|(path, kind)| {
+                components.iter().any(|(path, kind, ty)| {
                     let mut tokens = held.iter().filter(|(_, rest)| rest == path).peekable();
                     *kind == BorrowKind::Mut
+                        && !ty.is_view(self.db)
                         && tokens.peek().is_some()
                         && tokens.all(|(token, _)| {
                             self.tokens[*token as usize]
@@ -1518,11 +1534,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 .moved
                 .retain(|(key, _)| !matches!(key, MoveKey::Access(token) if ended.contains(token)));
             return match hole {
-                Some((token, hole)) => self.report(Err(self.moved_diag(
-                    "this access ends while its referent is moved out",
-                    self.tokens[token as usize].origin,
-                    &hole,
-                ))),
+                Some((token, hole)) => {
+                    let mut diag = self.moved_diag(
+                        "this access ends while its referent is moved out",
+                        self.tokens[token as usize].origin,
+                        &hole,
+                    );
+                    // A binding that moved out of the access can use it in
+                    // place instead.
+                    if let Some(moved_at) = self.moved_at.get(&hole)
+                        && self.binds_by_value(*moved_at)
+                        && let Some(label) = diag.secondaries.last_mut()
+                    {
+                        label.message.push_str(IN_PLACE_FIX);
+                    }
+                    self.report(Err(diag))
+                }
                 None => Ok(()),
             };
         }
@@ -1711,6 +1738,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
             NPlaceBase::Root(_) => None,
             NPlaceBase::CapabilityTarget { carrier } => self.carrier_key(carrier),
         };
+        if kind == MemoryAccessKind::Move
+            && let Some(space @ (ProviderAddressSpace::Storage | ProviderAddressSpace::Transient)) =
+                resolved
+                    .regions
+                    .iter()
+                    .find_map(|region| self.region_space(region))
+        {
+            return Err(self.diag(
+                SemanticDiagnosticKind::MoveConflict,
+                origin,
+                format!(
+                    "cannot move out of {}, which never holds a hole",
+                    space.pretty()
+                ),
+            ));
+        }
         if let Some(key) = key {
             let found = state.moved.iter().find(|(moved, moved_path)| {
                 *moved == key
@@ -1739,19 +1782,15 @@ impl<'a, 'db> Analysis<'a, 'db> {
                         "cannot move out of an element at a dynamic index".into(),
                     ));
                 }
-                if let Some(
-                    space @ (ProviderAddressSpace::Storage | ProviderAddressSpace::Transient),
-                ) = resolved
-                    .regions
-                    .iter()
-                    .find_map(|region| self.region_space(region))
-                {
+                // A view's descriptor stays tied to the session that
+                // reserves its owner, so it never leaves a hole.
+                if place.ty.is_view(self.db) {
                     return Err(self.diag(
                         SemanticDiagnosticKind::MoveConflict,
                         origin,
                         format!(
-                            "cannot move out of {}, which never holds a hole",
-                            space.pretty()
+                            "cannot move out of `{}`, a `#[view]` value, which never leaves a hole",
+                            place.ty.pretty_print(self.db)
                         ),
                     ));
                 }
@@ -1794,16 +1833,21 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 .iter()
                 .any(|region| region.base != Base::Raw)
         {
+            let fix = if self.binds_by_value(origin) {
+                "; bind it with `ref` to read it in place"
+            } else {
+                ""
+            };
             return Err(self.diag(
                 SemanticDiagnosticKind::MoveConflict,
                 origin,
-                "cannot move out of a place reached through an access".into(),
+                format!("cannot move out of a place reached through an access{fix}"),
             ));
         }
         if writes {
             self.check_writable(&resolved.regions, origin)?;
         }
-        if place.ty.is_zero_sized(self.db) {
+        if self.holds_nothing(place.ty) {
             return Ok(());
         }
         let mode = if writes {
@@ -2064,10 +2108,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
             .iter()
             .find(|(key, _)| matches!(key, MoveKey::Param(_)))
         {
+            let origin = self
+                .moved_at
+                .get(moved)
+                .copied()
+                .unwrap_or(terminator.origin);
+            let fix = if self.binds_by_value(origin) {
+                IN_PLACE_FIX
+            } else {
+                ""
+            };
             return Err(self.diag(
                 SemanticDiagnosticKind::MoveConflict,
-                self.moved_at.get(moved).copied().unwrap_or(terminator.origin),
-                "a `mut` parameter moved out of here must be reinitialized before the function returns".into(),
+                origin,
+                format!(
+                    "a `mut` parameter moved out of here must be reinitialized before the function returns{fix}"
+                ),
             ));
         }
         Ok(())
@@ -2089,7 +2145,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             return Ok(());
         };
         let held = &self.values[value.value.index()];
-        for (path, mode) in access_components(shape) {
+        for (path, mode, _) in access_components(shape) {
             let own: TokenSet = held
                 .iter()
                 .filter(|(_, rest)| *rest == path)
@@ -2131,7 +2187,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             let held = &self.values[value.value.index()];
             let regions: Vec<Vec<AbsPlace>> = components
                 .iter()
-                .map(|(path, _)| {
+                .map(|(path, _, _)| {
                     held.iter()
                         .filter(|(_, rest)| rest == path)
                         .flat_map(|(token, _)| self.tokens[*token as usize].regions.clone())
@@ -2239,12 +2295,17 @@ fn reaches_owner<'db>(
     reaches
 }
 
-/// The access components of a shape, by their path in its carrier.
-fn access_components(shape: &Shape<'_>) -> Vec<(Path, BorrowKind)> {
-    fn walk(shape: &Shape<'_>, path: &mut Path, out: &mut Vec<(Path, BorrowKind)>) {
+/// The access components of a shape, by their path in its carrier, with
+/// their mode and type.
+fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKind, TyId<'db>)> {
+    fn walk<'db>(
+        shape: &Shape<'db>,
+        path: &mut Path,
+        out: &mut Vec<(Path, BorrowKind, TyId<'db>)>,
+    ) {
         match shape {
             Shape::Owned(_) => {}
-            Shape::Access(kind, _) => out.push((path.clone(), *kind)),
+            Shape::Access(kind, ty) => out.push((path.clone(), *kind, *ty)),
             Shape::Tuple(elems) => {
                 for (field, elem) in elems.iter().enumerate() {
                     path.push(Step::Field(field as u16));

@@ -16,7 +16,7 @@ use super::{
 use crate::analysis::ty::{
     canonical::Canonicalized,
     corelib::resolve_core_trait,
-    diagnostics::BodyDiag,
+    diagnostics::{BodyDiag, MarkerPosition},
     fold::{TyFoldable, TyFolder},
     shape::Shape,
     trait_def::TraitInstId,
@@ -157,6 +157,13 @@ impl<'db> TyChecker<'db> {
             } else {
                 self.check_expr_unknown(*expr)
             };
+            // An access marker on the initializer binds a single name only.
+            if !matches!(
+                pat.data(self.db, self.body()),
+                Partial::Present(Pat::Path(..) | Pat::WildCard)
+            ) {
+                self.take_initializer_marker(*expr, &[*pat], MarkerPosition::Initializer);
+            }
             self.check_pat(*pat, prop.ty);
             if let Some(LocalBinding::Local { pat, .. }) = self.env.pat_binding(*pat) {
                 self.env
@@ -169,7 +176,7 @@ impl<'db> TyChecker<'db> {
                 prop
             };
             if prop.shape.is_some() {
-                self.bind_pattern_source(*pat, *expr, &prop);
+                self.bind_pattern_source(*pat, *expr, &prop, true);
             } else if self.pattern_binds_any(*pat) {
                 self.record_implicit_move_for_owned_expr(*expr, prop.ty);
             }
@@ -206,18 +213,24 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    /// What a `let` of the place `expr` binds through: its components, for
-    /// `ref` and `mut` bindings, or a read access for a lone binding of a
-    /// `#[view]` type, which has no value reading. Otherwise its bindings
-    /// take the place's value.
+    /// What a `let` of the place `expr` binds through: a lone name takes the
+    /// place's value, or a read access to a type with no value reading
+    /// (`#[view]` or state-only); a pattern binds the place's components.
     fn open_let_place(&mut self, pat: PatId, expr: ExprId, prop: ExprProp<'db>) -> ExprProp<'db> {
-        let reborrows_view =
-            matches!(
-                pat.data(self.db, self.body()),
-                Partial::Present(Pat::Path(_, BindingMarker::Plain))
-            ) && matches!(self.env.pat_binding(pat), Some(LocalBinding::Local { .. }))
-                && prop.ty.fold_with(self.db, &mut self.table).is_view(self.db);
-        if !reborrows_view {
+        let Partial::Present(Pat::Path(_, marker)) = pat.data(self.db, self.body()) else {
+            return self.open_matched_place(expr, prop, [pat]);
+        };
+        let lone_name = matches!(marker, BindingMarker::Plain | BindingMarker::Var)
+            && matches!(self.env.pat_binding(pat), Some(LocalBinding::Local { .. }));
+        let reads_value = prop
+            .ty
+            .fold_with(self.db, &mut self.table)
+            .has_value_reading(self.db);
+        if lone_name && reads_value {
+            return prop;
+        }
+        // A `var` of a type with no value reading is reported at its binding.
+        if !lone_name || *marker == BindingMarker::Var {
             return self.open_matched_place(expr, prop, [pat]);
         }
         let prop = ExprProp {
@@ -240,33 +253,20 @@ impl<'db> TyChecker<'db> {
             _ => vec![*expr],
         };
         let mut checked = Vec::with_capacity(bases.len());
-        let mut modes = Vec::with_capacity(bases.len());
         for &base in &bases {
             let expected = self.fresh_ty();
             let prop = self
                 .check_expr(base, expected)
                 .fold_with(self.db, &mut self.table);
-            // The loop holds its base; `for pat in mut e` mutates the elements.
             if prop.shape.is_some() {
                 self.consume_access(base);
             }
-            modes.push(matches!(
-                prop.shape,
-                Some(Shape::Access(BorrowKind::Mut, _))
-            ));
             checked.push((base, prop.ty));
         }
         if let [(_, a), (_, b)] = checked[..] {
             let pair = TyId::tuple_with_elems(self.db, &[a, b]);
             self.env.type_expr(*expr, ExprProp::new(pair, false));
-            if modes[0] != modes[1] {
-                self.push_diag(BodyDiag::MixedLoopBases {
-                    primary: expr.span(self.body()).into(),
-                });
-                checked.clear();
-            }
         }
-        let mutates = modes.contains(&true);
         let driver = driver.map(|driver| {
             let driver_ty = self
                 .check_expr_unknown(driver)
@@ -274,7 +274,49 @@ impl<'db> TyChecker<'db> {
                 .fold_with(self.db, &mut self.table);
             (driver, driver_ty)
         });
-        match self.plan_for_loop(&checked, driver, mutates) {
+        // The item pattern chooses the traversal: a read one, unless an item
+        // is bound `mut`, which opens its base mutably.
+        let mut plan = self.plan_for_loop(&checked, driver, false);
+        if let Some(read) = &plan {
+            let items = self.loop_item_pats(*pat, read);
+            let read_bases = read.bases.clone();
+            for (idx, &base) in read_bases.iter().enumerate() {
+                let item = if items.len() == read_bases.len() {
+                    &items[idx..=idx]
+                } else {
+                    &items[..]
+                };
+                self.take_initializer_marker(base, item, MarkerPosition::LoopBase);
+            }
+            let mut_pats: Vec<_> = items
+                .iter()
+                .map(|&item| self.first_marked_binding(item, BindingMarker::Mut))
+                .collect();
+            // Over mutable bases, `mut` items would write the elements.
+            if read_bases.iter().all(|&base| {
+                self.env.typed_expr(base).is_some_and(|prop| {
+                    prop.is_mut || matches!(prop.shape, Some(Shape::Access(BorrowKind::Mut, _)))
+                })
+            }) {
+                self.record_mutable_sources(&items);
+            }
+            if let [a, b] = mut_pats[..]
+                && read_bases.len() == 2
+                && a.is_some() != b.is_some()
+            {
+                self.push_diag(BodyDiag::MixedLoopBases {
+                    primary: pat.span(self.body()).into(),
+                });
+                plan = None;
+            } else if let Some(mut_pat) = mut_pats.into_iter().flatten().next()
+                && read_bases
+                    .iter()
+                    .all(|&base| self.open_loop_base(base, mut_pat))
+            {
+                plan = self.plan_for_loop(&checked, driver, true);
+            }
+        }
+        match plan {
             Some(mut plan) => {
                 // `for ref x in c` holds each element's access, `Copy` or not.
                 if plan.item == ForLoopItem::Copy
@@ -319,6 +361,63 @@ impl<'db> TyChecker<'db> {
         self.env.leave_loop();
 
         TyId::unit(self.db)
+    }
+
+    /// The parts of the loop pattern `pat` binding the items `plan` yields:
+    /// one per base of a two-base loop, the item beside a driver's `Extra`,
+    /// or the whole pattern. A producer's values are no items.
+    fn loop_item_pats(&self, pat: PatId, plan: &ForLoopPlan<'db>) -> Vec<PatId> {
+        if plan.item == ForLoopItem::Produced {
+            return Vec::new();
+        }
+        let parts = match pat.data(self.db, self.body()) {
+            Partial::Present(Pat::Tuple(parts)) if parts.len() == 2 => parts.clone(),
+            _ => return vec![pat],
+        };
+        match plan.shape {
+            _ if plan.bases.len() == 2 => parts,
+            Shape::Tuple(_) if !plan.binds_element => vec![parts[1]],
+            _ => vec![pat],
+        }
+    }
+
+    /// Opens the loop base `base` mutably for the `mut` item `mut_pat`, as a
+    /// `mut` component opens a matched place, returning whether it could: a
+    /// `mut` result already is open, and a place must be mutable. A read
+    /// result or an owned value has no mutable place, which the item's
+    /// binding reports.
+    fn open_loop_base(&mut self, base: ExprId, mut_pat: PatId) -> bool {
+        let Some(prop) = self.env.typed_expr(base) else {
+            return false;
+        };
+        match prop.shape {
+            Some(Shape::Access(BorrowKind::Mut, _)) => return true,
+            Some(_) => return false,
+            None => {}
+        }
+        let prop = if !prop.is_mut && self.select_mut_place(base) {
+            self.env.typed_expr(base).expect("selected place is typed")
+        } else {
+            prop
+        };
+        if prop.shape.is_some() {
+            return true;
+        }
+        if !self.env.is_place_expr(base) {
+            return false;
+        }
+        if !prop.is_mut {
+            self.report_cannot_borrow_mut(base, mut_pat.span(self.body()).into());
+        }
+        self.consume_access(base);
+        let prop = ExprProp {
+            is_mut: true,
+            borrow_provider: self.access_provider(base),
+            shape: Some(Shape::Access(BorrowKind::Mut, prop.ty)),
+            ..prop
+        };
+        self.env.type_expr(base, prop);
+        true
     }
 
     /// The protocol a loop over `expr`, of type `ty`, runs: its driver's, or

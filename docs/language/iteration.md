@@ -7,19 +7,23 @@ and projects each element from the collection as it goes.
 for x in xs { total += x }              // a copy of each `Copy` element
 for ref a in accounts { total += a.n }  // a read access to each element
 for var x in xs { x += 1 }              // a mutable copy of each element
-for mut x in mut xs { x *= 2 }          // a `mut` access to each element
+for mut x in xs { x *= 2 }              // a `mut` access to each element
 for (i, x) in xs by enumerate() { .. }  // a driver
 for y in xs by map(|x: u256| x * 2) { .. }
 ```
 
 The loop's pattern binds each element as a `let` pattern binds a
 projection's result: a plain name copies a `Copy` element and is an error
-for any other (bind it `ref`), except that a `mut` element (`for x in mut
-xs`) or a `#[view]` one binds its access.
+for any other (bind it `ref`), except that a `#[view]` or state-only one,
+which has no value to copy, binds its read access. The item pattern chooses
+the traversal: a `mut` item calls `at_mut` and opens the base mutably, as a
+`mut` binding opens a matched place, so the base needs no marker and
+`for x in mut xs` is an error. A method chain traverses mutably the same
+way: `for (i, mut x) in xs.enumerate()`.
 
 `Collection` (`core::iter`) is the protocol: `start` and `next` move a
 cursor, `at` projects the element at it. `CollectionMut` adds `at_mut` with
-`mut` access for `for .. in mut ..` loops, and `Bidirectional` traverses in
+`mut` access for loops whose item is `mut`, and `Bidirectional` traverses in
 reverse. Arrays, `MemArray`, `MemSlice`, ranges, `SolArray` and
 `SolEnumerableSet` are collections; a collection declares the effects its
 methods need (`uses E`) and the space of the places it yields (`space S`).
@@ -45,8 +49,9 @@ method chain on a collection is sugar for `by`:
 `for x in xs.filter(|x| x > 1)` is `for x in xs by filter(..)`.
 
 A two-base driver traverses two bases in step: `for (x, y) in (a, b) by zip()`
-views both until either ends, and `for (x, y) in (mut a, mut b) by zip()`
-mutates both, which needs `a` and `b` disjoint.
+views both until either ends, and `for (mut x, mut y) in (a, b) by zip()`
+mutates both, which needs `a` and `b` disjoint. The items are both `mut` or
+neither.
 
 ## Higher-order operations
 

@@ -52,11 +52,13 @@ pub(super) enum PatternSource<'db> {
     Value(PatternValue<'db>),
     /// A place matched by component: a `ref` or `mut` binding borrows its
     /// component's path, and the others read it, so nothing is opened on the
-    /// place beyond them.
+    /// place beyond them. The tests of an `inspected` place, one with no
+    /// `ref` or `mut` binding, read its value instead of borrowing it.
     Place {
         place: SPlace<'db>,
         ty: TyId<'db>,
         provider: Option<ProviderAddressSpace>,
+        inspected: bool,
     },
 }
 
@@ -67,6 +69,8 @@ struct DecisionTreeProjectionCache<'db> {
     /// A matched place: read through a read access only when a test first
     /// needs its value, and bound by component.
     place: Option<(SPlace<'db>, Option<ProviderAddressSpace>)>,
+    /// Whether the matched place's tests read its value (`inspected`).
+    inspected: bool,
 }
 
 fn assigned_pattern_child_carrier_ty<'db>(
@@ -91,26 +95,34 @@ impl<'db> DecisionTreeProjectionCache<'db> {
         roots: &[ValidatedPatId],
         source: PatternSource<'db>,
     ) -> Self {
-        let (entries, root_ty, place) = match source {
+        let (entries, root_ty, place, inspected) = match source {
             PatternSource::Value(root) => (
                 vec![(ProjectionPath::default(), root)],
                 root.carrier_ty.0,
                 None,
+                false,
             ),
             PatternSource::Place {
                 place,
                 ty,
                 provider,
+                inspected,
             } => (
                 Vec::new(),
-                TyId::borrow_ref_of(db, ty),
+                if inspected {
+                    ty
+                } else {
+                    TyId::borrow_ref_of(db, ty)
+                },
                 Some((place, provider)),
+                inspected,
             ),
         };
         let mut cache = Self {
             entries,
             carrier_tys: vec![(ProjectionPath::default(), root_ty)],
             place,
+            inspected,
         };
         for root in roots {
             cache.collect_pattern_carrier_tys(
@@ -856,7 +868,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             return value;
         }
         // A test reads a matched place through a read access of it, which
-        // its last test closes.
+        // its last test closes, or reads an inspected place's value.
         if projections.entries.is_empty()
             && let Some((place, provider)) = projections.place.clone()
         {
@@ -864,15 +876,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             let carrier_ty = projections
                 .carrier_ty(&root_path)
                 .expect("a matched place has a root carrier type");
-            let value = self.emit_expr_with_origin(
-                origin,
-                carrier_ty,
+            let read = if projections.inspected {
+                SExpr::InspectPlace { place }
+            } else {
                 SExpr::Borrow {
                     place,
                     kind: BorrowKind::Ref,
                     provider,
-                },
-            );
+                }
+            };
+            let value = self.emit_expr_with_origin(origin, carrier_ty, read);
             projections.insert(
                 root_path,
                 PatternValue {

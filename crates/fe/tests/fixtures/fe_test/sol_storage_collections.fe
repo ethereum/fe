@@ -221,7 +221,7 @@ fn array_element_places() uses (evm: mut Evm) {
         let flags = unsafe { SolArray<bool>::at(14) }
         flags.push(true)
         flags.push(false)
-        for flag in mut flags {
+        for mut flag in flags {
             flag = !flag
         }
         assert(!flags[0] && flags[1])
@@ -241,7 +241,7 @@ fn array_lanes_in_loops() uses (evm: mut Evm) {
             counts.push(i)
             i += 1
         }
-        for count in mut counts {
+        for mut count in counts {
             count *= 2
         }
         var sum: u256 = 0

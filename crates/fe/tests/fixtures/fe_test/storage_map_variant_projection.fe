@@ -7,7 +7,7 @@ enum Wrapped {
 // A projection yields the payload of the enum place it was given.
 fn unwrap_map(wrapped: Wrapped) -> ref StorageMap<u256, u256> {
     match wrapped {
-        Wrapped::Map(ref map) => ref map,
+        Wrapped::Map(map) => ref map,
     }
 }
 

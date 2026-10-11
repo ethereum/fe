@@ -25,7 +25,7 @@ fn unwrap_or(_ o: Option<u256>, _ default: u256) -> u256 {
 
 fn bump(_ present: bool) -> u256 {
     var cell = Cell { v: 1 }
-    let Option::Some(x) = cell.entry(present) else {
+    let Option::Some(mut x) = cell.entry(present) else {
         return cell.v + 100
     }
     x += 5

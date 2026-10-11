@@ -15,3 +15,17 @@ fn markers(c: Cells, p: Pair) {
     let z = ref p
     var w = p.a
 }
+
+impl Pair {
+    fn take(var own self) -> Pair {
+        self
+    }
+    fn retag(var self: own Pair) -> Pair {
+        self
+    }
+}
+
+fn items(xs: Cells) {
+    for mut x in xs {}
+    for (i, mut x) in xs.enumerate() {}
+}

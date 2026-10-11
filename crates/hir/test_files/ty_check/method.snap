@@ -85,7 +85,7 @@ note:
 note:
    ┌─ method.fe:24:59
    │
-24 │       pub fn get_or_insert(mut own self, inner: own T) -> T {
+24 │       pub fn get_or_insert(var own self, inner: own T) -> T {
    │ ╭───────────────────────────────────────────────────────────^
 25 │ │         match self {
 26 │ │             Self::Some(t) => t

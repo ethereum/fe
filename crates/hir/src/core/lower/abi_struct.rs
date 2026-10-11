@@ -201,6 +201,7 @@ fn lower_abi_span_impl<'db>(
             is_mut: false,
             has_ref_prefix: false,
             has_own_prefix: false,
+            has_mut_prefix: false,
             is_label_suppressed: false,
             name: Partial::Present(FuncParamName::Ident(name)),
             ty: Partial::Present(u256_ty),

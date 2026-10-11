@@ -1,0 +1,1 @@
+A generic helper can now read `Ctx` or emit through `Log` while a storage entry is open: the provider of a sealed std EVM capability holds nothing, so it no longer conflicts with other effects. A call that can reenter still conflicts with every open storage access.

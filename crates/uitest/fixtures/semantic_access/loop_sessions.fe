@@ -14,7 +14,7 @@ fn projected(_ items: mut [Item; 2]) {
 
 // Rejected: so does a `mut` traversal's.
 fn mutable(_ xs: mut [u256; 2]) {
-    for x in mut xs {
+    for mut x in xs {
         xs[0] = x
     }
 }
@@ -22,7 +22,7 @@ fn mutable(_ xs: mut [u256; 2]) {
 // Rejected: a session the condition opens is held during the body.
 fn while_let(_ xs: mut MemArray<u256>) {
     var i: usize = 0
-    while let Option::Some(x) = xs.get_mut(i) {
+    while let Option::Some(mut x) = xs.get_mut(i) {
         xs[0] = 7
         x += 1
         i += 1

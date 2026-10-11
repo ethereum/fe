@@ -741,8 +741,8 @@ func private %search(v0.i256, v1.i256, v2.i256, v3.i256) -> @layout_7 {
         br v9 block3 block4;
 
     block3:
-        v11.i256 = obj.load v4;
-        v12.i256 = evm_udiv v11 32.i256;
+        v10.i256 = obj.load v4;
+        v12.i256 = evm_udiv v10 32.i256;
         v14.@layout_6 = call %locate v0 v0 v12;
         v16.i256 = extract_value v14 0.i256;
         v17.i256 = evm_sload v16;
@@ -761,8 +761,8 @@ func private %search(v0.i256, v1.i256, v2.i256, v3.i256) -> @layout_7 {
         br v22 block8 block7;
 
     block6:
-        v24.i256 = obj.load v5;
-        v25.i256 = mul v24 8.i256;
+        v23.i256 = obj.load v5;
+        v25.i256 = mul v23 8.i256;
         v27.i256 = shr v25 v17;
         v29.i256 = and v27 255.i256;
         v31.i1 = eq v29 v1;

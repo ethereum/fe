@@ -115,9 +115,11 @@ pub(crate) struct TyCheckEnv<'db> {
     /// place base, or yielded. Any other use of `ref p`, `mut p` or a tuple or
     /// sum shape is a value use, which is an error.
     consumed_accesses: FxHashSet<ExprId>,
-    /// Places matched through the `mut` access their `mut` pattern bindings
-    /// open.
+    /// The places a pattern is matched against, which bind each component
+    /// where it lies.
     matched_places: FxHashSet<ExprId>,
+    /// The matched places whose patterns have no `ref` or `mut` binding.
+    inspected_places: FxHashSet<ExprId>,
     /// Index expressions naming an entry of a collection whose elements are
     /// places (`core::ops::StateIndex`).
     place_entries: FxHashSet<ExprId>,
@@ -242,6 +244,7 @@ impl<'db> TyCheckEnv<'db> {
             call_effect_args: SecondaryMap::new(),
             consumed_accesses: FxHashSet::default(),
             matched_places: FxHashSet::default(),
+            inspected_places: FxHashSet::default(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
@@ -652,6 +655,14 @@ impl<'db> TyCheckEnv<'db> {
         );
     }
 
+    /// Whether `expr` is a base a `for` loop holds.
+    pub(super) fn is_loop_base(&self, expr: ExprId) -> bool {
+        self.for_loop_plans
+            .values()
+            .flatten()
+            .any(|plan| plan.bases.contains(&expr))
+    }
+
     pub(super) fn register_for_loop_plan(&mut self, stmt: StmtId, plan: ForLoopPlan<'db>) {
         if self.for_loop_plans[stmt].replace(plan).is_some() {
             panic!("for loop seq is already registered for the given stmt")
@@ -842,8 +853,16 @@ impl<'db> TyCheckEnv<'db> {
         self.consumed_accesses.contains(&expr)
     }
 
-    pub(super) fn open_matched_place(&mut self, expr: ExprId, prop: ExprProp<'db>) {
+    pub(super) fn open_matched_place(
+        &mut self,
+        expr: ExprId,
+        prop: ExprProp<'db>,
+        inspected: bool,
+    ) {
         self.matched_places.insert(expr);
+        if inspected {
+            self.inspected_places.insert(expr);
+        }
         self.type_expr(expr, prop);
     }
 
@@ -1446,6 +1465,7 @@ impl<'db> TyCheckEnv<'db> {
             place_entries: self.place_entries,
             unsafe_splits: self.unsafe_splits,
             matched_places: self.matched_places,
+            inspected_places: self.inspected_places,
             covered_providers: self.covered_providers,
             const_refs: self.const_refs,
             value_path_refs: self.value_path_refs,

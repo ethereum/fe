@@ -494,6 +494,11 @@ pub enum SExpr<'db> {
     ReadPlace {
         place: SPlace<'db>,
     },
+    /// A read of a place's value that does not take it: the tests of a
+    /// pattern whose bindings take their components where they lie.
+    InspectPlace {
+        place: SPlace<'db>,
+    },
     CodeRegionRef {
         region: SemanticCodeRegionRef<'db>,
     },
@@ -577,7 +582,9 @@ impl SExpr<'_> {
             | Self::IsEnumVariant { value, .. }
             | Self::ExtractEnumField { value, .. }
             | Self::Field { base: value, .. } => locals.push(value.value),
-            Self::ReadPlace { place } | Self::Borrow { place, .. } => {
+            Self::ReadPlace { place }
+            | Self::InspectPlace { place }
+            | Self::Borrow { place, .. } => {
                 locals.extend(place.used_locals());
             }
             Self::Binary { lhs, rhs, .. }

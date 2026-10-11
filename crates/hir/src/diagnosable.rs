@@ -378,7 +378,10 @@ impl<'db> Func<'db> {
         diags
     }
 
-    /// A `#[view]` type is taken only by view parameters and `ref` results.
+    /// A `#[view]` type is taken only by view and `mut` parameters and
+    /// access results. A `mut` view points into an owner its session holds
+    /// mutably, so a projection yielding one holds a mutable input or
+    /// effect; an `unsafe` one leaves that to its caller.
     pub fn diags_view_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let normalize =
             |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
@@ -387,14 +390,30 @@ impl<'db> Func<'db> {
                 ty::shape::view_param_misuse(db, param.mode(db), normalize(param.ty(db)))?;
             Some((param.span().into(), ty, position))
         });
-        let ret = self
+        let shape = self
             .return_shape(db)
             .cloned()
-            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))))
+            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))));
+        let ret = shape
             .view_misuse(db)
             .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
+        let holds_mutably = self
+            .params(db)
+            .any(|param| param.mode(db) == FuncParamMode::Mut)
+            || self.effects(db).data(db).iter().any(|effect| effect.is_mut);
+        let unheld_mut_view = shape
+            .mut_view(db)
+            .filter(|_| !holds_mutably && !self.is_unsafe(db))
+            .map(|ty| {
+                (
+                    self.span().ret_ty().into(),
+                    ty,
+                    "yielded by `mut` from a projection that holds nothing mutably",
+                )
+            });
         params
             .chain(ret)
+            .chain(unheld_mut_view)
             .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
             .collect()
     }

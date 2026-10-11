@@ -155,3 +155,22 @@ fn take(_ x: mut Option<MemBuffer>) -> Option<MemBuffer> {
     x = Option::None
     v
 }
+
+struct Holder {
+    buf: MemBuffer,
+}
+
+impl Holder {
+    fn maybe_buf(mut self) -> Option<mut MemBuffer> {
+        Option::Some(mut self.buf)
+    }
+}
+
+// S-71. Rejected: a plain non-`Copy` component of an anonymous `mut` grant
+// moves out with nothing to restore it through.
+fn grant_move(_ h: mut Holder) -> u256 {
+    match h.maybe_buf() {
+        Option::Some(buf) => consume(buf)
+        Option::None => 0
+    }
+}

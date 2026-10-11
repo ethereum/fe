@@ -645,6 +645,12 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         expr: &SExpr<'db>,
     ) -> Result<NExpr<'db>, NormalizeError<'db>> {
         let dst_ty = self.normalized_local_ty(dst);
+        // A by-value binding owns what it reads, so it moves a non-`Copy`
+        // value out of its place.
+        let binds_value = matches!(
+            self.raw.locals[dst.index()].source,
+            Some(LocalBinding::Local { .. })
+        ) && !self.ty_is_copy(dst_ty);
         let normalized = match expr {
             SExpr::Forward(value) => NExpr::Forward {
                 src: self.read_operand(block, origin, *value, Some(ReadMode::Copy))?,
@@ -663,12 +669,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 if (source_ty != dst_ty || alias) && self.local_has_place(value.value) {
                     let place =
                         self.place_for_local(block, value.sem_origin(origin), value.value)?;
-                    // A by-value binding owns what it reads, so it moves a
-                    // non-`Copy` value out of its place.
-                    let binds_value = matches!(
-                        self.raw.locals[dst.index()].source,
-                        Some(LocalBinding::Local { .. })
-                    ) && !self.ty_is_copy(dst_ty);
                     self.load_or_borrow_place(
                         block,
                         value.sem_origin(origin),
@@ -683,7 +683,18 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                     }
                 }
             }
-            SExpr::ReadPlace { place } => {
+            SExpr::ReadPlace { place } | SExpr::InspectPlace { place } => {
+                // An inspection reads the value in place; a by-value binding
+                // takes it.
+                let mode = if matches!(expr, SExpr::InspectPlace { .. }) {
+                    Some(if self.ty_is_copy(dst_ty) {
+                        ReadMode::Copy
+                    } else {
+                        ReadMode::Read
+                    })
+                } else {
+                    binds_value.then_some(ReadMode::Move)
+                };
                 if self.local_has_place(place.local)
                     || place
                         .path
@@ -691,10 +702,21 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                         .any(|projection| matches!(projection, Projection::Deref))
                 {
                     let normalized = self.normalize_place(block, origin, place)?;
-                    self.load_or_borrow_place(block, origin, place.local, dst_ty, normalized, None)?
+                    self.load_or_borrow_place(
+                        block,
+                        origin,
+                        place.local,
+                        dst_ty,
+                        normalized,
+                        mode,
+                    )?
                 } else {
-                    let value =
-                        self.read_operand(block, origin, SOperand::inherited(place.local), None)?;
+                    let value = self.read_operand(
+                        block,
+                        origin,
+                        SOperand::inherited(place.local),
+                        mode,
+                    )?;
                     let path = self.normalize_path(block, origin, &place.path)?;
                     self.normalize_value_projection(
                         block,
@@ -1048,10 +1070,21 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                                         self.normalize_place(block, origin, place)?,
                                     )
                                 }
+                                // A provider passed by value lends the effect
+                                // for the call; it does not move.
                                 crate::analysis::semantic::SEffectArgValue::Value(value) => {
-                                    NEffectArgValue::Value(
-                                        self.read_operand(block, origin, *value, None)?,
-                                    )
+                                    let mode = if self.ty_is_copy(self.normalized_local_ty(value.value))
+                                    {
+                                        ReadMode::Copy
+                                    } else {
+                                        ReadMode::Read
+                                    };
+                                    NEffectArgValue::Value(self.read_operand(
+                                        block,
+                                        origin,
+                                        *value,
+                                        Some(mode),
+                                    )?)
                                 }
                             },
                             pass_mode: arg.pass_mode,
@@ -2385,8 +2418,11 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         place: &NPlace<'db>,
     ) -> ReadMode {
         match place.base {
+            // A provider's handle names its place; any other non-`Copy` value
+            // moves, which the access checker rejects.
             NPlaceBase::Root(root)
-                if matches!(self.roots[root.index()].kind, NRootKind::Provider { .. }) =>
+                if matches!(self.roots[root.index()].kind, NRootKind::Provider { .. })
+                    && self.ty_is_copy_or_direct_carrier(ty) =>
             {
                 ReadMode::Copy
             }
@@ -2479,6 +2515,7 @@ fn for_each_address_required_local(expr: &SExpr<'_>, mut f: impl FnMut(SLocalId)
         SExpr::Forward(_)
         | SExpr::UseValue(_)
         | SExpr::ReadPlace { .. }
+        | SExpr::InspectPlace { .. }
         | SExpr::CodeRegionRef { .. }
         | SExpr::Const(_)
         | SExpr::Unary { .. }
@@ -3059,10 +3096,9 @@ mod tests {
                 get_or_build_semantic_instance, identity_semantic_instance_key,
                 normalized::{
                     NDataPath, NDataProjection, NEffectArgValue, NExpr, NIndex, NPlace, NPlaceBase,
-                    NRootId, NRootKind, NStatementKind, NTerminatorKind, NValueDefinition,
-                    NValueId, NormalizedBodyVerifyError, NormalizedLayoutPlanVerifyError, ReadMode,
-                    StructuralRepack, normalize_raw_body, verify_normalized_body,
-                    verify_normalized_layout_plan,
+                    NRootId, NStatementKind, NTerminatorKind, NValueDefinition, NValueId,
+                    NormalizedBodyVerifyError, NormalizedLayoutPlanVerifyError, StructuralRepack,
+                    normalize_raw_body, verify_normalized_body, verify_normalized_layout_plan,
                 },
                 unit_const,
             },
@@ -3726,6 +3762,8 @@ enum One {
     A,
 }
 
+impl Copy for One {}
+
 struct Empty {}
 
 struct Pair {
@@ -3822,39 +3860,6 @@ fn generic_boundaries<T>(pair: (T, T), array: [T; 2]) -> (T, T) {
         assert_eq!(
             verify_normalized_body(&db, &invalid_mutable_const),
             Err(NormalizedBodyVerifyError::ScalarCapability)
-        );
-
-        let mut invalid_provider_move = normalized_func(&db, top_mod, "read_effect").body;
-        let provider_root = invalid_provider_move
-            .roots
-            .iter()
-            .position(|root| matches!(root.kind, NRootKind::Provider { .. }))
-            .map(NRootId::new)
-            .expect("provider root");
-        let provider_load = invalid_provider_move
-            .blocks
-            .iter_mut()
-            .flat_map(|block| &mut block.statements)
-            .find_map(|statement| match &mut statement.kind {
-                NStatementKind::Define {
-                    expr:
-                        NExpr::Load {
-                            place:
-                                NPlace {
-                                    base: NPlaceBase::Root(root),
-                                    ..
-                                },
-                            mode,
-                        },
-                    ..
-                } if *root == provider_root => Some(mode),
-                _ => None,
-            })
-            .expect("provider load");
-        *provider_load = ReadMode::Move;
-        assert_eq!(
-            verify_normalized_body(&db, &invalid_provider_move),
-            Err(NormalizedBodyVerifyError::InvalidReadMode)
         );
 
         let mut invalid_const = normalized_func(&db, top_mod, "constant").body;

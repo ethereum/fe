@@ -169,6 +169,7 @@ pub(super) fn create_payload_size_func<'db, O: Clone + Into<crate::span::Desugar
         is_mut: false,
         has_ref_prefix: false,
         has_own_prefix: false,
+        has_mut_prefix: false,
         is_label_suppressed: false,
         name: Partial::Present(FuncParamName::Ident(IdentId::make_self(builder.db()))),
         ty: Partial::Present(builder.self_ty()),

@@ -24,7 +24,7 @@ fn by_value_traversal_mutates_its_base() {
 fn while_let_sessions_close_each_step() {
     var xs: MemArray<u256> = MemArray::new_zeroed(3)
     var i: usize = 0
-    while let Option::Some(x) = xs.get_mut(i) {
+    while let Option::Some(mut x) = xs.get_mut(i) {
         x += i as u256 + 1
         i += 1
     }

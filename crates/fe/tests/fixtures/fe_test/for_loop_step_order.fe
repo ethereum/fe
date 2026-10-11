@@ -70,7 +70,7 @@ fn continue_advances() {
 #[test]
 fn slide_runs_before_next() {
     var xs = Tracked { items: [1, 2, 3], written: 0, stop: 3, check_written: true }
-    for x in mut xs {
+    for mut x in xs {
         x += 10
     }
     assert!(xs.items[0] == 11 && xs.items[2] == 13 && xs.written == 3)

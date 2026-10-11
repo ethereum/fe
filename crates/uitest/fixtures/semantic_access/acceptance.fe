@@ -99,7 +99,7 @@ impl Pair {
 // independently.
 fn case03_split() -> u256 {
     var p = Pair { a: 1, b: 2 }
-    let (a, b) = p.split()
+    let (mut a, mut b) = p.split()
     a = 3
     b = 4
     p.a + p.b
@@ -239,7 +239,7 @@ fn entry(_ b: mut Balance) -> Option<mut u256> {
 pub contract Case14OptionalBeforeCall {
     mut balance: Balance,
     init() uses (mut balance, call: mut Call) {
-        if let Option::Some(b) = entry(mut balance) {
+        if let Option::Some(mut b) = entry(mut balance) {
             b -= 1
             ping()
         }
@@ -362,11 +362,11 @@ pub contract Case22OutstandingAccess {
 pub contract Case23StorageBase {
     mut words: [u256; 3],
     init() uses (mut words) {
-        for word in mut words by reversed() {
+        for mut word in words by reversed() {
             word += 1
         }
         let d = Identity {}
-        for word in mut words by d {
+        for mut word in words by d {
             word *= 2
         }
     }
@@ -506,13 +506,13 @@ fn case31_stable_place() -> u256 {
 
 // 34. Accepted: forwarding and reordering the disjoint grants of `pair_mut`.
 fn case34_reordered(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u256) {
-    let (a, b) = xs.pair_mut(i, j)
+    let (mut a, mut b) = xs.pair_mut(i, j)
     (mut b, mut a)
 }
 
 // 34. Rejected: duplicating one `mut` grant.
 fn case34_duplicated(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u256) {
-    let (a, b) = xs.pair_mut(i, j)
+    let (mut a, mut b) = xs.pair_mut(i, j)
     (mut a, mut a)
 }
 

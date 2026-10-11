@@ -822,7 +822,7 @@ fn read_only_mut_own_aggregate_receiver_field_reads_stay_unrooted() {
 }
 
 impl Pair {
-    fn sum(mut own self) -> u256 {
+    fn sum(var own self) -> u256 {
         self.left + self.right
     }
 }
@@ -962,7 +962,7 @@ fn mutating_mut_own_aggregate_receiver_stays_rooted() {
 }
 
 impl Pair {
-    fn bump(mut own self) -> Pair {
+    fn bump(var own self) -> Pair {
         self.left += 1
         self
     }
@@ -2434,7 +2434,7 @@ pub contract C {
 #[test]
 fn in_memory() {
     var counter = Counter { value: 1 }
-    if let Option::Some(value) = counter.maybe(true) {
+    if let Option::Some(mut value) = counter.maybe(true) {
         value += 1
     }
     assert(counter.value == 2)
@@ -2567,7 +2567,7 @@ pub contract C {
             x = 42
         }
         Lane uses (mut s) {
-            if let Option::Some(x) = s.lane(true) {
+            if let Option::Some(mut x) = s.lane(true) {
                 x += 1
             }
         }

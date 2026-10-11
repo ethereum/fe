@@ -9,7 +9,7 @@ use std::evm::{Evm, RawStorage, SolArray}
 #[test]
 fn raw_arrays_through_one_split() uses (evm: mut Evm) {
     with (RawStorage = evm) {
-        let (a, b) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
+        let (mut a, mut b) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
         a.push(1)
         b.push(2)
         a.push(3)
@@ -25,7 +25,7 @@ fn raw_arrays_through_one_split() uses (evm: mut Evm) {
 // `pair_mut` is an unsafe split inside a library function; a caller may
 // forward its grants and reorder them.
 fn swapped(_ xs: mut MemArray<u256>, _ i: usize, _ j: usize) -> (mut u256, mut u256) {
-    let (a, b) = xs.pair_mut(i, j)
+    let (mut a, mut b) = xs.pair_mut(i, j)
     (b, a)
 }
 
@@ -34,7 +34,7 @@ fn pair_mut_forwarded_and_reordered() {
     var xs = MemArray<u256>::new_zeroed(4)
     xs[0] = 1
     xs[3] = 2
-    let (first, second) = swapped(mut xs, 0, 3)
+    let (mut first, mut second) = swapped(mut xs, 0, 3)
     first += 10
     second += 20
     assert(xs[0] == 21 && xs[3] == 12)

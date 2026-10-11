@@ -27,7 +27,7 @@ pub contract C {
         Inc -> u256 uses (mut counter) {
             var result = counter.value
             match counter.maybe_value_mut(do_inc: true) {
-                Option::Some(value) => {
+                Option::Some(mut value) => {
                     value += 1
                     result = value
                 }

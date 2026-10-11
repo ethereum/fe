@@ -55,12 +55,25 @@ flowchart TD
 
 ## Calls and receivers
 
-For a call `r.m(args)` the elaboration order is fixed: the receiver's root
-place is resolved first (a temporary is hoisted into a local), the arguments
-are evaluated, the receiver chain's projection sessions open innermost first,
-and the receiver's access opens last. A `mut` receiver's place is guarded by a
-`ref` access while the arguments run, so they may read the receiver but
-neither write nor move it.
+For a call `r.m(args)` the elaboration order is fixed: the receiver's root is
+resolved first (a temporary is evaluated, and hoisted into a local for a
+`mut` receiver), the arguments are evaluated, the receiver chain's
+projection sessions open innermost first, and the receiver's access opens
+last with its mode. A receiver place rooted at a binding, or in a
+projection's grant, is lowered whole after the arguments, index operands
+included (`Receiver::Place(None)`), so the arguments may read and write it
+and the call sees what they wrote; an argument that moves it leaves the
+receiver's access a use after a move. `prepare_place_root` prepares the
+receiver of the innermost projection call on a place's path before the
+arguments. An assignment follows the same order: its target's root is
+resolved first, the same way, then the value is evaluated, then the target's
+sessions open. An operator's left operand is not a receiver: both operands
+are ordinary arguments, evaluated left to right. A variable operand that
+other operands follow (a call's argument, an aggregate's field, an
+operator's left operand, an assignment's value) is taken where it appears
+(`take_operand`): copied if `Copy`, moved if owned, and a view argument of
+a mutable local opens there, so the later operands' writes follow it and
+their uses of a moved variable are uses after a move.
 
 A view argument's transport follows its type (`ty_is_snapshot`): a snapshot,
 meaning a scalar or handle (a primitive, a raw pointer, an effect handle or
@@ -97,7 +110,10 @@ not conflict with an operation on the map's entries.
 - `Domain(d)`: a resource domain: a contract field, an effect parameter, a
   root provider, or a dynamic domain for a handle of unknown provenance.
   Distinct contract fields are disjoint; other domains of one address space
-  may alias, since a caller may supply overlapping providers.
+  may alias, since a caller may supply overlapping providers. A place that
+  holds nothing conflicts with nothing: a zero-sized type, or the provider of
+  a sealed std EVM capability (`Ctx`, `Log`, `Call`, …), which only the
+  zero-sized `Evm` implements, even as a generic helper's effect.
 - `Grant { session, component }`: what a session granted. Places derived from
   one grant overlap; sibling components of a split are disjoint. A grant lies
   in the address space its projection's result-space contract exports.

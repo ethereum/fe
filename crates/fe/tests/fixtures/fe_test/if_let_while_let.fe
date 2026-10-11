@@ -42,7 +42,7 @@ fn sum_while_let(_ values: [Option<usize>; 4]) -> usize {
     var idx: usize = 0
     var sum: usize = 0
 
-    while let Option::Some(value) = ref values[idx] {
+    while let Option::Some(value) = values[idx] {
         sum += value
         idx += 1
         if idx == 4 {

@@ -163,10 +163,10 @@ func private %allowance__ge63f(v0.@layout_1, v1.@layout_1, v2.i256) -> i256 {
         jump block1;
 
     block1:
-        v5.i256 = add v2 1.i256;
-        v10.@layout_2 = insert_value undef.@layout_2 0.i256 v0;
-        v11.@layout_2 = insert_value v10 1.i256 v1;
-        v12.i256 = call %get__g4007 v5 v11;
+        v7.@layout_2 = insert_value undef.@layout_2 0.i256 v0;
+        v9.@layout_2 = insert_value v7 1.i256 v1;
+        v11.i256 = add v2 1.i256;
+        v12.i256 = call %get__g4007 v11 v9;
         return v12;
 }
 
@@ -175,10 +175,10 @@ func private %impl_Erc20__allowance(v0.i256, v1.@layout_1, v2.@layout_1) -> i256
         jump block1;
 
     block1:
-        v5.i256 = add v0 1.i256;
-        v10.@layout_2 = insert_value undef.@layout_2 0.i256 v1;
-        v11.@layout_2 = insert_value v10 1.i256 v2;
-        v12.i256 = call %get__g4007 v5 v11;
+        v7.@layout_2 = insert_value undef.@layout_2 0.i256 v1;
+        v9.@layout_2 = insert_value v7 1.i256 v2;
+        v11.i256 = add v0 1.i256;
+        v12.i256 = call %get__g4007 v11 v9;
         return v12;
 }
 
@@ -187,8 +187,8 @@ func private %approve__g7c76(v0.@layout_1, v1.i256, v2.i256) -> i256 {
         jump block1;
 
     block1:
-        v4.@layout_1 = call %caller;
-        call %impl_Erc20__approve v2 v4 v0 v1;
+        v3.@layout_1 = call %caller;
+        call %impl_Erc20__approve v2 v3 v0 v1;
         return 1.i256;
 }
 
@@ -197,11 +197,10 @@ func private %impl_Erc20__approve(v0.i256, v1.@layout_1, v2.@layout_1, v3.i256) 
         jump block1;
 
     block1:
-        v6.i256 = add v0 1.i256;
-        v11.@layout_2 = insert_value undef.@layout_2 0.i256 v1;
-        v12.@layout_2 = insert_value v11 1.i256 v2;
-        v14.i256 = add v0 1.i256;
-        call %set__g4007 v14 v12 v3;
+        v8.@layout_2 = insert_value undef.@layout_2 0.i256 v1;
+        v10.@layout_2 = insert_value v8 1.i256 v2;
+        v13.i256 = add v0 1.i256;
+        call %set__g4007 v13 v10 v3;
         return;
 }
 
@@ -315,8 +314,8 @@ func private %do_init(v0.i256) {
         jump block1;
 
     block1:
-        v3.@layout_1 = call %caller;
-        v4.i1 = call %set_owner_once v0 v3;
+        v2.@layout_1 = call %caller;
+        v4.i1 = call %set_owner_once v0 v2;
         v5.i1 = is_zero v4;
         br v5 block2 block3;
 
@@ -646,8 +645,8 @@ func private %mint__g5033(v0.@layout_1, v1.i256, v2.i256) -> i256 {
         jump block1;
 
     block1:
-        v4.@layout_1 = call %caller;
-        call %impl_Erc20__mint v2 v4 v0 v1;
+        v3.@layout_1 = call %caller;
+        call %impl_Erc20__mint v2 v3 v0 v1;
         v9.i256 = add v2 2.i256;
         v10.i256 = evm_sload v9;
         (v11.i256, v12.i1) = uaddo v10 v1;
@@ -1081,8 +1080,8 @@ func private %transfer__g5033(v0.@layout_1, v1.i256, v2.i256) -> i256 {
         jump block1;
 
     block1:
-        v4.@layout_1 = call %caller;
-        call %impl_Erc20__transfer v2 v4 v0 v1;
+        v3.@layout_1 = call %caller;
+        call %impl_Erc20__transfer v2 v3 v0 v1;
         return 1.i256;
 }
 
@@ -1140,11 +1139,10 @@ func private %impl_Erc20__transfer_from(v0.i256, v1.@layout_1, v2.@layout_1, v3.
 
     block4:
         call %impl_Erc20__transfer v0 v2 v3 v4;
-        v17.i256 = add v0 1.i256;
-        v21.@layout_2 = insert_value undef.@layout_2 0.i256 v2;
-        v22.@layout_2 = insert_value v21 1.i256 v1;
-        (v24.i256, v25.i1) = usubo v8 v4;
-        br v25 block5 block6;
+        v19.@layout_2 = insert_value undef.@layout_2 0.i256 v2;
+        v21.@layout_2 = insert_value v19 1.i256 v1;
+        (v23.i256, v24.i1) = usubo v8 v4;
+        br v24 block5 block6;
 
     block5:
         mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
@@ -1152,8 +1150,8 @@ func private %impl_Erc20__transfer_from(v0.i256, v1.@layout_1, v2.@layout_1, v3.
         evm_revert 0.i256 36.i256;
 
     block6:
-        v31.i256 = add v0 1.i256;
-        call %set__g4007 v31 v22 v24;
+        v30.i256 = add v0 1.i256;
+        call %set__g4007 v30 v21 v23;
         return;
 }
 
@@ -1162,8 +1160,8 @@ func private %transfer_from__g5033(v0.@layout_1, v1.@layout_1, v2.i256, v3.i256)
         jump block1;
 
     block1:
-        v5.@layout_1 = call %caller;
-        call %impl_Erc20__transfer_from v3 v5 v0 v1 v2;
+        v4.@layout_1 = call %caller;
+        call %impl_Erc20__transfer_from v3 v4 v0 v1 v2;
         return 1.i256;
 }
 

@@ -281,6 +281,8 @@ pub struct FuncParam<'db> {
     pub is_mut: bool,
     pub has_ref_prefix: bool,
     pub has_own_prefix: bool,
+    /// `mut` before the name, which only `mut self` writes.
+    pub has_mut_prefix: bool,
     pub is_label_suppressed: bool,
     pub name: Partial<FuncParamName<'db>>,
     pub ty: Partial<TypeId<'db>>,

@@ -24,15 +24,15 @@ fn shift(_ o: mut Option<Pair>) {
     }
 }
 
-// Destructuring an access binds accesses of its parts.
+// Destructuring a place binds a `mut` access of each part marked `mut`.
 fn destructure(_ p: mut Pair) -> u256 {
-    let Pair { x, y } = mut p
+    let Pair { mut x, y } = p
     x += 1
     x + y
 }
 
 fn destructure_tuple(_ t: mut (u256, u256)) -> u256 {
-    let (a, b) = mut t
+    let (mut a, b) = t
     a += 1
     a + b
 }

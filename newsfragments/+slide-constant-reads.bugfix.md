@@ -1,0 +1,1 @@
+A projection's slide now reads what the caller wrote through its grant when the granted temporary started as a constant: after `var tmp: u256 = 0` and `yield mut tmp`, `self.v = tmp + 1` no longer stores 1.

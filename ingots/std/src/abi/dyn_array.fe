@@ -159,8 +159,8 @@ fn assert_static_layout<T: AbiSize>() {
 /// them) do not implement `StaticAbi`, so constructing a `MemVec` of them does
 /// not compile.
 pub struct MemVec<T> {
-    ptr: *u8,
-    len: u256,
+    unsafe ptr: *u8,
+    unsafe len: u256,
 }
 
 impl<T> MemVec<T>
@@ -171,8 +171,11 @@ impl<T> MemVec<T>
         assert_static_layout<T>()
         let total = len * T::HEAD_SIZE
         let ptr = ptr::alloc_bytes(total)
-        unsafe { ptr::zero_bytes(ptr, total) }
-        MemVec { ptr, len }
+        // `len` zeroed elements.
+        unsafe {
+            ptr::zero_bytes(ptr, total)
+            MemVec { ptr, len }
+        }
     }
 
     /// Copy of an ABI array, for local mutation.
@@ -182,8 +185,11 @@ impl<T> MemVec<T>
         assert_static_layout<T>()
         let total = source.len() * T::HEAD_SIZE
         let ptr = ptr::alloc_bytes(total)
-        unsafe { ptr::copy(ptr, source.encoded_span().slice(offset: 32, len: total)) }
-        MemVec { ptr, len: source.len() }
+        // The source's `len` elements, copied.
+        unsafe {
+            ptr::copy(ptr, source.encoded_span().slice(offset: 32, len: total))
+            MemVec { ptr, len: source.len() }
+        }
     }
 
     /// Number of elements.
@@ -269,10 +275,10 @@ impl<T> MemVec<T>
 pub struct DynVec<T> {
     /// The element encodings. `filled` shares one encoding between slots,
     /// so an encoding is never written once it is in the table.
-    parts: *MemBuffer,
-    capacity: u256,
-    len: u256,
-    parts_size: u256,
+    unsafe parts: *MemBuffer,
+    unsafe capacity: u256,
+    unsafe len: u256,
+    unsafe parts_size: u256,
 }
 
 impl<T> DynVec<T>
@@ -280,7 +286,15 @@ impl<T> DynVec<T>
 {
     /// An empty builder. Allocates nothing until the first `push`.
     pub fn new() -> Self {
-        DynVec { parts: ptr::cast<u8, MemBuffer>(ptr::alloc_bytes(0)), capacity: 0, len: 0, parts_size: 0 }
+        // An empty table: no element, no encoding.
+        unsafe {
+            DynVec {
+                parts: ptr::cast<u8, MemBuffer>(ptr::alloc_bytes(0)),
+                capacity: 0,
+                len: 0,
+                parts_size: 0,
+            }
+        }
     }
 
     /// A builder with `len` elements that all equal `value`.
@@ -309,7 +323,8 @@ impl<T> DynVec<T>
                 }
             }
         }
-        DynVec { parts, capacity: len, len, parts_size }
+        // Every one of the `len` slots holds the shared encoding.
+        unsafe { DynVec { parts, capacity: len, len, parts_size } }
     }
 
     /// Number of elements.
@@ -326,20 +341,25 @@ impl<T> DynVec<T>
         if self.len == self.capacity {
             let capacity = if self.capacity == 0 { 4 } else { self.capacity * 2 }
             let parts = ptr::cast<u8, MemBuffer>(ptr::alloc_bytes(capacity * size_of<MemBuffer>()))
+            // The new table holds every element, in `capacity` slots.
             unsafe {
                 ptr::copy_raw(
                     ptr::byte_ptr(parts),
                     source: ptr::byte_ptr(self.parts),
                     len: self.len * size_of<MemBuffer>(),
                 )
+                self.parts = parts
+                self.capacity = capacity
             }
-            self.parts = parts
-            self.capacity = capacity
         }
         let part = encode_alloc<Sol, T>(value)
-        self.parts_size += part.len()
-        unsafe { *ptr::offset(self.parts, self.len) = part }
-        self.len += 1
+        // The slot at `len` is within the capacity, and its encoding is
+        // counted.
+        unsafe {
+            self.parts_size += part.len()
+            *ptr::offset(self.parts, self.len) = part
+            self.len += 1
+        }
     }
 
     /// Replace the element at `index` with `value`. Reverts with Solidity
@@ -351,8 +371,11 @@ impl<T> DynVec<T>
 
         let part = encode_alloc<Sol, T>(value)
         let slot = ptr::offset(self.parts, index)
-        self.parts_size = self.parts_size - unsafe { (*slot).len() } + part.len()
-        unsafe { *slot = part }
+        // The total swaps the replaced encoding's size for the new one's.
+        unsafe {
+            self.parts_size = self.parts_size - (*slot).len() + part.len()
+            *slot = part
+        }
     }
 
     /// Assemble the elements into an ABI-encodable `DynArray`.

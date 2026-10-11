@@ -199,9 +199,9 @@ module.exports = grammar({
     ),
 
     parameter: $ => choice(
-      // self parameter: [mut] [ref|own] self [: Type]
-      // e.g., `self`, `mut self`, `own self`, `mut own self`, `ref self`
-      seq(optional('mut'), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
+      // self parameter: [mut|var] [ref|own] self [: Type]
+      // e.g., `self`, `mut self`, `own self`, `var own self`, `ref self`
+      seq(optional(choice('mut', 'var')), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
       // labeled parameter: [var|ref|own] label name : Type
       // e.g., `from sender: address`, `_ val: u256`, `var _ p: own Packed`
       seq(
@@ -245,6 +245,7 @@ module.exports = grammar({
 
     record_field_def: $ => seq(
       optional($.visibility),
+      optional('unsafe'),
       optional('mut'),
       field('name', $.identifier),
       ':',

@@ -81,6 +81,13 @@ impl<'db> TyId<'db> {
             .is_some_and(|adt| adt.is_view(db))
     }
 
+    /// Whether this type has values apart from the places holding them. A
+    /// `#[view]` type and a state-only one have none, so a plain binding of
+    /// one is its access.
+    pub fn has_value_reading(self, db: &'db dyn HirAnalysisDb) -> bool {
+        !self.is_view(db) && self.pinned_part(db).is_none()
+    }
+
     /// A `#[view]` type this type holds as a part: a type argument of an
     /// ADT, a tuple, an array or a pointer, at any depth.
     pub fn view_part(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {

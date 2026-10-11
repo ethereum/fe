@@ -73,8 +73,8 @@ error[16-0002]: move conflict in `fn if_let_twice`
 error[16-0002]: move conflict in `fn nested_payload_twice`
    ┌─ constant_operand_ownership.fe:75:9
    │
-70 │     let a = match h.inner {
-   │                   ------- value is moved here
+71 │         Option::Some(b) => b.v
+   │                      - value is moved here
    ·
 75 │         Holder { inner: Option::Some(b) } => b.v
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot use a value after it was moved

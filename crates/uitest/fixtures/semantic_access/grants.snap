@@ -12,14 +12,6 @@ error[16-0001]: access conflict in `fn retained_payload`
 26 │                 yield mut self.c
    │                       ^^^^^^^^^^ cannot mutably access this place while a `ref` access of it is open
 
-error[16-0001]: access conflict in `fn owned_and_access`
-   ┌─ grants.fe:67:16
-   │
-67 │         yield (tmp, mut tmp)
-   │                ^^^  ------- access opened here
-   │                │
-   │                cannot move out of this place while a `mut` access of it is open
-
 error[16-0001]: access conflict in `fn access_and_owned`
    ┌─ grants.fe:73:25
    │
@@ -33,3 +25,11 @@ error[16-0002]: move conflict in `fn uninitialized`
    │
 59 │         yield mut tmp
    │               ^^^^^^^ cannot use a value before it is initialized
+
+error[16-0002]: move conflict in `fn owned_and_access`
+   ┌─ grants.fe:67:21
+   │
+67 │         yield (tmp, mut tmp)
+   │                ---  ^^^^^^^ cannot use a value after it was moved
+   │                │
+   │                value is moved here

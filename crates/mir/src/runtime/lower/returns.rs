@@ -1512,6 +1512,8 @@ struct Pair {
     b: u256,
 }
 
+impl Copy for Pair {}
+
 fn id_ctx() -> Pair uses (ctx: Pair) {
     ctx
 }

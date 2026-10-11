@@ -32,23 +32,24 @@ extern {
 
 /// A dynamically sized array in linear memory.
 pub struct MemArray<T> {
-    ptr: *T,
-    len: u256,
+    unsafe ptr: *T,
+    unsafe len: u256,
 }
 
-/// A read-only view over typed values in linear memory.
+/// A view over typed values in linear memory.
 ///
 /// A slice does not own or allocate its memory: it exists only as the result
-/// of a projection, a view of the owner the projection's session reserves.
-/// Constructing one from raw parts asserts that the entire range is valid
-/// linear memory for that session.
+/// of a projection, a view of the owner the projection's session reserves. A
+/// `ref` slice reads the elements and a `mut` one, from a session that holds
+/// the owner mutably, writes them. Constructing one from raw parts asserts
+/// that the entire range is valid linear memory for that session.
 #[view]
 pub struct MemSlice<T> {
-    ptr: *T,
-    len: u256,
+    unsafe ptr: *T,
+    unsafe len: u256,
 }
 
-/// A read-only byte view over linear memory.
+/// A byte view over linear memory.
 pub type MemSpan = MemSlice<u8>
 
 /// An owned allocation in linear memory.
@@ -56,9 +57,9 @@ pub type MemSpan = MemSlice<u8>
 /// `len` is the logical extent and `capacity` is the full writable allocation.
 /// Neither can exceed the original allocation.
 pub struct MemBuffer {
-    ptr: *u8,
-    len: u256,
-    capacity: u256,
+    unsafe ptr: *u8,
+    unsafe len: u256,
+    unsafe capacity: u256,
 }
 
 /// A fixed-size owned allocation in linear memory.
@@ -66,7 +67,7 @@ pub struct MemBuffer {
 /// Keeping the size in the type lets the backend see constant, nonescaping
 /// allocations and place them in its transient static arena.
 pub struct FixedMemBuffer<const N: usize> {
-    ptr: *u8,
+    unsafe ptr: *u8,
 }
 
 impl<T> Copy for *T {}
@@ -108,14 +109,21 @@ impl<T> MemArray<T> {
     }
 
     pub fn into_bytes(own self) -> MemArray<u8> {
-        MemArray {
-            ptr: cast<T, u8>(self.ptr),
-            len: self.byte_len(),
+        // The same allocation, counted in bytes.
+        unsafe {
+            MemArray {
+                ptr: cast<T, u8>(self.ptr),
+                len: self.byte_len(),
+            }
         }
     }
 
     pub fn as_slice(self) -> ref MemSlice<T> {
         unsafe { MemSlice::from_raw_parts(ptr: self.ptr, len: self.len) }
+    }
+
+    pub fn as_mut_slice(mut self) -> mut MemSlice<T> {
+        unsafe { MemSlice::from_raw_parts_mut(ptr: self.ptr, len: self.len) }
     }
 
     pub fn span(self) -> ref MemSpan {
@@ -124,10 +132,13 @@ impl<T> MemArray<T> {
 
     pub fn into_buffer(own self) -> MemBuffer {
         let len = self.byte_len()
-        MemBuffer {
-            ptr: cast<T, u8>(self.ptr),
-            len,
-            capacity: len,
+        // The array's initialized bytes fill its allocation.
+        unsafe {
+            MemBuffer {
+                ptr: cast<T, u8>(self.ptr),
+                len,
+                capacity: len,
+            }
         }
     }
 
@@ -174,7 +185,7 @@ impl<T> MemArray<T> {
         if i == j {
             return
         }
-        let (a, b) = self.pair_mut(i, j)
+        let (mut a, mut b) = self.pair_mut(i, j)
         let tmp = a
         a = b
         b = tmp
@@ -198,6 +209,15 @@ impl<T> MemSlice<T> {
     pub unsafe fn from_raw_parts(ptr: *T, len: u256) -> ref Self {
         let slice = Self { ptr, len }
         ref slice
+    }
+
+    /// Construct a mutable slice over a raw memory range.
+    ///
+    /// As `from_raw_parts`, and the caller must also hold the range's owner
+    /// mutably for as long as the slice lives.
+    pub unsafe fn from_raw_parts_mut(ptr: *T, len: u256) -> mut Self {
+        var slice = Self { ptr, len }
+        mut slice
     }
 
     /// An empty slice, which views nothing.
@@ -265,6 +285,52 @@ impl<T> MemSlice<T> {
         unsafe { ref *self.ptr_at(index) }
     }
 
+    pub fn at_mut(mut self, _ index: u256) -> mut T {
+        unsafe { mut *self.ptr_at(index) }
+    }
+
+    /// The elements before `mid` and those from `mid` on.
+    pub fn split_at(self, _ mid: u256) -> (ref Self, ref Self) {
+        if mid > self.len {
+            index_out_of_bounds()
+        }
+        // Both halves lie within this slice's range.
+        let head = unsafe { Self { ptr: self.ptr, len: mid } }
+        let tail = unsafe {
+            Self {
+                ptr: offset_bytes(self.ptr, mid * size_of<T>()),
+                len: self.len - mid,
+            }
+        }
+        (ref head, ref tail)
+    }
+
+    /// The elements before `mid` and those from `mid` on, as two mutable
+    /// slices over disjoint ranges.
+    pub fn split_at_mut(mut self, _ mid: u256) -> (mut Self, mut Self) {
+        match self.try_split_at_mut(mid) {
+            Option::Some((mut head, mut tail)) => (mut head, mut tail)
+            Option::None => index_out_of_bounds()
+        }
+    }
+
+    /// As `split_at_mut`, or `None` when `mid` is past the end.
+    pub fn try_split_at_mut(mut self, _ mid: u256) -> Option<(mut Self, mut Self)> {
+        if mid > self.len {
+            return Option::None
+        }
+        // Both halves lie within this slice's range and do not overlap, so
+        // their `mut` grants are disjoint.
+        var head = unsafe { Self { ptr: self.ptr, len: mid } }
+        var tail = unsafe {
+            Self {
+                ptr: offset_bytes(self.ptr, mid * size_of<T>()),
+                len: self.len - mid,
+            }
+        }
+        Option::Some((mut head, mut tail))
+    }
+
     pub fn get(self, _ index: u256) -> Option<T>
         where T: Copy
     {
@@ -304,10 +370,13 @@ impl MemBuffer {
     }
 
     pub fn with_capacity(_ capacity: u256) -> Self {
-        Self {
-            ptr: alloc_raw(capacity),
-            len: 0,
-            capacity,
+        // A fresh allocation of `capacity` bytes, none yet in the extent.
+        unsafe {
+            Self {
+                ptr: alloc_raw(capacity),
+                len: 0,
+                capacity,
+            }
         }
     }
 
@@ -342,6 +411,11 @@ impl MemBuffer {
         unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: self.len) }
     }
 
+    /// The logical byte extent, to write through.
+    pub fn span_mut(mut self) -> mut MemSpan {
+        unsafe { MemSpan::from_raw_parts_mut(ptr: self.ptr, len: self.len) }
+    }
+
     /// View the full allocation, including bytes beyond the logical extent.
     ///
     /// Callers must initialize those additional bytes before reading the span.
@@ -351,6 +425,14 @@ impl MemBuffer {
 
     pub fn slice(self, offset: u256, len: u256) -> ref MemSpan {
         self.span().slice(offset, len)
+    }
+
+    /// The bytes `offset..offset + len`, to write through.
+    pub fn slice_mut(mut self, offset: u256, len: u256) -> mut MemSpan {
+        if offset > self.len || len > self.len - offset {
+            index_out_of_bounds()
+        }
+        unsafe { MemSpan::from_raw_parts_mut(ptr: offset_bytes(self.ptr, offset), len) }
     }
 
     /// Ensure that `additional` bytes fit after the logical extent.
@@ -372,16 +454,22 @@ impl MemBuffer {
         }
 
         let replacement = alloc_raw(capacity)
-        unsafe { copy(dest: replacement, source: self.span()) }
-        self.ptr = replacement
-        self.capacity = capacity
+        // The replacement holds every initialized byte, in `capacity` bytes.
+        unsafe {
+            copy(dest: replacement, source: self.span())
+            self.ptr = replacement
+            self.capacity = capacity
+        }
     }
 
     /// Append bytes, growing the allocation when necessary.
     pub fn extend_from(mut self, _ source: MemSpan) {
         self.reserve(source.len())
-        unsafe { copy(dest: offset_bytes(self.ptr, self.len), source) }
-        self.len += source.len()
+        // `reserve` made room, and the copy initializes the added bytes.
+        unsafe {
+            copy(dest: offset_bytes(self.ptr, self.len), source)
+            self.len += source.len()
+        }
     }
 
     /// Copy bytes into an allocation subrange and extend the logical extent.
@@ -403,7 +491,8 @@ impl MemBuffer {
         }
         let end = dest_offset + source.len()
         if end > self.len {
-            self.len = end
+            // Every byte up to `end` was zeroed or copied, within the capacity.
+            unsafe { self.len = end }
         }
     }
 
@@ -421,7 +510,8 @@ impl MemBuffer {
         if len > self.len {
             index_out_of_bounds()
         }
-        self.len = len
+        // Shrinking keeps every byte of the extent initialized.
+        unsafe { self.len = len }
     }
 
     pub fn is_empty(self) -> bool {
@@ -463,11 +553,19 @@ impl<const N: usize> FixedMemBuffer<N> {
         unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: N as u256) }
     }
 
+    #[inline(always)]
+    pub fn span_mut(mut self) -> mut MemSpan {
+        unsafe { MemSpan::from_raw_parts_mut(ptr: self.ptr, len: N as u256) }
+    }
+
     pub fn into_buffer(own self) -> MemBuffer {
-        MemBuffer {
-            ptr: self.ptr,
-            len: N as u256,
-            capacity: N as u256,
+        // The fixed allocation holds `N` initialized bytes.
+        unsafe {
+            MemBuffer {
+                ptr: self.ptr,
+                len: N as u256,
+                capacity: N as u256,
+            }
         }
     }
 }
@@ -566,6 +664,36 @@ impl<T> Index<usize> for MemSlice<T> {
     #[inline(always)]
     fn index(self, _ index: usize) -> ref T {
         unsafe { ref *self.ptr_at(index as u256) }
+    }
+}
+
+impl<T> IndexMut<usize> for MemSlice<T> {
+    #[inline(always)]
+    fn index_mut(mut self, _ index: usize) -> mut T {
+        unsafe { mut *self.ptr_at(index as u256) }
+    }
+}
+
+impl Index<usize> for MemBuffer {
+    space S = memory
+    type Output = u8
+
+    #[inline(always)]
+    fn index(self, _ index: usize) -> ref u8 {
+        if index as u256 >= self.len {
+            index_out_of_bounds()
+        }
+        unsafe { ref *offset_bytes(self.ptr, index as u256) }
+    }
+}
+
+impl IndexMut<usize> for MemBuffer {
+    #[inline(always)]
+    fn index_mut(mut self, _ index: usize) -> mut u8 {
+        if index as u256 >= self.len {
+            index_out_of_bounds()
+        }
+        unsafe { mut *offset_bytes(self.ptr, index as u256) }
     }
 }
 

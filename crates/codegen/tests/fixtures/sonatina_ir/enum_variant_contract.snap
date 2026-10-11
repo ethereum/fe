@@ -396,34 +396,35 @@ func private %runtime() {
     block8:
         v19.@layout_2 = enum.make @layout_2 #variant_0;
         v20.@layout_2 = enum.make @layout_2 #variant_0;
-        v21.enumtag(@layout_2) = enum.tag v20;
-        br_table v21 (1.enumtag(@layout_2) block12) (0.enumtag(@layout_2) block13);
+        v21.@layout_2 = enum.make @layout_2 #variant_0;
+        v22.enumtag(@layout_2) = enum.tag v21;
+        br_table v22 (1.enumtag(@layout_2) block12) (0.enumtag(@layout_2) block13);
 
     block9:
         jump block10;
 
     block10:
-        v24.i1 = eq v4 3572425762.i256;
-        br v24 block14 block15;
+        v25.i1 = eq v4 3572425762.i256;
+        br v25 block14 block15;
 
     block11:
-        v25.i256 = phi (v27 block12) (0.i256 block13);
-        call %abi_encode_u256 v25;
+        v26.i256 = phi (v28 block12) (0.i256 block13);
+        call %abi_encode_u256 v26;
         unreachable;
 
     block12:
         enum.assert_variant v20 #variant_1;
-        v27.i256 = enum.extract v20 #variant_1 0.i256;
+        v28.i256 = enum.extract v20 #variant_1 0.i256;
         jump block11;
 
     block13:
         jump block11;
 
     block14:
-        v28.i256 = call %calldataload 4.i256;
-        v29.@layout_2 = enum.make @layout_2 #variant_1 v28;
-        v30.enumtag(@layout_2) = enum.tag v29;
-        br_table v30 (1.enumtag(@layout_2) block18) (0.enumtag(@layout_2) block19);
+        v29.i256 = call %calldataload 4.i256;
+        v30.@layout_2 = enum.make @layout_2 #variant_1 v29;
+        v31.enumtag(@layout_2) = enum.tag v30;
+        br_table v31 (1.enumtag(@layout_2) block18) (0.enumtag(@layout_2) block19);
 
     block15:
         jump block16;
@@ -432,8 +433,8 @@ func private %runtime() {
         jump block21;
 
     block17:
-        v31.i256 = phi (1.i256 block18) (0.i256 block19);
-        call %abi_encode_u256 v31;
+        v32.i256 = phi (1.i256 block18) (0.i256 block19);
+        call %abi_encode_u256 v32;
         unreachable;
 
     block18:
@@ -447,23 +448,23 @@ func private %runtime() {
         unreachable;
 
     block21:
-        v34.*i8 = evm_malloc 0.i256;
-        v35.i256 = ptr_to_int v34 i256;
-        v36.i256 = call %cast__gf0ab v35;
+        v35.*i8 = evm_malloc 0.i256;
+        v36.i256 = ptr_to_int v35 i256;
+        v37.i256 = call %cast__gf0ab v36;
         jump block23;
 
     block22:
         jump block20;
 
     block23:
-        v40.@layout_1 = insert_value undef.@layout_1 0.i256 v36;
-        v42.@layout_1 = insert_value v40 1.i256 0.i256;
-        v43.objref<i256> = obj.proj v0 0.i256;
-        v44.i256 = extract_value v42 0.i256;
-        obj.store v43 v44;
-        v45.objref<i256> = obj.proj v0 1.i256;
-        v46.i256 = extract_value v42 1.i256;
-        obj.store v45 v46;
+        v41.@layout_1 = insert_value undef.@layout_1 0.i256 v37;
+        v43.@layout_1 = insert_value v41 1.i256 0.i256;
+        v44.objref<i256> = obj.proj v0 0.i256;
+        v45.i256 = extract_value v43 0.i256;
+        obj.store v44 v45;
+        v46.objref<i256> = obj.proj v0 1.i256;
+        v47.i256 = extract_value v43 1.i256;
+        obj.store v46 v47;
         jump block22;
 }
 

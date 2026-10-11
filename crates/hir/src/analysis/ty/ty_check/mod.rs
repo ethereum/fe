@@ -62,7 +62,7 @@ pub use owner::EffectParamOwner;
 use std::{iter, sync::Arc};
 pub use stmt::{ForLoopCall, ForLoopItem, ForLoopPlan, ForLoopStep};
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 
 use crate::analysis::place::{
@@ -74,8 +74,8 @@ use super::{
     assoc_const::{AssocConstUse, InherentConstUse},
     canonical::Canonical,
     diagnostics::{
-        BodyDiag, CallConstraintDiagInfo, FuncBodyDiag, StaticAssertComparisonValues,
-        TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
+        BodyDiag, CallConstraintDiagInfo, FuncBodyDiag, MarkerPosition,
+        StaticAssertComparisonValues, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
@@ -805,6 +805,9 @@ pub(super) enum AccessBinding {
     /// A projection's result, or the components of a named access: each
     /// binding takes a value or an access by `TyChecker::binding_access_kind`.
     Result,
+    /// A projection's result bound whole to the single name of a `let`: a
+    /// `mut` result stays the access, as `let x = xs.at_mut(0)`.
+    LetResult,
 }
 
 /// A body checked by the pipeline every kind of body takes: inference with
@@ -1280,6 +1283,7 @@ fn typed_body_for_bodyless_func<'db>(
         place_entries: FxHashSet::default(),
         unsafe_splits: FxHashSet::default(),
         matched_places: FxHashSet::default(),
+        inspected_places: FxHashSet::default(),
         covered_providers: FxHashSet::default(),
         const_refs: SecondaryMap::new(),
         value_path_refs: SecondaryMap::new(),
@@ -1329,6 +1333,16 @@ pub struct TyChecker<'db> {
     explicit_yields: bool,
     effect_provider_keys: FxHashSet<InferenceKey<'db>>,
     first_return_borrow_provider: Option<ProviderAddressSpace>,
+    /// Plain names a reported marker on their initializer marks, so the body
+    /// checks as the fix reads.
+    implied_markers: FxHashMap<PatId, BindingMarker>,
+    /// Markers on initializers, reported once their pattern's names are
+    /// known: the marked expression, whether it is `mut`, where it stands
+    /// and the plain names it implies a marker for.
+    initializer_markers: Vec<(ExprId, bool, MarkerPosition, Vec<PatId>)>,
+    /// Plain names that take a value from a mutable place or grant, which
+    /// `mut` would write through.
+    mutable_sources: FxHashSet<PatId>,
     diags: Vec<FuncBodyDiag<'db>>,
 }
 
@@ -1396,6 +1410,7 @@ impl<'db> TyChecker<'db> {
         }
         self.check_access_uses();
         self.check_marked_bindings();
+        self.report_initializer_markers();
     }
 
     /// Reports the non-`Copy` values moved out of closures' captures.
@@ -2512,6 +2527,9 @@ impl<'db> TyChecker<'db> {
             explicit_yields,
             effect_provider_keys: FxHashSet::default(),
             first_return_borrow_provider: None,
+            implied_markers: FxHashMap::default(),
+            initializer_markers: Vec::new(),
+            mutable_sources: FxHashSet::default(),
             diags: Vec::new(),
         }
     }
@@ -2895,23 +2913,31 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// Binds `pat` to what `source` grants, when it grants accesses: see
-    /// `AccessBinding` for how each kind of source binds.
-    fn bind_pattern_source(&mut self, pat: PatId, source: ExprId, prop: &ExprProp<'db>) {
+    /// Binds `pat`, the pattern of a `let` when `is_let`, to what `source`
+    /// grants, when it grants accesses: see `AccessBinding` for how each kind
+    /// of source binds.
+    fn bind_pattern_source(
+        &mut self,
+        pat: PatId,
+        source: ExprId,
+        prop: &ExprProp<'db>,
+        is_let: bool,
+    ) {
         let Some(shape) = &prop.shape else {
             return;
         };
         self.consume_access(source);
         let authority = self.expr_has_authority(source);
+        let single_name = matches!(
+            pat.data(self.db, self.body()),
+            Partial::Present(Pat::Path(..))
+        );
         let binding = if self.env.is_matched_place(source) {
             AccessBinding::Place
-        } else if self.is_named_access(source)
-            && matches!(
-                pat.data(self.db, self.body()),
-                Partial::Present(Pat::Path(..))
-            )
-        {
+        } else if single_name && self.is_named_access(source) {
             AccessBinding::Named
+        } else if single_name && is_let {
+            AccessBinding::LetResult
         } else {
             AccessBinding::Result
         };
@@ -2972,8 +2998,11 @@ impl<'db> TyChecker<'db> {
     /// A pattern matched against a place binds its components there: a `mut`
     /// binding opens a `mut` access on its component's path and a `ref`
     /// binding a read access, and the other bindings take their component's
-    /// value. Index syntax `t[i]` selects `index_mut` for a `mut` binding and
-    /// is destructured as that projection's result.
+    /// value, or a read access to a component with no value reading. A
+    /// non-`Copy` place is matched there even without markers, so a pattern
+    /// moves only what its names bind; its tests read the place's value
+    /// (`is_inspected_place`). Index syntax `t[i]` selects `index_mut` for a
+    /// `mut` binding and is destructured as that projection's result.
     fn open_matched_place(
         &mut self,
         scrutinee: ExprId,
@@ -2981,12 +3010,19 @@ impl<'db> TyChecker<'db> {
         pats: impl IntoIterator<Item = PatId>,
     ) -> ExprProp<'db> {
         let pats: Vec<_> = pats.into_iter().collect();
+        if prop.is_mut && self.env.is_place_expr(scrutinee) {
+            self.record_mutable_sources(&pats);
+        }
         let marked = |this: &Self, marker| {
             pats.iter()
                 .find_map(|pat| this.first_marked_binding(*pat, marker))
         };
         let mut_pat = marked(self, BindingMarker::Mut);
-        if (mut_pat.is_none() && marked(self, BindingMarker::Ref).is_none())
+        let ty = prop.ty.fold_with(self.db, &mut self.table);
+        let inspected = mut_pat.is_none()
+            && marked(self, BindingMarker::Ref).is_none()
+            && ty.has_value_reading(self.db);
+        if inspected && (ty.has_invalid(self.db) || self.ty_is_copy(ty))
             || !self.env.is_place_expr(scrutinee)
         {
             return prop;
@@ -3016,19 +3052,9 @@ impl<'db> TyChecker<'db> {
             shape: Some(Shape::Access(kind, prop.ty)),
             ..prop
         };
-        self.env.open_matched_place(scrutinee, prop.clone());
+        self.env
+            .open_matched_place(scrutinee, prop.clone(), inspected);
         prop
-    }
-
-    /// A `#[view]` type is never accessed by `mut`.
-    pub(super) fn check_view_mut_access(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) {
-        if ty.is_view(self.db) {
-            self.push_diag(TyDiagCollection::from(TyLowerDiag::ViewTypeMode {
-                span,
-                ty,
-                mode: "accessed by `mut`",
-            }));
-        }
     }
 
     /// The first binding in `pat` marked `marker`.
@@ -3037,7 +3063,7 @@ impl<'db> TyChecker<'db> {
             return None;
         };
         match pat_data {
-            Pat::Path(_, binding) if *binding == marker => Some(pat),
+            Pat::Path(_, binding) if self.binding_marker(pat, *binding) == marker => Some(pat),
             Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Path(..) => None,
             Pat::Tuple(pats) | Pat::PathTuple(_, pats) => pats
                 .iter()
@@ -3048,6 +3074,119 @@ impl<'db> TyChecker<'db> {
             Pat::Or(lhs, rhs) => self
                 .first_marked_binding(*lhs, marker)
                 .or_else(|| self.first_marked_binding(*rhs, marker)),
+        }
+    }
+
+    /// The marker the binding `pat`, written with `marker`, takes: its own,
+    /// or for a plain name the one a reported marker on its initializer
+    /// implies.
+    pub(super) fn binding_marker(&self, pat: PatId, marker: BindingMarker) -> BindingMarker {
+        match marker {
+            BindingMarker::Plain => self.implied_markers.get(&pat).copied().unwrap_or(marker),
+            _ => marker,
+        }
+    }
+
+    /// `ref p` or `mut p` standing as `source`, the scrutinee or initializer
+    /// of `pats` or a loop's base, where markers belong on the names the
+    /// patterns bind. Each plain name takes the marker, so the body checks
+    /// as the fix reads; the report waits until the names are known.
+    /// Returns the marker.
+    pub(super) fn take_initializer_marker(
+        &mut self,
+        source: ExprId,
+        pats: &[PatId],
+        position: MarkerPosition,
+    ) -> Option<BindingMarker> {
+        let (marked, marker) = self.initializer_marker(source)?;
+        let mut names = Vec::new();
+        for &pat in pats {
+            self.collect_plain_names(pat, &mut names);
+        }
+        for &name in &names {
+            self.implied_markers.insert(name, marker);
+        }
+        self.initializer_markers
+            .push((marked, marker == BindingMarker::Mut, position, names));
+        Some(marker)
+    }
+
+    /// The `ref p` or `mut p` that `expr` is or ends in, with its marker.
+    fn initializer_marker(&self, expr: ExprId) -> Option<(ExprId, BindingMarker)> {
+        match self.env.expr_data(expr) {
+            Partial::Present(Expr::Un(_, UnOp::Ref)) => Some((expr, BindingMarker::Ref)),
+            Partial::Present(Expr::Un(_, UnOp::Mut)) => Some((expr, BindingMarker::Mut)),
+            Partial::Present(Expr::Block(stmts, _)) => {
+                match stmts.last()?.data(self.db, self.body()) {
+                    Partial::Present(Stmt::Expr(tail)) => self.initializer_marker(*tail),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// The unmarked path patterns in `pat`, which are its plain names once
+    /// resolved.
+    fn collect_plain_names(&self, pat: PatId, names: &mut Vec<PatId>) {
+        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
+            return;
+        };
+        match pat_data {
+            Pat::Path(_, BindingMarker::Plain) => names.push(pat),
+            Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Path(..) => {}
+            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
+                for &pat in pats {
+                    self.collect_plain_names(pat, names);
+                }
+            }
+            Pat::Record(_, fields) => {
+                for field in fields {
+                    self.collect_plain_names(field.pat, names);
+                }
+            }
+            Pat::Or(lhs, rhs) => {
+                self.collect_plain_names(*lhs, names);
+                self.collect_plain_names(*rhs, names);
+            }
+        }
+    }
+
+    /// Notes the plain names in `pats` as taking values from a mutable place
+    /// or grant.
+    pub(super) fn record_mutable_sources(&mut self, pats: &[PatId]) {
+        let mut names = Vec::new();
+        for &pat in pats {
+            self.collect_plain_names(pat, &mut names);
+        }
+        self.mutable_sources.extend(names);
+    }
+
+    /// Reports the markers on initializers, labelling the plain names the
+    /// marker belongs on.
+    fn report_initializer_markers(&mut self) {
+        let body = self.body();
+        for (marked, marker, position, names) in std::mem::take(&mut self.initializer_markers) {
+            let names = names
+                .into_iter()
+                .filter(|&pat| {
+                    matches!(self.env.pat_binding(pat), Some(LocalBinding::Local { .. }))
+                })
+                .filter_map(|pat| {
+                    let Partial::Present(Pat::Path(Partial::Present(path), _)) =
+                        pat.data(self.db, body)
+                    else {
+                        return None;
+                    };
+                    Some((path.as_ident(self.db)?, pat.span(body).into()))
+                })
+                .collect();
+            self.push_diag(BodyDiag::InitializerMarker {
+                primary: marked.span(body).into_un_expr().op().into(),
+                marker,
+                position,
+                names,
+            });
         }
     }
 
@@ -3141,12 +3280,13 @@ impl<'db> TyChecker<'db> {
                     return;
                 };
                 let ty = ty.fold_with(self.db, &mut self.table);
-                let Some(access) = self.binding_access_kind(pat, ty, *marker, kind, binding) else {
+                let marker = self.binding_marker(pat, *marker);
+                let Some(access) = self.binding_access_kind(pat, ty, marker, kind, binding) else {
+                    if kind == BorrowKind::Mut && marker == BindingMarker::Plain {
+                        self.mutable_sources.insert(pat);
+                    }
                     return;
                 };
-                if access == BorrowKind::Mut {
-                    self.check_view_mut_access(ty, pat.span(self.body()).into());
-                }
                 self.env.set_pat_binding_mode(
                     pat,
                     PatBindingMode::Access {
@@ -3178,10 +3318,12 @@ impl<'db> TyChecker<'db> {
     ///
     /// `ref x` is a read access and `mut x` a `mut` access, never a copy;
     /// `var x` is a mutable value. A plain name takes a value as `let x = e`
-    /// does, except that a `mut` result and a `#[view]` one (which has no
-    /// value reading) are bound as the access. A value of a projection's read
-    /// result is a copy, so a non-`Copy` one needs `ref`; one of a `mut`
-    /// result may move, as through any `mut` access.
+    /// does, except that a type with no value reading (`#[view]` or
+    /// state-only) binds a read access, whatever the grant's mode, and a
+    /// `let` binding a `mut` result whole keeps it. A value of a read result
+    /// is a copy, so a non-`Copy`
+    /// one needs `ref`; one of a `mut` result may move, as through any `mut`
+    /// access.
     fn binding_access_kind(
         &mut self,
         pat: PatId,
@@ -3193,8 +3335,15 @@ impl<'db> TyChecker<'db> {
         let primary = || pat.span(self.body()).into();
         match (binding, marker) {
             (_, BindingMarker::Ref) => Some(BorrowKind::Ref),
+            (_, BindingMarker::Var) if !ty.has_value_reading(self.db) => {
+                self.push_diag(BodyDiag::VarOfNoValue {
+                    primary: primary(),
+                    ty,
+                });
+                Some(BorrowKind::Ref)
+            }
             (AccessBinding::Place, BindingMarker::Mut) => Some(BorrowKind::Mut),
-            (AccessBinding::Place, BindingMarker::Plain) if ty.is_view(self.db) => {
+            (AccessBinding::Place, BindingMarker::Plain) if !ty.has_value_reading(self.db) => {
                 Some(BorrowKind::Ref)
             }
             (AccessBinding::Place, _) => None,
@@ -3204,12 +3353,16 @@ impl<'db> TyChecker<'db> {
             }
             (AccessBinding::Named, _) => Some(kind),
             _ if ty.has_invalid(self.db) => Some(kind),
-            (AccessBinding::Result, BindingMarker::Mut) if kind == BorrowKind::Mut => Some(kind),
-            (AccessBinding::Result, BindingMarker::Mut) => {
+            (_, BindingMarker::Mut) if kind == BorrowKind::Mut => Some(kind),
+            (_, BindingMarker::Mut) => {
                 self.push_diag(BodyDiag::MutBindingOfRead { primary: primary() });
                 Some(BorrowKind::Ref)
             }
-            (AccessBinding::Result, BindingMarker::Var) if self.ty_is_copy(ty) => {
+            (AccessBinding::LetResult, BindingMarker::Plain) if kind == BorrowKind::Mut => {
+                Some(kind)
+            }
+            (_, BindingMarker::Plain) if !ty.has_value_reading(self.db) => Some(BorrowKind::Ref),
+            (_, BindingMarker::Var) if self.ty_is_copy(ty) => {
                 if kind == BorrowKind::Mut {
                     self.push_diag(BodyDiag::MutAccessCopied {
                         primary: primary(),
@@ -3218,14 +3371,9 @@ impl<'db> TyChecker<'db> {
                 }
                 None
             }
-            (AccessBinding::Result, BindingMarker::Plain)
-                if kind == BorrowKind::Mut || ty.is_view(self.db) =>
-            {
-                Some(kind)
-            }
-            (AccessBinding::Result, BindingMarker::Plain) if self.ty_is_copy(ty) => None,
-            (AccessBinding::Result, BindingMarker::Var) if kind == BorrowKind::Mut => None,
-            (AccessBinding::Result, BindingMarker::Plain | BindingMarker::Var) => {
+            (_, BindingMarker::Plain) if self.ty_is_copy(ty) => None,
+            (_, BindingMarker::Plain | BindingMarker::Var) if kind == BorrowKind::Mut => None,
+            (_, BindingMarker::Plain | BindingMarker::Var) => {
                 self.push_diag(BodyDiag::RefBindingRequired {
                     primary: primary(),
                     ty,
@@ -3246,6 +3394,10 @@ impl<'db> TyChecker<'db> {
             )) = data
                 && let Some(binding @ LocalBinding::Local { .. }) = self.env.pat_binding(pat)
                 && self.env.binding_access(&binding).is_none()
+                && self
+                    .env
+                    .pat_ty(pat)
+                    .is_some_and(|ty| !ty.fold_with(self.db, &mut self.table).has_invalid(self.db))
             {
                 self.push_diag(BodyDiag::MarkedBindingWithoutAccess {
                     primary: pat.span(body).into(),
@@ -3274,7 +3426,10 @@ impl<'db> TyChecker<'db> {
                     if self.env.get_block(current).lookup_var(ident).is_none() {
                         let binding = LocalBinding::local(
                             pat,
-                            matches!(marker, BindingMarker::Var | BindingMarker::Mut),
+                            matches!(
+                                self.binding_marker(pat, *marker),
+                                BindingMarker::Var | BindingMarker::Mut
+                            ),
                         );
                         self.env.register_pending_binding(ident, binding);
                     }
@@ -3702,9 +3857,11 @@ mod typed_body_tables {
         /// The tuples that are unsafe splits: an `unsafe` block's tail tuple
         /// of accesses, granted by one session.
         pub(super) unsafe_splits: FxHashSet<ExprId>,
-        /// The places a pattern with `ref` or `mut` bindings is matched
-        /// against, which bind each component where it lies.
+        /// The places a pattern is matched against, which bind each
+        /// component where it lies.
         pub(super) matched_places: FxHashSet<ExprId>,
+        /// The matched places whose patterns have no `ref` or `mut` binding.
+        pub(super) inspected_places: FxHashSet<ExprId>,
         /// `with` values whose resources the function's own authority covers.
         pub(super) covered_providers: FxHashSet<ExprId>,
         pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
@@ -4366,10 +4523,16 @@ impl<'db> TypedBody<'db> {
         self.tables.place_entries.contains(&expr)
     }
 
-    /// Whether `expr` is a place a pattern with `ref` or `mut` bindings is
-    /// matched against: its bindings take their components where they lie.
+    /// Whether `expr` is a place a pattern is matched against: its bindings
+    /// take their components where they lie.
     pub fn is_matched_place(&self, expr: ExprId) -> bool {
         self.tables.matched_places.contains(&expr)
+    }
+
+    /// Whether the matched place `expr` has no `ref` or `mut` binding, so
+    /// its tests read its value rather than open an access to it.
+    pub fn is_inspected_place(&self, expr: ExprId) -> bool {
+        self.tables.inspected_places.contains(&expr)
     }
 
     /// Whether the tuple `expr` is an unsafe split: one session granting
@@ -5733,6 +5896,7 @@ impl<'db> TypedBody<'db> {
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
             matched_places: FxHashSet::default(),
+            inspected_places: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
             const_refs: SecondaryMap::new(),
             value_path_refs: SecondaryMap::new(),
@@ -6263,7 +6427,8 @@ impl<'db> TyCheckerFinalizer<'db> {
 
     /// A call constructing a state-only value, or instantiating its callee
     /// so that a state-only value would pass through an `own` parameter or
-    /// an owned return.
+    /// an owned return. A variant constructor at a projection's yield site
+    /// builds the sum shape it yields, not a value.
     fn check_state_only_call(
         &mut self,
         callable: &Callable<'db>,
@@ -6272,6 +6437,9 @@ impl<'db> TyCheckerFinalizer<'db> {
     ) {
         let db = self.db;
         if let CallableDef::VariantCtor(_) = callable.callable_def {
+            if matches!(self.body.yield_shape(expr), Some(Shape::Sum { .. })) {
+                return;
+            }
             let ty = self.body.expr_prop(db, expr).ty;
             return self.check_state_only_value(ty, span, "constructed as a value");
         }

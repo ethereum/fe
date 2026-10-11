@@ -7,9 +7,9 @@ use crate::analysis::{
     HirAnalysisDb,
     semantic::{
         LayoutBackingPlace, SBlock, SBlockId, SConst, SEffectArgValue, SExpr, SLocalId, SStmt,
-        SStmtKind, SemConstId, SemConstValue, SemanticBody, array_const, enum_const,
-        instance::SemanticInstance, reify_runtime_const_for_ty, sem_const_from_ty, struct_const,
-        tuple_const,
+        SStmtKind, STerminatorKind, SemConstId, SemConstValue, SemanticBody, array_const,
+        enum_const, instance::SemanticInstance, reify_runtime_const_for_ty, sem_const_from_ty,
+        struct_const, tuple_const,
     },
     ty::{
         const_ty::evaluate_type_level_const_ty,
@@ -169,12 +169,20 @@ fn canonicalize_block<'db>(
     block: &SBlock<'db>,
     locals: &mut LocalConstMap<'db>,
 ) -> SBlock<'db> {
+    let stmts = block
+        .stmts
+        .iter()
+        .map(|stmt| canonicalize_stmt(cx, stmt, locals))
+        .collect();
+    // A projection's caller may write through the granted value before the
+    // slide resumes.
+    if let STerminatorKind::Yield { value, .. } = &block.terminator.kind {
+        for root in &cx.local_roots[value.value.index()] {
+            locals[root.index()] = None;
+        }
+    }
     SBlock {
-        stmts: block
-            .stmts
-            .iter()
-            .map(|stmt| canonicalize_stmt(cx, stmt, locals))
-            .collect(),
+        stmts,
         terminator: block.terminator.clone(),
     }
 }
@@ -267,7 +275,9 @@ fn collect_local_roots(body: &SemanticBody<'_>) -> LocalRoots {
                         | SExpr::Cast { value, .. }
                         | SExpr::ArrayRepeat { value, .. }
                         | SExpr::ExtractEnumField { value, .. } => vec![value.value],
-                        SExpr::ReadPlace { place } => vec![place.local],
+                        SExpr::ReadPlace { place } | SExpr::InspectPlace { place } => {
+                            vec![place.local]
+                        }
                         SExpr::Field { base, .. } | SExpr::Index { base, .. } => vec![base.value],
                         SExpr::AggregateMake { fields, .. } | SExpr::EnumMake { fields, .. } => {
                             fields.iter().map(|field| field.value).collect()

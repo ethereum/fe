@@ -51,6 +51,14 @@ impl Cell {
         self.v *= 2
     }
 
+    // The slide reads what the caller wrote through the grant, though the
+    // temporary started as a constant.
+    fn from_zero(mut self) -> mut u256 {
+        var tmp: u256 = 0
+        yield mut tmp
+        self.v = tmp + 1
+    }
+
     // A projection whose yield is another projection's grant: the inner
     // session ends with the outer one.
     fn via(mut self) -> mut u256 {
@@ -76,6 +84,14 @@ fn write_back_lands_after_the_last_use() {
     let x = cell.cached()
     x += 5
     assert!(cell.v == 6)
+}
+
+#[test]
+fn slide_reads_the_callers_writes() {
+    var cell = Cell { v: 1 }
+    let x = cell.from_zero()
+    x = 9
+    assert!(cell.v == 10)
 }
 
 #[test]
@@ -113,10 +129,10 @@ fn every_exit_ends_the_session() {
 #[test]
 fn optional_projection_slides_only_when_present() {
     var cell = Cell { v: 1 }
-    if let Option::Some(x) = cell.entry(true) {
+    if let Option::Some(mut x) = cell.entry(true) {
         x += 2
     }
-    if let Option::Some(x) = cell.entry(false) {
+    if let Option::Some(mut x) = cell.entry(false) {
         x += 100
     }
     assert!(cell.v == 3)
@@ -125,13 +141,13 @@ fn optional_projection_slides_only_when_present() {
 #[test]
 fn empty_variant_finishes_the_ramp_sessions() {
     var cell = Cell { v: 1 }
-    if let Option::Some(x) = cell.maybe_via(true) {
+    if let Option::Some(mut x) = cell.maybe_via(true) {
         x += 1
     }
     assert!(cell.v == 14)
 
     var other = Cell { v: 1 }
-    if let Option::Some(x) = other.maybe_via(false) {
+    if let Option::Some(mut x) = other.maybe_via(false) {
         x += 100
     }
     assert!(other.v == 6)

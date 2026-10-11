@@ -41,37 +41,46 @@ error[3-0061]: `StorageMap<u256, u256>` is state-only
    = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
 error[3-0061]: `StorageMap<u256, u256>` is state-only
-   ┌─ state_only_types.fe:52:13
+   ┌─ state_only_types.fe:63:9
    │
-52 │         let m = ledger.balances
-   │             ^ a state-only type cannot be bound by value
-   │
-   = `StorageMap<u256, u256>` is pinned to storage by its `StateIndex` implementation
-   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
-
-error[3-0061]: `Pair<StorageMap<u256, u256>>` is state-only
-   ┌─ state_only_types.fe:57:13
-   │
-57 │         let p = pair
-   │             ^ a state-only type cannot be bound by value
-   │
-   = `Pair<StorageMap<u256, u256>>` holds `StorageMap<u256, u256>`, which is pinned to storage
-   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
-
-error[3-0061]: `StorageMap<u256, u256>` is state-only
-   ┌─ state_only_types.fe:59:9
-   │
-59 │         identity(ledger.balances)
+63 │         identity(ledger.balances)
    │         ^^^^^^^^^^^^^^^^^^^^^^^^^ a state-only type cannot be passed or returned by value
    │
    = `StorageMap<u256, u256>` is pinned to storage by its `StateIndex` implementation
    = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
 error[3-0061]: `Ledger` is state-only
-   ┌─ state_only_types.fe:61:15
+   ┌─ state_only_types.fe:65:15
    │
-61 │         total(Ledger { balances: ledger.balances, total: 0 })
+65 │         total(Ledger { balances: ledger.balances, total: 0 })
    │               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
    │
    = `Ledger` holds `StorageMap<u256, u256>`, which is pinned to storage
    = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Option<StorageMap<u256, u256>>` is state-only
+   ┌─ state_only_types.fe:68:13
+   │
+68 │         let wrapped = Option::Some(ledger.balances)
+   │             ^^^^^^^ a state-only type cannot be bound by value
+   │
+   = `Option<StorageMap<u256, u256>>` holds `StorageMap<u256, u256>`, which is pinned to storage
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[3-0061]: `Option<StorageMap<u256, u256>>` is state-only
+   ┌─ state_only_types.fe:68:23
+   │
+68 │         let wrapped = Option::Some(ledger.balances)
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
+   │
+   = `Option<StorageMap<u256, u256>>` holds `StorageMap<u256, u256>`, which is pinned to storage
+   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
+
+error[8-0018]: left-hand side of assignment is immutable
+   ┌─ state_only_types.fe:55:9
+   │
+53 │         let m = ledger.balances
+   │             - `m` is a read access; bind it with `mut` to write through it
+54 │         let seen = m[1]
+55 │         m[1] = seen
+   │         ^^^^ immutable assignment

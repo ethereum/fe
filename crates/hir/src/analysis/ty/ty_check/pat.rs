@@ -421,7 +421,10 @@ impl<'db> TyChecker<'db> {
         {
             let binding = LocalBinding::local(
                 pat,
-                matches!(marker, BindingMarker::Var | BindingMarker::Mut),
+                matches!(
+                    self.binding_marker(pat, *marker),
+                    BindingMarker::Var | BindingMarker::Mut
+                ),
             );
             let mut is_valid = true;
             if let Some(LocalBinding::Local {

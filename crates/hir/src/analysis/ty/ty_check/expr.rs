@@ -40,7 +40,10 @@ use crate::analysis::ty::{
     corelib::{
         resolve_core_range_types, resolve_core_trait, resolve_lib_func_path, resolve_lib_type_path,
     },
-    diagnostics::{BodyDiag, FuncBodyDiag, MustUseSubject, TraitConstraintDiag, TyDiagCollection},
+    diagnostics::{
+        BodyDiag, FuncBodyDiag, MarkerPosition, MustUseSubject, MutabilityFix, TraitConstraintDiag,
+        TyDiagCollection,
+    },
     effects::{
         BarrierReason, EffectBarrier, EffectKeyKind, EffectPatternKey, EffectQuery,
         EffectRequirementDecl, EffectRequirementKey, EffectWitness, ForwardedEffectKey,
@@ -890,8 +893,6 @@ impl<'db> TyChecker<'db> {
                     self.report_cannot_borrow_mut(*lhs, expr.span(self.body()).into());
                     return ExprProp::invalid(self.db);
                 }
-                let ty = place_ty.fold_with(self.db, &mut self.table);
-                self.check_view_mut_access(ty, expr.span(self.body()).into());
                 BorrowKind::Mut
             } else {
                 BorrowKind::Ref
@@ -1463,9 +1464,10 @@ impl<'db> TyChecker<'db> {
     fn check_let_condition(&mut self, pat: PatId, scrutinee: ExprId) -> ExprProp<'db> {
         let scrutinee_ty = self.fresh_ty();
         let scrutinee_prop = self.check_expr(scrutinee, scrutinee_ty);
+        self.take_initializer_marker(scrutinee, &[pat], MarkerPosition::Scrutinee);
         let scrutinee_prop = self.open_matched_place(scrutinee, scrutinee_prop, [pat]);
         self.check_pat(pat, scrutinee_prop.ty);
-        self.bind_pattern_source(pat, scrutinee, &scrutinee_prop);
+        self.bind_pattern_source(pat, scrutinee, &scrutinee_prop, false);
 
         ExprProp::new(TyId::bool(self.db), true)
     }
@@ -4794,8 +4796,9 @@ impl<'db> TyChecker<'db> {
         let Partial::Present(arms) = arms else {
             return ExprProp::invalid(self.db);
         };
-        let scrutinee_prop =
-            self.open_matched_place(*scrutinee, scrutinee_prop, arms.iter().map(|arm| arm.pat));
+        let arm_pats: Vec<_> = arms.iter().map(|arm| arm.pat).collect();
+        self.take_initializer_marker(*scrutinee, &arm_pats, MarkerPosition::Scrutinee);
+        let scrutinee_prop = self.open_matched_place(*scrutinee, scrutinee_prop, arm_pats);
 
         let mut match_ty = expected;
         let mut first_provider: Option<super::ProviderAddressSpace> = None;
@@ -4805,7 +4808,7 @@ impl<'db> TyChecker<'db> {
 
         for arm in arms.iter() {
             let pat_result = self.check_pat(arm.pat, scrutinee_pat_ty);
-            self.bind_pattern_source(arm.pat, *scrutinee, &scrutinee_prop);
+            self.bind_pattern_source(arm.pat, *scrutinee, &scrutinee_prop, false);
             arm_statuses.push(pat_result.analysis);
 
             self.env.enter_scope(arm.body);
@@ -5275,21 +5278,33 @@ impl<'db> TyChecker<'db> {
             if self.report_write_to_capture(binding, lhs.span(self.body()).into()) {
                 return AssignLhsStatus::Immutable;
             }
-            let diag = match binding {
-                Some(binding) => {
-                    let (ident, def_span) =
-                        (binding.binding_name(&self.env), binding.def_span(&self.env));
-
-                    BodyDiag::ImmutableAssignment {
-                        primary: lhs.span(self.body()).into(),
-                        binding: Some((ident, def_span)),
+            let binding = binding.map(|binding| {
+                let ident = binding.binding_name(&self.env);
+                let fix = match binding {
+                    LocalBinding::Local { pat, .. } => {
+                        if self.env.binding_access(&binding).is_some() {
+                            MutabilityFix::ReadAccess
+                        } else if self.mutable_sources.contains(&pat) {
+                            MutabilityFix::MutComponent
+                        } else {
+                            MutabilityFix::Var
+                        }
                     }
-                }
-
-                None => BodyDiag::ImmutableAssignment {
-                    primary: lhs.span(self.body()).into(),
-                    binding: None,
-                },
+                    LocalBinding::Param { mode, .. } => {
+                        match (mode == FuncParamMode::Own, ident.is_self(self.db)) {
+                            (true, true) => MutabilityFix::OwnSelf,
+                            (true, false) => MutabilityFix::OwnParam,
+                            (false, true) => MutabilityFix::ViewSelf,
+                            (false, false) => MutabilityFix::ViewParam,
+                        }
+                    }
+                    LocalBinding::EffectParam { .. } => MutabilityFix::Effect,
+                };
+                (ident, binding.def_span(&self.env), fix)
+            });
+            let diag = BodyDiag::ImmutableAssignment {
+                primary: lhs.span(self.body()).into(),
+                binding,
             };
 
             self.push_diag(diag);

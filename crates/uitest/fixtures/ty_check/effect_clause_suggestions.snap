@@ -8,7 +8,7 @@ error[8-0018]: left-hand side of assignment is immutable
    ┌─ effect_clause_suggestions.fe:20:13
    │
 19 │         Set { v } uses (total) {
-   │                         ----- try changing to `mut total`
+   │                         ----- write `mut total` in `uses` to write it
 20 │             total = v
    │             ^^^^^ immutable assignment
 
@@ -16,7 +16,7 @@ error[8-0018]: left-hand side of assignment is immutable
    ┌─ effect_clause_suggestions.fe:23:13
    │
 22 │         Bump uses (balances) {
-   │                    -------- try changing to `mut balances`
+   │                    -------- write `mut balances` in `uses` to write it
 23 │             balances[1] += 1
    │             ^^^^^^^^^^^ immutable assignment
 

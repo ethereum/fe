@@ -191,7 +191,7 @@ struct Counter { value: u256 }
 impl Counter { fn increment(mut self) { self.value += 1 } }
 struct Wrapper { counter: Counter }
 impl Wrapper {
-    fn valid(mut own self) { self.counter.increment() }
+    fn valid(var own self) { self.counter.increment() }
 }
 fn make() -> Counter { Counter { value: 0 } }
 fn valid(var counter: own Counter, pointer: *Counter) {

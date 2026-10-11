@@ -86,11 +86,11 @@ fn sum_shapes() {
         Option::None => {}
     }
 
-    if let Option::Some(x) = a.cached(1) {
+    if let Option::Some(mut x) = a.cached(1) {
         x += 10
     }
     assert!(a.xs[1] == 16)
-    if let Option::Some(x) = a.cached(2) {
+    if let Option::Some(mut x) = a.cached(2) {
         x += 10
     }
     assert!(a.xs[2] == 7)

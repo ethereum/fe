@@ -36,7 +36,7 @@ pub contract C {
         Maybe { c } -> u256 uses (mut s) {
             s.a = 1
             s.b = 2
-            if let Option::Some(x) = s.maybe(c) {
+            if let Option::Some(mut x) = s.maybe(c) {
                 x += 40
             }
             s.a as u256 * 1000 + s.b as u256

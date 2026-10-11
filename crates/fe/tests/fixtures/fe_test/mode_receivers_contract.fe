@@ -25,7 +25,7 @@ impl Store {
         self.ver += 1
     }
 
-    fn close(mut own self) -> (u256, u8) {
+    fn close(var own self) -> (u256, u8) {
         self.ver += 1
         (self.value, self.ver)
     }

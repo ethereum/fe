@@ -52,10 +52,16 @@ A pattern matched against a place opens each marked binding's access on that
 binding's own part of the place, and nothing else: in
 `match p { Pair { ref a, mut b, .. } => … }`, `p.a` is held for reading and
 `p.b` for writing, and `p.c` stays free. `mut x` needs a mutable place or
-access behind it, and `ref` or `mut` on an owned value is an error.
+access behind it, and `ref` or `mut` on an owned value is an error. Markers
+go on the names only: `match ref x`, `if let Some(v) = mut o` and
+`let (a, b) = mut t` are errors, fixed by marking each name
+(`match x { V(ref v) => … }`). A marker on the scrutinee would hold all of
+it, or make plain names write through.
 
 A plain name takes its value as `let x = e` does: a copy of a `Copy` value,
-and otherwise a move where one is possible. A move out of an owned place
+and otherwise a move where one is possible. A pattern on a place moves only
+what its names take, so `match s.status { Status::A => …, _ => … }` leaves
+`s.status` whole however often it is matched. A move out of an owned place
 leaves it partially moved; a move through a `mut` access leaves a hole that
 must be restored through that access before it closes:
 
@@ -67,10 +73,13 @@ fn take(_ x: mut Option<MemBuffer>) -> Option<MemBuffer> {
 }
 ```
 
-A value reached through a view or a `ref` access, or in storage, cannot
-move; bind it `ref` to read it in place.
+A value reached through a view or a `ref` access, through an effect, or in
+storage, cannot move; bind it `ref` to read it in place. An effect lends its
+place: a non-`Copy` value under it is read in place or passed on to a callee's
+effects, never taken.
 
-An owned parameter is immutable unless declared `var x: own T`. An access
+An owned parameter is immutable unless declared `var x: own T`, and an owned
+receiver unless declared `var own self`. An access
 cannot be stored in a field, in storage, passed as `own` or returned from an
 ordinary function. `ref` and `mut` do not appear in types.
 
@@ -95,12 +104,15 @@ A projection's result binds like a place. A plain name takes a value: a
 `ref` result of any other type is an error whose fix is `let v = ref xs[i]`,
 which keeps the access; `(i, ref x)` and `for ref x in xs` do the same for a
 component and an element. Whether a type is `Copy` is decided by the
-body's declared bounds, never by an instance. Two kinds of result bind
-their access under a plain name: a `mut` result (`let x = xs.at_mut(0)`),
-since a copy would discard the writes the call asks for, and a `#[view]`
-result (`let s = buf.span()`), which has no value to copy; `let t = s`
-reborrows a view access the same way. `var x = xs.at_mut(0)` copies the
-element and warns, since writes to `x` reach nothing.
+body's declared bounds, never by an instance. A `mut` result bound whole by
+`let` stays an access (`let x = xs.at_mut(0)`), since a copy would discard
+the writes the call asks for; `var x = xs.at_mut(0)` copies the element and
+warns, since writes to `x` reach nothing. The components of a `mut` result
+take values as a place's do, so `Some(mut v)` writes through and a plain
+`Some(v)` is an immutable copy. A type with no value reading binds its read
+access under a plain name: a `#[view]` result (`let s = buf.span()`), and a
+state-only one (`let m = store.balances`); `let t = s` reborrows the access
+the same way.
 
 Copying a result ends the projection's session at the binding, so its slide
 runs there rather than at the binding's last use.
@@ -160,7 +172,7 @@ raw-slot collections, whose `at` constructors are raw places, are held at
 once this way, and `MemArray::pair_mut` is one inside a library function:
 
 ```fe
-let (a, b) = unsafe { (SolArray<u256>::at(x), SolArray<u256>::at(y)) }
+let (mut a, mut b) = unsafe { (SolArray<u256>::at(x), SolArray<u256>::at(y)) }
 a.push(1)                           // all storage stays reserved until both end
 b.push(2)
 ```
@@ -168,10 +180,62 @@ b.push(2)
 ## Views
 
 A type marked `#[view]`, such as `MemSlice`, describes memory its owner
-holds. It is only ever seen through a view: no `mut` binding, parameter or
-result, no `own` parameter or owned result, no `Copy`, and no field of that
-type. A span such as `buffer.span()` is a `ref` projection, so it keeps the
-buffer reserved until its last use.
+holds. It has no value: no `own` parameter or owned result, no `Copy`, no
+field of that type, and nothing for `var` to hold; a plain binding of one is
+its read access. A span such as `buffer.span()` is a `ref` projection, so it
+keeps the buffer reserved until its last use.
+
+A view may also be accessed mutably. `buffer.span_mut()` holds the buffer
+mutably until the span's last use, and writes through the span reach the
+buffer:
+
+```fe
+let s = buffer.span_mut()
+s[0] = 10
+let (mut head, mut tail) = s.split_at_mut(4)
+for mut b in tail { b = 0 }
+```
+
+A view never leaves a hole: a move out of a `mut` access of one is rejected,
+including inside generic code such as a `swap<T>` called with two spans, so
+two spans cannot exchange the owners they point into. A projection that
+yields a `mut` view must hold something mutably, a `mut` parameter or
+effect.
+
+## Unsafe fields
+
+A field marked `unsafe` holds a value its type's safe methods trust, such as
+an owner's pointer and length:
+
+```fe
+pub struct MemBuffer {
+    unsafe ptr: *u8,
+    unsafe len: u256,
+    unsafe capacity: u256,
+}
+```
+
+Initializing or writing an `unsafe` field takes an `unsafe` block or an
+`unsafe fn` body: a literal that sets it, an assignment to it, or a `mut`
+access to it, whether written `mut buf.len`, taken by a `mut self` method,
+bound `mut` in a pattern, opened by a `for mut` loop or a match, or provided
+by `with (buf.len)` to a call that uses it as a `mut` effect. Reading
+one is safe, so an `unsafe` field may be `pub`: readable anywhere, writable
+only in `unsafe` code. Moving or assigning a whole value is safe, since each
+value carries its own invariant. The block is where the code vouches that the
+new value keeps the type's promise:
+
+```fe
+pub fn truncate(mut self, _ len: u256) {
+    if len > self.len {
+        index_out_of_bounds()
+    }
+    // Shrinking keeps every byte of the extent initialized.
+    unsafe { self.len = len }
+}
+```
+
+Only struct and enum variant fields can be `unsafe`.
 
 ## Indexing
 
@@ -231,7 +295,8 @@ trait is the whole declaration, so a library collection is pinned the same
 way. A type
 holding a pinned type is *state-only*: never a value. It is not constructed,
 copied, moved out of storage or held in a memory aggregate; code reaches it
-through an access, a `mut` or view parameter, or an effect. A place's space
+through an access, a `mut` or view parameter, or an effect, and a plain
+binding of one (`let m = store.balances`) is its read access. A place's space
 follows its path: a field or element of a pinned type lies in the type's
 space, so a `TSlot` and its value lie in transient storage whatever holds
 the `TSlot`. A raw-slot constructor,

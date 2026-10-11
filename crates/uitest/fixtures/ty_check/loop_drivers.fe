@@ -32,7 +32,7 @@ impl<B: Collection<Cursor = usize>> Driver<B> for Firsts {
 fn mutates_through_reads() {
     var xs: [u256; 3] = [1, 2, 3]
     let d = Firsts {}
-    for x in mut xs by d {
+    for mut x in xs by d {
         x += 1
     }
 }

@@ -402,36 +402,40 @@ fn native_runner_rejects_evm_attributes_and_trace_options() {
 }
 
 #[test]
-fn native_reference_fields_and_slots_preserve_referent_identity() {
+fn native_effect_places_and_projection_grants_preserve_referent_identity() {
     let temp = tempdir().unwrap();
-    let source = temp.path().join("reference_identity.fe");
+    let source = temp.path().join("referent_identity.fe");
     fs::write(
         &source,
         r#"
-struct Handle { value: mut i32, calls: i32 }
-struct Slot { target: mut i32 }
+struct Handle { value: i32, calls: i32 }
+struct Pair { first: i32, second: i32 }
+impl Pair {
+    fn pick(mut self, _ first: bool) -> mut i32 {
+        if first { mut self.first } else { mut self.second }
+    }
+}
 fn step() uses (handle: mut Handle) {
     handle.value += 1
     handle.calls += 1
 }
-fn replace(slot: mut Slot, value: mut i32) { slot = Slot { target: value } }
-fn increment(slot: mut Slot) { slot.target += 1 }
+fn increment(_ target: mut i32) { target += 1 }
 pub fn main() -> i32 {
-    var first: i32 = 20
-    var second: i32 = 40
-    var handle = Handle { value: mut first, calls: 0 }
+    var handle = Handle { value: 20, calls: 0 }
     with (handle) {
         step()
         step()
     }
     core::assert(handle.calls == 2)
     core::assert(handle.value == 22)
-    var slot = Slot { target: mut first }
-    increment(slot: mut slot)
-    replace(slot: mut slot, value: mut second)
-    increment(slot: mut slot)
-    core::assert(first == 23)
-    core::assert(second == 41)
+    var pair = Pair { first: 20, second: 40 }
+    increment(pair.pick(true))
+    increment(pair.pick(false))
+    increment(pair.pick(true))
+    let second = pair.pick(false)
+    second += 1
+    core::assert(pair.first == 22)
+    core::assert(pair.second == 42)
     0
 }
 "#,
@@ -441,11 +445,11 @@ pub fn main() -> i32 {
         let out = temp.path().join(format!("out-{level}"));
         build(&source, &out, level, &[]);
         assert!(
-            Command::new(out.join("reference_identity"))
+            Command::new(out.join("referent_identity"))
                 .status()
                 .unwrap()
                 .success(),
-            "reference identity at O{level}"
+            "referent identity at O{level}"
         );
     }
 }
@@ -909,7 +913,7 @@ fn or_zero(_ value: Option<u64>) -> u64 {
     }
 }
 pub fn main() -> i32 {
-    let mut slot = Slot { value: Option::Some(40) }
+    var slot = Slot { value: Option::Some(40) }
     let before = slot.value()
     slot.value = Option::None
     let total = or_zero(before) + or_zero(slot.value()) + 2
@@ -1164,12 +1168,12 @@ impl Frame {
 }
 fn execute(state: mut Frame) -> Frame {
     var vm = Frame::new()
-    vm.run(state)
+    vm.run(mut state)
     vm
 }
 fn finish(state: mut Frame) {
     var vm = Frame::new()
-    vm.run(state)
+    vm.run(mut state)
     vm.release()
 }
 pub fn main() -> i32 {

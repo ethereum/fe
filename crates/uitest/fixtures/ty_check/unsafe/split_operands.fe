@@ -15,14 +15,14 @@ fn second(_ p: mut Pair) -> mut u256 {
 
 // Accepted: a `#[raw_place]` call and a place.
 fn split_raw(_ p: mut Pair, _ q: mut Pair) {
-    let (a, b) = unsafe { (first(mut p), mut q.b) }
+    let (mut a, mut b) = unsafe { (first(mut p), mut q.b) }
     a = 1
     b = 2
 }
 
 // Rejected: an ordinary projection as a component.
 fn split_ordinary(_ p: mut Pair, _ q: mut Pair) {
-    let (a, b) = unsafe { (second(mut p), first(mut q)) }
+    let (mut a, mut b) = unsafe { (second(mut p), first(mut q)) }
     a = 1
     b = 2
 }

@@ -60,33 +60,35 @@ fn view_misuse<'db>(
 }
 
 /// A `#[view]` type a parameter of `mode` and type `ty` takes wrongly: as an
-/// `own` or `mut` parameter, or as part of another type.
+/// `own` parameter, or as part of another type.
 pub fn view_param_misuse<'db>(
     db: &'db dyn HirAnalysisDb,
     mode: FuncParamMode,
     ty: TyId<'db>,
 ) -> Option<(TyId<'db>, &'static str)> {
-    let whole = match mode {
-        FuncParamMode::Own => Some("an `own` parameter"),
-        FuncParamMode::Mut => Some("a `mut` parameter"),
-        FuncParamMode::View => None,
-    };
+    let whole = (mode == FuncParamMode::Own).then_some("an `own` parameter");
     view_misuse(db, ty, whole)
 }
 
 impl<'db> Shape<'db> {
-    /// A `#[view]` type this return takes wrongly: by value, by a `mut`
-    /// yield, or as part of another type.
+    /// A `#[view]` type this return takes wrongly: by value, or as part of
+    /// another type.
     pub fn view_misuse(&self, db: &'db dyn HirAnalysisDb) -> Option<(TyId<'db>, &'static str)> {
         match self {
             Self::Owned(ty) => view_misuse(db, *ty, Some("returned by value")),
-            Self::Access(kind, ty) => view_misuse(
-                db,
-                *ty,
-                (*kind == BorrowKind::Mut).then_some("yielded by `mut`"),
-            ),
+            Self::Access(_, ty) => view_misuse(db, *ty, None),
             Self::Tuple(elems) => elems.iter().find_map(|elem| elem.view_misuse(db)),
             Self::Sum { payload, .. } => payload.view_misuse(db),
+        }
+    }
+
+    /// A `#[view]` type this return yields by `mut`.
+    pub fn mut_view(&self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+        match self {
+            Self::Owned(_) => None,
+            Self::Access(kind, ty) => (*kind == BorrowKind::Mut && ty.is_view(db)).then_some(*ty),
+            Self::Tuple(elems) => elems.iter().find_map(|elem| elem.mut_view(db)),
+            Self::Sum { payload, .. } => payload.mut_view(db),
         }
     }
 

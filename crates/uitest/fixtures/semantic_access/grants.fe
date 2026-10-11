@@ -60,8 +60,8 @@ impl Holder {
         let _ = tmp
     }
 
-    // Rejected: the owned component moves out the value the access
-    // component exports.
+    // Rejected: the owned component moves the value out before the access
+    // component exports it.
     fn owned_and_access(self) -> (Wrapper, mut Wrapper) {
         var tmp = Wrapper { v: self.a }
         yield (tmp, mut tmp)

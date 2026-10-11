@@ -1217,7 +1217,10 @@ impl<'db> FieldDef<'db> {
         let type_ref = TypeId::lower_ast_partial(ctxt, ast.ty());
         let vis = super::lower_field_visibility(&ast);
 
-        Self::new(attributes, name, type_ref, vis, false, false)
+        Self {
+            is_unsafe: ast.unsafe_kw().is_some(),
+            ..Self::new(attributes, name, type_ref, vis, false, false)
+        }
     }
 }
 

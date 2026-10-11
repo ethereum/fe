@@ -66,7 +66,7 @@ pub contract Spaces {
             b += 1
             let c = holder.own_place()
             c += 1
-            let (_, d) = holder.frame()
+            let (_, mut d) = holder.frame()
             d += 1
             let e = holder.mislabeled()
             e += 1

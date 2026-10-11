@@ -26,7 +26,7 @@ error[16-0001]: access conflict in `fn opaque_sub_places`
 50 │     let a = p.a_mut()
    │             - access opened here
 51 │     let b = p.b_mut()
-   │             ^ cannot read this place while a `mut` access of it is open
+   │             ^ cannot mutably access this place while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn view_of_grant_blocks_write`
     ┌─ sessions.fe:111:5

@@ -170,7 +170,11 @@ pub enum TyLowerDiag<'db> {
     MixedOwnSelfPrefixWithExplicitType {
         span: DynLazySpan<'db>,
     },
-    InvalidMutSelfPrefixWithExplicitType {
+    MixedMutSelfPrefixWithExplicitType {
+        span: DynLazySpan<'db>,
+    },
+    /// `var self: own Self`, which the shorthand `var own self` writes.
+    InvalidVarSelfWithExplicitType {
         span: DynLazySpan<'db>,
     },
 
@@ -331,7 +335,8 @@ impl TyLowerDiag<'_> {
             Self::TypeLoweringCycle(_) => 38,
             Self::MixedRefSelfPrefixWithExplicitType { .. } => 28,
             Self::MixedOwnSelfPrefixWithExplicitType { .. } => 29,
-            Self::InvalidMutSelfPrefixWithExplicitType { .. } => 30,
+            Self::InvalidVarSelfWithExplicitType { .. } => 30,
+            Self::MixedMutSelfPrefixWithExplicitType { .. } => 68,
             Self::TooManyGenericArgs { .. } => 16,
             Self::StringTooLarge { .. } => 33,
             Self::DuplicateFieldName(..) => 17,
@@ -371,6 +376,39 @@ pub struct StaticAssertComparisonValues {
 pub enum MustUseSubject<'db> {
     Type(TyId<'db>),
     Function(CallableDef<'db>),
+}
+
+/// How to make writable a binding that is assigned through.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub enum MutabilityFix {
+    /// A value binding: `var x`.
+    Var,
+    /// A plain name taking a value from a mutable place or grant: `mut x`
+    /// writes through to it.
+    MutComponent,
+    /// A read access: the mutable one writes.
+    ReadAccess,
+    /// An owned parameter: `var x: own T`.
+    OwnParam,
+    /// A view parameter: `x: mut T`, a mutable borrow.
+    ViewParam,
+    /// A view receiver: `mut self`.
+    ViewSelf,
+    /// An owned receiver: `var own self`.
+    OwnSelf,
+    /// An effect binding: `uses (mut x)`.
+    Effect,
+}
+
+/// Where an access marker stands in place of the names it belongs on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub enum MarkerPosition {
+    /// A `match`, `if let` or `while let` scrutinee.
+    Scrutinee,
+    /// The initializer of a destructuring `let`.
+    Initializer,
+    /// A `for` loop's base.
+    LoopBase,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
@@ -664,6 +702,23 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
     },
 
+    /// `var x` binding a type with no value reading (`#[view]` or
+    /// state-only), which has no value to hold.
+    VarOfNoValue {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+    },
+
+    /// `ref p` or `mut p` as the scrutinee or initializer of a pattern with
+    /// components, or as a loop's base: the marker belongs on the plain
+    /// `names` the pattern binds. `marker` is `true` for `mut`.
+    InitializerMarker {
+        primary: DynLazySpan<'db>,
+        marker: bool,
+        position: MarkerPosition,
+        names: Vec<(IdentId<'db>, DynLazySpan<'db>)>,
+    },
+
     /// `ref p`, `mut p`, or a tuple or sum yield shape used as a value.
     AccessNotValue {
         primary: DynLazySpan<'db>,
@@ -753,7 +808,7 @@ pub enum BodyDiag<'db> {
 
     ImmutableAssignment {
         primary: DynLazySpan<'db>,
-        binding: Option<(IdentId<'db>, DynLazySpan<'db>)>,
+        binding: Option<(IdentId<'db>, DynLazySpan<'db>, MutabilityFix)>,
     },
 
     ImmutableContractFieldNotInitialized {
@@ -982,6 +1037,13 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         callee: CallableDef<'db>,
     },
+    /// Initializing (`write` false) or writing an `unsafe` field outside an
+    /// unsafe context.
+    UnsafeFieldRequiresUnsafe {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        write: bool,
+    },
     UnsafeProviderRequiresUnsafe {
         primary: DynLazySpan<'db>,
     },
@@ -1026,7 +1088,7 @@ pub enum BodyDiag<'db> {
         name: IdentId<'db>,
     },
 
-    /// A two-base loop over one viewed and one `mut` base.
+    /// A two-base loop binding one item `mut` and the other not.
     MixedLoopBases {
         primary: DynLazySpan<'db>,
     },
@@ -1181,6 +1243,9 @@ impl<'db> BodyDiag<'db> {
             Self::MutAccessCopied { .. } => 121,
             Self::VarOfAccess { .. } => 122,
             Self::MutBindingOfRead { .. } => 123,
+            Self::InitializerMarker { .. } => 124,
+            Self::VarOfNoValue { .. } => 125,
+            Self::UnsafeFieldRequiresUnsafe { .. } => 126,
             Self::ContractFieldNotInUses { .. } => 116,
             Self::AccessChoiceNeedsProjection { .. } => 117,
             Self::ArrayRepeatRequiresCopy { .. } => 71,

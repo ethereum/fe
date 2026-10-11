@@ -14,7 +14,7 @@ error[8-0018]: left-hand side of assignment is immutable
    ┌─ loop_drivers.fe:43:9
    │
 42 │     for x in xs by reversed() {
-   │         - try changing to `mut x`
+   │         - write `var x` for a mutable value
 43 │         x += 1
    │         ^ immutable assignment
 
@@ -22,7 +22,7 @@ error[8-0018]: left-hand side of assignment is immutable
    ┌─ loop_drivers.fe:50:9
    │
 49 │     for (_, ref account) in accounts.enumerate() {
-   │             ----------- try changing to `mut account`
+   │             ----------- `account` is a read access; bind it with `mut` to write through it
 50 │         account.balance = 0
    │         ^^^^^^^^^^^^^^^ immutable assignment
 
@@ -38,7 +38,7 @@ error[8-0020]: `Driver` needs to be implemented for bool
 error[8-0020]: `DriverMut` needs to be implemented for Firsts
    ┌─ loop_drivers.fe:35:24
    │
-35 │     for x in mut xs by d {
+35 │     for mut x in xs by d {
    │                        ^
    │                        │
    │                        `DriverMut` needs to be implemented for `Firsts`

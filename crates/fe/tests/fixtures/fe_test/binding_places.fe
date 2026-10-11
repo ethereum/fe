@@ -99,3 +99,15 @@ fn moves_and_copies() {
     assert!(words[0] == 1)
     assert!(add_one(4) == 5)
 }
+
+#[test]
+fn items_choose_the_traversal() {
+    var xs: [u256; 4] = [1, 2, 3, 4]
+    for mut x in xs {
+        x *= 2
+    }
+    for (i, mut x) in xs.enumerate().take(3) {
+        x += i as u256
+    }
+    assert!(xs[0] == 2 && xs[1] == 5 && xs[2] == 8 && xs[3] == 8)
+}

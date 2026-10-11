@@ -19,14 +19,15 @@ const MAX_CAPACITY: u64 = 0x7fffffffffffffff
 /// Call `release` exactly once when the owner is no longer needed. Dropping the
 /// value does not implicitly release memory. No borrowed/raw byte views escape.
 pub struct ByteBuffer {
-    allocation: Option<*u8>,
-    len: u64,
-    capacity: u64,
+    unsafe allocation: Option<*u8>,
+    unsafe len: u64,
+    unsafe capacity: u64,
 }
 
 impl ByteBuffer {
     pub fn new() -> Self {
-        Self { allocation: Option::None, len: 0, capacity: 0 }
+        // No allocation and no bytes.
+        unsafe { Self { allocation: Option::None, len: 0, capacity: 0 } }
     }
 
     pub fn len(self) -> u64 { self.len }
@@ -63,8 +64,11 @@ impl ByteBuffer {
                 }
                 Option::None => {}
             }
-            self.allocation = Option::Some(replacement)
-            self.capacity = capacity
+            // The replacement holds every initialized byte, in `capacity` bytes.
+            unsafe {
+                self.allocation = Option::Some(replacement)
+                self.capacity = capacity
+            }
         }
         if len > self.len {
             unsafe {
@@ -74,7 +78,8 @@ impl ByteBuffer {
                 )
             }
         }
-        self.len = len
+        // The bytes up to `len` are initialized, within the capacity.
+        unsafe { self.len = len }
         true
     }
 
@@ -103,7 +108,10 @@ impl ByteBuffer {
     }
 
     /// Reset the logical extent while retaining reusable storage.
-    pub fn clear(mut self) { self.len = 0 }
+    pub fn clear(mut self) {
+        // An empty extent is trivially initialized.
+        unsafe { self.len = 0 }
+    }
 
     /// Release the allocation and consume the owner.
     pub fn release(own self) {

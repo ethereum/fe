@@ -39,7 +39,7 @@ fn zips() {
 
     // Disjoint fields of one owner are mutated together.
     var p = Pair { a: [1, 2], b: [3, 4] }
-    for (x, y) in (mut p.a, mut p.b) by zip() {
+    for (mut x, mut y) in (p.a, p.b) by zip() {
         x += 10
         y += x
     }

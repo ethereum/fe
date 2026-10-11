@@ -125,11 +125,11 @@ fn non_copy_elements() {
 #[test]
 fn mutating_through_drivers() {
     var xs: [u256; 4] = [1, 2, 3, 4]
-    for x in mut xs by skip(2) {
+    for mut x in xs by skip(2) {
         x *= 10
     }
     assert!(xs[0] == 1 && xs[1] == 2 && xs[2] == 30 && xs[3] == 40)
-    for (i, x) in mut xs by enumerate().take(3) {
+    for (i, mut x) in xs by enumerate().take(3) {
         x += i as u256
     }
     assert!(xs[0] == 1 && xs[1] == 3 && xs[2] == 32 && xs[3] == 40)

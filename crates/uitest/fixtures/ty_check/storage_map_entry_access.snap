@@ -8,7 +8,7 @@ error[8-0018]: left-hand side of assignment is immutable
    ┌─ storage_map_entry_access.fe:34:5
    │
 33 │ pub fn bad_assign_through_view(_ m: Positions, key: u256) {
-   │                                  - try changing to `mut m`
+   │                                  - a view parameter is read-only; write `m: mut …` for a mutable borrow
 34 │     m[key].debt = 1
    │     ^^^^^^^^^^^ immutable assignment
 

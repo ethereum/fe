@@ -1713,6 +1713,10 @@ pub struct FieldDef<'db> {
     pub(in crate::core) type_ref: Partial<TypeId<'db>>,
     pub vis: Visibility,
     pub is_mut: bool,
+    /// An `unsafe` field holds a value its type's safe methods trust:
+    /// initializing or writing it needs an `unsafe` context, and reading it
+    /// is safe.
+    pub is_unsafe: bool,
     /// A contract field's `#[slot(e)]`: the constant `e`, the slot it starts
     /// at instead of the next free one.
     pub slot: Option<Body<'db>>,
@@ -1734,6 +1738,7 @@ impl<'db> FieldDef<'db> {
             type_ref,
             vis,
             is_mut,
+            is_unsafe: false,
             slot: None,
         }
     }

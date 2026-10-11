@@ -264,6 +264,7 @@ where
             is_mut: false,
             has_ref_prefix: false,
             has_own_prefix: false,
+            has_mut_prefix: false,
             is_label_suppressed: false,
             name: Partial::Present(FuncParamName::Ident(IdentId::make_self(db))),
             ty: Partial::Present(self.self_ty()),
@@ -281,6 +282,7 @@ where
             is_mut: false,
             has_ref_prefix: false,
             has_own_prefix: false,
+            has_mut_prefix: false,
             is_label_suppressed: true,
             name: Partial::Present(FuncParamName::Ident(name)),
             ty: Partial::Present(TypeId::new(
@@ -301,6 +303,7 @@ where
             is_mut: false,
             has_ref_prefix: false,
             has_own_prefix: false,
+            has_mut_prefix: false,
             is_label_suppressed: true,
             name: Partial::Present(FuncParamName::Ident(name)),
             ty: Partial::Present(ty),

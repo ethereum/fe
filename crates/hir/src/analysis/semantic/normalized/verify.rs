@@ -55,7 +55,6 @@ pub enum NormalizedBodyVerifyError {
     PlaceType,
     InvalidIndexType(NValueId),
     OperandType,
-    InvalidReadMode,
     ForwardType {
         result: NValueId,
         source: NValueId,
@@ -293,18 +292,9 @@ fn verify_expr<'db>(
                 .then_some(())
                 .ok_or(NormalizedBodyVerifyError::OperandType)
         }
-        NExpr::Load { place, mode } => {
+        NExpr::Load { place, .. } => {
             if place.ty != result_ty {
                 return Err(NormalizedBodyVerifyError::LoadType);
-            }
-            if *mode == ReadMode::Move
-                && matches!(
-                    place.base,
-                    NPlaceBase::Root(root)
-                        if body.root(root).is_some_and(|root| matches!(root.kind, NRootKind::Provider { .. }))
-                )
-            {
-                return Err(NormalizedBodyVerifyError::InvalidReadMode);
             }
             Ok(())
         }

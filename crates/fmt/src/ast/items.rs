@@ -789,6 +789,10 @@ impl ToDoc for ast::RecordFieldDef {
             doc = doc.append(alloc.text("pub "));
         }
 
+        if self.unsafe_kw().is_some() {
+            doc = doc.append(alloc.text("unsafe "));
+        }
+
         if self.mut_kw().is_some() {
             doc = doc.append(alloc.text("mut "));
         }

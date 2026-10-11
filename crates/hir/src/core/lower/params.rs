@@ -194,6 +194,7 @@ impl<'db> FuncParam<'db> {
         let ty = if self_ty_fallback {
             let fallback_self = TypeId::fallback_self_ty(ctxt.db());
             if is_ref {
+                is_mut = false;
                 Partial::Present(TypeId::new(
                     ctxt.db(),
                     TypeKind::Mode(TypeMode::Ref, Partial::Present(fallback_self)),
@@ -243,6 +244,7 @@ impl<'db> FuncParam<'db> {
             is_mut,
             has_ref_prefix: is_ref,
             has_own_prefix: is_own,
+            has_mut_prefix: has_mut_token,
             is_label_suppressed,
             name: name.into(),
             ty,

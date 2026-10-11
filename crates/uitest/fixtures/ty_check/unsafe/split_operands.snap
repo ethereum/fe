@@ -5,9 +5,9 @@ expression: diags
 input_file: fixtures/ty_check/unsafe/split_operands.fe
 ---
 error[8-0118]: an unsafe split component is a place or a `#[raw_place]` call
-   ┌─ split_operands.fe:25:28
+   ┌─ split_operands.fe:25:36
    │
-25 │     let (a, b) = unsafe { (second(mut p), first(mut q)) }
-   │                            ^^^^^^^^^^^^^ `second` is not declared `#[raw_place]`
+25 │     let (mut a, mut b) = unsafe { (second(mut p), first(mut q)) }
+   │                                    ^^^^^^^^^^^^^ `second` is not declared `#[raw_place]`
    │
    = an ordinary projection may keep accesses for code after its yield, which one split session cannot merge; bind its result with its own `let`

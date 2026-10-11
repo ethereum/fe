@@ -74,7 +74,7 @@ fn sessions_end_out_of_order() -> u256 {
 // Accepted: the components of a disjoint split are used independently.
 fn disjoint_split() -> u256 {
     var p = Pair { a: 1, b: 2 }
-    let (a, b) = p.split()
+    let (mut a, mut b) = p.split()
     a = 3
     b = 4
     p.a + p.b
@@ -83,7 +83,7 @@ fn disjoint_split() -> u256 {
 // Accepted: an owned component is a value, independent of the session.
 fn owned_component() -> u256 {
     var p = Pair { a: 1, b: 2 }
-    let (i, b) = p.with_index(7)
+    let (i, mut b) = p.with_index(7)
     b = i
     p.b
 }
@@ -91,7 +91,7 @@ fn owned_component() -> u256 {
 // Accepted: a sum shape grants its access only in the matching arm.
 fn optional_projection() -> u256 {
     var p = Pair { a: 0, b: 2 }
-    if let Option::Some(x) = p.first_nonzero() {
+    if let Option::Some(mut x) = p.first_nonzero() {
         x += 1
     }
     p.b

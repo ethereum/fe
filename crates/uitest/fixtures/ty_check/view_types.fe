@@ -1,4 +1,5 @@
-// A `#[view]` type exists only behind view parameters and `ref` results.
+// A `#[view]` type exists only behind view and `mut` parameters and access
+// results; a `mut` one comes from a projection holding its owner mutably.
 mod views {
     #[view]
     pub struct Span {
@@ -17,8 +18,21 @@ mod views {
             let span = Span { start: self.start, len: self.len }
             ref span
         }
+
+        // Accepted: a `mut` span from a session holding the owner mutably.
+        pub fn span_mut(mut self) -> mut Span {
+            var span = Span { start: self.start, len: self.len }
+            mut span
+        }
+
+        // Rejected: a read receiver holds nothing a `mut` span could write.
+        pub fn view_mut(self) -> mut Span {
+            var span = Span { start: self.start, len: self.len }
+            mut span
+        }
     }
 
+    // Accepted: a generic body that moves nothing takes `mut` views.
     fn swap<T>(_ a: mut T, _ b: mut T) {}
 
     fn reaccess() {
@@ -36,8 +50,10 @@ fn viewed(_ span: Span) -> u256 {
 
 fn owned(_ span: own Span) {}
 
+// Accepted: a `mut` view parameter.
 fn inout(_ span: mut Span) {}
 
+// Rejected: `make` returns a view by value; the `mut` yields are accepted.
 trait Make {
     fn make() -> Span
     fn span_mut(mut self) -> mut Span

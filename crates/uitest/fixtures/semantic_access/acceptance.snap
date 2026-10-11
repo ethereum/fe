@@ -74,14 +74,6 @@ error[16-0001]: access conflict in `fn with_loan`
 328 │     let held = mut vault.value
     │                --------------- access opened here
 329 │     ping()
-    │     ^^^^^^ cannot mutably access this place while a `mut` access of it is open
-
-error[16-0001]: access conflict in `fn with_loan`
-    ┌─ acceptance.fe:329:5
-    │
-328 │     let held = mut vault.value
-    │                --------------- access opened here
-329 │     ping()
     │     ^^^^^^ this call may write storage while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn case27_provider_aliases_view`
@@ -113,9 +105,9 @@ error[16-0001]: access conflict in `fn case36_copy_array_view`
     ┌─ acceptance.fe:456:5
     │
 455 │     let x = ref first(xs)
-    │                 --------- projection opened here
+    │                       -- access opened here
 456 │     xs[1] = 5
-    │     ^^^^^^^^^ cannot write to this place while a `ref` projection of it is open
+    │     ^^^^^^^^^ cannot write to this place while a `ref` access of it is open
 
 error[16-0001]: access conflict in `fn case30_write_under_read`
     ┌─ acceptance.fe:490:5
