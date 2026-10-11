@@ -7,14 +7,16 @@ use super::{Callable, LocalBinding, TyChecker, instantiate_trait_method};
 use crate::analysis::ty::{
     LayoutBundlePathStep,
     canonical::Canonical,
+    const_ty::{ConstTyData, ConstTyId},
     corelib::resolve_core_trait,
     diagnostics::BodyDiag,
     fold::{TyFoldable, TyFolder},
     trait_def::{TraitInstId, impls_for_ty},
-    trait_resolution::TraitSolveCx,
+    trait_resolution::{TraitSolveCx, WellFormedness, check_ty_wf},
     ty_def::{InvalidCause, TyId},
-    visitor::TyVisitable,
+    visitor::{TyVisitable, TyVisitor, walk_const_ty},
 };
+use crate::span::types::LazyTySpan;
 
 /// Resolved Seq trait methods for a for-loop.
 ///
@@ -101,6 +103,7 @@ impl<'db> TyChecker<'db> {
 
         if let Some(expr) = expr {
             let prop = if let Some(ascription) = ascription {
+                let ascription = self.limit_in_written_consts(ascription, span.clone().ty());
                 let prop = self.check_expr(*expr, ascription);
                 self.bind_vars_to_reported_limit(prop.ty, ascription);
                 prop
@@ -140,6 +143,54 @@ impl<'db> TyChecker<'db> {
         self.check_mutable_pattern_bindings(*pat);
         self.env.flush_pending_bindings();
         TyId::unit(self.db)
+    }
+
+    /// A constant computed in a written `let` type, such as a qualified
+    /// associated constant used as an array length, meets the trait solver
+    /// only in the well-formedness check. With an initializer, that check
+    /// runs on the initializer's type after the two types are compared, and a
+    /// constant that reaches a limit makes the comparison fail first. When
+    /// one of those constants reaches a normalization limit, reports the
+    /// limit where the type is written and returns the type that stands for
+    /// it; otherwise returns `ty` as it is.
+    fn limit_in_written_consts(&mut self, ty: TyId<'db>, span: LazyTySpan<'db>) -> TyId<'db> {
+        struct ComputedConsts<'db> {
+            db: &'db dyn HirAnalysisDb,
+            consts: Vec<ConstTyId<'db>>,
+        }
+
+        impl<'db> TyVisitor<'db> for ComputedConsts<'db> {
+            fn db(&self) -> &'db dyn HirAnalysisDb {
+                self.db
+            }
+
+            fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
+                match const_ty.data(self.db) {
+                    ConstTyData::Abstract(..) | ConstTyData::Computation { .. } => {
+                        self.consts.push(*const_ty);
+                    }
+                    _ => walk_const_ty(self, const_ty),
+                }
+            }
+        }
+
+        let mut collector = ComputedConsts {
+            db: self.db,
+            consts: Vec::new(),
+        };
+        ty.visit_with(&mut collector);
+        let solve_cx =
+            TraitSolveCx::new(self.db, self.env.scope()).with_assumptions(self.env.assumptions());
+        for const_ty in collector.consts {
+            if let WellFormedness::NormalizationLimit(limit) =
+                check_ty_wf(self.db, solve_cx, TyId::const_ty(self.db, const_ty))
+            {
+                let (diag, reported) = limit.report(span.into());
+                self.push_diag(diag);
+                return reported.recovery_ty(self.db);
+            }
+        }
+        ty
     }
 
     fn check_mutable_pattern_bindings(&mut self, pat: PatId) {
