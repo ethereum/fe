@@ -10,6 +10,7 @@ mod limit_guard;
 mod limit_matrix;
 mod normalization_limits;
 mod param_env;
+mod projection_reading;
 mod trait_resolution_conformance;
 mod trait_resolution_cross_ingot;
 mod trait_sig_const_generic;

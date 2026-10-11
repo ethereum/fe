@@ -1,0 +1,10 @@
+trait Show {}
+impl Show for u8 {}
+trait A { type X }
+trait B { type Y }
+trait C { type Z }
+struct S {}
+impl A for S { type X = <S as B>::Y }
+impl B for S { type Y = <S as C>::Z }
+impl C for S where <S as A>::X: Show { type Z = u8 }
+fn f(x: <S as C>::Z) -> u8 { x }

@@ -715,6 +715,7 @@ fn instantiated_unused_effect_keys_report_normalization_limits() {
 #[test]
 fn a_where_clause_leading_back_to_its_own_type_is_proved_for_its_definition() {
     let prelude = "trait Show {}\nimpl Show for u8 {}\ntrait Marker {}\ntrait Other {}\n\
+        trait Bind {\n    type X\n}\ntrait Conv<C> {}\n\
         trait Tr {\n    type Out\n}\npub struct S {}\npub struct T {}\n";
     // The impls, and whether `S: Tr` holds with `<S as Tr>::Out = Def`.
     let cases = [
@@ -748,6 +749,29 @@ fn a_where_clause_leading_back_to_its_own_type_is_proved_for_its_definition() {
         (
             "impl Other for S where <S as Tr>::Out: Show {}\n\
              impl Tr for S where S: Other { type Out = u16 }\n",
+            false,
+        ),
+        // Through an associated type binding: the solver compares the
+        // binding with the other impl's definition.
+        (
+            "impl Bind for S { type X = <S as Tr>::Out }\n\
+             impl Tr for S where S: Bind<X = u8> { type Out = u8 }\n",
+            true,
+        ),
+        (
+            "impl Bind for S { type X = <S as Tr>::Out }\n\
+             impl Tr for S where S: Bind<X = u8> { type Out = u16 }\n",
+            false,
+        ),
+        // Through another impl's header.
+        (
+            "impl Conv<<S as Tr>::Out> for S {}\n\
+             impl Tr for S where S: Conv<u8> { type Out = u8 }\n",
+            true,
+        ),
+        (
+            "impl Conv<<S as Tr>::Out> for S {}\n\
+             impl Tr for S where S: Conv<u8> { type Out = u16 }\n",
             false,
         ),
     ];

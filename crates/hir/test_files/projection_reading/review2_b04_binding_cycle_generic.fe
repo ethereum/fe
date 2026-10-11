@@ -1,0 +1,13 @@
+trait Tr { type Out }
+trait Other { type X }
+struct W<T> { t: T }
+impl<T> Other for W<T> { type X = <W<T> as Tr>::Out }
+impl<T> Tr for W<T> where W<T>: Other<X = u8> { type Out = u8 }
+fn g<T>(x: u8) -> u8 {
+    let a: <W<T> as Tr>::Out = x
+    a
+}
+fn h(x: u8) -> u8 {
+    let a: <W<u16> as Tr>::Out = x
+    a
+}

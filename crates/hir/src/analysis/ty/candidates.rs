@@ -335,6 +335,19 @@ pub(crate) fn impl_holds<'db>(
     )
 }
 
+thread_local! {
+    static READ_DEFINITION_ALWAYS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// For tests: whether [`impl_defines`] reads the projection as the
+/// candidate's definition for every candidate, as if [`may_need_projection`]
+/// always answered yes. That is always correct and only slower, so a program
+/// whose diagnostics differ between the two settings shows a path the search
+/// misses. Set on the thread that checks the program, with a fresh database.
+pub fn set_read_definition_always(on: bool) {
+    READ_DEFINITION_ALWAYS.with(|cell| cell.set(on));
+}
+
 /// Whether the impl `candidate` defines the associated type `name` for
 /// `question`, for normalization: its header matches and no where clause is
 /// refuted ([`Counting::POSSIBLE`]).
@@ -382,12 +395,13 @@ pub(crate) fn impl_defines<'db>(
         {
             let projection = TyId::assoc_ty(db, trait_inst.trait_ref(db), name);
             if definition != projection
-                && may_need_projection(
-                    db,
-                    solve_cx,
-                    PredicateListId::new(db, constraints.clone()),
-                    projection,
-                )
+                && (READ_DEFINITION_ALWAYS.with(std::cell::Cell::get)
+                    || may_need_projection(
+                        db,
+                        solve_cx,
+                        PredicateListId::new(db, constraints.clone()),
+                        projection,
+                    ))
             {
                 let defined = TraitInstId::new(
                     db,
@@ -435,12 +449,16 @@ const PROJECTION_SEARCH_NODES: usize = 1024;
 
 /// Whether proving `goals` may meet the projection `target` again. The
 /// search follows what the trait solver may do, without proving anything:
-/// a goal's types, the where clauses of the impls whose header may match it
-/// and its supertraits, and a projection's types, the where clauses of the
-/// impls that may define it and their definitions. It may answer yes where
+/// the types of a goal, of the assumptions with everything they imply, and
+/// of each impl whose header may match a goal or define a projection (its
+/// header arguments and definitions, which the solver normalizes when it
+/// compares the impl), the where clauses of those impls, and supertraits. It may answer yes where
 /// the proof would not meet `target` (an impl that is ruled out later, or a
 /// search past [`PROJECTION_SEARCH_NODES`]), never no where it would.
-#[salsa::tracked]
+#[salsa::tracked(
+    cycle_fn = may_need_projection_cycle_recover,
+    cycle_initial = may_need_projection_cycle_initial
+)]
 pub(crate) fn may_need_projection<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
@@ -458,7 +476,7 @@ pub(crate) fn may_need_projection<'db>(
     let mut seen_goals = FxHashSet::default();
     let mut seen_projections = FxHashSet::default();
     let mut pending: Vec<Node<'db>> = goals.list(db).iter().copied().map(Node::Goal).collect();
-    for &assumption in solve_cx.assumptions().list(db) {
+    for &assumption in solve_cx.assumptions().extend_all_bounds(db).list(db) {
         for ty in assumption
             .args(db)
             .iter()
@@ -483,8 +501,11 @@ pub(crate) fn may_need_projection<'db>(
                 {
                     pending.extend(projections_in(db, *ty).into_iter().map(Node::Projection));
                 }
-                for (clauses, _) in search.matching_impls(solve_cx, goal, None) {
+                for (clauses, types) in search.matching_impls(solve_cx, goal, None) {
                     pending.extend(clauses.into_iter().map(Node::Goal));
+                    for ty in types {
+                        pending.extend(projections_in(db, ty).into_iter().map(Node::Projection));
+                    }
                 }
                 for super_trait in goal.def(db).super_traits(db) {
                     pending.push(Node::Goal(super_trait.instantiate(db, goal.args(db))));
@@ -504,22 +525,41 @@ pub(crate) fn may_need_projection<'db>(
                 for ty in trait_inst.args(db) {
                     pending.extend(projections_in(db, *ty).into_iter().map(Node::Projection));
                 }
-                for (clauses, definition) in
+                for (clauses, types) in
                     search.matching_impls(solve_cx, trait_inst, Some(assoc.name))
                 {
                     pending.extend(clauses.into_iter().map(Node::Goal));
-                    if let Some(definition) = definition {
-                        pending.extend(
-                            projections_in(db, definition)
-                                .into_iter()
-                                .map(Node::Projection),
-                        );
+                    for ty in types {
+                        pending.extend(projections_in(db, ty).into_iter().map(Node::Projection));
                     }
                 }
             }
         }
     }
     false
+}
+
+/// Completing an impl's definition lowers it, and lowering a shorthand path
+/// can decide which impl defines it, which asks this search again. Within
+/// that cycle the projection counts as needed, which is always correct.
+fn may_need_projection_cycle_initial<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _solve_cx: TraitSolveCx<'db>,
+    _goals: PredicateListId<'db>,
+    _target: TyId<'db>,
+) -> bool {
+    true
+}
+
+fn may_need_projection_cycle_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &bool,
+    _count: u32,
+    _solve_cx: TraitSolveCx<'db>,
+    _goals: PredicateListId<'db>,
+    _target: TyId<'db>,
+) -> salsa::CycleRecoveryAction<bool> {
+    salsa::CycleRecoveryAction::Iterate
 }
 
 /// The projections in `ty`, nested ones included.
@@ -623,25 +663,20 @@ impl<'db> ProjectionSearch<'db> {
     }
 
     /// The impls whose header may match `goal`: the where clauses of each,
-    /// with the parameters the match fixes substituted, and its definition
-    /// of `name`, if asked.
+    /// with the parameters the match fixes substituted, and the types the
+    /// solver normalizes when it compares the impl with a goal (its header
+    /// arguments and definitions) and resolves a projection of `name`.
     fn matching_impls(
         &mut self,
         solve_cx: TraitSolveCx<'db>,
         goal: TraitInstId<'db>,
         name: Option<IdentId<'db>>,
-    ) -> Vec<(Vec<TraitInstId<'db>>, Option<TyId<'db>>)> {
+    ) -> Vec<(Vec<TraitInstId<'db>>, Vec<TyId<'db>>)> {
         let db = self.db;
         let (primary, secondary) = solve_cx.search_ingots_for_trait_inst(db, goal);
         let mut found = Vec::new();
         for ingot in [Some(primary), secondary].into_iter().flatten() {
             for implementor in ingot_trait_env(db, ingot).impls_for_trait(db, goal.def(db)) {
-                let implementor = match name {
-                    Some(name) => {
-                        complete_impl_assoc_ty(db, implementor, name).unwrap_or(implementor)
-                    }
-                    None => implementor,
-                };
                 let params = implementor.params(db).to_vec();
                 let mut subst = FxHashMap::default();
                 let header = implementor.trait_(db);
@@ -665,10 +700,38 @@ impl<'db> ProjectionSearch<'db> {
                     .iter()
                     .map(|clause| clause.fold_with(db, &mut folder))
                     .collect();
-                let definition = name
-                    .and_then(|name| implementor.types(db).get(&name).copied())
-                    .map(|ty| ty.fold_with(db, &mut folder));
-                found.push((clauses, definition));
+                // The solver compares the goal with the impl's whole trait
+                // instance, header and definitions, normalized; resolving a
+                // projection uses the definition of its name, completed.
+                let trait_inst = implementor.trait_inst(db);
+                let mut types: Vec<TyId<'db>> = trait_inst
+                    .args(db)
+                    .iter()
+                    .chain(trait_inst.assoc_type_bindings(db).values())
+                    .copied()
+                    .collect();
+                // Definitions are completed lazily; each one the solver may
+                // compare or resolve is completed here.
+                let names: Vec<IdentId<'db>> = match name {
+                    Some(name) => vec![name],
+                    None => goal
+                        .def(db)
+                        .assoc_types(db)
+                        .filter_map(|assoc| assoc.name(db))
+                        .collect(),
+                };
+                for name in names {
+                    if let Some(completed) = complete_impl_assoc_ty(db, implementor, name)
+                        && let Some(&definition) = completed.types(db).get(&name)
+                    {
+                        types.push(definition);
+                    }
+                }
+                let types = types
+                    .into_iter()
+                    .map(|ty| ty.fold_with(db, &mut folder))
+                    .collect();
+                found.push((clauses, types));
             }
         }
         found

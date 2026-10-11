@@ -471,7 +471,7 @@ pub fn is_goal_satisfiable<'db>(
     solve_cx: TraitSolveCx<'db>,
     goal: TraitInstId<'db>,
 ) -> Result<GoalSatisfiability<'db>, NormalizationLimit> {
-    let query = CanonicalGoalQuery::new(db, goal, solve_cx.assumptions());
+    let query = CanonicalGoalQuery::in_context(db, goal, solve_cx);
     is_goal_query_satisfiable(db, solve_cx, &query)
 }
 

@@ -1,0 +1,6 @@
+trait Tr { type Out }
+trait Conv<T> {}
+struct S {}
+impl Conv<<S as Tr>::Out> for S {}
+impl Tr for S where S: Conv<u16> { type Out = u8 }
+fn f(x: <S as Tr>::Out) -> u8 { x }
