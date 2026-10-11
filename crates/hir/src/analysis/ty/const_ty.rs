@@ -35,7 +35,7 @@ use super::{
 };
 use crate::analysis::{
     HirAnalysisDb,
-    name_resolution::{PathRes, resolve_path},
+    name_resolution::{PathRes, TypePosition, resolve_path},
     semantic::{
         ConstDesc, ConstRepr, CtfeConfig, CtfeError, EffectProviderSubst, EvalFailure, EvalOutcome,
         GenericSubst, ImplEnv, PrimitiveFault, SConst, SemConstId, SemConstScalar, SemConstValue,
@@ -420,7 +420,7 @@ impl<'db> LayoutRootId<'db> {
 /// event within one execution receives a distinct ordinal; a hole cannot be
 /// minted without one, which makes "forgot to re-key after a memoized call"
 /// impossible by construction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum ConstBodyLowering {
     Eager,
     Deferred,
@@ -446,6 +446,11 @@ impl<'db> HoleMinter<'db> {
         self.anchor
     }
 
+    /// How many identities this minter has given out, of either kind.
+    fn minted(&self) -> (u32, u32) {
+        (self.counter.get(), self.instantiation_counter.get())
+    }
+
     pub(crate) fn mint(&self, db: &'db dyn HirAnalysisDb) -> LayoutRootId<'db> {
         let ordinal = self.counter.get();
         self.counter.set(ordinal + 1);
@@ -456,6 +461,21 @@ impl<'db> HoleMinter<'db> {
         let ordinal = self.instantiation_counter.get();
         self.instantiation_counter.set(ordinal + 1);
         ordinal
+    }
+}
+
+/// Whether path resolution lowers `part` of a qualified segment inside the
+/// qualified path, resolving the qualified paths written in it with the
+/// enclosing one. The trait reference of a segment whose anonymous constants
+/// are lowered eagerly is lowered on its own.
+pub(crate) fn lowered_inside_qualified_path(
+    part: crate::visitor::QualifiedPathPart,
+    const_bodies: ConstBodyLowering,
+) -> bool {
+    use crate::visitor::QualifiedPathPart;
+    match part {
+        QualifiedPathPart::Type | QualifiedPathPart::AssociatedTypeArgs => true,
+        QualifiedPathPart::Trait => const_bodies == ConstBodyLowering::Deferred,
     }
 }
 
@@ -476,6 +496,43 @@ pub(crate) struct LoweringContext<'db> {
     /// How many qualified paths' types and arguments enclose the type being
     /// lowered (`in_qualified_path`).
     qualified_depth: std::cell::Cell<u32>,
+    /// The paths lowered by this lowering and others that share them
+    /// (`sharing_lowered_paths`).
+    lowered_paths: Option<LoweredPaths<'db>>,
+}
+
+/// The paths written in type positions that lowerings have lowered, each with
+/// the type it lowered to and the resolutions recorded while lowering it, to
+/// be shared by the lowerings of the types written around them
+/// ([`LoweringContext::sharing_lowered_paths`]).
+pub(crate) type LoweredPaths<'db> =
+    std::rc::Rc<std::cell::RefCell<FxHashMap<LoweredPathKey<'db>, LoweredPath<'db>>>>;
+
+/// What the lowering of a path written in a type position depends on: the
+/// path, where it is resolved, the position, whether it is written inside a
+/// qualified path, when anonymous constants are lowered, and whether the
+/// resolutions are recorded.
+type LoweredPathKey<'db> = (
+    PathId<'db>,
+    ScopeId<'db>,
+    PredicateListId<'db>,
+    TypePosition,
+    bool,
+    ConstBodyLowering,
+    bool,
+);
+
+#[derive(Debug)]
+pub(crate) struct LoweredPath<'db> {
+    ty: TyId<'db>,
+    resolutions: Vec<(PathId<'db>, PathRes<'db>)>,
+}
+
+/// The state of a lowering before it lowers a path, to tell what lowering the
+/// path added to it ([`LoweringContext::keep_lowered_path`]).
+pub(crate) struct LoweringMark {
+    minted: (u32, u32),
+    recorded: usize,
 }
 
 impl<'db> LoweringContext<'db> {
@@ -502,6 +559,104 @@ impl<'db> LoweringContext<'db> {
             resolutions: None,
             recording_paused: std::cell::Cell::new(false),
             qualified_depth: std::cell::Cell::new(0),
+            lowered_paths: None,
+        }
+    }
+
+    /// Makes this lowering take a path written in a type position from
+    /// `shared` when a lowering that shares it lowered the path before, and
+    /// add the paths it lowers. A checker that lowers each type nested in a
+    /// written type then lowers each path once, rather than once for each
+    /// type that encloses it, which is quadratic in the nesting.
+    ///
+    /// Only a lowering that mints no hole is shared: it is the same in every
+    /// lowering, whatever its anchor, so sharing changes no type. A lowering
+    /// that captures source parameters or a default is not shared.
+    pub(crate) fn sharing_lowered_paths(mut self, shared: &LoweredPaths<'db>) -> Self {
+        self.lowered_paths = Some(shared.clone());
+        self
+    }
+
+    fn lowered_path_key(
+        &self,
+        path: PathId<'db>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        position: TypePosition,
+    ) -> Option<LoweredPathKey<'db>> {
+        (self.lowered_paths.is_some()
+            && self.source_params.is_none()
+            && self.default_capture.is_none()
+            && !self.recording_paused.get()
+            && !matches!(self.holes.anchor(), HoleAnchor::ImplAssocType { .. }))
+        .then(|| {
+            (
+                path,
+                scope,
+                assumptions,
+                position,
+                self.inside_qualified_path(),
+                self.const_bodies,
+                self.resolutions.is_some(),
+            )
+        })
+    }
+
+    /// The type `path` lowered to in a lowering that shares this one's
+    /// paths, with its resolutions recorded again here.
+    pub(crate) fn lowered_path(
+        &self,
+        path: PathId<'db>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        position: TypePosition,
+    ) -> Option<TyId<'db>> {
+        let key = self.lowered_path_key(path, scope, assumptions, position)?;
+        let lowered = self.lowered_paths.as_ref()?.borrow();
+        let lowered = lowered.get(&key)?;
+        for (path, res) in &lowered.resolutions {
+            self.record_resolution(*path, res);
+        }
+        Some(lowered.ty)
+    }
+
+    pub(crate) fn lowering_mark(&self) -> LoweringMark {
+        LoweringMark {
+            minted: self.holes.minted(),
+            recorded: self
+                .resolutions
+                .as_ref()
+                .map_or(0, |resolutions| resolutions.borrow().len()),
+        }
+    }
+
+    /// Shares the type `path` lowered to since `mark`, unless its lowering
+    /// minted a hole.
+    pub(crate) fn keep_lowered_path(
+        &self,
+        path: PathId<'db>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        position: TypePosition,
+        mark: LoweringMark,
+        ty: TyId<'db>,
+    ) {
+        let Some(key) = self.lowered_path_key(path, scope, assumptions, position) else {
+            return;
+        };
+        if self.holes.minted() != mark.minted {
+            return;
+        }
+        let resolutions = self
+            .resolutions
+            .as_ref()
+            .map_or_else(Vec::new, |resolutions| {
+                resolutions.borrow()[mark.recorded..].to_vec()
+            });
+        if let Some(lowered) = &self.lowered_paths {
+            lowered
+                .borrow_mut()
+                .insert(key, LoweredPath { ty, resolutions });
         }
     }
 
@@ -514,6 +669,16 @@ impl<'db> LoweringContext<'db> {
         let result = lower();
         self.qualified_depth.set(self.qualified_depth.get() - 1);
         result
+    }
+
+    /// Makes this lowering lower a type written inside a qualified path, when
+    /// `inside`, as the lowering of that path does: a qualified path written
+    /// in it is resolved with the enclosing one. A checker that lowers each
+    /// type nested in a written type on its own then gives each the type the
+    /// lowering of the whole gives it.
+    pub(crate) fn written_inside_qualified_path(self, inside: bool) -> Self {
+        self.qualified_depth.set(u32::from(inside));
+        self
     }
 
     /// Whether the type being lowered is written inside a qualified path.

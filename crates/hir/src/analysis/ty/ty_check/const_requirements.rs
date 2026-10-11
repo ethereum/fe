@@ -10,8 +10,12 @@ use crate::analysis::name_resolution::{
 use crate::analysis::ty::canonical::Canonicalized;
 use crate::analysis::ty::{
     const_ty::ConstBodyLowering,
+    const_ty::{LoweredPaths, lowered_inside_qualified_path},
     subst::substitute_complete,
-    ty_lower::{CompleteSubst, SubstError, lower_hir_ty_with_resolutions, lower_type_alias},
+    ty_lower::{
+        CompleteSubst, SubstError, lower_hir_ty_sharing_paths, lower_hir_ty_with_resolutions,
+        lower_type_alias,
+    },
 };
 use crate::hir_def::{GenericArg, GenericArgListId, ItemKind, UnOp, scope_graph::ScopeId};
 
@@ -1731,9 +1735,9 @@ fn written_types_query<'db>(
     use crate::hir_def::{TraitRefId, TypeKind};
     use crate::span::types::LazyTySpan;
     use crate::visitor::{
-        Visitor, VisitorCtxt,
-        prelude::{LazyBodySpan, LazyExprSpan, LazyItemSpan, LazyTraitRefSpan},
-        walk_body, walk_expr, walk_item, walk_path, walk_trait_ref, walk_type,
+        QualifiedPathPart, QualifiedPathParts, Visitor, VisitorCtxt,
+        prelude::{LazyBodySpan, LazyExprSpan, LazyItemSpan, LazyPathSpan, LazyTraitRefSpan},
+        walk_body, walk_expr, walk_item, walk_path_by_parts, walk_trait_ref, walk_type,
     };
     struct Collector<'db> {
         db: &'db dyn HirAnalysisDb,
@@ -1744,8 +1748,34 @@ fn written_types_query<'db>(
         /// and finds them with the same rule (`written_type_const_args`).
         defaults: FxHashSet<crate::hir_def::TypeId<'db>>,
         default_depth: usize,
+        /// The paths lowered so far, so that each path nested in the
+        /// written types is lowered once rather than once for each type
+        /// that encloses it.
+        lowered: LoweredPaths<'db>,
+        /// Whether the visited type is lowered as part of a qualified path.
+        inside_qualified: bool,
+    }
+    impl<'db> QualifiedPathParts<'db> for Collector<'db> {
+        type Outside = bool;
+
+        fn enter_part(&mut self, part: QualifiedPathPart) -> bool {
+            let inside = lowered_inside_qualified_path(part, ConstBodyLowering::Eager);
+            std::mem::replace(&mut self.inside_qualified, inside)
+        }
+
+        fn leave_part(&mut self, entered: bool) {
+            self.inside_qualified = entered;
+        }
     }
     impl<'db> Visitor<'db> for Collector<'db> {
+        fn visit_path(
+            &mut self,
+            ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>,
+            path: PathId<'db>,
+        ) {
+            walk_path_by_parts(self, ctxt, path);
+        }
+
         // Nested items and bodies are their own regions.
         fn visit_item(
             &mut self,
@@ -1834,7 +1864,7 @@ fn written_types_query<'db>(
                         .path();
                     let mut key_ctxt = VisitorCtxt::new(self.db, ctxt.scope(), span.clone());
                     self.written_type(hir_ty, ctxt.scope(), Some(span.into()), |this| {
-                        walk_path(this, &mut key_ctxt, key)
+                        walk_path_by_parts(this, &mut key_ctxt, key)
                     });
                 }
             }
@@ -1868,6 +1898,8 @@ fn written_types_query<'db>(
                         scope,
                         assumptions,
                         ConstBodyLowering::Eager,
+                        &self.lowered,
+                        self.inside_qualified,
                     );
                     let applications = resolutions
                         .iter()
@@ -1875,12 +1907,30 @@ fn written_types_query<'db>(
                         .collect();
                     (ty, applications)
                 }
-                _ => (lower_hir_ty(db, hir_ty, scope, assumptions), Vec::new()),
+                _ => (
+                    lower_hir_ty_sharing_paths(
+                        db,
+                        hir_ty,
+                        scope,
+                        assumptions,
+                        ConstBodyLowering::Eager,
+                        &self.lowered,
+                        self.inside_qualified,
+                    ),
+                    Vec::new(),
+                ),
             };
             let in_default = self.defaults.contains(&hir_ty);
             self.default_depth += usize::from(in_default);
             if self.default_depth == 0 {
-                let bodies = written_const_args(db, hir_ty, scope, assumptions);
+                let bodies = written_const_args(
+                    db,
+                    hir_ty,
+                    scope,
+                    assumptions,
+                    &self.lowered,
+                    self.inside_qualified,
+                );
                 if !bodies.is_empty() {
                     self.entries.push(WrittenEntry::ConstBodies(bodies));
                 }
@@ -1906,6 +1956,8 @@ fn written_types_query<'db>(
         entries: Vec::new(),
         defaults: FxHashSet::default(),
         default_depth: 0,
+        lowered: LoweredPaths::default(),
+        inside_qualified: false,
     };
     collector.visit_item(&mut VisitorCtxt::with_item(db, root), root);
     collector.entries
@@ -1997,6 +2049,7 @@ pub(super) fn written_type_const_args<'db>(
         db: &'db dyn HirAnalysisDb,
         assumptions: PredicateListId<'db>,
         found: Vec<(Body<'db>, TyId<'db>)>,
+        lowered: LoweredPaths<'db>,
     }
     impl<'db> Visitor<'db> for Finder<'db> {
         fn visit_ty(
@@ -2009,6 +2062,8 @@ pub(super) fn written_type_const_args<'db>(
                 hir_ty,
                 ctxt.scope(),
                 self.assumptions,
+                &self.lowered,
+                false,
             ));
             walk_type(self, ctxt, hir_ty);
         }
@@ -2036,6 +2091,7 @@ pub(super) fn written_type_const_args<'db>(
         db,
         assumptions,
         found: Vec::new(),
+        lowered: LoweredPaths::default(),
     };
     finder.visit_ty(&mut VisitorCtxt::new(db, scope, span), hir_ty);
     finder.found
@@ -2071,6 +2127,8 @@ fn written_const_args<'db>(
     hir_ty: crate::hir_def::TypeId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
+    lowered: &LoweredPaths<'db>,
+    inside: bool,
 ) -> Vec<(Body<'db>, TyId<'db>)> {
     use crate::hir_def::TypeKind;
     match hir_ty.data(db) {
@@ -2085,6 +2143,8 @@ fn written_const_args<'db>(
                 scope,
                 assumptions,
                 ConstBodyLowering::Deferred,
+                lowered,
+                inside,
             );
             segment_const_args(db, *path, &resolutions)
         }

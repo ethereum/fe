@@ -3815,8 +3815,10 @@ impl<'db> TyChecker<'db> {
                     self.db,
                     scope,
                     self.env.assumptions(),
+                    (path, &r),
                     &span,
                     type_uses,
+                    false,
                 ) {
                     self.push_diag(diag);
                 }

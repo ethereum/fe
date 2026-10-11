@@ -860,7 +860,7 @@ where
 
 /// How a path written where a type is expected chooses between the type and
 /// the value its last segment can name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum TypePosition {
     /// A type. The path names a value only when it names no type.
     Type,

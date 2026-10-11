@@ -1,0 +1,34 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/qualified_inner_use_requirements.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ qualified_inner_use_requirements.fe:27:33
+   │
+27 │ fn self_type(_ x: <<Bad as Tr>::K as Bl>::Out) {}
+   │                                 ^ `Bad` doesn't implement `Tr`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ qualified_inner_use_requirements.fe:29:39
+   │
+29 │ fn ignored_argument(_ x: <<S as Fam>::K<Foo<NotMarked>> as Bl>::Out) {}
+   │                                       ^^^^^^^^^^^^^^^^^ `NotMarked` doesn't implement `Marked`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ qualified_inner_use_requirements.fe:31:39
+   │
+31 │ fn inside_a_tuple(_ x: <(<Bad as Tr>::K, u8) as Bl>::Out) {}
+   │                                       ^ `Bad` doesn't implement `Tr`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ qualified_inner_use_requirements.fe:33:37
+   │
+33 │ fn three_levels(_ x: <<<Bad as Tr>::K as Bl>::Out as Bl>::Out) {}
+   │                                     ^ `Bad` doesn't implement `Tr`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ qualified_inner_use_requirements.fe:36:21
+   │
+36 │ fn unresolved(_ x: <<Bad as Tr>::K as Tr>::K) {}
+   │                     ^^^^^^^^^^^^^^ `Bad` doesn't implement `Tr`

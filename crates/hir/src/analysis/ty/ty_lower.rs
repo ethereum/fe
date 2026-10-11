@@ -18,7 +18,7 @@ use super::{
         CallableInputLayoutHoleOrigin, CallableLayoutOwner, ConstBodyLowering, ConstCaptureEnv,
         ConstTyData, ConstTyId, HoleAnchor, HoleId, LayoutBoundaryIdentity, LayoutHoleArgSite,
         LayoutInstantiationContext, LayoutInstantiationId, LayoutIntroSite, LayoutOccurrencePath,
-        LayoutOccurrenceStep, LayoutRootId, LoweringContext, StructuralHoleOrigin,
+        LayoutOccurrenceStep, LayoutRootId, LoweredPaths, LoweringContext, StructuralHoleOrigin,
         UnevaluatedConstPolicy, const_ty_from_sem_const,
     },
     effects::{ResolvedEffectKey, TraitKeySchema, lower_effect_key_schema},
@@ -142,13 +142,19 @@ fn lower_hir_ty_impl<'db>(
 /// with its resolution: the segments of the paths written in `ty`, including
 /// generic arguments and qualified types, at every prefix. Aliases and
 /// associated types are lowered by their own queries, so the paths written in
-/// their declarations are not included.
+/// their declarations are not included. The paths in `lowered` are taken from
+/// it, and the ones lowered here are added to it
+/// ([`LoweringContext::sharing_lowered_paths`]). A type written `inside` a
+/// qualified path is lowered as that path lowers it
+/// ([`LoweringContext::written_inside_qualified_path`]).
 pub(crate) fn lower_hir_ty_with_resolutions<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: HirTyId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     const_bodies: ConstBodyLowering,
+    lowered: &LoweredPaths<'db>,
+    inside: bool,
 ) -> (TyId<'db>, Vec<(PathId<'db>, PathRes<'db>)>) {
     let minter = LoweringContext::for_const_bodies(
         HoleAnchor::TemplateTy {
@@ -158,9 +164,38 @@ pub(crate) fn lower_hir_ty_with_resolutions<'db>(
         },
         const_bodies,
     )
-    .recording_resolutions();
+    .recording_resolutions()
+    .sharing_lowered_paths(lowered)
+    .written_inside_qualified_path(inside);
     let lowered = lower_hir_ty_impl(db, ty, scope, assumptions, &minter);
     (lowered, minter.into_resolutions())
+}
+
+/// Lowers `ty` as [`lower_hir_ty_in_mode`] does, taking the paths in
+/// `lowered` from it and adding the ones lowered here
+/// ([`LoweringContext::sharing_lowered_paths`]). A type written `inside` a
+/// qualified path is lowered as that path lowers it
+/// ([`LoweringContext::written_inside_qualified_path`]).
+pub(crate) fn lower_hir_ty_sharing_paths<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    const_bodies: ConstBodyLowering,
+    lowered: &LoweredPaths<'db>,
+    inside: bool,
+) -> TyId<'db> {
+    let minter = LoweringContext::for_const_bodies(
+        HoleAnchor::TemplateTy {
+            ty,
+            scope,
+            assumptions,
+        },
+        const_bodies,
+    )
+    .sharing_lowered_paths(lowered)
+    .written_inside_qualified_path(inside);
+    lower_hir_ty_impl(db, ty, scope, assumptions, &minter)
 }
 
 /// Lowers `ty` minting structural-hole identities through the caller's
@@ -568,6 +603,23 @@ fn lower_path_impl<'db>(
 /// names, or to `NotAType` for anything else. The error is why `path` does
 /// not resolve.
 pub(crate) fn lower_type_position_path<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    position: TypePosition,
+    minter: &LoweringContext<'db>,
+) -> PathResolutionResult<'db, TyId<'db>> {
+    if let Some(ty) = minter.lowered_path(path, scope, assumptions, position) {
+        return Ok(ty);
+    }
+    let mark = minter.lowering_mark();
+    let ty = lower_resolved_type_position_path(db, path, scope, assumptions, position, minter)?;
+    minter.keep_lowered_path(path, scope, assumptions, position, mark, ty);
+    Ok(ty)
+}
+
+fn lower_resolved_type_position_path<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,

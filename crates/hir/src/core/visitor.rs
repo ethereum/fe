@@ -1908,19 +1908,57 @@ pub fn walk_path<'db, V>(
 ) where
     V: Visitor<'db> + ?Sized,
 {
-    walk_path_impl(visitor, ctxt, path);
+    walk_path_impl(visitor, ctxt, path, |_, _| {}, |_, _| {});
 }
 
-fn walk_path_impl<'db, V>(
+/// A part of a path that path resolution lowers as part of a qualified
+/// segment `<T as Tr<A>>::Name<B>`: the type `T`, the trait reference
+/// `Tr<A>`, or the arguments `B` of the segment after it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QualifiedPathPart {
+    Type,
+    Trait,
+    AssociatedTypeArgs,
+}
+
+/// A visitor that is told when a walk of a path visits a part of a
+/// qualified segment ([`walk_path_by_parts`]).
+pub trait QualifiedPathParts<'db>: Visitor<'db> {
+    /// The visitor's state before it entered a part.
+    type Outside;
+
+    /// Called before the walk visits `part`. What it returns is passed to
+    /// [`Self::leave_part`] after.
+    fn enter_part(&mut self, part: QualifiedPathPart) -> Self::Outside;
+
+    fn leave_part(&mut self, outside: Self::Outside);
+}
+
+/// Walks `path` as [`walk_path`] does, and tells `visitor` when it visits a
+/// part of a qualified segment.
+pub fn walk_path_by_parts<'db, V>(
     visitor: &mut V,
     ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>,
     path: PathId<'db>,
+) where
+    V: QualifiedPathParts<'db> + ?Sized,
+{
+    walk_path_impl(visitor, ctxt, path, V::enter_part, V::leave_part);
+}
+
+fn walk_path_impl<'db, V, S>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>,
+    path: PathId<'db>,
+    enter: fn(&mut V, QualifiedPathPart) -> S,
+    leave: fn(&mut V, S),
 ) -> usize
 where
     V: Visitor<'db> + ?Sized,
 {
-    let idx = if let Some(parent) = path.parent(ctxt.db()) {
-        1 + walk_path_impl(visitor, ctxt, parent)
+    let parent = path.parent(ctxt.db());
+    let idx = if let Some(parent) = parent {
+        1 + walk_path_impl(visitor, ctxt, parent, enter, leave)
     } else {
         0
     };
@@ -1934,21 +1972,31 @@ where
             }
         }
         PathKind::QualifiedType { type_, trait_ } => {
+            let entered = enter(visitor, QualifiedPathPart::Type);
             ctxt.with_new_ctxt(
                 |span| span.segment(idx).qualified_type().ty(),
                 |ctxt| visitor.visit_ty(ctxt, type_),
             );
+            leave(visitor, entered);
+            let entered = enter(visitor, QualifiedPathPart::Trait);
             ctxt.with_new_ctxt(
                 |span| span.segment(idx).qualified_type().trait_qualifier(),
                 |ctxt| visitor.visit_trait_ref(ctxt, trait_),
             );
+            leave(visitor, entered);
         }
     }
+    let after_qualified =
+        parent.is_some_and(|parent| matches!(parent.kind(ctxt.db), PathKind::QualifiedType { .. }));
+    let entered = after_qualified.then(|| enter(visitor, QualifiedPathPart::AssociatedTypeArgs));
     let generic_args = path.generic_args(ctxt.db);
     ctxt.with_new_ctxt(
         |span| span.segment(idx).generic_args(),
         |ctxt| visitor.visit_generic_arg_list(ctxt, generic_args),
     );
+    if let Some(entered) = entered {
+        leave(visitor, entered);
+    }
     idx
 }
 

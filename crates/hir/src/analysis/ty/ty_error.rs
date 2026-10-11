@@ -1,7 +1,10 @@
 use crate::{
     hir_def::{GenericArg, PathId, PathKind, TypeId, TypeKind, scope_graph::ScopeId},
     span::{params::LazyGenericArgSpan, path::LazyPathSpan, types::LazyTySpan},
-    visitor::{Visitor, VisitorCtxt, prelude::DynLazySpan, walk_generic_arg, walk_path, walk_type},
+    visitor::{
+        QualifiedPathPart, QualifiedPathParts, Visitor, VisitorCtxt, prelude::DynLazySpan,
+        walk_generic_arg, walk_path, walk_path_by_parts, walk_type,
+    },
 };
 
 use crate::analysis::{
@@ -14,14 +17,17 @@ use crate::analysis::{
 };
 
 use super::{
-    const_ty::{ConstBodyLowering, ConstTyData, HoleAnchor, LoweringContext, ty_is_fully_ground},
+    const_ty::{
+        ConstBodyLowering, ConstTyData, HoleAnchor, LoweredPaths, LoweringContext,
+        lowered_inside_qualified_path, ty_is_fully_ground,
+    },
     diagnostics::{TyDiagCollection, TyLowerDiag},
     normalize::normalize_ty,
     trait_resolution::{
         PredicateListId, TraitSolveCx, WellFormedness, check_family_requirements, check_ty_wf,
     },
     ty_def::{InvalidCause, TyData, TyId},
-    ty_lower::{lower_hir_ty, lower_hir_ty_in_mode},
+    ty_lower::{lower_hir_ty, lower_hir_ty_in_mode, lower_hir_ty_sharing_paths},
 };
 use crate::visitor::prelude::LazyTraitRefSpan;
 
@@ -202,23 +208,55 @@ pub(crate) fn family_application_use<'db>(
     }
 }
 
-/// The requirement errors for the types a written path resolved to, one per
-/// path segment.
+/// The requirement errors for the types the segments of a path resolved to,
+/// `type_uses`, as written, one per segment. `(path, res)` is the path and
+/// what it resolved to. A use written inside a qualified path that lowering
+/// resolved, with the uses written inside it, is checked as resolved when
+/// `resolved_with_enclosing`.
 pub(crate) fn application_requirement_diags<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
+    (path, res): (PathId<'db>, &PathRes<'db>),
     path_span: &LazyPathSpan<'db>,
     type_uses: Vec<(PathId<'db>, TyId<'db>)>,
+    resolved_with_enclosing: bool,
 ) -> Vec<TyDiagCollection<'db>> {
     let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
     type_uses
         .into_iter()
         .filter_map(|(used_path, ty)| {
             let span = path_span.clone().segment(used_path.segment_index(db));
-            family_application_diag(db, solve_cx, ty, span.into())
+            let resolved = || {
+                resolved_with_enclosing
+                    || lowering_resolved_use(db, solve_cx, path, res, used_path, ty)
+            };
+            family_application_diag(db, solve_cx, ty, resolved, span.into())
         })
         .collect()
+}
+
+/// Whether lowering replaced `written`, what segment `used` of `path`
+/// resolved to as written, by the type it stands for. `res` is what `path`
+/// resolved to: for its last segment, that is the type lowering gave.
+fn lowering_resolved_use<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    path: PathId<'db>,
+    res: &PathRes<'db>,
+    used: PathId<'db>,
+    written: TyId<'db>,
+) -> bool {
+    match res {
+        PathRes::Ty(lowered) if used == path => *lowered != written,
+        _ => normalize_ty(
+            db,
+            written,
+            solve_cx.origin_scope(db),
+            solve_cx.assumptions(),
+        )
+        .is_ok_and(|resolved| resolved != written),
+    }
 }
 
 /// The error for a family application whose requirements fail: a family
@@ -233,6 +271,7 @@ fn family_application_diag<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
     ty: TyId<'db>,
+    resolved: impl FnOnce() -> bool,
     span: DynLazySpan<'db>,
 ) -> Option<TyDiagCollection<'db>> {
     if let Some(name) = ty.lacks_args_for_parameter_bounds(db) {
@@ -253,8 +292,7 @@ fn family_application_diag<'db>(
                 .args(db)
                 .iter()
                 .all(|arg| !arg.has_param(db) && !arg.has_var(db) && !arg.has_invalid(db))
-                && normalize_ty(db, ty, solve_cx.origin_scope(db), solve_cx.assumptions())
-                    .is_ok_and(|resolved| resolved != ty) =>
+                && resolved() =>
         {
             Some(check_ty_wf(db, solve_cx, ty))
         }
@@ -288,6 +326,18 @@ struct HirTyErrVisitor<'db> {
     assumptions: PredicateListId<'db>,
     const_bodies: ConstBodyLowering,
     check: WrittenTypeCheck,
+    /// The paths lowered so far. The visitor lowers each type nested in the
+    /// written type and resolves each path, and each is inside the ones
+    /// visited before it, so each path is lowered once.
+    lowered: LoweredPaths<'db>,
+    /// Whether the visited type is lowered as part of a qualified path,
+    /// which resolves the qualified paths written in it with itself.
+    inside_qualified: bool,
+    /// Whether the visited type is written in a part of a qualified path.
+    in_qualified_part: bool,
+    /// Whether lowering resolved the outermost qualified path the visited
+    /// type is written in, which drops the uses written in its parts.
+    enclosing_resolved: bool,
 }
 
 impl<'db> HirTyErrVisitor<'db> {
@@ -303,11 +353,28 @@ impl<'db> HirTyErrVisitor<'db> {
             assumptions,
             const_bodies,
             check,
+            lowered: LoweredPaths::default(),
+            inside_qualified: false,
+            in_qualified_part: false,
+            enclosing_resolved: false,
         }
     }
 
     fn reports_all(&self) -> bool {
         self.check == WrittenTypeCheck::All
+    }
+
+    fn path_context(&self, path: PathId<'db>, scope: ScopeId<'db>) -> LoweringContext<'db> {
+        LoweringContext::for_const_bodies(
+            HoleAnchor::TemplatePath {
+                path,
+                scope,
+                assumptions: self.assumptions,
+            },
+            self.const_bodies,
+        )
+        .sharing_lowered_paths(&self.lowered)
+        .written_inside_qualified_path(self.inside_qualified)
     }
 
     /// Visits the types written as arguments of `trait_ref`, but not its path,
@@ -321,25 +388,31 @@ impl<'db> HirTyErrVisitor<'db> {
             && let Some(span) = ctxt.span()
         {
             let mut path_ctxt = VisitorCtxt::new(self.db, ctxt.scope(), span.path());
-            walk_path(self, &mut path_ctxt, path);
+            walk_path_by_parts(self, &mut path_ctxt, path);
         }
-    }
-
-    fn path_context(&self, path: PathId<'db>, scope: ScopeId<'db>) -> LoweringContext<'db> {
-        LoweringContext::for_const_bodies(
-            HoleAnchor::TemplatePath {
-                path,
-                scope,
-                assumptions: self.assumptions,
-            },
-            self.const_bodies,
-        )
     }
 
     fn push_opt_diag(&mut self, diag: Option<TyDiagCollection<'db>>) {
         if let Some(diag) = diag {
             self.diags.push(diag)
         }
+    }
+}
+
+impl<'db> QualifiedPathParts<'db> for HirTyErrVisitor<'db> {
+    type Outside = (bool, bool);
+
+    fn enter_part(&mut self, part: QualifiedPathPart) -> (bool, bool) {
+        let inside = lowered_inside_qualified_path(part, self.const_bodies);
+        (
+            std::mem::replace(&mut self.inside_qualified, inside),
+            std::mem::replace(&mut self.in_qualified_part, true),
+        )
+    }
+
+    fn leave_part(&mut self, (inside, in_part): (bool, bool)) {
+        self.inside_qualified = inside;
+        self.in_qualified_part = in_part;
     }
 }
 
@@ -433,7 +506,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
                     // Walk the underlying path to validate any nested generic arguments,
                     // but don't validate the path itself as a type.
                     let mut path_ctxt = VisitorCtxt::new(ctxt.db(), ctxt.scope(), path_span);
-                    walk_path(self, &mut path_ctxt, path);
+                    walk_path_by_parts(self, &mut path_ctxt, path);
                 }
                 return;
             }
@@ -458,12 +531,14 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             walk_type(self, ctxt, hir_ty);
             return;
         }
-        let ty = lower_hir_ty_in_mode(
+        let ty = lower_hir_ty_sharing_paths(
             self.db,
             hir_ty,
             ctxt.scope(),
             self.assumptions,
             self.const_bodies,
+            &self.lowered,
+            self.inside_qualified,
         );
 
         // This will report errors with nested types that are fundamental to the nested type,
@@ -550,34 +625,60 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             }
         };
 
+        // The qualified use written in the path, `<T as Tr>::Name`, which
+        // lowering resolves with the uses written in its parts.
+        let db = self.db;
+        let qualified_use = type_uses.iter().copied().find(|(used, _)| {
+            used.parent(db)
+                .is_some_and(|parent| matches!(parent.kind(db), PathKind::QualifiedType { .. }))
+        });
+        let with_enclosing = self.in_qualified_part && self.enclosing_resolved;
+        let parts_resolved = if self.in_qualified_part {
+            self.enclosing_resolved
+        } else {
+            qualified_use.is_some_and(|(used, written)| {
+                let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(self.assumptions);
+                lowering_resolved_use(db, solve_cx, path, &res, used, written)
+            })
+        };
+
         // The family applications in the path, checked as written, with the
         // resolution done here.
+        let own_from = self.diags.len();
         self.diags.extend(application_requirement_diags(
-            self.db,
+            db,
             scope,
             self.assumptions,
+            (path, &res),
             &path_span,
             type_uses,
+            with_enclosing,
         ));
-        if !self.reports_all() {
-            walk_path(self, ctxt, path);
-            return;
+        let own_to = self.diags.len();
+        if self.reports_all() {
+            if !matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..)) {
+                let ident = path.ident(db).unwrap();
+                let span = path_span.clone().segment(path.segment_index(db));
+                self.diags
+                    .push(PathResDiag::ExpectedType(span.into(), ident, res.kind_name()).into());
+            }
+            if let Some((path, deriv_span)) = invisible {
+                let span = path_span.segment(path.segment_index(db)).ident();
+                let ident = path.ident(db);
+                let diag = PathResDiag::Invisible(span.into(), ident.unwrap(), deriv_span);
+                self.diags.push(diag.into());
+            }
         }
 
-        if !matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..)) {
-            let ident = path.ident(self.db).unwrap();
-            let span = path_span.clone().segment(path.segment_index(self.db));
-            self.diags
-                .push(PathResDiag::ExpectedType(span.into(), ident, res.kind_name()).into());
+        let enclosing = std::mem::replace(&mut self.enclosing_resolved, parts_resolved);
+        let parts_from = self.diags.len();
+        walk_path_by_parts(self, ctxt, path);
+        self.enclosing_resolved = enclosing;
+        // An error found in a part of a qualified use that lowering resolved
+        // with it is reported there, and not again for the use.
+        if qualified_use.is_some() && parts_resolved && self.diags.len() > parts_from {
+            self.diags.drain(own_from..own_to);
         }
-        if let Some((path, deriv_span)) = invisible {
-            let span = path_span.segment(path.segment_index(self.db)).ident();
-            let ident = path.ident(self.db);
-            let diag = PathResDiag::Invisible(span.into(), ident.unwrap(), deriv_span);
-            self.diags.push(diag.into());
-        }
-
-        walk_path(self, ctxt, path);
     }
 
     fn visit_trait_ref(

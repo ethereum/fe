@@ -1,0 +1,36 @@
+// A qualified use written inside another one is resolved with it. When the
+// outer use is resolved, an unmet requirement of the inner use is reported
+// once, at the inner use.
+trait Marked {}
+struct NotMarked {}
+struct Foo<T: Marked> { t: T }
+
+trait Tr {
+    type K
+}
+trait Fam {
+    type K<T>
+}
+trait Bl {
+    type Out
+}
+impl<T> Bl for T {
+    type Out = u8
+}
+
+struct Bad {}
+struct S {}
+impl Fam for S {
+    type K<T> = u16
+}
+
+fn self_type(_ x: <<Bad as Tr>::K as Bl>::Out) {}
+
+fn ignored_argument(_ x: <<S as Fam>::K<Foo<NotMarked>> as Bl>::Out) {}
+
+fn inside_a_tuple(_ x: <(<Bad as Tr>::K, u8) as Bl>::Out) {}
+
+fn three_levels(_ x: <<<Bad as Tr>::K as Bl>::Out as Bl>::Out) {}
+
+// The outer use is not resolved: the type keeps both projections.
+fn unresolved(_ x: <<Bad as Tr>::K as Tr>::K) {}
