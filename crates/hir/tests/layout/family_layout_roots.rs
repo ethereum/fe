@@ -1,5 +1,11 @@
-use crate::layout_test_support::parse_ok;
-use fe_hir::{core::semantic::ContractLayoutValue, test_db::find_contract};
+use crate::layout_test_support::{parse_module, parse_ok};
+use fe_hir::{
+    core::{
+        hir_def::IdentId,
+        semantic::{ContractLayoutError, ContractLayoutValue},
+    },
+    test_db::find_contract,
+};
 
 /// The layout of contract `C` in `src`: each entry of its report with its
 /// address space and value, or `no report` when the contract has no layout.
@@ -191,18 +197,48 @@ impl<const ROOT: u256> StaticSlot for Routed<ROOT> {
 /// plain associated type.
 #[test]
 fn a_family_application_keeps_a_concrete_root_inside_an_array() {
-    let expected = layout(&program(
-        "trait Factory { type Wrap }
-impl<const ROOT: u256> Factory for Holder<ROOT> { type Wrap = (u8, [Plain<ROOT>; 2]) }",
-        "<Holder<7> as Factory>::Wrap",
-    ));
-    let given = layout(&program(
-        "trait Factory { type Wrap<T> }
-impl<const ROOT: u256> Factory for Holder<ROOT> { type Wrap<T> = (T, [Plain<ROOT>; 2]) }",
-        "<Holder<7> as Factory>::Wrap<u8>",
-    ));
-    assert_eq!(expected, "no report");
-    assert_eq!(given, expected);
+    let rejected = |src: &str| {
+        parse_module!(trusted db, top_mod, src);
+        let contract = find_contract(&db, top_mod, "C");
+        let layout = contract.storage_layout(&db);
+        let errors = layout
+            .field_errors(&IdentId::new(&db, "h"))
+            .unwrap_or_else(|| {
+                panic!("the array must be rejected during field collection:\n{src}")
+            });
+        assert!(
+            errors
+                .iter()
+                .any(|error| matches!(error, ContractLayoutError::LayoutRootArray { .. })),
+            "{src}\n{errors:?}",
+        );
+        assert!(!errors.contains(&ContractLayoutError::InternalLayoutGraph));
+        assert!(layout.allocated.is_none());
+        assert!(contract.layout_report(&db).is_none());
+    };
+    for len in [0, 1, 2] {
+        for array in [
+            format!("[Plain<ROOT>; {len}]"),
+            format!("[[Plain<ROOT>; {len}]; 2]"),
+            format!("[(u8, Plain<ROOT>); {len}]"),
+        ] {
+            for (params, first, args) in [("", "u8", ""), ("<T>", "T", "<u8>")] {
+                let decls = format!(
+                    "trait Factory {{ type Wrap{params} }}\nimpl<const ROOT: u256> Factory for Holder<ROOT> {{ type Wrap{params} = ({first}, {array}) }}"
+                );
+                for target in [
+                    format!("<Holder<7> as Factory>::Wrap{args}"),
+                    format!("Holder<7>::Wrap{args}"),
+                ] {
+                    rejected(&program(&decls, &target));
+                }
+            }
+            rejected(&program(
+                &format!("type Wrap<const ROOT: u256 = _> = (u8, {array})"),
+                "Wrap<7>",
+            ));
+        }
+    }
 }
 
 /// A root forwarded from an impl's parameter into the definition of an

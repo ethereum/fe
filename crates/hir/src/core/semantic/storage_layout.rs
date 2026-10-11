@@ -1205,6 +1205,8 @@ struct ConcreteRootSite<'db> {
     place: StoragePlace<'db>,
     mode: WalkMode,
     default_space: ProviderAddressSpace,
+    /// Retained for roots exposed after the enclosing array walk finishes.
+    array: Option<TyId<'db>>,
 }
 
 #[derive(Clone, Copy)]
@@ -1477,6 +1479,7 @@ impl<'db> FieldCollector<'db> {
             place,
             mode,
             default_space,
+            array,
         } = site;
         let canon_env = ConstCanonEnv::new(self.scope, self.assumptions, None);
         let value = canonicalize_ty_for_mode(self.db, value, canon_env, ConstCanonMode::Identity);
@@ -1524,6 +1527,10 @@ impl<'db> FieldCollector<'db> {
         let Some(space) = self.root_space_for_owner(owner, default_space) else {
             return;
         };
+        if let Some(array) = array {
+            self.push_error(ContractLayoutError::LayoutRootArray { array });
+            return;
+        }
         if self.concrete_occurrences.iter().any(|occurrence| {
             occurrence.value == value
                 && occurrence.ty == ty
@@ -1624,6 +1631,7 @@ impl<'db> FieldCollector<'db> {
             place: place.clone(),
             mode,
             default_space: self.active_space,
+            array: self.arrays.last().map(|&(array, _)| array),
         });
         let output = if self.visiting.insert((instantiation.ty, place.clone())) {
             let output = self.walk_ty_representation(
@@ -1679,6 +1687,7 @@ impl<'db> FieldCollector<'db> {
             place: place.clone(),
             mode,
             default_space: self.active_space,
+            array: self.arrays.last().map(|&(array, _)| array),
         });
         if !self.visiting.insert((ty, place.clone())) {
             return WalkOutput::scalar(ty, place, dimensions);
@@ -2139,6 +2148,7 @@ impl<'db> FieldCollector<'db> {
                         place: place.clone(),
                         mode,
                         default_space: self.active_space,
+                        array: self.arrays.last().map(|&(array, _)| array),
                     },
                     place.with_step(PlaceStep::ConstParam(idx as u32)).steps,
                 );
