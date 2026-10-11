@@ -3,6 +3,7 @@ use hir::{
         semantic::SemanticInstance,
         ty::{
             ProviderAddressSpace, ProviderKind,
+            adt_def::instantiate_adt_field_shape,
             const_ty::{ConcreteArrayLengthError, demand_concrete_array_length},
             normalize::normalize_or_keep,
             provider::{ProviderLayoutEvidence, provider_semantics},
@@ -187,9 +188,13 @@ impl<'db> RuntimeTypeModel<'db> {
                             (0..variant.num_types()).any(|field_idx| {
                                 runtime_transport_sensitive_aggregate(
                                     db,
-                                    adt.fields(db)[variant_idx]
-                                        .ty(db, field_idx)
-                                        .instantiate(db, args),
+                                    instantiate_adt_field_shape(
+                                        db,
+                                        adt,
+                                        variant_idx,
+                                        field_idx,
+                                        args,
+                                    ),
                                     env.scope,
                                     env.assumptions,
                                 )
@@ -285,8 +290,8 @@ pub(crate) fn validate_runtime_array_extents_in_env<'db>(
         } else if let Some(enum_) = ty.as_enum(db) {
             let args = ty.generic_args(db);
             for variant in enum_.variants(db) {
-                for field in variant.field_tys(db) {
-                    visit(db, env, field.instantiate(db, args), seen)?;
+                for field in variant.instantiated_field_tys(db, args) {
+                    visit(db, env, field, seen)?;
                 }
             }
         }

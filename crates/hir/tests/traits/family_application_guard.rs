@@ -221,3 +221,40 @@ fn the_reduce_points_reduce() {
         "an instantiated field type is no longer normalized:\n{resolve}"
     );
 }
+
+/// A field type of an ADT applied to arguments is instantiated in one place,
+/// `instantiate_adt_field_shape`, which stores it resolved; a reader that
+/// instantiates the declared field type itself sees the associated types it
+/// names unresolved.
+#[test]
+fn field_types_are_instantiated_in_one_place() {
+    const OWNERS: &[&str] = &[
+        "hir/src/analysis/ty/adt_def.rs",
+        "hir/src/core/semantic/mod.rs",
+    ];
+    let mut found = Vec::new();
+    for krate in ["hir", "mir", "codegen"] {
+        for (path, text) in sources(&crates_dir().join(krate)) {
+            let path = relative(&path);
+            if OWNERS.contains(&path.as_str()) {
+                continue;
+            }
+            let lines: Vec<&str> = text.lines().collect();
+            for (idx, line) in lines.iter().enumerate() {
+                let declared = line.contains(".field_tys(") || line.contains(".fields(db)[");
+                let instantiated = lines[idx..lines.len().min(idx + 5)].iter().any(|line| {
+                    line.contains(".instantiate(db") || line.contains(".instantiate(self.db")
+                });
+                if declared && instantiated {
+                    found.push(format!("{path}:{}", idx + 1));
+                }
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "a field type is instantiated outside `instantiate_adt_field_shape`; use it, or \
+         `VariantView::instantiated_field_tys`:\n{}",
+        found.join("\n")
+    );
+}

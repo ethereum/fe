@@ -128,11 +128,9 @@ pub(crate) fn layout_for_enum_variant_instance_in_env<'db>(
                 .enumerate()
                 .map(|(idx, enum_variant)| {
                     let default_fields = enum_variant
-                        .field_tys(db)
+                        .instantiated_field_tys(db, args)
                         .into_iter()
-                        .map(|field| {
-                            stored_class_for_ty_in_env(db, env, field.instantiate(db, args))
-                        })
+                        .map(|field| stored_class_for_ty_in_env(db, env, field))
                         .collect::<Vec<_>>();
                     let fields = if idx == variant {
                         assert_eq!(
@@ -208,9 +206,9 @@ fn enum_layout_key<'db>(
             .variants(db)
             .map(|variant| EnumVariantLayout {
                 fields: variant
-                    .field_tys(db)
+                    .instantiated_field_tys(db, args)
                     .into_iter()
-                    .map(|field| stored_class_for_ty_in_env(db, env, field.instantiate(db, args)))
+                    .map(|field| stored_class_for_ty_in_env(db, env, field))
                     .collect(),
             })
             .collect(),

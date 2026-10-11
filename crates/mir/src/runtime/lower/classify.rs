@@ -1368,11 +1368,7 @@ impl<'db> ExprStaticFactsBuilder<'_, 'db> {
                     .unwrap_or_else(|| panic!("enum construction reached non-enum type"));
                 let args = enum_ty.generic_args(db);
                 let enum_variant = enum_.variants(db).nth(variant.0 as usize)?;
-                let field_tys = enum_variant
-                    .field_tys(db)
-                    .into_iter()
-                    .map(|field| field.instantiate(db, args))
-                    .collect::<Vec<_>>();
+                let field_tys = enum_variant.instantiated_field_tys(db, args);
                 if field_tys.len() != fields.len() {
                     return None;
                 }

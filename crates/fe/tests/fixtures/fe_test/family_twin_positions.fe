@@ -3,8 +3,8 @@
 // associated types: a contract field holding a tuple, an `#[abi]` struct in
 // a message, a field of an array of family types, a field typed through a
 // type constructor argument, generic structs and enums holding a family
-// application, a family defined through another, a generic impl header and
-// a constant.
+// application, a family defined through another, a generic impl header, a
+// constant, and a struct and an enum generic over the factory.
 use std::evm::Evm
 
 struct Holder<T> {
@@ -160,6 +160,30 @@ struct OverPlainFactory<F: Plain> {
     a: F::PlainArr,
 }
 
+enum OverFactoryEnum<F: Family> {
+    V(F::Pair<u256>),
+    N,
+}
+
+enum OverPlainFactoryEnum<F: Plain> {
+    V(F::PlainPair),
+    N,
+}
+
+fn over_value(_ e: OverFactoryEnum<Fac>) -> u256 {
+    match e {
+        OverFactoryEnum::V(p) => p.1
+        OverFactoryEnum::N => 0
+    }
+}
+
+fn over_plain_value(_ e: OverPlainFactoryEnum<Fac>) -> u256 {
+    match e {
+        OverPlainFactoryEnum::V(p) => p.1
+        OverPlainFactoryEnum::N => 0
+    }
+}
+
 fn generic_get<T>(_ g: own FamilyGeneric<T>) -> T {
     g.a.1
 }
@@ -226,6 +250,7 @@ fn family_value_positions_behave_like_plain_ones() {
     let over = OverFactory<Fac> { a: [3, 4] }
     let over_plain = OverPlainFactory<Fac> { a: [3, 4] }
     assert!(over.a[0] + over.a[1] == over_plain.a[0] + over_plain.a[1])
+    assert!(over_value(OverFactoryEnum<Fac>::V((true, 3))) == over_plain_value(OverPlainFactoryEnum<Fac>::V((true, 3))))
 
     assert!(id<Holder<bool>>() == id<PlainBox<bool>>())
     assert!(FAMILY_C == PLAIN_C)

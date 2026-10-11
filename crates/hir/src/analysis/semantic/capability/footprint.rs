@@ -444,10 +444,7 @@ impl<'db> LinearAddress<'db> {
                     let fields = enum_
                         .variants(db)
                         .nth(usize::from(variant.0))?
-                        .field_tys(db)
-                        .into_iter()
-                        .map(|ty| ty.instantiate(db, address.ty.generic_args(db)))
-                        .collect::<Vec<_>>();
+                        .instantiated_field_tys(db, address.ty.generic_args(db));
                     let field = usize::from(field.0);
                     let tag = u64::from(enum_tag_bits(enum_.len_variants(db)).div_ceil(8));
                     (

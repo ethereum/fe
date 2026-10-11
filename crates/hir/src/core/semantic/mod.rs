@@ -5926,6 +5926,24 @@ impl<'db> VariantView<'db> {
         self.owner.span().variants().variant(self.idx)
     }
 
+    /// The types of this variant's fields in the enum applied to `args`:
+    /// each field instantiated as every field of an ADT is, so a field
+    /// written over the enum's parameters names the type it stands for.
+    pub fn instantiated_field_tys(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        args: &[TyId<'db>],
+    ) -> Vec<TyId<'db>> {
+        let adt = AdtRef::from(self.owner).as_adt(db);
+        (0..self.field_tys(db).len())
+            .map(|field| {
+                crate::analysis::ty::adt_def::instantiate_adt_field_shape(
+                    db, adt, self.idx, field, args,
+                )
+            })
+            .collect()
+    }
+
     /// Returns semantic types of this variant's fields (empty for unit variants).
     pub fn field_tys(self, db: &'db dyn HirAnalysisDb) -> Vec<Binder<'db, TyId<'db>>> {
         use crate::analysis::ty::ty_def::{InvalidCause, TyId};

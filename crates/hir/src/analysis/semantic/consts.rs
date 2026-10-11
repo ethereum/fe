@@ -347,11 +347,7 @@ fn verify_sem_const_shape_impl<'db>(
                 .variants(db)
                 .nth(variant.0 as usize)
                 .ok_or("constant enum variant is outside its type")?;
-            let field_tys = variant
-                .field_tys(db)
-                .into_iter()
-                .map(|field| field.instantiate(db, args))
-                .collect::<Vec<_>>();
+            let field_tys = variant.instantiated_field_tys(db, args);
             verify_sem_const_children(db, fields, field_tys.into_iter(), allow_dependent)
         }
     }
@@ -760,10 +756,7 @@ fn reify_runtime_const_impl<'db>(
             let field_tys = enum_
                 .variants(db)
                 .nth(variant.0 as usize)?
-                .field_tys(db)
-                .into_iter()
-                .map(|field| field.instantiate(db, args))
-                .collect::<Vec<_>>();
+                .instantiated_field_tys(db, args);
             if field_tys.len() != fields.len() {
                 return None;
             }

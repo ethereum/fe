@@ -2211,10 +2211,7 @@ impl<'db> RmirEmitter<'db> {
                     .variants(self.db)
                     .nth(variant.0 as usize)
                     .expect("enum variant index should resolve")
-                    .field_tys(self.db)
-                    .into_iter()
-                    .map(|field| field.instantiate(self.db, ty.generic_args(self.db)))
-                    .collect::<Vec<_>>();
+                    .instantiated_field_tys(self.db, ty.generic_args(self.db));
                 let field_values = fields
                     .iter()
                     .copied()
@@ -2438,11 +2435,7 @@ impl<'db> RmirEmitter<'db> {
         let Some(enum_variant) = enum_.variants(self.db).nth(variant.0 as usize) else {
             panic!("missing enum variant for {variant:?}");
         };
-        let field_tys = enum_variant
-            .field_tys(self.db)
-            .into_iter()
-            .map(|field| field.instantiate(self.db, args))
-            .collect::<Vec<_>>();
+        let field_tys = enum_variant.instantiated_field_tys(self.db, args);
         assert_eq!(
             field_tys.len(),
             fields.len(),
