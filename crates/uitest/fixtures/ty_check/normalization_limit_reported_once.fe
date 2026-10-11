@@ -1,0 +1,32 @@
+// A normalization limit in one written type is reported once, where the
+// type is written, and not again where the type is used.
+trait Nest {
+    type Out
+}
+
+struct N<T> {
+    t: T,
+}
+
+impl<T: Nest> Nest for N<T> {
+    type Out = T::Out
+}
+
+impl Nest for u8 {
+    type Out = u8
+}
+
+fn effect_key() -> u8 uses (x: <N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out) {
+    x
+}
+
+msg M {
+    #[selector = 1]
+    Get -> <N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Nest>::Out,
+}
+
+contract C {
+    recv M {
+        Get -> u8 { 1 }
+    }
+}

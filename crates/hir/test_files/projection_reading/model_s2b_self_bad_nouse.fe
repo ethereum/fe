@@ -1,0 +1,6 @@
+trait Show {}
+impl Show for u8 {}
+trait Tr { type Out }
+pub struct S {}
+pub struct T {}
+impl Tr for S where <S as Tr>::Out: Show { type Out = u16 }

@@ -94,6 +94,9 @@ impl<'db> ProviderSemantics<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum ProviderLayoutFailure {
     Ambiguous,
+    /// The provider's `Target` or `Raw` type reaches a normalization limit.
+    /// This is the first place those types are normalized for the provider.
+    NormalizationLimit(super::normalize::NormalizationLimit),
     UnresolvedTarget,
     UnresolvedRaw,
     UnresolvedSpace,
@@ -127,6 +130,8 @@ pub enum StaticSlotLayoutResolution {
     NotStaticSlot,
     Resolved(ProviderAddressSpace),
     Ambiguous,
+    /// Selecting the implementation reached a limit.
+    NormalizationLimit(super::normalize::NormalizationLimit),
     UnresolvedSpace,
 }
 
@@ -215,6 +220,9 @@ fn resolve_effect_handle_query<'db>(
             Selection::Unique(_) | Selection::Ambiguous(_) => {
                 EffectHandleResolution::Invalid(ProviderLayoutFailure::Ambiguous)
             }
+            Selection::NormalizationLimit(limit) => {
+                EffectHandleResolution::Invalid(ProviderLayoutFailure::NormalizationLimit(limit))
+            }
         };
     }
     let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
@@ -223,6 +231,11 @@ fn resolve_effect_handle_query<'db>(
             return EffectHandleResolution::Invalid(ProviderLayoutFailure::Ambiguous);
         }
         Selection::NotFound => return EffectHandleResolution::NotHandle,
+        Selection::NormalizationLimit(limit) => {
+            return EffectHandleResolution::Invalid(ProviderLayoutFailure::NormalizationLimit(
+                limit,
+            ));
+        }
     };
     let trait_bound = matches!(
         resolved.selected().origin(db),
@@ -233,7 +246,14 @@ fn resolve_effect_handle_query<'db>(
     else {
         return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget);
     };
-    let target_ty = normalize_ty(db, target_ty, scope, assumptions);
+    let target_ty = match normalize_ty(db, target_ty, scope, assumptions) {
+        Ok(ty) => ty,
+        Err(limit) => {
+            return EffectHandleResolution::Invalid(ProviderLayoutFailure::NormalizationLimit(
+                limit,
+            ));
+        }
+    };
     if target_ty.has_invalid(db)
         || target_ty.has_var(db)
         || !target_ty.has_star_kind(db)
@@ -245,7 +265,14 @@ fn resolve_effect_handle_query<'db>(
     else {
         return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedRaw);
     };
-    let raw_ty = normalize_ty(db, raw_ty, scope, assumptions);
+    let raw_ty = match normalize_ty(db, raw_ty, scope, assumptions) {
+        Ok(ty) => ty,
+        Err(limit) => {
+            return EffectHandleResolution::Invalid(ProviderLayoutFailure::NormalizationLimit(
+                limit,
+            ));
+        }
+    };
     if raw_ty.has_invalid(db)
         || raw_ty.has_var(db)
         || !raw_ty.has_star_kind(db)
@@ -362,8 +389,12 @@ pub fn resolve_static_slot_layout<'db>(
         {
             resolved
         }
+        // An undecided selection is never taken as "not a static slot".
         Selection::Unique(_) | Selection::Ambiguous(_) => {
             return StaticSlotLayoutResolution::Ambiguous;
+        }
+        Selection::NormalizationLimit(limit) => {
+            return StaticSlotLayoutResolution::NormalizationLimit(limit);
         }
         Selection::NotFound => return StaticSlotLayoutResolution::NotStaticSlot,
     };
@@ -574,6 +605,19 @@ fn trusted_effect_handle_impl(db: &dyn HirAnalysisDb, impl_trait: ImplTrait<'_>)
         || is_authorized_builtin_library(db, ingot, BuiltinLibrary::Std)
 }
 
+/// Whether `implementor` implements the core `EffectHandle` trait.
+pub(crate) fn is_effect_handle_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementor: ImplementorId<'db>,
+) -> bool {
+    let trait_def = implementor.trait_def(db);
+    is_authorized_builtin_library(db, trait_def.top_mod(db).ingot(db), BuiltinLibrary::Core)
+        && trait_def
+            .name(db)
+            .to_opt()
+            .is_some_and(|name| name.data(db) == "EffectHandle")
+}
+
 pub(crate) fn effect_handle_impl_raw_failure<'db>(
     db: &'db dyn HirAnalysisDb,
     implementor: ImplementorId<'db>,
@@ -584,10 +628,7 @@ pub(crate) fn effect_handle_impl_raw_failure<'db>(
     ) {
         return None;
     }
-    let trait_def = implementor.trait_def(db);
-    if !is_authorized_builtin_library(db, trait_def.top_mod(db).ingot(db), BuiltinLibrary::Core)
-        || trait_def.name(db).to_opt()?.data(db) != "EffectHandle"
-    {
+    if !is_effect_handle_impl(db, implementor) {
         return None;
     }
     let raw_ty = implementor.assoc_ty(db, IdentId::new(db, "Raw".to_string()))?;

@@ -10,7 +10,7 @@ struct Box<T> {
     item: T,
 }
 
-impl<T: AssocStrong> Foo for Box<T::Item> {}
+impl<T: AssocStrong> Foo for Box<(T, T::Item)> {}
 
 trait AssocOutput {
     type X

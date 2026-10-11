@@ -1,0 +1,7 @@
+fn g(x: S::Out) -> u8 { x }
+fn f(x: <S as Tr>::Out) -> u8 { x }
+trait Tr { type Out }
+trait Other { type X }
+struct S {}
+impl Tr for S where S: Other<X = u8> { type Out = u8 }
+impl Other for S { type X = <S as Tr>::Out }

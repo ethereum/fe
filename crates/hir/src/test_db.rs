@@ -479,3 +479,11 @@ impl TestDb {
         )
     }
 }
+
+/// For tests: whether a projection is read as the defining impl's definition
+/// while every candidate impl's where clauses are proved, not only where a
+/// clause may lead back to the projection. Applies to checks run on this
+/// thread from now on; use a fresh database after switching.
+pub fn set_read_definition_always(on: bool) {
+    crate::analysis::ty::candidates::set_read_definition_always(on);
+}

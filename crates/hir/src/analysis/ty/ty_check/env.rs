@@ -28,13 +28,14 @@ use crate::analysis::{
     ty::{
         const_ty::{CallableInputLayoutHoleOrigin, const_body_assumptions},
         corelib::resolve_lib_type_path,
+        diagnostics::TyDiagCollection,
         effects::{
             EffectKeyKind,
             elaborate::{build_pattern_from_requirement_decl, seed_forwarder_from_requirement},
             model::EffectRequirementDecl,
         },
         fold::{TyFoldable, TyFolder},
-        normalize::normalize_ty,
+        normalize::{NormalizationLimit, normalize_ty},
         provider::ProviderAddressSpace,
         trait_def::TraitInstId,
         trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
@@ -50,6 +51,12 @@ use crate::core::semantic::{
 };
 
 pub(crate) struct TyCheckEnv<'db> {
+    /// The normalization limits in the owner's signature, reported by the
+    /// checker as it starts.
+    pub(super) signature_limit_diags: Vec<TyDiagCollection<'db>>,
+    /// The type that stands for an effect binding's type whose normalization
+    /// limit was reported where the type is written.
+    effect_param_limit_tys: FxHashMap<(EffectParamSite<'db>, usize), TyId<'db>>,
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
     owner_scope: ScopeId<'db>,
@@ -129,6 +136,8 @@ impl<'db> TyCheckEnv<'db> {
         };
 
         let mut env = Self {
+            signature_limit_diags: Vec::new(),
+            effect_param_limit_tys: FxHashMap::default(),
             db,
             owner,
             owner_scope,
@@ -180,6 +189,7 @@ impl<'db> TyCheckEnv<'db> {
                     if !view.is_self_param(db) && ty_contains_const_hole(db, ty) {
                         ty = TyId::invalid(db, InvalidCause::Other);
                     }
+                    ty = env.signature_ty(ty, view.lazy_ty_span(db).into());
                     let var = LocalBinding::Param {
                         site: ParamSite::Func(func),
                         idx,
@@ -266,11 +276,24 @@ impl<'db> TyCheckEnv<'db> {
                 continue;
             }
             let idx = binding.binding_idx as usize;
-            let Some(resolved_binding) =
-                self.resolved_effect_binding(EffectParamSite::Func(func), idx)
-            else {
+            let site = EffectParamSite::Func(func);
+            let Some(resolved_binding) = self.resolved_effect_binding(site, idx) else {
                 continue;
             };
+            // The type is written in the signature, where a limit in it is
+            // reported; reporting it here gives the same diagnostic, and the
+            // uses of the binding then use the type that stands for it, so
+            // the limit is not reported again at each use.
+            if let Some(ty) = self.resolved_effect_param_ty(site, idx) {
+                let span = self.owner.effect_param_ty_span(self.db, idx);
+                let ty = self.signature_ty(ty, span);
+                if matches!(
+                    ty.invalid_cause(self.db),
+                    Some(InvalidCause::NormalizationLimit { .. })
+                ) {
+                    self.effect_param_limit_tys.insert((site, idx), ty);
+                }
+            }
             self.var_env
                 .last_mut()
                 .expect("function scope exists")
@@ -573,7 +596,42 @@ impl<'db> TyCheckEnv<'db> {
         self.owner
     }
 
-    pub(super) fn compute_expected_return(&self) -> TyId<'db> {
+    pub(super) fn compute_expected_return(&mut self) -> TyId<'db> {
+        let expected = self.compute_declared_return();
+        let span: DynLazySpan<'db> = match self.owner {
+            BodyOwner::Func(func) => func.span().sig().ret_ty().into(),
+            BodyOwner::Const(const_) => const_.span().ty().into(),
+            BodyOwner::ContractRecvArm {
+                contract,
+                recv_idx,
+                arm_idx,
+            } => contract
+                .span()
+                .recv(recv_idx as usize)
+                .arms()
+                .arm(arm_idx as usize)
+                .ret_ty()
+                .into(),
+            _ => self.body.span().into(),
+        };
+        self.signature_ty(expected, span)
+    }
+
+    /// A type from the body owner's signature, written at `span`. A
+    /// normalization limit in it is reported there (the signature's own
+    /// check reports the same diagnostic, which is merged).
+    fn signature_ty(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) -> TyId<'db> {
+        match normalize_ty(self.db, ty, self.owner_scope, self.base_assumptions) {
+            Ok(_) => ty,
+            Err(limit) => {
+                let (diag, reported) = limit.report(span);
+                self.signature_limit_diags.push(diag);
+                reported.recovery_ty(self.db)
+            }
+        }
+    }
+
+    fn compute_declared_return(&self) -> TyId<'db> {
         match self.owner {
             BodyOwner::Func(func) => {
                 let rt = func.return_ty(self.db);
@@ -633,7 +691,10 @@ impl<'db> TyCheckEnv<'db> {
             LocalBinding::Param { ty, .. } => *ty,
 
             LocalBinding::EffectParam { site, idx, .. } => self
-                .resolved_effect_param_ty(*site, *idx)
+                .effect_param_limit_tys
+                .get(&(*site, *idx))
+                .copied()
+                .or_else(|| self.resolved_effect_param_ty(*site, *idx))
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
         }
     }
@@ -724,6 +785,11 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn leave_expr(&mut self) {
         self.expr_stack.pop();
+    }
+
+    /// The innermost expression being checked.
+    pub(super) fn current_expr(&self) -> Option<ExprId> {
+        self.expr_stack.last().copied()
     }
 
     pub(super) fn parent_expr(&self) -> Option<ExprId> {
@@ -842,7 +908,12 @@ impl<'db> TyCheckEnv<'db> {
     /// expression types, and callables, all of which have been folded with
     /// the unification table.
     ///
-    pub(super) fn finish(mut self, table: &mut UnificationTable<'db>) -> TypedBody<'db> {
+    /// Also returns the limits met while deciding which expressions move;
+    /// the caller reports them at those expressions.
+    pub(super) fn finish(
+        mut self,
+        table: &mut UnificationTable<'db>,
+    ) -> (TypedBody<'db>, Vec<(ExprId, NormalizationLimit)>) {
         let mut prober = Prober {
             table,
             scope: self.scope(),
@@ -879,17 +950,19 @@ impl<'db> TyCheckEnv<'db> {
         let assumptions = self.assumptions.fold_with(self.db, &mut prober);
         let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
         let scope = prober.scope;
+        let mut move_limits = Vec::new();
         let implicit_moves = self
             .implicit_moves
             .iter()
             .filter_map(|(expr, ty)| {
-                let ty = normalize_ty(
-                    self.db,
-                    ty.fold_with(self.db, &mut prober),
-                    scope,
-                    assumptions,
-                );
-                (!ty_is_copy(self.db, scope, ty, assumptions)).then_some(*expr)
+                let ty = ty.fold_with(self.db, &mut prober);
+                // A limit leaves the expression undecided; it is reported at
+                // the expression and the expression moves.
+                let is_copy = ty_is_copy(self.db, scope, ty, assumptions).unwrap_or_else(|limit| {
+                    move_limits.push((*expr, limit));
+                    false
+                });
+                (!is_copy).then_some(*expr)
             })
             .collect();
 
@@ -933,7 +1006,7 @@ impl<'db> TyCheckEnv<'db> {
             |prop| prop.ty,
         );
 
-        TypedBodyTables {
+        let typed: TypedBody<'db> = TypedBodyTables {
             body: Some(self.body),
             result_ty,
             assumptions,
@@ -957,7 +1030,8 @@ impl<'db> TyCheckEnv<'db> {
             expr_places,
             path_applications: self.path_applications,
         }
-        .into()
+        .into();
+        (typed, move_limits)
     }
 
     pub(super) fn expr_data(&self, expr: ExprId) -> &'db Partial<Expr<'db>> {
@@ -1531,6 +1605,9 @@ pub(super) struct PendingMethodCandidate<'db> {
     pub inst: TraitInstId<'db>,
     pub method: Func<'db>,
     pub needs_confirmation: bool,
+    /// Whether the candidate applies is unknown: checking it reached this
+    /// limit.
+    pub unknown: Option<crate::analysis::ty::normalize::NormalizationLimit>,
 }
 
 #[derive(Debug, Clone)]

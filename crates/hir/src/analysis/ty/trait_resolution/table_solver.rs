@@ -9,6 +9,8 @@ use std::convert::Infallible;
 
 use common::indexmap::{IndexMap, IndexSet};
 use rustc_hash::FxHashMap;
+
+use crate::analysis::ty::normalize::NormalizationLimit;
 use tablesolve::{
     AnswerlessMode, CallbackOutcome, Canonical as TabledCanonical, CanonicalizeOutcome, Completion,
     Config, ConsumerId, ContextTransition, Event, Limits, Observer, ReportOptions,
@@ -27,7 +29,7 @@ use crate::analysis::{
         fold::TyFoldable,
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_in_ingots},
         ty_def::{TyData, TyId},
-        unify::{PersistentUnificationTable, UnificationError, UnificationResult},
+        unify::PersistentUnificationTable,
         visitor::{TyVisitable, TyVisitor},
     },
 };
@@ -45,6 +47,38 @@ type UnsatSubgoal<'db> = Solution<TraitInstId<'db>>;
 
 fn trait_inst_head<'db>(db: &'db dyn HirAnalysisDb, inst: TraitInstId<'db>) -> TraitInstId<'db> {
     TraitInstId::new(db, inst.def(db), inst.args(db).to_vec(), IndexMap::new())
+}
+
+/// Whether the assumption `assumption` can prove the normalized `goal`: the
+/// same trait, and arguments that may unify. Type parameters are rigid in
+/// both, as unification treats them: one unifies only with itself and with
+/// variables. Associated type bindings are compared when it is applied.
+fn assumption_may_match<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assumption: TraitInstId<'db>,
+    goal: TraitInstId<'db>,
+) -> bool {
+    fn may_unify<'db>(db: &'db dyn HirAnalysisDb, a: TyId<'db>, b: TyId<'db>) -> bool {
+        let rigid = |ty: TyId<'db>| {
+            matches!(
+                ty.data(db),
+                TyData::TyParam(_) | TyData::TyBase(_) | TyData::TyApp(..)
+            )
+        };
+        match (a.data(db), b.data(db)) {
+            (TyData::TyApp(a_abs, a_arg), TyData::TyApp(b_abs, b_arg)) => {
+                may_unify(db, *a_abs, *b_abs) && may_unify(db, *a_arg, *b_arg)
+            }
+            _ if rigid(a) && rigid(b) => a == b,
+            _ => true,
+        }
+    }
+    assumption.def(db) == goal.def(db)
+        && assumption
+            .args(db)
+            .iter()
+            .zip(goal.args(db))
+            .all(|(&assumption, &goal)| may_unify(db, assumption, goal))
 }
 
 /// Whether the impl `header` can match the normalized `goal`, checked before
@@ -90,9 +124,18 @@ fn normalize_assoc_binding<'db>(
     ty: TyId<'db>,
     scope: ScopeId<'db>,
     assumptions: super::PredicateListId<'db>,
-) -> TyId<'db> {
+    definitions: super::PredicateListId<'db>,
+) -> Result<TyId<'db>, NormalizationLimit> {
     let ty = ty.fold_with(db, table);
-    crate::analysis::ty::normalize::normalize_ty(db, ty, scope, assumptions)
+    crate::analysis::ty::normalize::normalize_ty_in_solver(db, ty, scope, assumptions, definitions)
+}
+
+/// Whether a candidate matches a goal. `Unknown` means the heads unify but an
+/// associated-type binding could not be compared within the limits.
+enum CandidateMatch {
+    Matches,
+    Mismatch,
+    Unknown(NormalizationLimit),
 }
 
 fn unify_trait_inst_with_normalized_assoc_bindings<'db>(
@@ -102,17 +145,13 @@ fn unify_trait_inst_with_normalized_assoc_bindings<'db>(
     goal: TraitInstId<'db>,
     scope: ScopeId<'db>,
     assumptions: super::PredicateListId<'db>,
-) -> UnificationResult {
-    table.unify(trait_inst_head(db, candidate), trait_inst_head(db, goal))?;
-
-    for (name, &candidate_assoc_ty) in candidate.assoc_type_bindings(db) {
-        if let Some(&goal_assoc_ty) = goal.assoc_type_bindings(db).get(name) {
-            let candidate_assoc_ty =
-                normalize_assoc_binding(db, table, candidate_assoc_ty, scope, assumptions);
-            let goal_assoc_ty =
-                normalize_assoc_binding(db, table, goal_assoc_ty, scope, assumptions);
-            table.unify(candidate_assoc_ty, goal_assoc_ty)?;
-        }
+    definitions: super::PredicateListId<'db>,
+) -> CandidateMatch {
+    if table
+        .unify(trait_inst_head(db, candidate), trait_inst_head(db, goal))
+        .is_err()
+    {
+        return CandidateMatch::Mismatch;
     }
 
     if goal
@@ -120,10 +159,41 @@ fn unify_trait_inst_with_normalized_assoc_bindings<'db>(
         .keys()
         .any(|name| !candidate.assoc_type_bindings(db).contains_key(name))
     {
-        return Err(UnificationError::TypeMismatch);
+        return CandidateMatch::Mismatch;
     }
 
-    Ok(())
+    // A binding that cannot be compared leaves the match unknown, but a later
+    // binding that differs still rules the candidate out.
+    let mut unknown = None;
+    for (name, &candidate_assoc_ty) in candidate.assoc_type_bindings(db) {
+        if let Some(&goal_assoc_ty) = goal.assoc_type_bindings(db).get(name) {
+            let pair = normalize_assoc_binding(
+                db,
+                table,
+                candidate_assoc_ty,
+                scope,
+                assumptions,
+                definitions,
+            )
+            .and_then(|candidate| {
+                normalize_assoc_binding(db, table, goal_assoc_ty, scope, assumptions, definitions)
+                    .map(|goal| (candidate, goal))
+            });
+            match pair {
+                Ok((candidate_assoc_ty, goal_assoc_ty)) => {
+                    if table.unify(candidate_assoc_ty, goal_assoc_ty).is_err() {
+                        return CandidateMatch::Mismatch;
+                    }
+                }
+                Err(limit) => unknown = Some(NormalizationLimit::join(unknown, limit)),
+            }
+        }
+    }
+
+    match unknown {
+        Some(limit) => CandidateMatch::Unknown(limit),
+        None => CandidateMatch::Matches,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -149,6 +219,9 @@ pub(crate) enum TargetSolutionMatch {
 enum Clause<'db> {
     Implementor(ImplementorId<'db>),
     Assumption(usize),
+    /// The goal could not be normalized within the limits. Its one answer is
+    /// the goal itself, unknown.
+    Unknown(NormalizationLimit),
 }
 
 #[derive(Clone)]
@@ -157,6 +230,21 @@ struct Branch<'db> {
     root_goal: TraitInstId<'db>,
     remaining_goals: Vec<TraitInstId<'db>>,
     selected_impl: ImplementorId<'db>,
+    /// A step of this branch reached a limit: if the branch completes, its
+    /// answer is unknown. A later goal that fails still ends the branch.
+    unknown: Option<NormalizationLimit>,
+}
+
+/// An answer of a table, and the limit it depends on, if any.
+///
+/// A limit is an unknown, not a failure (law 5 of the limits design): an
+/// unknown answer flows through the tables like any other, so a branch that
+/// uses it is unknown too, and a branch that fails for another reason still
+/// fails. Only the root decides what unknown answers mean for the goal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct TabledAnswer<'db> {
+    solution: GoalSolution<'db>,
+    unknown: Option<NormalizationLimit>,
 }
 
 #[derive(Clone)]
@@ -164,7 +252,7 @@ struct PreparedQuery<'db> {
     table: PersistentUnificationTable<'db>,
     query: TraitSolverQuery<'db>,
     scope: ScopeId<'db>,
-    normalized_goal: TraitInstId<'db>,
+    normalized_goal: Result<TraitInstId<'db>, NormalizationLimit>,
 }
 
 #[derive(Clone, Copy)]
@@ -210,6 +298,16 @@ struct TraitResolutionContext<'db> {
     prepared_queries: FxHashMap<Query<'db>, PreparedQuery<'db>>,
     target: Option<TargetAnswer<'db>>,
     type_depth_budget: TypeDepthBudget,
+    /// Whether the target was matched by an unknown answer, which cannot
+    /// count as found.
+    unknown_target: bool,
+    /// The root goal's table, whose unknown answers are kept here.
+    root: Option<Query<'db>>,
+    /// The limit the root goal's unknown answers depend on, if any.
+    root_unknown: Option<NormalizationLimit>,
+    /// The root's definitions, shared by every goal of the solve (see
+    /// [`TraitSolveCx::with_definitions`]).
+    definitions: super::PredicateListId<'db>,
 }
 
 impl<'db> TraitResolutionContext<'db> {
@@ -225,6 +323,10 @@ impl<'db> TraitResolutionContext<'db> {
             prepared_queries: FxHashMap::default(),
             target,
             type_depth_budget: TypeDepthBudget::new(db, root, target),
+            unknown_target: false,
+            root: None,
+            root_unknown: None,
+            definitions: root.definitions,
         }
     }
 
@@ -240,8 +342,13 @@ impl<'db> TraitResolutionContext<'db> {
             self.origin_ingot,
             query.goal,
         );
-        let normalized_goal =
-            normalize_trait_inst_preserving_validity(self.db, query.goal, scope, query.assumptions);
+        let normalized_goal = normalize_trait_inst_preserving_validity(
+            self.db,
+            query.goal,
+            scope,
+            query.assumptions,
+            self.definitions,
+        );
         let prepared = PreparedQuery {
             table,
             query,
@@ -280,30 +387,64 @@ impl<'db> TraitResolutionContext<'db> {
     }
 
     fn finish_branch(
-        &self,
+        &mut self,
         parent: &Query<'db>,
         mut branch: Branch<'db>,
     ) -> ContextTransition<Self> {
         let root_goal = branch.root_goal;
-        let answer = self.answer(parent, &mut branch, root_goal);
+        let solution = self.answer(parent, &mut branch, root_goal);
         if self.target.is_some_and(|target| {
             if target.root != *parent {
                 return false;
             }
-            let equal = Canonical::new(self.db, answer.value.inst) == target.inst;
+            let equal = Canonical::new(self.db, solution.value.inst) == target.inst;
             match target.relation {
                 TargetSolutionMatch::Equal => equal,
                 TargetSolutionMatch::NotEqual => !equal,
             }
         }) {
-            Transition::Stop(StopReason::TargetFound)
-        } else {
-            Transition::Answer(answer)
+            if branch.unknown.is_none() {
+                return Transition::Stop(StopReason::TargetFound);
+            }
+            self.unknown_target = true;
         }
+        // An unknown answer of the root goal is kept aside, not in the root
+        // table: it cannot show the goal ambiguous, so it must not count
+        // toward the root answer limit, and anything derived from it through
+        // a cycle back to the root would be unknown too.
+        if let Some(limit) = branch.unknown
+            && self.root == Some(*parent)
+        {
+            self.root_unknown = Some(NormalizationLimit::join(self.root_unknown, limit));
+            return Transition::Reject;
+        }
+        Transition::Answer(TabledAnswer {
+            solution,
+            unknown: branch.unknown,
+        })
+    }
+
+    /// The answer of a goal that a limit leaves undecided: the goal itself,
+    /// unknown.
+    fn unknown_answer(
+        &mut self,
+        parent: &Query<'db>,
+        table: PersistentUnificationTable<'db>,
+        goal: TraitInstId<'db>,
+        limit: NormalizationLimit,
+    ) -> ContextTransition<Self> {
+        let branch = Branch {
+            table,
+            root_goal: goal,
+            remaining_goals: Vec::new(),
+            selected_impl: ImplementorId::assumption(self.db, goal),
+            unknown: Some(limit),
+        };
+        self.finish_branch(parent, branch)
     }
 
     fn continue_branch(
-        &self,
+        &mut self,
         parent: &Query<'db>,
         mut branch: Branch<'db>,
         assumptions: super::PredicateListId<'db>,
@@ -321,6 +462,7 @@ impl<'db> TraitResolutionContext<'db> {
             goal: TraitSolverQuery {
                 goal: next_goal,
                 assumptions,
+                definitions: self.definitions,
                 require_impl: false,
             },
             state: branch,
@@ -332,9 +474,9 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
     type Goal = TraitSolverQuery<'db>;
     type Key = Query<'db>;
     type Clause = Clause<'db>;
-    type Answer = GoalSolution<'db>;
-    type AnswerKey = GoalSolution<'db>;
-    type Output = GoalSolution<'db>;
+    type Answer = TabledAnswer<'db>;
+    type AnswerKey = TabledAnswer<'db>;
+    type Output = TabledAnswer<'db>;
     type State = Branch<'db>;
     type Rebase = CanonicalGoalQuery<'db>;
     type Error = Infallible;
@@ -376,13 +518,42 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             secondary,
             Canonical::new(self.db, prepared.query.goal),
         );
+        let normalized_goal = match prepared.normalized_goal {
+            Ok(goal) => goal,
+            Err(limit) => {
+                // The goal cannot be compared with its candidates, so each
+                // would answer unknown: one answer stands for them all. With
+                // no impl of the trait and nothing to assume there is no
+                // candidate, whatever the goal's types turn out to be.
+                let may_assume = !prepared.query.require_impl
+                    && !prepared.query.assumptions.list(self.db).is_empty();
+                return Ok(CallbackOutcome::Continue(
+                    if implementors.is_empty() && !may_assume {
+                        Vec::new()
+                    } else {
+                        vec![Clause::Unknown(limit)]
+                    },
+                ));
+            }
+        };
 
         let mut clauses =
             Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
         clauses.extend(implementors.iter().copied().map(Clause::Implementor));
-        if !prepared.query.require_impl && self.goal_can_use_assumptions(prepared.normalized_goal) {
+        if !prepared.query.require_impl && self.goal_can_use_assumptions(normalized_goal) {
+            // An assumption that cannot unify with the goal is left out here,
+            // as applying it would reject it.
             clauses.extend(
-                (0..prepared.query.assumptions.list(self.db).len()).map(Clause::Assumption),
+                prepared
+                    .query
+                    .assumptions
+                    .list(self.db)
+                    .iter()
+                    .enumerate()
+                    .filter(|&(_, &assumption)| {
+                        assumption_may_match(self.db, assumption, normalized_goal)
+                    })
+                    .map(|(index, _)| Clause::Assumption(index)),
             );
         }
         Ok(CallbackOutcome::Continue(clauses))
@@ -399,31 +570,45 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             scope,
             normalized_goal,
         } = self.prepare_query(*key);
+        let normalized_goal = match normalized_goal {
+            Ok(goal) => goal,
+            Err(limit) => return Ok(self.unknown_answer(key, table, query.goal, limit)),
+        };
 
         let selected_impl = match clause {
+            Clause::Unknown(limit) => {
+                return Ok(self.unknown_answer(key, table, query.goal, limit));
+            }
             Clause::Implementor(selected_impl) => {
                 if !impl_header_may_match(self.db, selected_impl, normalized_goal) {
                     return Ok(Transition::Reject);
                 }
                 let candidate = table.instantiate_with_fresh_vars(selected_impl);
-                let normalized_candidate = normalize_trait_inst_preserving_validity(
+                // A header that cannot be normalized cannot be compared with
+                // the goal: whether this impl applies is unknown.
+                let normalized_candidate = match normalize_trait_inst_preserving_validity(
                     self.db,
                     candidate.trait_inst(self.db),
                     scope,
                     query.assumptions,
-                );
-                if unify_trait_inst_with_normalized_assoc_bindings(
+                    self.definitions,
+                ) {
+                    Ok(candidate) => candidate,
+                    Err(limit) => return Ok(self.unknown_answer(key, table, query.goal, limit)),
+                };
+                let unknown = match unify_trait_inst_with_normalized_assoc_bindings(
                     self.db,
                     &mut table,
                     normalized_candidate,
                     normalized_goal,
                     scope,
                     query.assumptions,
-                )
-                .is_err()
-                {
-                    return Ok(Transition::Reject);
-                }
+                    self.definitions,
+                ) {
+                    CandidateMatch::Matches => None,
+                    CandidateMatch::Mismatch => return Ok(Transition::Reject),
+                    CandidateMatch::Unknown(limit) => Some(limit),
+                };
 
                 let constraints = candidate.constraints(self.db);
                 let remaining_goals = constraints
@@ -436,6 +621,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     root_goal: query.goal,
                     remaining_goals,
                     selected_impl,
+                    unknown,
                 };
                 return Ok(self.continue_branch(key, branch, query.assumptions));
             }
@@ -443,27 +629,33 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 let Some(&assumption) = query.assumptions.list(self.db).get(index) else {
                     return Ok(Transition::Reject);
                 };
-                if unify_trait_inst_with_normalized_assoc_bindings(
+                let unknown = match unify_trait_inst_with_normalized_assoc_bindings(
                     self.db,
                     &mut table,
                     assumption,
                     normalized_goal,
                     scope,
                     query.assumptions,
+                    self.definitions,
+                ) {
+                    CandidateMatch::Matches => None,
+                    CandidateMatch::Mismatch => return Ok(Transition::Reject),
+                    CandidateMatch::Unknown(limit) => Some(limit),
+                };
+                (
+                    ImplementorId::assumption(self.db, query.goal.fold_with(self.db, &mut table)),
+                    unknown,
                 )
-                .is_err()
-                {
-                    return Ok(Transition::Reject);
-                }
-                ImplementorId::assumption(self.db, query.goal.fold_with(self.db, &mut table))
             }
         };
+        let (selected_impl, unknown) = selected_impl;
 
         let branch = Branch {
             table,
             root_goal: query.goal,
             remaining_goals: Vec::new(),
             selected_impl,
+            unknown,
         };
         Ok(self.finish_branch(key, branch))
     }
@@ -476,7 +668,12 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         rebase: Self::Rebase,
     ) -> Result<ContextTransition<Self>, Self::Error> {
         let pending_goal = rebase.goal();
-        let solution = rebase.extract_solution(&mut branch.table, answer).inst;
+        let solution = rebase
+            .extract_solution(&mut branch.table, answer.solution)
+            .inst;
+        if let Some(limit) = answer.unknown {
+            branch.unknown = Some(NormalizationLimit::join(branch.unknown, limit));
+        }
 
         let normalized_pending = {
             let scope = TraitSolveCx::normalization_scope_for_trait_inst_with_origin(
@@ -489,6 +686,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 pending_goal.fold_with(self.db, &mut branch.table),
                 scope,
                 rebase.assumptions(),
+                self.definitions,
             )
         };
         let normalized_solution = {
@@ -502,14 +700,44 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 solution.fold_with(self.db, &mut branch.table),
                 scope,
                 rebase.assumptions(),
+                self.definitions,
             )
         };
-        if branch
-            .table
-            .unify(normalized_pending, normalized_solution)
-            .is_err()
-        {
-            return Ok(Transition::Reject);
+        // An answer that cannot be compared with the goal it answers leaves
+        // the branch unknown; its remaining goals are still checked. What can
+        // be compared still decides, as for a candidate: the heads bind the
+        // goal's variables for those goals, and a head or binding that
+        // differs rules the branch out.
+        match (normalized_pending, normalized_solution) {
+            (Ok(pending), Ok(solution)) => {
+                if branch.table.unify(pending, solution).is_err() {
+                    return Ok(Transition::Reject);
+                }
+            }
+            (Err(limit), _) | (_, Err(limit)) => {
+                let scope = TraitSolveCx::normalization_scope_for_trait_inst_with_origin(
+                    self.db,
+                    self.origin_ingot,
+                    pending_goal,
+                );
+                let pending = pending_goal.fold_with(self.db, &mut branch.table);
+                match unify_trait_inst_with_normalized_assoc_bindings(
+                    self.db,
+                    &mut branch.table,
+                    solution,
+                    pending,
+                    scope,
+                    rebase.assumptions(),
+                    self.definitions,
+                ) {
+                    CandidateMatch::Mismatch => return Ok(Transition::Reject),
+                    CandidateMatch::Matches => {}
+                    CandidateMatch::Unknown(reached) => {
+                        branch.unknown = Some(NormalizationLimit::join(branch.unknown, reached));
+                    }
+                }
+                branch.unknown = Some(NormalizationLimit::join(branch.unknown, limit));
+            }
         }
         let resumed_root = branch.root_goal.fold_with(self.db, &mut branch.table);
         let resumed_assumptions = rebase.assumptions().fold_with(self.db, &mut branch.table);
@@ -518,6 +746,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             TraitSolverQuery {
                 goal: resumed_root,
                 assumptions: resumed_assumptions,
+                definitions: self.definitions,
                 require_impl: parent.value().require_impl,
             },
         ) {
@@ -652,10 +881,11 @@ pub(super) fn solve<'db>(
     db: &'db dyn HirAnalysisDb,
     origin_ingot: crate::Ingot<'db>,
     query: Query<'db>,
-) -> GoalSatisfiability<'db> {
+) -> Result<GoalSatisfiability<'db>, NormalizationLimit> {
     let mut root_table = PersistentUnificationTable::new(db);
     let root_goal = query.extract_identity(&mut root_table);
     let mut context = TraitResolutionContext::new(db, origin_ingot, root_goal, None);
+    context.root = Some(query);
     let mut observer = UnresolvedGoalObserver::default();
     let config = Config {
         limits: Limits {
@@ -676,10 +906,42 @@ pub(super) fn solve<'db>(
         Err(never) => match never {},
     };
     let root = report.root;
-    let solutions: IndexSet<_> = report.answers.into_iter().collect();
+    let solutions: IndexSet<_> = report
+        .answers
+        .into_iter()
+        .map(|answer| answer.solution)
+        .collect();
+    let unknown = context.root_unknown;
     let completion = map_completion(report.completion);
 
-    match (completion, solutions.len()) {
+    // Unknown answers matter only if they could change the result. A goal
+    // without inference variables holds once one complete proof is found;
+    // coherence rules out a second impl proving it. Otherwise two distinct
+    // complete answers leave the goal ambiguous whatever the unknown ones
+    // are, and in every other case the result depends on them.
+    if let Some(limit) = unknown {
+        let has_vars = root_goal.goal.args(db).iter().any(|ty| ty.has_var(db))
+            || root_goal
+                .goal
+                .assoc_type_bindings(db)
+                .values()
+                .any(|ty| ty.has_var(db));
+        if has_vars || solutions.is_empty() {
+            let distinct: IndexSet<_> = solutions
+                .iter()
+                .map(|solution| solution.value.inst)
+                .collect();
+            if distinct.len() < 2 {
+                return Err(limit);
+            }
+            return Ok(GoalSatisfiability::NeedsConfirmation {
+                solutions,
+                completion: TraitSolveCompletion::NormalizationLimit(limit),
+            });
+        }
+    }
+
+    Ok(match (completion, solutions.len()) {
         (TraitSolveCompletion::Saturated, 1) => {
             GoalSatisfiability::Satisfied(solutions.into_iter().next().unwrap())
         }
@@ -690,7 +952,7 @@ pub(super) fn solve<'db>(
             solutions,
             completion,
         },
-    }
+    })
 }
 
 pub(super) fn has_solution<'db>(
@@ -722,6 +984,8 @@ pub(super) fn has_solution<'db>(
     };
     match report.completion {
         Completion::Adapter(StopReason::TargetFound) => TargetSolutionStatus::Found,
+        // An unknown answer that matches the target may or may not be one.
+        Completion::Saturated if context.unknown_target => TargetSolutionStatus::Incomplete,
         Completion::Saturated => TargetSolutionStatus::NotFound,
         Completion::RootAnswerLimit { .. }
         | Completion::StepLimit { .. }

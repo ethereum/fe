@@ -1,0 +1,17 @@
+// A qualified path through a trait that is not visible names the trait as
+// not visible, where it is written.
+mod m {
+    trait Tr {
+        type F
+    }
+
+    pub struct S {}
+
+    impl Tr for S {
+        type F = (u8, bool)
+    }
+}
+
+fn g(x: <m::S as m::Tr>::F) -> (u8, bool) {
+    x
+}

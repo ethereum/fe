@@ -1,0 +1,56 @@
+// A constant computed in a written `let` type that reaches a normalization
+// limit is reported where the type is written, with or without an
+// initializer, and not as a type mismatch.
+trait Nest {
+    type Out
+}
+
+struct N<T> {
+    t: T,
+}
+
+impl<T: Nest> Nest for N<T> {
+    type Out = T::Out
+}
+
+impl Nest for u8 {
+    type Out = u8
+}
+
+trait Show {}
+
+impl Show for u8 {}
+
+struct W<T> {
+    t: T,
+}
+
+trait Len {
+    const L: usize
+}
+
+impl<T: Nest> Len for W<T>
+where
+    T::Out: Show,
+{
+    const L: usize = 2
+}
+
+fn with_initializer() -> u8 {
+    let a: [u8; <W<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Len>::L] = [1; 2]
+    a[0]
+}
+
+fn without_initializer() {
+    let _a: [u8; <W<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Len>::L]
+}
+
+fn nested_in_option() {
+    let _a: Option<[u8; <W<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<N<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Len>::L]> = Option::None
+}
+
+// Below the limit the constant is computed as before.
+fn below_the_limit() -> u8 {
+    let a: [u8; <W<N<N<N<u8>>>> as Len>::L] = [1; 2]
+    a[0]
+}

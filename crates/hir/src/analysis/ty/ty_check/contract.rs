@@ -22,9 +22,10 @@ use crate::{
             canonical::Canonical,
             corelib::resolve_core_trait,
             diagnostics::{BodyDiag, FuncBodyDiag, TraitConstraintDiag, TyDiagCollection},
+            normalize::normalize_ty,
             provider::ProviderAddressSpace,
             trait_def::TraitInstId,
-            trait_def::impls_for_ty,
+            trait_def::{ImplementorOrigin, impls_for_ty},
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, TraitSolveCx, is_goal_satisfiable,
             },
@@ -37,7 +38,7 @@ use crate::{
         Contract, FieldParent, IdentId, ItemKind, Mod, PathId, Struct, scope_graph::ScopeId,
     },
     semantic::FieldView,
-    span::{DynLazySpan, path::LazyPathSpan},
+    span::{DynLazySpan, path::LazyPathSpan, types::LazyTySpan},
 };
 use common::{indexmap::IndexMap, ingot::IngotKind};
 
@@ -126,7 +127,14 @@ fn check_ty_decodable<'db>(
     }
 
     let inst = TraitInstId::new(db, decode_trait, vec![ty, sol_ty], IndexMap::new());
-    if let GoalSatisfiability::UnSat(_) = is_goal_satisfiable(db, solve_cx, inst) {
+    let satisfiability = match is_goal_satisfiable(db, solve_cx, inst) {
+        Ok(satisfiability) => satisfiability,
+        Err(limit) => {
+            diags.push(limit.report(span).0.into());
+            return;
+        }
+    };
+    if let GoalSatisfiability::UnSat(_) = satisfiability {
         diags.push(
             TyDiagCollection::from(TraitConstraintDiag::TraitBoundNotSat {
                 span,
@@ -650,6 +658,44 @@ pub fn check_contract_recv_blocks<'db>(
         }
     }
 
+    // Code generation finds an arm's return type through the variant's
+    // generated `Return` associated type, one step deeper than the type as
+    // written; a limit reached only there is reported here, at the arm.
+    if let Some(sol_ty) = resolve_sol_abi_ty(db, contract.scope(), assumptions) {
+        for (idx, _) in contract.recvs(db).data(db).iter().enumerate() {
+            let Some(recv) = contract.recv(db, idx as u32) else {
+                continue;
+            };
+            for arm in recv.arms(db) {
+                if let Err(limit) = arm.abi_info(db, sol_ty).ret_ty {
+                    // When the type as written in the `msg` reaches a limit
+                    // itself, the limit is reported where it is written, as
+                    // one diagnostic with the report of the `msg`'s own check.
+                    if let Some((ty, Some(written))) =
+                        get_msg_variant_return_type(db, arm.variant_ty(db), contract.scope())
+                        && let Err(written_limit) =
+                            normalize_ty(db, ty, contract.scope(), assumptions)
+                    {
+                        diags.push(written_limit.report(written.into()).0.into());
+                        continue;
+                    }
+                    let arm_span = contract
+                        .span()
+                        .recv(idx)
+                        .arms()
+                        .arm(arm.arm_idx(db) as usize);
+                    let span: DynLazySpan<'db> =
+                        if arm.arm(db).is_some_and(|hir_arm| hir_arm.ret_ty.is_some()) {
+                            arm_span.ret_ty().into()
+                        } else {
+                            arm_span.pat().into()
+                        };
+                    diags.push(limit.report(span).0.into());
+                }
+            }
+        }
+    }
+
     diags
 }
 
@@ -964,13 +1010,15 @@ pub(super) fn resolve_recv_msg_mod<'db>(
     }
 }
 
-/// Gets the Return type from a type's MsgVariant trait implementation.
+/// Gets the Return type from a type's MsgVariant trait implementation, with
+/// the span where it is written when the implementation is in the source (for
+/// a `msg` variant, its written return type).
 /// Specifically looks for the MsgVariant trait and returns `None` if no impl is found.
 pub(super) fn get_msg_variant_return_type<'db>(
     db: &'db dyn HirAnalysisDb,
     variant_ty: TyId<'db>,
     scope: ScopeId<'db>,
-) -> Option<TyId<'db>> {
+) -> Option<(TyId<'db>, Option<LazyTySpan<'db>>)> {
     let msg_variant_trait = resolve_core_trait(db, scope, &["message", "MsgVariant"])?;
 
     let canonical_ty = Canonical::new(db, variant_ty);
@@ -992,5 +1040,13 @@ pub(super) fn get_msg_variant_return_type<'db>(
 
     // Get the Return associated type from the impl
     let return_name = IdentId::new(db, "Return".to_string());
-    msg_variant_impl.assoc_ty(db, return_name)
+    let ty = msg_variant_impl.assoc_ty(db, return_name)?;
+    let written = match msg_variant_impl.origin(db) {
+        ImplementorOrigin::Hir(impl_trait) => impl_trait
+            .assoc_types(db)
+            .find(|assoc| assoc.name(db) == Some(return_name))
+            .map(|assoc| assoc.span().ty()),
+        ImplementorOrigin::VirtualContract(_) | ImplementorOrigin::Assumption => None,
+    };
+    Some((ty, written))
 }

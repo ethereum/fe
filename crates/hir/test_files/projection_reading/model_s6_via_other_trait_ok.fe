@@ -1,0 +1,10 @@
+trait Show {}
+impl Show for u8 {}
+trait Tr { type Out }
+pub struct S {}
+pub struct T {}
+trait Other {}
+impl Other for S where <S as Tr>::Out: Show {}
+impl Tr for S where S: Other { type Out = u8 }
+fn body(x: u8) -> u8 { let a: <S as Tr>::Out = x
+ a }

@@ -1,0 +1,16 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/trait_impl/unconstrained_impl_param.fe
+---
+error[6-0025]: unconstrained type parameter
+   ┌─ unconstrained_impl_param.fe:10:6
+   │
+10 │ impl<F: Factory> Marker for F::B {}
+   │      ^^^^^^^^^^ `F` is not determined by the impl's type or trait arguments
+
+error[6-0025]: unconstrained type parameter
+   ┌─ unconstrained_impl_param.fe:16:6
+   │
+16 │ impl<T> Tr for S {}
+   │      ^ `T` is not determined by the impl's type or trait arguments

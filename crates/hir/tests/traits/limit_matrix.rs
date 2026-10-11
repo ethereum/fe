@@ -1,0 +1,333 @@
+//! A normalization limit decides a program only when the answer depends on
+//! it (law 5 of the limits design). The families are in
+//! `limit_families.rs`; this test checks them with the analysis passes.
+
+use fe_hir::test_db::{HirAnalysisTestDb, initialize_test_analysis_pass};
+
+include!("limit_families.rs");
+
+/// The error codes of `src`, sorted. Identical diagnostics from different
+/// passes count once, as the driver shows them.
+fn codes(src: &str) -> Vec<String> {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone("limit_matrix.fe".into(), src);
+    let (top_mod, _) = db.top_mod(file);
+    let mut manager = initialize_test_analysis_pass();
+    let mut seen = Vec::new();
+    for diag in manager.run_on_module(&db, top_mod) {
+        let diag = diag.to_complete(&db);
+        if !seen.contains(&diag) {
+            seen.push(diag);
+        }
+    }
+    let mut codes: Vec<String> = seen
+        .into_iter()
+        .map(|diag| diag.error_code.to_string())
+        .collect();
+    codes.sort();
+    codes
+}
+
+#[test]
+fn a_limit_decides_only_answers_that_depend_on_it() {
+    check_all(FAMILIES, &codes, 8);
+}
+
+/// The error codes of `app`, an ingot that depends on the ingot `dep`.
+fn ingot_codes(dep: &str, app: &str) -> Vec<String> {
+    use common::InputDb;
+    fn touch(db: &mut HirAnalysisTestDb, url: &str, text: String) -> common::file::File {
+        db.workspace()
+            .touch(db, url::Url::parse(url).unwrap(), Some(text))
+    }
+    let mut db = HirAnalysisTestDb::default();
+    touch(
+        &mut db,
+        "file:///limit-matrix/dep/fe.toml",
+        "[ingot]\nname = \"dep\"\nversion = \"0.1.0\"\n".to_string(),
+    );
+    touch(
+        &mut db,
+        "file:///limit-matrix/dep/src/lib.fe",
+        dep.to_string(),
+    );
+    touch(
+        &mut db,
+        "file:///limit-matrix/app/fe.toml",
+        "[ingot]\nname = \"app\"\nversion = \"0.1.0\"\n\n[dependencies]\ndep = { path = \"../dep\" }\n"
+            .to_string(),
+    );
+    let app = touch(
+        &mut db,
+        "file:///limit-matrix/app/src/lib.fe",
+        app.to_string(),
+    );
+    let (top_mod, _) = db.top_mod(app);
+    let mut manager = initialize_test_analysis_pass();
+    let mut codes: Vec<String> = manager
+        .run_on_module(&db, top_mod)
+        .into_iter()
+        .map(|diag| diag.to_complete(&db).error_code.to_string())
+        .collect();
+    codes.sort();
+    codes.dedup();
+    codes
+}
+
+/// Candidates found in a dependency, or in the caller for a dependency's
+/// type, decide like local ones: at depth 70 the answer is the one at depth 3,
+/// unless it depends on the candidate over the limit.
+#[test]
+fn candidates_in_another_ingot() {
+    const DEP: &str = "pub trait Nest { type Out }
+pub struct N<T> { pub t: T }
+impl<T: Nest> Nest for N<T> { type Out = T::Out }
+impl Nest for u8 { type Out = u8 }
+pub trait Show {}
+impl Show for bool {}
+pub trait Never {}
+pub struct W<T> { pub t: T }
+pub trait Get { fn get(self) -> u8 }
+impl<T> Get for W<T> { fn get(self) -> u8 { 1 } }
+pub trait HasItem { type Item }
+impl<T> HasItem for W<T> { type Item = u8 }
+";
+    const OTHER: &str = "pub trait Other { fn get(self) -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show { fn get(self) -> u8 { 2 } }
+";
+    // (name, at limit, dependency's rival, caller with `{D}`)
+    let cases: &[(&str, AtLimit, String, &str)] = &[
+        (
+            "rival not imported",
+            AtLimit::Same,
+            OTHER.to_string(),
+            "use dep::{W, N, Get}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "rival imported",
+            AtLimit::Limit,
+            OTHER.to_string(),
+            "use dep::{W, N, Get, Other}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "rival refuted",
+            AtLimit::Same,
+            "pub trait Other { fn get(self) -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show, T: Never { fn get(self) -> u8 { 2 } }
+"
+            .to_string(),
+            "use dep::{W, N, Get, Other}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "rival in the caller for the dependency's type",
+            AtLimit::Limit,
+            String::new(),
+            "use dep::{W, N, Get, Nest, Show}
+trait Other { fn get(self) -> u8 }
+impl<T: Nest> Other for W<T> where T::Out: Show { fn get(self) -> u8 { 2 } }
+pub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "twelve rivals not imported",
+            AtLimit::Same,
+            (0..12)
+                .map(|i| {
+                    format!(
+                        "pub trait O{i} {{ fn get(self) -> u8 }}
+impl<T: Nest> O{i} for W<T> where T::Out: Show {{ fn get(self) -> u8 {{ 2 }} }}
+"
+                    )
+                })
+                .collect(),
+            "use dep::{W, N, Get}\npub fn f(w: own W<{D}>) -> u8 { w.get() }",
+        ),
+        (
+            "associated type rival giving the same type",
+            AtLimit::Same,
+            "pub trait Other { type Item }
+impl<T: Nest> Other for W<T> where T::Out: Show { type Item = u8 }
+"
+            .to_string(),
+            "use dep::{W, N, HasItem, Other}\npub fn f(x: W<{D}>::Item) -> u8 { x }",
+        ),
+        (
+            "associated type rival giving another type",
+            AtLimit::Limit,
+            "pub trait Other { type Item }
+impl<T: Nest> Other for W<T> where T::Out: Show { type Item = bool }
+"
+            .to_string(),
+            "use dep::{W, N, HasItem, Other}\npub fn f(x: W<{D}>::Item) -> u8 { x }",
+        ),
+        (
+            "bound with its only impl in the dependency",
+            AtLimit::Limit,
+            "pub trait Tr {}\nimpl<T: Nest> Tr for W<T> where T::Out: Show {}\n".to_string(),
+            "use dep::{W, N, Tr}\nfn need<X: Tr>() {}\npub fn h() { need<W<{D}>>() }",
+        ),
+    ];
+    for (name, at_limit, rival, app) in cases {
+        for show in [false, true] {
+            let dep = format!(
+                "{DEP}{}{rival}",
+                if show { "impl Show for u8 {}\n" } else { "" }
+            );
+            let shallow = ingot_codes(&dep, &app.replace("{D}", &chain(3)));
+            let deep = ingot_codes(&dep, &app.replace("{D}", &chain(70)));
+            match at_limit {
+                AtLimit::Same => assert_eq!(deep, shallow, "{name}, show {show}"),
+                AtLimit::Limit => assert!(
+                    !deep.is_empty() && deep.iter().all(|code| LIMIT_CODES.contains(&&**code)),
+                    "{name}, show {show}: {deep:?}"
+                ),
+            }
+        }
+    }
+}
+
+/// `count` candidates over the limit, generated by `rival(i)`, beside the
+/// one that answers `question`: the codes at depth 3 and 70, with the rivals'
+/// where clause false and true.
+fn codes_with_rivals(
+    main: &str,
+    rival: impl Fn(usize) -> String,
+    count: usize,
+    question: &str,
+) -> Vec<(bool, Vec<String>, Vec<String>)> {
+    [false, true]
+        .into_iter()
+        .map(|show| {
+            let program = |depth| {
+                let rivals: String = (0..count).map(&rival).collect();
+                let show = if show { "impl Show for u8 {}\n" } else { "" };
+                let question = question.replace("{D}", &chain(depth));
+                format!("{PRELUDE}{show}{main}\n{rivals}{question}\n")
+            };
+            (show, codes(&program(3)), codes(&program(70)))
+        })
+        .collect()
+}
+
+/// However many traits that are not in scope have a method of the same name
+/// with a where clause over the limit, the call means the one in scope: the
+/// answer is the same as with one such trait, and as at depth 3.
+#[test]
+fn many_traits_not_in_scope_do_not_decide_a_method() {
+    let main = "trait Get { fn get(self) -> u8 }
+impl<T> Get for W<T> { fn get(self) -> u8 { 1 } }";
+    let question = "fn f(w: own W<{D}>) -> u8 { w.get() }";
+    let in_one_module = |count| {
+        let rivals = (0..count)
+            .map(|i| {
+                format!(
+                    "pub trait O{i} {{ fn get(self) -> u8 }}
+impl<T: Nest> O{i} for W<T> where T::Out: Show {{ fn get(self) -> u8 {{ 2 }} }}
+"
+                )
+            })
+            .collect::<String>();
+        format!("mod m {{\nuse super::{{W, Nest, Show}}\n{rivals}}}\n{question}")
+    };
+    let in_own_modules = |i: usize| {
+        format!(
+            "mod m{i} {{
+use super::{{W, Nest, Show}}
+pub trait O {{ fn get(self) -> u8 }}
+impl<T: Nest> O for W<T> where T::Out: Show {{ fn get(self) -> u8 {{ 2 }} }}
+}}
+"
+        )
+    };
+    let one = codes_with_rivals(main, |_| String::new(), 0, &in_one_module(1));
+    for count in [1, 7] {
+        for found in [
+            codes_with_rivals(main, |_| String::new(), 0, &in_one_module(count)),
+            codes_with_rivals(main, in_own_modules, count, question),
+        ] {
+            for ((show, shallow, deep), (_, one_shallow, one_deep)) in found.iter().zip(&one) {
+                assert_eq!(shallow, deep, "{count} traits, show {show}");
+                assert_eq!(
+                    (shallow, deep),
+                    (one_shallow, one_deep),
+                    "{count} traits, show {show}"
+                );
+            }
+        }
+    }
+}
+
+/// However many traits in scope give an associated type of the same name the
+/// same type, a rival over the limit changes nothing; one that gives another
+/// type makes the answer the limit.
+#[test]
+fn many_rivals_giving_the_same_type_do_not_decide_an_associated_type() {
+    let main = "trait HasItem { type Item }
+impl<T> HasItem for W<T> { type Item = u8 }";
+    let question = "fn f(x: W<{D}>::Item) -> u8 { x }";
+    for count in [1, 7] {
+        let same = |i: usize| {
+            format!(
+                "trait O{i} {{ type Item }}
+impl<T: Nest> O{i} for W<T> where T::Out: Show {{ type Item = u8 }}
+"
+            )
+        };
+        for (show, shallow, deep) in codes_with_rivals(main, same, count, question) {
+            assert!(
+                shallow.is_empty() && deep.is_empty(),
+                "{count} rivals, show {show}: {shallow:?} {deep:?}"
+            );
+        }
+        let one_other = |i: usize| {
+            let item = if i + 1 == count { "bool" } else { "u8" };
+            format!(
+                "trait O{i} {{ type Item }}
+impl<T: Nest> O{i} for W<T> where T::Out: Show {{ type Item = {item} }}
+"
+            )
+        };
+        for (show, _, deep) in codes_with_rivals(main, one_other, count, question) {
+            assert_eq!(deep, ["2-0022"], "{count} rivals, show {show}");
+        }
+    }
+}
+
+/// When no candidate in scope applies, a trait that is not in scope decides:
+/// one alone is chosen, several are listed for import. So candidates over the
+/// limit decide the call, however many, also beside one that is known to
+/// apply: counting them together must still try "none" and "the first".
+#[test]
+fn traits_not_in_scope_decide_a_method_when_none_in_scope_applies() {
+    let hidden = |count: usize, known: bool| {
+        let rivals = (0..count)
+            .map(|i| {
+                format!(
+                    "pub trait O{i} {{ fn get(self) -> u8 }}
+impl<T: Nest> O{i} for W<T> where T::Out: Show {{ fn get(self) -> u8 {{ 2 }} }}
+"
+                )
+            })
+            .collect::<String>();
+        let known = if known {
+            "pub trait K { fn get(self) -> u8 }\nimpl<T> K for W<T> { fn get(self) -> u8 { 1 } }\n"
+        } else {
+            ""
+        };
+        format!(
+            "mod m {{\nuse super::{{W, Nest, Show}}\n{known}{rivals}}}\nfn f(w: own W<{{D}}>) -> u8 {{ w.get() }}"
+        )
+    };
+    for count in [1, 2, 7] {
+        for known in [false, true] {
+            for (show, _, deep) in
+                codes_with_rivals("", |_| String::new(), 0, &hidden(count, known))
+            {
+                assert_eq!(
+                    deep,
+                    ["3-0058"],
+                    "{count} traits, known {known}, show {show}"
+                );
+            }
+        }
+    }
+}
