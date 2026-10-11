@@ -456,10 +456,6 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         key: &Self::Key,
     ) -> Result<CallbackOutcome<Vec<Self::Clause>, Self::StopReason>, Self::Error> {
         let prepared = self.prepare_query(*key);
-        let normalized_goal = match prepared.normalized_goal {
-            Ok(goal) => goal,
-            Err(limit) => return Ok(CallbackOutcome::Continue(vec![Clause::Unknown(limit)])),
-        };
         let (primary, secondary) = TraitSolveCx::search_ingots_for_trait_inst_with_origin(
             self.db,
             self.origin_ingot,
@@ -471,6 +467,24 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             secondary,
             Canonical::new(self.db, prepared.query.goal),
         );
+        let normalized_goal = match prepared.normalized_goal {
+            Ok(goal) => goal,
+            Err(limit) => {
+                // The goal cannot be compared with its candidates, so each
+                // would answer unknown: one answer stands for them all. With
+                // no impl of the trait and nothing to assume there is no
+                // candidate, whatever the goal's types turn out to be.
+                let may_assume = !prepared.query.require_impl
+                    && !prepared.query.assumptions.list(self.db).is_empty();
+                return Ok(CallbackOutcome::Continue(
+                    if implementors.is_empty() && !may_assume {
+                        Vec::new()
+                    } else {
+                        vec![Clause::Unknown(limit)]
+                    },
+                ));
+            }
+        };
 
         let mut clauses =
             Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
@@ -623,7 +637,10 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             )
         };
         // An answer that cannot be compared with the goal it answers leaves
-        // the branch unknown; its remaining goals are still checked.
+        // the branch unknown; its remaining goals are still checked. What can
+        // be compared still decides, as for a candidate: the heads bind the
+        // goal's variables for those goals, and a head or binding that
+        // differs rules the branch out.
         match (normalized_pending, normalized_solution) {
             (Ok(pending), Ok(solution)) => {
                 if branch.table.unify(pending, solution).is_err() {
@@ -631,6 +648,26 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 }
             }
             (Err(limit), _) | (_, Err(limit)) => {
+                let scope = TraitSolveCx::normalization_scope_for_trait_inst_with_origin(
+                    self.db,
+                    self.origin_ingot,
+                    pending_goal,
+                );
+                let pending = pending_goal.fold_with(self.db, &mut branch.table);
+                match unify_trait_inst_with_normalized_assoc_bindings(
+                    self.db,
+                    &mut branch.table,
+                    solution,
+                    pending,
+                    scope,
+                    rebase.assumptions(),
+                ) {
+                    CandidateMatch::Mismatch => return Ok(Transition::Reject),
+                    CandidateMatch::Matches => {}
+                    CandidateMatch::Unknown(reached) => {
+                        branch.unknown = Some(NormalizationLimit::join(branch.unknown, reached));
+                    }
+                }
                 branch.unknown = Some(NormalizationLimit::join(branch.unknown, limit));
             }
         }

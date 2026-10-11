@@ -159,6 +159,8 @@ const MARKER_CONV_U8: &str = "impl<T: Nest> Conv<u8> for W<T> where T::Out: Show
 const PICK_METHOD: &str = "trait Pick { fn pick(self) -> u8 }
 impl<T, U> Pick for W<T> where W<T>: Conv<U>, U: Show { fn pick(self) -> u8 { 1 } }
 fn f(w: own W<{D}>) -> u8 { w.pick() }";
+const HEADER_PROJECTION: &str = "trait Mk<X> {}
+impl<T: Nest> Mk<T::Out> for W<T> {}";
 const HAS_VALUE: &str = "trait HasValue { const VALUE: u8 }
 impl<T> HasValue for W<T> { const VALUE: u8 = 1 }";
 const HAS_ITEM: &str = "trait HasItem { type Item }
@@ -316,6 +318,47 @@ impl<T> A for W<T> { fn choose(self, _ x: u8, _ y: u8) -> u8 { 1 } }",
 impl<T: Nest> B for W<T> { type X = T::Out
     fn choose(self, _ x: T::Out, _ y: u8) -> u8 { 2 } }",
         "fn f(w: own W<{D}>, a: u8, b: u8) -> u8 { w.choose(a, b) }";
+    // Trait solving: an impl whose header has a projection that reaches the
+    // limit only once substituted. What the solver can still compare decides:
+    // the answer's head binds the goal's variables for the goals after it.
+    solver_header_projection_bound: Limit, HEADER_PROJECTION, "",
+        "trait Pick {}
+impl<T, U> Pick for W<T> where U: Nest, W<T>: Mk<U> {}
+fn need<X: Pick>(_ x: own X) {}
+fn f(w: own W<{D}>) { need(w) }";
+    solver_header_projection_method: Limit, HEADER_PROJECTION, "",
+        "trait Pick { fn pick(self) -> u8 }
+impl<T, U> Pick for W<T> where U: Nest, W<T>: Mk<U> { fn pick(self) -> u8 { 1 } }
+fn f(w: own W<{D}>) -> u8 { w.pick() }";
+    solver_header_projection_nested: Limit, HEADER_PROJECTION, "",
+        "trait Pick {}
+impl<T, U> Pick for W<T> where U: Nest, W<T>: Mk<U> {}
+trait Outer {}
+impl<T> Outer for W<T> where W<T>: Pick {}
+fn need<X: Outer>(_ x: own X) {}
+fn f(w: own W<{D}>) { need(w) }";
+    solver_header_projection_effect: Limit, LOGGER,
+        "struct Deep<T> { t: T }
+trait Mk<X> {}
+impl<T: Nest> Mk<T::Out> for Deep<T> {}
+impl<T, U> Logger for Deep<T> where U: Nest, Deep<T>: Mk<U> { fn log(self) -> u8 { 2 } }",
+        "fn f(d: own Deep<{D}>) -> u8 {
+    with (d) {
+        needs_logger()
+    }
+}";
+    // A goal no impl or assumption can answer is refuted whatever its types
+    // turn out to be, also when the types reach the limit.
+    solver_header_projection_refuted_later: Same, HEADER_PROJECTION, "",
+        "trait Pick {}
+impl<T, U> Pick for W<T> where T: Never, U: Nest, W<T>: Mk<U> {}
+fn need<X: Pick>(_ x: own X) {}
+fn f(w: own W<{D}>) { need(w) }";
+    solver_header_projection_empty_trait: Same, HEADER_PROJECTION, "",
+        "trait Pick {}
+impl<T, U> Pick for W<T> where U: Never, W<T>: Mk<U> {}
+fn need<X: Pick>(_ x: own X) {}
+fn f(w: own W<{D}>) { need(w) }";
     // Method lookup: the trait argument is fixed later.
     method_expected_type_picks_impl: Same, CONV, CONV_BOOL,
         "fn f(w: own W<{D}>) -> u8 {
