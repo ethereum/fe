@@ -192,7 +192,10 @@ impl<'a> TokenDocBuilder<'a> {
     }
 
     fn bump_newlines(&mut self, token: &parser::SyntaxToken) {
-        self.pending_newlines += newline_count(self.ctx.snippet(token.text_range()));
+        // The parent document owns the separator before this node.
+        if !self.is_start {
+            self.pending_newlines += newline_count(self.ctx.snippet(token.text_range()));
+        }
     }
 
     fn push_piece(&mut self, piece: TokenPiece<'a>) {

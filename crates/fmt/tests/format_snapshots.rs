@@ -18,6 +18,33 @@ fn format_snap(fixture: Fixture<&str>) {
 }
 
 #[test]
+fn comments_between_methods_format_in_one_pass() {
+    let config = Config::default();
+    for modifier in ["pub ", "unsafe ", "pub unsafe "] {
+        for newlines in [1, 2, 4] {
+            for comment in ["", "    // Clear state.\n    // Avoid another callback.\n"] {
+                let separator = "\n".repeat(newlines);
+                let source = format!(
+                    "impl Notifications {{\n    {modifier}fn unsubscribe(self) uses (log: mut Log) {{\n        log.emit(0)\n    }}{separator}{comment}    {modifier}fn detach(self) uses (log: mut Log) {{\n        log.emit(1)\n    }}\n}}\n"
+                );
+                let formatted = format_str(&source, &config).expect("format should succeed");
+                assert_eq!(
+                    formatted,
+                    format_str(&formatted, &config).expect("reformat should succeed"),
+                    "{source}",
+                );
+                let separator = "\n".repeat(newlines.min(2));
+                assert!(
+                    formatted.contains(&format!("}}{separator}{comment}    {modifier}fn detach")),
+                    "{formatted}",
+                );
+                assert!(formatted.starts_with("impl Notifications {\n    "));
+            }
+        }
+    }
+}
+
+#[test]
 fn ambiguous_binary_operators_break_after_the_operator() {
     let source = r#"
 fn calculate() {
