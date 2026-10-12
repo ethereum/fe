@@ -18,7 +18,7 @@
 //! owners.push(owner)
 //! let first = owners[0]
 //! ```
-use core::abi::{AbiSize, DynArray, Encode, store_word}
+use core::abi::{AbiFrame, AbiSize, DynArray, Encode, store_word}
 use core::effect_ref::StateSpace
 use core::iter::{Bidirectional, Collection, CollectionMut}
 use core::marker::Clearable
@@ -26,7 +26,7 @@ use core::ops::{LaneCodec, StateIndex, clear_storage}
 use core::option::Option
 use core::ptr
 use ingot::abi::{Sol, StaticAbiElement}
-use super::effects::{RawStorage, StorPtr, revert_error}
+use super::effects::{RawStorage, revert_error, storage_at}
 use super::panic::{PANIC_INDEX_OUT_OF_BOUNDS, PANIC_OUT_OF_MEMORY, PANIC_POP_EMPTY, Panic}
 use super::sol_slot::{SolPacked, data_slot, field_mask}
 
@@ -93,12 +93,7 @@ impl<T> SolArray<T> {
     /// contract field, uses `slot` or the elements' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
-        unsafe {
-            with (ptr) {
-                core::effect_ref::target_mut(ptr)
-            }
-        }
+        unsafe { storage_at(slot) }
     }
 
     /// Number of elements.
@@ -179,11 +174,15 @@ impl<T> SolArray<T> {
         let len = self.len
         let size = 32 + len * 32
         let data = ptr::alloc_bytes(size)
-        unsafe { store_word(ptr: data, value: len) }
+        unsafe {
+            ptr::zero_bytes(data, size)
+            store_word(ptr: data, value: len)
+        }
         var i: u256 = 0
         while i < len {
             let value = self[i]
-            unsafe { value.encode(ptr::offset_bytes(data, 32 + i * 32)) }
+            // The element's zeroed word, which only this encoding writes.
+            value.encode(unsafe { AbiFrame::from_raw_parts(ptr: ptr::offset_bytes(data, 32 + i * 32), len: 32) })
             i += 1
         }
         unsafe { DynArray::from_abi_tail(data, len, size) }

@@ -698,6 +698,6 @@ impl IndexMut<usize> for MemBuffer {
 }
 
 // Out-of-range indices and ranges fail like Solidity index errors.
-fn index_out_of_bounds() -> ! {
+pub(ingot) fn index_out_of_bounds() -> ! {
     panic_code(PANIC_INDEX_OUT_OF_BOUNDS)
 }

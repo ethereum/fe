@@ -20,7 +20,10 @@ use crate::{
         ty::{
             adt_def::{AdtDef, AdtRef, instantiate_adt_field_shape},
             closure::closure_regions,
-            corelib::{RuntimeBuiltinFuncKind, runtime_builtin_func_kind},
+            corelib::{
+                ContractMetadataKind, RuntimeBuiltinFuncKind, contract_metadata_kind,
+                runtime_builtin_func_kind,
+            },
             effects::{
                 EffectKeyKind, instantiate_trait_effect_key, place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowKey, expand_rows},
@@ -53,10 +56,10 @@ use crate::{
             ty_lower::{ParamSchemaId, SubstError},
         },
     },
-    hir_def::{CallableDef, ExprId, FuncParamMode, SpacePathId, scope_graph::ScopeId},
+    hir_def::{CallableDef, Contract, ExprId, FuncParamMode, SpacePathId, scope_graph::ScopeId},
     semantic::{
         EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding, ProviderSource,
-        ResolvedEffectBinding,
+        ResolvedEffectBinding, effect_param_provider_semantics, effect_requirements_for_site,
     },
 };
 use common::indexmap::IndexMap;
@@ -1451,19 +1454,49 @@ impl<'db> SemanticInstance<'db> {
         )
     }
 
+    /// For an instance of a `Contract` metadata builtin, which part of which
+    /// contract's code it measures: the contract is its type argument.
+    pub fn contract_metadata(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Option<(ContractMetadataKind, Contract<'db>)> {
+        let key = self.key(db);
+        let BodyOwner::Func(func) = key.owner(db) else {
+            return None;
+        };
+        let kind = contract_metadata_kind(db, func)?;
+        let contract = key
+            .subst(db)
+            .generic_args(db)
+            .iter()
+            .find_map(|ty| ty.as_contract(db))?;
+        Some((kind, contract))
+    }
+
     pub fn is_projection(self, db: &'db dyn HirAnalysisDb) -> bool {
         matches!(self.key(db).owner(db), BodyOwner::Func(func) if func.is_projection(db))
     }
 
     /// The address space of the place data parameter `param` names in this
-    /// instantiation.
+    /// instantiation: the caller's, or else its type's default.
     pub fn param_space(self, db: &'db dyn HirAnalysisDb, param: u32) -> ProviderAddressSpace {
-        self.key(db)
-            .effect_providers(db)
+        let key = self.key(db);
+        key.effect_providers(db)
             .param_spaces(db)
             .iter()
             .find(|(index, _)| *index == param)
-            .map_or(ProviderAddressSpace::Memory, |(_, space)| *space)
+            .map_or_else(
+                || match key.typed_body(db).param_binding(param as usize) {
+                    Some(LocalBinding::Param { ty, .. }) => {
+                        let ty = self.normalized_ty(db, ty);
+                        ty.as_capability(db)
+                            .map_or(ty, |(_, inner)| inner)
+                            .default_space(db)
+                    }
+                    _ => ProviderAddressSpace::Memory,
+                },
+                |(_, space)| *space,
+            )
     }
 
     #[salsa::tracked]
@@ -1854,7 +1887,9 @@ fn provisional_provider_binding_for_effect<'db>(
             {
                 let provider_param_idx = provider_map[requirement_idx as usize]?;
                 let provider_ty = *CallableDef::Func(func).params(db).get(provider_param_idx)?;
-                let assumptions = semantic_instance_base_assumptions_for_key(db, key);
+                let requirement = effect_requirements_for_site(db, site)
+                    .into_iter()
+                    .find(|requirement| requirement.binding_idx == requirement_idx)?;
                 return Some(ProviderBinding {
                     provider_idx,
                     provider_ty,
@@ -1863,7 +1898,13 @@ fn provisional_provider_binding_for_effect<'db>(
                         site,
                         requirement_idx,
                     },
-                    semantics: provider_semantics(db, func.scope(), assumptions, provider_ty),
+                    semantics: effect_param_provider_semantics(
+                        db,
+                        func.scope(),
+                        semantic_instance_base_assumptions_for_key(db, key),
+                        provider_ty,
+                        &requirement.key,
+                    ),
                 });
             }
             provisional_root_provider_binding(db, key, site, provider_idx)
@@ -2624,7 +2665,7 @@ fn instantiate_provider_binding<'db>(
             evidence: ProviderLayoutEvidence::ContractField,
         }
     } else {
-        provider_semantics_for_specialized_call(
+        let mut semantics = provider_semantics_for_specialized_call(
             db,
             scope,
             assumptions,
@@ -2632,7 +2673,15 @@ fn instantiate_provider_binding<'db>(
             target_ty,
             provider.semantics.address_space,
             provider.semantics.transport,
-        )
+        );
+        // A root object lies where its binding says, which its type alone
+        // cannot tell (`effect_param_provider_semantics`).
+        if semantics.evidence == ProviderLayoutEvidence::NotHandle
+            && provider.semantics.evidence == ProviderLayoutEvidence::NotHandle
+        {
+            semantics.address_space = provider.semantics.address_space;
+        }
+        semantics
     };
     Ok(ProviderBinding {
         provider_ty,

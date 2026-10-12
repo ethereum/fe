@@ -50,12 +50,12 @@ note:
    │                                                           ^^^^^^^^^^ T
 
 note:
-   ┌─ contract_recv_generic_variant.fe:21:44
+   ┌─ contract_recv_generic_variant.fe:21:53
    │
-21 │       unsafe fn encode(own self, _ ptr: *u8) {
-   │ ╭────────────────────────────────────────────^
+21 │       fn encode(own self, _ out: core::abi::AbiFrame) {
+   │ ╭─────────────────────────────────────────────────────^
 22 │ │         let Self { value } = self
-23 │ │         value.encode(ptr)
+23 │ │         value.encode(out)
 24 │ │     }
    │ ╰─────^ ()
 
@@ -80,20 +80,20 @@ note:
 note:
    ┌─ contract_recv_generic_variant.fe:23:9
    │
-23 │         value.encode(ptr)
+23 │         value.encode(out)
    │         ^^^^^ T
 
 note:
    ┌─ contract_recv_generic_variant.fe:23:9
    │
-23 │         value.encode(ptr)
+23 │         value.encode(out)
    │         ^^^^^^^^^^^^^^^^^ ()
 
 note:
    ┌─ contract_recv_generic_variant.fe:23:22
    │
-23 │         value.encode(ptr)
-   │                      ^^^ *<u8>
+23 │         value.encode(out)
+   │                      ^^^ AbiFrame
 
 note:
    ┌─ contract_recv_generic_variant.fe:30:121

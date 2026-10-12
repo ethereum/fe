@@ -369,24 +369,8 @@ fn lower_encode_impl<'db>(
     field_specs: &FieldSpecs<'db>,
 ) {
     let trait_ref = builder.core_abi_trait_ref_sol("Encode");
-    let field_specs = field_specs.to_vec();
     builder.impl_trait(trait_ref, self_ty, |builder| {
-        let ptr_ident = builder.ident("ptr");
-        let u8_ty = builder.ty_ident(builder.ident("u8"));
-        let ptr_ty = builder.ty_ptr(u8_ty);
-        let params = builder.params([
-            builder.param_own_self(),
-            builder.param_underscore_named(ptr_ident, ptr_ty),
-        ]);
-        builder.func_with_body_inline_always(
-            builder.ident("encode"),
-            builder.empty_generic_params(),
-            params,
-            None,
-            // `Encode::encode` is unsafe: it writes through `ptr`.
-            FuncModifiers::new(Visibility::Private, true, false, false),
-            |body| body.encode_fields(&field_specs, ptr_ident),
-        );
+        builder.encode_func(field_specs)
     });
 }
 

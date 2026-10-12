@@ -45,8 +45,7 @@ fn ping() uses (call: mut Call) {
     )
 }
 
-// Rejected when instantiated with a storage map (`Caller`): a call crosses an
-// open entry.
+// Rejected: a call crosses an open entry.
 fn call_with_entry() uses (records: mut StorageMap<u256, Record>, call: mut Call) {
     let record = mut records[7]
     var output = MemBuffer::empty()
@@ -57,8 +56,7 @@ fn call_with_entry() uses (records: mut StorageMap<u256, Record>, call: mut Call
     record.owner = 2
 }
 
-// Rejected when instantiated with a storage map (`Caller`): a helper whose
-// effects permit a call crosses an open entry.
+// Rejected: a helper whose effects permit a call crosses an open entry.
 fn hidden_call_with_entry() uses (records: mut StorageMap<u256, Record>, call: mut Call) {
     let record = mut records[7]
     ping()
@@ -91,18 +89,6 @@ pub contract Registry uses (ctx: Ctx, log: mut Log) {
             read_context()
             claim_entry()
             emit_with_entry()
-            0
-        }
-    }
-}
-
-pub contract Caller uses (call: mut Call) {
-    mut records: StorageMap<u256, Record>,
-
-    recv Msg {
-        Run -> u256 uses (mut records, mut call) {
-            call_with_entry()
-            hidden_call_with_entry()
             0
         }
     }

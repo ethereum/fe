@@ -4,8 +4,9 @@
 //! (a trust root), `core` or `std`, or a dependency that a trusted ingot
 //! declares with `allow_unsafe = true`. Only use counts: the semantic access
 //! walk starts from the bodies of a trust root's modules, follows calls into
-//! every ingot, and reports an untrusted ingot's unsafe code at the call in
-//! the user's code that first reaches it. An untrusted ingot's safe API stays
+//! every ingot, including indexing's generated `locate` calls and the bodies
+//! of the contracts a body creates, and reports an untrusted ingot's unsafe
+//! code at the call in the user's code that first reaches it. An untrusted ingot's safe API stays
 //! usable without trust.
 //!
 //! This is build policy, not typing: whether a caller builds depends on what

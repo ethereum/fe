@@ -1,4 +1,4 @@
-use core::abi::{Encode, store_word}
+use core::abi::{AbiFrame, Encode, store_word}
 use std::abi::Sol
 use core::ptr::{self, MemSlice}
 
@@ -15,7 +15,7 @@ pub fn store_word_outside_unsafe(p: *u8) {
 }
 
 pub fn encode_value<T: Encode<Sol>>(value: own T, p: *u8) {
-    value.encode(p)
+    value.encode(AbiFrame::from_raw_parts(ptr: p, len: 32))
 }
 
 pub fn uninit() -> u256 {

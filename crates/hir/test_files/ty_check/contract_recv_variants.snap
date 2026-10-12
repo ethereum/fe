@@ -8,22 +8,22 @@ note:
    ┌─ contract_recv_variants.fe:11:5
    │
 11 │     Deposit { amount: u64 } -> u64,
-   │     ^^^^^^^ () | *<u8> | Deposit | __fe_D | __fe_I | fn decode_field<Sol, u64, __fe_D, __fe_I> | fn decode_msg_field_from<Sol, u64, __fe_I> | fn dynamic_payload_size<u64> | fn encode_field_at<Sol, u64> | u256 | u64
+   │     ^^^^^^^ () | AbiFrame | Deposit | __fe_D | __fe_I | fn decode_field<Sol, u64, __fe_D, __fe_I> | fn decode_msg_field_from<Sol, u64, __fe_I> | fn dynamic_payload_size<u64> | fn encode_field_at<Sol, u64> | u256 | u64
 
 note:
    ┌─ contract_recv_variants.fe:13:5
    │
 13 │     Withdraw { amount: u64 } -> bool,
-   │     ^^^^^^^^ () | *<u8> | Withdraw | __fe_D | __fe_I | fn decode_field<Sol, u64, __fe_D, __fe_I> | fn decode_msg_field_from<Sol, u64, __fe_I> | fn dynamic_payload_size<u64> | fn encode_field_at<Sol, u64> | u256 | u64
+   │     ^^^^^^^^ () | AbiFrame | Withdraw | __fe_D | __fe_I | fn decode_field<Sol, u64, __fe_D, __fe_I> | fn decode_msg_field_from<Sol, u64, __fe_I> | fn dynamic_payload_size<u64> | fn encode_field_at<Sol, u64> | u256 | u64
 
 note:
-   ┌─ contract_recv_variants.fe:31:48
+   ┌─ contract_recv_variants.fe:31:57
    │
-31 │           unsafe fn encode(own self, _ ptr: *u8) {
-   │ ╭────────────────────────────────────────────────^
+31 │           fn encode(own self, _ out: core::abi::AbiFrame) {
+   │ ╭─────────────────────────────────────────────────────────^
 32 │ │             let Self { to, amount } = self
-33 │ │             to.encode(ptr)
-34 │ │             amount.encode(core::ptr::offset_bytes(ptr, 32))
+33 │ │             to.encode(out.slice(offset: 0, len: 32))
+34 │ │             amount.encode(out.slice(offset: 32, len: 32))
 35 │ │         }
    │ ╰─────────^ ()
 
@@ -54,56 +54,74 @@ note:
 note:
    ┌─ contract_recv_variants.fe:33:13
    │
-33 │             to.encode(ptr)
+33 │             to.encode(out.slice(offset: 0, len: 32))
    │             ^^ u64
 
 note:
    ┌─ contract_recv_variants.fe:33:13
    │
-33 │             to.encode(ptr)
-   │             ^^^^^^^^^^^^^^ ()
+33 │             to.encode(out.slice(offset: 0, len: 32))
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note:
    ┌─ contract_recv_variants.fe:33:23
    │
-33 │             to.encode(ptr)
-   │                       ^^^ *<u8>
+33 │             to.encode(out.slice(offset: 0, len: 32))
+   │                       ^^^ AbiFrame
+
+note:
+   ┌─ contract_recv_variants.fe:33:23
+   │
+33 │             to.encode(out.slice(offset: 0, len: 32))
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ AbiFrame
+
+note:
+   ┌─ contract_recv_variants.fe:33:41
+   │
+33 │             to.encode(out.slice(offset: 0, len: 32))
+   │                                         ^ u256
+
+note:
+   ┌─ contract_recv_variants.fe:33:49
+   │
+33 │             to.encode(out.slice(offset: 0, len: 32))
+   │                                                 ^^ u256
 
 note:
    ┌─ contract_recv_variants.fe:34:13
    │
-34 │             amount.encode(core::ptr::offset_bytes(ptr, 32))
+34 │             amount.encode(out.slice(offset: 32, len: 32))
    │             ^^^^^^ u64
 
 note:
    ┌─ contract_recv_variants.fe:34:13
    │
-34 │             amount.encode(core::ptr::offset_bytes(ptr, 32))
-   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
+34 │             amount.encode(out.slice(offset: 32, len: 32))
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ()
 
 note:
    ┌─ contract_recv_variants.fe:34:27
    │
-34 │             amount.encode(core::ptr::offset_bytes(ptr, 32))
-   │                           ^^^^^^^^^^^^^^^^^^^^^^^ fn offset_bytes<u8>
+34 │             amount.encode(out.slice(offset: 32, len: 32))
+   │                           ^^^ AbiFrame
 
 note:
    ┌─ contract_recv_variants.fe:34:27
    │
-34 │             amount.encode(core::ptr::offset_bytes(ptr, 32))
-   │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ *<u8>
+34 │             amount.encode(out.slice(offset: 32, len: 32))
+   │                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ AbiFrame
 
 note:
-   ┌─ contract_recv_variants.fe:34:51
+   ┌─ contract_recv_variants.fe:34:45
    │
-34 │             amount.encode(core::ptr::offset_bytes(ptr, 32))
-   │                                                   ^^^ *<u8>
+34 │             amount.encode(out.slice(offset: 32, len: 32))
+   │                                             ^^ u256
 
 note:
-   ┌─ contract_recv_variants.fe:34:56
+   ┌─ contract_recv_variants.fe:34:54
    │
-34 │             amount.encode(core::ptr::offset_bytes(ptr, 32))
-   │                                                        ^^ u256
+34 │             amount.encode(out.slice(offset: 32, len: 32))
+   │                                                      ^^ u256
 
 note:
    ┌─ contract_recv_variants.fe:39:125
@@ -207,12 +225,12 @@ note:
    │                        ^^^^^^ u64
 
 note:
-   ┌─ contract_recv_variants.fe:61:48
+   ┌─ contract_recv_variants.fe:61:57
    │
-61 │           unsafe fn encode(own self, _ ptr: *u8) {
-   │ ╭────────────────────────────────────────────────^
+61 │           fn encode(own self, _ out: core::abi::AbiFrame) {
+   │ ╭─────────────────────────────────────────────────────────^
 62 │ │             let Self { addr } = self
-63 │ │             addr.encode(ptr)
+63 │ │             addr.encode(out)
 64 │ │         }
    │ ╰─────────^ ()
 
@@ -237,20 +255,20 @@ note:
 note:
    ┌─ contract_recv_variants.fe:63:13
    │
-63 │             addr.encode(ptr)
+63 │             addr.encode(out)
    │             ^^^^ u64
 
 note:
    ┌─ contract_recv_variants.fe:63:13
    │
-63 │             addr.encode(ptr)
+63 │             addr.encode(out)
    │             ^^^^^^^^^^^^^^^^ ()
 
 note:
    ┌─ contract_recv_variants.fe:63:25
    │
-63 │             addr.encode(ptr)
-   │                         ^^^ *<u8>
+63 │             addr.encode(out)
+   │                         ^^^ AbiFrame
 
 note:
    ┌─ contract_recv_variants.fe:68:125
@@ -311,12 +329,12 @@ note:
    │                    ^^^^ u64
 
 note:
-   ┌─ contract_recv_variants.fe:93:44
+   ┌─ contract_recv_variants.fe:93:53
    │
-93 │       unsafe fn encode(own self, _ ptr: *u8) {
-   │ ╭────────────────────────────────────────────^
+93 │       fn encode(own self, _ out: core::abi::AbiFrame) {
+   │ ╭─────────────────────────────────────────────────────^
 94 │ │         let Self { key } = self
-95 │ │         key.encode(ptr)
+95 │ │         key.encode(out)
 96 │ │     }
    │ ╰─────^ ()
 
@@ -341,20 +359,20 @@ note:
 note:
    ┌─ contract_recv_variants.fe:95:9
    │
-95 │         key.encode(ptr)
+95 │         key.encode(out)
    │         ^^^ u64
 
 note:
    ┌─ contract_recv_variants.fe:95:9
    │
-95 │         key.encode(ptr)
+95 │         key.encode(out)
    │         ^^^^^^^^^^^^^^^ ()
 
 note:
    ┌─ contract_recv_variants.fe:95:20
    │
-95 │         key.encode(ptr)
-   │                    ^^^ *<u8>
+95 │         key.encode(out)
+   │                    ^^^ AbiFrame
 
 note:
     ┌─ contract_recv_variants.fe:100:121

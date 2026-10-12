@@ -148,11 +148,11 @@ fn solver_proves_encode_for_fixed_bool_arrays() {
     let mut db = DriverDataBase::default();
     let url = Url::parse("file:///encode_fixed_bool_array_goal.fe").unwrap();
     let src = r#"
-use core::{abi::Encode, ptr}
+use core::abi::{AbiFrame, Encode}
 use std::abi::Sol
 
-pub fn root(values: [bool; 5]) {
-    unsafe { values.encode(ptr::alloc_bytes(160)) }
+pub fn root(values: [bool; 5], out: AbiFrame) {
+    values.encode(out)
 }
 "#;
 

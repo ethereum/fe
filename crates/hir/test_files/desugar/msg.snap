@@ -32,7 +32,7 @@ mod CounterMsg {
     impl core::abi::Encode<std::abi::Sol> for Increment {
 
         #[inline(always)]
-        unsafe fn encode(own self, _ ptr: *u8) {}
+        fn encode(own self, _ __fe_out: core::abi::AbiFrame) {}
     }
 
     impl core::abi::Decode<std::abi::Sol> for Increment {
@@ -68,7 +68,7 @@ mod CounterMsg {
     impl core::abi::Encode<std::abi::Sol> for Get {
 
         #[inline(always)]
-        unsafe fn encode(own self, _ ptr: *u8) {}
+        fn encode(own self, _ __fe_out: core::abi::AbiFrame) {}
     }
 
     impl core::abi::Decode<std::abi::Sol> for Get {
@@ -106,11 +106,11 @@ mod CounterMsg {
     impl core::abi::Encode<std::abi::Sol> for Set {
 
         #[inline(always)]
-        unsafe fn encode(own self, _ ptr: *u8) {
+        fn encode(own self, _ __fe_out: core::abi::AbiFrame) {
             var __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
             var __fe_head_pos = 0
             let __fe_field_0 = self.val
-            core::abi::encode_field_at<std::abi::Sol, u64>(__fe_field_0, ptr, head_pos: __fe_head_pos, tail: __fe_tail)
+            core::abi::encode_field_at<std::abi::Sol, u64>(__fe_field_0, __fe_out, head_pos: __fe_head_pos, tail: __fe_tail)
         }
     }
 

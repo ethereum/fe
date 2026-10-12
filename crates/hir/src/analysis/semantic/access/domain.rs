@@ -62,15 +62,15 @@ impl<'db> Domains<'db> {
         self.0[domain as usize].space
     }
 
-    /// Whether two distinct domains may share storage.
+    /// Whether two distinct domains may share storage when their places lie
+    /// in one space.
     pub fn may_alias(&self, lhs: u32, rhs: u32) -> bool {
-        let (lhs, rhs) = (&self.0[lhs as usize], &self.0[rhs as usize]);
         !matches!(
-            (&lhs.source, &rhs.source),
+            (&self.0[lhs as usize].source, &self.0[rhs as usize].source),
             (
                 Some(ProviderSource::ContractField { .. }),
                 Some(ProviderSource::ContractField { .. })
             )
-        ) && (lhs.space.is_none() || rhs.space.is_none() || lhs.space == rhs.space)
+        )
     }
 }

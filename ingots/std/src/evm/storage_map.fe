@@ -1,4 +1,4 @@
-use super::effects::{Address, RawStorage, StorPtr}
+use super::effects::{Address, RawStorage, storage_at}
 use super::crypto::keccak256
 use ingot::evm::ops::mstore
 use core::num::IntWord
@@ -234,12 +234,7 @@ impl<K: StorageKey + Copy, V> StorageMap<K, V> {
     /// contract field, uses `slot` or the entries' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
-        unsafe {
-            with (ptr) {
-                core::effect_ref::target_mut(ptr)
-            }
-        }
+        unsafe { storage_at(slot) }
     }
 
     /// Copies the value at `key` out of storage, in full.

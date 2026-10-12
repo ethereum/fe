@@ -399,7 +399,9 @@ dep = { path = "../dep", allow_unsafe = true }
 A trusted dependency's own `allow_unsafe` entries extend trust to its dependencies; an untrusted
 one's grant nothing. Only use counts: an untrusted dependency's safe functions need no trust, and
 `fe check`, `fe build` and `fe test` report an error (`16-0015`) only at a call in the checked
-ingot's code that reaches an `unsafe` block or `unsafe fn` body of an untrusted dependency.
+ingot's code that reaches an `unsafe` block or `unsafe fn` body of an untrusted dependency. A call
+reaches what it runs: the functions it calls, the `StateIndex::locate` of a collection it indexes,
+and the bodies of a contract it creates.
 
 ### Optional outputs
 

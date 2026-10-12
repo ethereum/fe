@@ -110,7 +110,10 @@ not conflict with an operation on the map's entries.
 - `Domain(d)`: a resource domain: a contract field, an effect parameter, a
   root provider, or a dynamic domain for a handle of unknown provenance.
   Distinct contract fields are disjoint; other domains of one address space
-  may alias, since a caller may supply overlapping providers. A place that
+  may alias, since a caller may supply overlapping providers. Where no caller
+  decides a parameter's or an effect provider's space, as in a generic
+  function's own check, a place of a state-only type lies in its pin's space,
+  or else in storage, never in memory (`TyId::default_space`). A place that
   holds nothing conflicts with nothing: a zero-sized type, or the provider of
   a sealed std EVM capability (`Ctx`, `Log`, `Call`, …), which only the
   zero-sized `Evm` implements, even as a generic helper's effect.
@@ -120,6 +123,10 @@ not conflict with an operation on the map's entries.
 - `State(space)`: every slot of an address space, the footprint of external
   execution and raw storage authority.
 - `Raw`: memory reached through a raw pointer; never checked.
+
+Places in different spaces are disjoint. A place's space is its root's
+unless a pinned type or an entry along its path moves it (below), so an
+entry of a map lies in storage whatever holds the map.
 
 An access through a carrier is authorized by the tokens it was derived from,
 so a nested access (`let g = mut h.x`) does not conflict with `h`, and `h` is

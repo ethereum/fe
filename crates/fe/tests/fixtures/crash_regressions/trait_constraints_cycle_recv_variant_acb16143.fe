@@ -18,9 +18,9 @@ impl<T> core::abi::Encode<std::abi::Sol> for GenericMsg<T>
 where
     T: core::abi::Encode<std::abi::Sol>,
 {
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: core::abi::AbiFrame) {
         let Self { value } = self
-        value.encode(ptr)
+        value.encode(out)
     }
 }
 

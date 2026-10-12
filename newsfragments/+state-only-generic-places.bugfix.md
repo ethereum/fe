@@ -1,0 +1,1 @@
+A generic function's own check no longer treats a parameter or effect of a state-only type, such as a `StorageMap`, a `Mutex` or a struct holding one, as memory. It now reports a reentrant call across an open access to it at the function itself, not only once a contract instantiates it with storage.

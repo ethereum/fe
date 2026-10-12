@@ -1,4 +1,4 @@
-use core::abi::{AbiDecoder, AbiSize, AbiSpan, ByteInput, Decode, Encode, store_word}
+use core::abi::{AbiDecoder, AbiFrame, AbiSize, AbiSpan, ByteInput, Decode, Encode}
 use std::abi::Sol
 
 // ABI-encodable, but without a Solidity type name.
@@ -24,8 +24,8 @@ impl Decode<Sol> for Word {
 }
 
 impl Encode<Sol> for Word {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr, value: self.value)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.value)
     }
 }
 

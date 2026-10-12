@@ -1,4 +1,5 @@
 use core::abi::{
+    AbiFrame,
     AbiSize,
     Decode,
     DynArray,
@@ -80,8 +81,11 @@ pub fn dyn_array_from<T, const N: usize>(_ values: [T; N]) -> DynArray<T>
     let size = 32 + values.payload_size()
     let data = ptr::alloc_bytes(size)
     unsafe {
+        ptr::zero_bytes(data, size)
         store_word(ptr: data, value: N as u256)
-        values.encode(ptr::offset_bytes(data, 32))
+        // The zeroed payload after the length word, which only this
+        // encoding writes.
+        values.encode(AbiFrame::from_raw_parts(ptr: ptr::offset_bytes(data, 32), len: size - 32))
         DynArray::from_abi_tail(data, len: N as u256, size)
     }
 }
@@ -111,10 +115,12 @@ pub fn canonical_dyn_array<T>(_ values: DynArray<T>) -> DynArray<T>
         let size = 32 + count * head
         let data = ptr::alloc_bytes(size)
         return unsafe {
+            ptr::zero_bytes(data, size)
             store_word(ptr: data, value: count)
             var i: u256 = 0
             while i < count {
-                values.get(i).encode(ptr::offset_bytes(data, 32 + i * head))
+                // The element's zeroed head, which only this encoding writes.
+                values.get(i).encode(AbiFrame::from_raw_parts(ptr: ptr::offset_bytes(data, 32 + i * head), len: head))
                 i += 1
             }
             DynArray::from_abi_tail(data, len: count, size)
@@ -223,8 +229,9 @@ impl<T> MemVec<T>
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
 
+        // The element's initialized bytes, which `mut self` holds.
         let at = ptr::offset_bytes(self.ptr, index * T::HEAD_SIZE)
-        unsafe { value.encode(at) }
+        value.encode(unsafe { AbiFrame::from_raw_parts(ptr: at, len: T::HEAD_SIZE) })
     }
 
     /// Freeze into an ABI-encodable `DynArray`.

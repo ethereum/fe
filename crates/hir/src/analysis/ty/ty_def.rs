@@ -128,6 +128,17 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// The space a place of this type lies in when no caller decides it: its
+    /// pin, storage for another state-only type, which never lives in
+    /// memory, and memory otherwise.
+    pub fn default_space(self, db: &'db dyn HirAnalysisDb) -> ProviderAddressSpace {
+        self.pin(db).unwrap_or(if self.pinned_part(db).is_some() {
+            ProviderAddressSpace::Storage
+        } else {
+            ProviderAddressSpace::Memory
+        })
+    }
+
     /// Whether this type, or some instance of it, is pinned.
     pub fn may_be_pinned(self, db: &'db dyn HirAnalysisDb) -> bool {
         super::adt_def::ty_pin(db, self) != Pin::Unpinned

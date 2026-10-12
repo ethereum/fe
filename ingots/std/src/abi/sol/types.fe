@@ -2,6 +2,7 @@ use core::AsBytes
 use core::abi::{
     Abi,
     AbiDecoder,
+    AbiFrame,
     AbiSize,
     AbiSpan,
     ByteInput,
@@ -10,7 +11,6 @@ use core::abi::{
     DynString,
     DynArray,
     Encode,
-    store_word,
 }
 use core::num::IntDowncast
 use ingot::evm::Address
@@ -418,8 +418,8 @@ impl<A: Abi, const N: usize> Decode<A> for FixedBytes<N> {
 }
 
 impl<A: Abi, const N: usize> Encode<A> for FixedBytes<N> {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.word())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.word())
     }
 }
 

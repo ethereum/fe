@@ -5,30 +5,30 @@ expression: diags
 input_file: fixtures/semantic_access/sealed_capabilities.fe
 ---
 error[16-0001]: access conflict in `fn call_with_entry`
-   ┌─ sealed_capabilities.fe:53:19
+   ┌─ sealed_capabilities.fe:52:19
    │
-51 │       let record = mut records[7]
+50 │       let record = mut records[7]
    │                    -------------- access opened here
-52 │       var output = MemBuffer::empty()
-53 │       let outcome = call.raw_call(
+51 │       var output = MemBuffer::empty()
+52 │       let outcome = call.raw_call(
    │ ╭───────────────────^
-54 │ │         addr: Address { inner: 1 }, gas: 100000, value: 0,
-55 │ │         args: MemSpan::empty(), ret: mut output,
-56 │ │     )
+53 │ │         addr: Address { inner: 1 }, gas: 100000, value: 0,
+54 │ │         args: MemSpan::empty(), ret: mut output,
+55 │ │     )
    │ ╰─────^ this call may write storage while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn hidden_call_with_entry`
-   ┌─ sealed_capabilities.fe:64:5
+   ┌─ sealed_capabilities.fe:62:5
    │
-63 │     let record = mut records[7]
+61 │     let record = mut records[7]
    │                  -------------- access opened here
-64 │     ping()
+62 │     ping()
    │     ^^^^^^ this call may write storage while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn same_type`
-   ┌─ sealed_capabilities.fe:71:13
+   ┌─ sealed_capabilities.fe:69:13
    │
-70 │     let entry = mut a[1]
+68 │     let entry = mut a[1]
    │                 -------- access opened here
-71 │     entry = b[1]
+69 │     entry = b[1]
    │             ^^^^ cannot read this place while a `mut` access of it is open

@@ -322,7 +322,13 @@ fn func_provider_bindings_canonical<'db>(
                     site: EffectParamSite::Func(func),
                     requirement_idx: requirement.binding_idx,
                 },
-                semantics: provider_semantics(db, scope, assumptions, provider_ty),
+                semantics: effect_param_provider_semantics(
+                    db,
+                    scope,
+                    assumptions,
+                    provider_ty,
+                    &requirement.key,
+                ),
             })
         })
         .collect::<Vec<_>>();
@@ -1932,8 +1938,34 @@ pub(crate) fn row_effect_provider<'db>(
             site: requirement.binding_site,
             requirement_idx: requirement.binding_idx,
         },
-        semantics: provider_semantics(db, owner, PredicateListId::empty_list(db), provider_ty),
+        semantics: effect_param_provider_semantics(
+            db,
+            owner,
+            PredicateListId::empty_list(db),
+            provider_ty,
+            &requirement.key,
+        ),
     }
+}
+
+/// The semantics of `provider_ty`, the parameter a body is generic over for
+/// the provider of an effect keyed by `key`. One that is not a handle is a
+/// place of the key's type, so it lies where that type's places do: a
+/// state-only type is never in memory.
+pub(crate) fn effect_param_provider_semantics<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    provider_ty: TyId<'db>,
+    key: &EffectRequirementKey<'db>,
+) -> ProviderSemantics<'db> {
+    let mut semantics = provider_semantics(db, scope, assumptions, provider_ty);
+    if semantics.evidence == ProviderLayoutEvidence::NotHandle
+        && let EffectRequirementKey::Type(key_ty) = key
+    {
+        semantics.address_space = Some(key_ty.default_space(db));
+    }
+    semantics
 }
 
 pub fn provider_bindings_for_site<'db>(

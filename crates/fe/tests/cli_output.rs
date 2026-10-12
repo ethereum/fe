@@ -2906,9 +2906,9 @@ impl core::abi::AbiSize for Weird {
 }
 
 impl core::abi::Encode<std::abi::Sol> for Weird {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        unsafe { core::abi::store_word(ptr: ptr, value: if self.flag { 1 } else { 0 }) }
-        unsafe { core::abi::store_word(ptr: core::ptr::offset_bytes(ptr, 32), value: self.amount as u256) }
+    fn encode(own self, _ out: core::abi::AbiFrame) {
+        out.store_word(at: 0, value: if self.flag { 1 } else { 0 })
+        out.store_word(at: 32, value: self.amount as u256)
     }
 }
 
@@ -3590,7 +3590,9 @@ fn test_cli_test_dependency_arithmetic_defer() {
 fn test_cli_test_unsafe_trust_allows_trusted_and_safe_uses() {
     for (fixture, test) in [
         ("unsafe_trust_safe_api", "untrusted_safe_api"),
+        ("unsafe_trust_safe_api", "untrusted_derived_encodings"),
         ("unsafe_trust_allowed", "allowed_unsafe_use"),
+        ("unsafe_trust_allowed", "allowed_created_contract"),
         ("unsafe_trust_delegated", "delegated_unsafe_use"),
     ] {
         let fixture_dir = fe_test_runner_fixture_dir(fixture);
@@ -3625,6 +3627,11 @@ fn test_cli_test_unsafe_trust_rejects_untrusted_unsafe_uses() {
         (
             "unsafe_trust_locate",
             "flags[1] = first == 0",
+            "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
+        ),
+        (
+            "unsafe_trust_create",
+            "evm.create2<dep::Vault>(value: 0, args: (), salt: 0)",
             "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
         ),
     ] {

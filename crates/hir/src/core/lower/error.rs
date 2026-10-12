@@ -9,9 +9,9 @@ use super::{
 };
 use crate::{
     hir_def::{
-        AssocConstDef, AttrListId, Body, BodyKind, Expr, FieldDef, FieldDefListId, FuncModifiers,
+        AssocConstDef, AttrListId, Body, BodyKind, Expr, FieldDef, FieldDefListId,
         GenericParamListId, IdentId, LitKind, Partial, PathId, Struct, TrackedItemVariant,
-        TraitRefId, TypeId, TypeKind, Visibility,
+        TraitRefId, TypeId, TypeKind,
     },
     span::{ErrorDesugared, HirOrigin},
 };
@@ -412,8 +412,6 @@ fn lower_error_encode_impl<'db>(
     self_ty: TypeId<'db>,
     field_specs: &[(IdentId<'db>, TypeId<'db>)],
 ) {
-    let field_specs = field_specs.to_vec();
-
     let impl_trait_idx = builder.ctxt().next_impl_trait_idx();
     let trait_ref = Partial::Present(builder.core_abi_trait_ref_sol("Encode"));
     let ty = Partial::Present(self_ty);
@@ -423,25 +421,7 @@ fn lower_error_encode_impl<'db>(
             let impl_trait =
                 builder.new_impl_trait(id, trait_ref, ty, vec![], vec![], builder.origin());
 
-            let ptr_ident = builder.ident("ptr");
-            let u8_ty = builder.ty_ident(builder.ident("u8"));
-            let ptr_ty = builder.ty_ptr(u8_ty);
-            let params = builder.params([
-                builder.param_own_self(),
-                builder.param_underscore_named(ptr_ident, ptr_ty),
-            ]);
-
-            builder.func_with_body_inline_always(
-                builder.ident("encode"),
-                builder.empty_generic_params(),
-                params,
-                None,
-                // `Encode::encode` is unsafe: it writes through `ptr`.
-                FuncModifiers::new(Visibility::Private, true, false, false),
-                |body| {
-                    body.encode_fields(&field_specs, ptr_ident);
-                },
-            );
+            builder.encode_func(field_specs);
             impl_trait
         },
     );

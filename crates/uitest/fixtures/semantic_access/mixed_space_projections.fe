@@ -74,23 +74,11 @@ pub contract C {
     }
 }
 
-// Rejected when instantiated with a storage vault (`HeldAcross`): the
-// vault's value grant is still open at the call.
+// Rejected: the vault's value grant is still open at the call.
 fn held_across(_ to: Address) uses (vault: mut Mutex<u256>, call: mut Call) {
     assert!(vault.try_lock())
     let w = vault.value_mut()
     call_out(to)
     w += 1
     vault.unlock()
-}
-
-pub contract HeldAcross {
-    mut vault: Mutex<u256>,
-
-    recv M {
-        Run { to } -> u256 uses (mut vault, call: mut Call) {
-            held_across(to)
-            0
-        }
-    }
 }

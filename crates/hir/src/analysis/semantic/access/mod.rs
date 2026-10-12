@@ -36,20 +36,22 @@ use crate::{
         analysis_pass::ModuleAnalysisPass,
         diagnostics::{DiagnosticVoucher, SpannedHirAnalysisDb},
         semantic::{
-            SemOrigin, SemanticInstance, SemanticInstanceKey, core_method_callee_key,
+            SemOrigin, SemanticCodeRegionRef, SemanticCodeRegionTarget, SemanticInstance,
+            SemanticInstanceKey, core_method_callee_key,
             diagnostics::{
                 BlockedSemanticBody, SemanticDiagnosticId, SemanticDiagnosticSpan,
                 SemanticNormalizationFailure,
             },
             get_or_build_semantic_instance, identity_semantic_instance_key,
             normalized::{
-                NDataProjection, NPlace, NStatementKind, SemanticBodyAdmission,
+                NDataProjection, NExpr, NPlace, NStatementKind, SemanticBodyAdmission,
                 normalize_semantic_body, semantic_body_admission,
             },
+            root_semantic_instance_key,
         },
         ty::{provider::ProviderAddressSpace, ty_check::BodyOwner},
     },
-    hir_def::{ExprId, ItemKind, StmtId, TopLevelMod},
+    hir_def::{Contract, ExprId, ItemKind, StmtId, TopLevelMod},
 };
 
 use self::trust::{UnsafeTrust, UntrustedUnsafeUse};
@@ -202,20 +204,7 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
         match item {
             ItemKind::Func(func) => owners.push(BodyOwner::Func(*func)),
             ItemKind::Const(const_) => owners.push(BodyOwner::Const(*const_)),
-            ItemKind::Contract(contract) => {
-                owners.push(BodyOwner::ContractInit {
-                    contract: *contract,
-                });
-                for (recv_idx, recv) in contract.recvs(db).data(db).iter().enumerate() {
-                    for arm_idx in 0..recv.arms.data(db).len() {
-                        owners.push(BodyOwner::ContractRecvArm {
-                            contract: *contract,
-                            recv_idx: recv_idx as u32,
-                            arm_idx: arm_idx as u32,
-                        });
-                    }
-                }
-            }
+            ItemKind::Contract(contract) => owners.extend(contract_bodies(db, *contract)),
             ItemKind::Mod(_)
             | ItemKind::Struct(_)
             | ItemKind::Enum(_)
@@ -279,7 +268,11 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
                             .callees(db)
                             .iter()
                             .map(|callee| callee.key)
-                            .chain(entry_callees(db, instance).into_iter().map(|(key, _)| key))
+                            .chain(
+                                generated_callees(db, instance)
+                                    .into_iter()
+                                    .map(|(key, _)| key),
+                            )
                             .map(|key| (key, call.clone()))
                             .collect(),
                         None => {
@@ -306,10 +299,10 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
                                         })
                                     })
                                 });
-                            let entries = entry_callees(db, instance)
+                            let generated = generated_callees(db, instance)
                                 .into_iter()
                                 .map(|(key, origin)| (key, at(origin)));
-                            calls.chain(loops).chain(entries).collect()
+                            calls.chain(loops).chain(generated).collect()
                         }
                     };
                 pending.extend(
@@ -329,15 +322,46 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
     diags
 }
 
-/// The instances the compiler calls for the entries of the places `instance`
-/// names, which no semantic call site records, each with the statement naming
-/// the entry:
-/// the collection's `StateIndex::locate` and, for a collection that packs its
-/// elements into lanes, its codec's `get` and `set`.
-fn entry_callees<'db>(
+/// A contract's bodies: its `init` and each recv arm.
+fn contract_bodies<'db>(
+    db: &'db dyn HirAnalysisDb,
+    contract: Contract<'db>,
+) -> impl Iterator<Item = BodyOwner<'db>> {
+    let arms = contract
+        .recvs(db)
+        .data(db)
+        .iter()
+        .enumerate()
+        .flat_map(move |(recv_idx, recv)| {
+            (0..recv.arms.data(db).len()).map(move |arm_idx| BodyOwner::ContractRecvArm {
+                contract,
+                recv_idx: recv_idx as u32,
+                arm_idx: arm_idx as u32,
+            })
+        });
+    iter::once(BodyOwner::ContractInit { contract }).chain(arms)
+}
+
+/// The instances the compiler runs for `instance` that no semantic call site
+/// records, each with the statement or body that makes it run:
+/// - for each entry of a place it names, the collection's
+///   `StateIndex::locate` and, for a collection that packs its elements
+///   into lanes, its codec's `get` and `set`;
+/// - the bodies of a contract whose code it embeds to create it: a
+///   high-level contract's, named by a `Contract` metadata builtin's type
+///   argument, or a manual contract root named by a code region.
+fn generated_callees<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
 ) -> Vec<(SemanticInstanceKey<'db>, SemOrigin<'db>)> {
+    let root = |owner| root_semantic_instance_key(db, owner).ok();
+    if let Some((_, contract)) = instance.contract_metadata(db) {
+        let owner = instance.key(db).owner(db);
+        return contract_bodies(db, contract)
+            .filter_map(root)
+            .map(|key| (key, SemOrigin::Body(owner)))
+            .collect();
+    }
     let SemanticBodyAdmission::Ready(admitted) = semantic_body_admission(db, instance) else {
         return Vec::new();
     };
@@ -388,7 +412,20 @@ fn entry_callees<'db>(
             }
         };
         match &statement.kind {
-            NStatementKind::Define { expr, .. } => expr.for_each_place_operand(&mut visit),
+            NStatementKind::Define { expr, .. } => {
+                expr.for_each_place_operand(&mut visit);
+                if let NExpr::CodeRegionRef { region }
+                | NExpr::CodeRegionOffset {
+                    target: SemanticCodeRegionTarget::Resolved(region),
+                }
+                | NExpr::CodeRegionLen {
+                    target: SemanticCodeRegionTarget::Resolved(region),
+                } = expr
+                {
+                    let SemanticCodeRegionRef::ManualContractRoot { func } = region;
+                    callees.extend(root(BodyOwner::Func(*func)).map(|key| (key, statement.origin)));
+                }
+            }
             NStatementKind::Store { destination, .. } => visit(destination),
             NStatementKind::End { .. } => {}
         }

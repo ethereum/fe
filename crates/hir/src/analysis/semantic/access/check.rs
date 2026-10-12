@@ -556,20 +556,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// Whether two abstract places may share storage. Raw memory is
-    /// unchecked; a grant is covered by its session's reservations.
+    /// unchecked; a grant is covered by its session's reservations. Places
+    /// in different spaces, each that of its root unless a pinned type or an
+    /// entry along its path moved it, are disjoint.
     fn overlaps(&self, lhs: &AbsPlace, rhs: &AbsPlace) -> bool {
+        let same_space = || match (self.region_space(lhs), self.region_space(rhs)) {
+            (Some(lhs), Some(rhs)) => lhs == rhs,
+            _ => true,
+        };
         match (lhs.base, rhs.base) {
-            (Base::Raw, _) | (_, Base::Raw) => false,
-            (Base::State(space), other) | (other, Base::State(space)) => match other {
-                Base::Grant { .. } => false,
-                Base::Domain(domain) => self
-                    .domains
-                    .space(domain)
-                    .is_none_or(|known| known == space),
-                other => self.space(other) == Some(space),
-            },
+            (Base::Raw, _)
+            | (_, Base::Raw)
+            | (Base::State(_), Base::Grant { .. })
+            | (Base::Grant { .. }, Base::State(_)) => false,
+            (Base::State(_), _) | (_, Base::State(_)) => same_space(),
             (Base::Domain(lhs_domain), Base::Domain(rhs_domain)) if lhs_domain != rhs_domain => {
-                self.domains.may_alias(lhs_domain, rhs_domain)
+                self.domains.may_alias(lhs_domain, rhs_domain) && same_space()
             }
             (lhs_base, rhs_base) => lhs_base == rhs_base && paths_overlap(&lhs.path, &rhs.path),
         }

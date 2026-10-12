@@ -205,10 +205,6 @@ where
         self.ty_path(PathId::from_ident(self.db(), ident))
     }
 
-    pub(super) fn ty_ptr(&self, pointee: TypeId<'db>) -> TypeId<'db> {
-        TypeId::new(self.db(), TypeKind::Ptr(Partial::Present(pointee)))
-    }
-
     pub(super) fn sol_ty(&self) -> TypeId<'db> {
         let path = self.path_from_root(self.roots.std, &["abi", "Sol"]);
         self.ty_path(path)
@@ -587,6 +583,25 @@ where
             build_body,
         )
     }
+
+    /// `fn encode(own self, _ out: core::abi::AbiFrame)`, writing `fields` in
+    /// the head/tail layout of `Self`.
+    pub(super) fn encode_func(&mut self, fields: &[(IdentId<'db>, TypeId<'db>)]) {
+        let out_ident = self.generated_ident("out");
+        let frame_ty = self.ty_path(self.path_from_root(self.roots.core, &["abi", "AbiFrame"]));
+        let params = self.params([
+            self.param_own_self(),
+            self.param_underscore_named(out_ident, frame_ty),
+        ]);
+        self.func_with_body_inline_always(
+            self.ident("encode"),
+            self.empty_generic_params(),
+            params,
+            None,
+            FuncModifiers::new(Visibility::Private, false, false, false),
+            |body| body.encode_fields(fields, out_ident),
+        );
+    }
 }
 
 pub(super) struct BodyBuilder<'ctxt, 'db, O>
@@ -778,11 +793,7 @@ where
         ))
     }
 
-    pub(super) fn encode_fields(
-        &mut self,
-        fields: &[(IdentId<'db>, TypeId<'db>)],
-        ptr_ident: IdentId<'db>,
-    ) {
+    fn encode_fields(&mut self, fields: &[(IdentId<'db>, TypeId<'db>)], out_ident: IdentId<'db>) {
         if fields.is_empty() {
             return;
         }
@@ -831,7 +842,7 @@ where
                 .push_str_args(db, "encode_field_at", encode_field_args);
             let encode_field_callee = self.path_expr(encode_field_path);
             let field_value = self.ident_expr(field_ident);
-            let ptr_arg = self.ident_expr(ptr_ident);
+            let out_arg = self.ident_expr(out_ident);
             let head_pos_arg = self.ident_expr(head_pos_ident);
             let tail_arg = self.ident_expr(tail_ident);
             let call = self.call_expr_with_args(
@@ -843,7 +854,7 @@ where
                     },
                     CallArg {
                         label: None,
-                        expr: ptr_arg,
+                        expr: out_arg,
                     },
                     CallArg {
                         label: Some(IdentId::new(db, "head_pos".to_string())),

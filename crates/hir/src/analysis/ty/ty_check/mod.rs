@@ -5253,6 +5253,21 @@ impl<'db> TypedBody<'db> {
                     .call_effect_args(call_expr)?
                     .iter()
                     .find(|arg| arg.binding_idx as usize == effect_idx)?;
+                // A handle's own sources are not its target's, which lies
+                // wherever the handle points.
+                let provider_ty = match effect_arg.arg {
+                    EffectArg::Value(expr) => Some(self.expr_ty(db, expr)),
+                    EffectArg::Binding(binding) => Some(self.binding_ty(db, binding)),
+                    EffectArg::Place(_) | EffectArg::Unknown => None,
+                };
+                if effect_arg.pass_mode == EffectPassMode::ByValue
+                    && let Some(provider_ty) = provider_ty
+                    && effect_arg
+                        .provider_target_ty
+                        .is_some_and(|target| target != provider_ty)
+                {
+                    return None;
+                }
                 match &effect_arg.arg {
                     EffectArg::Place(place) => self.forwarded_return_sources_from_place(
                         db,

@@ -221,11 +221,63 @@ pub trait Decode<A: Abi>: AbiSize {
 }
 
 pub trait Encode<A: Abi>: AbiSize {
-    /// Writes the ABI payload of `self` at `ptr`.
+    /// Writes the ABI payload of `self` into `out`, which holds
+    /// `self.payload_size()` bytes.
+    fn encode(own self, _ out: AbiFrame)
+}
+
+/// The bytes an ABI encoding writes: `len` bytes in linear memory.
+///
+/// `Encode` implementations write through a frame's methods, which check
+/// every write against the frame. The sizes a frame is given come from
+/// `AbiSize`, a safe trait, so they are not trusted with memory safety: an
+/// encoding that disagrees with its `AbiSize` panics instead of writing past
+/// its frame.
+pub struct AbiFrame {
+    unsafe ptr: *u8,
+    unsafe len: u256,
+}
+
+impl AbiFrame {
+    /// A frame over the `len` bytes at `ptr`.
     ///
-    /// The caller must ensure that `ptr` has room for `self.payload_size()`
-    /// bytes in a live allocation.
-    unsafe fn encode(own self, _ ptr: *u8)
+    /// The caller must ensure that the bytes are initialized and lie in a
+    /// live allocation that nothing else reads or writes while the frame is
+    /// in use.
+    #[inline(always)]
+    pub unsafe fn from_raw_parts(ptr: *u8, len: u256) -> Self {
+        AbiFrame { ptr, len }
+    }
+
+    #[inline(always)]
+    pub fn len(self) -> u256 {
+        self.len
+    }
+
+    /// The `len` bytes at `offset`, as a frame.
+    #[arithmetic(unchecked)]
+    #[inline(always)]
+    pub fn slice(self, offset: u256, len: u256) -> Self {
+        if offset > self.len || len > self.len - offset {
+            ptr::index_out_of_bounds()
+        }
+        // The range lies within this frame.
+        unsafe { AbiFrame { ptr: ptr_offset(self.ptr, offset), len } }
+    }
+
+    /// Writes `value` as the word at byte `at`.
+    #[inline(always)]
+    pub fn store_word(self, at: u256, value: u256) {
+        let word = self.slice(offset: at, len: 32)
+        unsafe { store_word(ptr: word.ptr, value) }
+    }
+
+    /// Copies `source` to byte `at`.
+    #[inline(always)]
+    pub fn copy_from(self, at: u256, _ source: ptr::MemSpan) {
+        let dest = self.slice(offset: at, len: source.len())
+        unsafe { ptr::copy(dest: dest.ptr, source) }
+    }
 }
 
 /// Writes `value` as a word at `ptr`, which must have room for 32 bytes in a
@@ -393,28 +445,22 @@ pub fn decode_field_from_prechecked_head<A: Abi, T, I>(_ input: I, base: u256, h
     T::decode_from(input, head_pos)
 }
 
-/// Encodes `value` as the field whose head is at `head_pos` in the frame at
-/// `root`, with its tail (if dynamic) at `tail`, and returns the next tail.
-///
-/// The caller must ensure that the frame has room for the field's head and
-/// tail.
+/// Encodes `value` as the field whose head is at `head_pos` in `out`, with
+/// its tail (if dynamic) at `tail`, and returns the next tail.
 #[arithmetic(unchecked)]
 #[inline(always)]
-pub unsafe fn encode_field_at<A: Abi, T>(_ value: own T, _ root: *u8, head_pos: u256, _ tail: u256) -> u256
+pub fn encode_field_at<A: Abi, T>(_ value: own T, _ out: AbiFrame, head_pos: u256, _ tail: u256) -> u256
     where T: Encode<A> + AbiSize
 {
     if T::IS_DYNAMIC {
-        let child_base = tail
-        let child_size = value.payload_size()
-        store_word(
-            ptr: ptr_offset(root, head_pos),
-            value: child_base,
-        )
-        value.encode(ptr_offset(root, child_base))
-        return child_base + child_size
+        let size = value.payload_size()
+        out.store_word(at: head_pos, value: tail)
+        value.encode(out.slice(offset: tail, len: size))
+        // The tail lies within `out`, so its end does not overflow.
+        return tail + size
     }
 
-    value.encode(ptr_offset(root, head_pos))
+    value.encode(out.slice(offset: head_pos, len: T::HEAD_SIZE))
     tail
 }
 
@@ -424,7 +470,8 @@ pub fn encode_alloc<A: Abi, T>(_ value: own T) -> ptr::MemBuffer
 {
     let total = abi_payload_size(value)
     let buffer = ptr::MemBuffer::alloc(total)
-    unsafe { value.encode(buffer.ptr()) }
+    // The fresh buffer is zeroed, and only the encoding writes it.
+    value.encode(unsafe { AbiFrame::from_raw_parts(ptr: buffer.ptr(), len: total) })
     buffer
 }
 
@@ -434,14 +481,13 @@ pub fn encode_single_root_alloc<A: Abi, T>(_ value: own T) -> ptr::MemBuffer
 {
     let total = abi_single_root_size(value)
     let buffer = ptr::MemBuffer::alloc(total)
-    unsafe {
-        encode_field_at<A, T>(
-            value,
-            buffer.ptr(),
-            head_pos: 0,
-            tail: abi_single_root_head_size<T>(),
-        )
-    }
+    // The fresh buffer is zeroed, and only the encoding writes it.
+    encode_field_at<A, T>(
+        value,
+        unsafe { AbiFrame::from_raw_parts(ptr: buffer.ptr(), len: total) },
+        head_pos: 0,
+        tail: abi_single_root_head_size<T>(),
+    )
     buffer
 }
 
@@ -1989,8 +2035,8 @@ impl<A: Abi> Decode<A> for u256 {
 }
 
 impl<A: Abi> Encode<A> for u256 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self)
     }
 }
 
@@ -2023,12 +2069,12 @@ impl<A: Abi, const N: usize> Decode<A> for String<N> {
 impl<A: Abi, const N: usize> Encode<A> for String<N> {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let word = self.to_word()
         let len = packed_string_len(word)
-        store_word(ptr: ptr, value: len)
+        out.store_word(at: 0, value: len)
         if len != 0 {
-            store_word(ptr: ptr_offset(ptr, 32), value: word << ((32 - len) * 8))
+            out.store_word(at: 32, value: word << ((32 - len) * 8))
         }
     }
 }
@@ -2099,8 +2145,8 @@ impl<A: Abi> Decode<A> for DynString {
 
 impl<A: Abi> Encode<A> for DynString {
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
-        ptr::copy(dest: ptr, source: self.encoded_span())
+    fn encode(own self, _ out: AbiFrame) {
+        out.copy_from(at: 0, self.encoded_span())
     }
 }
 
@@ -2117,11 +2163,11 @@ impl<A: Abi> Decode<A> for bool {
 }
 
 impl<A: Abi> Encode<A> for bool {
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         if self {
-            store_word(ptr: ptr, value: 1)
+            out.store_word(at: 0, value: 1)
         } else {
-            store_word(ptr: ptr, value: 0)
+            out.store_word(at: 0, value: 0)
         }
     }
 }
@@ -2138,8 +2184,8 @@ impl<A: Abi> Decode<A> for u8 {
 }
 
 impl<A: Abi> Encode<A> for u8 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self as u256)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self as u256)
     }
 }
 
@@ -2155,8 +2201,8 @@ impl<A: Abi> Decode<A> for u16 {
 }
 
 impl<A: Abi> Encode<A> for u16 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self as u256)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self as u256)
     }
 }
 
@@ -2172,8 +2218,8 @@ impl<A: Abi> Decode<A> for u32 {
 }
 
 impl<A: Abi> Encode<A> for u32 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self as u256)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self as u256)
     }
 }
 
@@ -2189,8 +2235,8 @@ impl<A: Abi> Decode<A> for u64 {
 }
 
 impl<A: Abi> Encode<A> for u64 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self as u256)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self as u256)
     }
 }
 
@@ -2206,8 +2252,8 @@ impl<A: Abi> Decode<A> for u128 {
 }
 
 impl<A: Abi> Encode<A> for u128 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self as u256)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self as u256)
     }
 }
 
@@ -2223,8 +2269,8 @@ impl<A: Abi> Decode<A> for i8 {
 }
 
 impl<A: Abi> Encode<A> for i8 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.downcast_unchecked())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.downcast_unchecked())
     }
 }
 
@@ -2240,8 +2286,8 @@ impl<A: Abi> Decode<A> for i16 {
 }
 
 impl<A: Abi> Encode<A> for i16 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.downcast_unchecked())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.downcast_unchecked())
     }
 }
 
@@ -2257,8 +2303,8 @@ impl<A: Abi> Decode<A> for i32 {
 }
 
 impl<A: Abi> Encode<A> for i32 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.downcast_unchecked())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.downcast_unchecked())
     }
 }
 
@@ -2274,8 +2320,8 @@ impl<A: Abi> Decode<A> for i64 {
 }
 
 impl<A: Abi> Encode<A> for i64 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.downcast_unchecked())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.downcast_unchecked())
     }
 }
 
@@ -2291,8 +2337,8 @@ impl<A: Abi> Decode<A> for i128 {
 }
 
 impl<A: Abi> Encode<A> for i128 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.downcast_unchecked())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.downcast_unchecked())
     }
 }
 
@@ -2308,8 +2354,8 @@ impl<A: Abi> Decode<A> for i256 {
 }
 
 impl<A: Abi> Encode<A> for i256 {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.downcast_unchecked())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.downcast_unchecked())
     }
 }
 
@@ -2325,8 +2371,8 @@ impl<A: Abi> Decode<A> for usize {
 }
 
 impl<A: Abi> Encode<A> for usize {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self as u256)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self as u256)
     }
 }
 
@@ -2342,8 +2388,8 @@ impl<A: Abi> Decode<A> for isize {
 }
 
 impl<A: Abi> Encode<A> for isize {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.downcast_unchecked())
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.downcast_unchecked())
     }
 }
 
@@ -2359,7 +2405,7 @@ impl<A: Abi> Decode<A> for () {
 }
 
 impl<A: Abi> Encode<A> for () {
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
     }
 }
 
@@ -2429,8 +2475,8 @@ impl<A: Abi> Decode<A> for Bytes {
 
 impl<A: Abi> Encode<A> for Bytes {
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
-        ptr::copy(dest: ptr, source: self.encoded_span())
+    fn encode(own self, _ out: AbiFrame) {
+        out.copy_from(at: 0, self.encoded_span())
     }
 }
 
@@ -2573,8 +2619,8 @@ impl<A: Abi, T> Encode<A> for DynArray<T>
     where T: AbiSize
 {
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
-        ptr::copy(dest: ptr, source: self.encoded_span())
+    fn encode(own self, _ out: AbiFrame) {
+        out.copy_from(at: 0, self.encoded_span())
     }
 }
 
@@ -2626,9 +2672,9 @@ impl<A: Abi, T0> Encode<A> for (T0,)
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0,) = self
-        encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail: Self::HEAD_SIZE)
+        encode_field_at<A, T0>(v0, out, head_pos: 0, tail: Self::HEAD_SIZE)
     }
 }
 
@@ -2685,12 +2731,12 @@ impl<A: Abi, T0, T1> Encode<A> for (T0, T1)
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
     }
 }
 
@@ -2759,14 +2805,14 @@ impl<A: Abi, T0, T1, T2> Encode<A> for (T0, T1, T2)
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
         let head2 = head1 + abi_field_head_size<T1>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
     }
 }
 
@@ -2850,16 +2896,16 @@ impl<A: Abi, T0, T1, T2, T3> Encode<A> for (T0, T1, T2, T3)
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
         let head2 = head1 + abi_field_head_size<T1>()
         let head3 = head2 + abi_field_head_size<T2>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
     }
 }
 
@@ -2960,18 +3006,18 @@ impl<A: Abi, T0, T1, T2, T3, T4> Encode<A> for (T0, T1, T2, T3, T4)
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
         let head2 = head1 + abi_field_head_size<T1>()
         let head3 = head2 + abi_field_head_size<T2>()
         let head4 = head3 + abi_field_head_size<T3>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
     }
 }
 
@@ -3084,7 +3130,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5> Encode<A> for (T0, T1, T2, T3, T4, T5)
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -3092,12 +3138,12 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5> Encode<A> for (T0, T1, T2, T3, T4, T5)
         let head3 = head2 + abi_field_head_size<T2>()
         let head4 = head3 + abi_field_head_size<T3>()
         let head5 = head4 + abi_field_head_size<T4>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
     }
 }
 
@@ -3222,7 +3268,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6> Encode<A> for (T0, T1, T2, T3, T4, T5, 
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -3231,13 +3277,13 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6> Encode<A> for (T0, T1, T2, T3, T4, T5, 
         let head4 = head3 + abi_field_head_size<T3>()
         let head5 = head4 + abi_field_head_size<T4>()
         let head6 = head5 + abi_field_head_size<T5>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
     }
 }
 
@@ -3374,7 +3420,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7> Encode<A> for (T0, T1, T2, T3, T4, 
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -3384,14 +3430,14 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7> Encode<A> for (T0, T1, T2, T3, T4, 
         let head5 = head4 + abi_field_head_size<T4>()
         let head6 = head5 + abi_field_head_size<T5>()
         let head7 = head6 + abi_field_head_size<T6>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
     }
 }
 
@@ -3540,7 +3586,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8> Encode<A> for (T0, T1, T2, T3, 
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -3551,15 +3597,15 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8> Encode<A> for (T0, T1, T2, T3, 
         let head6 = head5 + abi_field_head_size<T5>()
         let head7 = head6 + abi_field_head_size<T6>()
         let head8 = head7 + abi_field_head_size<T7>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
     }
 }
 
@@ -3722,7 +3768,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> Encode<A>
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -3734,16 +3780,16 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> Encode<A>
         let head7 = head6 + abi_field_head_size<T6>()
         let head8 = head7 + abi_field_head_size<T7>()
         let head9 = head8 + abi_field_head_size<T8>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        tail = encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
-        encode_field_at<A, T9>(v9, ptr, head_pos: head9, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        tail = encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
+        encode_field_at<A, T9>(v9, out, head_pos: head9, tail)
     }
 }
 
@@ -3919,7 +3965,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> Encode<A>
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -3932,17 +3978,17 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> Encode<A>
         let head8 = head7 + abi_field_head_size<T7>()
         let head9 = head8 + abi_field_head_size<T8>()
         let head10 = head9 + abi_field_head_size<T9>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        tail = encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
-        tail = encode_field_at<A, T9>(v9, ptr, head_pos: head9, tail)
-        encode_field_at<A, T10>(v10, ptr, head_pos: head10, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        tail = encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
+        tail = encode_field_at<A, T9>(v9, out, head_pos: head9, tail)
+        encode_field_at<A, T10>(v10, out, head_pos: head10, tail)
     }
 }
 
@@ -4130,7 +4176,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> Encode<A>
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -4144,18 +4190,18 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> Encode<A>
         let head9 = head8 + abi_field_head_size<T8>()
         let head10 = head9 + abi_field_head_size<T9>()
         let head11 = head10 + abi_field_head_size<T10>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        tail = encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
-        tail = encode_field_at<A, T9>(v9, ptr, head_pos: head9, tail)
-        tail = encode_field_at<A, T10>(v10, ptr, head_pos: head10, tail)
-        encode_field_at<A, T11>(v11, ptr, head_pos: head11, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        tail = encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
+        tail = encode_field_at<A, T9>(v9, out, head_pos: head9, tail)
+        tail = encode_field_at<A, T10>(v10, out, head_pos: head10, tail)
+        encode_field_at<A, T11>(v11, out, head_pos: head11, tail)
     }
 }
 
@@ -4355,7 +4401,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> Encode<A>
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -4370,19 +4416,19 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> Encode<A>
         let head10 = head9 + abi_field_head_size<T9>()
         let head11 = head10 + abi_field_head_size<T10>()
         let head12 = head11 + abi_field_head_size<T11>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        tail = encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
-        tail = encode_field_at<A, T9>(v9, ptr, head_pos: head9, tail)
-        tail = encode_field_at<A, T10>(v10, ptr, head_pos: head10, tail)
-        tail = encode_field_at<A, T11>(v11, ptr, head_pos: head11, tail)
-        encode_field_at<A, T12>(v12, ptr, head_pos: head12, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        tail = encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
+        tail = encode_field_at<A, T9>(v9, out, head_pos: head9, tail)
+        tail = encode_field_at<A, T10>(v10, out, head_pos: head10, tail)
+        tail = encode_field_at<A, T11>(v11, out, head_pos: head11, tail)
+        encode_field_at<A, T12>(v12, out, head_pos: head12, tail)
     }
 }
 
@@ -4594,7 +4640,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> Encode<
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -4610,20 +4656,20 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> Encode<
         let head11 = head10 + abi_field_head_size<T10>()
         let head12 = head11 + abi_field_head_size<T11>()
         let head13 = head12 + abi_field_head_size<T12>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        tail = encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
-        tail = encode_field_at<A, T9>(v9, ptr, head_pos: head9, tail)
-        tail = encode_field_at<A, T10>(v10, ptr, head_pos: head10, tail)
-        tail = encode_field_at<A, T11>(v11, ptr, head_pos: head11, tail)
-        tail = encode_field_at<A, T12>(v12, ptr, head_pos: head12, tail)
-        encode_field_at<A, T13>(v13, ptr, head_pos: head13, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        tail = encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
+        tail = encode_field_at<A, T9>(v9, out, head_pos: head9, tail)
+        tail = encode_field_at<A, T10>(v10, out, head_pos: head10, tail)
+        tail = encode_field_at<A, T11>(v11, out, head_pos: head11, tail)
+        tail = encode_field_at<A, T12>(v12, out, head_pos: head12, tail)
+        encode_field_at<A, T13>(v13, out, head_pos: head13, tail)
     }
 }
 
@@ -4847,7 +4893,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> En
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -4864,21 +4910,21 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> En
         let head12 = head11 + abi_field_head_size<T11>()
         let head13 = head12 + abi_field_head_size<T12>()
         let head14 = head13 + abi_field_head_size<T13>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        tail = encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
-        tail = encode_field_at<A, T9>(v9, ptr, head_pos: head9, tail)
-        tail = encode_field_at<A, T10>(v10, ptr, head_pos: head10, tail)
-        tail = encode_field_at<A, T11>(v11, ptr, head_pos: head11, tail)
-        tail = encode_field_at<A, T12>(v12, ptr, head_pos: head12, tail)
-        tail = encode_field_at<A, T13>(v13, ptr, head_pos: head13, tail)
-        encode_field_at<A, T14>(v14, ptr, head_pos: head14, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        tail = encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
+        tail = encode_field_at<A, T9>(v9, out, head_pos: head9, tail)
+        tail = encode_field_at<A, T10>(v10, out, head_pos: head10, tail)
+        tail = encode_field_at<A, T11>(v11, out, head_pos: head11, tail)
+        tail = encode_field_at<A, T12>(v12, out, head_pos: head12, tail)
+        tail = encode_field_at<A, T13>(v13, out, head_pos: head13, tail)
+        encode_field_at<A, T14>(v14, out, head_pos: head14, tail)
     }
 }
 
@@ -5114,7 +5160,7 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T1
 {
     #[arithmetic(unchecked)]
     #[inline(always)]
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         let (v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15) = self
         var tail = Self::HEAD_SIZE
         let head1 = abi_field_head_size<T0>()
@@ -5132,22 +5178,22 @@ impl<A: Abi, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T1
         let head13 = head12 + abi_field_head_size<T12>()
         let head14 = head13 + abi_field_head_size<T13>()
         let head15 = head14 + abi_field_head_size<T14>()
-        tail = encode_field_at<A, T0>(v0, ptr, head_pos: 0, tail)
-        tail = encode_field_at<A, T1>(v1, ptr, head_pos: head1, tail)
-        tail = encode_field_at<A, T2>(v2, ptr, head_pos: head2, tail)
-        tail = encode_field_at<A, T3>(v3, ptr, head_pos: head3, tail)
-        tail = encode_field_at<A, T4>(v4, ptr, head_pos: head4, tail)
-        tail = encode_field_at<A, T5>(v5, ptr, head_pos: head5, tail)
-        tail = encode_field_at<A, T6>(v6, ptr, head_pos: head6, tail)
-        tail = encode_field_at<A, T7>(v7, ptr, head_pos: head7, tail)
-        tail = encode_field_at<A, T8>(v8, ptr, head_pos: head8, tail)
-        tail = encode_field_at<A, T9>(v9, ptr, head_pos: head9, tail)
-        tail = encode_field_at<A, T10>(v10, ptr, head_pos: head10, tail)
-        tail = encode_field_at<A, T11>(v11, ptr, head_pos: head11, tail)
-        tail = encode_field_at<A, T12>(v12, ptr, head_pos: head12, tail)
-        tail = encode_field_at<A, T13>(v13, ptr, head_pos: head13, tail)
-        tail = encode_field_at<A, T14>(v14, ptr, head_pos: head14, tail)
-        encode_field_at<A, T15>(v15, ptr, head_pos: head15, tail)
+        tail = encode_field_at<A, T0>(v0, out, head_pos: 0, tail)
+        tail = encode_field_at<A, T1>(v1, out, head_pos: head1, tail)
+        tail = encode_field_at<A, T2>(v2, out, head_pos: head2, tail)
+        tail = encode_field_at<A, T3>(v3, out, head_pos: head3, tail)
+        tail = encode_field_at<A, T4>(v4, out, head_pos: head4, tail)
+        tail = encode_field_at<A, T5>(v5, out, head_pos: head5, tail)
+        tail = encode_field_at<A, T6>(v6, out, head_pos: head6, tail)
+        tail = encode_field_at<A, T7>(v7, out, head_pos: head7, tail)
+        tail = encode_field_at<A, T8>(v8, out, head_pos: head8, tail)
+        tail = encode_field_at<A, T9>(v9, out, head_pos: head9, tail)
+        tail = encode_field_at<A, T10>(v10, out, head_pos: head10, tail)
+        tail = encode_field_at<A, T11>(v11, out, head_pos: head11, tail)
+        tail = encode_field_at<A, T12>(v12, out, head_pos: head12, tail)
+        tail = encode_field_at<A, T13>(v13, out, head_pos: head13, tail)
+        tail = encode_field_at<A, T14>(v14, out, head_pos: head14, tail)
+        encode_field_at<A, T15>(v15, out, head_pos: head15, tail)
     }
 }
 
@@ -5340,12 +5386,12 @@ impl<A: Abi, T, const N: usize> AbiSpan<A> for [T; N]
 impl<A: Abi, T, const N: usize> Encode<A> for [T; N]
     where T: Encode<A> + AbiSize + Copy
 {
-    unsafe fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: AbiFrame) {
         var head_pos: u256 = 0
         var tail = Self::HEAD_SIZE
         var i: usize = 0
         while i < N {
-            tail = encode_field_at<A, T>(self[i], ptr, head_pos, tail)
+            tail = encode_field_at<A, T>(self[i], out, head_pos, tail)
             head_pos += abi_field_head_size<T>()
             i += 1
         }

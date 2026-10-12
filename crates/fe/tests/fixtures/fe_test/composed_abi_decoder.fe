@@ -1,4 +1,4 @@
-use core::abi::{AbiDecoder, AbiSize, AbiSpan, ByteInput, Decode, Encode, load_word, store_word}
+use core::abi::{AbiDecoder, AbiFrame, AbiSize, AbiSpan, ByteInput, Decode, Encode, load_word, store_word}
 use std::abi::{Sol, sol}
 use std::evm::Address
 pub struct Pair { pub a: Address, pub b: Address }
@@ -20,8 +20,8 @@ impl Decode<Sol> for Pair {
     }
 }
 impl Encode<Sol> for Pair {
-    unsafe fn encode(own self, _ ptr: *u8) {
-        <(Address, Address) as Encode<Sol>>::encode((self.a, self.b), ptr)
+    fn encode(own self, _ out: AbiFrame) {
+        <(Address, Address) as Encode<Sol>>::encode((self.a, self.b), out)
     }
 }
 msg PairMsg {

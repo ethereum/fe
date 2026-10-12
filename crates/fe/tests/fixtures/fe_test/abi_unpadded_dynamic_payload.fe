@@ -1,4 +1,4 @@
-use core::abi::{Abi, AbiDecoder, AbiSize, AbiSpan, ByteInput, Decode, Encode, store_word}
+use core::abi::{Abi, AbiDecoder, AbiSize, AbiSpan, ByteInput, Decode, encode_alloc, store_word}
 use core::ptr::{self, MemSpan}
 use core::num::IntDowncast
 use std::abi::{Sol, Bytes, DynString, DynArray}
@@ -104,9 +104,8 @@ fn check_array_reencoding(_ array: own DynArray<Bytes>) {
     let pair = (array, Bytes::from_word_prefix(word: 0, len: 1))
     let size = pair.payload_size()
     assert!(size == 256)
-    let output = ptr::alloc_bytes(size)
-    unsafe { <(DynArray<Bytes>, Bytes) as Encode<Sol>>::encode(pair, output) }
-    let encoded = unsafe { MemSpan::from_raw_parts(ptr: output, len: size) }
+    let output = encode_alloc<Sol, (DynArray<Bytes>, Bytes)>(pair)
+    let encoded = output.span()
     assert!(encoded.word_at(0) == 64)
     assert!(encoded.word_at(32) == 192)
     assert!(encoded.word_at(160) == (0xaa as u256) << 248)

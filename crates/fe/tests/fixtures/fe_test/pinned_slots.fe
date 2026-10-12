@@ -3,7 +3,7 @@
 // as Solidity reserves a mapping's slot. A plain zero-sized type takes none.
 use core::effect_ref::StateSpace
 use core::ops::StateIndex
-use std::evm::{Address, Evm, RawStorage, SolSlot, StorPtr, keccak_words}
+use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words, storage_at}
 
 /// Words hashed with the map's number, like Solady's `LibMap`.
 struct Words {}
@@ -22,12 +22,7 @@ impl Words {
     /// The words rooted at `slot`.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
-        unsafe {
-            with (ptr) {
-                core::effect_ref::target_mut(ptr)
-            }
-        }
+        unsafe { storage_at(slot) }
     }
 }
 

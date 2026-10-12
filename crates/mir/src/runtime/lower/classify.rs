@@ -13,7 +13,7 @@ use hir::analysis::{
     },
     ty::{
         ProviderKind,
-        corelib::{ContractMetadataKind, contract_metadata_kind, runtime_builtin_func_kind},
+        corelib::{ContractMetadataKind, runtime_builtin_func_kind},
         provider::registered_root_providers,
         trait_resolution::PredicateListId,
         ty_check::{BodyOwner, EffectParamSite, EffectPassMode, LocalBinding, ParamSite},
@@ -2875,16 +2875,7 @@ pub(crate) fn contract_metadata_builtin<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
 ) -> Option<ContractMetadataBuiltin<'db>> {
-    let BodyOwner::Func(func) = semantic.key(db).owner(db) else {
-        return None;
-    };
-    let kind = contract_metadata_kind(db, func)?;
-    let contract = semantic
-        .key(db)
-        .subst(db)
-        .generic_args(db)
-        .iter()
-        .find_map(|ty| ty.as_contract(db))?;
+    let (kind, contract) = semantic.contract_metadata(db)?;
     let region = RuntimeCodeRegion::new(db, RuntimeCodeRegionKey::ContractInit { contract });
     Some(match kind {
         ContractMetadataKind::InitCodeOffset => ContractMetadataBuiltin::InitCodeOffset(region),

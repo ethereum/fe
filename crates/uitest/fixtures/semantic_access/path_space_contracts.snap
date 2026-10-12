@@ -13,19 +13,7 @@ error[16-0007]: transport violation in `fn plain`
     ┌─ path_space_contracts.fe:114:9
     │
 114 │         mut self.locked[()]
-    │         ^^^^^^^^^^^^^^^^^^^ this yield names transient storage, but the signature declares memory
-
-error[16-0007]: transport violation in `fn plain`
-    ┌─ path_space_contracts.fe:114:9
-    │
-114 │         mut self.locked[()]
     │         ^^^^^^^^^^^^^^^^^^^ this yield names transient storage, but the signature declares storage
-
-error[16-0007]: transport violation in `fn mislabeled`
-    ┌─ path_space_contracts.fe:125:5
-    │
-125 │     mut g.locked[()]
-    │     ^^^^^^^^^^^^^^^^ this yield names transient storage, but the signature declares memory
 
 error[16-0007]: transport violation in `fn mislabeled`
     ┌─ path_space_contracts.fe:125:5

@@ -35,7 +35,7 @@ use core::num::IntDowncast
 use core::ops::{StateIndex, WrappingAdd}
 use core::ptr::{self, MemSpan}
 use super::crypto::keccak_words
-use super::effects::{Address, RawStorage, StorPtr, revert_error}
+use super::effects::{Address, RawStorage, revert_error, storage_at}
 use super::ops::{revert_empty, signextend}
 use super::panic::{PANIC_STORAGE_ENCODING, Panic}
 
@@ -76,12 +76,7 @@ impl SolSlot {
     /// contract field, uses `slot` or the slots its payload derives.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
-        unsafe {
-            with (ptr) {
-                core::effect_ref::target_mut(ptr)
-            }
-        }
+        unsafe { storage_at(slot) }
     }
 
     /// Reads the `T` stored `offset` bytes above the low end of the slot.

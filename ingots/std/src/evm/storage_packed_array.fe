@@ -2,7 +2,7 @@ use core::effect_ref::StateSpace
 use core::ops::StateIndex
 use core::option::Option
 
-use super::effects::{RawStorage, StorPtr}
+use super::effects::{RawStorage, storage_at}
 use super::sol_slot::data_slot
 
 const U256_MASK: u256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
@@ -100,12 +100,7 @@ impl<const BITS: u256> StoragePackedArray<BITS>
     /// contract field, uses `slot` or the words' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        var ptr: StorPtr<Self> = unsafe { storage.stor_ptr(slot) }
-        unsafe {
-            with (ptr) {
-                core::effect_ref::target_mut(ptr)
-            }
-        }
+        unsafe { storage_at(slot) }
     }
 
     /// Read the lane at index `i`. Returns the lane value zero-extended to `u256`.

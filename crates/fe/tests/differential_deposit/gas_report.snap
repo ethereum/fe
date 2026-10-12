@@ -6,13 +6,13 @@ expression: report
 bytecode size
 path         fe-O2        sol     sol-IR   fe vs sol-IR
 -----------------------------------------------------------
-init          2448       4819       3082  -634 (-20.6%)
-runtime       2372       4445       2844  -472 (-16.6%)
+init          2552       4819       3082  -530 (-17.2%)
+runtime       2476       4445       2844  -368 (-12.9%)
 
 deployment gas
-path        fe-O2        sol     sol-IR     fe vs sol-IR
-------------------------------------------------------------
-deploy    1266400    1738847    1379411  -113011 (-8.2%)
+path        fe-O2        sol     sol-IR    fe vs sol-IR
+-----------------------------------------------------------
+deploy    1288889    1738847    1379411  -90522 (-6.6%)
 
 call gas
 path                            fe-O2        sol     sol-IR    fe vs sol-IR
@@ -22,13 +22,13 @@ supportsInterface(deposit)      21600      21641      21600      +0 (+0.0%)
 supportsInterface(unknown)      21600      21641      21600      +0 (+0.0%)
 get_deposit_root(empty)        104444     117558     109178   -4734 (-4.3%)
 get_deposit_count(empty)        23746      24510      24099    -353 (-1.5%)
-deposit#0                       79651      84626      81089   -1438 (-1.8%)
+deposit#0                       79927      84626      81089   -1162 (-1.4%)
 get_deposit_root(after#0)      104457     117570     109174   -4717 (-4.3%)
 get_deposit_count(after#0)      23746      24510      24099    -353 (-1.5%)
-deposit#1                       65049      70411      66629   -1580 (-2.4%)
+deposit#1                       65325      70411      66629   -1304 (-2.0%)
 get_deposit_root(after#1)      104457     117570     109174   -4717 (-4.3%)
 get_deposit_count(after#1)      23746      24510      24099    -353 (-1.5%)
-deposit#2                       45439      50414      46877   -1438 (-3.1%)
+deposit#2                       45715      50414      46877   -1162 (-2.5%)
 get_deposit_root(after#2)      104470     117582     109170   -4700 (-4.3%)
 get_deposit_count(after#2)      23746      24510      24099    -353 (-1.5%)
-TOTAL                          767751     838656     792487  -24736 (-3.1%)
+TOTAL                          768579     838656     792487  -23908 (-3.0%)
