@@ -243,6 +243,16 @@ fn block_items_doc<'a, T: ToDoc>(
     for child in syntax.children_with_tokens() {
         let entry_doc = match child {
             NodeOrToken::Node(node) => {
+                // Modifier checkpoints can include leading trivia in the item.
+                // Count its separator here, alongside trivia owned by the list.
+                pending_newlines += node
+                    .children_with_tokens()
+                    .take_while(|child| {
+                        matches!(child, NodeOrToken::Token(token) if matches!(token.kind(), SyntaxKind::Newline | SyntaxKind::WhiteSpace))
+                    })
+                    .filter_map(NodeOrToken::into_token)
+                    .map(|token| newline_count(token.text()))
+                    .sum::<usize>();
                 if node.kind() == SyntaxKind::AttrList {
                     // A module's inner attributes (`#![...]`), one per line,
                     // each kept exactly as written so string arguments keep
