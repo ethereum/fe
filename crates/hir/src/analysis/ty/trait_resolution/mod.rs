@@ -147,7 +147,7 @@ impl<'db> TraitSolveCx<'db> {
         self.assumptions
     }
 
-    pub(crate) fn scope(self) -> ScopeId<'db> {
+    pub fn scope(self) -> ScopeId<'db> {
         self.scope
     }
 
