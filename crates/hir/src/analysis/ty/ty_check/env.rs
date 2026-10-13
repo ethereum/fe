@@ -129,7 +129,7 @@ pub(crate) struct TyCheckEnv<'db> {
     /// The part of a projection's return shape each yield site grants.
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
 
-    /// Resolved Seq trait methods for for-loops, keyed by the for statement.
+    /// The Collection protocol plan of each for loop, keyed by its statement.
     for_loop_plans: SecondaryMap<StmtId, Option<ForLoopPlan<'db>>>,
 
     /// The constrained type applications that resolving the body's paths

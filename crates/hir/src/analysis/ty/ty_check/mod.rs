@@ -3911,7 +3911,7 @@ mod typed_body_tables {
         pub(super) pat_binding_modes: SecondaryMap<PatId, Option<PatBindingMode>>,
         pub(super) pattern_store: PatternStore<'db>,
         pub(super) pattern_status: SecondaryMap<PatId, PatternAnalysisStatus>,
-        /// Resolved Seq trait methods for for-loops
+        /// The Collection protocol plan of each for loop
         pub(super) for_loop_plans: SecondaryMap<StmtId, Option<ForLoopPlan<'db>>>,
         pub(super) expr_place: SecondaryMap<ExprId, PackedOption<ExprPlaceId>>,
         pub(super) expr_places: PrimaryMap<ExprPlaceId, Place<'db>>,
@@ -4761,7 +4761,7 @@ impl<'db> TypedBody<'db> {
         self.pattern_status(pat).ready_root()
     }
 
-    /// Get the resolved Seq methods for a for-loop statement.
+    /// The Collection protocol plan of a for-loop statement.
     pub fn for_loop_plan(&self, stmt: StmtId) -> Option<&ForLoopPlan<'db>> {
         self.tables.for_loop_plans[stmt].as_ref()
     }
