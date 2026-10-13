@@ -1480,6 +1480,17 @@ impl<'db> ExprStaticFactsBuilder<'_, 'db> {
             NExpr::Borrow {
                 provider, place, ..
             } => {
+                // An address of the place in the provider's space, for a root
+                // with no class of its own (one with no runtime value, as a
+                // zero-length array): it still addresses a value of the place's
+                // type.
+                let raw_addr = |space| {
+                    RuntimeClass::raw_addr(
+                        db,
+                        space,
+                        stored_class_for_ty_in_env(db, type_env, place.ty),
+                    )
+                };
                 let provider_fallback = if runtime_zero_sized_transport_ty(
                     db,
                     result_ty,
@@ -1502,10 +1513,10 @@ impl<'db> ExprStaticFactsBuilder<'_, 'db> {
                             {
                                 None
                             }
-                            _ => provider.map(RuntimeClass::opaque_raw_addr),
+                            _ => provider.map(raw_addr),
                         },
                         NPlaceBase::CapabilityTarget { .. } | NPlaceBase::Deref { .. } => {
-                            provider.map(RuntimeClass::opaque_raw_addr)
+                            provider.map(raw_addr)
                         }
                     }
                 };

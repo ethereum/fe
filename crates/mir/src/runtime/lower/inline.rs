@@ -189,7 +189,9 @@ fn inline_session<'db>(
                     default,
                 }
             }
-            None => RTerminator::Goto(resumes.next().expect("a projection yields")),
+            // A projection that never yields, as one indexing a zero-length
+            // array, diverges at the call: nothing reaches the session's end.
+            None => resumes.next().map_or(RTerminator::Trap, RTerminator::Goto),
         };
         body.blocks[block.index()].terminator = dispatch;
     }
