@@ -9,19 +9,23 @@ fn read(_ p: StorPtr<u256>) -> u256 uses (target: u256) {
 }
 
 // 16. Rejected: a shared-resource effect provided locally with `with`
-// cannot hide its interference from the function's contract.
+// cannot hide its interference from the function's contract, `unsafe` or not.
 fn case16_hidden(_ p: StorPtr<u256>) -> u256 {
     let ptr = p
-    with (ptr) {
-        read(ptr)
+    unsafe {
+        with (*ptr) {
+            read(ptr)
+        }
     }
 }
 
 // 16. Accepted: the function's own `uses` covers it.
 fn case16_declared(_ p: StorPtr<u256>) -> u256 uses (storage: RawStorage) {
     let ptr = p
-    with (ptr) {
-        read(ptr)
+    unsafe {
+        with (*ptr) {
+            read(ptr)
+        }
     }
 }
 

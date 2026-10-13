@@ -40,7 +40,7 @@ fn semantic_ctfe_fixture(name: &str) -> (camino::Utf8PathBuf, String) {
     glob: "*.fe"
 )]
 fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>) {
-    use fe_hir::analysis::ty::provider::ProviderAddressSpace;
+    use fe_hir::analysis::ty::provider::AddressSpace;
     use fe_hir::projection::Projection;
 
     let mut db = HirAnalysisTestDb::default();
@@ -62,7 +62,7 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
                 &stmt.kind,
                 SStmtKind::Assign {
                     expr: SExpr::Borrow {
-                        provider: Some(ProviderAddressSpace::Memory),
+                        provider: Some(AddressSpace::Memory),
                         place,
                         ..
                     },

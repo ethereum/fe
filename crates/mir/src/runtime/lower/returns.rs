@@ -5,11 +5,13 @@ use hir::analysis::{
     semantic::{
         ExecutableBlock, SLocalId, SemanticInstance, get_or_build_semantic_instance,
         normalized::{
-            NExpr, NPlaceBase, NValueDefinition, NValueId, NormalizedBody, normalize_semantic_body,
+            NExpr, NPlace, NPlaceBase, NValueDefinition, NValueId, NormalizedBody,
+            normalize_semantic_body,
         },
         semantic_executable_control_flow, semantic_may_return,
     },
     ty::{
+        AddressSpace,
         ty_check::{ReturnProjectionStep, ReturnProvenance},
         ty_def::TyId,
     },
@@ -21,9 +23,8 @@ use crate::{
     db::MirDb,
     instance::{RuntimeInstanceKey, RuntimeInstanceSource},
     runtime::{
-        AddressSpaceKind, EnumLayoutKey, EnumVariantLayout, Layout, LayoutId, LayoutKey,
-        RawPointeeId, RefKind, RuntimeClass, RuntimeExitBehavior,
-        relation::runtime_classes_equivalent,
+        EnumLayoutKey, EnumVariantLayout, Layout, LayoutId, LayoutKey, RawPointeeId, RefKind,
+        RuntimeClass, RuntimeExitBehavior,
     },
 };
 
@@ -335,7 +336,7 @@ pub(crate) fn declaration_runtime_return_class<'db>(
 fn returned_raw_transports<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
-) -> BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpaceKind>> {
+) -> BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>> {
     let mut transports = BTreeMap::new();
     let (Ok(artifacts), Some(executable)) = (
         normalize_semantic_body(db, semantic),
@@ -363,28 +364,28 @@ fn returned_raw_transports<'db>(
 fn returned_raw_transports_cycle_initial<'db>(
     _: &'db dyn MirDb,
     _: SemanticInstance<'db>,
-) -> BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpaceKind>> {
+) -> BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>> {
     BTreeMap::new()
 }
 
 fn returned_raw_transports_cycle_recover<'db>(
     _: &'db dyn MirDb,
-    _: &BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpaceKind>>,
+    _: &BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>,
     _: u32,
     _: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpaceKind>>> {
+) -> salsa::CycleRecoveryAction<BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>> {
     salsa::CycleRecoveryAction::Iterate
 }
 
 struct RawTransportTracer<'a, 'db> {
     db: &'db dyn MirDb,
     body: &'a NormalizedBody<'db>,
-    transports: &'a mut BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpaceKind>>,
+    transports: &'a mut BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>,
     visited: FxHashSet<(NValueId, Vec<ReturnProjectionStep>)>,
 }
 
 impl<'db> RawTransportTracer<'_, 'db> {
-    fn record(&mut self, projection: &[ReturnProjectionStep], space: Option<AddressSpaceKind>) {
+    fn record(&mut self, projection: &[ReturnProjectionStep], space: Option<AddressSpace>) {
         self.transports
             .entry(projection.to_vec())
             .and_modify(|previous| {
@@ -450,12 +451,22 @@ impl<'db> RawTransportTracer<'_, 'db> {
                         }
                         return;
                     }
-                    NExpr::Borrow { place, .. }
-                        if is_borrow
-                            && matches!(place.base, NPlaceBase::CapabilityTarget { carrier }
-                                if self.body.values[carrier.index()].ty.as_ptr(self.db).is_some()) =>
+                    // A memory pointee is reached by its raw address; a state
+                    // pointee by its space's provider reference.
+                    NExpr::Borrow {
+                        place:
+                            NPlace {
+                                base: NPlaceBase::Deref { pointer },
+                                ..
+                            },
+                        ..
+                    } if is_borrow
+                        && matches!(
+                            self.body.values[pointer.index()].ty.as_ptr(self.db),
+                            Some((_, AddressSpace::Memory))
+                        ) =>
                     {
-                        return self.record(projection, Some(AddressSpaceKind::Memory));
+                        return self.record(projection, Some(AddressSpace::Memory));
                     }
                     NExpr::Call { callee, .. } => {
                         let callee = get_or_build_semantic_instance(self.db, callee.key);
@@ -669,7 +680,7 @@ fn retarget_declaration_return_transport<'db>(
             kind: RefKind::Native,
             ..
         } = &stored
-        && runtime_classes_equivalent(db, pointee, target_pointee)
+        && pointee == target_pointee
     {
         return stored;
     }
@@ -711,7 +722,7 @@ fn retarget_declaration_return_transport<'db>(
             space: *space,
             pointee: match source_target {
                 Some(source_target) if projected_transport => Some(*source_target),
-                Some(_) | None => Some(RawPointeeId::exact(db, *pointee)),
+                Some(_) | None => Some(RawPointeeId::new(db, *pointee)),
             },
         },
         (
@@ -726,7 +737,7 @@ fn retarget_declaration_return_transport<'db>(
         ) => RuntimeClass::RawAddr {
             space: *space,
             pointee: if projected_transport {
-                Some(RawPointeeId::exact(db, pointee.as_ref().clone()))
+                Some(RawPointeeId::new(db, pointee.as_ref().clone()))
             } else {
                 target
             },
@@ -866,7 +877,7 @@ pub(crate) fn declared_return_class_admits<'db>(
         vec![(returned.clone(), None), (declared.clone(), None)],
         semantic.normalized_result_ty(db).as_borrow(db).is_some(),
     )
-    .is_some_and(|merged| runtime_classes_equivalent(db, &merged, declared))
+    .is_some_and(|merged| merged == *declared)
 }
 
 /// The class carrying every value a body returns, given each with the enum
@@ -1012,10 +1023,7 @@ mod tests {
 
     use crate::{
         build_runtime_package,
-        runtime::{
-            AddressSpaceKind, RExpr, RStmt, RTerminator, RuntimeCarrier, RuntimeClass,
-            RuntimeExitBehavior,
-        },
+        runtime::{RExpr, RStmt, RTerminator, RuntimeCarrier, RuntimeClass, RuntimeExitBehavior},
     };
 
     use super::*;
@@ -1642,8 +1650,8 @@ fn first(_ arr: [u8; 4]) -> u8 {
     #[test]
     fn merged_return_class_is_order_independent_for_irreconcilable_sites() {
         let db = DriverDataBase::default();
-        let storage = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Storage);
-        let transient = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Transient);
+        let storage = RuntimeClass::opaque_raw_addr(AddressSpace::Storage);
+        let transient = RuntimeClass::opaque_raw_addr(AddressSpace::Transient);
 
         // Return sites that disagree on a non-Memory space cannot be merged, so the
         // fold reports failure (caller falls back to the default class) regardless of
@@ -1665,9 +1673,9 @@ fn first(_ arr: [u8; 4]) -> u8 {
     #[test]
     fn merged_return_class_folds_memory_into_non_memory_regardless_of_order() {
         let db = DriverDataBase::default();
-        let memory = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Memory);
-        let storage = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Storage);
-        let merged = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Storage);
+        let memory = RuntimeClass::opaque_raw_addr(AddressSpace::Memory);
+        let storage = RuntimeClass::opaque_raw_addr(AddressSpace::Storage);
+        let merged = RuntimeClass::opaque_raw_addr(AddressSpace::Storage);
 
         assert_eq!(
             merged_return_class(

@@ -16,8 +16,8 @@ use crate::core::{
 use crate::span::DynLazySpan;
 
 use super::{
-    BodyOwner, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef, EffectArgLayoutView,
-    RecordLike, RowArg, Typeable, ValuePathRef,
+    BodyOwner, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef, RecordLike, RowArg, Typeable,
+    ValuePathRef,
     effect_env::{
         FamilyKeyedEntry, FrameLookupResult, MatchedForwarder, MatchedKeyedEntry, MatchedWitness,
     },
@@ -26,14 +26,14 @@ use super::{
         ParamSite, PendingPrimitiveOp, ProvidedEffect, TraitObligation, TraitObligationOrigin,
         TyCheckEnv,
     },
-    merged_borrow_provider,
+    has_invisible_newtype_field, merged_borrow_provider,
     path::ResolvedPathInBody,
-    ty_may_be_code_region_token,
+    transparent_newtype_field_ty, ty_may_be_code_region_token,
 };
 use crate::analysis::place::{Place, PlaceBase};
 use crate::analysis::semantic::{RuntimeSizeError, runtime_size_bytes};
 use crate::analysis::ty::{
-    adt_def::AdtRef,
+    AddressSpace,
     assoc_const::{AssocConstUse, InherentConstUse},
     canonical::{Canonicalized, Solution},
     const_ty::{LoweringContext, instantiate_inherent_const_decl_ty},
@@ -48,7 +48,7 @@ use crate::analysis::ty::{
         BarrierReason, EffectBarrier, EffectKeyKind, EffectPatternKey, EffectQuery,
         EffectRequirementDecl, EffectRequirementKey, EffectWitness, ForwardedEffectKey,
         PatternSlotKind, StoredEffectKey, StoredTraitKey, StoredTypeKey, TraitKeySchema,
-        TraitPatternKey, TypePatternKey, WitnessTransport,
+        TraitPatternKey, TypePatternKey,
         elaborate::{
             build_barrier_pattern_for_with_key,
             build_conservative_same_family_barrier_pattern_in_scope, build_effect_query_for_call,
@@ -68,10 +68,7 @@ use crate::analysis::ty::{
     },
     fold::{TyFoldable as _, TyFolder},
     normalize::normalize_with_trait_evidence,
-    provider::{
-        ProviderLayoutEvidence, ProviderTransport, provider_semantics,
-        provider_semantics_for_specialized_call,
-    },
+    provider::{ProviderTransport, provider_semantics_for_specialized_call},
     shape::{Shape, sum_payload_variant},
     trait_def::TraitInstId,
     trait_resolution::{
@@ -108,28 +105,9 @@ use crate::analysis::{
         ty_lower::lower_hir_ty,
     },
 };
-use crate::hir_def::{BlockKind, FieldParent, ItemKind, scope_graph::ScopeId};
+use crate::hir_def::{BlockKind, ItemKind, scope_graph::ScopeId};
 use crate::semantic::{ProviderBinding, ProviderSource};
 use common::indexmap::IndexMap;
-
-#[derive(Debug, Clone, Copy)]
-pub(super) enum TypeEffectBindingMatch<'db> {
-    Direct {
-        given: TyId<'db>,
-    },
-    Provider {
-        resolution: ProviderTargetResolution<'db>,
-    },
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(super) struct ProviderTargetResolution<'db> {
-    target_ty: TyId<'db>,
-    target_seed_ty: TyId<'db>,
-    handle_proof: Option<(TraitInstId<'db>, Solution<TraitGoalSolution<'db>>)>,
-    effect_ref_proof: Option<(TraitInstId<'db>, Solution<TraitGoalSolution<'db>>)>,
-    effect_ref_mut_proof: Option<(TraitInstId<'db>, Solution<TraitGoalSolution<'db>>)>,
-}
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct KeyedWitnessBuildScope<'db> {
@@ -158,19 +136,16 @@ enum EffectEvidence<'db> {
         target_ty: Option<TyId<'db>>,
         commit: EffectCommitPlan<'db>,
         arg_style: EffectArgStyle,
-        layout_view: EffectArgLayoutView,
     },
     UnkeyedType {
         provider: ProvidedEffect<'db>,
         commit: EffectCommitPlan<'db>,
         arg_style: EffectArgStyle,
-        layout_view: EffectArgLayoutView,
     },
     UnkeyedTrait {
         provider: ProvidedEffect<'db>,
         commit: EffectCommitPlan<'db>,
         arg_style: EffectArgStyle,
-        layout_view: EffectArgLayoutView,
     },
 }
 
@@ -192,7 +167,6 @@ enum AssignLhsStatus {
 pub(super) struct EffectCommitPlan<'db> {
     key_match: Option<KeyMatchCommit<'db>>,
     trait_solutions: SmallVec<[(TraitInstId<'db>, Solution<TraitGoalSolution<'db>>); 2]>,
-    provider_resolution: Option<ProviderTargetResolution<'db>>,
     extra_unifications: SmallVec<[(TyId<'db>, TyId<'db>); 4]>,
 }
 
@@ -845,8 +819,9 @@ impl<'db> TyChecker<'db> {
         }
 
         if *op == UnOp::Deref {
-            if let Some(pointee) = prop.ty.as_ptr(self.db) {
-                return ExprProp::new(pointee, true);
+            // Calldata is immutable input.
+            if let Some((pointee, space)) = prop.ty.as_ptr(self.db) {
+                return ExprProp::new(pointee, space != AddressSpace::Calldata);
             }
 
             let expected = TyId::ptr_to(self.db, self.fresh_ty());
@@ -1055,10 +1030,14 @@ impl<'db> TyChecker<'db> {
         }
 
         // Check if the cast failed due to invisible struct fields.
-        let hint = if self.is_single_field_struct_with_invisible_field(from)
-            || self.is_single_field_struct_with_invisible_field(to)
+        let hint = if has_invisible_newtype_field(self.db, self.env.scope(), from)
+            || has_invisible_newtype_field(self.db, self.env.scope(), to)
         {
             Some("cast is not allowed because the struct field is not `pub`".to_string())
+        } else if from.as_ptr(self.db).is_some() && to.as_ptr(self.db).is_some() {
+            Some("a pointer cannot change its address space".to_string())
+        } else if from.as_ptr(self.db).is_some() || to.as_ptr(self.db).is_some() {
+            Some("a pointer converts only to and from its `u256` address".to_string())
         } else {
             None
         };
@@ -1115,7 +1094,8 @@ impl<'db> TyChecker<'db> {
             return true;
         }
 
-        if self.is_pointer_cast(from_leaf, to_leaf) {
+        if self.is_pointer_cast(from_leaf, to_leaf) || self.is_pointer_word_cast(from_leaf, to_leaf)
+        {
             return true;
         }
 
@@ -1127,8 +1107,18 @@ impl<'db> TyChecker<'db> {
             || (self.is_plain_u256(from) && to.is_string(self.db))
     }
 
+    /// A cast between pointers into one space.
     fn is_pointer_cast(&self, from: TyId<'db>, to: TyId<'db>) -> bool {
-        from.as_ptr(self.db).is_some() && to.as_ptr(self.db).is_some()
+        matches!(
+            (from.as_ptr(self.db), to.as_ptr(self.db)),
+            (Some((_, from)), Some((_, to))) if from == to
+        )
+    }
+
+    /// A pointer is its address word.
+    fn is_pointer_word_cast(&self, from: TyId<'db>, to: TyId<'db>) -> bool {
+        (from.as_ptr(self.db).is_some() && self.is_plain_u256(to))
+            || (self.is_plain_u256(from) && to.as_ptr(self.db).is_some())
     }
 
     fn is_plain_u256(&self, ty: TyId<'db>) -> bool {
@@ -1138,51 +1128,8 @@ impl<'db> TyChecker<'db> {
         )
     }
 
-    fn transparent_newtype_field_ty(&self, ty: TyId<'db>) -> Option<TyId<'db>> {
-        if ty.is_tuple(self.db) {
-            let field_tys = ty.field_types(self.db);
-            return (field_tys.len() == 1).then(|| field_tys[0]);
-        }
-
-        if ty.is_struct(self.db) {
-            let field_tys = ty.field_types(self.db);
-            if field_tys.len() != 1 {
-                return None;
-            }
-
-            // Reject cast if the struct field is not visible from the current scope.
-            if self.is_single_field_struct_with_invisible_field(ty) {
-                return None;
-            }
-
-            return Some(field_tys[0]);
-        }
-
-        None
-    }
-
-    /// Returns `true` if `ty` is a single-field struct whose field is not visible
-    /// from the current scope.
-    fn is_single_field_struct_with_invisible_field(&self, ty: TyId<'db>) -> bool {
-        if !ty.is_struct(self.db) {
-            return false;
-        }
-        let field_tys = ty.field_types(self.db);
-        if field_tys.len() != 1 {
-            return false;
-        }
-        let Some(adt_def) = ty.adt_def(self.db) else {
-            return false;
-        };
-        let AdtRef::Struct(s) = adt_def.adt_ref(self.db) else {
-            return false;
-        };
-        let field_scope = ScopeId::Field(FieldParent::Struct(s), 0);
-        !is_scope_visible_from(self.db, field_scope, self.env.scope())
-    }
-
     fn peel_transparent_newtypes(&self, mut ty: TyId<'db>) -> TyId<'db> {
-        while let Some(inner) = self.transparent_newtype_field_ty(ty) {
+        while let Some(inner) = transparent_newtype_field_ty(self.db, self.env.scope(), ty) {
             ty = inner;
         }
         ty
@@ -1884,94 +1831,81 @@ impl<'db> TyChecker<'db> {
             }
             match resolution {
                 EffectResolution::Chosen(evidence) => {
-                    let (provider, arg_style, layout_view, key_kind, instantiated_key_ty) =
-                        match *evidence {
-                            EffectEvidence::Keyed {
-                                provider,
-                                key_kind,
-                                target_ty,
-                                commit,
-                                arg_style,
-                                layout_view,
-                            } => {
-                                let committed = self.apply_effect_commit_plan(commit);
-                                debug_assert!(
-                                    committed,
-                                    "chosen keyed effect evidence commit failed"
-                                );
-                                if !committed {
-                                    let diag = BodyDiag::MissingEffect {
-                                        primary: call_span.clone(),
-                                        func,
-                                        key: key_ty,
-                                    };
-                                    self.push_diag(diag);
-                                    continue;
-                                }
-                                (provider, arg_style, layout_view, key_kind, target_ty)
-                            }
-                            EffectEvidence::UnkeyedType {
-                                provider,
-                                commit,
-                                arg_style,
-                                layout_view,
-                            } => {
-                                let target_ty = match commit.key_match.clone() {
-                                    Some(KeyMatchCommit::QueryToType { actual, .. }) => {
-                                        Some(self.table.fold_ty(self.db, actual))
-                                    }
-                                    _ => match req.key.clone() {
-                                        EffectRequirementKey::Type(_) => self
-                                            .query_type_key(&query.key)
-                                            .map(|ty| self.table.fold_ty(self.db, ty)),
-                                        EffectRequirementKey::Trait(_) => None,
-                                    },
+                    let (provider, arg_style, key_kind, instantiated_key_ty) = match *evidence {
+                        EffectEvidence::Keyed {
+                            provider,
+                            key_kind,
+                            target_ty,
+                            commit,
+                            arg_style,
+                        } => {
+                            let committed = self.apply_effect_commit_plan(commit);
+                            debug_assert!(committed, "chosen keyed effect evidence commit failed");
+                            if !committed {
+                                let diag = BodyDiag::MissingEffect {
+                                    primary: call_span.clone(),
+                                    func,
+                                    key: key_ty,
                                 };
-                                let committed = self.apply_effect_commit_plan(commit);
-                                debug_assert!(
-                                    committed,
-                                    "chosen unkeyed type effect evidence commit failed"
-                                );
-                                if !committed {
-                                    let diag = BodyDiag::MissingEffect {
-                                        primary: call_span.clone(),
-                                        func,
-                                        key: key_ty,
-                                    };
-                                    self.push_diag(diag);
-                                    continue;
-                                }
-                                (
-                                    provider,
-                                    arg_style,
-                                    layout_view,
-                                    EffectKeyKind::Type,
-                                    target_ty,
-                                )
+                                self.push_diag(diag);
+                                continue;
                             }
-                            EffectEvidence::UnkeyedTrait {
-                                provider,
-                                commit,
-                                arg_style,
-                                layout_view,
-                            } => {
-                                let committed = self.apply_effect_commit_plan(commit);
-                                debug_assert!(
-                                    committed,
-                                    "chosen unkeyed trait effect evidence commit failed"
-                                );
-                                if !committed {
-                                    let diag = BodyDiag::MissingEffect {
-                                        primary: call_span.clone(),
-                                        func,
-                                        key: key_ty,
-                                    };
-                                    self.push_diag(diag);
-                                    continue;
+                            (provider, arg_style, key_kind, target_ty)
+                        }
+                        EffectEvidence::UnkeyedType {
+                            provider,
+                            commit,
+                            arg_style,
+                        } => {
+                            let target_ty = match commit.key_match.clone() {
+                                Some(KeyMatchCommit::QueryToType { actual, .. }) => {
+                                    Some(self.table.fold_ty(self.db, actual))
                                 }
-                                (provider, arg_style, layout_view, EffectKeyKind::Trait, None)
+                                _ => match req.key.clone() {
+                                    EffectRequirementKey::Type(_) => self
+                                        .query_type_key(&query.key)
+                                        .map(|ty| self.table.fold_ty(self.db, ty)),
+                                    EffectRequirementKey::Trait(_) => None,
+                                },
+                            };
+                            let committed = self.apply_effect_commit_plan(commit);
+                            debug_assert!(
+                                committed,
+                                "chosen unkeyed type effect evidence commit failed"
+                            );
+                            if !committed {
+                                let diag = BodyDiag::MissingEffect {
+                                    primary: call_span.clone(),
+                                    func,
+                                    key: key_ty,
+                                };
+                                self.push_diag(diag);
+                                continue;
                             }
-                        };
+                            (provider, arg_style, EffectKeyKind::Type, target_ty)
+                        }
+                        EffectEvidence::UnkeyedTrait {
+                            provider,
+                            commit,
+                            arg_style,
+                        } => {
+                            let committed = self.apply_effect_commit_plan(commit);
+                            debug_assert!(
+                                committed,
+                                "chosen unkeyed trait effect evidence commit failed"
+                            );
+                            if !committed {
+                                let diag = BodyDiag::MissingEffect {
+                                    primary: call_span.clone(),
+                                    func,
+                                    key: key_ty,
+                                };
+                                self.push_diag(diag);
+                                continue;
+                            }
+                            (provider, arg_style, EffectKeyKind::Trait, None)
+                        }
+                    };
 
                     if req.required_mut
                         && let Some(binding) = provider.binding
@@ -1980,11 +1914,8 @@ impl<'db> TyChecker<'db> {
                     }
                     let (arg, pass_mode) =
                         self.effect_arg_for_provider(provider, arg_style, req.required_mut);
-                    let provider_target_ty = self.provider_target_ty_for_effect_arg(
-                        provider,
-                        instantiated_key_ty,
-                        req.required_mut,
-                    );
+                    let provider_target_ty =
+                        instantiated_key_ty.map(|ty| self.table.fold_ty(self.db, ty));
                     if req.required_mut && matches!(pass_mode, super::EffectPassMode::Unknown) {
                         let diag = BodyDiag::EffectMutabilityMismatch {
                             primary: call_span.clone(),
@@ -2030,10 +1961,10 @@ impl<'db> TyChecker<'db> {
                     }
                     let provider_space = self
                         .effect_arg_provider_space(&arg, pass_mode)
-                        .or_else(|| self.concrete_borrow_provider_for_effect_handle_ty(provider.ty))
+                        .or_else(|| self.concrete_borrow_provider_for_capability_ty(provider.ty))
                         .or_else(|| {
                             matches!(pass_mode, super::EffectPassMode::ByTempPlace)
-                                .then_some(super::ProviderAddressSpace::Memory)
+                                .then_some(AddressSpace::Memory)
                         });
                     if matches!(
                         pass_mode,
@@ -2087,7 +2018,6 @@ impl<'db> TyChecker<'db> {
                             EffectOrigin::Param { .. } => None,
                         },
                         pass_mode,
-                        layout_view,
                         required_mut: req.required_mut,
                         key_kind,
                         instantiated_key_ty,
@@ -2135,7 +2065,6 @@ impl<'db> TyChecker<'db> {
                     arg: super::EffectArg::Binding(binding),
                     with_source: None,
                     pass_mode: super::EffectPassMode::ByValue,
-                    layout_view: super::EffectArgLayoutView::Direct,
                     required_mut: requirement.is_mut,
                     key_kind: EffectKeyKind::Row,
                     instantiated_key_ty: None,
@@ -2293,9 +2222,7 @@ impl<'db> TyChecker<'db> {
                     barrier_reason,
                 } => {
                     for matched in entries.iter().cloned() {
-                        if let Some(evidence) =
-                            self.evaluate_keyed_entry(query.required_mut, matched)
-                        {
+                        if let Some(evidence) = self.evaluate_keyed_entry(matched) {
                             viable.push(evidence);
                         }
                     }
@@ -2315,20 +2242,15 @@ impl<'db> TyChecker<'db> {
                         let Some(matched) = self.match_family_keyed_entry(&query.key, entry) else {
                             continue;
                         };
-                        if let Some(evidence) =
-                            self.evaluate_keyed_entry(query.required_mut, matched)
-                        {
+                        if let Some(evidence) = self.evaluate_keyed_entry(matched) {
                             family_viable.push(evidence);
                         }
                     }
                     for provider in providers.iter().copied() {
                         let evidence = match query.key.clone() {
-                            EffectPatternKey::Type(type_query) => self
-                                .evaluate_unkeyed_type_provider(
-                                    type_query,
-                                    provider,
-                                    query.required_mut,
-                                ),
+                            EffectPatternKey::Type(type_query) => {
+                                self.evaluate_unkeyed_type_provider(type_query, provider)
+                            }
                             EffectPatternKey::Trait(trait_query) => {
                                 self.evaluate_unkeyed_trait_provider(trait_query, provider)
                             }
@@ -2344,12 +2266,9 @@ impl<'db> TyChecker<'db> {
                 FrameLookupResult::Unkeyed { providers } => {
                     for provider in providers {
                         let evidence = match query.key.clone() {
-                            EffectPatternKey::Type(type_query) => self
-                                .evaluate_unkeyed_type_provider(
-                                    type_query,
-                                    provider,
-                                    query.required_mut,
-                                ),
+                            EffectPatternKey::Type(type_query) => {
+                                self.evaluate_unkeyed_type_provider(type_query, provider)
+                            }
                             EffectPatternKey::Trait(trait_query) => {
                                 self.evaluate_unkeyed_trait_provider(trait_query, provider)
                             }
@@ -2428,10 +2347,9 @@ impl<'db> TyChecker<'db> {
 
     fn evaluate_keyed_entry(
         &mut self,
-        required_mut: bool,
         matched: MatchedKeyedEntry<'db>,
     ) -> Option<EffectEvidence<'db>> {
-        let (provider, transport, key_kind, target_ty, key_commit) = match matched {
+        let (provider, key_kind, target_ty, key_commit) = match matched {
             MatchedKeyedEntry::Witness(matched) => {
                 let (key_kind, target_ty) = match matched.witness.key {
                     StoredEffectKey::Type(stored) => (EffectKeyKind::Type, Some(stored.carrier)),
@@ -2439,7 +2357,6 @@ impl<'db> TyChecker<'db> {
                 };
                 (
                     matched.witness.provider,
-                    matched.witness.transport,
                     key_kind,
                     target_ty,
                     matched.key_commit,
@@ -2450,37 +2367,26 @@ impl<'db> TyChecker<'db> {
                     // The body's own binding provides its key directly: its
                     // type is the key with the layout its caller supplied,
                     // which the key's pattern leaves open.
-                    ForwardedEffectKey::Type(_)
-                        if matched.forwarder.transport == WitnessTransport::Direct =>
-                    {
+                    ForwardedEffectKey::Type(_) => {
                         (EffectKeyKind::Type, Some(matched.forwarder.provider.ty))
-                    }
-                    ForwardedEffectKey::Type(forwarded) => {
-                        (EffectKeyKind::Type, Some(forwarded.carrier))
                     }
                     ForwardedEffectKey::Trait(_) => (EffectKeyKind::Trait, None),
                 };
                 (
                     matched.forwarder.provider,
-                    matched.forwarder.transport,
                     key_kind,
                     target_ty,
                     matched.key_commit,
                 )
             }
         };
-        let arg_style = match (transport, target_ty) {
-            (WitnessTransport::Direct, Some(target_ty)) => self
-                .direct_arg_style_for_provider(provider, target_ty, required_mut)
+        // A type key is provided by its place; a trait key by value.
+        let arg_style = match target_ty {
+            Some(_) => self
+                .direct_arg_style_for_provider(provider)
                 .unwrap_or(EffectArgStyle::Value),
-            _ => EffectArgStyle::Value,
+            None => EffectArgStyle::Value,
         };
-        let layout_view =
-            if key_kind == EffectKeyKind::Type && transport == WitnessTransport::ByValue {
-                EffectArgLayoutView::ProviderTarget
-            } else {
-                EffectArgLayoutView::Direct
-            };
         Some(EffectEvidence::Keyed {
             provider,
             key_kind,
@@ -2488,11 +2394,9 @@ impl<'db> TyChecker<'db> {
             commit: EffectCommitPlan {
                 key_match: Some(key_commit),
                 trait_solutions: SmallVec::new(),
-                provider_resolution: None,
                 extra_unifications: SmallVec::new(),
             },
             arg_style,
-            layout_view,
         })
     }
 
@@ -2500,10 +2404,8 @@ impl<'db> TyChecker<'db> {
         &mut self,
         query: TypePatternKey<'db>,
         provider: ProvidedEffect<'db>,
-        required_mut: bool,
     ) -> Option<EffectEvidence<'db>> {
-        let direct_style =
-            self.direct_arg_style_for_provider(provider, query.carrier, required_mut);
+        let direct_style = self.direct_arg_style_for_provider(provider);
         if let Some(arg_style) = direct_style {
             let snapshot = self.snapshot_state();
             let ok = apply_key_match_commit(
@@ -2523,39 +2425,14 @@ impl<'db> TyChecker<'db> {
                             actual: provider.ty,
                         }),
                         trait_solutions: SmallVec::new(),
-                        provider_resolution: None,
                         extra_unifications: SmallVec::new(),
                     },
                     arg_style,
-                    layout_view: EffectArgLayoutView::Direct,
                 });
             }
         }
 
-        let resolution = self.effect_provider_target_resolution(provider.ty, required_mut)?;
-        let snapshot = self.snapshot_state();
-        let ok = apply_key_match_commit(
-            self,
-            KeyMatchCommit::QueryToType {
-                query: query.clone(),
-                actual: resolution.target_ty,
-            },
-        );
-        self.rollback_state(snapshot);
-        ok.then_some(EffectEvidence::UnkeyedType {
-            provider,
-            commit: EffectCommitPlan {
-                key_match: Some(KeyMatchCommit::QueryToType {
-                    query,
-                    actual: resolution.target_ty,
-                }),
-                trait_solutions: SmallVec::new(),
-                provider_resolution: Some(resolution),
-                extra_unifications: SmallVec::new(),
-            },
-            arg_style: EffectArgStyle::Value,
-            layout_view: EffectArgLayoutView::ProviderTarget,
-        })
+        None
     }
 
     fn evaluate_unkeyed_trait_provider(
@@ -2587,33 +2464,16 @@ impl<'db> TyChecker<'db> {
             commit: EffectCommitPlan {
                 key_match: None,
                 trait_solutions: SmallVec::from_iter([(trait_goal, solution)]),
-                provider_resolution: None,
                 extra_unifications: SmallVec::new(),
             },
             arg_style: EffectArgStyle::Value,
-            layout_view: EffectArgLayoutView::Direct,
         })
     }
 
     fn direct_arg_style_for_provider(
         &self,
         provider: ProvidedEffect<'db>,
-        target_ty: TyId<'db>,
-        _: bool,
     ) -> Option<EffectArgStyle> {
-        let target_ty = normalize_ty(self.db, target_ty, self.env.scope(), self.env.assumptions());
-        match provider_semantics(self.db, self.env.scope(), self.env.assumptions(), target_ty)
-            .evidence
-        {
-            ProviderLayoutEvidence::ResolvedHandle(_)
-            | ProviderLayoutEvidence::TraitBoundHandle(_) => {
-                return Some(EffectArgStyle::Value);
-            }
-            ProviderLayoutEvidence::InvalidHandle(_) => return None,
-            ProviderLayoutEvidence::Capability
-            | ProviderLayoutEvidence::NotHandle
-            | ProviderLayoutEvidence::ContractField => {}
-        }
         Some(match self.provider_place(provider) {
             Some(_) => EffectArgStyle::Place,
             None if matches!(provider.origin, EffectOrigin::With { .. }) => {
@@ -2629,7 +2489,7 @@ impl<'db> TyChecker<'db> {
         arg_style: EffectArgStyle,
         required_mut: bool,
     ) -> (super::EffectArg<'db>, super::EffectPassMode) {
-        if required_mut && !self.provider_supports_mut(provider) {
+        if required_mut && !provider.is_mut {
             return (super::EffectArg::Unknown, super::EffectPassMode::Unknown);
         }
 
@@ -2658,13 +2518,6 @@ impl<'db> TyChecker<'db> {
                 super::EffectPassMode::ByValue,
             ),
         }
-    }
-
-    fn provider_supports_mut(&mut self, provider: ProvidedEffect<'db>) -> bool {
-        provider.is_mut
-            || self
-                .effect_provider_target_resolution(provider.ty, true)
-                .is_some()
     }
 
     fn inferred_provider_ty_for_effect_arg(
@@ -2724,35 +2577,6 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn provider_target_ty_for_effect_arg(
-        &mut self,
-        provider: ProvidedEffect<'db>,
-        instantiated_key_ty: Option<TyId<'db>>,
-        required_mut: bool,
-    ) -> Option<TyId<'db>> {
-        let instantiated_key_ty = instantiated_key_ty.map(|ty| self.table.fold_ty(self.db, ty));
-        if let Some(target_ty) = instantiated_key_ty {
-            let semantics =
-                provider_semantics(self.db, self.env.scope(), self.env.assumptions(), target_ty);
-            if matches!(
-                semantics.evidence,
-                ProviderLayoutEvidence::ResolvedHandle(_)
-                    | ProviderLayoutEvidence::TraitBoundHandle(_)
-            ) {
-                return semantics
-                    .target_ty
-                    .map(|target_ty| self.table.fold_ty(self.db, target_ty));
-            }
-            if matches!(semantics.evidence, ProviderLayoutEvidence::InvalidHandle(_)) {
-                return None;
-            }
-        }
-        let provider_ty = self.table.fold_ty(self.db, provider.ty);
-        self.effect_provider_target_resolution(provider_ty, required_mut)
-            .map(|resolution| self.table.fold_ty(self.db, resolution.target_ty))
-            .or(instantiated_key_ty)
-    }
-
     fn effect_arg_is_valid(
         &self,
         arg: &super::EffectArg<'db>,
@@ -2773,12 +2597,12 @@ impl<'db> TyChecker<'db> {
         &self,
         arg: &super::EffectArg<'db>,
         pass_mode: super::EffectPassMode,
-    ) -> Option<super::ProviderAddressSpace> {
+    ) -> Option<AddressSpace> {
         match pass_mode {
             super::EffectPassMode::ByTempPlace => match arg {
                 super::EffectArg::Value(expr) => self.env.typed_expr(*expr).and_then(|prop| {
                     prop.borrow_provider
-                        .or_else(|| self.concrete_borrow_provider_for_effect_handle_ty(prop.ty))
+                        .or_else(|| self.concrete_borrow_provider_for_capability_ty(prop.ty))
                 }),
                 super::EffectArg::Place(place) => self.concrete_borrow_provider_for_place(place),
                 super::EffectArg::Binding(binding) => {
@@ -2797,7 +2621,7 @@ impl<'db> TyChecker<'db> {
                 super::EffectArg::Place(place) => self.concrete_borrow_provider_for_place(place),
                 super::EffectArg::Value(expr) => self.env.typed_expr(*expr).and_then(|prop| {
                     prop.borrow_provider
-                        .or_else(|| self.concrete_borrow_provider_for_effect_handle_ty(prop.ty))
+                        .or_else(|| self.concrete_borrow_provider_for_capability_ty(prop.ty))
                 }),
                 super::EffectArg::Binding(binding) => {
                     self.concrete_borrow_provider_for_binding(*binding)
@@ -2828,7 +2652,7 @@ impl<'db> TyChecker<'db> {
         arg: &super::EffectArg<'db>,
         pass_mode: super::EffectPassMode,
         provider_target_ty: Option<TyId<'db>>,
-        provider_space: Option<super::ProviderAddressSpace>,
+        provider_space: Option<AddressSpace>,
     ) -> EffectProviderSpecialization<'db> {
         let provenance = self
             .effect_provider_provenance(provided, arg)
@@ -2856,8 +2680,6 @@ impl<'db> TyChecker<'db> {
                         .unwrap_or_else(|| self.table.fold_ty(self.db, provided.ty));
                     let semantics = provider_semantics_for_specialized_call(
                         self.db,
-                        self.env.scope(),
-                        self.env.assumptions(),
                         provider_ty,
                         target_ty,
                         provider_space,
@@ -2994,83 +2816,12 @@ impl<'db> TyChecker<'db> {
         solved
     }
 
-    fn commit_provider_target_resolution(
-        &mut self,
-        resolution: ProviderTargetResolution<'db>,
-    ) -> TyId<'db> {
-        self.commit_provider_target_resolution_in_scope(
-            resolution,
-            self.env.scope(),
-            self.env.assumptions(),
-        )
-    }
-
-    pub(super) fn commit_provider_target_resolution_in_scope(
-        &mut self,
-        resolution: ProviderTargetResolution<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-    ) -> TyId<'db> {
-        let mut target_ty = self.renormalize_effect_provider_target_ty_in_scope(
-            resolution.target_seed_ty,
-            scope,
-            assumptions,
-        );
-        if let Some((handle_goal, handle_solution)) = resolution.handle_proof {
-            self.commit_trait_goal_solution(handle_goal, handle_solution);
-            target_ty =
-                self.renormalize_effect_provider_target_ty_in_scope(target_ty, scope, assumptions);
-        }
-        if let Some((effect_ref_goal, effect_ref_solution)) = resolution.effect_ref_proof {
-            self.commit_trait_goal_solution(effect_ref_goal, effect_ref_solution);
-            target_ty =
-                self.renormalize_effect_provider_target_ty_in_scope(target_ty, scope, assumptions);
-        }
-        if let Some((effect_ref_mut_goal, effect_ref_mut_solution)) =
-            resolution.effect_ref_mut_proof
-        {
-            self.commit_trait_goal_solution(effect_ref_mut_goal, effect_ref_mut_solution);
-            target_ty =
-                self.renormalize_effect_provider_target_ty_in_scope(target_ty, scope, assumptions);
-        }
-        target_ty
-    }
-
-    fn renormalize_effect_provider_target_ty_in_scope(
-        &mut self,
-        target_ty: TyId<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-    ) -> TyId<'db> {
-        normalize_ty(
-            self.db,
-            self.table.fold_ty(self.db, target_ty),
-            scope,
-            assumptions,
-        )
-        .fold_with(self.db, &mut self.table)
-    }
-
+    /// The provided type, when it matches the type key `pattern`.
     fn select_type_effect_binding_match(
         &mut self,
         pattern: TypePatternKey<'db>,
         provided: ProvidedEffect<'db>,
-    ) -> Option<TypeEffectBindingMatch<'db>> {
-        self.select_type_effect_binding_match_in_scope(
-            pattern,
-            provided,
-            self.env.scope(),
-            self.env.assumptions(),
-        )
-    }
-
-    pub(super) fn select_type_effect_binding_match_in_scope(
-        &mut self,
-        pattern: TypePatternKey<'db>,
-        provided: ProvidedEffect<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-    ) -> Option<TypeEffectBindingMatch<'db>> {
+    ) -> Option<TyId<'db>> {
         let can_commit_key_relation = |this: &mut Self, given: TyId<'db>| {
             let snapshot = this.snapshot_state();
             let ok = apply_key_match_commit(
@@ -3091,120 +2842,7 @@ impl<'db> TyChecker<'db> {
 
             false
         };
-        let direct_ty = provided.ty;
-
-        if matches_key(self, direct_ty) {
-            return Some(TypeEffectBindingMatch::Direct { given: direct_ty });
-        }
-
-        self.effect_provider_target_resolution_in_scope(provided.ty, false, scope, assumptions)
-            .and_then(|resolution| {
-                matches_key(self, resolution.target_ty)
-                    .then_some(TypeEffectBindingMatch::Provider { resolution })
-            })
-    }
-
-    fn effect_provider_target_resolution(
-        &mut self,
-        provided_ty: TyId<'db>,
-        required_mut: bool,
-    ) -> Option<ProviderTargetResolution<'db>> {
-        self.effect_provider_target_resolution_in_scope(
-            provided_ty,
-            required_mut,
-            self.env.scope(),
-            self.env.assumptions(),
-        )
-    }
-
-    fn effect_provider_target_resolution_in_scope(
-        &mut self,
-        provided_ty: TyId<'db>,
-        required_mut: bool,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-    ) -> Option<ProviderTargetResolution<'db>> {
-        let effect_ref_trait = resolve_core_trait(self.db, scope, &["EffectRef"])
-            .expect("missing required core trait `core::EffectRef`");
-        let effect_ref_mut_trait = resolve_core_trait(self.db, scope, &["EffectRefMut"])
-            .expect("missing required core trait `core::EffectRefMut`");
-        let effect_handle_trait = resolve_core_trait(self.db, scope, &["EffectHandle"])
-            .expect("missing required core trait `core::EffectHandle`");
-        let target_ident = IdentId::new(self.db, "Target".to_string());
-        let effect_handle_inst = TraitInstId::new(
-            self.db,
-            effect_handle_trait,
-            vec![provided_ty],
-            IndexMap::new(),
-        );
-        let GoalSatisfiability::Satisfied(handle_solution) =
-            self.trait_effect_goal_satisfiability_in_scope(scope, assumptions, effect_handle_inst)
-        else {
-            return None;
-        };
-
-        let snapshot = self.snapshot_state();
-        let resolution = (|| {
-            self.commit_trait_goal_solution(effect_handle_inst, handle_solution);
-
-            let target_assoc = effect_handle_inst.project_assoc_ty(self.db, target_ident)?;
-            let mut target_ty = normalize_ty(self.db, target_assoc, scope, assumptions)
-                .fold_with(self.db, &mut self.table);
-            let mut provided_ty = self.table.fold_ty(self.db, provided_ty);
-
-            let effect_ref_inst = TraitInstId::new(
-                self.db,
-                effect_ref_trait,
-                vec![provided_ty, target_ty],
-                IndexMap::new(),
-            );
-            let GoalSatisfiability::Satisfied(effect_ref_solution) =
-                self.trait_effect_goal_satisfiability_in_scope(scope, assumptions, effect_ref_inst)
-            else {
-                return None;
-            };
-            self.commit_trait_goal_solution(effect_ref_inst, effect_ref_solution);
-            provided_ty = self.table.fold_ty(self.db, provided_ty);
-            target_ty =
-                self.renormalize_effect_provider_target_ty_in_scope(target_ty, scope, assumptions);
-
-            let effect_ref_mut_proof = if required_mut {
-                let effect_ref_mut_inst = TraitInstId::new(
-                    self.db,
-                    effect_ref_mut_trait,
-                    vec![provided_ty, target_ty],
-                    IndexMap::new(),
-                );
-                let GoalSatisfiability::Satisfied(effect_ref_mut_solution) = self
-                    .trait_effect_goal_satisfiability_in_scope(
-                        scope,
-                        assumptions,
-                        effect_ref_mut_inst,
-                    )
-                else {
-                    return None;
-                };
-                self.commit_trait_goal_solution(effect_ref_mut_inst, effect_ref_mut_solution);
-                target_ty = self.renormalize_effect_provider_target_ty_in_scope(
-                    target_ty,
-                    scope,
-                    assumptions,
-                );
-                Some((effect_ref_mut_inst, effect_ref_mut_solution))
-            } else {
-                None
-            };
-
-            Some(ProviderTargetResolution {
-                target_ty,
-                target_seed_ty: target_assoc,
-                handle_proof: Some((effect_handle_inst, handle_solution)),
-                effect_ref_proof: Some((effect_ref_inst, effect_ref_solution)),
-                effect_ref_mut_proof,
-            })
-        })();
-        self.rollback_state(snapshot);
-        resolution
+        matches_key(self, provided.ty).then_some(provided.ty)
     }
 
     pub(super) fn apply_effect_commit_plan(&mut self, commit: EffectCommitPlan<'db>) -> bool {
@@ -3221,9 +2859,6 @@ impl<'db> TyChecker<'db> {
     fn apply_effect_commit_plan_inner(&mut self, commit: EffectCommitPlan<'db>) -> bool {
         for (goal, solution) in commit.trait_solutions {
             self.commit_trait_goal_solution(goal, solution);
-        }
-        if let Some(resolution) = commit.provider_resolution {
-            self.commit_provider_target_resolution(resolution);
         }
         if let Some(key_match) = commit.key_match
             && !apply_key_match_commit(self, key_match)
@@ -3355,8 +2990,7 @@ impl<'db> TyChecker<'db> {
                         },
                     }));
                 }
-                let Some(binding_match) =
-                    self.select_type_effect_binding_match(pattern.clone(), provider)
+                let Some(actual) = self.select_type_effect_binding_match(pattern.clone(), provider)
                 else {
                     if emit_diag {
                         self.push_diag(BodyDiag::WithEffectTypeUnsatisfied {
@@ -3373,16 +3007,6 @@ impl<'db> TyChecker<'db> {
                             key_path,
                         },
                     }));
-                };
-                let (actual, provider_resolution, transport) = match binding_match {
-                    TypeEffectBindingMatch::Direct { given } => {
-                        (given, None, WitnessTransport::Direct)
-                    }
-                    TypeEffectBindingMatch::Provider { resolution } => (
-                        resolution.target_ty,
-                        Some(resolution),
-                        WitnessTransport::ByValue,
-                    ),
                 };
                 let snapshot = self.snapshot_state();
                 let specialized = self
@@ -3431,18 +3055,13 @@ impl<'db> TyChecker<'db> {
                     }));
                 };
                 Ok((
-                    EffectWitness {
-                        key,
-                        provider,
-                        transport,
-                    },
+                    EffectWitness { key, provider },
                     EffectCommitPlan {
                         key_match: Some(KeyMatchCommit::QueryToType {
                             query: pattern,
                             actual,
                         }),
                         trait_solutions: SmallVec::new(),
-                        provider_resolution,
                         extra_unifications: SmallVec::new(),
                     },
                 ))
@@ -3571,15 +3190,10 @@ impl<'db> TyChecker<'db> {
                     }));
                 };
                 Ok((
-                    EffectWitness {
-                        key,
-                        provider,
-                        transport: WitnessTransport::ByValue,
-                    },
+                    EffectWitness { key, provider },
                     EffectCommitPlan {
                         key_match: None,
                         trait_solutions: SmallVec::new(),
-                        provider_resolution: None,
                         extra_unifications: SmallVec::new(),
                     },
                 ))
@@ -4801,7 +4415,7 @@ impl<'db> TyChecker<'db> {
         let scrutinee_prop = self.open_matched_place(*scrutinee, scrutinee_prop, arm_pats);
 
         let mut match_ty = expected;
-        let mut first_provider: Option<super::ProviderAddressSpace> = None;
+        let mut first_provider: Option<AddressSpace> = None;
         let mut provider_unknown = false;
         let mut provider_conflict = false;
         let mut arm_statuses = Vec::with_capacity(arms.len());
@@ -5273,6 +4887,21 @@ impl<'db> TyChecker<'db> {
             return AssignLhsStatus::NonAssignable;
         }
 
+        if let Some(pointer) = self.calldata_pointer_of_place(lhs) {
+            let binding = self.find_base_binding(pointer).map(|binding| {
+                (
+                    binding.binding_name(&self.env),
+                    binding.def_span(&self.env),
+                    MutabilityFix::Calldata,
+                )
+            });
+            self.push_diag(BodyDiag::ImmutableAssignment {
+                primary: lhs.span(self.body()).into(),
+                binding,
+            });
+            return AssignLhsStatus::Immutable;
+        }
+
         if !typed_lhs.is_mut {
             let binding = self.find_base_binding(lhs);
             if self.report_write_to_capture(binding, lhs.span(self.body()).into()) {
@@ -5398,6 +5027,29 @@ impl<'db> TyChecker<'db> {
             Expr::Bin(_, _, op) if *op == BinOp::Index => true,
             Expr::Un(_, UnOp::Deref) => true,
             _ => self.env.is_grant_place(expr),
+        }
+    }
+
+    /// The calldata pointer whose pointee holds the place `expr` names.
+    fn calldata_pointer_of_place(&mut self, expr: ExprId) -> Option<ExprId> {
+        let (base, deref) = match self.env.expr_data(expr) {
+            Partial::Present(Expr::Un(inner, UnOp::Deref)) => (*inner, true),
+            Partial::Present(Expr::Field(base, ..)) => (*base, false),
+            Partial::Present(Expr::Bin(base, _, BinOp::Index)) => {
+                return self.calldata_pointer_of_place(*base);
+            }
+            _ => return None,
+        };
+        let base_ty = self.env.typed_expr(base)?.ty;
+        if matches!(
+            self.normalize_ty(base_ty).as_ptr(self.db),
+            Some((_, AddressSpace::Calldata))
+        ) {
+            Some(base)
+        } else if deref {
+            None
+        } else {
+            self.calldata_pointer_of_place(base)
         }
     }
 

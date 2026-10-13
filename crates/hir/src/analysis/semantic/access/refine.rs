@@ -20,7 +20,7 @@ use crate::{
             provisional_provider_idx_for_requirement,
         },
         ty::{
-            provider::ProviderAddressSpace,
+            provider::AddressSpace,
             ty_check::{BodyOwner, EffectParamSite, EffectPassMode},
         },
     },
@@ -147,7 +147,7 @@ pub(crate) fn provisional_call_site_provider_refinements<'db>(
                 // Data parameters name memory unless refined.
                 if let Some(address_space) = address_space
                     && !(matches!(input, RefinedInput::Param(_))
-                        && address_space == ProviderAddressSpace::Memory)
+                        && address_space == AddressSpace::Memory)
                 {
                     refinements.push(CallSiteProviderRefinement {
                         call_site: *call_site,

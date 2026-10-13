@@ -1,53 +1,19 @@
-use core::effect_ref::{AddressSpace, EffectHandle, EffectHandleMut, EffectRef, EffectRefMut}
-
 struct Counter { value: u256 }
 
 fn bump() uses (counter: mut Counter) {
     counter.value += 1
 }
 
-struct Handle { ptr: *Counter }
-
-impl EffectHandle for Handle {
-    type Target = Counter
-    const SPACE: AddressSpace = AddressSpace::Memory
-    type Raw = *Counter
-
-    fn raw(self) -> *Counter {
-        self.ptr
-    }
-}
-
-impl EffectHandleMut for Handle {}
-impl EffectRef<Counter> for Handle {}
-impl EffectRefMut<Counter> for Handle {}
-
+// Rejected: providing a pointee dereferences the pointer.
 pub fn raw_pointer(p: own *Counter) {
-    with (p) {
+    with (mut *p) {
         bump()
     }
 }
 
-pub fn user_handle(handle: own Handle) {
-    with (handle) {
-        bump()
-    }
-}
-
-pub fn generic_handle<H>(handle: own H)
-    where H: EffectHandle<Target = Counter> + EffectHandleMut + EffectRefMut<Counter>
-{
-    with (handle) {
-        bump()
-    }
-}
-
-pub fn inside_unsafe(p: own *Counter, handle: own Handle) {
+pub fn inside_unsafe(p: own *Counter) {
     unsafe {
-        with (p) {
-            bump()
-        }
-        with (handle) {
+        with (mut *p) {
             bump()
         }
     }
@@ -59,24 +25,13 @@ pub fn capability(var counter: own Counter) {
     }
 }
 
-struct Tagged { ptr: *Counter }
-
-impl EffectHandle for Tagged {
-    type Target = Counter
-    const SPACE: AddressSpace = AddressSpace::Memory
-    type Raw = *Counter
-
-    fn raw(self) -> *Counter {
-        self.ptr
-    }
+fn read_pointer() -> *Counter uses (p: *Counter) {
+    p
 }
 
-fn tagged_raw() -> *Counter uses (tagged: Tagged) {
-    tagged.raw()
-}
-
-pub fn value_only_handle(tagged: own Tagged) -> *Counter {
-    with (tagged) {
-        tagged_raw()
+// Accepted: a pointer provided as a value dereferences nothing.
+pub fn value_only(p: own *Counter) -> *Counter {
+    with (p) {
+        read_pointer()
     }
 }

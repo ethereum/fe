@@ -572,7 +572,8 @@ fn terminator_edges(from: RBlockId, terminator: &RTerminator<'_>) -> Vec<Runtime
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::{AddressSpaceKind, RValueId};
+    use crate::runtime::RValueId;
+    use hir::analysis::ty::AddressSpace;
 
     #[test]
     fn raw_pointer_operations_have_explicit_trace_displays() {
@@ -584,7 +585,7 @@ mod tests {
         assert_eq!(
             runtime_expr_display(&RExpr::WordToRawAddr {
                 value,
-                space: AddressSpaceKind::Memory,
+                space: AddressSpace::Memory,
             }),
             format!("word_to_raw_addr {value:?}, Memory")
         );

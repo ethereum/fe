@@ -1,8 +1,8 @@
 use common::InputDb;
 use driver::DriverDataBase;
 use fe_codegen::{OptLevel, emit_module_sonatina_ir, emit_runtime_package_sonatina_ir_optimized};
-use hir::hir_def::TopLevelMod;
-use mir::runtime::{AddressSpaceKind, RefKind};
+use hir::{analysis::ty::AddressSpace, hir_def::TopLevelMod};
+use mir::runtime::RefKind;
 use mir::{
     IntrinsicArithBinOp, Layout, LayoutId, PlaceElem, PlaceRoot, RExpr, RLocalId, RStmt,
     RTerminator, RuntimeBody, RuntimeBuiltin, RuntimeCarrier, RuntimeClass, RuntimeInstance,
@@ -174,7 +174,7 @@ fn storage_pair_ref_layout<'db>(class: &RuntimeClass<'db>) -> Option<LayoutId<'d
             pointee,
             kind:
                 RefKind::Provider {
-                    space: AddressSpaceKind::Storage,
+                    space: AddressSpace::Storage,
                     ..
                 },
             ..
@@ -201,7 +201,7 @@ fn local_storage_handles_preserve_storage_effect_transport() {
                     store.class,
                     RuntimeClass::Ref {
                         kind: RefKind::Provider {
-                            space: AddressSpaceKind::Storage,
+                            space: AddressSpace::Storage,
                             ..
                         },
                         ..
@@ -410,7 +410,7 @@ pub fn pointer_roundtrip() -> u256 {
                             RStmt::Store {
                                 dst: RuntimePlace {
                                     root: PlaceRoot::Ptr {
-                                        space: AddressSpaceKind::Memory,
+                                        space: AddressSpace::Memory,
                                         ..
                                     },
                                     ..
@@ -432,7 +432,7 @@ pub fn pointer_roundtrip() -> u256 {
                                 expr: RExpr::Load {
                                     place: RuntimePlace {
                                         root: PlaceRoot::Ptr {
-                                            space: AddressSpaceKind::Memory,
+                                            space: AddressSpace::Memory,
                                             ..
                                         },
                                         ..
@@ -449,9 +449,9 @@ pub fn pointer_roundtrip() -> u256 {
 }
 
 #[test]
-fn default_view_pointer_params_use_direct_pointer_transport() {
+fn pointer_params_are_address_words() {
     with_runtime_package!(
-        "default_view_pointer_params_use_direct_pointer_transport.fe",
+        "pointer_params_are_address_words.fe",
         r#"
 struct Data {
     value: u256,
@@ -485,109 +485,68 @@ pub fn entry() -> u256 {
 "#
         .to_string(),
         |db, package| {
-            let read = runtime_body_for_symbol(&db, package, "read");
-            let param = read.signature.params[0].local;
-            assert!(
+            let word_param = |body: &RuntimeBody<'_>, root: fn(&RuntimeLocalRoot<'_>) -> bool| {
+                let local = body.local(body.signature.params[0].local).unwrap();
                 matches!(
-                    (
-                        &read.local(param).unwrap().carrier,
-                        &read.local(param).unwrap().root
-                    ),
-                    (
-                        RuntimeCarrier::Value(RuntimeClass::RawAddr {
-                            space: AddressSpaceKind::Memory,
-                            ..
-                        }),
-                        RuntimeLocalRoot::None,
-                    )
-                ),
-                "default-view pointer params should use their pointer value directly:\n{read:#?}"
-            );
+                    local.carrier,
+                    RuntimeCarrier::Value(RuntimeClass::Scalar(_))
+                ) && root(&local.root)
+            };
+            // A pointee place is rooted at the pointer word's address.
+            let pointee_root = |body: &RuntimeBody<'_>, place: &RuntimePlace<'_>| {
+                let PlaceRoot::Ptr {
+                    addr,
+                    space: AddressSpace::Memory,
+                    ..
+                } = place.root
+                else {
+                    return false;
+                };
+                let param = body.signature.params[0].local;
+                matches!(place.path.as_ref(), [PlaceElem::Field(_)])
+                    && runtime_body_stmts(body).any(|stmt| {
+                        matches!(
+                            stmt,
+                            RStmt::Assign {
+                                dst,
+                                expr: RExpr::WordToRawAddr { value, .. },
+                            } if *dst == addr && *value == param
+                        )
+                    })
+            };
+
+            let read = runtime_body_for_symbol(&db, package, "read");
             assert!(
-                runtime_body_stmts(&read).any(|stmt| {
-                    matches!(
+                word_param(&read, |root| matches!(root, RuntimeLocalRoot::None))
+                    && runtime_body_stmts(&read).any(|stmt| matches!(
                         stmt,
                         RStmt::Assign {
-                            expr: RExpr::Load {
-                                place: RuntimePlace {
-                                    root: PlaceRoot::Ptr { addr, .. },
-                                    path,
-                                },
-                            },
+                            expr: RExpr::Load { place },
                             ..
-                        } if *addr == param
-                            && matches!(path.as_ref(), [PlaceElem::Field(_)])
-                    )
-                }),
-                "pointer field reads should project from the direct pointer value:\n{read:#?}"
+                        } if pointee_root(&read, place)
+                    )),
+                "pointee reads should address the pointer word directly:\n{read:#?}"
             );
 
             let write = runtime_body_for_symbol(&db, package, "write");
-            let param = write.signature.params[0].local;
             assert!(
-                matches!(
-                    (
-                        &write.local(param).unwrap().carrier,
-                        &write.local(param).unwrap().root
-                    ),
-                    (
-                        RuntimeCarrier::Value(RuntimeClass::RawAddr {
-                            space: AddressSpaceKind::Memory,
-                            ..
-                        }),
-                        RuntimeLocalRoot::None,
-                    )
-                ) && runtime_body_stmts(&write).any(|stmt| {
-                    matches!(
+                word_param(&write, |root| matches!(root, RuntimeLocalRoot::None))
+                    && runtime_body_stmts(&write).any(|stmt| matches!(
                         stmt,
-                        RStmt::Store {
-                            dst: RuntimePlace {
-                                root: PlaceRoot::Ptr { addr, .. },
-                                path,
-                            },
-                            ..
-                        } if *addr == param
-                            && matches!(path.as_ref(), [PlaceElem::Field(_)])
-                    )
-                }),
+                        RStmt::Store { dst, .. } if pointee_root(&write, dst)
+                    )),
                 "pointee writes should not materialize a slot for the pointer value:\n{write:#?}"
             );
 
             let identity = runtime_body_for_symbol(&db, package, "identity");
-            let param = identity.signature.params[0].local;
             assert!(
-                matches!(
-                    (
-                        &identity.local(param).unwrap().carrier,
-                        &identity.local(param).unwrap().root,
-                    ),
-                    (
-                        RuntimeCarrier::Value(RuntimeClass::RawAddr {
-                            space: AddressSpaceKind::Memory,
-                            ..
-                        }),
-                        RuntimeLocalRoot::None,
-                    )
-                ),
+                word_param(&identity, |root| matches!(root, RuntimeLocalRoot::None)),
                 "pointer value reads should not load the pointee:\n{identity:#?}"
             );
 
             let replace = runtime_body_for_symbol(&db, package, "replace");
-            let param = replace.signature.params[0].local;
             assert!(
-                matches!(
-                    (
-                        &replace.local(param).unwrap().carrier,
-                        &replace.local(param).unwrap().root,
-                    ),
-                    (
-                        RuntimeCarrier::Value(RuntimeClass::RawAddr {
-                            space: AddressSpaceKind::Memory,
-                            ..
-                        }),
-                        RuntimeLocalRoot::Slot(_),
-                    )
-                ),
+                word_param(&replace, |root| matches!(root, RuntimeLocalRoot::Slot(_))),
                 "reassigned pointer values still require addressable local storage:\n{replace:#?}"
             );
         }
@@ -708,6 +667,89 @@ fn loop_value_arguments_do_not_force_scalar_storage() {
 }
 
 #[test]
+fn arrays_viewed_for_address_taking_params_are_passed_by_address() {
+    with_runtime_package!(
+        "arrays_viewed_for_address_taking_params_are_passed_by_address.fe",
+        r#"fn sum_view(_ xs: [u256; 8]) -> u256 {
+    var s = 0
+    for x in xs {
+        s += x
+    }
+    s
+}
+
+fn sum_own(_ xs: own [u256; 8]) -> u256 {
+    var s = 0
+    for x in xs {
+        s += x
+    }
+    s
+}
+
+fn element(_ xs: [u256; 8], _ i: usize) -> u256 {
+    xs[i]
+}
+
+fn sum_calls(_ xs: [u256; 8]) -> u256 {
+    var s = 0
+    var i: usize = 0
+    while i < 8 {
+        s += element(xs, i)
+        i += 1
+    }
+    s
+}
+
+fn sum_local(_ a: u256) -> u256 {
+    let xs: [u256; 8] = [a; 8]
+    var s = 0
+    for x in xs {
+        s += x
+    }
+    s
+}
+
+fn run(_ a: u256) -> u256 {
+    let xs: [u256; 8] = [a; 8]
+    sum_view(xs) + sum_own(xs) + sum_calls(xs) + sum_local(a)
+}
+
+fn entry() -> u256 {
+    run(1)
+}
+"#,
+        |db, package| {
+            // Copying the array into a slot of its own, as a projection's or
+            // callee's receiver, would run once per element.
+            for symbol in ["sum_view", "sum_own", "sum_calls", "sum_local"] {
+                let body = runtime_body_for_symbol(&db, package, symbol);
+                let is_array = |local: RLocalId| {
+                    body.locals[local.as_u32() as usize]
+                        .semantic_ty
+                        .pretty_print(&db)
+                        == "[u256; 8]"
+                };
+                assert!(
+                    !runtime_body_stmts(&body).any(|stmt| matches!(
+                        stmt,
+                        RStmt::Assign { dst, expr: RExpr::Use(src) }
+                            if is_array(*dst)
+                                && is_array(*src)
+                                && matches!(body.locals[dst.as_u32() as usize].root, RuntimeLocalRoot::Slot(_))
+                    )),
+                    "`{symbol}` should pass its array by address, not copy it per access:\n{body:#?}"
+                );
+            }
+            let element = runtime_body_for_symbol(&db, package, "element");
+            assert!(
+                matches!(element.signature.params[0].class, RuntimeClass::Ref { .. }),
+                "a dynamically indexed array view should arrive by address:\n{element:#?}"
+            );
+        }
+    );
+}
+
+#[test]
 fn mutated_scalar_locals_stay_rooted() {
     with_runtime_package!(
         "mutated_scalar_locals_stay_rooted.fe",
@@ -807,6 +849,78 @@ fn entry() -> u256 {
             assert!(
                 !body_has_object_materialization(&body),
                 "field-read-only owned aggregate param should not materialize to an object:\n{body:#?}"
+            );
+        }
+    );
+}
+
+#[test]
+fn immutable_own_pointer_aggregate_param_field_reads_stay_unrooted() {
+    with_runtime_package!(
+        "immutable_own_pointer_aggregate_param_field_reads_stay_unrooted.fe",
+        r#"use core::abi::Bytes
+
+struct Note {
+    id: u256,
+    body: Bytes,
+}
+
+fn note_size(_ note: own Note) -> u256 {
+    note.id + note.body.len()
+}
+
+fn entry() -> u256 {
+    note_size(Note { id: 1, body: Bytes::empty() })
+}
+"#,
+        |db, package| {
+            let body = runtime_body_for_symbol(&db, package, "note_size");
+
+            assert!(
+                matches!(body.locals[0].root, RuntimeLocalRoot::None),
+                "a pointer field should not root a field-read-only owned aggregate param:\n{body:#?}"
+            );
+            assert!(
+                !body_has_object_materialization(&body),
+                "a pointer-holding owned aggregate param should not materialize to an object:\n{body:#?}"
+            );
+        }
+    );
+}
+
+#[test]
+fn pointer_aggregate_temporaries_stay_values() {
+    with_runtime_package!(
+        "pointer_aggregate_temporaries_stay_values.fe",
+        r#"use core::abi::store_word
+use core::ptr::MemBuffer
+
+fn buffer_len() -> u256 {
+    let buffer = MemBuffer::alloc(32)
+    unsafe { store_word(ptr: buffer.ptr(), value: 42) }
+    buffer.span().len()
+}
+"#,
+        |db, package| {
+            let body = runtime_body_for_symbol(&db, package, "buffer_len");
+            let mut buffers = body
+                .locals
+                .iter()
+                .filter(|local| local.semantic_ty.pretty_print(&db) == "MemBuffer")
+                .peekable();
+
+            assert!(
+                buffers.peek().is_some(),
+                "missing MemBuffer local:\n{body:#?}"
+            );
+            assert!(
+                buffers.all(|buffer| {
+                    matches!(
+                        buffer.carrier,
+                        RuntimeCarrier::Value(RuntimeClass::AggregateValue { .. })
+                    ) && matches!(buffer.root, RuntimeLocalRoot::None)
+                }),
+                "a read-only pointer-holding temporary should stay an unrooted aggregate value:\n{body:#?}"
             );
         }
     );
@@ -1609,8 +1723,8 @@ pub fn entry() -> u256 { forward(VALUES) }
             r#"
 fn read_input() -> u256 uses (values: [u256; 3]) { forward(values) }
 pub fn entry() -> u256 uses (evm: std::evm::RawOps) {
-    let data = evm.calldata_ptr<[u256; 3]>(0)
-    with (data) { read_input() }
+    let data = unsafe { evm.calldata_ptr<[u256; 3]>(0) }
+    unsafe { with (*data) { read_input() } }
 }
 "#,
             "evm_calldata_load",
@@ -1653,8 +1767,8 @@ fn pick(_ input: Input) -> u256 { input.first }
 fn forward(_ input: Input) -> u256 { pick(input) }
 fn read_input() -> u256 uses (input: Input) { forward(input) }
 pub fn entry() -> u256 uses (evm: std::evm::RawOps) {
-    let data = evm.calldata_ptr<Input>(0)
-    with (data) { read_input() }
+    let data = unsafe { evm.calldata_ptr<Input>(0) }
+    unsafe { with (*data) { read_input() } }
 }
 "#,
     );
@@ -2385,7 +2499,12 @@ fn capability_gated_provider_ref_conversion_preserves_transport_in_rmir() {
                             matches!(
                                 stmt,
                                 RStmt::Assign {
-                                    expr: RExpr::AddrOf { .. } | RExpr::MaterializeToObject { .. },
+                                    expr: RExpr::AddrOf {
+                                        place: RuntimePlace {
+                                            root: PlaceRoot::Slot(_),
+                                            ..
+                                        },
+                                    } | RExpr::MaterializeToObject { .. },
                                     ..
                                 } | RStmt::CopyInto { .. }
                             )

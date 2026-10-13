@@ -4,7 +4,7 @@ use hir::{
             SemanticInstance, owner_effect_bindings, resolved_provider_binding_for_instance_effect,
         },
         ty::{
-            ProviderAddressSpace,
+            AddressSpace,
             ty_check::{BodyOwner, LocalBinding},
             ty_def::TyId,
         },
@@ -17,8 +17,8 @@ use rustc_hash::FxHashMap;
 use crate::{
     db::MirDb,
     runtime::{
-        AddressSpaceKind, ContractFieldBinding, ContractFieldSlot, EntryEffectArgPlan,
-        EntrySemanticArgsPlan, RefKind, RefView, RuntimeClass, TargetRootProviderBinding,
+        ContractFieldBinding, ContractFieldSlot, EntryEffectArgPlan, EntrySemanticArgsPlan,
+        RefKind, RefView, RuntimeClass, TargetRootProviderBinding,
         TargetRootProviderMaterialization,
         lower::{
             classify::{
@@ -206,7 +206,7 @@ fn contract_field_binding<'db>(
     let binding_ty = semantic.binding_ty(db, binding);
     let field_space = field.address_space;
     let init_immutable = matches!(semantic.key(db).owner(db), BodyOwner::ContractInit { .. })
-        && field_space == ProviderAddressSpace::Code;
+        && field_space == AddressSpace::Code;
     let class = runtime_effect_binding_plan(db, semantic, binding)
         .map(|plan| plan.class)
         .ok_or_else(|| {
@@ -232,7 +232,7 @@ fn contract_field_binding<'db>(
     };
     let slot = match &kind {
         RefKind::Provider {
-            space: AddressSpaceKind::Code,
+            space: AddressSpace::Code,
             ..
         } => {
             let total_bytes = i128::try_from(total_code_slots)
@@ -283,11 +283,11 @@ pub(crate) fn target_root_provider_materialization<'db>(
 ) -> Option<TargetRootProviderMaterialization<'db>> {
     match class {
         RuntimeClass::RawAddr {
-            space: AddressSpaceKind::Memory,
+            space: AddressSpace::Memory,
             pointee: Some(pointee),
         } => match pointee.target(db) {
             RuntimeClass::AggregateValue { layout } => {
-                Some(TargetRootProviderMaterialization::MemoryRawAddr { layout })
+                Some(TargetRootProviderMaterialization::MemoryRawAddr { layout: *layout })
             }
             RuntimeClass::Scalar(_) | RuntimeClass::Ref { .. } | RuntimeClass::RawAddr { .. } => {
                 None
@@ -298,7 +298,7 @@ pub(crate) fn target_root_provider_materialization<'db>(
             kind:
                 RefKind::Object
                 | RefKind::Provider {
-                    space: AddressSpaceKind::Memory,
+                    space: AddressSpace::Memory,
                     ..
                 },
             view: RefView::Whole,

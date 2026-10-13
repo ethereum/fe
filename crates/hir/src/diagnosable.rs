@@ -816,28 +816,6 @@ impl<'db> ImplTrait<'db> {
         })
     }
 
-    fn diags_effect_handle_raw(
-        self,
-        db: &'db dyn HirAnalysisDb,
-        implementor: ImplementorId<'db>,
-    ) -> Vec<TyDiagCollection<'db>> {
-        let Some((raw_ty, failure)) = ty::provider::effect_handle_impl_raw_failure(db, implementor)
-        else {
-            return Vec::new();
-        };
-        let raw = IdentId::new(db, "Raw".to_string());
-        vec![
-            ty::diagnostics::ImplDiag::InvalidEffectHandleRaw {
-                primary: self
-                    .associated_type_span(db, raw)
-                    .map_or_else(|| self.span().ty().into(), |span| span.ty().into()),
-                raw_ty,
-                failure,
-            }
-            .into(),
-        ]
-    }
-
     /// Lower the implementor view and report validity diagnostics (WF, conflicts, kind mismatch).
     /// Returns the implementor view if successful, or None if critical errors occurred.
     pub(crate) fn diags_implementor_validity(
@@ -1976,7 +1954,6 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
 
         let mut out = validity_diags;
         out.extend(implementor.diags_method_conformance(db));
-        out.extend(self.diags_effect_handle_raw(db, implementor));
         out.extend(self.diags_view_copy(db, implementor));
         out.extend(self.diags_state_only_copy(db, implementor));
         out.extend(self.diags_compiler_implemented_trait(db, implementor));

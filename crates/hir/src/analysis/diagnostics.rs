@@ -10,7 +10,7 @@ use crate::analysis::{
         is_scope_visible_from,
     },
     ty::{
-        ProviderAddressSpace,
+        AddressSpace,
         diagnostics::{
             BodyDiag, CallConstraintDiagInfo, ContractFieldLayoutIssue, DefConflictError,
             FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix,
@@ -2074,142 +2074,41 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
             ),
 
 
-            Self::ContractFieldHandleSpaceUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message:
-                        "the address space of this contract field's handle could not be determined"
-                            .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot determine the address space of a contract field".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "the `EffectHandle` implementation's `const SPACE: AddressSpace` must resolve to a concrete address space; it cannot be left inferred (`_`) or depend on an unresolved generic parameter".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
 
 
 
-            Self::ContractFieldProviderLayoutAmbiguous { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "more than one `EffectHandle` implementation matches this field"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "contract-field provider layout is ambiguous".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "layout requires one concrete implementation so `Target` and `SPACE` come from the same selected impl instance".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
-            Self::ContractFieldProviderTargetUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "the selected provider's `Target` type is still unresolved"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot determine the provider target layout".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "the selected `EffectHandle` implementation must produce a concrete target shape before contract allocation".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::ContractFieldProviderRawInvalid { span, ty, failure } => {
-                let reason = match failure {
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedRaw => {
-                        "the selected provider's `Raw` type is unresolved"
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UnsupportedRaw => {
-                        "the selected provider's `Raw` type is not a pointer or `u256`"
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UntrustedRaw => {
-                        "user-defined handles may only use `*Target` in memory"
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::Ambiguous
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedTarget
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedSpace => {
-                        unreachable!("non-raw provider failure reached raw diagnostic")
-                    }
+            Self::ContractFieldCallPointer { span, ty, pointer } => {
+                let space = match pointer.as_ptr(db) {
+                    Some((_, AddressSpace::Calldata)) => "calldata",
+                    _ => "memory",
+                };
+                let label = if ty == pointer {
+                    format!("`{}` is a {space} pointer", ty.pretty_print(db))
+                } else {
+                    format!(
+                        "`{}` holds the {space} pointer `{}`",
+                        ty.pretty_print(db),
+                        pointer.pretty_print(db)
+                    )
                 };
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: "contract field has an invalid effect-handle transport".to_string(),
+                    message: format!("contract state cannot hold a {space} pointer"),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: reason.to_string(),
+                        message: label,
                         span: span.resolve(db),
                     }],
                     notes: vec![format!(
-                        "`{}` cannot carry address-space authority through this `EffectHandle` implementation",
-                        ty.pretty_print(db)
+                        "{space} lasts for one call, so a later one could not follow the pointer"
                     )],
                     error_code,
                 }
             }
-
-            Self::ContractFieldMemoryValue { span, ty, pointer } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "contract state cannot hold a memory value".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!(
-                        "`{}` holds the memory pointer `{}`",
-                        ty.pretty_print(db),
-                        pointer.pretty_print(db)
-                    ),
-                    span: span.resolve(db),
-                }],
-                notes: vec![
-                    "memory lasts for one transaction, so a later one could not follow the pointer"
-                        .to_string(),
-                ],
-                error_code,
-            },
 
             Self::ContractFieldPersistentUnderTransient {
                 span,
@@ -2234,31 +2133,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
-            Self::ContractFieldProviderCycle { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this provider target cycle changes its type arguments".to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "provider target layout is not finitely recursive".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "recursive `EffectHandle::Target` views must return to the same type arguments or a finite permutation of them".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
             Self::ContractFieldSlotNotConst { span } => CompleteDiagnostic::new(
                 Severity::Error,
@@ -4115,6 +3989,9 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         MutabilityFix::Effect => {
                             format!("write `mut {name}` in `uses` to write it")
                         }
+                        MutabilityFix::Calldata => {
+                            format!("`{name}` points into calldata, which is read-only")
+                        }
                     };
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
@@ -4187,11 +4064,11 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }],
                 notes: vec![match space {
-                    ProviderAddressSpace::Memory => "memory handles cannot be persisted as contract fields; use a plain immutable field for code-backed data or a plain `mut` field for storage-backed state".to_string(),
-                    ProviderAddressSpace::Calldata => "calldata belongs to one call and has no stable contract-field location; access receive arguments or calldata handles locally instead".to_string(),
-                    ProviderAddressSpace::Storage
-                    | ProviderAddressSpace::Transient
-                    | ProviderAddressSpace::Code => unreachable!("supported contract field address space"),
+                    AddressSpace::Memory => "memory handles cannot be persisted as contract fields; use a plain immutable field for code-backed data or a plain `mut` field for storage-backed state".to_string(),
+                    AddressSpace::Calldata => "calldata belongs to one call and has no stable contract-field location; access receive arguments or calldata handles locally instead".to_string(),
+                    AddressSpace::Storage
+                    | AddressSpace::Transient
+                    | AddressSpace::Code => unreachable!("supported contract field address space"),
                 }],
                 error_code,
             },
@@ -5084,18 +4961,20 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            BodyDiag::UncoveredProvider { primary, is_mut } => CompleteDiagnostic {
+            BodyDiag::UncoveredStateAccess { primary, is_mut } => CompleteDiagnostic {
                 severity,
-                message: "a `with` provider naming storage needs the function's own authority"
+                message: "an access through a state pointer needs the function's own authority"
                     .to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: "this handle names storage the function's `uses` does not cover"
-                        .to_string(),
+                    message: format!(
+                        "this {} state the function's `uses` does not cover",
+                        if *is_mut { "writes" } else { "reads" }
+                    ),
                     span: primary.resolve(db),
                 }],
                 notes: vec![format!(
-                    "require it via `uses (storage: {}RawStorage)`, or vouch for it in an `unsafe` block",
+                    "require it via `uses (storage: {}RawStorage)`; `unsafe` does not grant authority",
                     if *is_mut { "mut " } else { "" }
                 )],
                 error_code,
@@ -5172,13 +5051,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            BodyDiag::UnsafeProviderRequiresUnsafe { primary } => primary_diag(
-                severity,
-                "binding a raw-pointer effect provider requires an `unsafe` block or function",
-                "provider reaches its target through a raw pointer",
-                primary.resolve(db),
-                error_code,
-            ),
 
             BodyDiag::UnsafeCallRequiresUnsafe { primary, callee } => {
                 let name = callee
@@ -6078,45 +5950,6 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 notes: vec![],
                 error_code,
             },
-
-            Self::InvalidEffectHandleRaw {
-                primary,
-                raw_ty,
-                failure,
-            } => {
-                let message = match failure {
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UnsupportedRaw => {
-                        format!(
-                            "`{}` cannot represent an effect-handle address",
-                            raw_ty.pretty_print(db)
-                        )
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UntrustedRaw => {
-                        "integer-backed handles are reserved for compiler-provided libraries"
-                            .to_string()
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::Ambiguous
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedTarget
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedRaw
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedSpace => {
-                        unreachable!("non-concrete raw failure reached impl diagnostic")
-                    }
-                };
-                CompleteDiagnostic {
-                    severity,
-                    message: "invalid `EffectHandle::Raw` type".to_string(),
-                    sub_diagnostics: vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message,
-                        span: primary.resolve(db),
-                    }],
-                    notes: vec![
-                        "user-defined effect handles must use `*Target` and can only provide memory effects"
-                            .to_string(),
-                    ],
-                    error_code,
-                }
-            }
         }
     }
 }

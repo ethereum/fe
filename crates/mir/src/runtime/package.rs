@@ -1,4 +1,5 @@
 use common::indexmap::IndexMap;
+use hir::analysis::ty::AddressSpace;
 use hir::semantic::{RecvArmAbiInfo, RecvArmView};
 use hir::{
     analysis::{
@@ -45,14 +46,14 @@ use crate::{
         stable_identity_fingerprint, type_identity,
     },
     runtime::{
-        AddressSpaceKind, ConstRegionId, ContractInitAbiPlan, ContractRecvAbiPlan, DispatchArm,
-        DispatchDefault, EntryEffectArgPlan, EntrySemanticArgsPlan, InitArgsPlan, LayoutId,
-        LayoutKey, RawPointeeId, RawPointeeKey, RefKind, RefView, ResolvedCodeRegion, RuntimeClass,
-        RuntimeCodeRegion, RuntimeCodeRegionKey, RuntimeFunction, RuntimeFunctionOwner,
-        RuntimeInlineHint, RuntimeInputPlan, RuntimeLinkage, RuntimeObject, RuntimePackage,
-        RuntimePackagePlan, RuntimeReturnPlan, RuntimeSection, RuntimeSectionName,
-        RuntimeSectionRef, RuntimeSyntheticSpec, ScalarClass, ScalarRepr, ScalarRole,
-        TargetRootProviderBinding, TargetRootProviderMaterialization,
+        ConstRegionId, ContractInitAbiPlan, ContractRecvAbiPlan, DispatchArm, DispatchDefault,
+        EntryEffectArgPlan, EntrySemanticArgsPlan, InitArgsPlan, LayoutId, LayoutKey, RawPointeeId,
+        RefKind, RefView, ResolvedCodeRegion, RuntimeClass, RuntimeCodeRegion,
+        RuntimeCodeRegionKey, RuntimeFunction, RuntimeFunctionOwner, RuntimeInlineHint,
+        RuntimeInputPlan, RuntimeLinkage, RuntimeObject, RuntimePackage, RuntimePackagePlan,
+        RuntimeReturnPlan, RuntimeSection, RuntimeSectionName, RuntimeSectionRef,
+        RuntimeSyntheticSpec, ScalarClass, ScalarRepr, ScalarRole, TargetRootProviderBinding,
+        TargetRootProviderMaterialization,
     },
     verify::verify_runtime_package,
 };
@@ -994,7 +995,7 @@ fn contract_recv_host_binding<'db>(
         db,
         env,
         Some(registration.provider_ty),
-        AddressSpaceKind::Memory,
+        AddressSpace::Memory,
     );
     let materialization = target_root_provider_materialization(db, &class).ok_or_else(|| {
         LowerError::Unsupported(format!(
@@ -1532,7 +1533,7 @@ fn runtime_class_for_visible_binding_entry<'db>(
         });
     }
     if matches!(entry.binding, LocalBinding::Local { .. }) {
-        return top_level_class_for_ty_in_env(db, env, entry.semantic_ty, AddressSpaceKind::Memory)
+        return top_level_class_for_ty_in_env(db, env, entry.semantic_ty, AddressSpace::Memory)
             .unwrap_or_else(|| {
                 panic!("runtime-visible recv arg binding has no top-level runtime class: {entry:?}")
             });
@@ -2195,15 +2196,10 @@ fn runtime_class_sort_key<'db>(db: &'db dyn MirDb, class: &RuntimeClass<'db>) ->
     }
 }
 
-/// Names a raw target without resolving it. Exact targets keep the class
-/// rendering; stored targets name their source type. The result is a naming
-/// and ordering string, not an identity: `type_identity` renders every const
-/// hole as `_`, so distinct pointees can share a name.
+/// Names a raw target by its class rendering. The result is a naming and
+/// ordering string, not an identity.
 pub(crate) fn raw_pointee_sort_key<'db>(db: &'db dyn MirDb, pointee: RawPointeeId<'db>) -> String {
-    match pointee.key(db) {
-        RawPointeeKey::Stored(ty) => format!("stored({})", type_identity(db, *ty)),
-        RawPointeeKey::Exact(class) => runtime_class_sort_key(db, class),
-    }
+    runtime_class_sort_key(db, pointee.target(db))
 }
 
 fn scalar_class_sort_key<'db>(db: &'db dyn MirDb, class: &ScalarClass<'db>) -> String {
@@ -2314,13 +2310,13 @@ fn layout_sort_key_query<'db>(db: &'db dyn MirDb, layout: LayoutId<'db>) -> Stri
     }
 }
 
-fn address_space_sort_key(space: AddressSpaceKind) -> &'static str {
+fn address_space_sort_key(space: AddressSpace) -> &'static str {
     match space {
-        AddressSpaceKind::Memory => "memory",
-        AddressSpaceKind::Storage => "storage",
-        AddressSpaceKind::Transient => "transient",
-        AddressSpaceKind::Calldata => "calldata",
-        AddressSpaceKind::Code => "code",
+        AddressSpace::Memory => "memory",
+        AddressSpace::Storage => "storage",
+        AddressSpace::Transient => "transient",
+        AddressSpace::Calldata => "calldata",
+        AddressSpace::Code => "code",
     }
 }
 

@@ -2,16 +2,11 @@ use crate::analysis::HirAnalysisDb;
 use crate::analysis::place::resolve_place_field;
 use crate::analysis::semantic::effect_param_site;
 use crate::analysis::ty::adt_def::AdtRef;
-use crate::analysis::ty::corelib::{effect_key_state_access, resolve_core_trait};
+use crate::analysis::ty::corelib::effect_key_state_access;
 use crate::analysis::ty::diagnostics::{BodyDiag, FuncBodyDiag};
 use crate::analysis::ty::effects::rows::expand_rows;
-use crate::analysis::ty::normalize::normalize_ty;
-use crate::analysis::ty::provider::{
-    EffectHandleResolution, ProviderAddressSpace, provider_semantics, resolve_effect_handle,
-};
+use crate::analysis::ty::provider::AddressSpace;
 use crate::analysis::ty::shape::Shape;
-use crate::analysis::ty::trait_def::TraitInstId;
-use crate::analysis::ty::trait_resolution::{TraitSolveCx, is_goal_satisfiable};
 use crate::analysis::ty::ty_check::RecordInitLowering;
 use crate::analysis::ty::ty_check::{BodyOwner, TypedBody};
 use crate::analysis::ty::ty_def::BorrowKind;
@@ -27,8 +22,11 @@ use rustc_hash::FxHashSet;
 /// Reports the unsafe operations of a body that are outside an unsafe
 /// context: an `unsafe { .. }` block, or the body of an `unsafe fn`. These are
 /// dereferencing a raw pointer, explicitly or by selecting a field through
-/// it, calling an `unsafe fn`, binding a raw-pointer effect provider, and
-/// initializing or writing an `unsafe` field.
+/// it, calling an `unsafe fn`, and initializing or writing an `unsafe` field.
+///
+/// Also reports, inside unsafe contexts too, an access through a storage or
+/// transient-storage pointer that the body's own effects do not cover: state
+/// interference never disappears from a signature.
 ///
 /// Nested items and anonymous const bodies are checked as their own owners,
 /// and never inherit an enclosing unsafe context.
@@ -40,38 +38,121 @@ pub(crate) fn check_unsafe_ops<'db>(
     let Some(body) = owner.body(db) else {
         return Vec::new();
     };
-    if let BodyOwner::Func(func) = owner
-        && func.is_unsafe(db)
-    {
-        return Vec::new();
-    }
 
     let mut checker = UnsafeChecker {
         db,
         owner,
         body,
         typed_body,
+        in_unsafe: matches!(owner, BodyOwner::Func(func) if func.is_unsafe(db)),
         written_fields: FxHashSet::default(),
+        state_accesses: FxHashSet::default(),
         diags: Vec::new(),
     };
     checker.check_expr(body.expr(db));
     checker.diags
 }
 
-/// Walks the safe code of a body; it never enters an `unsafe` block, since
-/// everything there is allowed.
 struct UnsafeChecker<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
     body: Body<'db>,
     typed_body: &'a TypedBody<'db>,
+    /// Inside an `unsafe` block or `unsafe fn`, where unsafe operations are
+    /// allowed.
+    in_unsafe: bool,
     /// The `unsafe` field selections already reported as written, so a
     /// place both assigned and opened `mut` is reported once.
     written_fields: FxHashSet<ExprId>,
+    /// The state-pointer dereferences already checked for authority. A write
+    /// is checked before the read of the same place.
+    state_accesses: FxHashSet<ExprId>,
     diags: Vec<FuncBodyDiag<'db>>,
 }
 
 impl<'db> UnsafeChecker<'db, '_> {
+    /// Reports an unsafe operation, unless an unsafe context allows it.
+    fn push_unsafe(&mut self, diag: BodyDiag<'db>) {
+        if !self.in_unsafe {
+            self.diags.push(diag.into());
+        }
+    }
+
+    /// Whether `ty`, or the target of a capability of it, is a pointer into
+    /// storage or transient storage.
+    fn is_state_pointer(&self, ty: TyId<'db>) -> bool {
+        matches!(
+            ty.as_capability(self.db)
+                .map_or(ty, |(_, inner)| inner)
+                .as_ptr(self.db),
+            Some((_, AddressSpace::Storage | AddressSpace::Transient))
+        )
+    }
+
+    /// The dereference of a state pointer the place `expr` lies under: an
+    /// explicit `*p`, or a field selected through `p`.
+    fn state_deref_of_place(&self, expr: ExprId) -> Option<ExprId> {
+        match expr.data(self.db, self.body) {
+            Partial::Present(Expr::Un(inner, UnOp::Deref)) => self
+                .is_state_pointer(self.typed_body.expr_ty(self.db, *inner))
+                .then_some(expr),
+            Partial::Present(Expr::Field(base, Partial::Present(field))) => {
+                let base_ty = self.typed_body.expr_ty(self.db, *base);
+                if self.is_state_pointer(base_ty)
+                    && resolve_place_field(self.db, base_ty, *field)
+                        .is_some_and(|resolved| resolved.implicit_deref_ty.is_some())
+                {
+                    Some(expr)
+                } else {
+                    self.state_deref_of_place(*base)
+                }
+            }
+            Partial::Present(Expr::Bin(base, _, BinOp::Index)) => self.state_deref_of_place(*base),
+            _ => None,
+        }
+    }
+
+    /// Reports an access through the state-pointer dereference `deref` that
+    /// the body's own effects do not cover, `unsafe` or not.
+    fn check_state_access(&mut self, deref: ExprId, is_mut: bool) {
+        if !self.state_accesses.insert(deref) {
+            return;
+        }
+        let scope = self.body.scope();
+        let assumptions = self.typed_body.assumptions();
+        let requirements = effect_param_site(self.owner)
+            .map(|site| EffectEnvView::new(site).requirements(self.db))
+            .unwrap_or_default();
+        let rows = expand_rows(self.db, &requirements, scope, assumptions);
+        let covered = requirements
+            .iter()
+            .chain(
+                rows.components
+                    .iter()
+                    .map(|component| &component.requirement),
+            )
+            .filter(|requirement| requirement.is_mut || !is_mut)
+            .any(|requirement| {
+                effect_key_state_access(
+                    self.db,
+                    scope,
+                    assumptions,
+                    requirement.key.clone(),
+                    requirement.is_mut,
+                )
+                .is_some()
+            });
+        if !covered {
+            self.diags.push(
+                BodyDiag::UncoveredStateAccess {
+                    primary: deref.span(self.body).into(),
+                    is_mut,
+                }
+                .into(),
+            );
+        }
+    }
+
     /// Whether `name` is an `unsafe` field of `parent`.
     fn is_unsafe_field(&self, parent: FieldParent<'db>, name: IdentId<'db>) -> bool {
         parent
@@ -106,17 +187,17 @@ impl<'db> UnsafeChecker<'db, '_> {
     /// Reports a write to the place `expr` if it goes through an `unsafe`
     /// field.
     fn check_place_write(&mut self, expr: ExprId) {
+        if let Some(deref) = self.state_deref_of_place(expr) {
+            self.check_state_access(deref, true);
+        }
         if let Some((field, name)) = self.unsafe_field_of_place(expr)
             && self.written_fields.insert(field)
         {
-            self.diags.push(
-                BodyDiag::UnsafeFieldRequiresUnsafe {
-                    primary: field.span(self.body).into(),
-                    name,
-                    write: true,
-                }
-                .into(),
-            );
+            self.push_unsafe(BodyDiag::UnsafeFieldRequiresUnsafe {
+                primary: field.span(self.body).into(),
+                name,
+                write: true,
+            });
         }
     }
 
@@ -137,14 +218,11 @@ impl<'db> UnsafeChecker<'db, '_> {
             if let Some(name) = field.label_eagerly(self.db, self.body)
                 && self.is_unsafe_field(parent, name)
             {
-                self.diags.push(
-                    BodyDiag::UnsafeFieldRequiresUnsafe {
-                        primary: span.clone().field(idx).into(),
-                        name,
-                        write: false,
-                    }
-                    .into(),
-                );
+                self.push_unsafe(BodyDiag::UnsafeFieldRequiresUnsafe {
+                    primary: span.clone().field(idx).into(),
+                    name,
+                    write: false,
+                });
             }
         }
     }
@@ -179,14 +257,11 @@ impl<'db> UnsafeChecker<'db, '_> {
                         && self.is_unsafe_field(parent, name)
                         && let Some(binding) = self.mut_binding(field.pat)
                     {
-                        self.diags.push(
-                            BodyDiag::UnsafeFieldRequiresUnsafe {
-                                primary: binding.span(self.body).into(),
-                                name,
-                                write: true,
-                            }
-                            .into(),
-                        );
+                        self.push_unsafe(BodyDiag::UnsafeFieldRequiresUnsafe {
+                            primary: binding.span(self.body).into(),
+                            name,
+                            write: true,
+                        });
                     }
                     self.check_pat(field.pat);
                 }
@@ -226,12 +301,9 @@ impl<'db> UnsafeChecker<'db, '_> {
         })
     }
     fn report_deref(&mut self, expr: ExprId) {
-        self.diags.push(
-            BodyDiag::UnsafeDerefRequiresUnsafe {
-                primary: expr.span(self.body).into(),
-            }
-            .into(),
-        );
+        self.push_unsafe(BodyDiag::UnsafeDerefRequiresUnsafe {
+            primary: expr.span(self.body).into(),
+        });
     }
 
     /// Reports a call, method call or operator whose callee is an
@@ -243,13 +315,10 @@ impl<'db> UnsafeChecker<'db, '_> {
             && let callee @ CallableDef::Func(func) = callable.callable_def()
             && func.is_unsafe(self.db)
         {
-            self.diags.push(
-                BodyDiag::UnsafeCallRequiresUnsafe {
-                    primary: expr.span(self.body).into(),
-                    callee,
-                }
-                .into(),
-            );
+            self.push_unsafe(BodyDiag::UnsafeCallRequiresUnsafe {
+                primary: expr.span(self.body).into(),
+                callee,
+            });
         }
         let typed_body = self.typed_body;
         for arg in typed_body.call_effect_args(expr).into_iter().flatten() {
@@ -258,93 +327,6 @@ impl<'db> UnsafeChecker<'db, '_> {
             {
                 self.check_place_write(source);
             }
-        }
-    }
-
-    /// Reports a `with` binding whose provider is an effect handle that
-    /// provides its target through a raw pointer. Only the trusted handles of
-    /// `std` carry a numeric `Raw`; any other handle, including a generic one,
-    /// may give its effect access to memory nothing has checked. A handle that
-    /// cannot provide its target is only a value, and binding it is safe.
-    fn check_provider(&mut self, value: ExprId) {
-        let ty = self.typed_body.expr_ty(self.db, value);
-        let provider_ty = ty.as_view(self.db).unwrap_or(ty);
-        let scope = self.body.scope();
-        let assumptions = self.typed_body.assumptions();
-        if let EffectHandleResolution::Resolved {
-            target_ty, raw_ty, ..
-        } = resolve_effect_handle(self.db, scope, assumptions, provider_ty)
-            && raw_ty != TyId::u256(self.db)
-            && let Some(effect_ref) = resolve_core_trait(self.db, scope, &["EffectRef"])
-            && is_goal_satisfiable(
-                self.db,
-                TraitSolveCx::new(self.db, scope).with_assumptions(assumptions),
-                TraitInstId::new_simple(self.db, effect_ref, vec![provider_ty, target_ty]),
-            )
-            .is_satisfied()
-        {
-            self.diags.push(
-                BodyDiag::UnsafeProviderRequiresUnsafe {
-                    primary: value.span(self.body).into(),
-                }
-                .into(),
-            );
-        }
-    }
-
-    /// Reports a `with` binding whose provider names existing storage or
-    /// transient state that the function's own effects do not cover, so that
-    /// nonlocal interference never disappears from its contract. The type
-    /// checker records the providers whose place lies in one of the
-    /// function's effects (`provider_covered`); otherwise only raw state
-    /// authority covers it.
-    fn check_provider_coverage(&mut self, value: ExprId) {
-        let scope = self.body.scope();
-        let assumptions = self.typed_body.assumptions();
-        let ty = normalize_ty(
-            self.db,
-            self.typed_body.expr_ty(self.db, value),
-            scope,
-            assumptions,
-        );
-        let names_resource = matches!(
-            provider_semantics(self.db, scope, assumptions, ty).address_space,
-            Some(ProviderAddressSpace::Storage | ProviderAddressSpace::Transient)
-        );
-        if self.typed_body.provider_covered(value) || !names_resource {
-            return;
-        }
-        let is_mut = self.typed_body.expr_prop(self.db, value).is_mut;
-        let requirements = effect_param_site(self.owner)
-            .map(|site| EffectEnvView::new(site).requirements(self.db))
-            .unwrap_or_default();
-        let rows = expand_rows(self.db, &requirements, scope, assumptions);
-        let covered = requirements
-            .iter()
-            .chain(
-                rows.components
-                    .iter()
-                    .map(|component| &component.requirement),
-            )
-            .filter(|requirement| requirement.is_mut || !is_mut)
-            .any(|requirement| {
-                effect_key_state_access(
-                    self.db,
-                    scope,
-                    assumptions,
-                    requirement.key.clone(),
-                    requirement.is_mut,
-                )
-                .is_some()
-            });
-        if !covered {
-            self.diags.push(
-                BodyDiag::UncoveredProvider {
-                    primary: value.span(self.body).into(),
-                    is_mut,
-                }
-                .into(),
-            );
         }
     }
 
@@ -393,7 +375,11 @@ impl<'db> UnsafeChecker<'db, '_> {
 
         match expr_data {
             Expr::Lit(_) | Expr::Path(_) | Expr::UnsupportedMacroCall => {}
-            Expr::Block(_, BlockKind::Unsafe) => {}
+            Expr::Block(stmts, BlockKind::Unsafe) => {
+                let outer = std::mem::replace(&mut self.in_unsafe, true);
+                stmts.iter().for_each(|stmt| self.check_stmt(*stmt));
+                self.in_unsafe = outer;
+            }
             Expr::Block(stmts, BlockKind::Normal) => {
                 stmts.iter().for_each(|stmt| self.check_stmt(*stmt));
             }
@@ -414,17 +400,24 @@ impl<'db> UnsafeChecker<'db, '_> {
                     {
                         self.report_deref(expr);
                     }
+                    if self.is_state_pointer(ty) {
+                        self.check_state_access(expr, false);
+                    }
                 }
                 self.check_call(expr);
             }
 
             Expr::Field(inner, field) => {
                 self.check_expr(*inner);
+                let inner_ty = self.typed_body.expr_ty(self.db, *inner);
                 if let Some(field) = field.to_opt()
-                    && resolve_place_field(self.db, self.typed_body.expr_ty(self.db, *inner), field)
+                    && resolve_place_field(self.db, inner_ty, field)
                         .is_some_and(|resolved| resolved.implicit_deref_ty.is_some())
                 {
                     self.report_deref(expr);
+                    if self.is_state_pointer(inner_ty) {
+                        self.check_state_access(expr, false);
+                    }
                 }
             }
 
@@ -478,8 +471,6 @@ impl<'db> UnsafeChecker<'db, '_> {
             Expr::With(bindings, body) => {
                 for binding in bindings {
                     self.check_expr(binding.value);
-                    self.check_provider(binding.value);
-                    self.check_provider_coverage(binding.value);
                 }
                 self.check_expr(*body);
             }

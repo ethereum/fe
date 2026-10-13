@@ -11,10 +11,10 @@ pub trait Copy {}
 
 /// A `Copy` type a view parameter takes by copy, a *snapshot*: a scalar or a
 /// handle, such as `Address` or a memory buffer's handle, whose copy is all a
-/// callee can observe. Primitives, raw pointers and effect handles are
-/// snapshots without it. Every other value, `Copy` or not, is viewed in
-/// place: the call reads the caller's place for its duration, and a
-/// projection's result over it is the caller's place.
+/// callee can observe. Primitives and raw pointers are snapshots without it.
+/// Every other value, `Copy` or not, is viewed in place: the call reads the
+/// caller's place for its duration, and a projection's result over it is the
+/// caller's place.
 pub trait Snapshot: Copy {}
 
 /// A type whose stored value is cleared by zeroing its slots and lanes:

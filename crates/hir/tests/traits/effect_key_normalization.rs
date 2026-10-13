@@ -3,15 +3,13 @@ use common::diagnostics::{CompleteDiagnostic, cmp_complete_diagnostics};
 use cranelift_entity::EntityRef;
 use fe_hir::analysis::semantic::{
     GenericSubst, get_or_build_semantic_instance, instantiate_typed_body, instantiated_effect_env,
-    resolved_provider_binding_for_instance_effect, root_semantic_instance_key, typed_body_template,
-    validate_instantiated_effect_env_key,
+    root_semantic_instance_key, typed_body_template, validate_instantiated_effect_env_key,
 };
 use fe_hir::analysis::ty::effects::{EffectKeyKind, place_effect_provider_param_index_map};
 use fe_hir::analysis::ty::trait_def::resolve_trait_method_instance;
 use fe_hir::analysis::ty::trait_resolution::{Selection, TraitSolveCx};
 use fe_hir::analysis::ty::ty_check::{
-    BodyOwner, EffectArgLayoutView, EffectPassMode, TypedBody, check_contract_recv_arm_body,
-    check_func_body,
+    BodyOwner, EffectPassMode, TypedBody, check_contract_recv_arm_body, check_func_body,
 };
 use fe_hir::analysis::ty::ty_def::{TyData, TyId};
 use fe_hir::hir_def::{CallableDef, Contract, Expr, ExprId, Func, ItemKind, Partial, TopLevelMod};
@@ -108,18 +106,6 @@ fn assert_single_type_effect_arg<'db>(typed_body: &TypedBody<'db>, call_expr: Ex
         .expect("missing resolved effect args");
     assert_eq!(effect_args.len(), 1);
     assert_eq!(effect_args[0].key_kind, EffectKeyKind::Type);
-}
-
-fn assert_effect_arg_pass_mode<'db>(
-    typed_body: &TypedBody<'db>,
-    call_expr: ExprId,
-    expected: EffectPassMode,
-) {
-    let effect_args = typed_body
-        .call_effect_args(call_expr)
-        .expect("missing resolved effect args");
-    assert_eq!(effect_args.len(), 1);
-    assert_eq!(effect_args[0].pass_mode, expected);
 }
 
 fn assert_trait_effect_provider_arg<'db>(
@@ -623,8 +609,6 @@ fn keyed_trait_effects_use_provider_type_for_with_bindings() {
     let file = db.new_stand_alone(
         Utf8PathBuf::from("keyed_trait_effects_use_provider_type_for_with_bindings.fe"),
         r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
 trait Logger {
     fn log(self)
 }
@@ -639,24 +623,11 @@ impl<T> Logger for Ptr<T> {
     fn log(self) {}
 }
 
-impl<T> EffectHandle for Ptr<T> {
-    type Target = T
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = *T
-
-    fn raw(self) -> *T { self.raw }
-}
-
-impl<T> EffectRef<T> for Ptr<T> {}
-
 fn needs() uses (logger: Logger) {}
 
 fn caller(p: own Ptr<Console>) {
-    unsafe {
-        with (Logger = p) {
-            needs()
-        }
+    with (Logger = p) {
+        needs()
     }
 }
 "#,
@@ -835,8 +806,6 @@ fn keyed_trait_effects_do_not_accept_target_type_only_matches() {
     let file = db.new_stand_alone(
         Utf8PathBuf::from("keyed_trait_effects_do_not_accept_target_type_only_matches.fe"),
         r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
 trait Logger {
     fn log(self)
 }
@@ -847,28 +816,11 @@ impl Logger for Console {
     fn log(self) {}
 }
 
-struct Ptr<T> {
-    raw: u256
-}
-
-impl<T> EffectHandle for Ptr<T> {
-    type Target = T
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = u256
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-impl<T> EffectRef<T> for Ptr<T> {}
-
 fn needs() uses (logger: Logger) {}
 
-fn caller(p: Ptr<Console>) {
-    unsafe {
-        with (Logger = p) {
-            needs()
-        }
+fn caller(p: *Console) {
+    with (Logger = p) {
+        needs()
     }
 }
 "#,
@@ -876,9 +828,9 @@ fn caller(p: Ptr<Console>) {
     let (top_mod, _) = db.top_mod(file);
     let diags = diagnostics_for(&db, top_mod);
     assert!(
-        diags.iter().any(|diag| diag.message.contains(
-            "keyed effect binding `Logger` requires `Ptr<Console>` to implement `Logger`",
-        )),
+        diags.iter().any(|diag| diag
+            .message
+            .contains("keyed effect binding `Logger` requires `*Console` to implement `Logger`",)),
         "expected keyed trait binding failure, got diagnostics: {diags:#?}"
     );
 }
@@ -1414,30 +1366,13 @@ fn schematic_type_keyed_with_bindings_do_not_accept_wrong_explicit_keys_via_prov
             "schematic_type_keyed_with_bindings_do_not_accept_wrong_explicit_keys_via_provider_wrappers.fe",
         ),
         r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
 struct Storage<T> {
     value: T,
 }
 
-struct Ptr<T> {
-    raw: u256
-}
-
-impl<T> EffectHandle for Ptr<T> {
-    type Target = T
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = u256
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-impl<T> EffectRef<T> for Ptr<T> {}
-
 fn needs<T>() uses (store: Storage<T>) {}
 
-fn caller(p: own Ptr<Storage<u8>>) {
+fn caller(p: *Storage<u8>) {
     with (Storage<u16> = p) {
         needs()
     }
@@ -1642,341 +1577,6 @@ fn caller(good: own Good, bad: own Bad) {
     let needs_call = find_named_call_expr(&db, caller, "needs");
     let typed_body = check_func_body(&db, caller).1.clone();
     assert_single_trait_effect_arg(&typed_body, needs_call);
-}
-
-#[test]
-fn unkeyed_wrapper_type_effect_candidates_commit_specialized_wrapper_solutions() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from(
-            "unkeyed_wrapper_type_effect_candidates_commit_specialized_wrapper_solutions.fe",
-        ),
-        r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
-extern {
-    fn todo() -> !
-}
-
-struct Storage<T> {
-    value: T,
-}
-
-struct Ptr<T> {
-    raw: u256
-}
-
-impl EffectHandle for Ptr<Storage<u8>> {
-    type Target = Storage<u8>
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = u256
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-impl EffectRef<Storage<u8>> for Ptr<Storage<u8>> {}
-
-fn make<T>() -> Ptr<T> { todo() }
-fn take(x: ref Ptr<Storage<u16>>) {}
-fn needs() uses (store: Storage<u8>) {}
-
-fn caller() {
-    let x = make()
-    unsafe {
-        with (x) {
-            needs()
-            take(ref x)
-        }
-    }
-}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    let diags = diagnostics_for(&db, top_mod);
-    assert!(
-        diags.iter().any(|diag| {
-            diag.message.contains("type mismatch")
-                && diag
-                    .sub_diagnostics
-                    .iter()
-                    .any(|sub| sub.message.contains("Ptr<Storage<u16>>"))
-                && diag
-                    .sub_diagnostics
-                    .iter()
-                    .any(|sub| sub.message.contains("Ptr<Storage<u8>>"))
-        }),
-        "expected later refinement to conflict with the committed wrapper proof, got diagnostics: {diags:#?}"
-    );
-
-    let caller = find_func(&db, top_mod, "caller");
-    let needs_call = find_named_call_expr(&db, caller, "needs");
-    let typed_body = check_func_body(&db, caller).1.clone();
-    assert_single_type_effect_arg(&typed_body, needs_call);
-}
-
-#[test]
-fn keyed_wrapper_type_effect_candidates_commit_specialized_wrapper_solutions() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from(
-            "keyed_wrapper_type_effect_candidates_commit_specialized_wrapper_solutions.fe",
-        ),
-        r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
-extern {
-    fn todo() -> !
-}
-
-struct Storage<T> {
-    value: T,
-}
-
-struct Ptr<T> {
-    raw: u256
-}
-
-impl EffectHandle for Ptr<Storage<u8>> {
-    type Target = Storage<u8>
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = u256
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-impl EffectRef<Storage<u8>> for Ptr<Storage<u8>> {}
-
-fn make<T>() -> Ptr<T> { todo() }
-fn take(x: ref Ptr<Storage<u16>>) {}
-fn needs() uses (store: Storage<u8>) {}
-
-fn caller() {
-    let x = make()
-    unsafe {
-        with (Storage<u8> = x) {
-            needs()
-            take(ref x)
-        }
-    }
-}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    let diags = diagnostics_for(&db, top_mod);
-    assert!(
-        diags.iter().any(|diag| {
-            diag.message.contains("type mismatch")
-                && diag
-                    .sub_diagnostics
-                    .iter()
-                    .any(|sub| sub.message.contains("Ptr<Storage<u16>>"))
-                && diag
-                    .sub_diagnostics
-                    .iter()
-                    .any(|sub| sub.message.contains("Ptr<Storage<u8>>"))
-        }),
-        "expected later refinement to conflict with the committed keyed wrapper proof, got diagnostics: {diags:#?}"
-    );
-
-    let caller = find_func(&db, top_mod, "caller");
-    let needs_call = find_named_call_expr(&db, caller, "needs");
-    let typed_body = check_func_body(&db, caller).1.clone();
-    assert_single_type_effect_arg(&typed_body, needs_call);
-}
-
-#[test]
-fn wrapper_type_effect_candidates_accept_stable_specialized_providers() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from("wrapper_type_effect_candidates_accept_stable_specialized_providers.fe"),
-        r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
-struct Storage<T> {
-    value: T,
-}
-
-struct Ptr<T> {
-    raw: *T
-}
-
-impl EffectHandle for Ptr<Storage<u8>> {
-    type Target = Storage<u8>
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = *Storage<u8>
-
-    fn raw(self) -> *Storage<u8> { self.raw }
-}
-
-impl EffectRef<Storage<u8>> for Ptr<Storage<u8>> {}
-
-fn needs() uses (store: Storage<u8>) {}
-
-fn caller(x: own Ptr<Storage<u8>>) {
-    unsafe {
-        with (x) {
-            needs()
-        }
-    }
-}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
-
-    let caller = find_func(&db, top_mod, "caller");
-    let call_expr = find_call_expr(&db, caller);
-    let typed_body = check_func_body(&db, caller).1.clone();
-    assert_single_type_effect_arg(&typed_body, call_expr);
-}
-
-#[test]
-fn unkeyed_wrapper_type_effects_renormalize_projection_targets_after_later_proofs() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_trusted_effect_handle_module(
-        Utf8PathBuf::from(
-            "unkeyed_wrapper_type_effects_renormalize_projection_targets_after_later_proofs.fe",
-        ),
-        r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
-extern {
-    fn todo() -> !
-}
-
-trait HasTy {
-    type Assoc
-}
-
-struct Storage<T> {
-    value: T,
-}
-
-struct Wrap<T> {}
-struct Ptr<T> {
-    raw: u256
-}
-struct Impl {}
-
-impl HasTy for Impl {
-    type Assoc = u8
-}
-
-impl<T> EffectHandle for Ptr<Wrap<T>>
-where
-    T: HasTy
-{
-    type Target = Storage<T::Assoc>
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = u256
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-impl EffectRef<Storage<u8>> for Ptr<Wrap<Impl>> {}
-
-fn make<T>() -> Ptr<Wrap<T>>
-where
-    T: HasTy
-{
-    todo()
-}
-fn needs() uses (store: Storage<u8>) {}
-
-fn caller() {
-    let x = make()
-    unsafe {
-        with (x) {
-            needs()
-        }
-    }
-}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
-
-    let caller = find_func(&db, top_mod, "caller");
-    let call_expr = find_named_call_expr(&db, caller, "needs");
-    let typed_body = check_func_body(&db, caller).1.clone();
-    assert_single_type_effect_arg(&typed_body, call_expr);
-}
-
-#[test]
-fn keyed_wrapper_type_effects_renormalize_projection_targets_after_later_proofs() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_trusted_effect_handle_module(
-        Utf8PathBuf::from(
-            "keyed_wrapper_type_effects_renormalize_projection_targets_after_later_proofs.fe",
-        ),
-        r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
-extern {
-    fn todo() -> !
-}
-
-trait HasTy {
-    type Assoc
-}
-
-struct Storage<T> {
-    value: T,
-}
-
-struct Wrap<T> {}
-struct Ptr<T> {
-    raw: u256
-}
-struct Impl {}
-
-impl HasTy for Impl {
-    type Assoc = u8
-}
-
-impl<T> EffectHandle for Ptr<Wrap<T>>
-where
-    T: HasTy
-{
-    type Target = Storage<T::Assoc>
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = u256
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-impl EffectRef<Storage<u8>> for Ptr<Wrap<Impl>> {}
-
-fn make<T>() -> Ptr<Wrap<T>>
-where
-    T: HasTy
-{
-    todo()
-}
-fn needs() uses (store: Storage<u8>) {}
-
-fn caller() {
-    let x = make()
-    unsafe {
-        with (Storage<u8> = x) {
-            needs()
-        }
-    }
-}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
-
-    let caller = find_func(&db, top_mod, "caller");
-    let call_expr = find_named_call_expr(&db, caller, "needs");
-    let typed_body = check_func_body(&db, caller).1.clone();
-    assert_single_type_effect_arg(&typed_body, call_expr);
 }
 
 #[test]
@@ -2999,55 +2599,6 @@ where
 }
 
 #[test]
-fn keyed_wrapper_type_witnesses_preserve_by_value_transport() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from("keyed_wrapper_type_witnesses_preserve_by_value_transport.fe"),
-        r#"
-use core::effect_ref::{EffectHandle, EffectRef}
-
-struct Storage<T> {
-    value: T,
-}
-
-struct Ptr<T> {
-    raw: *T
-}
-
-impl EffectHandle for Ptr<Storage<u8>> {
-    type Target = Storage<u8>
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Memory
-    type Raw = *Storage<u8>
-
-    fn raw(self) -> *Storage<u8> { self.raw }
-}
-
-impl EffectRef<Storage<u8>> for Ptr<Storage<u8>> {}
-
-fn needs() uses (store: Storage<u8>) {}
-
-fn caller(x: own Ptr<Storage<u8>>) {
-    unsafe {
-        with (Storage<u8> = x) {
-            needs()
-        }
-    }
-}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
-
-    let caller = find_func(&db, top_mod, "caller");
-    let call_expr = find_named_call_expr(&db, caller, "needs");
-    let typed_body = check_func_body(&db, caller).1.clone();
-    assert_single_type_effect_arg(&typed_body, call_expr);
-    assert_effect_arg_pass_mode(&typed_body, call_expr, EffectPassMode::ByValue);
-    assert_callable_provider_arg(&db, caller, call_expr, "Ptr<Storage<u8>>");
-}
-
-#[test]
 fn family_fallback_keyed_lookup_requires_an_actual_witness_match() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
@@ -3546,7 +3097,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
 }
 
 #[test]
-fn effect_handle_values_preserve_direct_carrier_roles_without_constructor_calls() {
+fn pointer_values_are_direct_values() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
         Utf8PathBuf::from("effect_handle_field_deref.fe"),
@@ -3589,7 +3140,7 @@ fn effect_handle_values_preserve_direct_carrier_roles_without_constructor_calls(
                     ..
                 }
             )),
-        "ordinary effect-handle values must not call a raw constructor: {callee_body:#?}"
+        "returning a pointer field calls nothing: {callee_body:#?}"
     );
     let carrier_local = callee_body
         .blocks
@@ -3603,11 +3154,12 @@ fn effect_handle_values_preserve_direct_carrier_roles_without_constructor_calls(
             | fe_hir::analysis::semantic::STerminatorKind::Return(None)
             | fe_hir::analysis::semantic::STerminatorKind::Yield { .. } => None,
         })
-        .unwrap_or_else(|| panic!("expected returned handle value: {callee_body:#?}"));
+        .unwrap_or_else(|| panic!("expected returned pointer value: {callee_body:#?}"));
+    // A pointer is data, not a carrier of the place it addresses.
     assert!(
         matches!(
             callee_body.locals[carrier_local.index()].role,
-            fe_hir::analysis::semantic::SemanticLocalRole::DirectCarrier { .. }
+            fe_hir::analysis::semantic::SemanticLocalRole::DirectValue { .. }
         ),
         "{callee_body:#?}"
     );
@@ -3686,13 +3238,14 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
             "write_cell effect binding should be place-bound through its instantiated provider:\n{callee_body:#?}"
         );
     };
+    // The provider is the dereferenced storage place itself.
     assert_eq!(
         local_provider.provider_ty.pretty_print(&db).to_string(),
-        "StorPtr<Cell>"
+        "Cell"
     );
     assert_eq!(
-        local_provider.semantics.kind,
-        fe_hir::analysis::ty::ProviderKind::Handle
+        local_provider.semantics.address_space,
+        Some(fe_hir::analysis::ty::AddressSpace::Storage)
     );
     assert_eq!(local_provider.semantics.target_ty, Some(*value_ty));
     assert_eq!(value_ty.pretty_print(&db).to_string(), "Cell");
@@ -3712,10 +3265,7 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
         .iter()
         .find(|provider| provider.provider_ty == local_provider.provider_ty)
         .expect("instantiated provider binding should exist");
-    assert_eq!(
-        provider.provider_ty.pretty_print(&db).to_string(),
-        "StorPtr<Cell>"
-    );
+    assert_eq!(provider.provider_ty.pretty_print(&db).to_string(), "Cell");
 }
 
 #[test]
@@ -3949,69 +3499,6 @@ fn with_bound_plain_effect_params_specialize_to_memory_capabilities() {
 }
 
 #[test]
-fn root_effect_handle_bindings_specialize_provider_targets_to_underlying_values() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from("explicit_raw_boundaries.fe"),
-        include_str!("../../../codegen/tests/fixtures/explicit_raw_boundaries.fe"),
-    );
-    let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
-
-    let entry = find_func(&db, top_mod, "explicit_raw_boundaries");
-    let root = get_or_build_semantic_instance(
-        &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(entry))
-            .expect("root semantic instance should exist"),
-    );
-    let raw_store = root
-        .body(&db)
-        .callees()
-        .into_iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
-        .find(|callee| {
-            matches!(
-                callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
-                    if func
-                        .name(&db)
-                        .to_opt()
-                        .is_some_and(|name| name.data(&db) == "raw_store")
-            )
-        })
-        .expect("expected specialized raw_store callee");
-    let data_binding = raw_store
-        .body(&db)
-        .locals
-        .iter()
-        .find_map(|local| match local.source {
-            Some(
-                binding @ fe_hir::analysis::ty::ty_check::LocalBinding::EffectParam {
-                    binding_name,
-                    ..
-                },
-            ) if binding_name.data(&db) == "data" => Some(binding),
-            Some(_) | None => None,
-        })
-        .expect("expected specialized raw_store data effect binding");
-    let provider = resolved_provider_binding_for_instance_effect(&db, raw_store, data_binding)
-        .expect("specialized data effect binding should resolve a provider");
-    assert_eq!(
-        provider.semantics.kind,
-        fe_hir::analysis::ty::ProviderKind::Handle
-    );
-    assert_eq!(
-        provider
-            .semantics
-            .target_ty
-            .expect("specialized provider should keep its underlying target")
-            .pretty_print(&db)
-            .to_string(),
-        "Data"
-    );
-}
-
-#[test]
 fn free_function_effect_bindings_keep_explicit_memory_address_space() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
@@ -4073,14 +3560,14 @@ fn free_function_effect_bindings_keep_explicit_memory_address_space() {
         .expect("write_effect resolved provider should exist");
     assert_eq!(
         provider.semantics.address_space,
-        Some(fe_hir::analysis::ty::ProviderAddressSpace::Memory),
+        Some(fe_hir::analysis::ty::AddressSpace::Memory),
         "free-function effect providers should keep explicit memory address spaces: {:#?}",
         env.providers(&db),
     );
 }
 
 #[test]
-fn local_effect_handle_calls_preserve_concrete_provider_spaces() {
+fn pointer_derefs_provide_their_pointer_spaces() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
         Utf8PathBuf::from("local_effect_handle_provider_spaces.fe"),
@@ -4103,14 +3590,16 @@ fn bump_stor() uses (foo: mut Foo) {
 fn test_spaces() uses (st: mut RawStorage) {
     let mp = ptr::alloc<Foo>()
     unsafe {
-        with (mp) {
+        with (mut *mp) {
             bump_mem()
         }
     }
 
     let sp: StorPtr<Foo> = unsafe { st.stor_ptr(0) }
-    with (sp) {
-        bump_stor()
+    unsafe {
+        with (mut *sp) {
+            bump_stor()
+        }
     }
 }
 "#,
@@ -4127,30 +3616,25 @@ fn test_spaces() uses (st: mut RawStorage) {
         .call_effect_args(mem_call)
         .expect("bump_mem should have a resolved effect arg");
     assert_eq!(mem_args.len(), 1);
-    assert_eq!(mem_args[0].pass_mode, EffectPassMode::ByValue);
-    assert_eq!(mem_args[0].layout_view, EffectArgLayoutView::ProviderTarget);
+    assert_eq!(mem_args[0].pass_mode, EffectPassMode::ByPlace);
     assert_eq!(
         mem_args[0].provider,
-        Some(fe_hir::analysis::ty::ProviderAddressSpace::Memory)
+        Some(fe_hir::analysis::ty::AddressSpace::Memory)
     );
 
     let stor_args = typed_body
         .call_effect_args(stor_call)
         .expect("bump_stor should have a resolved effect arg");
     assert_eq!(stor_args.len(), 1);
-    assert_eq!(stor_args[0].pass_mode, EffectPassMode::ByValue);
-    assert_eq!(
-        stor_args[0].layout_view,
-        EffectArgLayoutView::ProviderTarget
-    );
+    assert_eq!(stor_args[0].pass_mode, EffectPassMode::ByPlace);
     assert_eq!(
         stor_args[0].provider,
-        Some(fe_hir::analysis::ty::ProviderAddressSpace::Storage)
+        Some(fe_hir::analysis::ty::AddressSpace::Storage)
     );
 }
 
 #[test]
-fn projected_handle_places_use_projected_provider_spaces() {
+fn derefs_of_projected_pointers_provide_the_pointer_space() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
         Utf8PathBuf::from("projected_handle_provider_spaces.fe"),
@@ -4171,8 +3655,10 @@ fn write_cell(_ value: u256) uses (cell: mut Cell) {
 
 fn test_projected(slot: u256, value: u256) uses (evm: mut Evm) {
     let holder = unsafe { Holder { ptr: evm.stor_ptr(slot) } }
-    with (holder.ptr) {
-        write_cell(value)
+    unsafe {
+        with (mut *holder.ptr) {
+            write_cell(value)
+        }
     }
 }
 "#,
@@ -4187,55 +3673,10 @@ fn test_projected(slot: u256, value: u256) uses (evm: mut Evm) {
         .call_effect_args(call_expr)
         .expect("write_cell should have a resolved effect arg");
     assert_eq!(effect_args.len(), 1);
-    assert_eq!(effect_args[0].pass_mode, EffectPassMode::ByValue);
-    assert_eq!(
-        effect_args[0].layout_view,
-        EffectArgLayoutView::ProviderTarget
-    );
+    assert_eq!(effect_args[0].pass_mode, EffectPassMode::ByPlace);
     assert_eq!(
         effect_args[0].provider,
-        Some(fe_hir::analysis::ty::ProviderAddressSpace::Storage)
-    );
-}
-
-#[test]
-fn handle_typed_effect_bindings_use_by_value_transport() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from("handle_typed_effect_bindings_use_by_value_transport.fe"),
-        include_str!("../../../codegen/tests/fixtures/explicit_raw_boundaries.fe"),
-    );
-    let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
-
-    let func = find_func(&db, top_mod, "explicit_raw_boundaries");
-    let typed_body = check_func_body(&db, func).1.clone();
-    let call_expr = find_named_call_expr(&db, func, "raw_store");
-    let effect_args = typed_body
-        .call_effect_args(call_expr)
-        .expect("raw_store should have resolved effect args");
-    assert_eq!(effect_args.len(), 2);
-    assert_eq!(effect_args[0].pass_mode, EffectPassMode::ByValue);
-    assert_eq!(effect_args[0].layout_view, EffectArgLayoutView::Direct);
-    assert_eq!(
-        effect_args[0]
-            .instantiated_key_ty
-            .expect("handle effect arg should retain its matched key carrier")
-            .pretty_print(&db)
-            .to_string(),
-        "*<Data>"
-    );
-    assert_eq!(
-        effect_args[0]
-            .provider_target_ty
-            .expect("handle effect arg should lower against its underlying provider target")
-            .pretty_print(&db)
-            .to_string(),
-        "Data"
-    );
-    assert_eq!(
-        effect_args[0].provider,
-        Some(fe_hir::analysis::ty::ProviderAddressSpace::Memory)
+        Some(fe_hir::analysis::ty::AddressSpace::Storage)
     );
 }
 

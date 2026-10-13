@@ -1,4 +1,3 @@
-use core::effect_ref::{EffectHandle, EffectHandleMut, EffectRef, EffectRefMut}
 use core::ops::{StateIndex, clear_storage}
 use core::marker::Clearable
 use core::{ptr, size_of}
@@ -113,123 +112,12 @@ pub fn address_to_word(_ addr: Address) -> u256 {
 }
 
 // -----------------------------------------------------------------------------
-// Effect pointer providers
+// Raw pointers
 // -----------------------------------------------------------------------------
 
-/// Storage pointer/handle to a value of type `T`.
-pub struct StorPtr<T> { unsafe handle: u256 }
-
-impl<T> Copy for StorPtr<T> {}
-
-impl<T> EffectHandle for StorPtr<T> {
-    type Target = T
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Storage
-    type Raw = u256
-
-    fn raw(self) -> u256 {
-        self.handle
-    }
-}
-
-impl<T> EffectHandleMut for StorPtr<T> {}
-impl<T> EffectRef<T> for StorPtr<T> {}
-impl<T> EffectRefMut<T> for StorPtr<T> {}
-
-impl<T> StorPtr<T> {
-    /// Reads the pointed-at value.
-    pub fn read(self) -> T
-        where T: Copy
-    {
-        let ptr = self
-        // The pointer's creator vouched for its slot.
-        unsafe {
-            with (ptr) {
-                core::effect_ref::read(ptr)
-            }
-        }
-    }
-
-    /// Writes the pointed-at value.
-    pub fn write(self, _ value: own T) {
-        var ptr = self
-        // The pointer's creator vouched for its slot.
-        unsafe {
-            with (ptr) {
-                core::effect_ref::write(ptr, value)
-            }
-        }
-    }
-}
-
-/// Calldata pointer to a value of type `T` (read-only).
-pub struct CalldataPtr<T> { unsafe offset: u256 }
-
-impl<T> Copy for CalldataPtr<T> {}
-
-impl<T> EffectHandle for CalldataPtr<T> {
-    type Target = T
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::Calldata
-    type Raw = u256
-
-    fn raw(self) -> u256 {
-        self.offset
-    }
-}
-
-impl<T> EffectRef<T> for CalldataPtr<T> {}
-// no EffectRefMut for calldata
-
-/// Transient storage pointer/handle to a value of type `T`.
-///
-/// This is like `StorPtr<T>`, but reads/writes are intended to compile to
-/// EVM transient storage operations (TLOAD/TSTORE).
-pub struct TStorPtr<T> { unsafe slot: u256 }
-
-impl<T> Copy for TStorPtr<T> {}
-
-impl<T> EffectHandle for TStorPtr<T> {
-    type Target = T
-
-    const SPACE: core::effect_ref::AddressSpace = core::effect_ref::AddressSpace::TransientStorage
-    type Raw = u256
-
-    fn raw(self) -> u256 {
-        self.slot
-    }
-}
-
-impl<T> EffectHandleMut for TStorPtr<T> {}
-
-impl<T> EffectRef<T> for TStorPtr<T> {}
-impl<T> EffectRefMut<T> for TStorPtr<T> {}
-
-impl<T> TStorPtr<T> {
-    /// Reads the pointed-at transient value.
-    pub fn read(self) -> T
-        where T: Copy
-    {
-        let ptr = self
-        // The pointer's creator vouched for its slot.
-        unsafe {
-            with (ptr) {
-                core::effect_ref::read(ptr)
-            }
-        }
-    }
-
-    /// Writes the pointed-at transient value.
-    pub fn write(self, _ value: own T) {
-        var ptr = self
-        // The pointer's creator vouched for its slot.
-        unsafe {
-            with (ptr) {
-                core::effect_ref::write(ptr, value)
-            }
-        }
-    }
-}
+/// Pointers into storage, transient storage and calldata. Each is its address
+/// word; `*p`, in an `unsafe` context, is the `T` there.
+pub use core::ptr::{CalldataPtr, StorPtr, TStorPtr}
 
 /// A transient storage cell holding a `T`, kept in a storage struct.
 ///
@@ -320,7 +208,7 @@ pub trait RawStorage: EvmCapabilitySeal {
     /// The caller must ensure that `slot` holds a `T` that nothing else
     /// accesses while the pointer is in use.
     unsafe fn stor_ptr<T>(self, _ slot: u256) -> StorPtr<T> {
-        StorPtr { handle: slot }
+        slot as StorPtr<T>
     }
 }
 
@@ -331,12 +219,8 @@ pub trait RawStorage: EvmCapabilitySeal {
 /// `T` derives from it.
 #[raw_place]
 pub unsafe fn storage_at<T>(_ slot: u256) -> mut T uses (storage: mut RawStorage) {
-    var ptr: StorPtr<T> = unsafe { storage.stor_ptr(slot) }
-    unsafe {
-        with (ptr) {
-            core::effect_ref::target_mut(ptr)
-        }
-    }
+    let ptr: StorPtr<T> = unsafe { storage.stor_ptr(slot) }
+    unsafe { mut *ptr }
 }
 
 /// Access to low-level EVM op functions (excluding raw stack ops).
@@ -345,12 +229,12 @@ pub trait RawOps: RawStorage {
     fn calldatasize(self) -> u256
     /// The caller must ensure that a valid `T` is encoded at `offset`.
     unsafe fn calldata_ptr<T>(self, _ offset: u256) -> CalldataPtr<T> {
-        CalldataPtr { offset }
+        offset as CalldataPtr<T>
     }
     /// The caller must ensure that `slot` holds a `T` that nothing else
     /// accesses while the pointer is in use.
     unsafe fn tstor_ptr<T>(self, _ slot: u256) -> TStorPtr<T> {
-        TStorPtr { slot }
+        slot as TStorPtr<T>
     }
     fn calldatacopy(
         mut self,

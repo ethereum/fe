@@ -333,6 +333,7 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
             NPlaceBase::CapabilityTarget { carrier } => self
                 .target_of_param_carrier(carrier)
                 .or_else(|| self.write_target_of_place(self.borrowed_place_of(carrier)?)),
+            NPlaceBase::Deref { .. } => None,
         }
     }
 

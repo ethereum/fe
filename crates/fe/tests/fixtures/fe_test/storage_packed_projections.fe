@@ -70,24 +70,24 @@ fn set_b_through_receiver() uses (pair: mut Pair) {
 fn test_packed_field_projections() uses (evm: mut Evm) {
     unsafe {
         evm.sstore(slot: 0x100, value: 0x11)
-        var pair = evm.stor_ptr<Pair>(0x100)
-        with (pair) { set_b() }
+        let pair = evm.stor_ptr<Pair>(0x100)
+        with (mut *pair) { set_b() }
         assert(evm.sload(0x100) == 0x2a11)
-        assert(with (pair) { b() } == 0x2a)
+        assert(with (*pair) { b() } == 0x2a)
 
-        var generic = evm.stor_ptr<Generic<u8>>(0x200)
-        with (generic) { set_generic_b() }
+        let generic = evm.stor_ptr<Generic<u8>>(0x200)
+        with (mut *generic) { set_generic_b() }
         assert(evm.sload(0x200) == 0x2a00)
 
-        var pairs = evm.stor_ptr<Pairs>(0x300)
-        with (pairs) { set_element_b() }
+        let pairs = evm.stor_ptr<Pairs>(0x300)
+        with (mut *pairs) { set_element_b() }
         assert(evm.sload(0x300) == 0)
         assert(evm.sload(0x301) == 0x2a00)
         assert(evm.sload(0x302) == 0)
 
         evm.sstore(slot: 0x400, value: 0x11)
-        var receiver = evm.stor_ptr<Pair>(0x400)
-        with (receiver) { set_b_through_receiver() }
+        let receiver = evm.stor_ptr<Pair>(0x400)
+        with (mut *receiver) { set_b_through_receiver() }
         assert(evm.sload(0x400) == 0x2a11)
     }
 }
@@ -95,9 +95,9 @@ fn test_packed_field_projections() uses (evm: mut Evm) {
 #[test]
 fn test_transient_packed_field_projection() uses (evm: mut Evm) {
     unsafe {
-        var pair = evm.tstor_ptr<Pair>(0x100)
-        with (pair) { set_b() }
+        let pair = evm.tstor_ptr<Pair>(0x100)
+        with (mut *pair) { set_b() }
         let word = evm.tstor_ptr<u256>(0x100)
-        assert(with (word) { core::effect_ref::read(word) } == 0x2a00)
+        assert(*word == 0x2a00)
     }
 }

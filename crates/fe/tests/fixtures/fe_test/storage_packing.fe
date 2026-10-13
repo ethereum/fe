@@ -272,17 +272,17 @@ pub contract Collections {
         Slot { slot } -> u256 uses (raw: RawStorage) {
             unsafe { raw.sload(slot) }
         }
-        Transient {} -> u256 uses (evm: Evm) {
+        Transient {} -> u256 uses (evm: mut Evm) {
             unsafe {
-                var value: TStorPtr<Small> = evm.tstor_ptr<Small>(0x40)
-                with (value) {
-                    core::effect_ref::write(value, Small { a: 0x11, b: 0x22, c: 0x33 })
+                let value: TStorPtr<Small> = evm.tstor_ptr<Small>(0x40)
+                *value = Small { a: 0x11, b: 0x22, c: 0x33 }
+                with (mut *value) {
                     set_small_b()
                 }
                 let word: TStorPtr<u256> = evm.tstor_ptr<u256>(0x40)
-                let read_back = with (value) { core::effect_ref::read(value) }
+                let read_back = *value
                 assert!(read_back.a == 0x11 && read_back.b == 0x44 && read_back.c == 0x33)
-                with (word) { core::effect_ref::read(word) }
+                *word
             }
         }
     }
@@ -491,12 +491,12 @@ fn update_native_lanes() uses (value: mut NativeLanes) {
 #[test]
 fn test_transient_native_packed_projection() uses (evm: mut Evm) {
     unsafe {
-        var value: TStorPtr<NativeLanes> = evm.tstor_ptr<NativeLanes>(0x50)
-        with (value) {
-            core::effect_ref::write(value, NativeLanes { a: 0x11, b: -2, c: true })
+        let value: TStorPtr<NativeLanes> = evm.tstor_ptr<NativeLanes>(0x50)
+        *value = NativeLanes { a: 0x11, b: -2, c: true }
+        with (mut *value) {
             update_native_lanes()
         }
         let word: TStorPtr<u256> = evm.tstor_ptr<u256>(0x50)
-        assert(with (word) { core::effect_ref::read(word) } == 0xfffd11)
+        assert(*word == 0xfffd11)
     }
 }

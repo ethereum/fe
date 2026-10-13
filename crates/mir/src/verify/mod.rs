@@ -4,14 +4,12 @@ mod package;
 mod runtime;
 mod storage_layout;
 
+use hir::analysis::ty::AddressSpace;
 use hir::{analysis::ty::ty_def::TyId, hir_def::Contract, semantic::ContractFieldId};
 
 use crate::{
     instance::RuntimeInstance,
-    runtime::{
-        AddressSpaceKind, ConstRegionId, ContractFieldSlot, LayoutId, RBlockId, RLocalId,
-        RuntimeClass,
-    },
+    runtime::{ConstRegionId, ContractFieldSlot, LayoutId, RBlockId, RLocalId, RuntimeClass},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,8 +70,8 @@ pub enum VerifyError<'db> {
     },
     ContractFieldAddressSpaceMismatch {
         field: ContractFieldId<'db>,
-        expected: AddressSpaceKind,
-        actual: Option<AddressSpaceKind>,
+        expected: AddressSpace,
+        actual: Option<AddressSpace>,
     },
     ContractFieldSlotMismatch {
         field: ContractFieldId<'db>,

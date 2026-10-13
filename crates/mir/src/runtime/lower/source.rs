@@ -163,6 +163,7 @@ impl<'a, 'carriers, 'roots, 'db> RuntimeSourceQuery<'a, 'carriers, 'roots, 'db> 
                 .env
                 .value_local(carrier)
                 .is_some_and(|local| self.local_has_transport_carrier(local)),
+            NPlaceBase::Deref { pointer } => self.env.value_local(pointer).is_some(),
             NPlaceBase::Root(root_id) => {
                 let Some(root) = self.env.body().normalized.root(root_id) else {
                     return false;
@@ -238,7 +239,7 @@ impl<'a, 'carriers, 'roots, 'db> RuntimeSourceQuery<'a, 'carriers, 'roots, 'db> 
             .is_some()
     }
 
-    pub(super) fn handle_like_semantic_value_is_available(&self, local: SLocalId) -> bool {
+    pub(super) fn transport_semantic_value_is_available(&self, local: SLocalId) -> bool {
         let Some(local_data) = self.env.body().local(local) else {
             return false;
         };
@@ -279,7 +280,6 @@ impl<'a, 'carriers, 'roots, 'db> RuntimeSourceQuery<'a, 'carriers, 'roots, 'db> 
             {
                 true
             }
-            SemanticLocalKind::DirectCarrier => self.handle_like_semantic_value_is_available(local),
             SemanticLocalKind::DirectValue
             | SemanticLocalKind::PlaceCarrier
             | SemanticLocalKind::PlaceBoundValue => {
@@ -393,6 +393,7 @@ fn is_self_rooted_value_place(
     }
     match place.base {
         NPlaceBase::CapabilityTarget { carrier } => body.value_local(carrier) == Some(local),
+        NPlaceBase::Deref { .. } => false,
         NPlaceBase::Root(root) => {
             matches!(
                 body.normalized.root(root).map(|root| &root.kind),
@@ -500,6 +501,7 @@ pub(super) fn local_read_places_extractable_from_value(
 fn place_root_local(body: &RuntimeSemanticBody<'_>, place: &NPlace<'_>) -> Option<SLocalId> {
     match place.base {
         NPlaceBase::CapabilityTarget { carrier } => body.value_local(carrier),
+        NPlaceBase::Deref { .. } => None,
         NPlaceBase::Root(root) => body.root_local(root),
     }
 }

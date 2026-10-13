@@ -21,7 +21,7 @@ use crate::{
                 pattern_match_expected_ty, project_pattern_child_carrier_ty,
                 project_pattern_child_source_ty,
             },
-            provider::ProviderAddressSpace,
+            provider::AddressSpace,
             ty_check::PatBindingMode,
             ty_def::{BorrowKind, PrimTy, TyBase, TyData, TyId},
         },
@@ -57,7 +57,7 @@ pub(super) enum PatternSource<'db> {
     Place {
         place: SPlace<'db>,
         ty: TyId<'db>,
-        provider: Option<ProviderAddressSpace>,
+        provider: Option<AddressSpace>,
         inspected: bool,
     },
 }
@@ -68,7 +68,7 @@ struct DecisionTreeProjectionCache<'db> {
     carrier_tys: Vec<(ProjectionPath<'db>, TyId<'db>)>,
     /// A matched place: read through a read access only when a test first
     /// needs its value, and bound by component.
-    place: Option<(SPlace<'db>, Option<ProviderAddressSpace>)>,
+    place: Option<(SPlace<'db>, Option<AddressSpace>)>,
     /// Whether the matched place's tests read its value (`inspected`).
     inspected: bool,
 }
@@ -553,7 +553,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         &mut self,
         pat: ValidatedPatId,
         place: SPlace<'db>,
-        provider: Option<ProviderAddressSpace>,
+        provider: Option<AddressSpace>,
     ) {
         let kind = self.typed_body.pattern_store().node(pat).kind().clone();
         match kind {
@@ -595,7 +595,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         &mut self,
         pat: PatId,
         place: SPlace<'db>,
-        provider: Option<ProviderAddressSpace>,
+        provider: Option<AddressSpace>,
     ) {
         let Some(binding) = self.typed_body.pat_binding(pat) else {
             return;

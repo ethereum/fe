@@ -1,5 +1,5 @@
 use core::keccak
-use std::evm::{Evm, RawStorage, SolSlot, TSlot, TStorPtr}
+use std::evm::{Evm, RawStorage, SolSlot, TSlot}
 
 const BASE: u256 = 0x100
 
@@ -42,7 +42,7 @@ pub contract C uses (storage: mut RawStorage) {
     mut main: u256,
     // Transient storage is its own space: slot 1 there is free.
     #[slot(1)]
-    mut flag: TStorPtr<bool>,
+    mut flag: TSlot<bool>,
     // A `TSlot` takes its number only in transient storage, so a storage
     // field may share it.
     #[slot(BASE + 2)]
@@ -59,14 +59,14 @@ pub contract C uses (storage: mut RawStorage) {
             pair = Pair { left: 12, right: 13 }
             based = 14
             spaced.right = 15
-            flag = true
+            flag[()] = true
             (
                 read_slot(0),
                 read_slot(1),
                 read_slot(3),
                 read_slot(BASE + 1),
                 read_slot(namespaced(0x1234) + 1),
-                flag,
+                flag[()],
             )
         }
 

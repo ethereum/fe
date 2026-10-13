@@ -8,11 +8,10 @@ use crate::{
             CallSiteId, FieldIndex, Mutability, SConst, SStmtId, SemConstScalar, SemConstValue,
             SemOrigin, SemanticCalleeRef, SemanticCodeRegionRef, SemanticCodeRegionTarget,
             SemanticInstance, VariantIndex,
-            capability::handle::{HandleAddressSpace, OpaqueHandleContract},
         },
         ty::{
-            provider::ProviderAddressSpace,
-            ty_check::{BodyOwner, EffectArgLayoutView, EffectPassMode, LocalBinding},
+            provider::AddressSpace,
+            ty_check::{BodyOwner, EffectPassMode, LocalBinding},
             ty_def::{BorrowKind, TyId},
         },
     },
@@ -77,14 +76,12 @@ impl<'db> NormalizedBody<'db> {
     pub fn place_base_ty(&self, db: &'db dyn HirAnalysisDb, base: NPlaceBase) -> Option<TyId<'db>> {
         match base {
             NPlaceBase::Root(root) => Some(self.root(root)?.ty),
-            NPlaceBase::CapabilityTarget { carrier } => {
-                self.value(carrier)?.ty.as_ptr(db).or_else(|| {
-                    self.value(carrier)?
-                        .ty
-                        .as_capability(db)
-                        .map(|(_, target)| target)
-                })
-            }
+            NPlaceBase::CapabilityTarget { carrier } => self
+                .value(carrier)?
+                .ty
+                .as_capability(db)
+                .map(|(_, target)| target),
+            NPlaceBase::Deref { pointer } => Some(self.value(pointer)?.ty.as_ptr(db)?.0),
         }
     }
 
@@ -101,13 +98,14 @@ impl<'db> NormalizedBody<'db> {
     }
 
     /// Values required to access a place, including the value that initializes
-    /// temporary storage or supplies a handle's representation root.
+    /// temporary storage or supplies a capability's representation root.
     pub fn place_values<'a>(
         &'a self,
         place: &'a NPlace<'db>,
     ) -> impl Iterator<Item = NValueId> + 'a {
         let base = match place.base {
             NPlaceBase::CapabilityTarget { carrier } => Some(carrier),
+            NPlaceBase::Deref { pointer } => Some(pointer),
             NPlaceBase::Root(root) => self.root(root).and_then(|root| match root.kind {
                 NRootKind::CapabilityRepresentation { carrier }
                 | NRootKind::Temporary { value: carrier } => Some(carrier),
@@ -227,7 +225,7 @@ pub enum NValueDefinition {
 pub struct NRoot<'db> {
     pub kind: NRootKind<'db>,
     pub ty: TyId<'db>,
-    pub address_space: ProviderAddressSpace,
+    pub address_space: AddressSpace,
     pub mutability: Mutability,
     pub origin: SemOrigin<'db>,
 }
@@ -263,7 +261,14 @@ pub struct NPlace<'db> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NPlaceBase {
     Root(NRootId),
-    CapabilityTarget { carrier: NValueId },
+    /// The target of a capability value: a place the carrier reaches.
+    CapabilityTarget {
+        carrier: NValueId,
+    },
+    /// The pointee of a raw pointer value.
+    Deref {
+        pointer: NValueId,
+    },
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -356,10 +361,9 @@ pub struct NEffectArg<'db> {
     pub binding_idx: u32,
     pub arg: NEffectArgValue<'db>,
     pub pass_mode: EffectPassMode,
-    pub layout_view: EffectArgLayoutView,
     pub required_mut: bool,
     pub provider_target_ty: Option<TyId<'db>>,
-    pub provider: Option<ProviderAddressSpace>,
+    pub provider: Option<AddressSpace>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -371,12 +375,6 @@ pub enum NEffectArgValue<'db> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ViewAccess {
     Read,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum HandleOrigin<'db> {
-    Provider(ProviderBinding<'db>),
-    Opaque(OpaqueHandleContract<'db>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -395,17 +393,11 @@ pub enum NExpr<'db> {
     Borrow {
         place: NPlace<'db>,
         kind: BorrowKind,
-        provider: Option<ProviderAddressSpace>,
+        provider: Option<AddressSpace>,
     },
     MakeView {
         place: NPlace<'db>,
         access: ViewAccess,
-    },
-    MakeHandle {
-        ty: TyId<'db>,
-        variant: Option<VariantIndex>,
-        fields: Box<[NOperand]>,
-        origin: HandleOrigin<'db>,
     },
     StructuralRepack {
         value: NOperand,
@@ -483,9 +475,7 @@ impl<'db> NExpr<'db> {
                 f(*lhs);
                 f(*rhs);
             }
-            Self::AggregateMake { fields, .. }
-            | Self::EnumMake { fields, .. }
-            | Self::MakeHandle { fields, .. } => {
+            Self::AggregateMake { fields, .. } | Self::EnumMake { fields, .. } => {
                 fields.iter().copied().for_each(f);
             }
             Self::Call {
@@ -533,7 +523,6 @@ impl<'db> NExpr<'db> {
             | Self::ScalarCast { .. }
             | Self::ArrayRepeat { .. }
             | Self::AggregateMake { .. }
-            | Self::MakeHandle { .. }
             | Self::EnumMake { .. }
             | Self::GetEnumTag { .. }
             | Self::IsEnumVariant { .. }
@@ -709,34 +698,22 @@ pub fn copied_scalar_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<
         .unwrap_or(ty)
 }
 
-/// The runtime representation of a dynamic string literal owns a freshly allocated
-/// ABI payload. Keep its pointer source explicit in the shared constant contract.
-pub fn literal_allocation<'db>(
+/// Whether a constant of `ty` is a dynamic string literal, whose runtime
+/// representation owns a freshly allocated ABI payload.
+pub fn is_literal_allocation<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: TyId<'db>,
     constant: &SConst<'db>,
-) -> Option<(FieldIndex, OpaqueHandleContract<'db>)> {
+) -> bool {
     let SConst::Value(value) = constant else {
-        return None;
+        return false;
     };
-    if !ty.is_core_dyn_string(db)
-        || !matches!(
+    ty.is_core_dyn_string(db)
+        && matches!(
             value.value().value(db),
             SemConstValue::Scalar {
                 value: SemConstScalar::Bytes(_),
                 ..
             }
         )
-    {
-        return None;
-    }
-    let pointer_ty = *ty.field_types(db).first()?;
-    Some((
-        FieldIndex(0),
-        OpaqueHandleContract {
-            handle_ty: pointer_ty,
-            target_ty: pointer_ty.as_ptr(db)?,
-            address_space: HandleAddressSpace::Known(ProviderAddressSpace::Memory),
-        },
-    ))
 }

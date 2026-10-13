@@ -15,6 +15,7 @@ use super::{
     },
     generic_defaults::DefaultApplication,
     normalize::normalize_ty,
+    provider::AddressSpace,
     trait_def::TraitInstId,
     trait_resolution::{
         PredicateListId,
@@ -57,11 +58,7 @@ fn lower_hir_ty_impl<'db>(
         |child_ty, _slot| lower_opt_hir_ty_impl(db, child_ty, scope, assumptions, lowering_cx);
 
     let lowered = match ty.data(db) {
-        HirTyKind::Ptr(pointee) => {
-            let pointee = lower_child(*pointee, 0);
-            let ptr = TyId::ptr(db);
-            TyId::app(db, ptr, pointee)
-        }
+        HirTyKind::Ptr(pointee) => TyId::ptr_to(db, lower_child(*pointee, 0)),
 
         HirTyKind::Mode(TypeMode::Own, inner) => lower_child(*inner, 0),
         HirTyKind::Mode(TypeMode::Mut | TypeMode::Ref, _) => {
@@ -759,6 +756,11 @@ fn lower_type_alias_from_hir_in_mode<'db>(
     } else if alias_to.has_invalid(db) {
         // Should be reported by TypeAliasAnalysisPass
         TyId::invalid(db, InvalidCause::Other)
+    } else if let Some(space) = crate::core::semantic::type_alias_pointer_space(db, alias) {
+        match alias_to.as_ptr(db) {
+            Some((target, AddressSpace::Memory)) => TyId::ptr_in(db, space, target),
+            _ => TyId::invalid(db, InvalidCause::Other),
+        }
     } else {
         alias_to
     };

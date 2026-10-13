@@ -4,18 +4,26 @@ assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/with_coverage.fe
 ---
-error[8-0107]: a `with` provider naming storage needs the function's own authority
-   ┌─ with_coverage.fe:14:11
+error[8-0107]: an access through a state pointer needs the function's own authority
+   ┌─ with_coverage.fe:16:15
    │
-14 │     with (ptr) {
-   │           ^^^ this handle names storage the function's `uses` does not cover
+16 │         with (*ptr) {
+   │               ^^^^ this reads state the function's `uses` does not cover
    │
-   = require it via `uses (storage: RawStorage)`, or vouch for it in an `unsafe` block
+   = require it via `uses (storage: RawStorage)`; `unsafe` does not grant authority
 
-error[8-0107]: a `with` provider naming storage needs the function's own authority
-   ┌─ with_coverage.fe:30:11
+error[8-0107]: an access through a state pointer needs the function's own authority
+   ┌─ with_coverage.fe:36:19
    │
-30 │     with (ptr) {
-   │           ^^^ this handle names storage the function's `uses` does not cover
+36 │         with (mut *ptr) {
+   │                   ^^^^ this writes state the function's `uses` does not cover
    │
-   = require it via `uses (storage: mut RawStorage)`, or vouch for it in an `unsafe` block
+   = require it via `uses (storage: mut RawStorage)`; `unsafe` does not grant authority
+
+error[8-0107]: an access through a state pointer needs the function's own authority
+   ┌─ with_coverage.fe:50:15
+   │
+50 │         with (*store.ptr) {
+   │               ^^^^^^^^^^ this reads state the function's `uses` does not cover
+   │
+   = require it via `uses (storage: RawStorage)`; `unsafe` does not grant authority

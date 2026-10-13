@@ -1,6 +1,6 @@
 use crate::layout_test_support::{parse_module, parse_ok};
 use fe_hir::{
-    analysis::{initialize_analysis_pass, ty::ProviderAddressSpace},
+    analysis::{initialize_analysis_pass, ty::AddressSpace},
     core::semantic::{
         ContractFieldId, ContractLayoutEntry, ContractLayoutEntryKind, ContractLayoutError,
         ContractLayoutValue,
@@ -81,11 +81,11 @@ fn report_numbers_storage_and_transient_fields_together() {
         db,
         top_mod,
         r#"
-use std::evm::TStorPtr
+use std::evm::TSlot
 
 contract C {
     mut stored: u256,
-    mut temporary: TStorPtr<u256>,
+    mut temporary: TSlot<u256>,
     mut later: u256,
     immutable: u256,
 }
@@ -94,10 +94,11 @@ contract C {
     let contract = find_contract(&db, top_mod, "C");
     let report = contract.layout_report(&db).unwrap();
     for (path, space, value) in [
-        ("stored", ProviderAddressSpace::Storage, "0"),
-        ("temporary", ProviderAddressSpace::Transient, "1"),
-        ("later", ProviderAddressSpace::Storage, "2"),
-        ("immutable", ProviderAddressSpace::Code, "0"),
+        ("stored", AddressSpace::Storage, "0"),
+        // A transient cell is a collection numbered with storage fields.
+        ("temporary", AddressSpace::Storage, "1"),
+        ("later", AddressSpace::Storage, "2"),
+        ("immutable", AddressSpace::Code, "0"),
     ] {
         let entry = entry(&db, &report.entries, path);
         assert_eq!(entry.address_space, space, "{path}");
@@ -112,7 +113,7 @@ fn report_places_explicit_slot_fields() {
         top_mod,
         r#"
 use core::keccak
-use std::evm::TStorPtr
+use std::evm::TSlot
 
 struct Pair { left: u256, right: u256 }
 
@@ -124,8 +125,8 @@ contract C {
     #[slot(keccak(keccak("example.main") - 1) & !(0xff as u256))]
     mut main: Pair,
     #[slot(1)]
-    mut flag: TStorPtr<bool>,
-    mut after: TStorPtr<bool>,
+    mut flag: TSlot<bool>,
+    mut after: TSlot<bool>,
 }
 "#,
     );
@@ -135,22 +136,22 @@ contract C {
     // slot for the namespace `example.main`. Transient slot 1 is free for
     // `flag`, and `after` continues the shared counter.
     for (path, space, value) in [
-        ("first", ProviderAddressSpace::Storage, "0"),
-        ("placed", ProviderAddressSpace::Storage, "1"),
-        ("pair.left", ProviderAddressSpace::Storage, "2"),
-        ("pair.right", ProviderAddressSpace::Storage, "3"),
+        ("first", AddressSpace::Storage, "0"),
+        ("placed", AddressSpace::Storage, "1"),
+        ("pair.left", AddressSpace::Storage, "2"),
+        ("pair.right", AddressSpace::Storage, "3"),
         (
             "main.left",
-            ProviderAddressSpace::Storage,
+            AddressSpace::Storage,
             "10958655983261152271848436692291137275443024275653522991983264966744321209600",
         ),
         (
             "main.right",
-            ProviderAddressSpace::Storage,
+            AddressSpace::Storage,
             "10958655983261152271848436692291137275443024275653522991983264966744321209601",
         ),
-        ("flag", ProviderAddressSpace::Transient, "1"),
-        ("after", ProviderAddressSpace::Transient, "4"),
+        ("flag", AddressSpace::Storage, "1"),
+        ("after", AddressSpace::Storage, "4"),
     ] {
         let entry = entry(&db, &report.entries, path);
         assert_eq!(entry.address_space, space, "{path}");
@@ -194,19 +195,19 @@ fn a_transient_cell_takes_its_slot_in_transient_storage_too() {
         db,
         top_mod,
         r#"
-use std::evm::{TSlot, TStorPtr}
+use std::evm::TSlot
 
 contract Overlapping {
     #[slot(5)]
     mut cell: TSlot<u256>,
     #[slot(5)]
-    mut flag: TStorPtr<bool>,
+    mut flag: TSlot<bool>,
 }
 
 contract Skipping {
     #[slot(0)]
     mut cell: TSlot<u256>,
-    mut flag: TStorPtr<bool>,
+    mut flag: TSlot<bool>,
 }
 "#,
     );
@@ -240,15 +241,14 @@ fn mutex_lock_cells_share_the_field_counter() {
         db,
         top_mod,
         r#"
-use std::evm::Mutex
-use std::evm::effects::TStorPtr
+use std::evm::{Mutex, TSlot}
 
 contract C {
-    t0: TStorPtr<bool>,
-    t1: TStorPtr<bool>,
+    mut t0: TSlot<bool>,
+    mut t1: TSlot<bool>,
     mut m: Mutex<u256>,
     mut m2: Mutex<u256>,
-    after: TStorPtr<bool>,
+    mut after: TSlot<bool>,
 }
 "#,
     );
@@ -326,61 +326,4 @@ contract DuplicateFields {
         rendered.contains("duplicate field name in contract `DuplicateFields`"),
         "unexpected diagnostics:\n{rendered}"
     );
-}
-
-#[test]
-fn ambiguous_handle_impl_rejects_the_field() {
-    parse_module!(
-        db,
-        top_mod,
-        r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-trait MarkerA {}
-trait MarkerB {}
-
-struct Value {}
-
-impl MarkerA for Value {}
-impl MarkerB for Value {}
-
-struct Ptr<T> { raw: u256 }
-
-impl<T: MarkerA> EffectHandle for Ptr<T> {
-    type Target = T
-
-    const SPACE: AddressSpace = AddressSpace::Storage
-    type Raw = u256
-
-    fn raw(self) -> u256 {
-        self.raw
-    }
-}
-
-impl<T: MarkerB> EffectHandle for Ptr<T> {
-    type Target = T
-
-    const SPACE: AddressSpace = AddressSpace::Storage
-    type Raw = u256
-
-    fn raw(self) -> u256 {
-        self.raw
-    }
-}
-
-contract C {
-    mut value: Ptr<Value>,
-}
-"#,
-    );
-    let contract = find_contract(&db, top_mod, "C");
-    let errors = contract
-        .storage_layout(&db)
-        .field_errors(&IdentId::new(&db, "value".to_string()))
-        .expect("field should be rejected");
-    assert!(matches!(
-        errors.first(),
-        Some(ContractLayoutError::AmbiguousProviderLayout)
-    ));
-    assert!(contract.storage_layout(&db).allocated.is_none());
 }

@@ -13,7 +13,6 @@ use crate::{
             adt_def::instantiate_adt_field_shape,
             const_ty::CallableInputOrigin,
             normalize::normalize_ty,
-            provider::provider_semantics,
             ty_check::{LocalBinding, ParamSite, ReturnProjectionStep, ReturnProvenance},
             ty_def::TyId,
         },
@@ -71,14 +70,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 value_ty: normalize_ty(self.db, value_ty, self.body.scope(), self.assumptions),
             };
         }
-        let semantics = provider_semantics(self.db, self.body.scope(), self.assumptions, ty);
-        semantics.binding_target_ty(self.db, false).map_or_else(
-            ordinary_direct_value_role,
-            |target_ty| SemanticLocalRole::DirectCarrier {
-                provider: None,
-                target_ty,
-            },
-        )
+        ordinary_direct_value_role()
     }
 
     fn classify_expr_local_role(
@@ -118,8 +110,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let fallback = self.fallback_local_role(*ty);
                 match fallback {
                     SemanticLocalRole::PlaceCarrier { .. }
-                    | SemanticLocalRole::PlaceBoundValue { .. }
-                    | SemanticLocalRole::DirectCarrier { .. } => fallback,
+                    | SemanticLocalRole::PlaceBoundValue { .. } => fallback,
                     SemanticLocalRole::Erased | SemanticLocalRole::DirectValue { .. } => {
                         ordinary_direct_value_role()
                     }
@@ -315,16 +306,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         ),
                         SEffectArgValue::Value(value) => {
                             let base = value.value;
-                            let value_ty = self.locals[base.index()].ty;
-                            // A handle's own backings are not its target's,
-                            // which lies wherever the handle points.
-                            if effect_arg
-                                .provider_target_ty
-                                .is_some_and(|target| target != value_ty)
-                            {
-                                continue;
-                            }
-                            (value_ty, self.local_layout_backing_sources(base))
+                            (
+                                self.locals[base.index()].ty,
+                                self.local_layout_backing_sources(base),
+                            )
                         }
                     }
                 }
@@ -519,19 +504,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 provenance,
                 value_ty: src_value_ty,
             },
-            (
-                SemanticLocalRole::DirectCarrier {
-                    provider,
-                    target_ty: src_target_ty,
-                },
-                SemanticLocalRole::DirectCarrier {
-                    target_ty: dst_target_ty,
-                    ..
-                },
-            ) if src_target_ty == *dst_target_ty => SemanticLocalRole::DirectCarrier {
-                provider,
-                target_ty: src_target_ty,
-            },
             _ => fallback,
         }
     }
@@ -546,7 +518,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let base_value_ty = match &base_role {
             SemanticLocalRole::PlaceCarrier { value_ty, .. }
             | SemanticLocalRole::PlaceBoundValue { value_ty, .. } => Some(*value_ty),
-            SemanticLocalRole::DirectCarrier { target_ty, .. } => Some(*target_ty),
             SemanticLocalRole::Erased | SemanticLocalRole::DirectValue { .. } => None,
         };
         match fallback {
@@ -574,18 +545,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             SemanticLocalRole::PlaceCarrier { .. } | SemanticLocalRole::PlaceBoundValue { .. } => {
                 fallback
             }
-            SemanticLocalRole::DirectCarrier { target_ty, .. } => base_role
-                .root_provider(&self.locals)
-                // A handle projected out of a provider-backed place is only
-                // that provider's carrier when it provides the same target;
-                // an unrelated embedded handle (e.g. a `TStorPtr<bool>` field
-                // inside a storage struct) is an ordinary value whose own
-                // transport class would contradict the provider's.
-                .filter(|provider| provider.effective_target_ty() == target_ty)
-                .map_or(fallback, |provider| SemanticLocalRole::DirectCarrier {
-                    provider: Some(provider),
-                    target_ty,
-                }),
         }
     }
 }
@@ -721,8 +680,7 @@ pub(super) fn initial_snapshot_source<'db>(
             provenance: ValueProvenance::Ordinary,
         }
         | SemanticLocalRole::PlaceCarrier { .. }
-        | SemanticLocalRole::PlaceBoundValue { .. }
-        | SemanticLocalRole::DirectCarrier { .. } => None,
+        | SemanticLocalRole::PlaceBoundValue { .. } => None,
     }
 }
 
@@ -731,14 +689,10 @@ fn local_role_supports_place_provenance(role: &SemanticLocalRole<'_>) -> bool {
         SemanticLocalRole::Erased
         | SemanticLocalRole::DirectValue {
             provenance: ValueProvenance::Ordinary,
-        }
-        | SemanticLocalRole::DirectCarrier { provider: None, .. } => false,
+        } => false,
         SemanticLocalRole::DirectValue { .. }
         | SemanticLocalRole::PlaceCarrier { .. }
-        | SemanticLocalRole::PlaceBoundValue { .. }
-        | SemanticLocalRole::DirectCarrier {
-            provider: Some(_), ..
-        } => true,
+        | SemanticLocalRole::PlaceBoundValue { .. } => true,
     }
 }
 
@@ -759,21 +713,6 @@ fn merge_local_roles<'db>(
                 provenance: right_provenance,
             },
         ) => merge_direct_value_role(left_provenance, right_provenance).unwrap_or(fallback),
-        (
-            SemanticLocalRole::DirectCarrier {
-                provider: left_provider,
-                target_ty: left_target_ty,
-            },
-            SemanticLocalRole::DirectCarrier {
-                provider: right_provider,
-                target_ty: right_target_ty,
-            },
-        ) if left_target_ty == right_target_ty => SemanticLocalRole::DirectCarrier {
-            provider: (left_provider == right_provider)
-                .then_some(left_provider)
-                .flatten(),
-            target_ty: left_target_ty,
-        },
         (
             SemanticLocalRole::PlaceCarrier {
                 provider: left_provider,

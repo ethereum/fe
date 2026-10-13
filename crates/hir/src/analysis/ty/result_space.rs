@@ -27,7 +27,7 @@ use crate::{
             binder::Binder,
             fold::{TyFoldable, TyFolder},
             normalize::normalize_ty,
-            provider::ProviderAddressSpace,
+            provider::AddressSpace,
             state_index_tys,
             trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
             trait_resolution::{
@@ -84,7 +84,7 @@ impl<'db> TyFoldable<'db> for SpaceKey<'db> {
 /// A declared result-space contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum SpaceContract<'db> {
-    Space(ProviderAddressSpace),
+    Space(AddressSpace),
     /// The space of a data parameter's place, or of a sub-place of it:
     /// `@p`, `@self`, `@self.value`.
     Param(u32, SpacePathId<'db>),
@@ -222,13 +222,13 @@ pub fn declared_result_spaces<'db>(
 }
 
 /// The space `name` names.
-fn named_space(db: &dyn HirAnalysisDb, name: IdentId<'_>) -> Option<ProviderAddressSpace> {
+fn named_space(db: &dyn HirAnalysisDb, name: IdentId<'_>) -> Option<AddressSpace> {
     Some(match name.data(db).as_str() {
-        "memory" => ProviderAddressSpace::Memory,
-        "storage" => ProviderAddressSpace::Storage,
-        "transient" => ProviderAddressSpace::Transient,
-        "calldata" => ProviderAddressSpace::Calldata,
-        "code" => ProviderAddressSpace::Code,
+        "memory" => AddressSpace::Memory,
+        "storage" => AddressSpace::Storage,
+        "transient" => AddressSpace::Transient,
+        "calldata" => AddressSpace::Calldata,
+        "code" => AddressSpace::Code,
         _ => return None,
     })
 }
@@ -266,7 +266,7 @@ fn space_key<'db>(
 /// What an associated space is, once the implementations involved are known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolvedSpace<'db> {
-    Space(ProviderAddressSpace),
+    Space(AddressSpace),
     /// Where the value of this type, or a sub-place of it, lies: the
     /// implementation said `self` or `self[_]`.
     Owner(TyId<'db>, SpacePathId<'db>),
@@ -309,7 +309,7 @@ pub fn resolve_space_key<'db>(
 /// The space an implementation gives in `space S = value`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpaceValue<'db> {
-    Space(ProviderAddressSpace),
+    Space(AddressSpace),
     /// `self` or a sub-place of it: where the implementing value lies, or
     /// its elements (`self[_]`), as for an owner whose elements are its own
     /// parts.

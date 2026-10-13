@@ -13,8 +13,8 @@ pub use origin::{
     RuntimeTerminatorOrigin, RuntimeTerminatorSite,
 };
 pub use runtime::{
-    AddressSpaceKind, ArrayLayout, BorrowAccess, BorrowTransportSet, ConstNode, ConstRegion,
-    ConstRegionId, ConstScalar, ContractFieldSlot, EnumLayout, EnumVariantLayout, FieldPlacement,
+    ArrayLayout, BorrowAccess, BorrowTransportSet, ConstNode, ConstRegion, ConstRegionId,
+    ConstScalar, ContractFieldSlot, EnumLayout, EnumVariantLayout, FieldPlacement,
     IntrinsicArithBinOp, Layout, LayoutId, LowerError, LoweredRuntimeBody, PlaceElem, PlaceRoot,
     RBlock, RBlockId, RExpr, RLocal, RLocalId, RStmt, RTerminator, RValueId, RefKind, RefView,
     ResolvedCodeRegion, ResolvedPlaceElem, ResolvedPlaceRootKind, ResolvedRuntimePlace,

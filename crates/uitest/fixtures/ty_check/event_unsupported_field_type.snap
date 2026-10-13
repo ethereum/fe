@@ -13,9 +13,9 @@ error[6-0003]: trait bound is not satisfied
   7 │ │ }
     │ ╰─^ `(Opaque)` doesn't implement `Encode<Sol>`
     │
-    ┌─ src/evm/effects.fe:474:14
+    ┌─ src/evm/effects.fe:358:14
     │
-474 │     where T: Encode<Sol> + AbiSize
+358 │     where T: Encode<Sol> + AbiSize
     │              ----------- required by this bound on `encode_abi_payload`
 
 error[6-0003]: trait bound is not satisfied
@@ -27,7 +27,7 @@ error[6-0003]: trait bound is not satisfied
   7 │ │ }
     │ ╰─^ `(Opaque)` doesn't implement `AbiSize`
     │
-    ┌─ src/evm/effects.fe:474:28
+    ┌─ src/evm/effects.fe:358:28
     │
-474 │     where T: Encode<Sol> + AbiSize
+358 │     where T: Encode<Sol> + AbiSize
     │                            ------- required by this bound on `encode_abi_payload`

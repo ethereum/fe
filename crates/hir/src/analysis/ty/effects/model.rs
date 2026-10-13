@@ -117,12 +117,6 @@ pub enum ForwardedEffectKey<'db> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum WitnessTransport {
-    Direct,
-    ByValue,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StoredTypeKey<'db> {
     pub carrier: TyId<'db>,
     pub family: EffectFamily<'db>,
@@ -155,7 +149,6 @@ pub struct ForwardedTraitKey<'db> {
 pub struct EffectWitness<'db, P> {
     pub key: StoredEffectKey<'db>,
     pub provider: P,
-    pub transport: WitnessTransport,
 }
 
 /// A body-local forwarded requirement whose hidden vars must specialize consistently.
@@ -163,7 +156,6 @@ pub struct EffectWitness<'db, P> {
 pub struct EffectForwarder<'db, P> {
     pub key: ForwardedEffectKey<'db>,
     pub provider: P,
-    pub transport: WitnessTransport,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

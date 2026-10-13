@@ -6,7 +6,7 @@
 //! disjoint; any other two domains of one address space may share storage,
 //! since a caller may supply overlapping providers to distinct effects.
 use crate::{
-    analysis::ty::provider::ProviderAddressSpace,
+    analysis::ty::provider::AddressSpace,
     semantic::{ProviderBinding, ProviderSource},
 };
 
@@ -14,7 +14,7 @@ use crate::{
 struct Domain<'db> {
     /// The provider the domain is, or `None` for a dynamic domain.
     source: Option<ProviderSource<'db>>,
-    space: Option<ProviderAddressSpace>,
+    space: Option<AddressSpace>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -43,7 +43,7 @@ impl<'db> Domains<'db> {
     pub fn provider_source(
         &mut self,
         source: ProviderSource<'db>,
-        space: Option<ProviderAddressSpace>,
+        space: Option<AddressSpace>,
     ) -> u32 {
         self.intern(Domain {
             source: Some(source),
@@ -51,14 +51,14 @@ impl<'db> Domains<'db> {
         })
     }
 
-    pub fn dynamic(&mut self, space: Option<ProviderAddressSpace>) -> u32 {
+    pub fn dynamic(&mut self, space: Option<AddressSpace>) -> u32 {
         self.intern(Domain {
             source: None,
             space,
         })
     }
 
-    pub fn space(&self, domain: u32) -> Option<ProviderAddressSpace> {
+    pub fn space(&self, domain: u32) -> Option<AddressSpace> {
         self.0[domain as usize].space
     }
 

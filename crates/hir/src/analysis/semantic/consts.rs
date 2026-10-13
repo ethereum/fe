@@ -919,7 +919,7 @@ pub fn int_ty_shape<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<(u
         | PrimTy::String
         | PrimTy::Array
         | PrimTy::Tuple(_)
-        | PrimTy::Ptr
+        | PrimTy::Ptr(_)
         | PrimTy::View
         | PrimTy::BorrowMut
         | PrimTy::BorrowRef => return None,
@@ -1072,7 +1072,7 @@ pub(crate) fn runtime_size_bytes_with_source<'db>(
             match prim {
                 PrimTy::Bool => Some(1),
                 PrimTy::String
-                | PrimTy::Ptr
+                | PrimTy::Ptr(_)
                 | PrimTy::View
                 | PrimTy::BorrowMut
                 | PrimTy::BorrowRef => Some(WORD_SIZE_BYTES),

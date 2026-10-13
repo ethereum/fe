@@ -32,10 +32,10 @@ use crate::{
                 SaturatingArithmetic, core_primitive_wrapper_call_kind, ctfe_extern_intrinsic_kind,
             },
             normalize::normalize_ty,
-            provider::ProviderAddressSpace,
+            provider::AddressSpace,
             ty_check::{
-                BodyOwner, EffectArgLayoutView, EffectParamSite, EffectPassMode, LocalBinding,
-                ParamSite, infer_body, inference_met_lowering_cycle,
+                BodyOwner, EffectParamSite, EffectPassMode, LocalBinding, ParamSite, infer_body,
+                inference_met_lowering_cycle,
             },
             ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
         },
@@ -1528,10 +1528,9 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                             arg.pass_mode,
                             EffectPassMode::ByValue | EffectPassMode::ByPlace
                         )
-                        || arg.layout_view != EffectArgLayoutView::Direct
                         || arg
                             .provider
-                            .is_some_and(|space| space != ProviderAddressSpace::Memory)
+                            .is_some_and(|space| space != AddressSpace::Memory)
                         || arg.provider_target_ty.is_some()
                     {
                         return Err(CtfeError::NotConstEvaluable { origin }.into());
@@ -1779,7 +1778,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 // memory outside its frames. Admitted providers are frame
                 // locals too, since each effect slot owns a copy of its value.
                 if let Some(provider) = provider
-                    && (provider != ProviderAddressSpace::Memory
+                    && (provider != AddressSpace::Memory
                         || place
                             .path
                             .iter()
@@ -3602,7 +3601,7 @@ mod tests {
                     dst,
                     expr:
                         expr @ SExpr::Borrow {
-                            provider: Some(ProviderAddressSpace::Memory),
+                            provider: Some(AddressSpace::Memory),
                             place,
                             ..
                         },

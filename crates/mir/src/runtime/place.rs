@@ -9,16 +9,16 @@
 
 use cranelift_entity::EntityRef;
 use hir::analysis::semantic::FieldIndex;
+use hir::analysis::ty::AddressSpace;
 use hir::projection::IndexSource;
 
 use crate::{
     db::MirDb,
     runtime::{
-        AddressSpaceKind, ConstScalar, Layout, LayoutId, PlaceElem, PlaceRoot, RLocalId, RefKind,
-        RefView, ResolvedPlaceElem, ResolvedPlaceRootKind, ResolvedRuntimePlace, RuntimeBody,
-        RuntimeClass, RuntimeLocalRoot, RuntimeMemoryLayout, RuntimeProgramView,
-        RuntimeProviderBinding, RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole,
-        StorageLaneView, VariantId,
+        ConstScalar, Layout, LayoutId, PlaceElem, PlaceRoot, RLocalId, RefKind, RefView,
+        ResolvedPlaceElem, ResolvedPlaceRootKind, ResolvedRuntimePlace, RuntimeBody, RuntimeClass,
+        RuntimeLocalRoot, RuntimeMemoryLayout, RuntimeProgramView, RuntimeProviderBinding,
+        RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole, StorageLaneView, VariantId,
     },
     verify::VerifyError,
 };
@@ -64,7 +64,7 @@ pub fn resolve_runtime_place<'db>(
         {
             RuntimeLocalRoot::None | RuntimeLocalRoot::Ref(_) | RuntimeLocalRoot::Ptr { .. } => {
                 return Err(VerifyError::InvalidPlace(RuntimeClass::opaque_raw_addr(
-                    crate::runtime::AddressSpaceKind::Memory,
+                    AddressSpace::Memory,
                 )));
             }
             RuntimeLocalRoot::Slot(class) => class.clone(),
@@ -81,7 +81,7 @@ pub fn resolve_runtime_place<'db>(
             .place_provider_binding(*binding)
             .map(|binding| binding.place_class.clone())
             .ok_or(VerifyError::InvalidPlace(RuntimeClass::opaque_raw_addr(
-                crate::runtime::AddressSpaceKind::Memory,
+                AddressSpace::Memory,
             )))?,
         PlaceRoot::Ptr { addr, space, class } => {
             match body
@@ -119,7 +119,7 @@ pub fn resolve_runtime_place<'db>(
             let provider =
                 body.place_provider_binding(*binding)
                     .ok_or(VerifyError::InvalidPlace(RuntimeClass::opaque_raw_addr(
-                        crate::runtime::AddressSpaceKind::Memory,
+                        AddressSpace::Memory,
                     )))?;
             ResolvedPlaceRootKind::Provider {
                 binding: *binding,
@@ -214,7 +214,7 @@ fn runtime_place_address_root<'db>(
     body: &impl PlaceClassEnv<'db>,
     resolved: &ResolvedRuntimePlace<'db>,
     place: &crate::runtime::RuntimePlace<'db>,
-) -> Result<(RuntimeClass<'db>, AddressSpaceKind, bool), VerifyError<'db>> {
+) -> Result<(RuntimeClass<'db>, AddressSpace, bool), VerifyError<'db>> {
     let (mut root_class, mut root_space, mut force_raw) =
         runtime_place_transport_root(db, body, place)?;
     for elem in resolved.path.iter() {
@@ -258,7 +258,7 @@ pub(crate) fn storage_field_lane<'db>(
     db: &'db dyn MirDb,
     parent: &RuntimeClass<'db>,
     field: FieldIndex,
-    space: AddressSpaceKind,
+    space: AddressSpace,
 ) -> Option<StorageLaneView> {
     if space.is_byte_addressed() {
         return None;
@@ -282,7 +282,7 @@ pub(crate) fn place_reference_class<'db>(
     db: &'db dyn MirDb,
     root_class: &RuntimeClass<'db>,
     value_class: &RuntimeClass<'db>,
-    root_space: AddressSpaceKind,
+    root_space: AddressSpace,
     force_raw: bool,
     lane: bool,
 ) -> RuntimeClass<'db> {
@@ -312,7 +312,7 @@ pub(crate) fn ref_class_for_place_result<'db>(
     db: &'db dyn MirDb,
     root_class: &RuntimeClass<'db>,
     value_class: &RuntimeClass<'db>,
-    root_space: AddressSpaceKind,
+    root_space: AddressSpace,
     force_raw: bool,
 ) -> RuntimeClass<'db> {
     if !force_raw {
@@ -345,7 +345,7 @@ fn runtime_place_transport_root<'db>(
     db: &'db dyn MirDb,
     body: &impl PlaceClassEnv<'db>,
     place: &crate::runtime::RuntimePlace<'db>,
-) -> Result<(RuntimeClass<'db>, crate::runtime::AddressSpaceKind, bool), VerifyError<'db>> {
+) -> Result<(RuntimeClass<'db>, AddressSpace, bool), VerifyError<'db>> {
     Ok(match &place.root {
         PlaceRoot::Slot(local) => (
             match body
@@ -357,11 +357,11 @@ fn runtime_place_transport_root<'db>(
                 | RuntimeLocalRoot::Ref(_)
                 | RuntimeLocalRoot::Ptr { .. } => {
                     return Err(VerifyError::InvalidPlace(RuntimeClass::opaque_raw_addr(
-                        crate::runtime::AddressSpaceKind::Memory,
+                        AddressSpace::Memory,
                     )));
                 }
             },
-            crate::runtime::AddressSpaceKind::Memory,
+            AddressSpace::Memory,
             false,
         ),
         PlaceRoot::Ref(value) => {
@@ -371,9 +371,7 @@ fn runtime_place_transport_root<'db>(
                 .clone();
             // A reference root addresses its referent's space, like a
             // dereferenced carrier: a storage reference projects storage lanes.
-            let space = class
-                .address_space()
-                .unwrap_or(crate::runtime::AddressSpaceKind::Memory);
+            let space = class.address_space().unwrap_or(AddressSpace::Memory);
             (class, space, false)
         }
         PlaceRoot::Provider(binding) => {
@@ -381,13 +379,11 @@ fn runtime_place_transport_root<'db>(
                 .place_provider_binding(*binding)
                 .map(|binding| binding.provider_class.clone())
                 .ok_or(VerifyError::InvalidPlace(RuntimeClass::opaque_raw_addr(
-                    crate::runtime::AddressSpaceKind::Memory,
+                    AddressSpace::Memory,
                 )))?;
             (
                 class.clone(),
-                class
-                    .address_space()
-                    .unwrap_or(crate::runtime::AddressSpaceKind::Memory),
+                class.address_space().unwrap_or(AddressSpace::Memory),
                 false,
             )
         }
@@ -719,6 +715,7 @@ pub(crate) fn project_variant_field_class<'db>(
 #[cfg(test)]
 mod tests {
     use driver::DriverDataBase;
+    use hir::analysis::ty::AddressSpace;
 
     use super::{
         PlaceClassEnv, ref_class_for_place_result, resolve_runtime_place,
@@ -727,9 +724,9 @@ mod tests {
     use crate::{
         db::MirDb,
         runtime::{
-            AddressSpaceKind, LayoutId, LayoutKey, PlaceElem, PlaceRoot, RLocalId, RefKind,
-            RefView, RuntimeClass, RuntimeLocalRoot, RuntimePlace, RuntimeProviderBinding,
-            RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole, StructLayout,
+            LayoutId, LayoutKey, PlaceElem, PlaceRoot, RLocalId, RefKind, RefView, RuntimeClass,
+            RuntimeLocalRoot, RuntimePlace, RuntimeProviderBinding, RuntimeProviderBindingId,
+            ScalarClass, ScalarRepr, ScalarRole, StructLayout,
         },
     };
 
@@ -766,12 +763,12 @@ mod tests {
             view: RefView::Whole,
         };
         assert_eq!(
-            ref_class_for_place_result(&db, &scalar, &scalar, AddressSpaceKind::Memory, false),
+            ref_class_for_place_result(&db, &scalar, &scalar, AddressSpace::Memory, false),
             object
         );
-        let pointer = RuntimeClass::raw_addr(&db, AddressSpaceKind::Memory, scalar.clone());
+        let pointer = RuntimeClass::raw_addr(&db, AddressSpace::Memory, scalar.clone());
         assert_eq!(
-            ref_class_for_place_result(&db, &pointer, &scalar, AddressSpaceKind::Memory, true),
+            ref_class_for_place_result(&db, &pointer, &scalar, AddressSpace::Memory, true),
             pointer
         );
     }

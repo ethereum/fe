@@ -7,10 +7,9 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::SemanticInstance,
-        ty::{provider::ProviderAddressSpace, result_space::PlaceStep, ty_def::TyId},
+        ty::{provider::AddressSpace, result_space::PlaceStep, ty_def::TyId},
     },
     core::semantic::storage_field_lanes,
-    hir_def::scope_graph::ScopeId,
 };
 
 /// Where a path takes a place, step by step.
@@ -18,7 +17,7 @@ use crate::{
 pub(crate) struct PathSpace {
     /// The space the innermost pinned type or entry along the path moved
     /// the place into.
-    pub moved: Option<ProviderAddressSpace>,
+    pub moved: Option<AddressSpace>,
     /// Whether the path crosses a lane.
     pub lane: bool,
 }
@@ -39,8 +38,7 @@ impl PathSpace {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         instance: SemanticInstance<'db>,
-        scope: ScopeId<'db>,
-        start: Option<ProviderAddressSpace>,
+        start: Option<AddressSpace>,
         (container, step, result): (TyId<'db>, PlaceStep, TyId<'db>),
     ) {
         match step {
@@ -53,10 +51,10 @@ impl PathSpace {
             PlaceStep::Field(field)
                 if matches!(
                     self.moved.or(start),
-                    Some(ProviderAddressSpace::Storage | ProviderAddressSpace::Transient)
+                    Some(AddressSpace::Storage | AddressSpace::Transient)
                 ) =>
             {
-                self.lane |= storage_field_lanes(db, scope, container)
+                self.lane |= storage_field_lanes(db, container)
                     .get(field)
                     .copied()
                     .unwrap_or(false);
@@ -70,9 +68,9 @@ impl PathSpace {
 
     /// The space a retained grant to the place lies in, for a root in
     /// `start`: memory for a lane, whose grants are memory copies.
-    pub fn grant_space(self, start: Option<ProviderAddressSpace>) -> Option<ProviderAddressSpace> {
+    pub fn grant_space(self, start: Option<AddressSpace>) -> Option<AddressSpace> {
         if self.lane {
-            Some(ProviderAddressSpace::Memory)
+            Some(AddressSpace::Memory)
         } else {
             self.moved.or(start)
         }

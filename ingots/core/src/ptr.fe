@@ -72,6 +72,22 @@ pub struct FixedMemBuffer<const N: usize> {
 
 impl<T> Copy for *T {}
 
+/// A pointer to a storage slot. Dereferencing it is the slot's place.
+#[pointer(storage)]
+pub type StorPtr<T> = *T
+
+/// A pointer to a transient-storage slot.
+#[pointer(transient)]
+pub type TStorPtr<T> = *T
+
+/// A pointer to a calldata offset.
+#[pointer(calldata)]
+pub type CalldataPtr<T> = *T
+
+impl<T> Copy for StorPtr<T> {}
+impl<T> Copy for TStorPtr<T> {}
+impl<T> Copy for CalldataPtr<T> {}
+
 impl<T> Eq for *T {
     fn eq(self, _ other: *T) -> bool {
         addr_eq(self, other)

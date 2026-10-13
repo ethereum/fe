@@ -1,7 +1,4 @@
-use common::{
-    indexmap::IndexMap,
-    stdlib::{BuiltinLibrary, is_authorized_builtin_library},
-};
+use common::indexmap::IndexMap;
 use salsa::Update;
 
 use crate::{
@@ -11,23 +8,19 @@ use crate::{
         ty::{
             corelib::resolve_lib_type_path,
             normalize::normalize_ty,
-            trait_def::{
-                ImplementorId, ImplementorOrigin, ResolvedImplInstance, TraitInstId,
-                resolve_trait_impl_instance,
-            },
+            trait_def::{ResolvedImplInstance, TraitInstId, resolve_trait_impl_instance},
             trait_resolution::{PredicateListId, Selection, TraitSolveCx},
             ty_check::EffectParamSite,
-            ty_def::{CapabilityKind, TyBase, TyData, TyId},
-            visitor::{TyVisitable, TyVisitor, walk_ty},
+            ty_def::TyId,
         },
     },
-    hir_def::{Contract, Func, IdentId, ImplTrait, scope_graph::ScopeId},
+    hir_def::{Contract, Func, IdentId, scope_graph::ScopeId},
 };
 
 use super::resolve_default_root_effect_ty;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
-pub enum ProviderAddressSpace {
+pub enum AddressSpace {
     Memory,
     Storage,
     Transient,
@@ -35,7 +28,11 @@ pub enum ProviderAddressSpace {
     Code,
 }
 
-impl ProviderAddressSpace {
+impl AddressSpace {
+    pub fn is_byte_addressed(self) -> bool {
+        matches!(self, Self::Memory | Self::Calldata | Self::Code)
+    }
+
     pub fn pretty(self) -> &'static str {
         match self {
             Self::Memory => "memory",
@@ -49,10 +46,11 @@ impl ProviderAddressSpace {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum ProviderKind {
+    /// The provider is an object owned by the root, passed by value.
     RootObject,
-    Handle,
-    RawAddress,
-    InvalidHandle,
+    /// The provider names a place: a capability's target or a contract
+    /// field.
+    Place,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
@@ -66,264 +64,9 @@ pub enum ProviderTransport {
 pub struct ProviderSemantics<'db> {
     pub provider_ty: TyId<'db>,
     pub kind: ProviderKind,
-    pub address_space: Option<ProviderAddressSpace>,
+    pub address_space: Option<AddressSpace>,
     pub target_ty: Option<TyId<'db>>,
     pub transport: ProviderTransport,
-    pub evidence: ProviderLayoutEvidence<'db>,
-}
-
-impl<'db> ProviderSemantics<'db> {
-    /// Native pointers are ordinary values unless this binding supplies an effect.
-    pub fn binding_target_ty(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        provider_backed: bool,
-    ) -> Option<TyId<'db>> {
-        if matches!(
-            self.evidence,
-            ProviderLayoutEvidence::ResolvedHandle(_) | ProviderLayoutEvidence::TraitBoundHandle(_)
-        ) && (provider_backed || self.provider_ty.as_ptr(db).is_none())
-        {
-            self.target_ty
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum ProviderLayoutFailure {
-    Ambiguous,
-    UnresolvedTarget,
-    UnresolvedRaw,
-    UnresolvedSpace,
-    UnsupportedRaw,
-    UntrustedRaw,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum ProviderLayoutEvidence<'db> {
-    Capability,
-    NotHandle,
-    ResolvedHandle(ResolvedImplInstance<'db>),
-    TraitBoundHandle(ResolvedImplInstance<'db>),
-    InvalidHandle(ProviderLayoutFailure),
-    ContractField,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum ProviderLayoutResolution<'db> {
-    NotHandle,
-    /// A handle, by `impl_instance`, to a `target` in `space`.
-    Resolved {
-        impl_instance: ResolvedImplInstance<'db>,
-        target: TyId<'db>,
-        space: ProviderAddressSpace,
-    },
-    Invalid(ProviderLayoutFailure),
-}
-
-fn can_select_effect_handle_impl<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
-    ty.as_ptr(db).is_some()
-        || matches!(
-            ty.base_ty(db).data(db),
-            TyData::TyParam(_)
-                | TyData::AssocTy(_)
-                | TyData::QualifiedTy(_)
-                | TyData::TyBase(TyBase::Adt(_))
-        )
-}
-
-fn contains_unresolved_type_projection<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
-    struct Finder<'db> {
-        db: &'db dyn HirAnalysisDb,
-        found: bool,
-    }
-
-    impl<'db> TyVisitor<'db> for Finder<'db> {
-        fn db(&self) -> &'db dyn HirAnalysisDb {
-            self.db
-        }
-
-        fn visit_ty(&mut self, ty: TyId<'db>) {
-            if self.found {
-                return;
-            }
-            if matches!(
-                ty.data(self.db),
-                TyData::AssocTy(_) | TyData::QualifiedTy(_)
-            ) {
-                self.found = true;
-            } else {
-                walk_ty(self, ty);
-            }
-        }
-    }
-
-    let mut finder = Finder { db, found: false };
-    ty.visit_with(&mut finder);
-    finder.found
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub(crate) enum EffectHandleResolution<'db> {
-    NotHandle,
-    Resolved {
-        impl_instance: ResolvedImplInstance<'db>,
-        target_ty: TyId<'db>,
-        raw_ty: TyId<'db>,
-    },
-    Invalid(ProviderLayoutFailure),
-}
-
-pub(crate) fn resolve_effect_handle<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    provider_ty: TyId<'db>,
-) -> EffectHandleResolution<'db> {
-    if provider_ty.as_capability(db).is_some() || !can_select_effect_handle_impl(db, provider_ty) {
-        return EffectHandleResolution::NotHandle;
-    }
-    resolve_effect_handle_query(db, scope, assumptions, provider_ty)
-}
-
-#[salsa::tracked]
-fn resolve_effect_handle_query<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    provider_ty: TyId<'db>,
-) -> EffectHandleResolution<'db> {
-    let Some(effect_handle) = super::corelib::resolve_core_trait(db, scope, &["EffectHandle"])
-    else {
-        return EffectHandleResolution::NotHandle;
-    };
-    let inst = TraitInstId::new(db, effect_handle, vec![provider_ty], IndexMap::new());
-    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-    if provider_ty.has_var(db) {
-        return match solve_cx.select_impl(db, inst) {
-            Selection::NotFound => EffectHandleResolution::NotHandle,
-            Selection::Unique(_) | Selection::Ambiguous(_) => {
-                EffectHandleResolution::Invalid(ProviderLayoutFailure::Ambiguous)
-            }
-        };
-    }
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved) => resolved,
-        Selection::Ambiguous(_) => {
-            return EffectHandleResolution::Invalid(ProviderLayoutFailure::Ambiguous);
-        }
-        Selection::NotFound => return EffectHandleResolution::NotHandle,
-    };
-    let trait_bound = matches!(
-        resolved.selected().origin(db),
-        ImplementorOrigin::Assumption
-    );
-    let Some(target_ty) = resolved_effect_handle_assoc_ty(db, resolved, trait_bound, "Target")
-    else {
-        return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget);
-    };
-    let target_ty = normalize_ty(db, target_ty, scope, assumptions);
-    if target_ty.has_invalid(db)
-        || target_ty.has_var(db)
-        || !target_ty.has_star_kind(db)
-        || (!trait_bound && contains_unresolved_type_projection(db, target_ty))
-    {
-        return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget);
-    }
-    let Some(raw_ty) = resolved_effect_handle_assoc_ty(db, resolved, trait_bound, "Raw") else {
-        return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedRaw);
-    };
-    let raw_ty = normalize_ty(db, raw_ty, scope, assumptions);
-    if raw_ty.has_invalid(db)
-        || raw_ty.has_var(db)
-        || !raw_ty.has_star_kind(db)
-        || (!trait_bound && contains_unresolved_type_projection(db, raw_ty))
-    {
-        return EffectHandleResolution::Invalid(ProviderLayoutFailure::UnresolvedRaw);
-    }
-    EffectHandleResolution::Resolved {
-        impl_instance: resolved,
-        target_ty,
-        raw_ty,
-    }
-}
-
-fn resolved_effect_handle_assoc_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    resolved: ResolvedImplInstance<'db>,
-    trait_bound: bool,
-    name: &str,
-) -> Option<TyId<'db>> {
-    let ident = IdentId::new(db, name.to_string());
-    let trait_ty = trait_bound
-        .then(|| resolved.trait_inst().project_assoc_ty(db, ident))
-        .flatten();
-    resolved.instantiated_assoc_ty(db, ident).or(trait_ty)
-}
-
-/// Returns the semantic layout value carried by a nominal effect handle.
-/// Unlike provider allocation validation, this permits generic parameters in
-/// the target so declaration schemas can retain their const bindings.
-#[salsa::tracked]
-pub fn effect_handle_layout_target_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    provider_ty: TyId<'db>,
-) -> Option<TyId<'db>> {
-    if let Some((_, inner)) = provider_ty.as_capability(db) {
-        return Some(inner);
-    }
-    match resolve_effect_handle(db, scope, assumptions, provider_ty) {
-        EffectHandleResolution::Resolved { target_ty, .. } => Some(target_ty),
-        EffectHandleResolution::NotHandle | EffectHandleResolution::Invalid(_) => None,
-    }
-}
-
-#[salsa::tracked]
-pub fn resolve_effect_handle_layout<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    provider_ty: TyId<'db>,
-) -> ProviderLayoutResolution<'db> {
-    let (impl_instance, target_ty, raw_ty) =
-        match resolve_effect_handle(db, scope, assumptions, provider_ty) {
-            EffectHandleResolution::NotHandle => {
-                return ProviderLayoutResolution::NotHandle;
-            }
-            EffectHandleResolution::Resolved {
-                impl_instance,
-                target_ty,
-                raw_ty,
-            } => (impl_instance, target_ty, raw_ty),
-            EffectHandleResolution::Invalid(failure) => {
-                return ProviderLayoutResolution::Invalid(failure);
-            }
-        };
-    if matches!(
-        impl_instance.selected().origin(db),
-        ImplementorOrigin::Assumption
-    ) {
-        return ProviderLayoutResolution::Invalid(ProviderLayoutFailure::Ambiguous);
-    }
-    if target_ty.has_param(db) || contains_unresolved_type_projection(db, target_ty) {
-        return ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget);
-    }
-    let resolved = impl_instance;
-    let Some(space) = effect_space_from_resolved_trait_const(db, scope, resolved) else {
-        return ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UnresolvedSpace);
-    };
-    if let Err(failure) = validate_effect_handle_raw(db, resolved, target_ty, raw_ty, space) {
-        return ProviderLayoutResolution::Invalid(failure);
-    }
-    ProviderLayoutResolution::Resolved {
-        impl_instance,
-        target: target_ty,
-        space,
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
@@ -434,179 +177,34 @@ fn registered_root_providers_for_scope<'db>(
 
 pub fn provider_semantics<'db>(
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
     provider_ty: TyId<'db>,
 ) -> ProviderSemantics<'db> {
-    if let Some((kind, inner)) = provider_ty.as_capability(db) {
-        let address_space = match kind {
-            CapabilityKind::View | CapabilityKind::Ref | CapabilityKind::Mut => {
-                Some(ProviderAddressSpace::Memory)
-            }
-        };
-        return ProviderSemantics {
-            provider_ty,
-            kind: provider_kind_for_target_ty(db, inner),
-            address_space,
-            target_ty: Some(inner),
-            transport: ProviderTransport::ByValue,
-            evidence: ProviderLayoutEvidence::Capability,
-        };
-    }
-
-    match resolve_effect_handle(db, scope, assumptions, provider_ty) {
-        EffectHandleResolution::NotHandle => ProviderSemantics {
-            provider_ty,
-            kind: ProviderKind::RootObject,
-            address_space: Some(ProviderAddressSpace::Memory),
-            target_ty: None,
-            transport: ProviderTransport::ByValue,
-            evidence: ProviderLayoutEvidence::NotHandle,
-        },
-        EffectHandleResolution::Resolved {
-            impl_instance,
-            target_ty,
-            raw_ty,
-            ..
-        } => {
-            let trait_bound = matches!(
-                impl_instance.selected().origin(db),
-                ImplementorOrigin::Assumption
-            );
-            let address_space = effect_space_from_resolved_trait_const(db, scope, impl_instance);
-            if address_space.is_none() && !trait_bound {
-                return invalid_provider_semantics(
-                    provider_ty,
-                    ProviderLayoutFailure::UnresolvedSpace,
-                );
-            }
-            if let Some(address_space) = address_space
-                && let Err(failure) =
-                    validate_effect_handle_raw(db, impl_instance, target_ty, raw_ty, address_space)
-            {
-                return invalid_provider_semantics(provider_ty, failure);
-            }
-            ProviderSemantics {
-                provider_ty,
-                kind: provider_kind_for_target_ty(db, target_ty),
-                address_space,
-                target_ty: Some(target_ty),
-                transport: ProviderTransport::ByValue,
-                evidence: if trait_bound {
-                    ProviderLayoutEvidence::TraitBoundHandle(impl_instance)
-                } else {
-                    ProviderLayoutEvidence::ResolvedHandle(impl_instance)
-                },
-            }
-        }
-        EffectHandleResolution::Invalid(failure) => {
-            invalid_provider_semantics(provider_ty, failure)
-        }
-    }
-}
-
-fn validate_effect_handle_raw<'db>(
-    db: &'db dyn HirAnalysisDb,
-    resolved: ResolvedImplInstance<'db>,
-    target_ty: TyId<'db>,
-    raw_ty: TyId<'db>,
-    space: ProviderAddressSpace,
-) -> Result<(), ProviderLayoutFailure> {
-    let raw_pointee = raw_ty.as_ptr(db);
-    if raw_ty != TyId::u256(db) && raw_pointee.is_none() {
-        return Err(ProviderLayoutFailure::UnsupportedRaw);
-    }
-    match resolved.selected().origin(db) {
-        ImplementorOrigin::Assumption => Ok(()),
-        ImplementorOrigin::Hir(impl_trait) if trusted_effect_handle_impl(db, impl_trait) => Ok(()),
-        ImplementorOrigin::Hir(_)
-        | ImplementorOrigin::VirtualContract(_)
-        | ImplementorOrigin::Closure
-        | ImplementorOrigin::Structural
-            if space != ProviderAddressSpace::Memory || raw_pointee != Some(target_ty) =>
-        {
-            Err(ProviderLayoutFailure::UntrustedRaw)
-        }
-        ImplementorOrigin::Hir(_)
-        | ImplementorOrigin::VirtualContract(_)
-        | ImplementorOrigin::Closure
-        | ImplementorOrigin::Structural => Ok(()),
-    }
-}
-
-fn trusted_effect_handle_impl(db: &dyn HirAnalysisDb, impl_trait: ImplTrait<'_>) -> bool {
-    // The test scheme is virtual and can only be constructed by the HIR test
-    // database; production source files use filesystem or dependency URLs.
-    let ingot = impl_trait.top_mod(db).ingot(db);
-    ingot.base(db).scheme() == "test-effect-handle"
-        || is_authorized_builtin_library(db, ingot, BuiltinLibrary::Core)
-        || is_authorized_builtin_library(db, ingot, BuiltinLibrary::Std)
-}
-
-pub(crate) fn effect_handle_impl_raw_failure<'db>(
-    db: &'db dyn HirAnalysisDb,
-    implementor: ImplementorId<'db>,
-) -> Option<(TyId<'db>, ProviderLayoutFailure)> {
-    if matches!(
-        implementor.origin(db),
-        ImplementorOrigin::Hir(impl_trait) if trusted_effect_handle_impl(db, impl_trait)
-    ) {
-        return None;
-    }
-    let trait_def = implementor.trait_def(db);
-    if !is_authorized_builtin_library(db, trait_def.top_mod(db).ingot(db), BuiltinLibrary::Core)
-        || trait_def.name(db).to_opt()?.data(db) != "EffectHandle"
-    {
-        return None;
-    }
-    let raw_ty = implementor.assoc_ty(db, IdentId::new(db, "Raw".to_string()))?;
-    if raw_ty.has_invalid(db) || raw_ty.has_var(db) {
-        return None;
-    }
-    if raw_ty.as_ptr(db).is_some() {
-        None
-    } else if raw_ty == TyId::u256(db) {
-        Some((raw_ty, ProviderLayoutFailure::UntrustedRaw))
-    } else {
-        Some((raw_ty, ProviderLayoutFailure::UnsupportedRaw))
-    }
-}
-
-fn invalid_provider_semantics(
-    provider_ty: TyId<'_>,
-    failure: ProviderLayoutFailure,
-) -> ProviderSemantics<'_> {
+    let (kind, target_ty) = match provider_ty.as_capability(db) {
+        Some((_, inner)) => (ProviderKind::Place, Some(inner)),
+        None => (ProviderKind::RootObject, None),
+    };
     ProviderSemantics {
         provider_ty,
-        kind: ProviderKind::InvalidHandle,
-        address_space: None,
-        target_ty: None,
+        kind,
+        address_space: Some(AddressSpace::Memory),
+        target_ty,
         transport: ProviderTransport::ByValue,
-        evidence: ProviderLayoutEvidence::InvalidHandle(failure),
     }
 }
 
 pub fn provider_semantics_for_specialized_call<'db>(
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
     provider_ty: TyId<'db>,
     target_ty: Option<TyId<'db>>,
-    address_space: Option<ProviderAddressSpace>,
+    address_space: Option<AddressSpace>,
     transport: ProviderTransport,
 ) -> ProviderSemantics<'db> {
-    let mut semantics = provider_semantics(db, scope, assumptions, provider_ty);
-    let root_object_refinement = matches!(semantics.evidence, ProviderLayoutEvidence::NotHandle)
-        && target_ty.is_some_and(|target| target == provider_ty);
-    if matches!(
-        semantics.evidence,
-        ProviderLayoutEvidence::Capability
-            | ProviderLayoutEvidence::TraitBoundHandle(_)
-            | ProviderLayoutEvidence::ContractField
-    ) || root_object_refinement
-    {
+    let mut semantics = provider_semantics(db, provider_ty);
+    // A capability names its target's place, and so does a root object
+    // specialized to its own type.
+    if provider_ty.as_capability(db).is_some() || target_ty == Some(provider_ty) {
         if let Some(target_ty) = target_ty {
-            semantics.kind = provider_kind_for_target_ty(db, target_ty);
+            semantics.kind = ProviderKind::Place;
             semantics.target_ty = Some(target_ty);
         }
         if let Some(address_space) = address_space {
@@ -625,7 +223,7 @@ pub fn state_index_space<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     collection_ty: TyId<'db>,
-) -> Option<ProviderAddressSpace> {
+) -> Option<AddressSpace> {
     let state_index = super::corelib::resolve_core_trait(db, scope, &["ops", "StateIndex"])?;
     let inst = TraitInstId::new(db, state_index, vec![collection_ty], IndexMap::new());
     let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
@@ -688,7 +286,7 @@ pub(crate) fn effect_space_from_resolved_trait_const<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     resolved: ResolvedImplInstance<'db>,
-) -> Option<ProviderAddressSpace> {
+) -> Option<AddressSpace> {
     let space_ident = IdentId::new(db, "SPACE".to_string());
     let const_ty = super::const_ty::const_ty_from_resolved_trait_const(db, resolved, space_ident)?;
     effect_space_from_const_ty(db, scope, const_ty)
@@ -698,7 +296,7 @@ pub(crate) fn effect_space_from_const_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     const_ty: super::const_ty::ConstTyId<'db>,
-) -> Option<ProviderAddressSpace> {
+) -> Option<AddressSpace> {
     let evaluated = const_ty.evaluate(db, None);
     let value = sem_const_from_ty(db, TyId::const_ty(db, evaluated))?;
     let SemConstValue::Enum { ty, variant, .. } = value.value(db) else {
@@ -706,15 +304,10 @@ pub(crate) fn effect_space_from_const_ty<'db>(
     };
     let enum_ = ty.as_enum(db)?;
 
-    // An effect handle's `AddressSpace`, or a `StateIndex` collection's
-    // `StateSpace`, whose variants share their names.
-    let is_space_enum = |path| {
-        resolve_lib_type_path(db, scope, path)
-            .and_then(|space| space.adt_def(db))
-            .is_some_and(|space| super::adt_def::AdtRef::Enum(enum_) == space.adt_ref(db))
-    };
-    if !is_space_enum("core::effect_ref::AddressSpace")
-        && !is_space_enum("core::effect_ref::StateSpace")
+    // A `StateIndex` collection's `StateSpace`.
+    if resolve_lib_type_path(db, scope, "core::effect_ref::StateSpace")
+        .and_then(|space| space.adt_def(db))
+        .is_none_or(|space| super::adt_def::AdtRef::Enum(enum_) != space.adt_ref(db))
     {
         return None;
     }
@@ -726,416 +319,8 @@ pub(crate) fn effect_space_from_const_ty<'db>(
         .data(db)
         .as_str()
     {
-        "Memory" => Some(ProviderAddressSpace::Memory),
-        "Calldata" => Some(ProviderAddressSpace::Calldata),
-        "Storage" => Some(ProviderAddressSpace::Storage),
-        "TransientStorage" => Some(ProviderAddressSpace::Transient),
-        "Code" => Some(ProviderAddressSpace::Code),
+        "Storage" => Some(AddressSpace::Storage),
+        "TransientStorage" => Some(AddressSpace::Transient),
         _ => None,
-    }
-}
-
-fn provider_kind_for_target_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    target_ty: TyId<'db>,
-) -> ProviderKind {
-    let target_ty = if let Some((_, inner)) = target_ty.as_borrow(db) {
-        inner
-    } else {
-        target_ty
-    };
-    if target_ty.is_struct(db)
-        || target_ty.is_array(db)
-        || target_ty.is_tuple(db)
-        || target_ty.as_enum(db).is_some()
-    {
-        ProviderKind::Handle
-    } else {
-        ProviderKind::RawAddress
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use camino::Utf8PathBuf;
-    use common::{
-        InputDb,
-        ingot::IngotKind,
-        stdlib::{HasBuiltinCore, HasBuiltinStd},
-    };
-    use url::Url;
-
-    use super::{
-        EffectHandleResolution, ProviderAddressSpace, ProviderKind, ProviderLayoutEvidence,
-        ProviderLayoutFailure, ProviderLayoutResolution, provider_semantics, resolve_effect_handle,
-        resolve_effect_handle_layout,
-    };
-    use crate::{
-        analysis::ty::{
-            trait_def::ImplementorOrigin, trait_resolution::PredicateListId,
-            unify::UnificationTable,
-        },
-        hir_def::{ItemKind, TopLevelMod, scope_graph::ScopeId},
-        test_db::{HirAnalysisTestDb, find_func},
-    };
-
-    fn provider_param_ty<'db>(
-        db: &'db HirAnalysisTestDb,
-        top_mod: TopLevelMod<'db>,
-    ) -> (ScopeId<'db>, crate::analysis::ty::TyId<'db>) {
-        let func = top_mod
-            .children_non_nested(db)
-            .find_map(|item| match item {
-                ItemKind::Func(func) => Some(func),
-                _ => None,
-            })
-            .expect("missing probe function");
-        let ty = func
-            .params(db)
-            .next()
-            .expect("missing provider parameter")
-            .ty(db);
-        (func.scope(), ty)
-    }
-
-    #[test]
-    fn unresolved_arguments_do_not_turn_plain_types_into_handles() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            "plain_inferred_parameter.fe".into(),
-            r#"
-struct Plain<const N: u256> {}
-fn probe<const N: u256>(value: own Plain<N>) {}
-fn handle<T>(value: own *T) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        let (scope, provider_ty) = provider_param_ty(&db, top_mod);
-        let mut table = UnificationTable::new(&db);
-        let provider_ty = table.instantiate_with_fresh_vars(provider_ty);
-        assert!(provider_ty.has_var(&db));
-        assert!(matches!(
-            resolve_effect_handle(&db, scope, PredicateListId::empty_list(&db), provider_ty),
-            EffectHandleResolution::NotHandle
-        ));
-        let func = find_func(&db, top_mod, "handle");
-        let ty = func.params(&db).next().expect("handle parameter").ty(&db);
-        let handle_ty = table.instantiate_with_fresh_vars(ty);
-        assert!(handle_ty.has_var(&db));
-        assert!(matches!(
-            resolve_effect_handle(
-                &db,
-                func.scope(),
-                PredicateListId::empty_list(&db),
-                handle_ty
-            ),
-            EffectHandleResolution::Invalid(ProviderLayoutFailure::Ambiguous)
-        ));
-    }
-
-    #[test]
-    fn local_ingot_named_std_cannot_define_integer_backed_handles() {
-        let mut db = HirAnalysisTestDb::default();
-        db.initialize_builtin_core();
-        db.initialize_builtin_std();
-        let base_url = Url::parse("file:///fake-std/").expect("valid test URL");
-        db.workspace().touch(
-            &mut db,
-            base_url.join("fe.toml").expect("valid config URL"),
-            Some(
-                r#"
-[ingot]
-name = "std"
-version = "0.0.0"
-"#
-                .to_string(),
-            ),
-        );
-        let file = db.workspace().touch(
-            &mut db,
-            base_url.join("src/lib.fe").expect("valid source URL"),
-            Some(
-                r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-struct Forged { raw: u256 }
-
-impl EffectHandle for Forged {
-    type Target = u256
-    type Raw = u256
-    const SPACE: AddressSpace = AddressSpace::Storage
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-fn probe(value: own Forged) {}
-"#
-                .to_string(),
-            ),
-        );
-        let (top_mod, _) = db.top_mod(file);
-        assert_eq!(top_mod.ingot(&db).kind(&db), IngotKind::Std);
-        let (scope, provider_ty) = provider_param_ty(&db, top_mod);
-        assert!(matches!(
-            resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty,),
-            ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UntrustedRaw)
-        ));
-    }
-
-    #[test]
-    fn provider_layout_uses_one_generic_impl_instance_for_target_and_space() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from(
-                "provider_layout_uses_one_generic_impl_instance_for_target_and_space.fe",
-            ),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-struct Ptr<T, const SP: AddressSpace> { raw: *T }
-
-impl<T, const SP: AddressSpace> EffectHandle for Ptr<T, SP> {
-    type Target = T
-    type Raw = *T
-    const SPACE: AddressSpace = SP
-
-    fn raw(self) -> *T { self.raw }
-}
-
-fn probe(value: own Ptr<u8, AddressSpace::Memory>) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        let (scope, provider_ty) = provider_param_ty(&db, top_mod);
-        let resolution =
-            resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty);
-        let ProviderLayoutResolution::Resolved {
-            impl_instance,
-            target,
-            space,
-        } = resolution
-        else {
-            panic!("expected a unique provider layout, got {resolution:?}");
-        };
-        assert_eq!(target.pretty_print(&db).to_string(), "u8");
-        assert_eq!(impl_instance.impl_args(&db)[0], target);
-        assert_eq!(space, ProviderAddressSpace::Memory);
-        assert!(matches!(
-            impl_instance.selected().origin(&db),
-            ImplementorOrigin::Hir(_)
-        ));
-    }
-
-    #[test]
-    fn provider_layout_rejects_multiple_matching_impls_even_when_outputs_match() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from(
-                "provider_layout_rejects_multiple_matching_impls_even_when_outputs_match.fe",
-            ),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-struct Ptr { raw: u256 }
-
-impl EffectHandle for Ptr {
-    type Target = u8
-    type Raw = u256
-    const SPACE: AddressSpace = AddressSpace::Storage
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-impl EffectHandle for Ptr {
-    type Target = u8
-    type Raw = u256
-    const SPACE: AddressSpace = AddressSpace::Storage
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-fn probe(value: own Ptr) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        let (scope, provider_ty) = provider_param_ty(&db, top_mod);
-        let resolution =
-            resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty);
-        assert!(
-            matches!(
-                resolution,
-                ProviderLayoutResolution::Invalid(ProviderLayoutFailure::Ambiguous)
-            ),
-            "got {resolution:?}"
-        );
-        let semantics =
-            provider_semantics(&db, scope, PredicateListId::empty_list(&db), provider_ty);
-        assert_eq!(semantics.kind, ProviderKind::InvalidHandle);
-        assert!(matches!(
-            semantics.evidence,
-            ProviderLayoutEvidence::InvalidHandle(ProviderLayoutFailure::Ambiguous)
-        ));
-        assert!(semantics.target_ty.is_none());
-        assert!(semantics.address_space.is_none());
-    }
-
-    #[test]
-    fn provider_layout_distinguishes_missing_target_and_unresolved_space() {
-        let mut db = HirAnalysisTestDb::default();
-        let missing_target_file = db.new_stand_alone(
-            Utf8PathBuf::from("provider_layout_distinguishes_missing_target.fe"),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-struct MissingTarget { raw: u256 }
-
-impl EffectHandle for MissingTarget {
-    type Raw = u256
-    const SPACE: AddressSpace = AddressSpace::Storage
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-fn probe(value: own MissingTarget) {}
-"#,
-        );
-        let (missing_target_mod, _) = db.top_mod(missing_target_file);
-        let (scope, provider_ty) = provider_param_ty(&db, missing_target_mod);
-        let resolution =
-            resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty);
-        assert!(
-            matches!(
-                resolution,
-                ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget)
-            ),
-            "got {resolution:?}"
-        );
-
-        let unresolved_space_file = db.new_stand_alone(
-            Utf8PathBuf::from("provider_layout_distinguishes_unresolved_space.fe"),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-struct Ptr<T, const SP: AddressSpace> { raw: u256 }
-
-impl<T, const SP: AddressSpace> EffectHandle for Ptr<T, SP> {
-    type Target = T
-    type Raw = u256
-    const SPACE: AddressSpace = SP
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-fn probe<const SP: AddressSpace>(value: own Ptr<u8, SP>) {}
-"#,
-        );
-        let (unresolved_space_mod, _) = db.top_mod(unresolved_space_file);
-        let (scope, provider_ty) = provider_param_ty(&db, unresolved_space_mod);
-        let resolution =
-            resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty);
-        assert!(
-            matches!(
-                resolution,
-                ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UnresolvedSpace)
-            ),
-            "got {resolution:?}"
-        );
-    }
-
-    #[test]
-    fn provider_layout_rejects_a_residual_generic_target() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("provider_layout_rejects_a_residual_generic_target.fe"),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-struct Ptr<T> { raw: *T }
-
-impl<T> EffectHandle for Ptr<T> {
-    type Target = T
-    type Raw = *T
-    const SPACE: AddressSpace = AddressSpace::Memory
-
-    fn raw(self) -> *T { self.raw }
-}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        let impl_trait = top_mod.all_impl_traits(&db)[0];
-        assert!(matches!(
-            resolve_effect_handle_layout(
-                &db,
-                impl_trait.scope(),
-                PredicateListId::empty_list(&db),
-                impl_trait.ty(&db),
-            ),
-            ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget)
-        ));
-    }
-
-    #[test]
-    fn provider_layout_rejects_an_unreduced_projection_target() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("provider_layout_rejects_an_unreduced_projection_target.fe"),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-trait Source { type Value }
-
-struct Missing {}
-struct Ptr { raw: u256 }
-
-impl EffectHandle for Ptr {
-    type Target = <Missing as Source>::Value
-    type Raw = u256
-    const SPACE: AddressSpace = AddressSpace::Storage
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-fn probe(value: own Ptr) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        let (scope, provider_ty) = provider_param_ty(&db, top_mod);
-        assert!(matches!(
-            resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty,),
-            ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget)
-        ));
-    }
-
-    #[test]
-    fn provider_layout_rejects_an_incomplete_adt_target() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("provider_layout_rejects_an_incomplete_adt_target.fe"),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-
-struct Generic<T> {}
-struct Ptr { raw: u256 }
-
-impl EffectHandle for Ptr {
-    type Target = Generic
-    type Raw = u256
-    const SPACE: AddressSpace = AddressSpace::Storage
-
-    fn raw(self) -> u256 { self.raw }
-}
-
-fn probe(value: own Ptr) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        let (scope, provider_ty) = provider_param_ty(&db, top_mod);
-        assert!(matches!(
-            resolve_effect_handle_layout(&db, scope, PredicateListId::empty_list(&db), provider_ty,),
-            ProviderLayoutResolution::Invalid(ProviderLayoutFailure::UnresolvedTarget)
-        ));
     }
 }

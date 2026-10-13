@@ -21,7 +21,7 @@ note:
    ┌─ pointer_first_class.fe:11:9
    │
 11 │     let bytes_from_typed: *u8 = core::ptr::byte_ptr(data)
-   │         ^^^^^^^^^^^^^^^^ *<u8>
+   │         ^^^^^^^^^^^^^^^^ *u8
 
 note:
    ┌─ pointer_first_class.fe:11:33
@@ -33,19 +33,19 @@ note:
    ┌─ pointer_first_class.fe:11:33
    │
 11 │     let bytes_from_typed: *u8 = core::ptr::byte_ptr(data)
-   │                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ *<u8>
+   │                                 ^^^^^^^^^^^^^^^^^^^^^^^^^ *u8
 
 note:
    ┌─ pointer_first_class.fe:11:53
    │
 11 │     let bytes_from_typed: *u8 = core::ptr::byte_ptr(data)
-   │                                                     ^^^^ *<Data>
+   │                                                     ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:12:9
    │
 12 │     let typed_again: *Data = core::ptr::cast<u8, Data>(bytes_from_typed)
-   │         ^^^^^^^^^^^ *<Data>
+   │         ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:12:30
@@ -57,19 +57,19 @@ note:
    ┌─ pointer_first_class.fe:12:30
    │
 12 │     let typed_again: *Data = core::ptr::cast<u8, Data>(bytes_from_typed)
-   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ *<Data>
+   │                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:12:56
    │
 12 │     let typed_again: *Data = core::ptr::cast<u8, Data>(bytes_from_typed)
-   │                                                        ^^^^^^^^^^^^^^^^ *<u8>
+   │                                                        ^^^^^^^^^^^^^^^^ *u8
 
 note:
    ┌─ pointer_first_class.fe:13:9
    │
 13 │     let next: *Data = core::ptr::offset_bytes(typed_again, 32)
-   │         ^^^^ *<Data>
+   │         ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:13:23
@@ -81,13 +81,13 @@ note:
    ┌─ pointer_first_class.fe:13:23
    │
 13 │     let next: *Data = core::ptr::offset_bytes(typed_again, 32)
-   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ *<Data>
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:13:47
    │
 13 │     let next: *Data = core::ptr::offset_bytes(typed_again, 32)
-   │                                               ^^^^^^^^^^^ *<Data>
+   │                                               ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:13:60
@@ -99,7 +99,7 @@ note:
    ┌─ pointer_first_class.fe:14:9
    │
 14 │     let input_data: *Data = core::ptr::cast<u8, Data>(bytes)
-   │         ^^^^^^^^^^ *<Data>
+   │         ^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:14:29
@@ -111,13 +111,13 @@ note:
    ┌─ pointer_first_class.fe:14:29
    │
 14 │     let input_data: *Data = core::ptr::cast<u8, Data>(bytes)
-   │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ *<Data>
+   │                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:14:55
    │
 14 │     let input_data: *Data = core::ptr::cast<u8, Data>(bytes)
-   │                                                       ^^^^^ *<u8>
+   │                                                       ^^^^^ *u8
 
 note:
    ┌─ pointer_first_class.fe:16:5
@@ -129,7 +129,7 @@ note:
    ┌─ pointer_first_class.fe:16:14
    │
 16 │     unsafe { typed_again.value + next.other + input_data.value }
-   │              ^^^^^^^^^^^ *<Data>
+   │              ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:16:14
@@ -153,7 +153,7 @@ note:
    ┌─ pointer_first_class.fe:16:34
    │
 16 │     unsafe { typed_again.value + next.other + input_data.value }
-   │                                  ^^^^ *<Data>
+   │                                  ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:16:34
@@ -165,7 +165,7 @@ note:
    ┌─ pointer_first_class.fe:16:47
    │
 16 │     unsafe { typed_again.value + next.other + input_data.value }
-   │                                               ^^^^^^^^^^ *<Data>
+   │                                               ^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:16:47
@@ -194,7 +194,7 @@ note:
    ┌─ pointer_first_class.fe:20:14
    │
 20 │     unsafe { data.value = 10 }
-   │              ^^^^ *<Data>
+   │              ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:20:14
@@ -224,7 +224,7 @@ note:
    ┌─ pointer_first_class.fe:21:14
    │
 21 │     unsafe { data.other = data.value + 3 }
-   │              ^^^^ *<Data>
+   │              ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:21:14
@@ -242,7 +242,7 @@ note:
    ┌─ pointer_first_class.fe:21:27
    │
 21 │     unsafe { data.other = data.value + 3 }
-   │                           ^^^^ *<Data>
+   │                           ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:21:27
@@ -272,7 +272,7 @@ note:
    ┌─ pointer_first_class.fe:22:14
    │
 22 │     unsafe { data.value + data.other }
-   │              ^^^^ *<Data>
+   │              ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:22:14
@@ -290,7 +290,7 @@ note:
    ┌─ pointer_first_class.fe:22:27
    │
 22 │     unsafe { data.value + data.other }
-   │                           ^^^^ *<Data>
+   │                           ^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:22:27
@@ -319,7 +319,7 @@ note:
    ┌─ pointer_first_class.fe:26:14
    │
 26 │     unsafe { pair.0 = 4 }
-   │              ^^^^ *<(u256, u256)>
+   │              ^^^^ *(u256, u256)
 
 note:
    ┌─ pointer_first_class.fe:26:14
@@ -349,7 +349,7 @@ note:
    ┌─ pointer_first_class.fe:27:14
    │
 27 │     unsafe { pair.1 = pair.0 + 5 }
-   │              ^^^^ *<(u256, u256)>
+   │              ^^^^ *(u256, u256)
 
 note:
    ┌─ pointer_first_class.fe:27:14
@@ -367,7 +367,7 @@ note:
    ┌─ pointer_first_class.fe:27:23
    │
 27 │     unsafe { pair.1 = pair.0 + 5 }
-   │                       ^^^^ *<(u256, u256)>
+   │                       ^^^^ *(u256, u256)
 
 note:
    ┌─ pointer_first_class.fe:27:23
@@ -397,7 +397,7 @@ note:
    ┌─ pointer_first_class.fe:28:14
    │
 28 │     unsafe { pair.0 + pair.1 }
-   │              ^^^^ *<(u256, u256)>
+   │              ^^^^ *(u256, u256)
 
 note:
    ┌─ pointer_first_class.fe:28:14
@@ -415,7 +415,7 @@ note:
    ┌─ pointer_first_class.fe:28:23
    │
 28 │     unsafe { pair.0 + pair.1 }
-   │                       ^^^^ *<(u256, u256)>
+   │                       ^^^^ *(u256, u256)
 
 note:
    ┌─ pointer_first_class.fe:28:23
@@ -450,7 +450,7 @@ note:
    ┌─ pointer_first_class.fe:32:14
    │
 32 │     unsafe { holder.data.value = 17 }
-   │              ^^^^^^^^^^^ *<Data>
+   │              ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:32:14
@@ -486,7 +486,7 @@ note:
    ┌─ pointer_first_class.fe:33:14
    │
 33 │     unsafe { holder.data.other = holder.data.value + 2 }
-   │              ^^^^^^^^^^^ *<Data>
+   │              ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:33:14
@@ -510,7 +510,7 @@ note:
    ┌─ pointer_first_class.fe:33:34
    │
 33 │     unsafe { holder.data.other = holder.data.value + 2 }
-   │                                  ^^^^^^^^^^^ *<Data>
+   │                                  ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:33:34
@@ -546,7 +546,7 @@ note:
    ┌─ pointer_first_class.fe:34:14
    │
 34 │     unsafe { holder.data.value + holder.data.other }
-   │              ^^^^^^^^^^^ *<Data>
+   │              ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:34:14
@@ -570,7 +570,7 @@ note:
    ┌─ pointer_first_class.fe:34:34
    │
 34 │     unsafe { holder.data.value + holder.data.other }
-   │                                  ^^^^^^^^^^^ *<Data>
+   │                                  ^^^^^^^^^^^ *Data
 
 note:
    ┌─ pointer_first_class.fe:34:34

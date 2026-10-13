@@ -25,6 +25,7 @@ pub mod reference;
 mod storage_layout;
 pub mod symbol;
 use crate::analysis::HirAnalysisDb;
+use crate::analysis::ty::AddressSpace;
 use crate::analysis::ty::closure::closure_effect_requirements;
 use crate::analysis::ty::corelib::{resolve_core_trait, resolve_lib_func_path};
 use crate::analysis::ty::diagnostics::{ContractFieldLayoutIssue, ImplDiag, TyLowerDiag};
@@ -97,7 +98,7 @@ use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_ty};
 use crate::analysis::ty::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     provider::{
-        ProviderLayoutEvidence, ProviderSemantics, RootProviderRegistration, RootProviderScope,
+        ProviderKind, ProviderSemantics, RootProviderRegistration, RootProviderScope,
         provider_semantics, registered_root_providers,
     },
     trait_resolution::{PredicateListId, TraitSolveCx, WellFormedness, check_ty_wf},
@@ -111,7 +112,7 @@ use crate::analysis::ty::{
 };
 use crate::core::adt_lower::{lower_adt, lower_contract_fields};
 use common::indexmap::IndexMap;
-use common::ingot::Ingot;
+use common::ingot::{Ingot, IngotKind};
 use indexmap::IndexSet;
 use salsa::Update;
 // Re-export from crate root for backwards compatibility
@@ -125,6 +126,30 @@ pub(crate) fn lower_type_alias_body<'db>(
 ) -> TyAlias<'db> {
     let hir_ty_opt = alias.type_ref(db).to_opt();
     lower_type_alias_from_hir(db, alias, hir_ty_opt)
+}
+
+/// The space a core alias's `#[pointer(space)]` retargets its `*T` into.
+pub(crate) fn type_alias_pointer_space<'db>(
+    db: &'db dyn HirAnalysisDb,
+    alias: TypeAlias<'db>,
+) -> Option<AddressSpace> {
+    if alias.top_mod(db).ingot(db).kind(db) != IngotKind::Core {
+        return None;
+    }
+    let [arg] = alias
+        .attributes(db)
+        .get_attr(db, "pointer")?
+        .args
+        .as_slice()
+    else {
+        return None;
+    };
+    match arg.key_str(db)? {
+        "storage" => Some(AddressSpace::Storage),
+        "transient" => Some(AddressSpace::Transient),
+        "calldata" => Some(AddressSpace::Calldata),
+        _ => None,
+    }
 }
 
 pub(crate) fn lower_type_alias_body_deferred<'db>(
@@ -296,8 +321,6 @@ fn func_provider_bindings_canonical<'db>(
     func: Func<'db>,
 ) -> Vec<ProviderBinding<'db>> {
     let requirements = func_effect_requirements_canonical(db, func);
-    let assumptions = collect_func_decl_constraints(db, func.into(), true).instantiate_identity();
-    let scope = func.scope();
     let provider_map = place_effect_provider_param_index_map(db, func);
     let provider_params = CallableDef::Func(func).params(db);
     let mut providers = requirements
@@ -322,13 +345,7 @@ fn func_provider_bindings_canonical<'db>(
                     site: EffectParamSite::Func(func),
                     requirement_idx: requirement.binding_idx,
                 },
-                semantics: effect_param_provider_semantics(
-                    db,
-                    scope,
-                    assumptions,
-                    provider_ty,
-                    &requirement.key,
-                ),
+                semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
             })
         })
         .collect::<Vec<_>>();
@@ -347,7 +364,7 @@ fn func_provider_bindings_canonical<'db>(
                         scope: RootProviderScope::Func(func),
                         registration,
                     },
-                    semantics: provider_semantics(db, scope, assumptions, provider_ty),
+                    semantics: provider_semantics(db, provider_ty),
                 }
             }),
     );
@@ -1460,9 +1477,6 @@ pub struct ContractFieldInfo<'db> {
     pub name: IdentId<'db>,
     pub declared: TyId<'db>,
     pub is_mut: bool,
-    pub is_provider: bool,
-    /// The value the field holds: a provider's target, else `declared`.
-    pub target: TyId<'db>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
@@ -1792,7 +1806,7 @@ impl<'db> Contract<'db> {
         self.storage_layout(db)
             .semantic_fields()
             .into_iter()
-            .map(|(name, field, is_mut, is_provider, declared, target)| {
+            .map(|(name, field, is_mut, declared)| {
                 (
                     name,
                     ContractFieldInfo {
@@ -1800,8 +1814,6 @@ impl<'db> Contract<'db> {
                         name,
                         declared,
                         is_mut,
-                        is_provider,
-                        target,
                     },
                 )
             })
@@ -1938,29 +1950,20 @@ pub(crate) fn row_effect_provider<'db>(
             site: requirement.binding_site,
             requirement_idx: requirement.binding_idx,
         },
-        semantics: effect_param_provider_semantics(
-            db,
-            owner,
-            PredicateListId::empty_list(db),
-            provider_ty,
-            &requirement.key,
-        ),
+        semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
     }
 }
 
 /// The semantics of `provider_ty`, the parameter a body is generic over for
-/// the provider of an effect keyed by `key`. One that is not a handle is a
-/// place of the key's type, so it lies where that type's places do: a
-/// state-only type is never in memory.
+/// the provider of an effect keyed by `key`: a place of the key's type, so it
+/// lies where that type's places do. A state-only type is never in memory.
 pub(crate) fn effect_param_provider_semantics<'db>(
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
     provider_ty: TyId<'db>,
     key: &EffectRequirementKey<'db>,
 ) -> ProviderSemantics<'db> {
-    let mut semantics = provider_semantics(db, scope, assumptions, provider_ty);
-    if semantics.evidence == ProviderLayoutEvidence::NotHandle
+    let mut semantics = provider_semantics(db, provider_ty);
+    if semantics.kind == ProviderKind::RootObject
         && let EffectRequirementKey::Type(key_ty) = key
     {
         semantics.address_space = Some(key_ty.default_space(db));
@@ -2157,7 +2160,7 @@ fn contract_scoped_effect_requirements_canonical<'db>(
             && fields.contains_key(&name)
         {
             let key = match contract.storage_layout(db).field(&name) {
-                Some(layout) => EffectRequirementKey::Type(layout.target),
+                Some(layout) => EffectRequirementKey::Type(layout.declared),
                 None => EffectRequirementKey::Other,
             };
 
@@ -2212,8 +2215,6 @@ fn contract_provider_bindings_canonical<'db>(
     contract: Contract<'db>,
     site: EffectParamSite<'db>,
 ) -> Vec<ProviderBinding<'db>> {
-    let scope = contract.scope();
-    let assumptions = PredicateListId::empty_list(db);
     let is_init_site = matches!(site, EffectParamSite::ContractInit { .. });
     let mut providers = contract
         .storage_layout(db)
@@ -2221,38 +2222,26 @@ fn contract_provider_bindings_canonical<'db>(
         .cloned()
         .enumerate()
         .map(|(idx, field)| {
-            let provider_ty = field.target;
+            let provider_ty = field.declared;
             ProviderBinding {
                 provider_idx: idx as u32,
                 provider_ty,
                 // Immutable contract fields (i.e. code-backed) are writable during `init`.
                 // They are materialized into memory during initialization and later embedded into code.
-                is_mut: field.is_mut
-                    || (is_init_site
-                        && field.address_space == crate::analysis::ty::ProviderAddressSpace::Code),
+                is_mut: field.is_mut || (is_init_site && field.address_space == AddressSpace::Code),
                 source: ProviderSource::ContractField { field: field.field },
                 semantics: ProviderSemantics {
                     provider_ty,
-                    kind: if provider_ty.is_struct(db)
-                        || provider_ty.is_array(db)
-                        || provider_ty.is_tuple(db)
-                        || provider_ty.as_enum(db).is_some()
-                    {
-                        crate::analysis::ty::ProviderKind::Handle
-                    } else {
-                        crate::analysis::ty::ProviderKind::RawAddress
-                    },
+                    kind: ProviderKind::Place,
                     address_space: Some(field.address_space).map(|space| {
-                        if is_init_site && space == crate::analysis::ty::ProviderAddressSpace::Code
-                        {
-                            crate::analysis::ty::ProviderAddressSpace::Memory
+                        if is_init_site && space == AddressSpace::Code {
+                            AddressSpace::Memory
                         } else {
                             space
                         }
                     }),
                     target_ty: Some(provider_ty),
                     transport: crate::analysis::ty::ProviderTransport::ByValue,
-                    evidence: ProviderLayoutEvidence::ContractField,
                 },
             }
         })
@@ -2274,7 +2263,7 @@ fn contract_provider_bindings_canonical<'db>(
                         scope: RootProviderScope::of_site(site),
                         registration,
                     },
-                    semantics: provider_semantics(db, scope, assumptions, provider_ty),
+                    semantics: provider_semantics(db, provider_ty),
                 }
             }),
     );
@@ -2473,7 +2462,6 @@ fn resolve_sol_abi_ty<'db>(
     assumptions: PredicateListId<'db>,
 ) -> Option<TyId<'db>> {
     use crate::analysis::name_resolution::{PathRes, resolve_path};
-    use common::ingot::IngotKind;
 
     let ingot = scope.ingot(db);
     let std_root = if ingot.kind(db) == IngotKind::Std {
@@ -3563,8 +3551,7 @@ impl<'db> AdtDef<'db> {
 /// once rather than once per member, and each cycle is reported once, at its
 /// first ADT in item order. Only growth by type constructors written in field
 /// types is found: an argument computed by a trait projection or a const
-/// expression, and an effect handle's target, are left to the borrow
-/// checker's referent limit. Reachability follows only builtin arguments and
+/// expression is left to the borrow checker's referent limit. Reachability follows only builtin arguments and
 /// exposed ADT arguments, with array elements requiring known positive lengths.
 /// Other heads and symbolic lengths rely on the referent limit. Containment
 /// inside an ADT argument still counts every constructor, including `[T; 0]`.
@@ -3873,7 +3860,7 @@ fn collect_direct_adts<'db>(
         }
         fn visit_app(&mut self, abs: TyId<'db>, arg: TyId<'db>) {
             let is_indirect = match abs.data(self.db) {
-                TyData::TyBase(TyBase::Prim(PrimTy::Ptr)) => true,
+                TyData::TyBase(TyBase::Prim(PrimTy::Ptr(_))) => true,
                 // Future: handle Ref when introduced.
                 _ => false,
             };
@@ -5578,27 +5565,8 @@ impl<'db> FieldView<'db> {
                 ];
             }
             let diag = match error {
-                ContractLayoutError::AmbiguousProviderLayout => {
-                    TyLowerDiag::ContractFieldProviderLayoutAmbiguous { span, ty }
-                }
-                ContractLayoutError::UnresolvedProviderTarget => {
-                    TyLowerDiag::ContractFieldProviderTargetUnresolved { span, ty }
-                }
-                ContractLayoutError::UnresolvedProviderSpace => {
-                    TyLowerDiag::ContractFieldHandleSpaceUnresolved { span, ty }
-                }
-                ContractLayoutError::InvalidProviderRaw { failure } => {
-                    TyLowerDiag::ContractFieldProviderRawInvalid {
-                        span,
-                        ty,
-                        failure: *failure,
-                    }
-                }
-                ContractLayoutError::NonRegularProviderCycle => {
-                    TyLowerDiag::ContractFieldProviderCycle { span, ty }
-                }
-                ContractLayoutError::MemoryValueInState { pointer } => {
-                    TyLowerDiag::ContractFieldMemoryValue {
+                ContractLayoutError::CallPointerInState { pointer } => {
+                    TyLowerDiag::ContractFieldCallPointer {
                         span,
                         ty,
                         pointer: *pointer,

@@ -49,7 +49,7 @@ use crate::{
             },
             root_semantic_instance_key,
         },
-        ty::{provider::ProviderAddressSpace, ty_check::BodyOwner},
+        ty::{provider::AddressSpace, ty_check::BodyOwner},
     },
     hir_def::{Contract, ExprId, ItemKind, StmtId, TopLevelMod},
 };
@@ -62,7 +62,7 @@ pub enum SemanticAccessCheckResult<'db> {
     /// space each access component yields: its result-space contract.
     Ok {
         warnings: Vec<SemanticDiagnosticId<'db>>,
-        spaces: Vec<Option<ProviderAddressSpace>>,
+        spaces: Vec<Option<AddressSpace>>,
     },
     Blocked(BlockedSemanticBody<'db>),
     Err(SemanticDiagnosticId<'db>),
@@ -101,7 +101,7 @@ impl fmt::Display for SemanticAnalysisError<'_> {
 pub(crate) fn projection_result_spaces<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
-) -> &'db [Option<ProviderAddressSpace>] {
+) -> &'db [Option<AddressSpace>] {
     match body_check(db, instance) {
         SemanticAccessCheckResult::Ok { spaces, .. } => spaces,
         SemanticAccessCheckResult::Blocked(_) | SemanticAccessCheckResult::Err(_) => &[],

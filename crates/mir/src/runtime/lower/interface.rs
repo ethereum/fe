@@ -1,3 +1,4 @@
+use hir::analysis::ty::AddressSpace;
 use hir::analysis::{
     semantic::{SemanticBody, SemanticInstance, same_owner_effect_binding},
     ty::ty_check::{BodyOwner, LocalBinding},
@@ -5,7 +6,7 @@ use hir::analysis::{
 
 use crate::{
     db::MirDb,
-    runtime::{AddressSpaceKind, RuntimeBoundarySpec, RuntimeParamPlan},
+    runtime::{RuntimeBoundarySpec, RuntimeParamPlan},
 };
 
 use super::{
@@ -110,7 +111,7 @@ pub(crate) fn runtime_visible_binding_plans<'db>(
                 continue;
             };
             let ty = semantic.binding_ty(db, binding);
-            let plan = top_level_class_for_ty_in_env(db, env, ty, AddressSpaceKind::Memory)
+            let plan = top_level_class_for_ty_in_env(db, env, ty, AddressSpace::Memory)
                 .map(RuntimeBoundarySpec::ExactTransport)
                 .map(RuntimeParamPlan::Boundary)
                 .unwrap_or(RuntimeParamPlan::Erased);

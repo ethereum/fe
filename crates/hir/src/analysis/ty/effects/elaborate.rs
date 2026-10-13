@@ -10,9 +10,8 @@ use crate::{
                 EffectForwarder, EffectPatternKey, EffectQuery, EffectQueryMode,
                 EffectRequirementDecl, EffectRequirementKey, ForwardedEffectKey, ForwardedTraitKey,
                 ForwardedTypeKey, PatternSlot, PatternSlots, StoredEffectKey, StoredTraitKey,
-                StoredTypeKey, TraitPatternKey, TypePatternKey, WitnessTransport,
-                effect_family_for_trait, effect_family_for_type, instantiate_trait_effect_key,
-                instantiate_type_effect_key,
+                StoredTypeKey, TraitPatternKey, TypePatternKey, effect_family_for_trait,
+                effect_family_for_type, instantiate_trait_effect_key, instantiate_type_effect_key,
                 match_::{instantiate_trait_pattern_in, instantiate_type_pattern_in},
                 normalize_effect_identity_trait, normalize_effect_identity_ty, resolve_effect_path,
                 stored_trait_key_is_rigid, stored_type_key_is_rigid,
@@ -560,39 +559,29 @@ pub fn seed_forwarder_from_requirement<'db, P: Copy>(
     // rigid witnesses. Instantiate the requirement pattern into the main table once and
     // reuse those hidden vars across the body.
     let pattern = build_pattern_from_requirement_decl(tc.db, req, scope, assumptions);
-    let (key, transport) = match pattern {
-        EffectPatternKey::Type(pattern) => (
-            ForwardedEffectKey::Type(ForwardedTypeKey {
-                carrier: instantiate_type_pattern_in(tc.db, &mut tc.table, pattern.clone()),
-                family: pattern.family,
-            }),
-            WitnessTransport::Direct,
-        ),
+    let key = match pattern {
+        EffectPatternKey::Type(pattern) => ForwardedEffectKey::Type(ForwardedTypeKey {
+            carrier: instantiate_type_pattern_in(tc.db, &mut tc.table, pattern.clone()),
+            family: pattern.family,
+        }),
         EffectPatternKey::Trait(pattern) => {
             let instantiated = instantiate_trait_pattern_in(tc.db, &mut tc.table, pattern.clone());
-            (
-                ForwardedEffectKey::Trait(ForwardedTraitKey {
-                    def: instantiated.def(tc.db),
-                    args_no_self: instantiated.args(tc.db)[1..].iter().copied().collect(),
-                    assoc_bindings: instantiated
-                        .assoc_type_bindings(tc.db)
-                        .iter()
-                        .map(|(&name, &ty)| (name, ty))
-                        .collect(),
-                    family: pattern.family,
-                }),
-                WitnessTransport::ByValue,
-            )
+            ForwardedEffectKey::Trait(ForwardedTraitKey {
+                def: instantiated.def(tc.db),
+                args_no_self: instantiated.args(tc.db)[1..].iter().copied().collect(),
+                assoc_bindings: instantiated
+                    .assoc_type_bindings(tc.db)
+                    .iter()
+                    .map(|(&name, &ty)| (name, ty))
+                    .collect(),
+                family: pattern.family,
+            })
         }
     };
     if !key.is_well_formed(tc.db) {
         return None;
     }
-    Some(EffectForwarder {
-        key,
-        provider,
-        transport,
-    })
+    Some(EffectForwarder { key, provider })
 }
 
 fn normalize_stored_trait_key<'db>(

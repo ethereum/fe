@@ -5,7 +5,7 @@ use common::file::File;
 use hir::{
     HirDb,
     analysis::ty::{
-        ProviderAddressSpace,
+        AddressSpace,
         ty_check::{EffectParamSite, LocalBinding, ParamSite},
     },
     core::semantic::{
@@ -161,13 +161,13 @@ fn contract_field_id_from_local_binding<'db>(
     }
 }
 
-fn address_space_heading(space: ProviderAddressSpace) -> &'static str {
+fn address_space_heading(space: AddressSpace) -> &'static str {
     match space {
-        ProviderAddressSpace::Memory => "Memory",
-        ProviderAddressSpace::Storage => "Storage",
-        ProviderAddressSpace::Transient => "Transient Storage",
-        ProviderAddressSpace::Calldata => "Calldata",
-        ProviderAddressSpace::Code => "Immutable (Code)",
+        AddressSpace::Memory => "Memory",
+        AddressSpace::Storage => "Storage",
+        AddressSpace::Transient => "Transient Storage",
+        AddressSpace::Calldata => "Calldata",
+        AddressSpace::Code => "Immutable (Code)",
     }
 }
 
@@ -242,11 +242,11 @@ fn allocated_layout_markdown<'db>(
     let entries = entries.collect::<Vec<_>>();
     let mut markdown = format!("### {title}");
     for space in [
-        ProviderAddressSpace::Storage,
-        ProviderAddressSpace::Transient,
-        ProviderAddressSpace::Code,
-        ProviderAddressSpace::Memory,
-        ProviderAddressSpace::Calldata,
+        AddressSpace::Storage,
+        AddressSpace::Transient,
+        AddressSpace::Code,
+        AddressSpace::Memory,
+        AddressSpace::Calldata,
     ] {
         let entries = entries
             .iter()

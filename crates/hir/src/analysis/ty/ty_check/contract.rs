@@ -25,7 +25,7 @@ use crate::{
             diagnostics::{
                 BodyDiag, FuncBodyDiag, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
             },
-            provider::ProviderAddressSpace,
+            provider::AddressSpace,
             trait_def::TraitInstId,
             trait_def::impls_for_ty,
             trait_resolution::{
@@ -853,7 +853,7 @@ pub fn check_contract_field_address_spaces<'db>(
         .filter(|field| {
             matches!(
                 field.address_space,
-                ProviderAddressSpace::Memory | ProviderAddressSpace::Calldata
+                AddressSpace::Memory | AddressSpace::Calldata
             )
         })
         .map(|field| {
@@ -878,7 +878,7 @@ fn valid_contract_fields<'db>(
     contract
         .storage_layout(db)
         .values()
-        .filter(|field| !field.declared.has_invalid(db) && !field.target.has_invalid(db))
+        .filter(|field| !field.declared.has_invalid(db))
         .filter(move |field| {
             FieldView {
                 parent: FieldParent::Contract(contract),
@@ -895,7 +895,7 @@ pub fn check_contract_immutable_fields_initialized<'db>(
     contract: Contract<'db>,
 ) -> Vec<FuncBodyDiag<'db>> {
     let required_fields = valid_contract_fields(db, contract)
-        .filter(|field| field.slot_count != 0 && field.address_space == ProviderAddressSpace::Code)
+        .filter(|field| field.slot_count != 0 && field.address_space == AddressSpace::Code)
         .cloned()
         .collect::<Vec<_>>();
     if required_fields.is_empty() {

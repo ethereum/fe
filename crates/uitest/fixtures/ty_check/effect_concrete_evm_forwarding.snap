@@ -7,4 +7,4 @@ error[8-0000]: type mismatch
    ┌─ effect_concrete_evm_forwarding.fe:10:34
    │
 10 │         unsafe { store_word(ptr: ptr, value: self) }
-   │                                  ^^^ expected `*<u8>`, but `u256` is given
+   │                                  ^^^ expected `*u8`, but `u256` is given

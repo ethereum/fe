@@ -5,10 +5,10 @@ expression: diags
 input_file: fixtures/semantic_access/storage_entries_and_raw_pointers.fe
 ---
 error[16-0001]: access conflict in `fn Ledger::recv[0][0]`
-   ┌─ storage_entries_and_raw_pointers.fe:33:33
+   ┌─ storage_entries_and_raw_pointers.fe:33:38
    │
 31 │             let total = mut book.total
    │                         -------------- access opened here
-32 │             var p: StorPtr<Position> = unsafe { raw.stor_ptr(slot) }
-33 │             unsafe { with (p) { bump_debt() } }
-   │                                 ^^^^^^^^^^^ cannot write to this place while a `mut` access of it is open
+32 │             let p: StorPtr<Position> = unsafe { raw.stor_ptr(slot) }
+33 │             unsafe { with (mut *p) { bump_debt() } }
+   │                                      ^^^^^^^^^^^ cannot mutably access this place while a `mut` access of it is open

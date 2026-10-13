@@ -109,23 +109,9 @@ impl<'db> TyFoldable<'db> for ProviderBinding<'db> {
         F: TyFolder<'db>,
     {
         let provider_ty = self.provider_ty.fold_with(db, folder);
-        let evidence = match self.semantics.evidence {
-            crate::analysis::ty::provider::ProviderLayoutEvidence::ResolvedHandle(instance) => {
-                crate::analysis::ty::provider::ProviderLayoutEvidence::ResolvedHandle(
-                    instance.fold_with(db, folder),
-                )
-            }
-            crate::analysis::ty::provider::ProviderLayoutEvidence::TraitBoundHandle(instance) => {
-                crate::analysis::ty::provider::ProviderLayoutEvidence::TraitBoundHandle(
-                    instance.fold_with(db, folder),
-                )
-            }
-            evidence => evidence,
-        };
         let semantics = crate::analysis::ty::provider::ProviderSemantics {
             provider_ty: self.semantics.provider_ty.fold_with(db, folder),
             target_ty: self.semantics.target_ty.map(|ty| ty.fold_with(db, folder)),
-            evidence,
             ..self.semantics
         };
         let source = match self.source {

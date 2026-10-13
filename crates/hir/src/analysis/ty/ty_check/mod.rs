@@ -20,8 +20,9 @@ pub use self::contract::{
 };
 pub(crate) use self::contract::{contract_field_slot, eval_msg_variant_selector};
 pub use self::path::RecordLike;
-use crate::analysis::name_resolution::ResolvedVariant;
-pub use crate::analysis::ty::ProviderAddressSpace;
+use crate::analysis::name_resolution::{ResolvedVariant, is_scope_visible_from};
+pub use crate::analysis::ty::AddressSpace;
+use crate::analysis::ty::adt_def::AdtRef;
 use crate::analysis::ty::corelib::resolve_lib_type_path;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::method_table::ProbedMethod;
@@ -32,7 +33,9 @@ use crate::analysis::ty::trait_resolution::constraint::{
     PredicateSource, collect_func_decl_constraint_pairs,
 };
 use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty};
-use crate::hir_def::{CallableDef, ImplTrait, Trait, params::FuncParamMode};
+use crate::hir_def::{
+    CallableDef, FieldParent, ImplTrait, Trait, params::FuncParamMode, scope_graph::ScopeId,
+};
 use crate::{
     hir_def::{
         BinOp, BindingMarker, Body, CondId, Const, Contract, ContractRecvArm, Expr, ExprId, Func,
@@ -1306,21 +1309,6 @@ fn typed_body_for_bodyless_func<'db>(
     .into()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BindingInterfaceShape<'db> {
-    OrdinaryValue,
-    ProviderValue {
-        kind: ProviderKind,
-        value_ty: TyId<'db>,
-    },
-    PlaceCarrier {
-        value_ty: TyId<'db>,
-    },
-    DirectCarrier {
-        target_ty: TyId<'db>,
-    },
-}
-
 pub struct TyChecker<'db> {
     pub(crate) db: &'db dyn HirAnalysisDb,
     pub(crate) env: TyCheckEnv<'db>,
@@ -1332,7 +1320,7 @@ pub struct TyChecker<'db> {
     /// explicit, and the body's tail ends the slide.
     explicit_yields: bool,
     effect_provider_keys: FxHashSet<InferenceKey<'db>>,
-    first_return_borrow_provider: Option<ProviderAddressSpace>,
+    first_return_borrow_provider: Option<AddressSpace>,
     /// Plain names a reported marker on their initializer marks, so the body
     /// checks as the fix reads.
     implied_markers: FxHashMap<PatId, BindingMarker>,
@@ -1666,11 +1654,8 @@ impl<'db> TyChecker<'db> {
         self.table.commit(snapshot.table);
     }
 
-    fn concrete_borrow_provider_for_effect_handle_ty(
-        &self,
-        ty: TyId<'db>,
-    ) -> Option<ProviderAddressSpace> {
-        let semantics = provider_semantics(self.db, self.env.scope(), self.env.assumptions(), ty);
+    fn concrete_borrow_provider_for_capability_ty(&self, ty: TyId<'db>) -> Option<AddressSpace> {
+        let semantics = provider_semantics(self.db, ty);
         // Root-object defaults are binding-site semantics, not type-implied address spaces.
         (!matches!(semantics.kind, ProviderKind::RootObject)).then_some(semantics.address_space)?
     }
@@ -1679,7 +1664,7 @@ impl<'db> TyChecker<'db> {
         &self,
         site: EffectParamSite<'db>,
         idx: usize,
-    ) -> Option<ProviderAddressSpace> {
+    ) -> Option<AddressSpace> {
         self.env
             .resolved_provider_binding(site, idx)?
             .semantics
@@ -1689,7 +1674,7 @@ impl<'db> TyChecker<'db> {
     fn concrete_borrow_provider_for_binding(
         &self,
         binding: LocalBinding<'db>,
-    ) -> Option<ProviderAddressSpace> {
+    ) -> Option<AddressSpace> {
         match binding {
             LocalBinding::Local { pat, .. } => self.env.local_borrow_provider(pat),
             LocalBinding::EffectParam {
@@ -1713,15 +1698,12 @@ impl<'db> TyChecker<'db> {
             .then(|| {
                 self.env
                     .binding_access(&binding)
-                    .map(|_| ProviderAddressSpace::Memory)
+                    .map(|_| AddressSpace::Memory)
             })?
         })
     }
 
-    fn concrete_borrow_provider_for_place(
-        &self,
-        place: &Place<'db>,
-    ) -> Option<ProviderAddressSpace> {
+    fn concrete_borrow_provider_for_place(&self, place: &Place<'db>) -> Option<AddressSpace> {
         let PlaceBase::Binding(binding) = place.base;
         let binding_ty = normalize_ty(
             self.db,
@@ -1738,6 +1720,27 @@ impl<'db> TyChecker<'db> {
             self.env.scope(),
             self.env.assumptions(),
         );
+        // A place under a dereference lies in its pointer's space.
+        let mut ty = binding_ty;
+        let mut deref_space = None;
+        for projection in &place.projections {
+            if matches!(projection, PlaceProjection::Deref { .. }) {
+                deref_space = ty
+                    .as_capability(self.db)
+                    .map_or(ty, |(_, inner)| inner)
+                    .as_ptr(self.db)
+                    .map(|(_, space)| space);
+            }
+            ty = normalize_ty(
+                self.db,
+                projection.result_ty(),
+                self.env.scope(),
+                self.env.assumptions(),
+            );
+        }
+        if deref_space.is_some() {
+            return deref_space;
+        }
         if self.env.binding_access(&binding).is_some() {
             return self.concrete_borrow_provider_for_binding(binding);
         }
@@ -1750,13 +1753,13 @@ impl<'db> TyChecker<'db> {
             LocalBinding::Local { .. } | LocalBinding::Param { .. } => None,
         };
         binding_provider
-            .or_else(|| self.concrete_borrow_provider_for_effect_handle_ty(place_result_ty))
+            .or_else(|| self.concrete_borrow_provider_for_capability_ty(place_result_ty))
             .or_else(|| {
                 matches!(
                     binding,
                     LocalBinding::Local { .. } | LocalBinding::Param { .. }
                 )
-                .then_some(ProviderAddressSpace::Memory)
+                .then_some(AddressSpace::Memory)
             })
     }
 
@@ -2632,37 +2635,23 @@ impl<'db> TyChecker<'db> {
         crate::analysis::ty::ty_is_copy(self.db, self.env.scope(), ty, self.env.assumptions())
     }
 
-    fn binding_interface_shape(
-        &mut self,
-        binding: LocalBinding<'db>,
-    ) -> BindingInterfaceShape<'db> {
-        let ty = self.normalize_ty(self.env.lookup_binding_ty(&binding));
+    /// Whether a provider supplies `binding`, whose reads then forward the
+    /// provider's interface.
+    fn binding_has_provider(&self, binding: LocalBinding<'db>) -> bool {
         if self.env.binding_access(&binding).is_some() {
-            return BindingInterfaceShape::PlaceCarrier { value_ty: ty };
+            return false;
         }
-        let provider = match binding {
+        match binding {
             LocalBinding::EffectParam {
                 site, provider_idx, ..
-            } => self.env.provider_binding(site, provider_idx),
+            } => self.env.provider_binding(site, provider_idx).is_some(),
             LocalBinding::Param {
                 site: ParamSite::EffectField(site),
                 idx,
                 ..
-            } => self.env.resolved_provider_binding(site, idx),
-            LocalBinding::Local { .. } | LocalBinding::Param { .. } => None,
-        };
-        let semantics = provider_semantics(self.db, self.env.scope(), self.env.assumptions(), ty);
-        if let Some(target_ty) = semantics.binding_target_ty(self.db, provider.is_some()) {
-            return BindingInterfaceShape::DirectCarrier {
-                target_ty: self.normalize_ty(target_ty),
-            };
+            } => self.env.resolved_provider_binding(site, idx).is_some(),
+            LocalBinding::Local { .. } | LocalBinding::Param { .. } => false,
         }
-        provider.map_or(BindingInterfaceShape::OrdinaryValue, |provider| {
-            BindingInterfaceShape::ProviderValue {
-                kind: provider.semantics.kind,
-                value_ty: ty,
-            }
-        })
     }
 
     fn binding_path_read_semantics(
@@ -2673,15 +2662,11 @@ impl<'db> TyChecker<'db> {
         let expr_ty = self.normalize_ty(expr_ty);
         let binding_ty = self.normalize_ty(self.env.lookup_binding_ty(&binding));
         if binding_ty == expr_ty {
-            return PathReadSemantics::ReuseLocal;
-        }
-
-        match self.binding_interface_shape(binding) {
-            BindingInterfaceShape::OrdinaryValue | BindingInterfaceShape::PlaceCarrier { .. } => {
-                PathReadSemantics::MaterializeValue
-            }
-            BindingInterfaceShape::ProviderValue { .. }
-            | BindingInterfaceShape::DirectCarrier { .. } => PathReadSemantics::ForwardInterface,
+            PathReadSemantics::ReuseLocal
+        } else if self.binding_has_provider(binding) {
+            PathReadSemantics::ForwardInterface
+        } else {
+            PathReadSemantics::MaterializeValue
         }
     }
 
@@ -2984,14 +2969,14 @@ impl<'db> TyChecker<'db> {
     }
 
     /// The address space of the place an access of `expr` names, if known.
-    pub(super) fn access_provider(&self, expr: ExprId) -> Option<ProviderAddressSpace> {
+    pub(super) fn access_provider(&self, expr: ExprId) -> Option<AddressSpace> {
         self.env
             .expr_place(expr)
             .and_then(|place| self.concrete_borrow_provider_for_place(&place))
             .or_else(|| {
                 self.env
                     .is_pointer_place_expr(expr)
-                    .then_some(ProviderAddressSpace::Memory)
+                    .then_some(AddressSpace::Memory)
             })
     }
 
@@ -3471,7 +3456,7 @@ impl<'db> TyChecker<'db> {
                 typed_expr.ty = ty;
                 if typed_expr.borrow_provider.is_none() {
                     typed_expr.borrow_provider =
-                        self.concrete_borrow_provider_for_effect_handle_ty(ty);
+                        self.concrete_borrow_provider_for_capability_ty(ty);
                 }
                 typed_expr.path_read_semantics = typed_expr
                     .binding
@@ -3729,12 +3714,6 @@ pub enum EffectPassMode {
     Unknown,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum EffectArgLayoutView {
-    Direct,
-    ProviderTarget,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub struct ResolvedEffectArg<'db> {
     pub param_idx: usize,
@@ -3744,12 +3723,11 @@ pub struct ResolvedEffectArg<'db> {
     /// The with-binding whose source was evaluated on entry to the block.
     pub with_source: Option<ExprId>,
     pub pass_mode: EffectPassMode,
-    pub layout_view: EffectArgLayoutView,
     pub required_mut: bool,
     pub key_kind: EffectKeyKind,
     pub instantiated_key_ty: Option<TyId<'db>>,
     pub provider_target_ty: Option<TyId<'db>>,
-    pub provider: Option<ProviderAddressSpace>,
+    pub provider: Option<AddressSpace>,
     /// For a component of one of the callee's rows, or a row it forwards,
     /// where it sits: `binding_idx` numbers it only in the call's view.
     pub row_arg: Option<RowArg>,
@@ -3836,6 +3814,35 @@ pub struct TypedBody<'db> {
     tables: Arc<TypedBodyTables<'db>>,
 }
 
+/// The field type of a transparent newtype, which a cast sees through: a
+/// one-element tuple, or a struct with one field visible from `scope`.
+pub(crate) fn transparent_newtype_field_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<TyId<'db>> {
+    if !ty.is_tuple(db) && !ty.is_struct(db) {
+        return None;
+    }
+    let [field_ty] = ty.field_types(db)[..] else {
+        return None;
+    };
+    (!has_invisible_newtype_field(db, scope, ty)).then_some(field_ty)
+}
+
+/// Whether `ty` is a single-field struct whose field `scope` cannot see.
+pub(crate) fn has_invisible_newtype_field<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> bool {
+    let Some(AdtRef::Struct(s)) = ty.adt_def(db).map(|adt| adt.adt_ref(db)) else {
+        return false;
+    };
+    ty.field_types(db).len() == 1
+        && !is_scope_visible_from(db, ScopeId::Field(FieldParent::Struct(s), 0), scope)
+}
+
 // A private module keeps the shared tables type out of the crate's public
 // API.
 mod typed_body_tables {
@@ -3871,7 +3878,7 @@ mod typed_body_tables {
         pub(super) closure_infos: SecondaryMap<ExprId, Option<ClosureInfo<'db>>>,
         pub(super) resolved_field_index: SecondaryMap<ExprId, Option<u16>>,
         pub(super) call_effect_args: SecondaryMap<ExprId, Option<Vec<ResolvedEffectArg<'db>>>>,
-        pub(super) return_borrow_provider: Option<ProviderAddressSpace>,
+        pub(super) return_borrow_provider: Option<AddressSpace>,
         /// Bindings for function parameters (indexed by param position)
         pub(super) param_bindings: Vec<LocalBinding<'db>>,
         /// Bindings for local variables (keyed by the pattern that introduces them)
@@ -4648,7 +4655,7 @@ impl<'db> TypedBody<'db> {
         self.tables.call_effect_args[call_expr].as_deref()
     }
 
-    pub fn return_borrow_provider(&self) -> Option<ProviderAddressSpace> {
+    pub fn return_borrow_provider(&self) -> Option<AddressSpace> {
         self.tables.return_borrow_provider
     }
 
@@ -5253,21 +5260,6 @@ impl<'db> TypedBody<'db> {
                     .call_effect_args(call_expr)?
                     .iter()
                     .find(|arg| arg.binding_idx as usize == effect_idx)?;
-                // A handle's own sources are not its target's, which lies
-                // wherever the handle points.
-                let provider_ty = match effect_arg.arg {
-                    EffectArg::Value(expr) => Some(self.expr_ty(db, expr)),
-                    EffectArg::Binding(binding) => Some(self.binding_ty(db, binding)),
-                    EffectArg::Place(_) | EffectArg::Unknown => None,
-                };
-                if effect_arg.pass_mode == EffectPassMode::ByValue
-                    && let Some(provider_ty) = provider_ty
-                    && effect_arg
-                        .provider_target_ty
-                        .is_some_and(|target| target != provider_ty)
-                {
-                    return None;
-                }
                 match &effect_arg.arg {
                     EffectArg::Place(place) => self.forwarded_return_sources_from_place(
                         db,
@@ -6512,9 +6504,9 @@ impl<'db> TyCheckerFinalizer<'db> {
 /// different providers join only at yield sites, where the access checker
 /// requires one address space per instantiation.
 pub(super) fn merged_borrow_provider(
-    previous: Option<ProviderAddressSpace>,
-    current: Option<ProviderAddressSpace>,
-) -> Option<ProviderAddressSpace> {
+    previous: Option<AddressSpace>,
+    current: Option<AddressSpace>,
+) -> Option<AddressSpace> {
     previous
         .zip(current)
         .and_then(|(previous, current)| (previous == current).then_some(previous))

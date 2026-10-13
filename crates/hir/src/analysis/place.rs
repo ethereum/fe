@@ -287,7 +287,7 @@ pub fn resolve_place_field<'db>(
         });
     }
 
-    let pointee = projectable_place_ty(db, base_ty.as_ptr(db)?);
+    let pointee = projectable_place_ty(db, base_ty.as_ptr(db)?.0);
     Some(ResolvedPlaceField {
         base_ty: pointee,
         implicit_deref_ty: Some(pointee),

@@ -1,4 +1,4 @@
-use std::evm::{StorageMap, TStorPtr}
+use std::evm::{StorageMap, TSlot}
 
 struct CounterStore {
   global: u256,
@@ -13,7 +13,7 @@ pub contract <|contract|>Counter {
 
 pub contract <|spaces|>Spaces {
   mut stored: u256,
-  mut temporary: TStorPtr<u256>,
+  mut temporary: TSlot<u256>,
   <|immutable|>immutable: u256,
 }
 

@@ -49,10 +49,7 @@ range: 13:13..13:19
 #### Storage
 
 - `0`: `stored` (inline field, `u256`)
-
-#### Transient Storage
-
-- `1`: `temporary` (inline field, `u256`)
+- `1`: `temporary` (storage collection, `TSlot<u256>`)
 
 #### Immutable (Code)
 

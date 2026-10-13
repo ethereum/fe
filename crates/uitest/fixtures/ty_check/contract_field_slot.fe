@@ -23,7 +23,7 @@ contract SeparateSpaces {
     #[slot(4)]
     mut a: Pair,
     #[slot(4)]
-    mut flag: std::evm::TStorPtr<bool>,
+    mut flag: std::evm::TSlot<bool>,
 }
 
 // A `TSlot` takes its number only in transient storage: the storage field
@@ -34,7 +34,7 @@ contract PinnedSpace {
     #[slot(6)]
     mut stored: u256,
     #[slot(6)]
-    mut flag: std::evm::TStorPtr<bool>,
+    mut flag: std::evm::TSlot<bool>,
 }
 
 contract ImmutableField {

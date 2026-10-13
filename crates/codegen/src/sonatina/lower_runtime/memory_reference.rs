@@ -1,8 +1,8 @@
 use common::layout::StorageLane;
-use hir::analysis::semantic::FieldIndex;
+use hir::analysis::{semantic::FieldIndex, ty::AddressSpace};
 use mir::{
-    AddressSpaceKind, Layout, LayoutId, ResolvedPlaceElem, RuntimeClass, RuntimeMemoryLayout,
-    ScalarClass, ScalarRepr, VariantId,
+    Layout, LayoutId, ResolvedPlaceElem, RuntimeClass, RuntimeMemoryLayout, ScalarClass,
+    ScalarRepr, VariantId,
 };
 use sonatina_codegen::transform::aggregate::EnumLoweredLayout;
 use sonatina_ir::{
@@ -24,22 +24,22 @@ use super::{
 
 // The descriptor's layout also records the referent's address space. Provider
 // kinds may be erased when a reference is stored inside an ordinary typed slot.
-const REFERENCE_LAYOUTS: [Option<AddressSpaceKind>; 8] = [
-    Some(AddressSpaceKind::Memory),
+const REFERENCE_LAYOUTS: [Option<AddressSpace>; 8] = [
+    Some(AddressSpace::Memory),
     None, // Native Sonatina object layout in memory.
-    Some(AddressSpaceKind::Storage),
-    Some(AddressSpaceKind::Transient),
-    Some(AddressSpaceKind::Calldata),
-    Some(AddressSpaceKind::Code),
-    Some(AddressSpaceKind::Storage), // Packed field; byte offset in layout >> 8.
-    Some(AddressSpaceKind::Transient),
+    Some(AddressSpace::Storage),
+    Some(AddressSpace::Transient),
+    Some(AddressSpace::Calldata),
+    Some(AddressSpace::Code),
+    Some(AddressSpace::Storage), // Packed field; byte offset in layout >> 8.
+    Some(AddressSpace::Transient),
 ];
 const PACKED_STORAGE: u64 = 6;
 const NATIVE_MEMORY: u64 = 1;
 
 #[derive(Clone, Copy)]
 pub(super) enum ReferentLayout {
-    Raw(AddressSpaceKind),
+    Raw(AddressSpace),
     Object,
 }
 
@@ -80,9 +80,9 @@ impl<'db, I: LoweringInstSet + 'static> FunctionLowerer<'_, 'db, '_, I> {
         &mut self,
         descriptor: ValueId,
     ) -> Result<MemoryReference, LowerError> {
-        let addr = self.load_word(descriptor, AddressSpaceKind::Memory)?;
+        let addr = self.load_word(descriptor, AddressSpace::Memory)?;
         let layout_addr = self.offset_address_unscaled(descriptor, 32)?;
-        let layout = self.load_word(layout_addr, AddressSpaceKind::Memory)?;
+        let layout = self.load_word(layout_addr, AddressSpace::Memory)?;
         Ok(MemoryReference { addr, layout })
     }
 
@@ -117,7 +117,7 @@ impl<'db, I: LoweringInstSet + 'static> FunctionLowerer<'_, 'db, '_, I> {
     pub(super) fn store_raw_reference(
         &mut self,
         addr: ValueId,
-        space: AddressSpaceKind,
+        space: AddressSpace,
     ) -> Result<ValueId, LowerError> {
         let tag = REFERENCE_LAYOUTS
             .iter()
@@ -206,7 +206,7 @@ impl<'db, I: LoweringInstSet + 'static> FunctionLowerer<'_, 'db, '_, I> {
             .iter()
             .enumerate()
             .filter(|(tag, _)| *tag < PACKED_STORAGE as usize || packed.is_some())
-            .filter(|(_, space)| !native || matches!(space, None | Some(AddressSpaceKind::Memory)))
+            .filter(|(_, space)| !native || matches!(space, None | Some(AddressSpace::Memory)))
             .map(|(tag, space)| (tag, self.fb.append_block(), *space))
             .collect::<Vec<_>>();
         let cases = blocks
@@ -279,11 +279,8 @@ impl<'db, I: LoweringInstSet + 'static> FunctionLowerer<'_, 'db, '_, I> {
                 *tag < PACKED_STORAGE as usize || Self::reference_scalar_lane(class).is_some()
             })
             .filter(|(_, space)| {
-                (!native || matches!(space, None | Some(AddressSpaceKind::Memory)))
-                    && !matches!(
-                        space,
-                        Some(AddressSpaceKind::Code | AddressSpaceKind::Calldata)
-                    )
+                (!native || matches!(space, None | Some(AddressSpace::Memory)))
+                    && !matches!(space, Some(AddressSpace::Code | AddressSpace::Calldata))
             })
             .map(|(tag, space)| (tag, self.fb.append_block(), *space))
             .collect::<Vec<_>>();
@@ -487,7 +484,7 @@ impl<'db, I: LoweringInstSet + 'static> FunctionLowerer<'_, 'db, '_, I> {
         elem: &ResolvedPlaceElem<'db>,
     ) -> Result<Lowered<(MemoryReference, RuntimeClass<'db>)>, LowerError> {
         let raw = RuntimeMemoryLayout::raw(self.module.db);
-        let words = RuntimeMemoryLayout::for_space(self.module.db, AddressSpaceKind::Storage);
+        let words = RuntimeMemoryLayout::for_space(self.module.db, AddressSpace::Storage);
         let mut projected_layout = reference.layout;
         let (offset, class) = match elem {
             ResolvedPlaceElem::Field { field, class } => {

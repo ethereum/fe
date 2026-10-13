@@ -38,7 +38,7 @@ use crate::analysis::{
         },
         fold::{TyFoldable, TyFolder},
         normalize::normalize_ty,
-        provider::ProviderAddressSpace,
+        provider::AddressSpace,
         shape::Shape,
         trait_def::TraitInstId,
         trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
@@ -101,7 +101,7 @@ pub(crate) struct TyCheckEnv<'db> {
     param_bindings: Vec<LocalBinding<'db>>,
     /// Pat bindings for transfer to TypedBody
     pat_bindings: SecondaryMap<PatId, Option<LocalBinding<'db>>>,
-    local_borrow_providers: SecondaryMap<PatId, Option<ProviderAddressSpace>>,
+    local_borrow_providers: SecondaryMap<PatId, Option<AddressSpace>>,
     /// Binding capture mode for local variables (keyed by the pattern that introduces them)
     pat_binding_modes: SecondaryMap<PatId, Option<PatBindingMode>>,
     pattern_store: PatternStore<'db>,
@@ -912,15 +912,11 @@ impl<'db> TyCheckEnv<'db> {
         binding_has_authority(binding, |pat| self.pat_binding_modes[pat])
     }
 
-    pub(super) fn local_borrow_provider(&self, pat: PatId) -> Option<ProviderAddressSpace> {
+    pub(super) fn local_borrow_provider(&self, pat: PatId) -> Option<AddressSpace> {
         self.local_borrow_providers[pat]
     }
 
-    pub(super) fn set_local_borrow_provider(
-        &mut self,
-        pat: PatId,
-        provider: Option<ProviderAddressSpace>,
-    ) {
+    pub(super) fn set_local_borrow_provider(&mut self, pat: PatId, provider: Option<AddressSpace>) {
         self.local_borrow_providers[pat] = provider;
     }
 
@@ -1873,7 +1869,7 @@ pub struct ExprProp<'db> {
     /// Whether the place this expression names is writable.
     pub is_mut: bool,
     pub binding: Option<LocalBinding<'db>>,
-    pub borrow_provider: Option<ProviderAddressSpace>,
+    pub borrow_provider: Option<AddressSpace>,
     pub path_read_semantics: Option<PathReadSemantics>,
     /// The accesses this expression grants: `Access` for `ref p`/`mut p`,
     /// the instantiated return shape for a projection call. `None` for a

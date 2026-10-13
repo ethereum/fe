@@ -28,7 +28,7 @@ func private %byte_ptr(v0.i256) -> i256 {
         return v2;
 }
 
-func private %cast__gab97(v0.i256) -> i256 {
+func private %cast__gcc1f(v0.i256) -> i256 {
     block0:
         jump block1;
 
@@ -36,7 +36,7 @@ func private %cast__gab97(v0.i256) -> i256 {
         return v0;
 }
 
-func private %cast__gcc1f(v0.i256) -> i256 {
+func private %cast__gab97(v0.i256) -> i256 {
     block0:
         jump block1;
 

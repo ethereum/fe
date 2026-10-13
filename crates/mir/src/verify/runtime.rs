@@ -1,4 +1,5 @@
 use cranelift_entity::EntityRef;
+use hir::analysis::ty::AddressSpace;
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -383,7 +384,7 @@ fn verify_terminator<'db>(
             verify_call(db, program, body, *callee, args, RuntimeCallKind::Terminal)
         }
         RTerminator::ReturnData { offset, len } | RTerminator::Revert { offset, len } => {
-            verify_address_operand(body, *offset, crate::runtime::AddressSpaceKind::Memory)?;
+            verify_address_operand(body, *offset, AddressSpace::Memory)?;
             verify_word_value(body, *len)?;
             Ok(())
         }

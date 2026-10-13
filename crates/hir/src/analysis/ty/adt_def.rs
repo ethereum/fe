@@ -10,7 +10,7 @@ use super::{
     binder::Binder,
     const_ty::ConstBodyLowering,
     corelib::resolve_core_trait,
-    provider::{ProviderAddressSpace, effect_space_from_resolved_trait_const},
+    provider::{AddressSpace, effect_space_from_resolved_trait_const},
     trait_def::{
         ResolvedImplInstance, TraitInstId, impls_for_trait_def, instantiate_selected_impl,
     },
@@ -46,7 +46,7 @@ pub struct AdtDef<'db> {
 pub enum Pin {
     /// No implementation pins the type, or any instance of it.
     Unpinned,
-    Pinned(ProviderAddressSpace),
+    Pinned(AddressSpace),
     /// Whether the type is pinned depends on its parameters: separate
     /// implementations, or a `SPACE` computed from them, pin some instances.
     Undecided,

@@ -359,7 +359,6 @@ fn value_retains_source_type(body: &NormalizedBody<'_>, value: NValueId) -> bool
                                 | NExpr::Binary { .. }
                                 | NExpr::ArrayRepeat { .. }
                                 | NExpr::AggregateMake { .. }
-                                | NExpr::MakeHandle { .. }
                                 | NExpr::EnumMake { .. }
                                 | NExpr::GetEnumTag { .. }
                                 | NExpr::IsEnumVariant { .. }

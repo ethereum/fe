@@ -72,9 +72,8 @@ pub mod visitor;
 
 pub use msg_selector::MsgAnalysisPass;
 pub use provider::{
-    ProviderAddressSpace, ProviderKind, ProviderSemantics, ProviderTransport,
-    RootProviderRegistration, RootProviderScope, RootProviderSiteKind, provider_semantics,
-    registered_root_providers,
+    AddressSpace, ProviderKind, ProviderSemantics, ProviderTransport, RootProviderRegistration,
+    RootProviderScope, RootProviderSiteKind, provider_semantics, registered_root_providers,
 };
 
 const DEFAULT_TARGET_TY_PATH: &[&str] = &["std", "evm", "EvmTarget"];
@@ -115,9 +114,8 @@ pub fn ty_is_copy<'db>(
 }
 
 /// Whether a view parameter takes a value of `ty` by copy, a *snapshot*: a
-/// primitive scalar, a raw pointer, an effect handle, or a
-/// `core::marker::Snapshot` type such as
-/// `Address`. Every other value, `Copy` or not, is viewed in place
+/// primitive scalar, a raw pointer, or a `core::marker::Snapshot` type such
+/// as `Address`. Every other value, `Copy` or not, is viewed in place
 /// (`ViewTransport`).
 pub fn ty_is_snapshot<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -131,10 +129,6 @@ pub fn ty_is_snapshot<'db>(
         || ty.is_integral(db)
         || ty.is_string(db)
         || ty.as_ptr(db).is_some()
-        || !matches!(
-            provider::resolve_effect_handle(db, scope, assumptions, ty),
-            provider::EffectHandleResolution::NotHandle
-        )
     {
         return true;
     }

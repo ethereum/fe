@@ -5,8 +5,8 @@ use crate::{
     analysis::{
         semantic::instance::{SemanticInstance, SemanticInstanceKey},
         ty::{
-            provider::ProviderAddressSpace,
-            ty_check::{BodyOwner, EffectArgLayoutView, EffectPassMode, ForLoopStep, LocalBinding},
+            provider::AddressSpace,
+            ty_check::{BodyOwner, EffectPassMode, ForLoopStep, LocalBinding},
             ty_def::{BorrowKind, TyId},
         },
     },
@@ -218,7 +218,6 @@ pub enum SemanticLocalKind {
     DirectValue,
     PlaceCarrier,
     PlaceBoundValue,
-    DirectCarrier,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
@@ -235,10 +234,6 @@ pub enum SemanticLocalRole<'db> {
         provenance: PlaceProvenance<'db>,
         value_ty: TyId<'db>,
     },
-    DirectCarrier {
-        provider: Option<ProviderBinding<'db>>,
-        target_ty: TyId<'db>,
-    },
 }
 
 impl<'db> SemanticLocalRole<'db> {
@@ -248,7 +243,6 @@ impl<'db> SemanticLocalRole<'db> {
             Self::DirectValue { .. } => SemanticLocalKind::DirectValue,
             Self::PlaceCarrier { .. } => SemanticLocalKind::PlaceCarrier,
             Self::PlaceBoundValue { .. } => SemanticLocalKind::PlaceBoundValue,
-            Self::DirectCarrier { .. } => SemanticLocalKind::DirectCarrier,
         }
     }
 
@@ -257,7 +251,6 @@ impl<'db> SemanticLocalRole<'db> {
             Self::PlaceCarrier { value_ty, .. } | Self::PlaceBoundValue { value_ty, .. } => {
                 *value_ty
             }
-            Self::DirectCarrier { target_ty, .. } => *target_ty,
             Self::Erased | Self::DirectValue { .. } => local_ty,
         }
     }
@@ -272,16 +265,11 @@ impl<'db> SemanticLocalRole<'db> {
                 provider: Some(provider),
                 ..
             } => Some(provider.clone()),
-            Self::DirectCarrier {
-                provider: Some(provider),
-                ..
-            } => Some(provider.clone()),
             Self::Erased
             | Self::DirectValue {
                 provenance: ValueProvenance::Ordinary,
             }
-            | Self::PlaceCarrier { provider: None, .. }
-            | Self::DirectCarrier { provider: None, .. } => None,
+            | Self::PlaceCarrier { provider: None, .. } => None,
         }
     }
 }
@@ -431,10 +419,9 @@ pub struct SEffectArg<'db> {
     pub binding_idx: u32,
     pub arg: SEffectArgValue<'db>,
     pub pass_mode: EffectPassMode,
-    pub layout_view: EffectArgLayoutView,
     pub required_mut: bool,
     pub provider_target_ty: Option<TyId<'db>>,
-    pub provider: Option<ProviderAddressSpace>,
+    pub provider: Option<AddressSpace>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
@@ -540,7 +527,7 @@ pub enum SExpr<'db> {
     Borrow {
         place: SPlace<'db>,
         kind: BorrowKind,
-        provider: Option<ProviderAddressSpace>,
+        provider: Option<AddressSpace>,
     },
     GetEnumTag {
         value: SOperand,

@@ -1,4 +1,4 @@
-use std::evm::{Address, Evm, StorageMap, StorPtr}
+use std::evm::{Address, Evm, StorageMap}
 
 // A generic struct instantiated with a map holds one map per field, each at
 // the field's own slot, so the two fields never share entries.
@@ -13,7 +13,7 @@ msg Msg {
 }
 
 pub contract C {
-    mut pair: StorPtr<Pair<StorageMap<Address, u256>>>,
+    mut pair: Pair<StorageMap<Address, u256>>,
 
     recv Msg {
         Swap { user, amount } -> u256 uses (mut pair) {

@@ -1,3 +1,4 @@
+use common::ingot::IngotKind;
 use parser::ast::{self, WhereClauseOwner as _, prelude::*};
 use salsa::Accumulator as _;
 
@@ -104,10 +105,16 @@ const UNROLL_FORM: AttrForm = AttrForm::SingleArg {
     allowed_args: &["never"],
 };
 const BARE_FORM: AttrForm = AttrForm::Bare;
+const POINTER_FORM: AttrForm = AttrForm::SingleArg {
+    allow_bare: false,
+    allowed_args: &["storage", "transient", "calldata"],
+};
 
 const ARITHMETIC_EXPECTED: &str = "`#[arithmetic(checked)]` or `#[arithmetic(unchecked)]`";
 const INLINE_EXPECTED: &str = "`#[inline]`, `#[inline(always)]`, or `#[inline(never)]`";
 const MUST_USE_EXPECTED: &str = "`#[must_use]`";
+const POINTER_EXPECTED: &str =
+    "`#[pointer(storage)]`, `#[pointer(transient)]`, or `#[pointer(calldata)]`";
 
 const ARITHMETIC_TARGETS: &str = "functions and modules";
 const EVENT_TARGETS: &str = "structs";
@@ -118,6 +125,7 @@ const VIEW_TARGETS: &str = "structs and enums";
 const RAW_PLACE_TARGETS: &str = "functions";
 const PAYABLE_TARGETS: &str = "init blocks and recv arms";
 const INDEXED_TARGETS: &str = "event fields";
+const POINTER_TARGETS: &str = "type aliases in `core`";
 
 fn target(kind: &'static str, name: Option<String>) -> AttrTarget {
     AttrTarget::new(kind, name)
@@ -229,6 +237,35 @@ fn validate_enum_attrs<'db>(
             AttrRule::unsupported("abi", ABI_TARGETS),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
             AttrRule::supported("view", BARE_FORM, "`#[view]`"),
+            AttrRule::unsupported("raw_place", RAW_PLACE_TARGETS),
+            AttrRule::unsupported("payable", PAYABLE_TARGETS),
+        ],
+    );
+}
+
+/// `#[pointer(space)]` names core's built-in pointer into `space`.
+fn validate_type_alias_attrs<'db>(
+    ctxt: &mut FileLowerCtxt<'db>,
+    attrs: Option<ast::AttrList>,
+    name: Option<String>,
+) {
+    let db = ctxt.db();
+    let pointer = if ctxt.top_mod().ingot(db).kind(db) == IngotKind::Core {
+        AttrRule::supported("pointer", POINTER_FORM, POINTER_EXPECTED)
+    } else {
+        AttrRule::unsupported("pointer", POINTER_TARGETS)
+    };
+    validate_attr_rules(
+        ctxt,
+        attrs,
+        target("type alias", name),
+        &[
+            pointer,
+            AttrRule::unsupported("arithmetic", ARITHMETIC_TARGETS),
+            AttrRule::unsupported("event", EVENT_TARGETS),
+            AttrRule::unsupported("error", ERROR_TARGETS),
+            AttrRule::unsupported("abi", ABI_TARGETS),
+            AttrRule::unsupported("must_use", MUST_USE_TARGETS),
             AttrRule::unsupported("raw_place", RAW_PLACE_TARGETS),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
@@ -379,10 +416,9 @@ impl<'db> ItemKind<'db> {
                 lower_msg_as_mod(ctxt, msg);
             }
             ast::ItemKind::TypeAlias(alias) => {
-                validate_unsupported_item_attrs(
+                validate_type_alias_attrs(
                     ctxt,
                     alias.attr_list(),
-                    "type alias",
                     alias.alias().map(|name| name.text().to_string()),
                 );
                 TypeAlias::lower_ast(ctxt, alias);

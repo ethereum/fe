@@ -126,9 +126,11 @@ fn mint(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20, ctx: Ctx, ops
 
 #[contract_init(Erc20Contract)]
 fn init() uses (evm: mut Evm) {
-    var erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
-    with (erc20, Ctx = evm, RawOps = evm) {
-        do_init()
+    let erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
+    unsafe {
+        with (mut *erc20, Ctx = evm, RawOps = evm) {
+            do_init()
+        }
     }
     let len = evm.code_region_len(runtime)
     let offset = evm.code_region_offset(runtime)
@@ -144,56 +146,58 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(Erc20Contract)]
 fn runtime() uses (evm: mut Evm) {
-    var erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
+    let erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
     let selector = evm.calldataload(0) >> 224
-    with (erc20, Ctx = evm, RawOps = evm) {
-        match selector {
-            0x70a08231 => { // balanceOf(address)
-                let owner = Address { inner: evm.calldataload(4) }
-                abi_encode_u256(value: balance_of(addr: owner))
+    unsafe {
+        with (mut *erc20, Ctx = evm, RawOps = evm) {
+            match selector {
+                0x70a08231 => { // balanceOf(address)
+                    let owner = Address { inner: evm.calldataload(4) }
+                    abi_encode_u256(value: balance_of(addr: owner))
+                }
+                0xdd62ed3e => { // allowance(address,address)
+                    let owner = Address { inner: evm.calldataload(4) }
+                    let spender = Address { inner: evm.calldataload(36) }
+                    abi_encode_u256(value: allowance(owner: owner, spender: spender))
+                }
+                0x06fdde03 => { // name()
+                    abi_encode_string(
+                        word: 0x4665546f6b656e00000000000000000000000000000000000000000000000000,
+                        len: 7,
+                    )
+                }
+                0x95d89b41 => { // symbol()
+                    abi_encode_string(
+                        word: 0x4645540000000000000000000000000000000000000000000000000000000000,
+                        len: 3,
+                    )
+                }
+                0x313ce567 => { // decimals()
+                    abi_encode_u256(value: 18)
+                }
+                0xa9059cbb => { // transfer(address,uint256)
+                    let to = Address { inner: evm.calldataload(4) }
+                    let amount = evm.calldataload(36)
+                    abi_encode_u256(value: transfer(to: to, amount: amount))
+                }
+                0x095ea7b3 => { // approve(address,uint256)
+                    let spender = Address { inner: evm.calldataload(4) }
+                    let amount = evm.calldataload(36)
+                    abi_encode_u256(value: approve(spender: spender, amount: amount))
+                }
+                0x23b872dd => { // transferFrom(address,address,uint256)
+                    let from = Address { inner: evm.calldataload(4) }
+                    let to = Address { inner: evm.calldataload(36) }
+                    let amount = evm.calldataload(68)
+                    abi_encode_u256(value: transfer_from(from: from, to: to, amount: amount))
+                }
+                0x40c10f19 => { // mint(address,uint256)
+                    let to = Address { inner: evm.calldataload(4) }
+                    let amount = evm.calldataload(36)
+                    abi_encode_u256(value: mint(to: to, amount: amount))
+                }
+                _ => evm.revert(data: ptr::MemSpan::empty())
             }
-            0xdd62ed3e => { // allowance(address,address)
-                let owner = Address { inner: evm.calldataload(4) }
-                let spender = Address { inner: evm.calldataload(36) }
-                abi_encode_u256(value: allowance(owner: owner, spender: spender))
-            }
-            0x06fdde03 => { // name()
-                abi_encode_string(
-                    word: 0x4665546f6b656e00000000000000000000000000000000000000000000000000,
-                    len: 7,
-                )
-            }
-            0x95d89b41 => { // symbol()
-                abi_encode_string(
-                    word: 0x4645540000000000000000000000000000000000000000000000000000000000,
-                    len: 3,
-                )
-            }
-            0x313ce567 => { // decimals()
-                abi_encode_u256(value: 18)
-            }
-            0xa9059cbb => { // transfer(address,uint256)
-                let to = Address { inner: evm.calldataload(4) }
-                let amount = evm.calldataload(36)
-                abi_encode_u256(value: transfer(to: to, amount: amount))
-            }
-            0x095ea7b3 => { // approve(address,uint256)
-                let spender = Address { inner: evm.calldataload(4) }
-                let amount = evm.calldataload(36)
-                abi_encode_u256(value: approve(spender: spender, amount: amount))
-            }
-            0x23b872dd => { // transferFrom(address,address,uint256)
-                let from = Address { inner: evm.calldataload(4) }
-                let to = Address { inner: evm.calldataload(36) }
-                let amount = evm.calldataload(68)
-                abi_encode_u256(value: transfer_from(from: from, to: to, amount: amount))
-            }
-            0x40c10f19 => { // mint(address,uint256)
-                let to = Address { inner: evm.calldataload(4) }
-                let amount = evm.calldataload(36)
-                abi_encode_u256(value: mint(to: to, amount: amount))
-            }
-            _ => evm.revert(data: ptr::MemSpan::empty())
         }
     }
 }

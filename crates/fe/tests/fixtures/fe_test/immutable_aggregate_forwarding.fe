@@ -79,7 +79,7 @@ pub contract Snapshot {
         }
         ReadCalldata { .. } -> u256 uses (evm: Evm) {
             let data = unsafe { evm.calldata_ptr<[u256; 3]>(4) }
-            with (data) { read_words() }
+            unsafe { with (*data) { read_words() } }
         }
     }
 }

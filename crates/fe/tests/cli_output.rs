@@ -3799,31 +3799,6 @@ fn test_cli_workspace_cache_isolates_workspaces_with_identical_member_names() {
 }
 
 #[test]
-fn test_cli_test_workspace_preserves_builtin_authority() {
-    let root = workspace_fixture("test_workspace_builtin_authority");
-    let (output, exit_code) = run_fe_main_in_dir(&["test"], &root);
-    assert_eq!(exit_code, 0, "fe test lost workspace authority:\n{output}");
-    assert!(output.contains("No tests found in"), "{output}");
-
-    // The integer-backed handle requires workspace authority. The same source
-    // must be rejected when its ingot is tested outside that workspace.
-    let isolated = tempdir().expect("tempdir");
-    fs::create_dir(isolated.path().join("src")).expect("create src dir");
-    for file in ["fe.toml", "src/lib.fe"] {
-        fs::copy(root.join("std").join(file), isolated.path().join(file)).expect("copy std ingot");
-    }
-    let (output, exit_code) = run_fe_main_in_dir(&["test"], isolated.path());
-    assert_ne!(
-        exit_code, 0,
-        "expected an untrusted handle error:\n{output}"
-    );
-    assert!(
-        output.contains("integer-backed handles are reserved for compiler-provided libraries"),
-        "expected an untrusted handle error:\n{output}"
-    );
-}
-
-#[test]
 fn test_cli_test_workspace_ingot_selects_single_ingot() {
     let root = workspace_fixture("test_workspace_fe_test_core_std_no_tests");
     let (output, exit_code) = run_fe_main_in_dir(&["test", "--ingot", "app"], &root);

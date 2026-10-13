@@ -1,5 +1,6 @@
 use cranelift_entity::EntityRef;
 use hir::analysis::semantic::SemOrigin;
+use hir::analysis::ty::AddressSpace;
 use hir::{
     analysis::ty::{
         corelib::{resolve_core_trait, resolve_lib_type_path},
@@ -20,12 +21,12 @@ use crate::{
         RuntimeInstance, RuntimeInstanceKey, RuntimeInstanceSource, get_or_build_runtime_instance,
     },
     runtime::{
-        AddressSpaceKind, BorrowAccess, ConstScalar, ContractFieldSlot, ContractInitAbiPlan,
-        ContractRecvAbiPlan, DispatchDefault, EntryEffectArgPlan, EntrySemanticArgsPlan,
-        InitArgsPlan, LowerError, PlaceElem, PlaceRoot, RBlock, RBlockId, RExpr, RLocal, RLocalId,
-        RStmt, RTerminator, RuntimeBody, RuntimeBoundarySpec, RuntimeBuiltin, RuntimeCarrier,
-        RuntimeClass, RuntimeExitBehavior, RuntimeInputPlan, RuntimeInterfaceSignature,
-        RuntimeLocalRoot, RuntimeMemoryLayout, RuntimeParamPlan, RuntimePlace, RuntimeReturnPlan,
+        BorrowAccess, ConstScalar, ContractFieldSlot, ContractInitAbiPlan, ContractRecvAbiPlan,
+        DispatchDefault, EntryEffectArgPlan, EntrySemanticArgsPlan, InitArgsPlan, LowerError,
+        PlaceElem, PlaceRoot, RBlock, RBlockId, RExpr, RLocal, RLocalId, RStmt, RTerminator,
+        RuntimeBody, RuntimeBoundarySpec, RuntimeBuiltin, RuntimeCarrier, RuntimeClass,
+        RuntimeExitBehavior, RuntimeInputPlan, RuntimeInterfaceSignature, RuntimeLocalRoot,
+        RuntimeMemoryLayout, RuntimeParamPlan, RuntimePlace, RuntimeReturnPlan,
         RuntimeSyntheticSpec, ScalarClass, ScalarRepr, ScalarRole, TargetRootProviderBinding,
         TargetRootProviderMaterialization,
         lower::{
@@ -396,13 +397,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
             self.blocks[revert_bb.index()].terminator = RTerminator::RevertEmpty;
             cont_bb = decode_bb;
             let tail_len = self.push_binary_word(decode_bb, ArithBinOp::Sub, code_size, self_len);
-            let ptr_ty = TyId::ptr_to(self.db, TyId::u8(self.db));
-            let tail_ptr = self.push_builtin_value(
-                decode_bb,
-                ptr_ty,
-                RuntimeClass::raw_addr(self.db, AddressSpaceKind::Memory, byte_class()),
-                RuntimeBuiltin::Malloc { size: tail_len },
-            );
+            let tail_ptr = self.push_malloc_bytes(decode_bb, tail_len);
             self.push_side_effect_builtin(
                 decode_bb,
                 RuntimeBuiltin::CodeCopy {
@@ -440,8 +435,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
                     .checked_mul(32)
                     .expect("code-space byte extent was validated by contract layout"),
             );
-            let (_, word_ptr) = self.push_malloc_bytes(cont_bb, immut_len);
-            Some(word_ptr)
+            Some(self.push_malloc_bytes(cont_bb, immut_len))
         };
 
         if let Some(user_init) = plan.user_init {
@@ -613,11 +607,11 @@ impl<'db> SyntheticBodyBuilder<'db> {
         );
 
         let out_len = self.push_binary_word(entry, ArithBinOp::Add, runtime_len, immut_len);
-        let (out_raw, out_ptr) = self.push_malloc_bytes(entry, out_len);
+        let out_ptr = self.push_malloc_bytes(entry, out_len);
         self.push_side_effect_builtin(
             entry,
             RuntimeBuiltin::CodeCopy {
-                dst: out_raw,
+                dst: out_ptr,
                 offset: runtime_offset,
                 len: runtime_len,
             },
@@ -691,7 +685,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
             let slot_bytes = self.push_binary_word(bb, ArithBinOp::Mul, slot_words, thirty_two);
             let dst_addr = self.push_binary_word(bb, ArithBinOp::Add, buffer_ptr, slot_bytes);
             let dst_raw_class =
-                RuntimeClass::raw_addr(self.db, AddressSpaceKind::Memory, pointee_class.clone());
+                RuntimeClass::raw_addr(self.db, AddressSpace::Memory, pointee_class.clone());
             let dst_raw_addr = self.push_local(
                 TyId::u256(self.db),
                 RuntimeCarrier::Value(dst_raw_class),
@@ -703,14 +697,14 @@ impl<'db> SyntheticBodyBuilder<'db> {
                     dst: dst_raw_addr,
                     expr: RExpr::WordToRawAddr {
                         value: dst_addr,
-                        space: AddressSpaceKind::Memory,
+                        space: AddressSpace::Memory,
                     },
                 },
             );
             let dst_place = RuntimePlace {
                 root: PlaceRoot::Ptr {
                     addr: dst_raw_addr,
-                    space: AddressSpaceKind::Memory,
+                    space: AddressSpace::Memory,
                     class: pointee_class,
                 },
                 path: Box::default(),
@@ -890,7 +884,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
             tuple_ty,
             field_indices,
             |emitter, field_ty| {
-                top_level_class_for_ty_in_env(emitter.db, env, field_ty, AddressSpaceKind::Memory)
+                top_level_class_for_ty_in_env(emitter.db, env, field_ty, AddressSpace::Memory)
                     .unwrap_or_else(memory_fallback_class)
             },
         )
@@ -1178,7 +1172,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
                     | RuntimeLocalRoot::Ref(_)
                     | RuntimeLocalRoot::Ptr { .. } => unreachable!(),
                 },
-                AddressSpaceKind::Memory,
+                AddressSpace::Memory,
                 false,
             ),
             PlaceRoot::Ref(_) => (
@@ -1188,7 +1182,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
                     | RuntimeLocalRoot::Slot(_)
                     | RuntimeLocalRoot::Ptr { .. } => unreachable!(),
                 },
-                AddressSpaceKind::Memory,
+                AddressSpace::Memory,
                 false,
             ),
             PlaceRoot::Ptr { space, class, .. } => (
@@ -1248,30 +1242,13 @@ impl<'db> SyntheticBodyBuilder<'db> {
         dst
     }
 
-    fn push_malloc_bytes(&mut self, bb: RBlockId, size: RLocalId) -> (RLocalId, RLocalId) {
-        let ptr_ty = TyId::ptr_to(self.db, TyId::u8(self.db));
-        let raw_ptr = self.push_builtin_value(
+    fn push_malloc_bytes(&mut self, bb: RBlockId, size: RLocalId) -> RLocalId {
+        self.push_builtin_value(
             bb,
-            ptr_ty,
-            RuntimeClass::raw_addr(self.db, AddressSpaceKind::Memory, byte_class()),
+            TyId::ptr_to(self.db, TyId::u8(self.db)),
+            RuntimeClass::Scalar(word_scalar_class()),
             RuntimeBuiltin::Malloc { size },
-        );
-        let word_ptr = self.push_local(
-            TyId::u256(self.db),
-            RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-            RuntimeLocalRoot::None,
-        );
-        self.push_stmt(
-            bb,
-            RStmt::Assign {
-                dst: word_ptr,
-                expr: RExpr::Cast {
-                    value: raw_ptr,
-                    to: word_scalar_class(),
-                },
-            },
-        );
-        (raw_ptr, word_ptr)
+        )
     }
 
     fn push_side_effect_builtin(&mut self, bb: RBlockId, builtin: RuntimeBuiltin<'db>) -> RLocalId {
@@ -1333,7 +1310,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
             self.db,
             self.runtime_type_env(scope),
             ty,
-            AddressSpaceKind::Memory,
+            AddressSpace::Memory,
         )
         .expect("memory bytes runtime class");
         let root = match &class {
@@ -1398,12 +1375,13 @@ impl<'db> SyntheticBodyBuilder<'db> {
                     .collect(),
             },
         );
+        let addr = self.push_malloc_bytes(bb, size);
         let raw_class = RuntimeClass::raw_addr(
             self.db,
-            AddressSpaceKind::Memory,
+            AddressSpace::Memory,
             RuntimeClass::AggregateValue { layout },
         );
-        Ok(self.push_builtin_value(bb, semantic_ty, raw_class, RuntimeBuiltin::Malloc { size }))
+        Ok(self.coerce_runtime_value(bb, addr, &raw_class, semantic_ty))
     }
 
     fn push_zeroed_memory_object_ref(
@@ -1517,16 +1495,6 @@ fn bool_scalar_class<'db>() -> ScalarClass<'db> {
         repr: ScalarRepr::Bool,
         role: ScalarRole::Plain,
     }
-}
-
-fn byte_class<'db>() -> RuntimeClass<'db> {
-    RuntimeClass::Scalar(ScalarClass {
-        repr: ScalarRepr::Int {
-            bits: 8,
-            signed: false,
-        },
-        role: ScalarRole::Plain,
-    })
 }
 
 fn word_scalar_class<'db>() -> ScalarClass<'db> {
@@ -1751,7 +1719,7 @@ fn test_raw_storage_root() uses (storage: mut RawStorage) {
                 RStmt::Assign {
                     expr: RExpr::Placeholder {
                         class: RuntimeClass::RawAddr {
-                            space: AddressSpaceKind::Memory,
+                            space: AddressSpace::Memory,
                             pointee: Some(_),
                         }
                     },

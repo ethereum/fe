@@ -6,12 +6,12 @@ use crate::{
         HirAnalysisDb,
         semantic::{
             FieldIndex, Mutability, SConst, SemanticInstance, VariantIndex,
-            capability::handle::OpaqueHandleContract, capability::semantics::contains_capability,
-            get_or_build_semantic_instance, lower::enum_tag_ty, normalized::*, sem_const_ty,
+            capability::semantics::contains_capability, get_or_build_semantic_instance,
+            lower::enum_tag_ty, normalized::*, sem_const_ty,
         },
         ty::{
             adt_def::AdtRef,
-            provider::{ProviderLayoutEvidence, provider_semantics},
+            provider::provider_semantics,
             ty_check::EffectPassMode,
             ty_def::{BorrowKind, CapabilityKind, PrimTy, TyBase, TyData, TyId},
             ty_is_copy,
@@ -79,7 +79,6 @@ pub enum NormalizedBodyVerifyError {
     ScalarCapability,
     ScalarOperandCapability(NValueId),
     InvalidRepack,
-    InvalidHandleOrigin,
 }
 
 pub fn verify_normalized_body<'db>(
@@ -231,43 +230,9 @@ fn verify_expr<'db>(
         return Err(error);
     }
     match expr {
-        NExpr::MakeHandle { origin, .. } => {
-            let expected = OpaqueHandleContract::for_ty(
-                db,
-                body.owner.key(db).impl_env(db).normalization_scope(db),
-                body.owner.assumptions(db),
-                result_ty,
-            )
-            .map_err(|_| NormalizedBodyVerifyError::InvalidHandleOrigin)?
-            .ok_or(NormalizedBodyVerifyError::InvalidHandleOrigin)?;
-            let valid = match origin {
-                HandleOrigin::Opaque(contract) => *contract == expected,
-                HandleOrigin::Provider(binding) => binding.provider_ty == expected.handle_ty
-                    && binding.semantics.provider_ty == expected.handle_ty
-                    && binding.semantics.target_ty == Some(expected.target_ty)
-                    && binding.semantics.address_space.is_some_and(|space| Some(space) == expected.address_space.known())
-                    && body.roots.iter().any(|root| matches!(&root.kind, NRootKind::Provider { binding: declared } if declared == binding)),
-            };
-            if !valid {
-                return Err(NormalizedBodyVerifyError::InvalidHandleOrigin);
-            }
-        }
-        NExpr::AggregateMake { .. } | NExpr::EnumMake { .. } => {
-            if OpaqueHandleContract::for_ty(
-                db,
-                body.owner.key(db).impl_env(db).normalization_scope(db),
-                body.owner.assumptions(db),
-                result_ty,
-            )
-            .map_err(|_| NormalizedBodyVerifyError::InvalidHandleOrigin)?
-            .is_some()
-            {
-                return Err(NormalizedBodyVerifyError::InvalidHandleOrigin);
-            }
-        }
         NExpr::Const(value)
             if has_capability(db, body, result_ty)?
-                && literal_allocation(db, result_ty, value).is_none() =>
+                && !is_literal_allocation(db, result_ty, value) =>
         {
             return Err(NormalizedBodyVerifyError::ScalarCapability);
         }
@@ -367,9 +332,12 @@ fn verify_expr<'db>(
         }
         NExpr::PointerCast { value, to } => {
             let from = operand_ty(body, *value)?;
-            let valid = (from.as_ptr(db).is_some()
-                && (to.as_ptr(db).is_some() || to.is_integral(db)))
-                || (from.is_integral(db) && to.as_ptr(db).is_some());
+            let valid = match (from.as_ptr(db), to.as_ptr(db)) {
+                (Some((_, from_space)), Some((_, to_space))) => from_space == to_space,
+                (Some(_), None) => to.is_integral(db),
+                (None, Some(_)) => from.is_integral(db),
+                (None, None) => false,
+            };
             (valid && *to == result_ty)
                 .then_some(())
                 .ok_or(NormalizedBodyVerifyError::ExpressionType)
@@ -471,14 +439,8 @@ fn verify_expr<'db>(
                     NEffectArgValue::Place(place) => place.ty,
                     NEffectArgValue::Value(value) => operand_ty(body, *value)?,
                 };
-                let semantics = provider_semantics(
-                    db,
-                    body.template_owner.scope(),
-                    body.owner.assumptions(db),
-                    arg_ty,
-                );
-                if !matches!(semantics.evidence, ProviderLayoutEvidence::InvalidHandle(_))
-                    && let Some(target_ty) = arg.provider_target_ty
+                let semantics = provider_semantics(db, arg_ty);
+                if let Some(target_ty) = arg.provider_target_ty
                     && !structural_types_are_boundary_compatible(
                         db,
                         body.owner,
@@ -529,13 +491,7 @@ fn verify_expr<'db>(
             }
             Ok(())
         }
-        NExpr::AggregateMake { ty, fields }
-        | NExpr::MakeHandle {
-            ty,
-            variant: None,
-            fields,
-            ..
-        } => {
+        NExpr::AggregateMake { ty, fields } => {
             let field_tys = fields
                 .iter()
                 .map(|field| operand_ty(body, *field))
@@ -565,12 +521,6 @@ fn verify_expr<'db>(
             enum_ty,
             variant,
             fields,
-        }
-        | NExpr::MakeHandle {
-            ty: enum_ty,
-            variant: Some(variant),
-            fields,
-            ..
         } => {
             let adt = enum_ty
                 .adt_def(db)
@@ -930,7 +880,7 @@ fn verify_mutation<'db>(
             .value(carrier)
             .and_then(|value| value.ty.as_capability(db))
             .map(|(kind, _)| kind),
-        NPlaceBase::Root(_) => None,
+        NPlaceBase::Root(_) | NPlaceBase::Deref { .. } => None,
     };
     let mutable = match place.base {
         NPlaceBase::Root(root) => {
@@ -943,11 +893,10 @@ fn verify_mutation<'db>(
                     && matches!(root.kind, NRootKind::LocalSlot { .. }))
         }
         NPlaceBase::CapabilityTarget { carrier } => {
-            body.value(carrier)
-                .is_some_and(|value| value.ty.as_ptr(db).is_some())
-                || capability == Some(CapabilityKind::Mut)
+            capability == Some(CapabilityKind::Mut)
                 || carrier_has_mutable_view_authority(db, body, carrier)
         }
+        NPlaceBase::Deref { .. } => true,
     };
     if mutable {
         Ok(())
@@ -1011,7 +960,7 @@ fn value_has_mutable_view_origin<'db>(
         NExpr::Load { place, .. } | NExpr::Borrow { place, .. } | NExpr::MakeView { place, .. } => {
             match place.base {
                 NPlaceBase::CapabilityTarget { carrier } => Some(carrier),
-                NPlaceBase::Root(_) => None,
+                NPlaceBase::Root(_) | NPlaceBase::Deref { .. } => None,
             }
         }
         NExpr::CodeRegionRef { .. }
@@ -1022,7 +971,6 @@ fn value_has_mutable_view_origin<'db>(
         | NExpr::ScalarCast { .. }
         | NExpr::ArrayRepeat { .. }
         | NExpr::AggregateMake { .. }
-        | NExpr::MakeHandle { .. }
         | NExpr::EnumMake { .. }
         | NExpr::GetEnumTag { .. }
         | NExpr::IsEnumVariant { .. }

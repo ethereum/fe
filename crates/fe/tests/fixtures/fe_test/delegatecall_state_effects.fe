@@ -1,6 +1,5 @@
 use core::ptr::{self, MemBuffer, MemSpan}
-use std::evm::{Address, Call, Create, Evm}
-use std::evm::effects::TStorPtr
+use std::evm::{Address, Call, Create, Evm, TSlot}
 
 msg DelegatedState {
     #[selector = 1]
@@ -9,14 +8,14 @@ msg DelegatedState {
 
 pub contract DelegateCaller {
     mut persistent: u256,
-    mut transient: TStorPtr<u256>,
+    mut transient: TSlot<u256>,
 
     recv DelegatedState {
         Run { implementation } -> (u256, u256)
           uses (mut persistent, mut transient, call: mut Call)
         {
             persistent = 1
-            transient = 2
+            transient[()] = 2
             var output = MemBuffer::empty()
             let outcome = call.raw_delegatecall(
                 addr: implementation,
@@ -27,7 +26,7 @@ pub contract DelegateCaller {
             assert!(outcome.success())
             // Reacquire current values after unbounded external state effects.
             // The negative borrow tests separately hold native loans across this call.
-            (persistent, transient)
+            (persistent, transient[()])
         }
     }
 }

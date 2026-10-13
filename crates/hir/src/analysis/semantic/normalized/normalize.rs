@@ -11,34 +11,27 @@ use crate::{
             SBlockId, SConst, SExpr, SLocal, SLocalId, SOperand, SPlace, SStmtId, SStmtKind,
             STerminatorKind, SemConstValue, SemOrigin, SemanticBody, SemanticInstance,
             SemanticLocalRole, ValueProvenance, VariantIndex,
+            capability::array::ArrayLength,
             capability::semantics::contains_capability,
-            capability::{
-                array::ArrayLength,
-                handle::OpaqueHandleContract,
-                semantics::{CapabilityClass, CapabilitySemantics, capability_semantics},
-            },
             eval_const_ref, get_or_build_semantic_instance,
             lower::layout_backing_source_path_is_prefix,
             normalized::{
-                HandleOrigin, NBlock, NBlockId, NDataPath, NDataProjection, NEffectArg,
-                NEffectArgValue, NExpr, NIndex, NOperand, NPlace, NPlaceBase, NRoot, NRootId,
-                NRootKind, NStatement, NStatementId, NStatementKind, NStructuralPath, NSuccessor,
-                NTerminator, NTerminatorKind, NValue, NValueDefinition, NValueId, NormalizedBody,
-                ReadMode, StructuralRepack, ViewAccess, copied_scalar_ty,
+                NBlock, NBlockId, NDataPath, NDataProjection, NEffectArg, NEffectArgValue, NExpr,
+                NIndex, NOperand, NPlace, NPlaceBase, NRoot, NRootId, NRootKind, NStatement,
+                NStatementId, NStatementKind, NStructuralPath, NSuccessor, NTerminator,
+                NTerminatorKind, NValue, NValueDefinition, NValueId, NormalizedBody, ReadMode,
+                StructuralRepack, ViewAccess, copied_scalar_ty, is_literal_allocation,
                 layout_plan::{
                     NLayoutBackingSource, NLayoutPlan, NLayoutProjection, NLayoutSourcePath,
                     NLayoutUseBacking, NRootRepresentation, NValueRepresentation,
                 },
-                literal_allocation,
                 verify::project_path_ty,
             },
             sem_const_ty,
         },
         ty::{
             adt_def::AdtRef,
-            provider::{
-                ProviderAddressSpace, ProviderKind, ProviderLayoutEvidence, provider_semantics,
-            },
+            provider::{AddressSpace, ProviderKind},
             trait_resolution::PredicateListId,
             ty_check::{BodyOwner, LocalBinding},
             ty_def::{BorrowKind, CapabilityKind, TyData, TyId},
@@ -56,7 +49,7 @@ pub enum NormalizeError<'db> {
     MissingRoot(SLocalId),
     MissingProviderAddressSpace(ProviderBinding<'db>),
     InvalidProjection,
-    UnresolvedHandleOrigin(TyId<'db>),
+    UnresolvedCapabilityConst(TyId<'db>),
     UnsupportedPlaceProjection,
     UnsupportedCapabilityCast { from: TyId<'db>, to: TyId<'db> },
     InvalidControlFlow,
@@ -275,11 +268,10 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             let local_id = SLocalId::new(index);
             let local = &self.raw.locals[index];
             let direct_capability = local.ty.as_capability(self.db).is_some();
-            let direct_carrier = matches!(local.role, SemanticLocalRole::DirectCarrier { .. });
             let provider = semantic_root_provider(&local.role, local.ty);
             let root = if let Some((provider, value_ty)) = provider {
                 let root = self.provider_root(provider, value_ty)?;
-                if direct_capability || direct_carrier {
+                if direct_capability {
                     self.provider_target_root_for_local[index] = Some(root);
                     None
                 } else {
@@ -306,7 +298,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         }
         let address_space = binding.semantics.address_space.or_else(|| {
             matches!(binding.semantics.kind, ProviderKind::RootObject)
-                .then_some(ProviderAddressSpace::Memory)
+                .then_some(AddressSpace::Memory)
         });
         let Some(address_space) = address_space else {
             return Err(NormalizeError::MissingProviderAddressSpace(binding));
@@ -344,7 +336,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 |param| NRootKind::ParamPlace { param },
             ),
             ty: self.normalized_local_ty(local),
-            address_space: ProviderAddressSpace::Memory,
+            address_space: AddressSpace::Memory,
             mutability: local_data.mutability,
             origin: crate::analysis::semantic::SemOrigin::Body(self.raw.template_owner),
         });
@@ -800,7 +792,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                     self.raw.locals[raw_value.value.index()].role,
                     SemanticLocalRole::PlaceCarrier { .. }
                         | SemanticLocalRole::PlaceBoundValue { .. }
-                        | SemanticLocalRole::DirectCarrier { .. }
                 ) && to.as_capability(self.db).is_none()
                     && self.local_has_place(raw_value.value);
                 let (value, from) = if materialize_place {
@@ -824,14 +815,11 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                     let from = self.values[value.value.index()].ty;
                     (value, from)
                 };
+                // Lowering left only the leaves of a newtype cast.
                 if from == to {
                     NExpr::Forward { src: value }
                 } else if from.as_ptr(self.db).is_some() || to.as_ptr(self.db).is_some() {
                     NExpr::PointerCast { value, to }
-                } else if self.contains_capability(from) || self.contains_capability(to) {
-                    let mapping = structural_repack_mapping(self.db, self.instance, from, to)
-                        .ok_or(NormalizeError::UnsupportedCapabilityCast { from, to })?;
-                    NExpr::StructuralRepack { value, mapping }
                 } else {
                     NExpr::ScalarCast { value, to }
                 }
@@ -964,13 +952,13 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                                 && matches!(place.base, NPlaceBase::Root(root)
                                     if matches!(self.roots[root.index()].kind, NRootKind::Provider { .. })
                                         && match self.roots[root.index()].address_space {
-                                            ProviderAddressSpace::Code => false,
-                                            ProviderAddressSpace::Calldata => {
+                                            AddressSpace::Code => false,
+                                            AddressSpace::Calldata => {
                                                 ty_has_enum(self.db, target)
                                             }
-                                            ProviderAddressSpace::Memory
-                                            | ProviderAddressSpace::Storage
-                                            | ProviderAddressSpace::Transient => true,
+                                            AddressSpace::Memory
+                                            | AddressSpace::Storage
+                                            | AddressSpace::Transient => true,
                                         });
                             if provider_copy
                                 || structural_repack_mapping(self.db, self.instance, place.ty, target)
@@ -1088,7 +1076,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                                 }
                             },
                             pass_mode: arg.pass_mode,
-                            layout_view: arg.layout_view,
                             required_mut: arg.required_mut,
                             provider_target_ty: arg
                                 .provider_target_ty
@@ -1100,49 +1087,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                     .into_boxed_slice(),
             },
         };
-        match normalized {
-            NExpr::AggregateMake { ty, fields } => self.construct_value(ty, None, fields),
-            NExpr::EnumMake {
-                enum_ty,
-                variant,
-                fields,
-            } => self.construct_value(enum_ty, Some(variant), fields),
-            normalized => Ok(normalized),
-        }
-    }
-
-    fn construct_value(
-        &self,
-        ty: TyId<'db>,
-        variant: Option<VariantIndex>,
-        fields: Box<[NOperand]>,
-    ) -> Result<NExpr<'db>, NormalizeError<'db>> {
-        let contract = OpaqueHandleContract::for_ty(
-            self.db,
-            self.instance
-                .key(self.db)
-                .impl_env(self.db)
-                .normalization_scope(self.db),
-            self.assumptions,
-            ty,
-        )
-        .map_err(|error| NormalizeError::UnresolvedHandleOrigin(error.0))?;
-        Ok(if let Some(contract) = contract {
-            NExpr::MakeHandle {
-                ty,
-                variant,
-                fields,
-                origin: HandleOrigin::Opaque(contract),
-            }
-        } else if let Some(variant) = variant {
-            NExpr::EnumMake {
-                enum_ty: ty,
-                variant,
-                fields,
-            }
-        } else {
-            NExpr::AggregateMake { ty, fields }
-        })
+        Ok(normalized)
     }
 
     fn contains_capability(&self, ty: TyId<'db>) -> bool {
@@ -1194,12 +1139,12 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             SConst::Ref(reference) => match eval_const_ref(self.db, reference) {
                 EvalOutcome::Ready(value) => value,
                 EvalOutcome::Blocked(_) | EvalOutcome::Failed(_) => {
-                    return Err(NormalizeError::UnresolvedHandleOrigin(ty));
+                    return Err(NormalizeError::UnresolvedCapabilityConst(ty));
                 }
             },
         };
         let constant = SConst::from_trusted_source(self.db, value);
-        if literal_allocation(self.db, ty, &constant).is_some() {
+        if is_literal_allocation(self.db, ty, &constant) {
             return Ok(NExpr::Const(constant));
         }
         let (variant, fields) = match value.value(self.db) {
@@ -1211,7 +1156,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 variant, fields, ..
             } => (Some(*variant), fields),
             SemConstValue::Scalar { .. } | SemConstValue::Unit | SemConstValue::Description(..) => {
-                return Err(NormalizeError::UnresolvedHandleOrigin(ty));
+                return Err(NormalizeError::UnresolvedCapabilityConst(ty));
             }
         };
         let fields = fields
@@ -1230,8 +1175,16 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 let value = self.emit_define(block, None, origin, ty, source, expr)?;
                 Ok(self.operand(value, origin, ReadMode::Move))
             })
-            .collect::<Result<Vec<_>, NormalizeError<'db>>>()?;
-        self.construct_value(ty, variant, fields.into_boxed_slice())
+            .collect::<Result<Vec<_>, NormalizeError<'db>>>()?
+            .into_boxed_slice();
+        Ok(match variant {
+            Some(variant) => NExpr::EnumMake {
+                enum_ty: ty,
+                variant,
+                fields,
+            },
+            None => NExpr::AggregateMake { ty, fields },
+        })
     }
 
     fn load_or_borrow_place(
@@ -1433,13 +1386,13 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 SOperand::inherited(raw.local),
                 Some(ReadMode::Copy),
             )?;
-            let ty = self.values[value.value.index()]
+            let (ty, _) = self.values[value.value.index()]
                 .ty
                 .as_ptr(self.db)
                 .ok_or(NormalizeError::InvalidProjection)?;
             NPlace {
-                base: NPlaceBase::CapabilityTarget {
-                    carrier: value.value,
+                base: NPlaceBase::Deref {
+                    pointer: value.value,
                 },
                 path: NDataPath::empty(),
                 ty,
@@ -1505,12 +1458,11 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         source_local: SLocalId,
         place: NPlace<'db>,
     ) -> Result<NPlace<'db>, NormalizeError<'db>> {
-        let target = place
-            .ty
-            .as_ptr(self.db)
+        let pointer_target = place.ty.as_ptr(self.db).map(|(target, _)| target);
+        let target = pointer_target
             .or_else(|| place.ty.as_capability(self.db).map(|(_, target)| target))
             .ok_or(NormalizeError::InvalidProjection)?;
-        let carrier = self.emit_define(
+        let value = self.emit_define(
             block,
             None,
             origin,
@@ -1522,7 +1474,11 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             },
         )?;
         Ok(NPlace {
-            base: NPlaceBase::CapabilityTarget { carrier },
+            base: if pointer_target.is_some() {
+                NPlaceBase::Deref { pointer: value }
+            } else {
+                NPlaceBase::CapabilityTarget { carrier: value }
+            },
             path: NDataPath::empty(),
             ty: target,
             origin,
@@ -1534,7 +1490,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         self.roots.push(NRoot {
             kind: NRootKind::Temporary { value },
             ty: self.values[value.index()].ty,
-            address_space: ProviderAddressSpace::Memory,
+            address_space: AddressSpace::Memory,
             mutability: self.values[value.index()].mutability,
             origin,
         });
@@ -1891,7 +1847,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 NExpr::Const(_)
                     | NExpr::AggregateMake { .. }
                     | NExpr::EnumMake { .. }
-                    | NExpr::MakeHandle { .. }
                     | NExpr::ArrayRepeat { .. }
             );
         let forwarded = match &expr {
@@ -2054,6 +2009,8 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 .filter(|backing| backing.value == carrier)
                 .cloned()
                 .collect(),
+            // A pointee lies outside the pointer value's layout.
+            NPlaceBase::Deref { .. } => Vec::new(),
             NPlaceBase::Root(root) => match self.root_sources[root.index()].source_local {
                 Some(local) => self.normalize_layout_backings(value, local, block, origin)?,
                 None => Vec::new(),
@@ -2332,12 +2289,13 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             NPlaceBase::CapabilityTarget { carrier } => self
                 .values
                 .get(carrier.index())
-                .and_then(|value| {
-                    value
-                        .ty
-                        .as_ptr(self.db)
-                        .or_else(|| value.ty.as_capability(self.db).map(|(_, target)| target))
-                })
+                .and_then(|value| value.ty.as_capability(self.db).map(|(_, target)| target))
+                .ok_or(NormalizeError::InvalidProjection),
+            NPlaceBase::Deref { pointer } => self
+                .values
+                .get(pointer.index())
+                .and_then(|value| value.ty.as_ptr(self.db))
+                .map(|(target, _)| target)
                 .ok_or(NormalizeError::InvalidProjection),
         }
     }
@@ -2388,9 +2346,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             .and_then(|value| value.source)
             .or(local.source);
         let ty = self.normalized_local_ty(local_id);
-        if ty.as_capability(self.db).is_some()
-            || matches!(local.role, SemanticLocalRole::DirectCarrier { .. })
-        {
+        if ty.as_capability(self.db).is_some() {
             ReadMode::Copy
         } else if matches!(
             source,
@@ -2422,18 +2378,18 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             // moves, which the access checker rejects.
             NPlaceBase::Root(root)
                 if matches!(self.roots[root.index()].kind, NRootKind::Provider { .. })
-                    && self.ty_is_copy_or_direct_carrier(ty) =>
+                    && self.ty_is_copy(ty) =>
             {
                 ReadMode::Copy
             }
-            NPlaceBase::CapabilityTarget { .. } => {
+            NPlaceBase::CapabilityTarget { .. } | NPlaceBase::Deref { .. } => {
                 if self.origin_is_implicit_move(origin) {
-                    if self.ty_is_copy_or_direct_carrier(ty) {
+                    if self.ty_is_copy(ty) {
                         ReadMode::Copy
                     } else {
                         ReadMode::Move
                     }
-                } else if self.ty_is_copy_or_direct_carrier(ty) {
+                } else if self.ty_is_copy(ty) {
                     ReadMode::Copy
                 } else {
                     ReadMode::Read
@@ -2444,20 +2400,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             }
             NPlaceBase::Root(_) => ReadMode::Copy,
         }
-    }
-
-    fn ty_is_copy_or_direct_carrier(&self, ty: TyId<'db>) -> bool {
-        self.ty_is_copy(ty)
-            || matches!(
-                provider_semantics(
-                    self.db,
-                    self.raw.template_owner.scope(),
-                    self.assumptions,
-                    ty,
-                )
-                .evidence,
-                ProviderLayoutEvidence::ResolvedHandle(_)
-            )
     }
 }
 
@@ -2477,10 +2419,6 @@ fn semantic_root_provider<'db>(
             provenance: PlaceProvenance::RootProvider(provider),
             value_ty,
         } => Some((provider.clone(), *value_ty)),
-        SemanticLocalRole::DirectCarrier {
-            provider: Some(provider),
-            target_ty,
-        } => Some((provider.clone(), *target_ty)),
         SemanticLocalRole::Erased
         | SemanticLocalRole::DirectValue {
             provenance: ValueProvenance::Ordinary,
@@ -2489,8 +2427,7 @@ fn semantic_root_provider<'db>(
         | SemanticLocalRole::PlaceBoundValue {
             provenance: PlaceProvenance::Derived(_),
             ..
-        }
-        | SemanticLocalRole::DirectCarrier { provider: None, .. } => None,
+        } => None,
     }
 }
 
@@ -2566,58 +2503,7 @@ impl<'db> StructuralRepackCollector<'db> {
         let deferred_const_leaf = |ty: TyId<'db>| {
             matches!(ty.data(db), TyData::ConstTy(_)) && (ty.has_param(db) || ty.has_var(db))
         };
-        let nominal_targets_match = if source != target
-            && source.as_capability(db).is_none()
-            && target.as_capability(db).is_none()
-            && !deferred_const_leaf(source)
-            && !deferred_const_leaf(target)
-            && !deferred_runtime_leaf(source)
-            && !deferred_runtime_leaf(target)
-        {
-            let scope = instance.key(db).impl_env(db).normalization_scope(db);
-            match (
-                capability_semantics(db, scope, instance.assumptions(db), source),
-                capability_semantics(db, scope, instance.assumptions(db), target),
-            ) {
-                (Ok(None), Ok(None)) => true,
-                (Ok(Some(source)), Ok(Some(target))) if source.class == target.class => {
-                    let spaces_match = if source.class == CapabilityClass::Handle {
-                        let space = |semantics: CapabilitySemantics<'db>| {
-                            OpaqueHandleContract::for_ty(
-                                db,
-                                scope,
-                                instance.assumptions(db),
-                                semantics.representation_ty,
-                            )
-                            .ok()
-                            .flatten()
-                            .map(|contract| contract.address_space)
-                        };
-                        space(source)
-                            .zip(space(target))
-                            .is_some_and(|(source, target)| source == target)
-                    } else {
-                        true
-                    };
-                    let mapping_len = self.mapping.len();
-                    let valid = spaces_match
-                        && self.collect(
-                            source.target_ty,
-                            target.target_ty,
-                            source_path.clone(),
-                            target_path.clone(),
-                        );
-                    self.mapping.truncate(mapping_len);
-                    valid
-                }
-                _ => false,
-            }
-        } else {
-            true
-        };
-        let result = if !nominal_targets_match {
-            false
-        } else if deferred_const_leaf(source)
+        let result = if deferred_const_leaf(source)
             || deferred_const_leaf(target)
             || self.allow_deferred_leaves
                 && (deferred_runtime_leaf(source) || deferred_runtime_leaf(target))
@@ -3103,9 +2989,8 @@ mod tests {
                 unit_const,
             },
             ty::{
-                const_ty::{ConstTyData, normalize_const_tys_for_comparison},
                 ty_check::{BodyOwner, EffectPassMode},
-                ty_def::{TyData, TyId},
+                ty_def::TyId,
             },
         },
         hir_def::{ArithBinOp, BinOp, ItemKind, LogicalBinOp, UnOp},
@@ -3394,164 +3279,6 @@ fn widen(_ value: own u8) -> u256 {
             verify_normalized_layout_plan(&db, &artifacts.body, raw, &artifacts.layout_plan)
                 .unwrap_or_else(|error| panic!("{name}: {error:?}"));
         }
-    }
-
-    #[test]
-    fn handle_repacks_require_compatible_referents() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_trusted_effect_handle_module(
-            "repack_targets.fe".into(),
-            r#"
-use core::effect_ref::{AddressSpace, EffectHandle}
-struct Ptr<T> { raw: u256 }
-impl<T> EffectHandle for Ptr<T> {
-    type Target = T
-    type Raw = u256
-    const SPACE: AddressSpace = AddressSpace::Memory
-    fn raw(self) -> u256 { self.raw }
-}
-struct Spaced<const SP: AddressSpace> { raw: u256 }
-impl<const SP: AddressSpace> EffectHandle for Spaced<SP> {
-    type Target = u256
-    type Raw = u256
-    const SPACE: AddressSpace = SP
-    fn raw(self) -> u256 { self.raw }
-}
-fn spaces(
-    _ memory: own Spaced<AddressSpace::Memory>,
-    _ storage: own Spaced<AddressSpace::Storage>,
-) {}
-fn inspect(
-    _ small: own Ptr<u8>,
-    _ large: own Ptr<u256>,
-    _ one: own Ptr<[u256; 1]>,
-    _ two: own Ptr<[u256; 2]>,
-) {}
-fn symbolic<const N: usize, const M: usize>(
-    _ left: own Ptr<[u256; N]>,
-    _ right: own Ptr<[u256; M]>,
-) {}
-type DefaultArray<const N: usize, T = [u256; { N + 1 }]> = T
-type EmptyArray<T = [u256; { 0 }]> = T
-fn symbolic_defaults<const N: usize, const M: usize>(
-    _ eager: own Ptr<[u256; { N + 1 }]>,
-    _ deferred: own Ptr<DefaultArray<N>>,
-    _ other_param: own Ptr<DefaultArray<M>>,
-    _ other_offset: own Ptr<[u256; { N + 2 }]>,
-) {}
-fn concrete_defaults(
-    _ eager: own Ptr<[u256; 1]>,
-    _ deferred: own Ptr<DefaultArray<0>>,
-    _ empty_eager: own Ptr<[u8; 0]>,
-    _ empty_deferred: own Ptr<EmptyArray>,
-) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        let body = normalized_func(&db, top_mod, "inspect").body;
-        let types: Vec<_> = body
-            .values
-            .iter()
-            .filter_map(|value| {
-                matches!(value.definition, NValueDefinition::EntryParam { .. }).then_some(value.ty)
-            })
-            .collect();
-        let [small, large, one, two]: [TyId<'_>; 4] = types.try_into().unwrap();
-        for (source, target) in [(small, large), (one, two)] {
-            assert!(
-                super::structural_repack_mapping(&db, body.owner, source, target).is_none(),
-                "equal raw-word representations do not prove equal referent layouts"
-            );
-            assert!(super::structural_repack_mapping(&db, body.owner, source, source).is_some());
-        }
-        let body = normalized_func(&db, top_mod, "symbolic").body;
-        let types: Vec<_> = body
-            .values
-            .iter()
-            .filter_map(|value| {
-                matches!(value.definition, NValueDefinition::EntryParam { .. }).then_some(value.ty)
-            })
-            .collect();
-        let [left, right]: [TyId<'_>; 2] = types.try_into().unwrap();
-        assert!(
-            super::structural_repack_mapping(&db, body.owner, left, right).is_none(),
-            "distinct symbolic array lengths are not interchangeable"
-        );
-        let body = normalized_func(&db, top_mod, "symbolic_defaults").body;
-        let types: Vec<_> = body
-            .values
-            .iter()
-            .filter_map(|value| {
-                matches!(value.definition, NValueDefinition::EntryParam { .. }).then_some(value.ty)
-            })
-            .collect();
-        let [eager, deferred, other_param, other_offset]: [TyId<'_>; 4] = types.try_into().unwrap();
-        let eager_len = eager.generic_args(&db)[0].generic_args(&db)[1];
-        let deferred_len = deferred.generic_args(&db)[0].generic_args(&db)[1];
-        assert_ne!(eager_len, deferred_len);
-        assert!(matches!(
-            deferred_len.data(&db),
-            TyData::ConstTy(const_ty) if matches!(const_ty.data(&db), ConstTyData::UnEvaluated { .. })
-        ));
-        assert_eq!(
-            normalize_const_tys_for_comparison(&db, eager_len),
-            normalize_const_tys_for_comparison(&db, deferred_len),
-        );
-        for (source, target) in [(eager, deferred), (deferred, eager)] {
-            assert!(
-                super::structural_repack_mapping(&db, body.owner, source, target).is_some(),
-                "equivalent eager and deferred symbolic lengths must be compatible"
-            );
-            assert!(super::structural_types_are_boundary_compatible(
-                &db, body.owner, source, target,
-            ));
-        }
-        for target in [other_param, other_offset] {
-            assert!(
-                super::structural_repack_mapping(&db, body.owner, deferred, target).is_none(),
-                "canonicalization must not equate different symbolic lengths"
-            );
-            assert!(!super::structural_types_are_boundary_compatible(
-                &db, body.owner, deferred, target,
-            ));
-        }
-        let body = normalized_func(&db, top_mod, "concrete_defaults").body;
-        let types: Vec<_> = body
-            .values
-            .iter()
-            .filter_map(|value| {
-                matches!(value.definition, NValueDefinition::EntryParam { .. }).then_some(value.ty)
-            })
-            .collect();
-        let [eager, deferred, empty_eager, empty_deferred]: [TyId<'_>; 4] =
-            types.try_into().unwrap();
-        for (source, target) in [
-            (eager, deferred),
-            (deferred, eager),
-            (empty_eager, empty_deferred),
-            (empty_deferred, empty_eager),
-        ] {
-            assert!(super::structural_repack_mapping(&db, body.owner, source, target).is_some());
-            assert!(super::structural_types_are_boundary_compatible(
-                &db, body.owner, source, target,
-            ));
-        }
-        assert!(
-            super::structural_repack_mapping(&db, body.owner, deferred, empty_deferred).is_none()
-        );
-        let body = normalized_func(&db, top_mod, "spaces").body;
-        let types: Vec<_> = body
-            .values
-            .iter()
-            .filter_map(|value| {
-                matches!(value.definition, NValueDefinition::EntryParam { .. }).then_some(value.ty)
-            })
-            .collect();
-        let [memory, storage]: [TyId<'_>; 2] = types.try_into().unwrap();
-        assert!(
-            super::structural_repack_mapping(&db, body.owner, memory, storage).is_none(),
-            "equal handle representations and targets cannot change address space"
-        );
     }
 
     #[test]

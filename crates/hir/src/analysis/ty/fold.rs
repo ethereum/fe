@@ -646,7 +646,6 @@ impl<'db> TyFoldable<'db> for ResolvedEffectArg<'db> {
             arg: self.arg.fold_with(db, folder),
             with_source: self.with_source,
             pass_mode: self.pass_mode,
-            layout_view: self.layout_view,
             required_mut: self.required_mut,
             key_kind: self.key_kind,
             instantiated_key_ty: self.instantiated_key_ty.map(|ty| ty.fold_with(db, folder)),

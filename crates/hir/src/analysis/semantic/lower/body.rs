@@ -30,6 +30,7 @@ use crate::{
                 BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef,
                 ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics, RecordInitLowering,
                 RecordLike, SemanticExprLowering, TypedBody, ValuePathRef, infer_body,
+                transparent_newtype_field_ty,
             },
             ty_def::{BorrowKind, TyData, TyId},
             ty_is_copy, ty_is_snapshot,
@@ -539,6 +540,57 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
     pub(super) fn emit_expr(&mut self, ty: TyId<'db>, expr: SExpr<'db>) -> SValueId {
         self.emit_expr_with_origin(SemOrigin::Synthetic, ty, expr)
+    }
+
+    /// A cast sees through transparent newtypes (`check_cast`): it unwraps
+    /// the source's, converts the leaf and wraps the result in the target's.
+    fn lower_cast(
+        &mut self,
+        origin: SemOrigin<'db>,
+        mut value: SOperand,
+        from: TyId<'db>,
+        to: TyId<'db>,
+    ) -> SValueId {
+        let scope = self.body.scope();
+        let newtype_field = |this: &Self, ty| {
+            transparent_newtype_field_ty(
+                this.db,
+                scope,
+                normalize_ty(this.db, ty, scope, this.assumptions),
+            )
+        };
+        let mut layers = Vec::new();
+        let mut leaf = to;
+        while let Some(field_ty) = newtype_field(self, leaf) {
+            layers.push(leaf);
+            leaf = field_ty;
+        }
+        let mut from = from;
+        let mut unwrapped = false;
+        while let Some(field_ty) = newtype_field(self, from) {
+            let field = SExpr::Field {
+                base: value,
+                field: FieldIndex(0),
+            };
+            value = SOperand::synthetic(self.emit_expr_with_origin(origin, field_ty, field));
+            from = field_ty;
+            unwrapped = true;
+        }
+        let mut result = if from == leaf && (unwrapped || !layers.is_empty()) {
+            value
+        } else {
+            let cast = SExpr::Cast { value, to: leaf };
+            SOperand::synthetic(self.emit_expr_with_origin(origin, leaf, cast))
+        };
+        for ty in layers.into_iter().rev() {
+            let fields = Box::new([result]);
+            result = SOperand::synthetic(self.emit_expr_with_origin(
+                origin,
+                ty,
+                SExpr::AggregateMake { ty, fields },
+            ));
+        }
+        result.value
     }
 
     pub(super) fn lower_expr_operand(&mut self, expr: ExprId) -> SOperand {
@@ -1065,8 +1117,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 self.emit_expr_with_origin(origin, ty, SExpr::Binary { op: *op, lhs, rhs })
             }
             Expr::Cast(value, _) => {
+                let from = self.expr_ty(*value);
                 let value = self.lower_expr_operand(*value);
-                self.emit_expr_with_origin(origin, ty, SExpr::Cast { value, to: ty })
+                self.lower_cast(origin, value, from, ty)
             }
             Expr::Call(_, args) => self.lower_call(expr, None, args),
             Expr::Assert(args) => self.lower_assert(expr, args),
@@ -1402,8 +1455,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             SemanticLocalRole::DirectValue {
                 provenance: crate::analysis::semantic::ValueProvenance::RootProvider(_),
             }
-            | SemanticLocalRole::PlaceBoundValue { .. }
-            | SemanticLocalRole::DirectCarrier { .. } => PathReadSemantics::ForwardInterface,
+            | SemanticLocalRole::PlaceBoundValue { .. } => PathReadSemantics::ForwardInterface,
             SemanticLocalRole::PlaceCarrier { .. }
                 if normalize_ty(self.db, expr_ty, scope, self.assumptions)
                     .as_capability(self.db)

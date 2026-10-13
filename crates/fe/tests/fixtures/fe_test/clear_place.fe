@@ -4,7 +4,6 @@
 // `core::ops::clear_storage`.
 use core::intrinsic::clear
 use core::keccak
-use core::effect_ref::EffectHandle
 use std::evm::{
     Address, Evm, RawStorage, SolArray, SolEnumerableSet, StorPtr, StorageMap, TSlot,
 }
@@ -25,7 +24,7 @@ fn load(_ slot: u256) -> u256 uses (storage: RawStorage) {
     unsafe { storage.sload(slot) }
 }
 
-fn handle_at(_ slot: u256) -> StorPtr<u256> uses (storage: RawStorage) {
+fn pointer_at(_ slot: u256) -> StorPtr<u256> uses (storage: RawStorage) {
     unsafe { storage.stor_ptr(slot) }
 }
 
@@ -69,10 +68,10 @@ fn clear_zeroes_storage_places() uses (evm: mut Evm) {
         let data = keccak(0 as u256)
         assert(load(data) == 0 && load(data + 1) == 0)
         assert(load(data + 2) == 0x0500 && load(data + 3) == 6)
-        // A storage handle held in memory is its slot.
-        var handle = handle_at(5)
-        unsafe { clear(mut handle) }
-        assert(handle.raw() == 0)
+        // A storage pointer held in memory is its slot.
+        var pointer = pointer_at(5)
+        unsafe { clear(mut pointer) }
+        assert(pointer as u256 == 0)
     }
 }
 

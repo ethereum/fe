@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use crate::analysis::{
     semantic::normalized::{NDataPath, NDataProjection, NIndex, NRootId, NValueId},
-    ty::provider::ProviderAddressSpace,
+    ty::provider::AddressSpace,
 };
 
 /// Where an abstract place starts.
@@ -24,7 +24,7 @@ pub(super) enum Base {
     Grant { session: NValueId, component: u16 },
     /// Every slot of an address space, as an external execution or a raw
     /// storage operation reaches it.
-    State(ProviderAddressSpace),
+    State(AddressSpace),
     /// Memory reached through a raw pointer. Accesses to it are not checked.
     Raw,
 }
@@ -95,7 +95,7 @@ pub(super) struct AbsPlace {
     /// The space a pinned type or an entry along the path moved the place
     /// into, as a `TSlot` and its value lie in transient storage whatever
     /// holds the `TSlot`. `None` keeps the base's.
-    pub space: Option<ProviderAddressSpace>,
+    pub space: Option<AddressSpace>,
     /// Whether the path crosses a lane, a packed field or entry of a state
     /// word: a retained grant to the place is a memory copy, while accesses
     /// still reserve the lane in its own space.
@@ -115,12 +115,7 @@ impl AbsPlace {
     /// The place `suffix` reaches from this one, in `space` when a pinned
     /// type or an entry along the suffix moves it there, and in a lane when
     /// the suffix crosses one.
-    pub fn extended(
-        &self,
-        suffix: &[Step],
-        space: Option<ProviderAddressSpace>,
-        lane: bool,
-    ) -> Self {
+    pub fn extended(&self, suffix: &[Step], space: Option<AddressSpace>, lane: bool) -> Self {
         let mut path = self.path.clone();
         path.extend_from_slice(suffix);
         Self {

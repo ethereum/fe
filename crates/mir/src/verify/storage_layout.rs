@@ -8,7 +8,7 @@
 
 use hir::{
     analysis::semantic::{owner_effect_bindings, resolved_provider_binding_for_instance_effect},
-    analysis::ty::{ProviderAddressSpace, ty_def::TyId},
+    analysis::ty::{AddressSpace, ty_def::TyId},
     hir_def::Contract,
     semantic::{ContractFieldId, FieldStorageLayout, ProviderSource},
 };
@@ -17,11 +17,9 @@ use crate::{
     db::MirDb,
     instance::RuntimeInstance,
     runtime::{
-        AddressSpaceKind, ContractFieldBinding, ContractFieldSlot, EntryEffectArgPlan, RefKind,
-        RefView, RuntimeClass, RuntimeFunctionOwner, RuntimeMemoryLayout, RuntimeSyntheticSpec,
-        lower::{
-            classify::runtime_effect_binding_plan, type_info::provider_address_space_to_runtime,
-        },
+        ContractFieldBinding, ContractFieldSlot, EntryEffectArgPlan, RefKind, RefView,
+        RuntimeClass, RuntimeFunctionOwner, RuntimeMemoryLayout, RuntimeSyntheticSpec,
+        lower::classify::runtime_effect_binding_plan,
     },
     verify::VerifyError,
 };
@@ -130,7 +128,7 @@ fn verify_contract_field_binding<'db>(
         .values()
         .find(|field| field.field == binding.field)
         .ok_or(VerifyError::UnknownContractField(binding.field))?;
-    let expected_ty = field.target;
+    let expected_ty = field.declared;
     if binding.declared_ty != expected_ty {
         return Err(VerifyError::ContractFieldTypeMismatch {
             field: binding.field,
@@ -139,7 +137,7 @@ fn verify_contract_field_binding<'db>(
         });
     }
 
-    let expected_init_immutable = is_init && field.address_space == ProviderAddressSpace::Code;
+    let expected_init_immutable = is_init && field.address_space == AddressSpace::Code;
     if binding.init_immutable != expected_init_immutable {
         return Err(VerifyError::ContractFieldInitModeMismatch {
             field: binding.field,
@@ -148,9 +146,9 @@ fn verify_contract_field_binding<'db>(
         });
     }
     let expected_space = if expected_init_immutable {
-        AddressSpaceKind::Memory
+        AddressSpace::Memory
     } else {
-        provider_address_space_to_runtime(field.address_space)
+        field.address_space
     };
     let actual_space = binding.class.address_space();
     if actual_space != Some(expected_space) {
@@ -188,7 +186,7 @@ fn verify_contract_field_binding<'db>(
                 field: binding.field,
                 class: binding.class.clone(),
             })?;
-    let mir_span = RuntimeMemoryLayout::for_space(db, AddressSpaceKind::Storage)
+    let mir_span = RuntimeMemoryLayout::for_space(db, AddressSpace::Storage)
         .class_size(&pointee)
         .map_err(|_| VerifyError::InvalidContractFieldLayout(binding.field))?;
     if u64::try_from(field.slot_count).ok() != Some(mir_span) {
@@ -207,7 +205,7 @@ fn expected_contract_field_slot<'db>(
     field: &FieldStorageLayout<'db>,
     is_init: bool,
 ) -> Option<ContractFieldSlot> {
-    if field.address_space == ProviderAddressSpace::Code && !is_init {
+    if field.address_space == AddressSpace::Code && !is_init {
         let field_slot = i128::try_from(field.slot_offset).ok()?;
         let high_water = i128::try_from(contract.code_address_space_slot_count(db)).ok()?;
         field_slot
@@ -246,7 +244,7 @@ fn contract_field_ref_kind<'db>(
 mod tests {
     use common::InputDb;
     use driver::DriverDataBase;
-    use hir::{analysis::ty::ProviderAddressSpace, semantic::ContractFieldId};
+    use hir::{analysis::ty::AddressSpace, semantic::ContractFieldId};
     use ruint::aliases::U256;
     use url::Url;
 
@@ -265,8 +263,7 @@ mod tests {
     };
 
     const CONTRACTS: &str = r#"
-use std::evm::StorageMap
-use std::evm::effects::TStorPtr
+use std::evm::{StorageMap, TSlot}
 
 struct Word {
     value: u256,
@@ -280,7 +277,7 @@ msg LayoutMsg {
 pub contract Layouts {
     mut words: [[u256; 2]; 2],
     mut maps: StorageMap<u256, u256>,
-    mut temp: TStorPtr<u256>,
+    mut temp: TSlot<u256>,
     fixed: Word,
 
     init() uses (mut fixed) {
@@ -289,7 +286,7 @@ pub contract Layouts {
 
     recv LayoutMsg {
         Read -> u256 uses (words, maps, temp, fixed) {
-            words[0][0] + maps.get(key: 0) + temp + fixed.value
+            words[0][0] + maps.get(key: 0) + temp[()] + fixed.value
         }
     }
 }
@@ -477,7 +474,7 @@ pub contract Other {
         verify_runtime_package(db, package).expect_err("mutated package should be invalid")
     }
 
-    fn set_binding_space(binding: &mut ContractFieldBinding<'_>, space: AddressSpaceKind) {
+    fn set_binding_space(binding: &mut ContractFieldBinding<'_>, space: AddressSpace) {
         match &mut binding.class {
             RuntimeClass::Ref {
                 kind: RefKind::Provider { space: actual, .. },
@@ -518,10 +515,10 @@ pub contract Other {
             let recv_args = entry_args_mut(&mut recv, EntryKind::Recv).clone();
 
             for (field, space, span) in [
-                (words, ProviderAddressSpace::Storage, 4),
-                (maps, ProviderAddressSpace::Storage, 1),
-                (temp, ProviderAddressSpace::Transient, 1),
-                (fixed, ProviderAddressSpace::Code, 1),
+                (words, AddressSpace::Storage, 4),
+                (maps, AddressSpace::Storage, 1),
+                (temp, AddressSpace::Storage, 1),
+                (fixed, AddressSpace::Code, 1),
             ] {
                 let hir = contract
                     .storage_layout(db)
@@ -532,7 +529,7 @@ pub contract Other {
                 assert_eq!(hir.address_space, space);
                 assert_eq!(hir.slot_count, span);
                 assert_eq!(
-                    RuntimeMemoryLayout::for_space(db, AddressSpaceKind::Storage)
+                    RuntimeMemoryLayout::for_space(db, AddressSpace::Storage)
                         .class_size(&binding.class.deref_target(db).unwrap())
                         .unwrap(),
                     span as u64
@@ -604,7 +601,7 @@ pub contract Other {
 
             assert!(matches!(
                 mutated_wrapper_error(db, package, contract, EntryKind::Recv, |args| {
-                    set_binding_space(field_binding_mut(args, words), AddressSpaceKind::Transient)
+                    set_binding_space(field_binding_mut(args, words), AddressSpace::Transient)
                 }),
                 VerifyError::ContractFieldAddressSpaceMismatch { field, .. }
                     if field == words
@@ -612,7 +609,7 @@ pub contract Other {
 
             assert!(matches!(
                 mutated_wrapper_error(db, package, contract, EntryKind::Recv, |args| {
-                    set_binding_space(field_binding_mut(args, temp), AddressSpaceKind::Storage)
+                    set_binding_space(field_binding_mut(args, temp), AddressSpace::Transient)
                 }),
                 VerifyError::ContractFieldAddressSpaceMismatch { field, .. }
                     if field == temp
@@ -620,7 +617,7 @@ pub contract Other {
 
             assert!(matches!(
                 mutated_wrapper_error(db, package, contract, EntryKind::Recv, |args| {
-                    set_binding_space(field_binding_mut(args, fixed), AddressSpaceKind::Storage)
+                    set_binding_space(field_binding_mut(args, fixed), AddressSpace::Storage)
                 }),
                 VerifyError::ContractFieldAddressSpaceMismatch { field, .. }
                     if field == fixed

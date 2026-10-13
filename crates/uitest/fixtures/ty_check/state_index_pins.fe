@@ -1,4 +1,4 @@
-use core::effect_ref::{AddressSpace, StateSpace}
+use core::effect_ref::StateSpace
 use core::ops::StateIndex
 use std::evm::Ctx
 
@@ -24,7 +24,7 @@ struct Words {
 }
 
 impl StateIndex for Words {
-    const SPACE: StateSpace = AddressSpace::Memory
+    const SPACE: StateSpace = StateSpace::Memory
     type Key = u256
     type Entry = u256
 

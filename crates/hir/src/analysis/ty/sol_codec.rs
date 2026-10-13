@@ -66,11 +66,11 @@ pub(crate) fn sol_codec_bits<'db>(
     ) {
         return None;
     }
-    let (std_scope, elem) = sol_codec_elem(db, resolved.trait_inst())?;
+    let (_, elem) = sol_codec_elem(db, resolved.trait_inst())?;
     if elem.has_param(db) || elem.has_var(db) {
         return None;
     }
-    let slots = storage_slot_span(db, std_scope, elem)?;
+    let slots = storage_slot_span(db, elem)?;
     let u256 = TyId::u256(db);
     Some(const_ty_from_sem_const(
         db,

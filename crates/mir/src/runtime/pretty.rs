@@ -1,3 +1,4 @@
+use hir::analysis::ty::AddressSpace;
 use std::fmt::Write;
 
 use cranelift_entity::EntityRef;
@@ -8,12 +9,11 @@ use crate::{
     db::MirDb,
     instance::RuntimeInstance,
     runtime::{
-        AddressSpaceKind, ConstScalar, Layout, LayoutId, PlaceElem, PlaceRoot, RBlockId, RExpr,
-        RLocalId, RStmt, RTerminator, RValueId, RawPointeeId, RawPointeeKey, RefKind, RefView,
-        RuntimeBody, RuntimeBuiltin, RuntimeCarrier, RuntimeClass, RuntimeCodeRegion,
-        RuntimeFunction, RuntimeLinkage, RuntimeLocalRoot, RuntimeObject, RuntimePackage,
-        RuntimePlace, RuntimeSection, RuntimeSectionName, RuntimeSectionRef, ScalarClass,
-        ScalarRepr, ScalarRole, VariantId,
+        ConstScalar, Layout, LayoutId, PlaceElem, PlaceRoot, RBlockId, RExpr, RLocalId, RStmt,
+        RTerminator, RValueId, RawPointeeId, RefKind, RefView, RuntimeBody, RuntimeBuiltin,
+        RuntimeCarrier, RuntimeClass, RuntimeCodeRegion, RuntimeFunction, RuntimeLinkage,
+        RuntimeLocalRoot, RuntimeObject, RuntimePackage, RuntimePlace, RuntimeSection,
+        RuntimeSectionName, RuntimeSectionRef, ScalarClass, ScalarRepr, ScalarRole, VariantId,
     },
     verify::{RuntimeVerifyFailure, RuntimeVerifySite},
 };
@@ -984,10 +984,7 @@ fn format_class<'db>(db: &'db dyn MirDb, class: &RuntimeClass<'db>) -> String {
 }
 
 fn format_raw_pointee<'db>(db: &'db dyn MirDb, pointee: RawPointeeId<'db>) -> String {
-    match pointee.key(db) {
-        RawPointeeKey::Stored(ty) => ty.pretty_print(db).to_string(),
-        RawPointeeKey::Exact(class) => format_class(db, class),
-    }
+    format_class(db, pointee.target(db))
 }
 
 fn format_scalar_class<'db>(db: &'db dyn MirDb, class: &ScalarClass<'db>) -> String {
@@ -1113,13 +1110,13 @@ fn format_runtime_instance<'db>(db: &'db dyn MirDb, instance: RuntimeInstance<'d
     }
 }
 
-fn format_space(space: AddressSpaceKind) -> &'static str {
+fn format_space(space: AddressSpace) -> &'static str {
     match space {
-        AddressSpaceKind::Memory => "mem",
-        AddressSpaceKind::Storage => "storage",
-        AddressSpaceKind::Transient => "transient",
-        AddressSpaceKind::Calldata => "calldata",
-        AddressSpaceKind::Code => "code",
+        AddressSpace::Memory => "mem",
+        AddressSpace::Storage => "storage",
+        AddressSpace::Transient => "transient",
+        AddressSpace::Calldata => "calldata",
+        AddressSpace::Code => "code",
     }
 }
 

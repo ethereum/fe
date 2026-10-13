@@ -1077,12 +1077,6 @@ impl Bytes {
     }
 }
 
-fn mem_word_load() -> u256
-    uses (slot: u256)
-{
-    slot
-}
-
 // Compares byte payloads a word at a time. Payloads of `Bytes` and `DynString`
 // are padded to whole words, so the final word read stays inside the value.
 fn payload_eq(_ a: ptr::MemSpan, _ b: ptr::MemSpan) -> bool {
@@ -1122,10 +1116,7 @@ impl Eq for DynString {
 // The word at `offset` from `base` must lie in a live allocation.
 #[inline(always)]
 unsafe fn mem_word_at(base: *u8, offset: u256) -> u256 {
-    let word_ptr = ptr::cast<u8, u256>(ptr::offset_bytes(base, offset))
-    with (word_ptr) {
-        mem_word_load()
-    }
+    *ptr::cast<u8, u256>(ptr::offset_bytes(base, offset))
 }
 
 /// A span's bytes read past its end as zeros, like calldata's.

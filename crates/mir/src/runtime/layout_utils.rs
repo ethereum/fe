@@ -3,13 +3,14 @@ use common::layout::{
     storage_fields_layout,
 };
 use hir::analysis::semantic::FieldIndex;
+use hir::analysis::ty::AddressSpace;
 use rustc_hash::FxHashSet;
 
 use crate::{
     db::MirDb,
     runtime::{
-        AddressSpaceKind, ArrayLayout, ConstNode, ConstRegionId, ConstScalar, Layout, LayoutId,
-        LowerError, RuntimeClass, ScalarClass, ScalarRepr, ScalarRole, StructLayout, VariantId,
+        ArrayLayout, ConstNode, ConstRegionId, ConstScalar, Layout, LayoutId, LowerError,
+        RuntimeClass, ScalarClass, ScalarRepr, ScalarRole, StructLayout, VariantId,
     },
 };
 
@@ -72,7 +73,7 @@ pub struct RuntimeMemoryLayout<'db> {
 }
 
 impl<'db> RuntimeMemoryLayout<'db> {
-    pub fn for_space(db: &'db dyn MirDb, space: AddressSpaceKind) -> Self {
+    pub fn for_space(db: &'db dyn MirDb, space: AddressSpace) -> Self {
         Self {
             db,
             unit: if space.is_byte_addressed() {
@@ -84,7 +85,7 @@ impl<'db> RuntimeMemoryLayout<'db> {
     }
 
     pub fn raw(db: &'db dyn MirDb) -> Self {
-        Self::for_space(db, AddressSpaceKind::Memory)
+        Self::for_space(db, AddressSpace::Memory)
     }
 
     pub fn class_size(self, class: &RuntimeClass<'db>) -> Result<u64, RuntimeMemoryLayoutError> {
@@ -569,7 +570,7 @@ fn serialize_const_node_with_size<'db>(
             if let Some(RuntimeClass::AggregateValue { layout }) =
                 pointee.map(|pointee| pointee.target(db))
             {
-                return serialize_const_node_to_layout_bytes(db, layout, node, target);
+                return serialize_const_node_to_layout_bytes(db, *layout, node, target);
             }
             let ConstNode::Scalar(scalar) = node else {
                 return Err(LowerError::Unsupported(
@@ -766,11 +767,11 @@ mod tests {
             len: 3,
         };
 
-        let bytes = RuntimeMemoryLayout::for_space(&db, AddressSpaceKind::Memory);
+        let bytes = RuntimeMemoryLayout::for_space(&db, AddressSpace::Memory);
         assert_eq!(bytes.struct_field_offset(&struct_layout, 1), Ok(1));
         assert_eq!(bytes.array_element_offset(&array_layout, 2), Ok(4));
 
-        let words = RuntimeMemoryLayout::for_space(&db, AddressSpaceKind::Storage);
+        let words = RuntimeMemoryLayout::for_space(&db, AddressSpace::Storage);
         assert_eq!(words.struct_field_offset(&struct_layout, 1), Ok(1));
         assert_eq!(words.array_element_offset(&array_layout, 2), Ok(2));
     }
@@ -799,7 +800,7 @@ mod tests {
         assert_eq!(bytes.layout_size(layout), Ok(3));
         assert_eq!(bytes.variant_field_offset(variant, FieldIndex(0)), Ok(2));
 
-        let words = RuntimeMemoryLayout::for_space(&db, AddressSpaceKind::Storage);
+        let words = RuntimeMemoryLayout::for_space(&db, AddressSpace::Storage);
         assert_eq!(words.layout_size(layout), Ok(2));
         assert_eq!(words.variant_field_offset(variant, FieldIndex(0)), Ok(1));
 

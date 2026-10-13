@@ -130,9 +130,7 @@ impl<'db> NStatementKind<'db> {
                 NExpr::Binary { lhs, rhs, .. } => {
                     accesses.extend([lhs, rhs].map(|arg| OperationAccess::operand(db, body, *arg)));
                 }
-                NExpr::AggregateMake { fields, .. }
-                | NExpr::EnumMake { fields, .. }
-                | NExpr::MakeHandle { fields, .. } => {
+                NExpr::AggregateMake { fields, .. } | NExpr::EnumMake { fields, .. } => {
                     accesses.extend(
                         fields
                             .iter()
@@ -151,8 +149,10 @@ impl<'db> NStatementKind<'db> {
         for access in &accesses {
             let path = match access.target {
                 AccessTarget::Place(place) => {
-                    if let NPlaceBase::CapabilityTarget { carrier } = place.base {
-                        address_values.push(carrier);
+                    if let NPlaceBase::CapabilityTarget { carrier: value }
+                    | NPlaceBase::Deref { pointer: value } = place.base
+                    {
+                        address_values.push(value);
                     }
                     Some(&place.path)
                 }

@@ -76,9 +76,9 @@ pub(crate) fn normalized_body_error_to_diag<'db>(
                 origin: SemOrigin::Body(owner),
             },
         ),
-        NormalizeError::UnresolvedHandleOrigin(ty) => (
+        NormalizeError::UnresolvedCapabilityConst(ty) => (
             format!(
-                "normalized handle has no resolved origin contract: {}",
+                "constant holding a capability has no resolved value: {}",
                 ty.pretty_print(db)
             ),
             SemanticDiagnosticSpan::Origin {

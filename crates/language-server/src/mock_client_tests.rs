@@ -1068,11 +1068,11 @@ async fn mock_lsp_hover_groups_contract_layout_by_address_space() {
     client.did_open(&uri, "");
     client.wait_for_text(&uri, "").await;
 
-    let code = r#"use std::evm::TStorPtr
+    let code = r#"use std::evm::TSlot
 
 pub contract Spaces {
   mut stored: u256,
-  mut temporary: TStorPtr<u256>,
+  mut temporary: TSlot<u256>,
   immutable: u256,
 }
 "#;
@@ -1084,8 +1084,7 @@ pub contract Spaces {
     for section in [
         "#### Storage",
         "- `0`: `stored` (inline field, `u256`)",
-        "#### Transient Storage",
-        "- `1`: `temporary` (inline field, `u256`)",
+        "- `1`: `temporary` (storage collection, `TSlot<u256>`)",
         "#### Immutable (Code)",
         "- `0`: `immutable` (inline field, `u256`)",
     ] {

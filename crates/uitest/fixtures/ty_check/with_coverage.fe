@@ -8,35 +8,32 @@ fn read(_ p: StorPtr<u256>) -> u256 uses (target: u256) {
     target
 }
 
-// Rejected: nothing in the signature covers the slot `p` names.
+// Rejected: nothing in the signature covers the slot `p` names, and
+// `unsafe` does not grant authority.
 fn uncovered(_ p: StorPtr<u256>) -> u256 {
     let ptr = p
-    with (ptr) {
-        read(ptr)
+    unsafe {
+        with (*ptr) {
+            read(ptr)
+        }
     }
 }
 
 // Accepted: raw storage authority covers any slot.
 fn raw(_ p: StorPtr<u256>) -> u256 uses (storage: RawStorage) {
     let ptr = p
-    with (ptr) {
-        read(ptr)
+    unsafe {
+        with (*ptr) {
+            read(ptr)
+        }
     }
 }
 
 // Rejected: a provider that can write needs authority that can.
 fn raw_read_only(_ p: StorPtr<u256>) -> u256 uses (storage: RawStorage) {
-    var ptr = p
-    with (ptr) {
-        read(ptr)
-    }
-}
-
-// Accepted: an `unsafe` block vouches for the provider.
-fn vouched(_ p: StorPtr<u256>) -> u256 {
     let ptr = p
     unsafe {
-        with (ptr) {
+        with (mut *ptr) {
             read(ptr)
         }
     }
@@ -46,10 +43,13 @@ struct Store {
     ptr: StorPtr<u256>,
 }
 
-// Accepted: a place in the function's own effect carries its authority.
+// Rejected: a pointer read from the function's own effect still names an
+// arbitrary slot.
 fn own_effect() -> u256 uses (store: Store) {
-    with (store.ptr) {
-        read(store.ptr)
+    unsafe {
+        with (*store.ptr) {
+            read(store.ptr)
+        }
     }
 }
 

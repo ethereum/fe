@@ -3,7 +3,7 @@ use crate::{
         HirAnalysisDb,
         ty::{
             const_ty::lexical_const_body_owner,
-            provider::ProviderAddressSpace,
+            provider::AddressSpace,
             subst::substitute_complete,
             trait_def::TraitInstId,
             trait_resolution::PredicateListId,
@@ -136,7 +136,7 @@ pub struct EffectProviderSubst<'db> {
     #[return_ref]
     pub providers: Vec<ProviderBinding<'db>>,
     #[return_ref]
-    pub param_spaces: Vec<(u32, ProviderAddressSpace)>,
+    pub param_spaces: Vec<(u32, AddressSpace)>,
 }
 
 impl<'db> EffectProviderSubst<'db> {

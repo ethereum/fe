@@ -49,16 +49,20 @@ pub contract C {
     recv Msg {
         SeedSlot { slot, value } -> u256 uses (evm: mut Evm) {
             let ptr: StorPtr<Cell> = unsafe { evm.stor_ptr(slot) }
-            with (ptr) {
-                write_cell(value)
+            unsafe {
+                with (mut *ptr) {
+                    write_cell(value)
+                }
             }
         }
 
         ReadViaHolder { slot } -> u256 uses (evm: mut Evm) {
             let holder = unsafe { Holder { ptr: evm.stor_ptr(slot), tag: 1 } }
             let ptr = extract_ptr(holder)
-            with (ptr) {
-                read_cell()
+            unsafe {
+                with (*ptr) {
+                    read_cell()
+                }
             }
         }
 

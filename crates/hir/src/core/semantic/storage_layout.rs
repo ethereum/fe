@@ -13,17 +13,13 @@ use crate::{
         HirAnalysisDb,
         semantic::{RuntimeSizeError, runtime_size_bytes_with_source},
         ty::{
-            ProviderAddressSpace,
+            AddressSpace,
             adt_def::{
                 AdtDef, AdtRef, ConcreteTypeView, instantiate_adt_field_for_concrete_demand,
             },
             const_ty::{ConcreteArrayLengthError, demand_concrete_array_length},
-            provider::{
-                ProviderLayoutFailure, ProviderLayoutResolution, resolve_effect_handle_layout,
-                state_index_space,
-            },
+            provider::state_index_space,
             state_index_tys,
-            trait_def::ImplementorId,
             trait_resolution::PredicateListId,
             ty_check::contract_field_slot,
             ty_def::{PrimTy, TyBase, TyData, TyId},
@@ -62,7 +58,7 @@ pub struct ContractLayoutEntry<'db> {
     pub field: ContractFieldId<'db>,
     pub path: ContractLayoutPath<'db>,
     pub ty: TyId<'db>,
-    pub address_space: ProviderAddressSpace,
+    pub address_space: AddressSpace,
     pub value: ContractLayoutValue<'db>,
     /// For a scalar packed with others into one slot, its bytes in the slot.
     pub lane: Option<ContractLayoutLane>,
@@ -172,13 +168,6 @@ pub enum ContractLayoutError<'db> {
     InconsistentConcreteArrayLength {
         array: TyId<'db>,
     },
-    AmbiguousProviderLayout,
-    UnresolvedProviderTarget,
-    UnresolvedProviderSpace,
-    InvalidProviderRaw {
-        failure: ProviderLayoutFailure,
-    },
-    NonRegularProviderCycle,
     /// `#[slot(e)]` whose `e` is not a constant `u256`.
     InvalidExplicitSlot,
     /// `#[slot(e)]` on a field that lives in code, which has no slots.
@@ -191,8 +180,9 @@ pub enum ContractLayoutError<'db> {
     IncompleteAdtLayoutProjection {
         ty: TyId<'db>,
     },
-    /// A field in storage or transient storage holding a memory pointer.
-    MemoryValueInState {
+    /// A field holding a pointer into memory or calldata, which last at
+    /// most one call.
+    CallPointerInState {
         pointer: TyId<'db>,
     },
     /// A persistent collection inside a transient collection's contents.
@@ -209,17 +199,14 @@ impl ContractLayoutError<'_> {
             Self::InconsistentConcreteArrayLength { .. } => {
                 "canonical and source array lengths disagree"
             }
-            Self::AmbiguousProviderLayout => "provider layout selection is ambiguous",
-            Self::UnresolvedProviderTarget => "provider target type is unresolved",
-            Self::UnresolvedProviderSpace => "provider address space is unresolved",
-            Self::InvalidProviderRaw { .. } => "provider raw transport is invalid",
-            Self::NonRegularProviderCycle => "provider target recursion changes its type arguments",
             Self::InvalidExplicitSlot => "the explicit slot is not a constant `u256`",
             Self::ExplicitSlotInCode => "a code field has no slot",
             Self::ExplicitSlotOverlap { .. } => "the explicit slots overlap another field's",
             Self::LayoutExtentOverflow => "layout extent overflowed",
             Self::IncompleteAdtLayoutProjection { .. } => "layout projection is incomplete",
-            Self::MemoryValueInState { .. } => "contract state holds a memory pointer",
+            Self::CallPointerInState { .. } => {
+                "contract state holds a pointer into memory or calldata"
+            }
             Self::PersistentUnderTransient { .. } => {
                 "a persistent collection lies in transient storage"
             }
@@ -234,10 +221,8 @@ pub struct ValidatedFieldLayoutPlan<'db> {
     field: ContractFieldId<'db>,
     name: IdentId<'db>,
     is_mut: bool,
-    is_provider: bool,
-    address_space: ProviderAddressSpace,
+    address_space: AddressSpace,
     declared: TyId<'db>,
-    target: TyId<'db>,
     /// The slot `#[slot(e)]` places the field at.
     explicit_slot: Option<U256>,
     slot_count: usize,
@@ -245,7 +230,7 @@ pub struct ValidatedFieldLayoutPlan<'db> {
     /// part of it lies outside a pinned type, and those its pinned types are
     /// pinned to, which keep their contents at their own slot numbers there
     /// (a `TSlot`'s value in transient storage).
-    spaces: Vec<ProviderAddressSpace>,
+    spaces: Vec<AddressSpace>,
     inline_leaves: Vec<InlineLayoutLeaf<'db>>,
 }
 
@@ -254,12 +239,9 @@ pub struct FieldStorageLayout<'db> {
     pub field: ContractFieldId<'db>,
     pub name: IdentId<'db>,
     pub is_mut: bool,
-    pub is_provider: bool,
-    pub address_space: ProviderAddressSpace,
+    pub address_space: AddressSpace,
     /// The field's declared type.
     pub declared: TyId<'db>,
-    /// The value the field holds: a provider's target, else `declared`.
-    pub target: TyId<'db>,
     /// The field's first slot, or for a code field its first word.
     pub slot_offset: U256,
     pub slot_count: usize,
@@ -324,30 +306,16 @@ impl<'db> ContractStorageLayoutResult<'db> {
             .flat_map(|layout| layout.fields.values())
     }
 
-    /// The fields whose layout is valid, by name: index, `is_mut`,
-    /// `is_provider`, declared type and target.
+    /// The fields whose layout is valid, by name: index, `is_mut` and
+    /// declared type.
     pub(crate) fn semantic_fields(
         &self,
-    ) -> Vec<(
-        IdentId<'db>,
-        ContractFieldId<'db>,
-        bool,
-        bool,
-        TyId<'db>,
-        TyId<'db>,
-    )> {
+    ) -> Vec<(IdentId<'db>, ContractFieldId<'db>, bool, TyId<'db>)> {
         self.field_results
             .iter()
             .filter_map(|field| {
                 let plan = field.result.as_ref().ok()?;
-                Some((
-                    field.name,
-                    plan.field,
-                    plan.is_mut,
-                    plan.is_provider,
-                    plan.declared,
-                    plan.target,
-                ))
+                Some((field.name, plan.field, plan.is_mut, plan.declared))
             })
             .collect()
     }
@@ -438,72 +406,14 @@ impl<'db> WalkOutput<'db> {
 }
 
 /// Lays out one contract field's value: the slots each part takes, from
-/// the field's first. A handle within the value takes the slots of its own
-/// representation; its target lies wherever the handle points, so the walk
-/// only checks that the target has a layout.
+/// the field's first.
 struct FieldWalker<'db> {
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
     errors: Vec<ContractLayoutError<'db>>,
     /// The spaces the pinned types walked are pinned to.
-    content_spaces: Vec<ProviderAddressSpace>,
-    /// The handles whose targets are being checked, outermost first, with
-    /// the implementation that selects each target.
-    expanding: Vec<(TyId<'db>, ImplementorId<'db>)>,
+    content_spaces: Vec<AddressSpace>,
     /// The first memory pointer the walked value holds.
-    memory_pointer: Option<TyId<'db>>,
-}
-
-/// How a handle's target relates to the targets being checked around it.
-enum ProviderRecurrence {
-    /// The handle is one already being checked: its target is checked there.
-    BackEdge,
-    /// The handle is new, or a finite rearrangement of one being checked.
-    Expand,
-    /// The same implementation recurs with growing arguments, which would
-    /// make the targets an unbounded family of types.
-    NonRegular,
-}
-
-/// Classifies handle `ty`, selected by `family`, against the handles being
-/// checked. A repeated implementation is finite when `ty` permutes the
-/// arguments of an earlier handle of it, or is one of its arguments.
-fn provider_recurrence<'db>(
-    db: &'db dyn HirAnalysisDb,
-    ty: TyId<'db>,
-    family: ImplementorId<'db>,
-    expanding: &[(TyId<'db>, ImplementorId<'db>)],
-) -> ProviderRecurrence {
-    fn is_subterm<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, ancestor: TyId<'db>) -> bool {
-        ancestor
-            .generic_args(db)
-            .iter()
-            .any(|arg| *arg == ty || is_subterm(db, ty, *arg))
-    }
-    fn is_permutation<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, ancestor: TyId<'db>) -> bool {
-        let (base, args) = ty.decompose_ty_app(db);
-        let (ancestor_base, ancestor_args) = ancestor.decompose_ty_app(db);
-        let mut sorted = args.to_vec();
-        let mut ancestor_sorted = ancestor_args.to_vec();
-        sorted.sort();
-        ancestor_sorted.sort();
-        base == ancestor_base && sorted == ancestor_sorted
-    }
-    if expanding.iter().any(|(ancestor, _)| *ancestor == ty) {
-        return ProviderRecurrence::BackEdge;
-    }
-    let mut same_family = expanding
-        .iter()
-        .filter(|(_, ancestor_family)| *ancestor_family == family)
-        .peekable();
-    if same_family.peek().is_some()
-        && !same_family
-            .any(|(ancestor, _)| is_permutation(db, ty, *ancestor) || is_subterm(db, ty, *ancestor))
-    {
-        ProviderRecurrence::NonRegular
-    } else {
-        ProviderRecurrence::Expand
-    }
+    call_pointer: Option<TyId<'db>>,
 }
 
 impl<'db> FieldWalker<'db> {
@@ -582,7 +492,6 @@ impl<'db> FieldWalker<'db> {
         } else if ty.is_array(self.db) {
             self.walk_array(views, path, dimensions)
         } else if let Some(adt) = ty.adt_def(self.db) {
-            self.check_provider_target(ty);
             let output = self.walk_adt(views, adt, path, dimensions);
             // A pinned type is reported at its place, which is its identity,
             // rather than by the slots its private fields take. It takes whole
@@ -614,51 +523,14 @@ impl<'db> FieldWalker<'db> {
         {
             WalkOutput::empty()
         } else {
-            if ty.as_ptr(self.db).is_some() {
-                self.memory_pointer.get_or_insert(ty);
+            if matches!(
+                ty.as_ptr(self.db),
+                Some((_, AddressSpace::Memory | AddressSpace::Calldata))
+            ) {
+                self.call_pointer.get_or_insert(ty);
             }
             WalkOutput::leaf(self.db, ty, path, dimensions, InlineLayoutLeafKind::Field)
         }
-    }
-
-    /// Checks that a handle within a field value has a target with a layout.
-    fn check_provider_target(&mut self, ty: TyId<'db>) {
-        let (impl_instance, target) = match resolve_effect_handle_layout(
-            self.db,
-            self.scope,
-            PredicateListId::empty_list(self.db),
-            ty,
-        ) {
-            ProviderLayoutResolution::NotHandle => return,
-            ProviderLayoutResolution::Invalid(failure) => {
-                self.push_error(contract_layout_error_for_provider_failure(failure));
-                return;
-            }
-            ProviderLayoutResolution::Resolved {
-                impl_instance,
-                target,
-                ..
-            } => (impl_instance, target),
-        };
-        let family = impl_instance.selected();
-        match provider_recurrence(self.db, ty, family, &self.expanding) {
-            ProviderRecurrence::BackEdge => return,
-            ProviderRecurrence::NonRegular => {
-                self.push_error(ContractLayoutError::NonRegularProviderCycle);
-                return;
-            }
-            ProviderRecurrence::Expand => {}
-        }
-        if target.has_invalid(self.db)
-            || target.has_var(self.db)
-            || ty_has_incomplete_adt_application(self.db, target)
-        {
-            self.push_error(ContractLayoutError::UnresolvedProviderTarget);
-            return;
-        }
-        self.expanding.push((ty, family));
-        self.walk_ty(ConcreteTypeView::identity(target), &[], &[]);
-        self.expanding.pop();
     }
 
     /// Lays out a struct's or tuple's fields (`packed`) or an enum payload.
@@ -976,35 +848,13 @@ fn collect_field_plan<'db>(
     if declared.has_invalid(db) || ty_has_incomplete_adt_application(db, declared) {
         return Some((name, Err(vec![ContractLayoutError::InvalidFieldType])));
     }
-    let default_space = if field.is_mut {
-        ProviderAddressSpace::Storage
+    let address_space = if field.is_mut {
+        AddressSpace::Storage
     } else {
-        ProviderAddressSpace::Code
+        AddressSpace::Code
     };
-    let (is_provider, address_space, target) =
-        match resolve_effect_handle_layout(db, scope, assumptions, declared) {
-            ProviderLayoutResolution::NotHandle => (false, default_space, declared),
-            ProviderLayoutResolution::Resolved { target, space, .. } => {
-                if target.has_invalid(db)
-                    || target.has_var(db)
-                    || ty_has_incomplete_adt_application(db, target)
-                {
-                    return Some((
-                        name,
-                        Err(vec![ContractLayoutError::UnresolvedProviderTarget]),
-                    ));
-                }
-                (true, space, target)
-            }
-            ProviderLayoutResolution::Invalid(failure) => {
-                return Some((
-                    name,
-                    Err(vec![contract_layout_error_for_provider_failure(failure)]),
-                ));
-            }
-        };
     let explicit_slot = match field.slot {
-        Some(_) if address_space == ProviderAddressSpace::Code => {
+        Some(_) if address_space == AddressSpace::Code => {
             return Some((name, Err(vec![ContractLayoutError::ExplicitSlotInCode])));
         }
         Some(body) => match contract_field_slot(db, body) {
@@ -1015,28 +865,20 @@ fn collect_field_plan<'db>(
     };
     let mut walker = FieldWalker {
         db,
-        scope,
         errors: Vec::new(),
         content_spaces: Vec::new(),
-        expanding: Vec::new(),
-        memory_pointer: None,
+        call_pointer: None,
     };
-    let output = walker.walk_ty(ConcreteTypeView::identity(target), &[], &[]);
-    let in_state = walker.errors.is_empty()
-        && matches!(
-            address_space,
-            ProviderAddressSpace::Storage | ProviderAddressSpace::Transient
-        );
-    if in_state && let Some(pointer) = walker.memory_pointer {
-        walker.push_error(ContractLayoutError::MemoryValueInState { pointer });
+    let output = walker.walk_ty(ConcreteTypeView::identity(declared), &[], &[]);
+    // Every contract field outlives the call: code-backed ones too.
+    if walker.errors.is_empty()
+        && let Some(pointer) = walker.call_pointer
+    {
+        walker.push_error(ContractLayoutError::CallPointerInState { pointer });
     }
-    if in_state
-        && let Some(collection) = persistent_under_transient(
-            db,
-            scope,
-            target,
-            address_space == ProviderAddressSpace::Transient,
-        )
+    if walker.errors.is_empty()
+        && address_space == AddressSpace::Storage
+        && let Some(collection) = persistent_under_transient(db, scope, declared)
     {
         walker.push_error(ContractLayoutError::PersistentUnderTransient { collection });
     }
@@ -1068,10 +910,8 @@ fn collect_field_plan<'db>(
             },
             name,
             is_mut: field.is_mut,
-            is_provider,
             address_space,
             declared,
-            target,
             explicit_slot,
             slot_count: output.span,
             spaces,
@@ -1083,18 +923,12 @@ fn collect_field_plan<'db>(
 /// The slots a value of `ty` takes in storage, as the layout places a
 /// contract field of its type, or `None` when `ty` has no storage layout.
 #[salsa::tracked]
-pub(crate) fn storage_slot_span<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    ty: TyId<'db>,
-) -> Option<usize> {
+pub(crate) fn storage_slot_span<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<usize> {
     let mut walker = FieldWalker {
         db,
-        scope,
         errors: Vec::new(),
         content_spaces: Vec::new(),
-        expanding: Vec::new(),
-        memory_pointer: None,
+        call_pointer: None,
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(ty), &[], &[]);
     walker.errors.is_empty().then_some(output.span)
@@ -1105,21 +939,15 @@ pub(crate) fn storage_slot_span<'db>(
 /// lie above its low byte, as MIR's `storage_field_lane` decides. A retained
 /// grant to a lane is a memory copy.
 #[salsa::tracked(return_ref)]
-pub(crate) fn storage_field_lanes<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    ty: TyId<'db>,
-) -> Vec<bool> {
+pub(crate) fn storage_field_lanes<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<bool> {
     if !ty.is_tuple(db) && !ty.adt_def(db).is_some_and(|adt| adt.is_struct(db)) {
         return Vec::new();
     }
     let mut walker = FieldWalker {
         db,
-        scope,
         errors: Vec::new(),
         content_spaces: Vec::new(),
-        expanding: Vec::new(),
-        memory_pointer: None,
+        call_pointer: None,
     };
     let shapes: Vec<_> = ty
         .field_types(db)
@@ -1155,13 +983,11 @@ const MAX_STATE_NESTING: usize = 64;
 
 /// The persistent collection `ty` keeps inside a transient collection's
 /// contents, as the map of a `TSlot<StorageMap<K, V>>`, whose entries would
-/// persist after the value holding them is gone. `transient` is whether `ty`
-/// itself lies in transient storage.
+/// persist after the value holding them is gone.
 fn persistent_under_transient<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     ty: TyId<'db>,
-    transient: bool,
 ) -> Option<TyId<'db>> {
     fn walk<'db>(
         db: &'db dyn HirAnalysisDb,
@@ -1178,8 +1004,8 @@ fn persistent_under_transient<'db>(
         let mut parts = Vec::new();
         if let Some(space) = state_index_space(db, scope, assumptions, ty) {
             match space {
-                ProviderAddressSpace::Storage if transient => return Some(ty),
-                ProviderAddressSpace::Transient => transient = true,
+                AddressSpace::Storage if transient => return Some(ty),
+                AddressSpace::Transient => transient = true,
                 _ => {}
             }
             parts.extend(state_index_tys(db, scope, ty, assumptions).map(|(_, output)| output));
@@ -1204,22 +1030,7 @@ fn persistent_under_transient<'db>(
             .into_iter()
             .find_map(|part| walk(db, scope, part, transient, depth + 1, seen))
     }
-    walk(db, scope, ty, transient, 0, &mut FxHashSet::default())
-}
-
-fn contract_layout_error_for_provider_failure<'db>(
-    failure: ProviderLayoutFailure,
-) -> ContractLayoutError<'db> {
-    match failure {
-        ProviderLayoutFailure::Ambiguous => ContractLayoutError::AmbiguousProviderLayout,
-        ProviderLayoutFailure::UnresolvedTarget => ContractLayoutError::UnresolvedProviderTarget,
-        ProviderLayoutFailure::UnresolvedSpace => ContractLayoutError::UnresolvedProviderSpace,
-        ProviderLayoutFailure::UnresolvedRaw
-        | ProviderLayoutFailure::UnsupportedRaw
-        | ProviderLayoutFailure::UntrustedRaw => {
-            ContractLayoutError::InvalidProviderRaw { failure }
-        }
-    }
+    walk(db, scope, ty, false, 0, &mut FxHashSet::default())
 }
 
 /// The counter a space's slots are numbered by. Storage and transient slots
@@ -1227,9 +1038,9 @@ fn contract_layout_error_for_provider_failure<'db>(
 /// collection keeps its contents at its own slot number in its contents'
 /// space (a `TSlot`'s value in transient storage, a map's entries in
 /// storage) wherever the collection itself lies.
-fn slot_counter(space: ProviderAddressSpace) -> ProviderAddressSpace {
+fn slot_counter(space: AddressSpace) -> AddressSpace {
     match space {
-        ProviderAddressSpace::Transient => ProviderAddressSpace::Storage,
+        AddressSpace::Transient => AddressSpace::Storage,
         space => space,
     }
 }
@@ -1247,7 +1058,7 @@ fn allocate_contract<'db>(
             .expect("allocation requires every field to validate")
     });
     // The slots explicit fields take, by space.
-    let mut explicit: FxHashMap<ProviderAddressSpace, Vec<(U256, U256, IdentId<'db>)>> =
+    let mut explicit: FxHashMap<AddressSpace, Vec<(U256, U256, IdentId<'db>)>> =
         FxHashMap::default();
     for plan in plans.clone() {
         let Some(slot) = plan.explicit_slot else {
@@ -1272,7 +1083,7 @@ fn allocate_contract<'db>(
             }
         }
     }
-    let mut counters: FxHashMap<ProviderAddressSpace, U256> = FxHashMap::default();
+    let mut counters: FxHashMap<AddressSpace, U256> = FxHashMap::default();
     let mut code_slot_count = 0;
     let mut fields = IndexMap::new();
     for plan in plans {
@@ -1300,7 +1111,7 @@ fn allocate_contract<'db>(
                 if !count.is_zero() {
                     *counter = end;
                 }
-                if plan.address_space == ProviderAddressSpace::Code {
+                if plan.address_space == AddressSpace::Code {
                     code_slot_count = usize::try_from(end)
                         .ok()
                         .filter(|end| end.checked_mul(32).is_some())
@@ -1315,10 +1126,8 @@ fn allocate_contract<'db>(
                 field: plan.field,
                 name: plan.name,
                 is_mut: plan.is_mut,
-                is_provider: plan.is_provider,
                 address_space: plan.address_space,
                 declared: plan.declared,
-                target: plan.target,
                 slot_offset,
                 slot_count: plan.slot_count,
                 inline_leaves: plan.inline_leaves.clone(),
@@ -1375,11 +1184,11 @@ fn allocated_contract_layout_report<'db>(
     }
     entries.sort_by(|first, second| {
         let space_order = |space| match space {
-            ProviderAddressSpace::Storage => 0,
-            ProviderAddressSpace::Transient => 1,
-            ProviderAddressSpace::Code => 2,
-            ProviderAddressSpace::Memory => 3,
-            ProviderAddressSpace::Calldata => 4,
+            AddressSpace::Storage => 0,
+            AddressSpace::Transient => 1,
+            AddressSpace::Code => 2,
+            AddressSpace::Memory => 3,
+            AddressSpace::Calldata => 4,
         };
         space_order(first.address_space)
             .cmp(&space_order(second.address_space))
