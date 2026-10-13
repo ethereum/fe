@@ -335,6 +335,7 @@ impl<'db> TraitResolutionContext<'db> {
                 goal: next_goal,
                 assumptions,
                 require_impl: false,
+                selected_candidate: None,
             },
             state: branch,
         }
@@ -383,33 +384,41 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             self.origin_ingot,
             prepared.query.goal,
         );
-        let implementors = impls_for_trait_in_ingots(
-            self.db,
-            primary,
-            secondary,
-            Canonical::new(self.db, prepared.query.goal),
-        );
-
         let mut clauses =
-            Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
-        clauses.extend(implementors.iter().copied().map(Clause::Implementor));
-        if callable_implementor(self.db, prepared.normalized_goal).is_some() {
-            clauses.push(Clause::Callable);
+            Vec::with_capacity(prepared.query.assumptions.list(self.db).len() + 1);
+        if let Some(candidate) = prepared.query.selected_candidate {
+            // Named definitions need not be ordinary-discovery candidates. Apply
+            // the same header unification and prerequisite checks to this root.
+            clauses.push(Clause::Implementor(candidate));
+        } else {
+            let implementors = impls_for_trait_in_ingots(
+                self.db,
+                primary,
+                secondary,
+                Canonical::new(self.db, prepared.query.goal),
+            );
+            clauses.extend(implementors.iter().copied().map(Clause::Implementor));
+            if callable_implementor(self.db, prepared.normalized_goal).is_some() {
+                clauses.push(Clause::Callable);
+            }
+            if clearable_implementor(self.db, prepared.normalized_goal).is_some() {
+                clauses.push(Clause::Clearable);
+            }
+            if sol_codec_implementor(
+                self.db,
+                prepared.normalized_goal,
+                prepared.scope,
+                prepared.query.assumptions,
+            )
+            .is_some()
+            {
+                clauses.push(Clause::SolCodec);
+            }
         }
-        if clearable_implementor(self.db, prepared.normalized_goal).is_some() {
-            clauses.push(Clause::Clearable);
-        }
-        if sol_codec_implementor(
-            self.db,
-            prepared.normalized_goal,
-            prepared.scope,
-            prepared.query.assumptions,
-        )
-        .is_some()
+        if !prepared.query.require_impl
+            && prepared.query.selected_candidate.is_none()
+            && self.goal_can_use_assumptions(prepared.normalized_goal)
         {
-            clauses.push(Clause::SolCodec);
-        }
-        if !prepared.query.require_impl && self.goal_can_use_assumptions(prepared.normalized_goal) {
             clauses.extend(
                 (0..prepared.query.assumptions.list(self.db).len()).map(Clause::Assumption),
             );
@@ -588,6 +597,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 goal: resumed_root,
                 assumptions: resumed_assumptions,
                 require_impl: parent.value().require_impl,
+                selected_candidate: parent.value().selected_candidate,
             },
         ) {
             return Ok(Transition::Stop(StopReason::MaximumTypeDepth));

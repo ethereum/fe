@@ -488,6 +488,7 @@ impl<'db> TyFoldable<'db> for TraitSolverQuery<'db> {
             goal: self.goal.fold_with(db, folder),
             assumptions: self.assumptions.fold_with(db, folder),
             require_impl: self.require_impl,
+            selected_candidate: self.selected_candidate,
         }
     }
 }

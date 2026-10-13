@@ -40,6 +40,9 @@ pub struct TraitSolverQuery<'db> {
     pub assumptions: PredicateListId<'db>,
     /// Select an implementation at this goal; obligations still use assumptions.
     pub require_impl: bool,
+    /// Restrict only this goal to a definition. Prerequisites use ordinary proof.
+    /// The definition identity participates in the canonical table key.
+    pub selected_candidate: Option<ImplementorId<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,6 +64,7 @@ impl<'db> CanonicalGoalQuery<'db> {
                 goal,
                 assumptions: assumptions.extend_all_bounds(db),
                 require_impl: false,
+                selected_candidate: None,
             },
         )
     }
@@ -170,6 +174,7 @@ impl<'db> TraitSolveCx<'db> {
                     goal: inst,
                     assumptions: self.assumptions.extend_all_bounds(db),
                     require_impl: true,
+                    selected_candidate: None,
                 },
             );
             match is_goal_query_satisfiable(db, self, &query) {
@@ -190,6 +195,28 @@ impl<'db> TraitSolveCx<'db> {
                 Selection::NotFound
             }
         }
+    }
+
+    /// Prove one candidate using the ordinary solver and its completion rules.
+    /// This does not certify const predicates or a declaration's well-formedness.
+    pub(crate) fn restricted_goal(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        goal: TraitInstId<'db>,
+        candidate: ImplementorId<'db>,
+    ) -> GoalSatisfiability<'db> {
+        let scope = self.normalization_scope_for_trait_inst(db, goal);
+        let goal = normalize_trait_inst_preserving_validity(db, goal, scope, self.assumptions);
+        let query = CanonicalGoalQuery::from_query(
+            db,
+            TraitSolverQuery {
+                goal,
+                assumptions: self.assumptions.extend_all_bounds(db),
+                require_impl: true,
+                selected_candidate: Some(candidate),
+            },
+        );
+        is_goal_query_satisfiable(db, self, &query)
     }
 
     pub(crate) fn search_ingots_for_trait_inst(
@@ -1475,6 +1502,110 @@ impl Foo for Third {}
 
         assert!(goal_query_has_solution(&db, solve_cx, &query, target));
     }
+    #[test]
+    fn restricted_root_preserves_candidate_identity_and_ordinary_prerequisites() {
+        use crate::analysis::ty::trait_lower::lower_impl_trait;
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "restricted_root.fe".into(),
+            r#"
+trait Bound {}
+trait Picks { type Output }
+struct Wrap<T> {}
+impl<T: Bound> Picks for Wrap<T> { type Output = T }
+impl<T> Picks for Wrap<T> { type Output = bool }
+fn supported<T: Bound>() {}
+fn unsupported<T>() {}
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        let candidates = top_mod
+            .all_impl_traits(&db)
+            .iter()
+            .map(|&item| lower_impl_trait(&db, item).unwrap())
+            .collect::<Vec<_>>();
+        for (name, supported) in [("supported", true), ("unsupported", false)] {
+            let func = find_func(&db, top_mod, name);
+            let parameter = collect_generic_params(&db, func.into()).explicit_params(&db)[0];
+            let goal = TraitInstId::new(
+                &db,
+                named_trait(&db, top_mod, "Picks"),
+                vec![TyId::app(
+                    &db,
+                    named_struct_ty(&db, top_mod, "Wrap"),
+                    parameter,
+                )],
+                IndexMap::new(),
+            );
+            let premises =
+                collect_func_def_constraints(&db, func.into(), true).instantiate_identity();
+            // A premise for the requested goal must never rescue a bad candidate.
+            let premises = PredicateListId::new(
+                &db,
+                premises
+                    .list(&db)
+                    .iter()
+                    .copied()
+                    .chain([goal])
+                    .collect::<Vec<_>>(),
+            );
+            let cx = TraitSolveCx::new(&db, func.scope()).with_assumptions(premises);
+            let result = cx.restricted_goal(&db, goal, candidates[0]);
+            if supported {
+                let GoalSatisfiability::Satisfied(answer) = result else {
+                    panic!("{result:?}")
+                };
+                assert_eq!(answer.value.implementor, candidates[0]);
+            } else {
+                assert!(matches!(result, GoalSatisfiability::UnSat(_)), "{result:?}");
+            }
+            let GoalSatisfiability::Satisfied(answer) =
+                cx.restricted_goal(&db, goal, candidates[1])
+            else {
+                panic!("alternative must prove")
+            };
+            assert_eq!(answer.value.implementor, candidates[1]);
+            // Root restriction is a different cache key from ordinary discovery.
+            assert!(matches!(cx.select_impl(&db, goal), Selection::Ambiguous(_)) || !supported);
+        }
+    }
+
+    #[test]
+    fn restricted_root_rejects_wrong_associated_output() {
+        use crate::analysis::ty::trait_lower::lower_impl_trait;
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "restricted_output.fe".into(),
+            r#"
+trait Picks { type Output }
+struct Subject {}
+impl Picks for Subject { type Output = bool }
+impl Picks for Subject { type Output = u256 }
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        let items = top_mod.all_impl_traits(&db);
+        let wrong = lower_impl_trait(&db, items[0]).unwrap();
+        let right = lower_impl_trait(&db, items[1]).unwrap();
+        let mut bindings = IndexMap::new();
+        bindings.insert(IdentId::new(&db, "Output"), TyId::u256(&db));
+        let goal = TraitInstId::new(
+            &db,
+            named_trait(&db, top_mod, "Picks"),
+            vec![named_struct_ty(&db, top_mod, "Subject")],
+            bindings,
+        );
+        let cx = TraitSolveCx::new(&db, top_mod.scope());
+        assert!(matches!(
+            cx.restricted_goal(&db, goal, wrong),
+            GoalSatisfiability::UnSat(_)
+        ));
+        assert!(matches!(
+            cx.restricted_goal(&db, goal, right),
+            GoalSatisfiability::Satisfied(_)
+        ));
+    }
+
     #[test]
     fn implementation_selection_uses_assumptions_for_obligations() {
         let mut db = HirAnalysisTestDb::default();
