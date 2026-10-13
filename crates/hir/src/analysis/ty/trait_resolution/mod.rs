@@ -123,14 +123,15 @@ pub enum Selection<T> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub struct TraitSolveCx<'db> {
-    origin_ingot: Ingot<'db>,
+    // Source position is distinct from candidate-discovery/normalization scope.
+    scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 }
 
 impl<'db> TraitSolveCx<'db> {
     pub fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> Self {
         Self {
-            origin_ingot: scope.ingot(db),
+            scope,
             assumptions: PredicateListId::empty_list(db),
         }
     }
@@ -146,8 +147,12 @@ impl<'db> TraitSolveCx<'db> {
         self.assumptions
     }
 
-    pub(crate) fn origin_ingot(self) -> Ingot<'db> {
-        self.origin_ingot
+    pub(crate) fn scope(self) -> ScopeId<'db> {
+        self.scope
+    }
+
+    pub(crate) fn origin_ingot(self, db: &'db dyn HirAnalysisDb) -> Ingot<'db> {
+        self.scope.ingot(db)
     }
 
     pub(crate) fn select_impl(
@@ -224,7 +229,7 @@ impl<'db> TraitSolveCx<'db> {
         db: &'db dyn HirAnalysisDb,
         inst: TraitInstId<'db>,
     ) -> (Ingot<'db>, Option<Ingot<'db>>) {
-        Self::search_ingots_for_trait_inst_with_origin(db, self.origin_ingot, inst)
+        Self::search_ingots_for_trait_inst_with_origin(db, self.origin_ingot(db), inst)
     }
 
     pub(crate) fn search_ingots_for_trait_inst_with_origin(
@@ -258,7 +263,7 @@ impl<'db> TraitSolveCx<'db> {
         db: &'db dyn HirAnalysisDb,
         inst: TraitInstId<'db>,
     ) -> ScopeId<'db> {
-        Self::normalization_scope_for_trait_inst_with_origin(db, self.origin_ingot, inst)
+        Self::normalization_scope_for_trait_inst_with_origin(db, self.origin_ingot(db), inst)
     }
 
     pub(crate) fn normalization_scope_for_trait_inst_with_origin(
@@ -275,7 +280,7 @@ impl<'db> TraitSolveCx<'db> {
     }
 
     pub(crate) fn origin_scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
-        self.origin_ingot.root_mod(db).scope()
+        self.origin_ingot(db).root_mod(db).scope()
     }
 }
 
@@ -399,7 +404,7 @@ pub(crate) fn goal_query_has_solution<'db>(
     matches!(
         query_has_solution(
             db,
-            solve_cx.origin_ingot(),
+            solve_cx.origin_ingot(db),
             query.canonical(),
             target,
             TargetSolutionMatch::Equal,
@@ -417,7 +422,7 @@ pub(crate) fn goal_query_has_no_distinct_solution<'db>(
     matches!(
         query_has_solution(
             db,
-            solve_cx.origin_ingot(),
+            solve_cx.origin_ingot(db),
             query.canonical(),
             target,
             TargetSolutionMatch::NotEqual,
@@ -431,7 +436,7 @@ pub fn is_goal_query_satisfiable<'db>(
     solve_cx: TraitSolveCx<'db>,
     query: &CanonicalGoalQuery<'db>,
 ) -> GoalSatisfiability<'db> {
-    is_query_satisfiable(db, solve_cx.origin_ingot(), query.canonical()).clone()
+    is_query_satisfiable(db, solve_cx.origin_ingot(db), query.canonical()).clone()
 }
 
 pub fn is_goal_satisfiable<'db>(
