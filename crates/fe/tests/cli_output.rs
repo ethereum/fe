@@ -145,6 +145,32 @@ fn run_fe_main_with_stdin(args: &[&str], stdin_data: &str) -> (String, i32) {
 }
 
 #[test]
+fn test_cli_check_color_flag_controls_diagnostic_escape_codes() {
+    let temp = tempdir().expect("tempdir");
+    let file = temp.path().join("type_error.fe");
+    fs::write(&file, "fn f() -> u8 { true }\n").expect("write fixture");
+    for (choice, colored) in [("never", false), ("always", true)] {
+        let output = Command::new(fe_binary())
+            .args(["check", "--color", choice])
+            .arg(&file)
+            .env("TERM", "xterm-256color")
+            .env_remove("NO_COLOR")
+            .env_remove("CLICOLOR")
+            .env_remove("CLICOLOR_FORCE")
+            .output()
+            .expect("run fe check");
+        assert_eq!(output.status.code(), Some(1));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(stderr.contains("error"), "{stderr}");
+        assert_eq!(
+            stderr.contains('\x1b'),
+            colored,
+            "--color {choice}:\n{stderr:?}"
+        );
+    }
+}
+
+#[test]
 fn test_cli_check_invalid_named_const_used_in_type_position_reports_error_instead_of_panicking() {
     let temp = tempdir().expect("tempdir");
     let file = temp.path().join("invalid_const_ty_use.fe");
@@ -170,6 +196,68 @@ fn f() {
         !output.contains("semantic lowering missing for call-like expression"),
         "unexpected semantic lowering panic:\n{output}"
     );
+}
+
+#[test]
+fn test_cli_check_ingot_nested_in_its_dependency() {
+    let temp = tempdir().expect("tempdir");
+    let root = temp.path();
+    let write = |path: &str, text: &str| {
+        let path = root.join(path);
+        fs::create_dir_all(path.parent().expect("parent")).expect("create dirs");
+        fs::write(path, text).expect("write fixture");
+    };
+    write(
+        "parent/fe.toml",
+        "[ingot]\nname = \"parent\"\nversion = \"0.1.0\"\n",
+    );
+    write(
+        "parent/src/lib.fe",
+        "pub use inner::answer\npub fn direct() -> u8 { 1 }\n",
+    );
+    write("parent/src/inner.fe", "pub fn answer() -> u8 { 42 }\n");
+    let uses =
+        "pub fn main() -> u8 { parent::answer() + parent::inner::answer() + parent::direct() }\n";
+    // An ingot inside the directory tree of the ingot it depends on, as a
+    // tool or example of a library would be.
+    write(
+        "parent/tools/child/fe.toml",
+        "[ingot]\nname = \"child\"\nversion = \"0.1.0\"\n\n[dependencies]\nparent = { path = \"../..\" }\n",
+    );
+    write("parent/tools/child/src/lib.fe", uses);
+    write(
+        "sibling/fe.toml",
+        "[ingot]\nname = \"sibling\"\nversion = \"0.1.0\"\n\n[dependencies]\nparent = { path = \"../parent\" }\n",
+    );
+    write("sibling/src/lib.fe", uses);
+    // The same layout as members of a workspace.
+    write(
+        "workspace/fe.toml",
+        "[workspace]\nname = \"nested\"\nversion = \"0.1.0\"\nmembers = [\n  { path = \"lib\", name = \"parent\" },\n  { path = \"lib/tools/child\", name = \"child\" },\n]\n",
+    );
+    write(
+        "workspace/lib/fe.toml",
+        "[ingot]\nname = \"parent\"\nversion = \"0.1.0\"\n",
+    );
+    write(
+        "workspace/lib/src/lib.fe",
+        "pub use inner::answer\npub fn direct() -> u8 { 1 }\n",
+    );
+    write(
+        "workspace/lib/src/inner.fe",
+        "pub fn answer() -> u8 { 42 }\n",
+    );
+    write(
+        "workspace/lib/tools/child/fe.toml",
+        "[ingot]\nname = \"child\"\nversion = \"0.1.0\"\n\n[dependencies]\nparent = true\n",
+    );
+    write("workspace/lib/tools/child/src/lib.fe", uses);
+
+    for target in ["parent/tools/child", "sibling", "parent", "workspace"] {
+        let path = root.join(target);
+        let (output, exit_code) = run_fe_check(path.to_str().expect("fixture path utf8"));
+        assert_eq!(exit_code, 0, "`fe check {target}` failed:\n{output}");
+    }
 }
 
 #[test]

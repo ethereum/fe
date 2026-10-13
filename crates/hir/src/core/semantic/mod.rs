@@ -34,7 +34,7 @@ use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{Shape, lower_return_shape, mentions_mode, return_shape_diags};
 use crate::analysis::ty::ty_def::Kind;
-use crate::analysis::ty::ty_error::collect_hir_ty_diags;
+use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
 use crate::hir_def::params::{FuncParamMode, KindBound as HirKindBound};
 use crate::hir_def::scope_graph::ScopeId;
 use crate::{HirDb, SpannedHirDb};
@@ -640,6 +640,25 @@ impl<'db> Func<'db> {
         }
     }
 
+    /// Ill-formed types written inside qualified paths in the return type.
+    pub(crate) fn ret_ty_qualified_path_wf_diags(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) -> Vec<TyDiagCollection<'db>> {
+        let Some(hir_ty) = self.ret_type_ref(db) else {
+            return Vec::new();
+        };
+        qualified_path_wf_diags(
+            db,
+            self.scope(),
+            hir_ty,
+            self.span().sig().ret_ty(),
+            self.assumptions(db),
+            solve_cx,
+        )
+    }
+
     /// Return type lowering errors for functions with explicit return types.
     pub fn ret_ty_errors(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let Some(hir_ty) = self.ret_type_ref(db) else {
@@ -1182,20 +1201,32 @@ impl<'db> FuncParamView<'db> {
         }
 
         // Well-formedness / trait-bound satisfaction for parameter type
-        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(
-            db,
-            TraitSolveCx::new(db, func.scope()).with_assumptions(param_env(db, func.into())),
-            ty,
-        ) {
-            out.push(
-                TraitConstraintDiag::TraitBoundNotSat {
-                    span: ty_span.clone(),
-                    primary_goal: goal,
-                    unsat_subgoal: subgoal,
-                    required_by: None,
-                }
-                .into(),
+        let solve_cx =
+            TraitSolveCx::new(db, func.scope()).with_assumptions(param_env(db, func.into()));
+        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(db, solve_cx, ty) {
+            // Point at the written type inside a qualified path when that is
+            // what is ill-formed.
+            let precise = qualified_path_wf_diags(
+                db,
+                func.scope(),
+                hir_ty,
+                self.lazy_ty_span(db),
+                assumptions,
+                solve_cx,
             );
+            if precise.is_empty() {
+                out.push(
+                    TraitConstraintDiag::TraitBoundNotSat {
+                        span: ty_span.clone(),
+                        primary_goal: goal,
+                        unsat_subgoal: subgoal,
+                        required_by: None,
+                    }
+                    .into(),
+                );
+            } else {
+                out.extend(precise);
+            }
         }
 
         // Self-parameter type shape check
@@ -5005,7 +5036,12 @@ impl<'db> TraitAssocTypeView<'db> {
 }
 
 impl<'db> AssocTypeBoundView<'db> {
-    fn trait_ref(self, db: &'db dyn HirDb) -> TraitRefId<'db> {
+    /// Position of this bound in the associated type's bound list.
+    pub(crate) fn index(self) -> usize {
+        self.idx
+    }
+
+    pub(crate) fn trait_ref(self, db: &'db dyn HirDb) -> TraitRefId<'db> {
         match self.owner.bounds_raw(db)[self.idx] {
             TypeBound::Trait(tr) => tr,
             _ => unreachable!(),
@@ -5458,7 +5494,9 @@ impl<'db> FieldView<'db> {
     pub fn ty_diags(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         use crate::analysis::name_resolution::{PathRes, resolve_path};
         use crate::analysis::ty::ty_def::TyData;
-        use crate::analysis::ty::ty_error::{collect_hir_ty_diags, diag_from_invalid_cause};
+        use crate::analysis::ty::ty_error::{
+            collect_hir_ty_diags, diag_from_invalid_cause, qualified_path_wf_diags,
+        };
 
         let mut out = Vec::new();
 
@@ -5521,20 +5559,34 @@ impl<'db> FieldView<'db> {
 
         // Trait-bound well-formedness for field type.
         let owner_item = self.owner_item();
-        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(
-            db,
-            TraitSolveCx::new(db, owner_item.scope()).with_assumptions(param_env(db, owner_item)),
-            ty,
-        ) {
-            out.push(
-                TraitConstraintDiag::TraitBoundNotSat {
-                    span: span.clone(),
-                    primary_goal: goal,
-                    unsat_subgoal: subgoal,
-                    required_by: None,
-                }
-                .into(),
-            );
+        let solve_cx =
+            TraitSolveCx::new(db, owner_item.scope()).with_assumptions(param_env(db, owner_item));
+        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(db, solve_cx, ty) {
+            // Point at the written type inside a qualified path when that is
+            // what is ill-formed.
+            let precise = hir_ty.to_opt().map_or_else(Vec::new, |hir_ty| {
+                qualified_path_wf_diags(
+                    db,
+                    self.scope(),
+                    hir_ty,
+                    self.lazy_ty_span(),
+                    constraints_for(db, owner_item),
+                    solve_cx,
+                )
+            });
+            if precise.is_empty() {
+                out.push(
+                    TraitConstraintDiag::TraitBoundNotSat {
+                        span: span.clone(),
+                        primary_goal: goal,
+                        unsat_subgoal: subgoal,
+                        required_by: None,
+                    }
+                    .into(),
+                );
+            } else {
+                out.extend(precise);
+            }
             return out;
         }
 

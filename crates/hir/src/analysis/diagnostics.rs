@@ -2452,6 +2452,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::TypeNormalizationLimit(span) => primary_diag(
+                Severity::Error,
+                "type normalization limit exceeded",
+                "the associated types here cannot be resolved within the limit",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::NonTrailingDefaultGenericParam(span) => primary_diag(
                 Severity::Error,
                 "generic parameters with a default must be trailing",
@@ -3379,6 +3387,25 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     primary.resolve(db),
                     error_code,
                 )
+            }
+
+            Self::CallReturnTypeConstFault { call, fault } => {
+                let mut diag = fault.to_complete(db);
+                for sub in &mut diag.sub_diagnostics {
+                    if sub.style == LabelStyle::Primary {
+                        sub.style = LabelStyle::Secondary;
+                    }
+                }
+                diag.sub_diagnostics.insert(
+                    0,
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "in the return type of this call".into(),
+                        call.resolve(db),
+                    ),
+                );
+                diag.error_code = error_code;
+                diag
             }
 
             Self::StaticAssertFailed {

@@ -42,7 +42,7 @@ use crate::analysis::ty::{
     },
     diagnostics::{
         BodyDiag, FuncBodyDiag, MarkerPosition, MustUseSubject, MutabilityFix, TraitConstraintDiag,
-        TyDiagCollection,
+        TyDiagCollection, TyLowerDiag,
     },
     effects::{
         BarrierReason, EffectBarrier, EffectKeyKind, EffectPatternKey, EffectQuery,
@@ -76,6 +76,7 @@ use crate::analysis::ty::{
     },
     ty_check::callable::{Callable, EffectProviderProvenance, EffectProviderSpecialization},
     ty_def::{BorrowKind, ClosureTy, PrimTy, TyBase, TyData, prim_int_bits},
+    ty_error::{diag_from_invalid_cause, first_invalid_ty_cause, is_const_eval_fault},
     unify::UnificationTable,
 };
 use crate::analysis::{
@@ -272,6 +273,32 @@ impl<'db> TyChecker<'db> {
         true
     }
 
+    /// An expression's type can reach the normalization limit only once
+    /// generic arguments are filled in, as in a call to
+    /// `fn get<T: Tr>() -> T::Out`. The limit leaves an invalid type, which
+    /// matches any type, so report it at the first expression that has it;
+    /// enclosing expressions that inherit the type are not reported again,
+    /// nor is a type that came from the expected type, which is reported
+    /// where that type is written.
+    fn report_normalization_limit(&mut self, expr: ExprId, ty: TyId<'db>, expected: TyId<'db>) {
+        let is_limit =
+            |ty| first_invalid_ty_cause(self.db, ty) == Some(InvalidCause::TypeNormalizationLimit);
+        if !is_limit(ty) || is_limit(expected) {
+            return;
+        }
+        let reported = self.diags.iter().any(|diag| {
+            matches!(
+                diag,
+                FuncBodyDiag::Ty(TyDiagCollection::Ty(TyLowerDiag::TypeNormalizationLimit(_)))
+            )
+        });
+        if !reported {
+            self.push_diag(TyDiagCollection::from(TyLowerDiag::TypeNormalizationLimit(
+                expr.span(self.body()).into(),
+            )));
+        }
+    }
+
     pub(super) fn check_expr(&mut self, expr: ExprId, expected: TyId<'db>) -> ExprProp<'db> {
         self.check_expr_with_result_context(expr, expected, false)
     }
@@ -374,6 +401,7 @@ impl<'db> TyChecker<'db> {
         }
 
         actual.ty = normalize_ty(self.db, actual.ty, self.env.scope(), self.env.assumptions());
+        self.report_normalization_limit(expr, actual.ty, expected);
         let typeable = Typeable::Expr(expr, actual.clone());
         actual.ty = self.unify_ty(typeable, actual.ty, expected);
         actual
@@ -1685,6 +1713,37 @@ impl<'db> TyChecker<'db> {
 
         callable.process_constraints(self, expr, call_span.callee().into());
         self.finish_call(expr, callable)
+    }
+
+    /// A callee's return type with the call's generic arguments filled in can
+    /// hold a const that fails to evaluate only now, such as `S<{N - 5}>` at
+    /// `N = 2`. The failure leaves an invalid type, which matches any type and
+    /// so would let the call pass checking. Report it instead.
+    fn report_instantiated_const_fault(
+        &mut self,
+        callable: &Callable<'db>,
+        ret_ty: TyId<'db>,
+        expr: ExprId,
+    ) {
+        // A failure already in the declared return type is reported with the
+        // callee's signature.
+        let declared = callable
+            .callable_def()
+            .ret_ty(self.db)
+            .instantiate_identity();
+        if declared.has_invalid(self.db) {
+            return;
+        }
+        let call: DynLazySpan<'db> = expr.span(self.body()).into();
+        if let Some(cause) = first_invalid_ty_cause(self.db, ret_ty)
+            && is_const_eval_fault(&cause)
+            && let Some(fault) = diag_from_invalid_cause(call.clone(), &cause)
+        {
+            self.push_diag(BodyDiag::CallReturnTypeConstFault {
+                call,
+                fault: Box::new(fault),
+            });
+        }
     }
 
     fn check_assert(&mut self, expr: ExprId, args: &[HirCallArg<'db>]) -> ExprProp<'db> {
@@ -3515,6 +3574,7 @@ impl<'db> TyChecker<'db> {
     fn finish_call(&mut self, expr: ExprId, callable: Callable<'db>) -> ExprProp<'db> {
         let ret_ty = callable.ret_ty(self.db);
         let ret_ty = self.normalize_ty(ret_ty);
+        self.report_instantiated_const_fault(&callable, ret_ty, expr);
         let shape = callable
             .ret_shape(self.db)
             .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));

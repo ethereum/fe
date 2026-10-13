@@ -84,6 +84,33 @@ fn cyclic_trait_ref_diag<'db>(span: DynLazySpan<'db>, context: &str) -> TyDiagCo
     .into()
 }
 
+/// The diagnostic for a written trait bound whose path did not lower to a
+/// trait.
+fn trait_bound_lowering_diag<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_ref: crate::hir_def::TraitRefId<'db>,
+    span: crate::span::params::LazyTraitRefSpan<'db>,
+    error: ty::trait_lower::TraitRefLowerError<'db>,
+    context: &str,
+) -> Option<TyDiagCollection<'db>> {
+    use name_resolution::{ExpectedPathKind, diagnostics::PathResDiag};
+    use ty::trait_lower::TraitRefLowerError;
+
+    match error {
+        TraitRefLowerError::PathResError(err) => {
+            let path = trait_ref.path(db).to_opt()?;
+            err.into_diag(db, path, span.path(), ExpectedPathKind::Trait)
+                .map(Into::into)
+        }
+        TraitRefLowerError::InvalidDomain(res) => {
+            let ident = trait_ref.path(db).to_opt()?.ident(db).to_opt()?;
+            Some(PathResDiag::ExpectedTrait(span.path().into(), ident, res.kind_name()).into())
+        }
+        TraitRefLowerError::Cycle => Some(cyclic_trait_ref_diag(span.path().into(), context)),
+        TraitRefLowerError::UnsafeLocalBoundBlanketImpl | TraitRefLowerError::Ignored => None,
+    }
+}
+
 impl<'db> SuperTraitRefView<'db> {
     /// Diagnostics for this super-trait reference in its owner's context.
     /// Uses the trait's `Self` as subject and checks WF; kind mismatch is emitted
@@ -351,28 +378,41 @@ impl<'db> Func<'db> {
 
             // Then run kind/const checks on the lowered semantic type
             let ret = self.return_ty(db);
-            let span = self.span().ret_ty().into();
+            let span: DynLazySpan<'db> = self.span().ret_ty().into();
+            let solve_cx = ty::trait_resolution::TraitSolveCx::new(db, self.scope())
+                .with_assumptions(param_env(db, self.into()));
+            if let Some(diag) = ty::ty_error::normalization_limit_diag(
+                db,
+                ret,
+                self.scope(),
+                self.assumptions(db),
+                span.clone(),
+            ) {
+                return vec![diag];
+            }
             if !ret.has_star_kind(db) {
                 diags.push(TyLowerDiag::ExpectedStarKind(span).into());
             } else if ret.is_const_ty(db) {
                 diags.push(TyLowerDiag::NormalTypeExpected { span, given: ret }.into());
             } else if let ty::trait_resolution::WellFormedness::IllFormed { goal, subgoal } =
-                ty::trait_resolution::check_ty_wf(
-                    db,
-                    ty::trait_resolution::TraitSolveCx::new(db, self.scope())
-                        .with_assumptions(param_env(db, self.into())),
-                    ret,
-                )
+                ty::trait_resolution::check_ty_wf(db, solve_cx, ret)
             {
-                diags.push(
-                    TraitConstraintDiag::TraitBoundNotSat {
-                        span,
-                        primary_goal: goal,
-                        unsat_subgoal: subgoal,
-                        required_by: None,
-                    }
-                    .into(),
-                );
+                // Point at the written type inside a qualified path when that
+                // is what is ill-formed.
+                let precise = self.ret_ty_qualified_path_wf_diags(db, solve_cx);
+                if precise.is_empty() {
+                    diags.push(
+                        TraitConstraintDiag::TraitBoundNotSat {
+                            span,
+                            primary_goal: goal,
+                            unsat_subgoal: subgoal,
+                            required_by: None,
+                        }
+                        .into(),
+                    );
+                } else {
+                    diags.extend(precise);
+                }
             }
         }
         diags
@@ -514,6 +554,50 @@ impl<'db> Trait<'db> {
                     }
                     _ => {}
                 }
+            }
+        }
+        diags
+    }
+
+    /// Diagnostics for trait bounds on associated types whose path does not
+    /// name a trait, such as `type Out: Missing`.
+    pub fn diags_assoc_type_bounds(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        let mut diags = Vec::new();
+        let scope = self.scope();
+        let assumptions = constraints_for(db, self.into());
+        let self_ty = self.self_param(db);
+        for assoc in self.assoc_types(db) {
+            for bound in assoc.bounds(db) {
+                let trait_ref = bound.trait_ref(db);
+                let Err(error) = ty::trait_lower::lower_trait_ref(
+                    db,
+                    self_ty,
+                    trait_ref,
+                    scope,
+                    assumptions,
+                    Some(self_ty),
+                ) else {
+                    continue;
+                };
+                // Only a failure on the bound's own path is reported here; a
+                // failure inside its generic arguments has no segment of this
+                // path to point at.
+                if let ty::trait_lower::TraitRefLowerError::PathResError(err) = &error
+                    && !trait_ref.path(db).to_opt().is_some_and(|path| {
+                        std::iter::successors(Some(path), |path| path.parent(db))
+                            .any(|prefix| prefix == err.failed_at)
+                    })
+                {
+                    continue;
+                }
+                let span = assoc.span().bounds().bound(bound.index()).trait_bound();
+                diags.extend(trait_bound_lowering_diag(
+                    db,
+                    trait_ref,
+                    span,
+                    error,
+                    "associated type bound",
+                ));
             }
         }
         diags
@@ -1674,8 +1758,7 @@ impl<'db> GenericParamOwner<'db> {
     }
 
     pub fn diags_trait_bounds(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
-        use name_resolution::{ExpectedPathKind, diagnostics::PathResDiag};
-        use ty::trait_lower::{self, TraitRefLowerError};
+        use ty::trait_lower;
         use ty::trait_resolution::{WellFormedness, check_trait_inst_wf};
 
         let mut out = Vec::new();
@@ -1744,35 +1827,15 @@ impl<'db> GenericParamOwner<'db> {
                             ),
                         }
                     }
-                    Err(TraitRefLowerError::PathResError(err)) => {
-                        if let Some(path) = tr.path(db).to_opt()
-                            && let Some(diag) =
-                                err.into_diag(db, path, span.path(), ExpectedPathKind::Trait)
-                        {
-                            out.push(diag.into());
-                        }
+                    Err(error) => {
+                        out.extend(trait_bound_lowering_diag(
+                            db,
+                            *tr,
+                            span,
+                            error,
+                            "trait bound",
+                        ));
                     }
-                    Err(TraitRefLowerError::InvalidDomain(res)) => {
-                        if let Some(path) = tr.path(db).to_opt()
-                            && let Some(ident) = path.ident(db).to_opt()
-                        {
-                            out.push(
-                                PathResDiag::ExpectedTrait(
-                                    span.path().into(),
-                                    ident,
-                                    res.kind_name(),
-                                )
-                                .into(),
-                            );
-                        }
-                    }
-                    Err(TraitRefLowerError::Cycle) => {
-                        out.push(cyclic_trait_ref_diag(span.path().into(), "trait bound"));
-                    }
-                    Err(
-                        TraitRefLowerError::UnsafeLocalBoundBlanketImpl
-                        | TraitRefLowerError::Ignored,
-                    ) => {}
                 }
             }
         }
@@ -1920,6 +1983,7 @@ impl<'db> Diagnosable<'db> for Trait<'db> {
         }
         out.extend(self.diags_assoc_defaults(db));
         out.extend(self.diags_access_defaults(db));
+        out.extend(self.diags_assoc_type_bounds(db));
         out.extend(self.diags_super_traits(db));
 
         for pred in WhereClauseOwner::Trait(self).clause(db).predicates(db) {

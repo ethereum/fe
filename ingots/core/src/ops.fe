@@ -1,4 +1,4 @@
-use ingot::marker::Clearable
+use ingot::marker::{Clearable, Copy}
 
 pub trait Add<T = Self> {
     type Output = Self
