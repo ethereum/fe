@@ -1,0 +1,43 @@
+// An index a projection takes as a parameter is constant once the projection
+// is inlined with a constant argument. In range, it reads and writes that
+// element; out of range, the access reverts where it happens, and the code
+// after it, which uses the element, is never reached.
+
+fn at(_ a: [u256; 2], _ i: usize) -> ref u256 {
+    ref a[i]
+}
+
+fn at_mut(_ a: mut [u256; 2], _ i: usize) -> mut u256 {
+    mut a[i]
+}
+
+fn third<const N: usize>(_ a: [u256; N]) -> ref u256 {
+    ref a[3]
+}
+
+#[test]
+fn constant_indices_in_range() {
+    let a: [u256; 2] = [1, 2]
+    assert(at(a, 1) == 2)
+    var m: [u256; 2] = [3, 4]
+    at_mut(mut m, 0) = 9
+    assert(m[0] == 9 && m[1] == 4)
+}
+
+#[test(should_revert)]
+fn a_constant_index_out_of_range_reverts() {
+    let a: [u256; 2] = [1, 2]
+    assert(at(a, 5) == 0)
+}
+
+#[test(should_revert)]
+fn a_constant_mutable_index_out_of_range_reverts() {
+    var m: [u256; 2] = [3, 4]
+    at_mut(mut m, 7) = 1
+}
+
+#[test(should_revert)]
+fn a_constant_index_past_a_generic_length_reverts() {
+    let a: [u256; 2] = [1, 2]
+    assert(third(a) == 0)
+}
