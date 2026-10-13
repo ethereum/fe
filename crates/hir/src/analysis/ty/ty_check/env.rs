@@ -40,7 +40,9 @@ use crate::analysis::{
         provider::AddressSpace,
         shape::Shape,
         trait_def::TraitInstId,
-        trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
+        trait_resolution::{
+            PredicateListId, TraitSolveCx, constraint::collect_func_effect_provider_constraints,
+        },
         ty_def::{BorrowKind, ClosureTy, InvalidCause, StringFallback, TyData, TyId, TyVarSort},
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
@@ -756,6 +758,12 @@ impl<'db> TyCheckEnv<'db> {
         // Return the assumptions we computed in new, which includes
         // both generic bounds (if any) AND the effect parameter bounds.
         self.assumptions
+    }
+
+    /// Project the context owned by the checker at its current lexical position.
+    /// Root/effect premises are formed once in this environment, not by readers.
+    pub(crate) fn proof_context(&self) -> TraitSolveCx<'db> {
+        TraitSolveCx::new(self.db, self.scope()).with_assumptions(self.assumptions())
     }
 
     pub(crate) fn base_assumptions(&self) -> PredicateListId<'db> {

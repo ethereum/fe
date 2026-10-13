@@ -2817,7 +2817,7 @@ impl<'db> TyChecker<'db> {
             hir_ty,
             span.clone(),
             self.env.assumptions(),
-            TraitSolveCx::new(self.db, self.env.scope()).with_assumptions(self.env.assumptions()),
+            self.env.proof_context(),
         ) {
             self.push_diag(diag);
         }
