@@ -1,7 +1,7 @@
 use super::intrinsic::size_of
 use super::marker::Copy
 use super::option::Option
-use super::ops::{Eq, Index, IndexMut}
+use super::ops::{Eq, Index, IndexMut, Len}
 use super::panic_code
 use super::panics::PANIC_INDEX_OUT_OF_BOUNDS
 
@@ -687,6 +687,18 @@ impl<T> IndexMut<usize> for MemSlice<T> {
     #[inline(always)]
     fn index_mut(mut self, _ index: usize) -> mut T {
         unsafe { mut *self.ptr_at(index as u256) }
+    }
+}
+
+impl<T> Len for MemArray<T> {
+    fn len(self) -> usize {
+        self.len as usize
+    }
+}
+
+impl<T> Len for MemSlice<T> {
+    fn len(self) -> usize {
+        self.len as usize
     }
 }
 

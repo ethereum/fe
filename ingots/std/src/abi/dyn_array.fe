@@ -11,7 +11,7 @@ use core::abi::{
 }
 use ingot::abi::{Sol, StaticAbi}
 use core::ptr::{self, MemBuffer, MemSpan}
-use core::seq::{Seq, SeqMut}
+use core::ops::{Index, IndexMut, Len}
 use core::size_of
 use ingot::evm::panic::{PANIC_ASSERT, PANIC_INDEX_OUT_OF_BOUNDS, Panic}
 use ingot::evm::revert_error
@@ -420,26 +420,35 @@ fn assemble_dyn_array<T>(_ parts: *MemBuffer, count: u256, parts_size: u256) -> 
     unsafe { DynArray::from_abi_tail(data, len: count, size) }
 }
 
-impl<T> Seq for MemVec<T>
+/// An element by position, decoded into a temporary.
+impl<T> Index<usize> for MemVec<T>
     where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
 {
-    type Item = T
+    space S = memory
+    type Output = T
 
-    fn len(self) -> usize {
-        MemVec::len(self) as usize
-    }
-
-    fn get(self, _ i: usize) -> T {
-        MemVec::get(self, i as u256)
+    fn index(self, _ index: usize) -> ref T {
+        self.get(index as u256)
     }
 }
 
 /// Lets `core::sort` order the copy of an ABI array in place:
-/// `sort(mut MemVec::from_dyn_array(signers))`.
-impl<T> SeqMut for MemVec<T>
+/// `sort(mut MemVec::from_dyn_array(signers))`. The element is a decoded
+/// temporary, encoded back when the access ends.
+impl<T> IndexMut<usize> for MemVec<T>
     where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
 {
-    fn set(mut self, _ i: usize, _ value: T) {
-        MemVec::set(mut self, index: i as u256, value)
+    fn index_mut(mut self, _ index: usize) -> mut T {
+        var value = self.get(index as u256)
+        yield mut value
+        self.set(index: index as u256, value)
+    }
+}
+
+impl<T> Len for MemVec<T>
+    where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
+{
+    fn len(self) -> usize {
+        MemVec::len(self) as usize
     }
 }

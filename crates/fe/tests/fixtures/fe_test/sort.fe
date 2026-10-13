@@ -3,7 +3,6 @@
 
 use core::ops::{Eq, Ord}
 use core::ptr::MemArray
-use core::seq::{Seq, SeqMut}
 use core::sort::{
     binary_search,
     dedup_sorted,
@@ -96,10 +95,10 @@ fn sorts_a_user_type_by_its_own_order() {
 fn sorts_memory_slices_and_arrays() {
     var arr = MemArray<u256>::new_zeroed(4)
     let slice = arr.as_mut_slice()
-    slice.set(0, 40)
-    slice.set(1, 10)
-    slice.set(2, 30)
-    slice.set(3, 20)
+    slice[0] = 40
+    slice[1] = 10
+    slice[2] = 30
+    slice[3] = 20
     sort(mut slice)
     var total: u256 = 0
     for x in slice {
@@ -107,14 +106,14 @@ fn sorts_memory_slices_and_arrays() {
     }
     assert!(total == 100)
     // The slice wrote through to the array's memory.
-    assert!(arr.get(0) == 10 && arr.get(3) == 40)
+    assert!(arr[0] == 10 && arr[3] == 40)
 
     var owned = MemArray<i256>::new_zeroed(3)
     owned.set(0, 3)
     owned.set(1, -3)
     owned.set(2, 0)
     sort(mut owned)
-    assert!(owned.get(0) == -3 && owned.get(2) == 3)
+    assert!(owned[0] == -3 && owned[2] == 3)
 }
 
 #[test]

@@ -277,6 +277,37 @@ pub trait IndexMut<I>: Index<I> {
     fn index_mut(mut self, _ index: I) -> mut Self::Output @S uses EM
 }
 
+/// The number of elements of a collection indexed by position: its
+/// `Index<usize>` reaches `0..len()`.
+pub trait Len {
+    fn len(self) -> usize
+}
+
+// An array index is built-in place syntax; these impls let generic code
+// index an array through `Index` and `IndexMut`.
+impl<T, const N: usize> Index<usize> for [T; N] {
+    space S = self[_]
+    type Output = T
+
+    #[inline(always)]
+    fn index(self, _ index: usize) -> ref T {
+        ref self[index]
+    }
+}
+
+impl<T, const N: usize> IndexMut<usize> for [T; N] {
+    #[inline(always)]
+    fn index_mut(mut self, _ index: usize) -> mut T {
+        mut self[index]
+    }
+}
+
+impl<T, const N: usize> Len for [T; N] {
+    fn len(self) -> usize {
+        N
+    }
+}
+
 // Augmented assignment operators (return unit)
 pub trait AddAssign<T = Self> {
     fn add_assign(mut self, _ other: own T)
