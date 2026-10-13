@@ -121,12 +121,13 @@ pub use core::ptr::{CalldataPtr, StorPtr, TStorPtr}
 
 /// A transient storage cell holding a `T`, kept in a storage struct.
 ///
-/// A `TSlot` is a storage collection: it takes one slot number of its
-/// container, and its value lives in transient storage at that number.
-/// Storage and transient contract fields share one slot numbering, so the
-/// cell never overlaps other transient state. `slot[()]` is the value's
-/// place.
-pub struct TSlot<T> {}
+/// A `TSlot` is a storage collection pinned to transient storage: its value
+/// lies there from the cell's number on, taking as many numbers as it has
+/// words, and the layout keeps them apart from other transient state.
+/// `slot[()]` is the value's place.
+pub struct TSlot<T> {
+    value: T,
+}
 
 impl<T> StateIndex for TSlot<T> {
     const SPACE: core::effect_ref::StateSpace = core::effect_ref::StateSpace::TransientStorage
@@ -212,13 +213,22 @@ pub trait RawStorage: EvmCapabilitySeal {
     }
 }
 
-/// The `T` at storage slot `slot`, as a storage place.
+/// The `T` at storage slot `slot`, as a storage place to read.
 ///
 /// The caller must ensure that `slot` holds a `T` and that nothing the
 /// compiler allocates, such as a contract field, uses `slot` or the slots the
 /// `T` derives from it.
 #[raw_place]
-pub unsafe fn storage_at<T>(_ slot: u256) -> mut T uses (storage: mut RawStorage) {
+pub unsafe fn storage_at<T>(_ slot: u256) -> ref T uses (storage: RawStorage) {
+    let ptr: StorPtr<T> = unsafe { storage.stor_ptr(slot) }
+    unsafe { ref *ptr }
+}
+
+/// The `T` at storage slot `slot`, as a storage place to read and write.
+///
+/// The caller must ensure what `storage_at` requires.
+#[raw_place]
+pub unsafe fn storage_at_mut<T>(_ slot: u256) -> mut T uses (storage: mut RawStorage) {
     let ptr: StorPtr<T> = unsafe { storage.stor_ptr(slot) }
     unsafe { mut *ptr }
 }

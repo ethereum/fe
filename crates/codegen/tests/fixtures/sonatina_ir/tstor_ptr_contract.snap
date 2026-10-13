@@ -189,7 +189,7 @@ func inline(always) private %contract_init_abi_GuardContract() {
         evm_revert 0.i256 0.i256;
 
     block3:
-        call %__GuardContract_init 1.i256;
+        call %__GuardContract_init 0.i256;
         return;
 }
 
@@ -221,8 +221,8 @@ func private %contract_recv_abi_GuardContract_1() {
     block3:
         v4.objref<@layout_3> = obj.alloc @layout_3;
         call %decode_runtime_args v4;
-        v7.i1 = call %__GuardContract_recv_0_0 1.i256 0.i256;
-        call %return_value v7;
+        v6.i1 = call %__GuardContract_recv_0_0 0.i256 0.i256;
+        call %return_value v6;
         unreachable;
 }
 

@@ -3852,6 +3852,112 @@ uses (slot: Slot<u256>)
     }
 
     #[test]
+    fn inference_keys_local_effect_providers_by_the_emitted_instance() {
+        let mut db = DriverDataBase::default();
+        let file_url = Url::parse("file:///inference_keys_local_effect_providers.fe").unwrap();
+        db.workspace().touch(
+            &mut db,
+            file_url.clone(),
+            Some(
+                r#"
+struct Pair { a: u256, b: u256 }
+
+fn bump() uses (x: mut u256) {
+    x += 1
+}
+
+fn first() -> u256 uses (pair: Pair) {
+    pair.a
+}
+
+fn caller() -> u256 {
+    var count: u256 = 1
+    with (mut count) {
+        bump()
+    }
+    let pair = Pair { a: count, b: 2 }
+    with (pair) {
+        first()
+    }
+}
+"#
+                .to_string(),
+            ),
+        );
+        let file = db
+            .workspace()
+            .get(&db, &file_url)
+            .expect("file should be loaded");
+        let top_mod = db.top_mod(file);
+        let semantic = semantic_instance_for_named_func(&db, top_mod, "caller");
+        let instance = runtime_instance_for_semantic(&db, semantic);
+        let normalized = normalize_semantic_body(&db, semantic)
+            .unwrap_or_else(|err| panic!("failed to normalize caller: {err:?}"));
+        let facts = BodyStaticFacts::new(&db, &normalized);
+        let env = BodyEnv::new(&db, &normalized, &facts);
+        let params = instance.key(&db).params(&db);
+        let inferred = LocalStateInferer::new(
+            env,
+            params,
+            &runtime_param_locals(&db, semantic, &normalized.source, params),
+        )
+        .run();
+        let callee_name = |owner: BodyOwner<'_>| match owner {
+            BodyOwner::Func(func) => func.name(&db).to_opt().map(|name| name.data(&db).clone()),
+            _ => None,
+        };
+        // Inference selects a local provider before the local is given a
+        // root; the classes it selects must still key the instance that
+        // emission calls.
+        let mut selected = Vec::new();
+        for (block_idx, block) in normalized.normalized.blocks.iter().enumerate() {
+            for (stmt_idx, stmt) in block.statements.iter().enumerate() {
+                let NStatementKind::Define {
+                    expr:
+                        NExpr::Call {
+                            callee,
+                            args,
+                            effect_args,
+                            ..
+                        },
+                    ..
+                } = &stmt.kind
+                else {
+                    continue;
+                };
+                let Some(ExprStaticFacts::Call(call_facts)) = facts.expr(block_idx, stmt_idx)
+                else {
+                    panic!("missing staged call facts for {block_idx}:{stmt_idx}");
+                };
+                let input_plan =
+                    call_input_plan_for_test(&db, &normalized, call_facts, effect_args);
+                let mut class_cache = InferClassCache::new(normalized.locals.len());
+                let classes: Vec<_> =
+                    RuntimeArgSelector::new(env, &inferred.carriers, Some(&mut class_cache))
+                        .selected_call_inputs(args, effect_args, &input_plan)
+                        .into_iter()
+                        .map(|arg| arg.class)
+                        .collect();
+                selected.push((callee_name(callee.key.owner(&db)), classes));
+            }
+        }
+        let emitted: Vec<_> = instance
+            .calls(&db)
+            .iter()
+            .map(|call| {
+                let key = call.callee.key(&db);
+                let owner = key
+                    .semantic(&db)
+                    .expect("caller should call semantic instances")
+                    .key(&db)
+                    .owner(&db);
+                (callee_name(owner), key.params(&db).to_vec())
+            })
+            .collect();
+        assert_eq!(selected, emitted);
+    }
+
+    #[test]
     fn own_scalar_call_inputs_materialize_provider_backed_direct_values() {
         let mut db = DriverDataBase::default();
         let file_url = Url::parse(

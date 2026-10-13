@@ -26,7 +26,7 @@ use core::ops::{LaneCodec, StateIndex, clear_storage}
 use core::option::Option
 use core::ptr
 use ingot::abi::{Sol, StaticAbiElement}
-use super::effects::{RawStorage, revert_error, storage_at}
+use super::effects::{RawStorage, revert_error, storage_at_mut}
 use super::panic::{PANIC_INDEX_OUT_OF_BOUNDS, PANIC_OUT_OF_MEMORY, PANIC_POP_EMPTY, Panic}
 use super::sol_slot::{SolPacked, data_slot, field_mask}
 
@@ -93,7 +93,7 @@ impl<T> SolArray<T> {
     /// contract field, uses `slot` or the elements' slots.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        unsafe { storage_at(slot) }
+        unsafe { storage_at_mut(slot) }
     }
 
     /// Number of elements.

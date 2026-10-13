@@ -1,10 +1,15 @@
-// A raw-slot constructor's result is the place its handle points to: the
-// slot it is given is the handle's field, not the result's.
-use std::evm::{Evm, RawStorage, StorageMap, storage_at}
+// A raw-slot constructor's result is the place at the slot it is given:
+// `storage_at` to read it, with read-only authority, `storage_at_mut` and
+// the collections' `at` to write it too.
+use std::evm::{Evm, RawStorage, StorageMap, storage_at, storage_at_mut}
 
 fn bump(_ slot: u256) uses (storage: mut RawStorage) {
-    let m = unsafe { storage_at<StorageMap<u256, u256>>(slot) }
+    let m = unsafe { storage_at_mut<StorageMap<u256, u256>>(slot) }
     m[1] += 1
+}
+
+fn get(_ slot: u256, key: u256) -> u256 uses (storage: RawStorage) {
+    unsafe { storage_at<StorageMap<u256, u256>>(slot) }[key]
 }
 
 fn bump_at(_ slot: u256) uses (storage: mut RawStorage) {
@@ -22,5 +27,6 @@ fn constructors_take_a_slot_argument() uses (evm: mut Evm) {
         assert(unsafe { StorageMap<u256, u256>::at(3) }[1] == 3)
         assert(unsafe { StorageMap<u256, u256>::at(4) }[1] == 1)
         assert(unsafe { storage_at<StorageMap<u256, u256>>(4) }[1] == 1)
+        assert(get(3, key: 1) == 3)
     }
 }

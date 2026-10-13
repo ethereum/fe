@@ -1033,34 +1033,29 @@ fn persistent_under_transient<'db>(
     walk(db, scope, ty, false, 0, &mut FxHashSet::default())
 }
 
-/// The counter a space's slots are numbered by. Storage and transient slots
-/// share one, so no transient slot number is also a storage one: a storage
-/// collection keeps its contents at its own slot number in its contents'
-/// space (a `TSlot`'s value in transient storage, a map's entries in
-/// storage) wherever the collection itself lies.
-fn slot_counter(space: AddressSpace) -> AddressSpace {
-    match space {
-        AddressSpace::Transient => AddressSpace::Storage,
-        space => space,
-    }
-}
-
-/// Places each field: a field with `#[slot(e)]` at `e`, any other after the
-/// fields its space's counter numbered before it, skipping the slots explicit
-/// fields take in the spaces it takes slots in.
+/// Places each field: a field with `#[slot(e)]` at `e`, any other at the next
+/// number of its space's counter, skipping the numbers fields placed before
+/// it take in any space it takes numbers in. Each space counts its own
+/// fields, but every field that lies at least partly in storage or code is
+/// placed before the fields that lie only in transient storage, which fit
+/// around them: a transient field never moves a persistent one. A field
+/// that mixes spaces takes its whole range in each, since one number roots
+/// all of it.
 fn allocate_contract<'db>(
     field_results: &[ContractFieldLayoutResult<'db>],
 ) -> Result<AllocatedContractStorageLayout<'db>, (ContractFieldId<'db>, ContractLayoutError<'db>)> {
-    let plans = field_results.iter().map(|field| {
-        field
-            .result
-            .as_ref()
-            .expect("allocation requires every field to validate")
-    });
-    // The slots explicit fields take, by space.
-    let mut explicit: FxHashMap<AddressSpace, Vec<(U256, U256, IdentId<'db>)>> =
-        FxHashMap::default();
-    for plan in plans.clone() {
+    let plans: Vec<_> = field_results
+        .iter()
+        .map(|field| {
+            field
+                .result
+                .as_ref()
+                .expect("allocation requires every field to validate")
+        })
+        .collect();
+    // The numbers placed fields take, by space: explicit fields first.
+    let mut taken: FxHashMap<AddressSpace, Vec<(U256, U256, IdentId<'db>)>> = FxHashMap::default();
+    for plan in &plans {
         let Some(slot) = plan.explicit_slot else {
             continue;
         };
@@ -1068,7 +1063,7 @@ fn allocate_contract<'db>(
             .checked_add(U256::from(plan.slot_count))
             .ok_or((plan.field, ContractLayoutError::LayoutExtentOverflow))?;
         for space in &plan.spaces {
-            let ranges = explicit.entry(*space).or_default();
+            let ranges = taken.entry(*space).or_default();
             if let Some(&(_, _, other)) = ranges
                 .iter()
                 .find(|(start, stop, _)| slot < *stop && *start < end)
@@ -1083,57 +1078,79 @@ fn allocate_contract<'db>(
             }
         }
     }
+    let transient_only =
+        |plan: &ValidatedFieldLayoutPlan<'db>| plan.spaces.as_slice() == [AddressSpace::Transient];
     let mut counters: FxHashMap<AddressSpace, U256> = FxHashMap::default();
     let mut code_slot_count = 0;
-    let mut fields = IndexMap::new();
-    for plan in plans {
-        let count = U256::from(plan.slot_count);
-        let slot_offset = match plan.explicit_slot {
-            Some(slot) => slot,
-            None => {
-                let counter = counters
-                    .entry(slot_counter(plan.address_space))
-                    .or_insert(U256::ZERO);
-                let mut start = *counter;
-                let ranges = plan
-                    .spaces
-                    .iter()
-                    .filter_map(|space| explicit.get(space))
-                    .flatten();
-                while let Some(&(_, stop, _)) = ranges.clone().find(|(first, stop, _)| {
-                    !count.is_zero() && start < *stop && *first < start.saturating_add(count)
-                }) {
-                    start = stop;
-                }
-                let end = start
-                    .checked_add(count)
-                    .ok_or((plan.field, ContractLayoutError::LayoutExtentOverflow))?;
-                if !count.is_zero() {
-                    *counter = end;
-                }
-                if plan.address_space == AddressSpace::Code {
-                    code_slot_count = usize::try_from(end)
-                        .ok()
-                        .filter(|end| end.checked_mul(32).is_some())
-                        .ok_or((plan.field, ContractLayoutError::LayoutExtentOverflow))?;
-                }
-                start
+    let mut offsets = vec![U256::ZERO; plans.len()];
+    for transient_pass in [false, true] {
+        for (idx, plan) in plans.iter().enumerate() {
+            if transient_only(plan) != transient_pass {
+                continue;
             }
-        };
-        fields.insert(
-            plan.name,
-            FieldStorageLayout {
-                field: plan.field,
-                name: plan.name,
-                is_mut: plan.is_mut,
-                address_space: plan.address_space,
-                declared: plan.declared,
-                slot_offset,
-                slot_count: plan.slot_count,
-                inline_leaves: plan.inline_leaves.clone(),
-            },
-        );
+            if let Some(slot) = plan.explicit_slot {
+                offsets[idx] = slot;
+                continue;
+            }
+            let count = U256::from(plan.slot_count);
+            let space = if transient_pass {
+                AddressSpace::Transient
+            } else {
+                plan.address_space
+            };
+            let counter = counters.entry(space).or_insert(U256::ZERO);
+            let mut start = *counter;
+            while let Some(&(_, stop, _)) = plan
+                .spaces
+                .iter()
+                .filter_map(|space| taken.get(space))
+                .flatten()
+                .find(|(first, stop, _)| {
+                    !count.is_zero() && start < *stop && *first < start.saturating_add(count)
+                })
+            {
+                start = stop;
+            }
+            let end = start
+                .checked_add(count)
+                .ok_or((plan.field, ContractLayoutError::LayoutExtentOverflow))?;
+            if !count.is_zero() {
+                *counter = end;
+                for space in &plan.spaces {
+                    taken
+                        .entry(*space)
+                        .or_default()
+                        .push((start, end, plan.name));
+                }
+            }
+            if space == AddressSpace::Code {
+                code_slot_count = usize::try_from(end)
+                    .ok()
+                    .filter(|end| end.checked_mul(32).is_some())
+                    .ok_or((plan.field, ContractLayoutError::LayoutExtentOverflow))?;
+            }
+            offsets[idx] = start;
+        }
     }
+    let fields = plans
+        .iter()
+        .zip(offsets)
+        .map(|(plan, slot_offset)| {
+            (
+                plan.name,
+                FieldStorageLayout {
+                    field: plan.field,
+                    name: plan.name,
+                    is_mut: plan.is_mut,
+                    address_space: plan.address_space,
+                    declared: plan.declared,
+                    slot_offset,
+                    slot_count: plan.slot_count,
+                    inline_leaves: plan.inline_leaves.clone(),
+                },
+            )
+        })
+        .collect();
     Ok(AllocatedContractStorageLayout {
         fields,
         code_slot_count,
@@ -1171,7 +1188,12 @@ fn allocated_contract_layout_report<'db>(
                     segments: leaf.path.clone(),
                 },
                 ty: leaf.ty,
-                address_space: field.address_space,
+                // A collection lies in the space it is pinned to.
+                address_space: match leaf.kind {
+                    InlineLayoutLeafKind::Collection => leaf.ty.pin(db),
+                    InlineLayoutLeafKind::Field | InlineLayoutLeafKind::EnumTag => None,
+                }
+                .unwrap_or(field.address_space),
                 value,
                 lane: leaf.lane,
                 kind: match leaf.kind {

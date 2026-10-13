@@ -1,11 +1,16 @@
 # Contract storage layout
 
 The layout gives each `mut` contract field a root slot, in declaration order.
-Storage and transient fields are numbered by one counter, so no transient slot
-number is also a storage one. A field takes as many consecutive slots as its
-type needs. Struct fields narrower than a word are packed into shared slots
-the way Solidity packs struct members. Immutable fields live in the
-contract's code, numbered by their own counter.
+Storage, transient storage and code each number their own fields, so a
+transient field never moves a persistent one. A field takes as many
+consecutive slots as its type needs. Struct fields narrower than a word are
+packed into shared slots the way Solidity packs struct members. Immutable
+fields live in the contract's code.
+
+A field that mixes spaces, such as a `Mutex<T>` (a transient lock beside a
+storage value), has one root slot that both spaces read: it takes its whole
+range in each, and is placed among the storage fields. Fields that lie only in
+transient storage fill the transient numbers the others leave free.
 
 A storage collection, such as a `StorageMap`, `SolArray` or `TSlot`, is an
 owner at its slot, pinned to the space its `StateIndex` implementation names.
@@ -14,8 +19,9 @@ and at least one even when it has no fields, since its slot number is what
 identifies its contents: a `StorageMap`'s slot is reserved and never
 written, as a Solidity mapping's is. A zero-sized type takes no slot.
 It keeps itself and its contents at that slot number in that space: a map's
-entry for `key` lies at `keccak256(key ++ slot)` in storage, and a `TSlot`
-and its value lie in transient storage at the slot's own number. A
+entry for `key` lies at `keccak256(key ++ slot)` in storage, and a `TSlot`'s
+value lies in transient storage from the slot's own number on, taking a slot
+per word. A
 collection nested in a struct or a map entry derives its slot from where it
 lies, as Solidity nests mappings.
 
@@ -72,8 +78,8 @@ pub contract Store {
 - Two placed fields whose slots overlap in one address space are an error.
   Storage and transient storage are separate spaces, so a storage field and
   a transient field may share a slot number. A field takes its slots in
-  every space its parts lie in: a `TSlot` at slot 5 takes transient slot 5
-  only, so a placed storage field may share slot 5 but a transient one may
+  every space its parts lie in: a `TSlot<u256>` at slot 5 takes transient
+  slot 5 only, so a placed storage field may share slot 5 but a transient one may
   not, and a struct holding a `TSlot` and a `u256` takes its slots in both.
 - `#[slot]` on an immutable field, which lives in code, or on a struct
   field is an error.

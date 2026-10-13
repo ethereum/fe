@@ -4,7 +4,8 @@ use hir::analysis::{
     semantic::{
         SLocalId, SemanticLocalKind,
         normalized::{
-            NEffectArg, NEffectArgValue, NOperand as SemanticOperand, NPlace, NValueDefinition,
+            NEffectArg, NEffectArgValue, NOperand as SemanticOperand, NPlace, NPlaceBase,
+            NValueDefinition,
         },
     },
     ty::ty_def::TyId,
@@ -662,7 +663,32 @@ impl<'a, 'carriers, 'roots, 'cache, 'db> RuntimeArgSelector<'a, 'carriers, 'root
         boundary: RuntimeBoundarySpec<'db>,
     ) -> Option<SelectedRuntimeArg<'db>> {
         if !self.sources().place_is_lowerable(&place) {
-            return self.placeholder_arg_for_unlowerable_place(place, semantic_ty, &boundary);
+            // A local kept as a value, not in storage, passes what the place
+            // holds to a boundary that takes a value: the value itself, or a
+            // part read out of it.
+            if let NPlaceBase::Root(root) = place.base
+                && let Some(local) = self.env.body().root_local(root)
+                && let Some(class) = carrier_value_class(local, self.carriers)
+                && let RuntimeBoundarySpec::ExactTransport(target)
+                | RuntimeBoundarySpec::ExactShape(target) = &boundary
+                && !target.is_transport()
+            {
+                if !place.path.is_empty() {
+                    return Some(SelectedRuntimeArg::value_extract(
+                        place,
+                        semantic_ty,
+                        target.clone(),
+                    ));
+                }
+                if !class.is_transport() {
+                    return Some(SelectedRuntimeArg::runtime_value(local, target.clone()));
+                }
+            }
+            // Class inference runs before locals are given roots, so it
+            // selects as if the place had one; emission needs it to.
+            if matches!(self.source_mode, RuntimeSourceMode::Concrete(_)) {
+                return None;
+            }
         }
         if let Some(class) = self
             .env
@@ -685,35 +711,14 @@ impl<'a, 'carriers, 'roots, 'cache, 'db> RuntimeArgSelector<'a, 'carriers, 'root
                 SelectedRuntimeArg::place_load(place, semantic_ty, target.clone()),
             ),
             RuntimeBoundarySpec::BorrowLike { .. } => {
-                RuntimeValueMaterialization::for_boundary(self.env.db(), &boundary)
-                    .map(|materialization| {
-                        SelectedRuntimeArg::materialized_place(
-                            place.clone(),
-                            semantic_ty,
-                            materialization,
-                        )
-                    })
-                    .or_else(|| {
-                        self.placeholder_arg_for_unlowerable_place(place, semantic_ty, &boundary)
-                    })
+                RuntimeValueMaterialization::for_boundary(self.env.db(), &boundary).map(
+                    |materialization| {
+                        SelectedRuntimeArg::materialized_place(place, semantic_ty, materialization)
+                    },
+                )
             }
-            RuntimeBoundarySpec::ExactShape(_) => {
-                self.placeholder_arg_for_unlowerable_place(place, semantic_ty, &boundary)
-            }
+            RuntimeBoundarySpec::ExactShape(_) => None,
         }
-    }
-
-    fn placeholder_arg_for_unlowerable_place(
-        &self,
-        place: NPlace<'db>,
-        semantic_ty: TyId<'db>,
-        boundary: &RuntimeBoundarySpec<'db>,
-    ) -> Option<SelectedRuntimeArg<'db>> {
-        if !place.path.is_empty() {
-            return None;
-        }
-        BoundaryMatcher::placeholder_class(self.env.db(), boundary)
-            .map(|class| SelectedRuntimeArg::placeholder(semantic_ty, class))
     }
 
     fn select_effect_arg(

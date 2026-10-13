@@ -1,0 +1,1 @@
+A `TSlot` whose value takes more than one word, such as `TSlot<[u256; 2]>` or `TSlot<Pair>`, took a single transient slot, so the rest of its value overlapped the next transient field. A `TSlot` now takes a transient slot for each word of its value.

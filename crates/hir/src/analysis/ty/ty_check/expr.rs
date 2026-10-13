@@ -2938,7 +2938,7 @@ impl<'db> TyChecker<'db> {
             KeyedWitnessBuildOptions {
                 scope: KeyedWitnessBuildScope {
                     scope: self.env.scope(),
-                    assumptions: self.env.base_assumptions(),
+                    assumptions: self.env.assumptions(),
                 },
                 emit_diag: true,
                 mode: WitnessBuildMode::ExplicitKeyedWith,

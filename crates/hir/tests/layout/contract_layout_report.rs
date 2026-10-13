@@ -76,7 +76,7 @@ contract C {
 }
 
 #[test]
-fn report_numbers_storage_and_transient_fields_together() {
+fn report_numbers_storage_and_transient_fields_apart() {
     parse_ok!(
         db,
         top_mod,
@@ -95,9 +95,10 @@ contract C {
     let report = contract.layout_report(&db).unwrap();
     for (path, space, value) in [
         ("stored", AddressSpace::Storage, "0"),
-        // A transient cell is a collection numbered with storage fields.
-        ("temporary", AddressSpace::Storage, "1"),
-        ("later", AddressSpace::Storage, "2"),
+        // A transient cell is numbered among transient fields, so it leaves
+        // the storage numbering alone.
+        ("temporary", AddressSpace::Transient, "0"),
+        ("later", AddressSpace::Storage, "1"),
         ("immutable", AddressSpace::Code, "0"),
     ] {
         let entry = entry(&db, &report.entries, path);
@@ -134,7 +135,7 @@ contract C {
     let report = contract.layout_report(&db).unwrap();
     // `pair` skips slot 1, which `placed` takes. `main` is at ERC-7201's
     // slot for the namespace `example.main`. Transient slot 1 is free for
-    // `flag`, and `after` continues the shared counter.
+    // `flag`, and `after` takes the transient slot before it.
     for (path, space, value) in [
         ("first", AddressSpace::Storage, "0"),
         ("placed", AddressSpace::Storage, "1"),
@@ -150,8 +151,8 @@ contract C {
             AddressSpace::Storage,
             "10958655983261152271848436692291137275443024275653522991983264966744321209601",
         ),
-        ("flag", AddressSpace::Storage, "1"),
-        ("after", AddressSpace::Storage, "4"),
+        ("flag", AddressSpace::Transient, "1"),
+        ("after", AddressSpace::Transient, "0"),
     ] {
         let entry = entry(&db, &report.entries, path);
         assert_eq!(entry.address_space, space, "{path}");
@@ -236,7 +237,48 @@ contract Skipping {
 }
 
 #[test]
-fn mutex_lock_cells_share_the_field_counter() {
+fn a_transient_cell_takes_a_number_per_word_of_its_value() {
+    parse_ok!(
+        db,
+        top_mod,
+        r#"
+use std::evm::TSlot
+
+struct Pair { left: u256, right: u256 }
+
+contract C {
+    mut words: TSlot<[u256; 4]>,
+    mut pair: TSlot<Pair>,
+    mut flag: TSlot<bool>,
+    mut unit: TSlot<()>,
+    mut pairs: [TSlot<Pair>; 2],
+}
+"#,
+    );
+    let contract = find_contract(&db, top_mod, "C");
+    let layout = contract.storage_layout(&db);
+    let fields = &layout
+        .allocated
+        .as_ref()
+        .expect("contract layout should be allocated")
+        .fields;
+    // A cell's value lies from the cell's number on, so it takes a number
+    // per word, and at least one.
+    for (name, offset, count) in [
+        ("words", 0, 4),
+        ("pair", 4, 2),
+        ("flag", 6, 1),
+        ("unit", 7, 1),
+        ("pairs", 8, 4),
+    ] {
+        let field = &fields[&IdentId::new(&db, name.to_string())];
+        assert_eq!(field.slot_offset, offset, "{name}");
+        assert_eq!(field.slot_count, count, "{name}");
+    }
+}
+
+#[test]
+fn mutex_fields_are_placed_before_transient_cells() {
     parse_ok!(
         db,
         top_mod,
@@ -249,6 +291,7 @@ contract C {
     mut m: Mutex<u256>,
     mut m2: Mutex<u256>,
     mut after: TSlot<bool>,
+    mut stored: u256,
 }
 "#,
     );
@@ -259,14 +302,16 @@ contract C {
         .as_ref()
         .expect("contract layout should be allocated")
         .fields;
-    // Storage and transient fields share one counter. A mutex's value takes
-    // a storage slot and its lock, a transient cell, the next number.
+    // A mutex mixes spaces, so it is placed among the storage fields and
+    // takes its range in both; the transient cells fill the transient
+    // numbers left free, and move no storage field.
     for (name, offset, count) in [
-        ("t0", 0, 1),
-        ("t1", 1, 1),
-        ("m", 2, 2),
-        ("m2", 4, 2),
+        ("t0", 4, 1),
+        ("t1", 5, 1),
+        ("m", 0, 2),
+        ("m2", 2, 2),
         ("after", 6, 1),
+        ("stored", 4, 1),
     ] {
         let field = &fields[&IdentId::new(&db, name.to_string())];
         assert_eq!(field.slot_offset, offset, "{name}");

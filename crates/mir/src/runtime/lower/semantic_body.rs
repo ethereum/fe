@@ -19,6 +19,7 @@ use hir::hir_def::{ExprId, FuncParamMode};
 use crate::{db::MirDb, runtime::package::LowerError};
 
 use super::{
+    classify::runtime_effect_binding_plan_for_binding_idx,
     source::local_read_places_extractable_from_value,
     type_info::{RuntimeTypeEnv, stored_class_for_ty_in_env},
 };
@@ -301,6 +302,7 @@ impl<'db> RuntimeSemanticBody<'db> {
                 effect_args,
                 ..
             } => {
+                let callee = get_or_build_semantic_instance(db, callee.key);
                 // A view of the local, or the local itself when it is a view,
                 // for a parameter that needs its address passes the local's
                 // own storage, so the callee does not copy it on every call.
@@ -311,15 +313,22 @@ impl<'db> RuntimeSemanticBody<'db> {
                             Some((_, NExpr::MakeView { place, .. }))
                                 if self.place_source(place) == Some(local)
                         ))
-                        && params_needing_place(db, get_or_build_semantic_instance(db, callee.key))
+                        && params_needing_place(db, callee)
                             .get(index)
                             .copied()
                             .unwrap_or(false)
                 });
                 for arg in effect_args {
                     match &arg.arg {
+                        // A provider the callee takes by value is only read.
                         NEffectArgValue::Place(place)
-                            if self.place_source(place) == Some(local) =>
+                            if self.place_source(place) == Some(local)
+                                && runtime_effect_binding_plan_for_binding_idx(
+                                    db,
+                                    callee,
+                                    arg.binding_idx,
+                                )
+                                .is_none_or(|plan| plan.class.is_transport()) =>
                         {
                             demand.passed_by_place = true;
                             demand.mut_borrowed_or_addr_taken |= arg.required_mut;

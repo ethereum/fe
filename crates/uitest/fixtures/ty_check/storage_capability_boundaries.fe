@@ -1,4 +1,4 @@
-use std::evm::{StorageMap, TSlot}
+use std::evm::{StorageMap, TSlot, storage_at, storage_at_mut}
 use std::evm::effects::RawStorage
 
 struct Store {
@@ -30,4 +30,14 @@ pub fn readonly_store_set()
 uses (store: Store)
 {
     store.balances.set(key: 1, value: 2)
+}
+
+// The read form yields a place to read; the mutable form needs mutable raw
+// storage authority.
+pub fn raw_write_through_read_form() uses (storage: mut RawStorage) {
+    unsafe { storage_at<u256>(0) = 1 }
+}
+
+pub fn raw_mut_form_with_read_authority() -> u256 uses (storage: RawStorage) {
+    unsafe { storage_at_mut<u256>(0) }
 }

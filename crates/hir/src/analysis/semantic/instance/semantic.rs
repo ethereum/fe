@@ -1143,6 +1143,7 @@ impl<'db> SemanticInstance<'db> {
         classify_binding_role(
             db,
             self,
+            binding,
             self.binding_ty(db, binding),
             self.assumptions(db),
             resolved_provider_binding_for_instance_effect(db, self, binding),
@@ -1157,6 +1158,7 @@ impl<'db> SemanticInstance<'db> {
         classify_binding_role(
             db,
             self,
+            binding,
             self.provisional_binding_ty(db, binding),
             semantic_instance_base_assumptions_for_key(db, self.key(db)),
             provisional_provider_binding_for_instance_effect(db, self, binding),
@@ -2108,6 +2110,7 @@ fn collect_callees<'db>(
 fn classify_binding_role<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
+    binding: LocalBinding<'db>,
     ty: TyId<'db>,
     assumptions: PredicateListId<'db>,
     provider: Option<ProviderBinding<'db>>,
@@ -2118,6 +2121,19 @@ fn classify_binding_role<'db>(
     if let Some((_, value_ty)) = ty.as_capability(db) {
         let value_ty = normalize_ty(db, value_ty, scope, assumptions);
         return SemanticLocalRole::PlaceCarrier { provider, value_ty };
+    }
+    // A read-only effect of a snapshot type provided by a memory place is
+    // passed as a copy, as a view parameter is: nothing can write the place
+    // during the call, and a reentrant call has memory of its own.
+    if let Some(provider) = &provider
+        && matches!(binding, LocalBinding::EffectParam { is_mut: false, .. })
+        && provider.semantics.kind == ProviderKind::Place
+        && provider.semantics.address_space == Some(AddressSpace::Memory)
+        && ty_is_snapshot(db, scope, ty, assumptions)
+    {
+        return SemanticLocalRole::DirectValue {
+            provenance: ValueProvenance::Ordinary,
+        };
     }
     if let Some(provider) = provider {
         return match provider.semantics.kind {

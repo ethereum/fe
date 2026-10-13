@@ -704,39 +704,6 @@ impl BoundaryMatcher {
         RuntimeClass::raw_addr(db, *space, pointee.clone())
     }
 
-    pub(crate) fn placeholder_class<'db>(
-        db: &'db dyn MirDb,
-        boundary: &RuntimeBoundarySpec<'db>,
-    ) -> Option<RuntimeClass<'db>> {
-        match boundary {
-            RuntimeBoundarySpec::ExactTransport(class) | RuntimeBoundarySpec::ExactShape(class) => {
-                Some(class.clone())
-            }
-            RuntimeBoundarySpec::BorrowLike { pointee, allow, .. }
-                if pointee.aggregate_layout().is_some() && allow.allow_object =>
-            {
-                Some(RuntimeClass::Ref {
-                    pointee: Box::new(pointee.clone()),
-                    kind: RefKind::Object,
-                    view: RefView::Whole,
-                })
-            }
-            RuntimeBoundarySpec::BorrowLike { pointee, allow, .. }
-                if pointee.aggregate_layout().is_some() && allow.allow_const =>
-            {
-                Some(RuntimeClass::Ref {
-                    pointee: Box::new(pointee.clone()),
-                    kind: RefKind::Const,
-                    view: RefView::Whole,
-                })
-            }
-            RuntimeBoundarySpec::BorrowLike { pointee, allow, .. } if allow.allow_raw_addr => Some(
-                RuntimeClass::raw_addr(db, AddressSpace::Memory, pointee.clone()),
-            ),
-            RuntimeBoundarySpec::BorrowLike { .. } => None,
-        }
-    }
-
     fn class_matches_shape_boundary<'db>(
         db: &'db dyn MirDb,
         actual: &RuntimeClass<'db>,
