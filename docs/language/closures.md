@@ -27,16 +27,43 @@ fn fold<A, F: FnMut(own A, Self::Item) -> A>(self, _ init: own A, _ f: mut F) ->
 `call(self, ..)` views the callable; `FnMut(..)` is `FnMut_ov`, whose
 `call_mut(mut self, ..)` mutates it; `Fn(own T) -> U` is `Fn<T, U>`. A closure
 implements the `Fn` and `FnMut` shapes of its parameter modes, with `Out` its
-result. Call it with `f.call(x)`, or `f.call_mut(x)` through an `FnMut`
-bound.
+result.
 
 Unannotated parameters take their modes and types from the shape bound of
 the parameter the closure is passed to, after the arguments before it: in
 `xs.fold(0, |acc, x| acc + x)`, `acc` is `own u256` and `x` is a view of the
 item. A closure passed to a function without such a bound, like the free
 `filter` and `map` adapters used with `for .. by`, annotates its parameters:
-`for x in xs by filter(|x: u256| x % 2 == 0)`. A closure literal may be
-passed to a `mut` parameter directly.
+`for x in xs by filter(|x: u256| x % 2 == 0)`. A closure literal, or a
+function named by its path, may be passed to a `mut` parameter directly.
+
+## Calls
+
+A callable value is called like a function, `f(x)`. The call runs the
+value's `Fn` shape's `call`, or `call_mut` when only an `FnMut` shape is
+known, which takes `f` as `mut`. This calls a closure, a parameter bound by
+a shape, and a value of any type that implements a shape trait; another
+method named `call` does not make a type callable. `f.call(x)` and
+`f.call_mut(x)` name the shape's methods explicitly. A field holding a
+callable is called as `(h.f)(x)`, since `h.f(x)` calls a method `f`.
+
+```fe
+let add = |a: u256, b: u256| a + b
+let five = add(2, 3)
+
+fn apply<F: Fn(u256) -> u256>(_ f: F, _ x: u256) -> u256 uses F::E {
+    f(x)
+}
+```
+
+## Functions as callable values
+
+A function item implements the shapes of its parameters' modes too, so a
+named function, associated function or trait method can be passed where a
+closure can: `xs.fold(0, add)` with `fn add(_ acc: own u256, _ x: u256) ->
+u256`. Its row is the function's own effects. A generic function's arguments
+are inferred from the bound, as in `apply(identity, 9)`. An `unsafe fn`, a
+projection and a variant constructor are not callable values.
 
 ## Captures
 

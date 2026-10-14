@@ -79,7 +79,7 @@ fn providers_inside_and_at_the_call() {
     with (Store = a) {
         let f = |y: u256| y + read()
         with (Store = b) {
-            assert!(ys.fold(0, |acc, y| acc + f.call(y)) == 2)
+            assert!(ys.fold(0, |acc, y| acc + f(y)) == 2)
         }
     }
 }

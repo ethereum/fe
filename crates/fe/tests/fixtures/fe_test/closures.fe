@@ -10,7 +10,7 @@ struct Account { balance: u256 }
 struct Totals { sum: u256, count: u256 }
 
 fn apply<F: Fn(u256) -> u256>(_ f: F, _ x: u256) -> u256 uses F::E {
-    f.call(x)
+    f(x)
 }
 
 #[test]
@@ -69,9 +69,9 @@ fn direct_generic_and_nested_calls() {
     let k = 3
     assert!(apply(|x| x * k, 5) == 15)
     let add = |a: u256, b: u256| a + b
-    assert!(add.call(2, 3) == 5)
+    assert!(add(2, 3) == 5)
     let twice = |x: u256| apply(|y| y + x, x)
-    assert!(twice.call(4) == 8)
+    assert!(twice(4) == 8)
 }
 
 #[test]
