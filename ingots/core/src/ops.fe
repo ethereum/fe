@@ -270,11 +270,7 @@ pub trait Index<I> {
 /// `t[i]` where the context needs a `mut` place: an assignment target,
 /// `mut t[i]`, or a `mut self` method's receiver.
 pub trait IndexMut<I>: Index<I> {
-    /// The authority to mutate an element. It may strengthen `E` without
-    /// widening what a read reaches.
-    uses EM
-
-    fn index_mut(mut self, _ index: I) -> mut Self::Output @S uses EM
+    fn index_mut(mut self, _ index: I) -> mut Self::Output @S uses E
 }
 
 /// The number of elements of a collection indexed by position: its
