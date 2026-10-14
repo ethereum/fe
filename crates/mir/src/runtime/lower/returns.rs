@@ -5,7 +5,7 @@ use hir::analysis::{
     semantic::{
         ExecutableBlock, SLocalId, SemanticInstance, get_or_build_semantic_instance,
         normalized::{
-            NExpr, NPlace, NPlaceBase, NValueDefinition, NValueId, NormalizedBody,
+            NExpr, NOperand, NPlace, NPlaceBase, NValueDefinition, NValueId, NormalizedBody,
             normalize_semantic_body,
         },
         semantic_executable_control_flow, semantic_may_return,
@@ -24,7 +24,7 @@ use crate::{
     instance::{RuntimeInstanceKey, RuntimeInstanceSource},
     runtime::{
         EnumLayoutKey, EnumVariantLayout, Layout, LayoutId, LayoutKey, RawPointeeId, RefKind,
-        RuntimeClass, RuntimeExitBehavior,
+        RuntimeClass, RuntimeExitBehavior, StructLayout,
     },
 };
 
@@ -836,14 +836,10 @@ pub(crate) fn evaluate_runtime_return_class<'db>(
         };
         // A value with a zero-sized payload is erased, like its carrier.
         if !runtime_class_has_zero_sized_payload(db, &selected.class) {
-            let variant =
-                operand
-                    .value
-                    .and_then(|value| match normalized.defining_expr(value)? {
-                        (_, NExpr::EnumMake { variant, .. }) => Some(variant.0 as usize),
-                        _ => None,
-                    });
-            returned.push((selected.class, variant));
+            let built = operand
+                .value
+                .map_or(Built::Unknown, |value| Built::of(normalized, value));
+            returned.push((selected.class, built));
         }
     }
     if returned.is_empty() {
@@ -874,99 +870,170 @@ pub(crate) fn declared_return_class_admits<'db>(
 ) -> bool {
     merged_return_class(
         db,
-        vec![(returned.clone(), None), (declared.clone(), None)],
+        vec![
+            (returned.clone(), Built::Unknown),
+            (declared.clone(), Built::Unknown),
+        ],
         semantic.normalized_result_ty(db).as_borrow(db).is_some(),
     )
     .is_some_and(|merged| merged == *declared)
 }
 
-/// The class carrying every value a body returns, given each with the enum
-/// variant it builds, if any.
-fn merged_return_class<'db>(
-    db: &'db dyn MirDb,
-    returned: Vec<(RuntimeClass<'db>, Option<usize>)>,
-    native_borrow: bool,
-) -> Option<RuntimeClass<'db>> {
-    if returned.iter().any(|(_, variant)| variant.is_some())
-        && let Some(layouts) = returned
-            .iter()
-            .map(|(class, variant)| match class {
-                RuntimeClass::AggregateValue { layout } => Some((*layout, *variant)),
-                _ => None,
-            })
-            .collect::<Option<Vec<_>>>()
-    {
-        return merged_enum_layout(db, &layouts)
-            .map(|layout| RuntimeClass::AggregateValue { layout });
-    }
-    let mut returned = returned
-        .into_iter()
-        .map(|(class, _)| class)
-        .collect::<Vec<_>>();
-    let mut merged = returned.pop()?;
-    for class in returned {
-        merged = if native_borrow {
-            join_reference_transports(db, &merged, &class)?
-        } else {
-            merge_runtime_class(db, &merged, &class)?
-        };
-    }
-    Some(merged)
+/// What a returned value is known to build, from the expressions that define
+/// it: the variant of each enum it makes, and what the parts of each of its
+/// aggregates build.
+#[derive(Clone)]
+enum Built {
+    Unknown,
+    Enum(usize, Vec<Built>),
+    Aggregate(Vec<Built>),
 }
 
-/// The join of enum values, each given with the variant it builds, if any.
-/// A value built as one variant has no payload in the others, so it
-/// constrains only its own variant's fields; a variant no value builds keeps
-/// the fields its type gives it.
-fn merged_enum_layout<'db>(
+impl Built {
+    fn of(normalized: &NormalizedBody<'_>, value: NValueId) -> Self {
+        let parts = |fields: &[NOperand]| {
+            fields
+                .iter()
+                .map(|field| Self::of(normalized, field.value))
+                .collect()
+        };
+        match normalized.defining_expr(value) {
+            Some((_, NExpr::Forward { src })) => Self::of(normalized, src.value),
+            Some((
+                _,
+                NExpr::EnumMake {
+                    variant, fields, ..
+                },
+            )) => Self::Enum(variant.0 as usize, parts(fields)),
+            Some((_, NExpr::AggregateMake { fields, .. })) => Self::Aggregate(parts(fields)),
+            _ => Self::Unknown,
+        }
+    }
+
+    /// What field `idx` of a layout with `len` fields builds.
+    fn field(&self, idx: usize, len: usize) -> Self {
+        match self {
+            Self::Enum(_, fields) | Self::Aggregate(fields) if fields.len() == len => {
+                fields[idx].clone()
+            }
+            _ => Self::Unknown,
+        }
+    }
+}
+
+/// The class carrying every value a body returns, given each with what it
+/// builds.
+fn merged_return_class<'db>(
     db: &'db dyn MirDb,
-    returned: &[(LayoutId<'db>, Option<usize>)],
-) -> Option<LayoutId<'db>> {
-    let layouts = returned
+    returned: Vec<(RuntimeClass<'db>, Built)>,
+    native_borrow: bool,
+) -> Option<RuntimeClass<'db>> {
+    if !native_borrow {
+        return merged_built_class(db, &returned);
+    }
+    let mut returned = returned.into_iter().map(|(class, _)| class);
+    let first = returned.next()?;
+    returned.try_fold(first, |merged, class| {
+        join_reference_transports(db, &merged, &class)
+    })
+}
+
+/// The join of values, each given with what it builds. An enum value built
+/// as one variant has no payload in the others, so it constrains only its
+/// own variant's fields, wherever it lies in the value; a variant no value
+/// builds keeps the fields its type gives it.
+fn merged_built_class<'db>(
+    db: &'db dyn MirDb,
+    values: &[(RuntimeClass<'db>, Built)],
+) -> Option<RuntimeClass<'db>> {
+    let known = values
         .iter()
-        .map(|(layout, variant)| match layout.data(db) {
-            Layout::Enum(data) => Some((data, *variant)),
+        .any(|(_, built)| !matches!(built, Built::Unknown));
+    let layouts = values
+        .iter()
+        .map(|(class, built)| match class {
+            RuntimeClass::AggregateValue { layout } => Some((layout.data(db), built)),
             _ => None,
         })
-        .collect::<Option<Vec<_>>>()?;
-    let (first, _) = layouts.first()?;
-    if layouts
-        .iter()
-        .any(|(data, _)| data.variants.len() != first.variants.len())
-    {
+        .collect::<Option<Vec<_>>>();
+    let layout = match layouts.as_deref() {
+        Some(all @ [(Layout::Struct(first), _), ..]) if known => {
+            let fields = all
+                .iter()
+                .map(|(layout, built)| match layout {
+                    Layout::Struct(data) if data.pinned == first.pinned => {
+                        Some((&data.fields[..], *built))
+                    }
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?;
+            LayoutKey::Struct(StructLayout {
+                fields: merged_built_fields(db, &fields)?.into(),
+                pinned: first.pinned,
+            })
+        }
+        Some(all @ [(Layout::Enum(first), _), ..]) if known => {
+            let enums = all
+                .iter()
+                .map(|(layout, built)| match layout {
+                    Layout::Enum(data) if data.variants.len() == first.variants.len() => {
+                        Some((data, *built))
+                    }
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?;
+            let variants = (0..first.variants.len())
+                .map(|idx| {
+                    let fields = enums
+                        .iter()
+                        .filter(|(_, built)| {
+                            !matches!(built, Built::Enum(variant, _) if *variant != idx)
+                        })
+                        .map(|(data, built)| (&data.variants[idx].fields[..], *built))
+                        .collect::<Vec<_>>();
+                    if fields.is_empty() {
+                        return Some(first.variants[idx].clone());
+                    }
+                    Some(EnumVariantLayout {
+                        fields: merged_built_fields(db, &fields)?.into(),
+                    })
+                })
+                .collect::<Option<Vec<_>>>()?;
+            LayoutKey::Enum(EnumLayoutKey {
+                variants: variants.into(),
+            })
+        }
+        _ => {
+            let ((first, _), rest) = values.split_first()?;
+            return rest.iter().try_fold(first.clone(), |merged, (class, _)| {
+                merge_runtime_class(db, &merged, class)
+            });
+        }
+    };
+    Some(RuntimeClass::AggregateValue {
+        layout: LayoutId::new(db, layout),
+    })
+}
+
+/// The join of the fields of layouts of one shape, each given with what its
+/// value builds.
+fn merged_built_fields<'db>(
+    db: &'db dyn MirDb,
+    layouts: &[(&[RuntimeClass<'db>], &Built)],
+) -> Option<Vec<RuntimeClass<'db>>> {
+    let len = layouts.first()?.0.len();
+    if layouts.iter().any(|(fields, _)| fields.len() != len) {
         return None;
     }
-    let variants = (0..first.variants.len())
+    (0..len)
         .map(|idx| {
-            let mut built = layouts
+            let values = layouts
                 .iter()
-                .filter(|(_, variant)| variant.is_none_or(|variant| variant == idx))
-                .map(|(data, _)| &data.variants[idx].fields);
-            let Some(fields) = built.next() else {
-                return Some(first.variants[idx].clone());
-            };
-            let mut fields = fields.to_vec();
-            for other in built {
-                if other.len() != fields.len() {
-                    return None;
-                }
-                fields = fields
-                    .iter()
-                    .zip(other.iter())
-                    .map(|(current, other)| merge_runtime_class(db, current, other))
-                    .collect::<Option<Vec<_>>>()?;
-            }
-            Some(EnumVariantLayout {
-                fields: fields.into(),
-            })
+                .map(|(fields, built)| (fields[idx].clone(), built.field(idx, len)))
+                .collect::<Vec<_>>();
+            merged_built_class(db, &values)
         })
-        .collect::<Option<Vec<_>>>()?;
-    Some(LayoutId::new(
-        db,
-        LayoutKey::Enum(EnumLayoutKey {
-            variants: variants.into(),
-        }),
-    ))
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1079,7 +1146,7 @@ mod tests {
             ) else {
                 return summary.default_return_class.clone();
             };
-            returned.push((selected.class, None));
+            returned.push((selected.class, Built::Unknown));
         }
         let Some(class) = merged_return_class(
             db,
@@ -1659,13 +1726,20 @@ fn first(_ arr: [u8; 4]) -> u8 {
         assert_eq!(
             merged_return_class(
                 &db,
-                vec![(storage.clone(), None), (transient.clone(), None)],
+                vec![
+                    (storage.clone(), Built::Unknown),
+                    (transient.clone(), Built::Unknown)
+                ],
                 false
             ),
             None
         );
         assert_eq!(
-            merged_return_class(&db, vec![(transient, None), (storage, None)], false),
+            merged_return_class(
+                &db,
+                vec![(transient, Built::Unknown), (storage, Built::Unknown)],
+                false
+            ),
             None
         );
     }
@@ -1680,13 +1754,20 @@ fn first(_ arr: [u8; 4]) -> u8 {
         assert_eq!(
             merged_return_class(
                 &db,
-                vec![(memory.clone(), None), (storage.clone(), None)],
+                vec![
+                    (memory.clone(), Built::Unknown),
+                    (storage.clone(), Built::Unknown)
+                ],
                 false
             ),
             Some(merged.clone())
         );
         assert_eq!(
-            merged_return_class(&db, vec![(storage, None), (memory, None)], false),
+            merged_return_class(
+                &db,
+                vec![(storage, Built::Unknown), (memory, Built::Unknown)],
+                false
+            ),
             Some(merged)
         );
     }
