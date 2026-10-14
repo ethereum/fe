@@ -147,6 +147,9 @@ pub struct CallSiteLowering<'db> {
     pub effect_args: Box<[ResolvedEffectArg<'db>]>,
     pub effect_pairs: Box<[(usize, usize)]>,
     pub provider_pairs: Box<[(u32, u32)]>,
+    /// Whether the callee takes the operands after the call's receiver (a
+    /// function item called through a callable shape).
+    pub drops_receiver: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
@@ -568,19 +571,21 @@ fn provisional_call_site<'db>(
             report(error);
             nominal_effect_args.into()
         });
-    let (callee, effect_pairs, provider_pairs) = match callee {
+    let (callee, effect_pairs, provider_pairs, drops_receiver) = match callee {
         Some(plan) => (
             Some(SemanticCalleeRef { key: plan.key }),
             plan.effect_pairs,
             plan.provider_pairs,
+            plan.drops_receiver,
         ),
-        None => (None, Vec::new(), Vec::new()),
+        None => (None, Vec::new(), Vec::new(), false),
     };
     CallSiteLowering {
         callee,
         effect_args,
         effect_pairs: effect_pairs.into(),
         provider_pairs: provider_pairs.into(),
+        drops_receiver,
     }
 }
 
@@ -988,11 +993,13 @@ fn replan_call_site<'db>(
             .map_err(mapping_diag)?;
         site.effect_pairs = callee.effect_pairs.into_boxed_slice();
         site.provider_pairs = callee.provider_pairs.into_boxed_slice();
+        site.drops_receiver = callee.drops_receiver;
         site.callee = Some(SemanticCalleeRef {
             key: callee.key.with_param_spaces(db, param_spaces),
         });
     } else {
         site.callee = None;
+        site.drops_receiver = false;
     }
     Ok(())
 }

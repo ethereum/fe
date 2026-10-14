@@ -25,7 +25,7 @@ use crate::analysis::{
     ty::{
         canonical::{Canonical, Solution},
         clearable::clearable_implementor,
-        closure::closure_implementor,
+        closure::callable_implementor,
         fold::TyFoldable,
         sol_codec::sol_codec_implementor,
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_in_ingots},
@@ -152,9 +152,10 @@ pub(crate) enum TargetSolutionMatch {
 enum Clause<'db> {
     Implementor(ImplementorId<'db>),
     Assumption(usize),
-    /// The builtin implementation of the closure that is the goal's self
-    /// type (`ty::closure`), built from the goal in its own table.
-    Closure,
+    /// The builtin implementation of the callable value, a closure or a
+    /// function item, that is the goal's self type (`ty::closure`), built
+    /// from the goal in its own table.
+    Callable,
     /// The compiler's `Clearable` implementation for the goal's self type
     /// (`ty::clearable`), proved through its component types.
     Clearable,
@@ -392,8 +393,8 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         let mut clauses =
             Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
         clauses.extend(implementors.iter().copied().map(Clause::Implementor));
-        if closure_implementor(self.db, prepared.normalized_goal).is_some() {
-            clauses.push(Clause::Closure);
+        if callable_implementor(self.db, prepared.normalized_goal).is_some() {
+            clauses.push(Clause::Callable);
         }
         if clearable_implementor(self.db, prepared.normalized_goal).is_some() {
             clauses.push(Clause::Clearable);
@@ -507,8 +508,8 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 };
                 implementor
             }
-            Clause::Closure => {
-                let Some(implementor) = closure_implementor(self.db, normalized_goal) else {
+            Clause::Callable => {
+                let Some(implementor) = callable_implementor(self.db, normalized_goal) else {
                     return Ok(Transition::Reject);
                 };
                 if unify_trait_inst_with_normalized_assoc_bindings(

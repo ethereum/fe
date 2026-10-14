@@ -1,28 +1,32 @@
-//! Builtin callable-shape implementations for closure types.
+//! Builtin callable-shape implementations for closures and function items.
 //!
-//! A closure implements the core callable shape traits of its parameter
-//! modes, `Fn_<modes>` and `FnMut_<modes>` (`Fn0`/`FnMut0` without
+//! A callable value implements the core callable shape traits of its
+//! parameter modes, `Fn_<modes>` and `FnMut_<modes>` (`Fn0`/`FnMut0` without
 //! parameters, `Fn<T, U>` for `Fn(own T)`), without HIR `impl` items: `Out`
-//! is its result and `E` the effects its body uses. Its body only reads its
-//! captures, so the `FnMut` implementation is the `Fn` one. The trait solver,
-//! normalizer, method selection and callee resolution derive the
-//! relationship from here.
+//! is its result and `E` the effects a call runs, those a closure's body
+//! uses or a function's own. A closure's body only reads its captures and a
+//! function item holds nothing, so the `FnMut` implementation is the `Fn`
+//! one. The trait solver, normalizer, method selection and callee resolution
+//! derive the relationship from here.
 
 use common::indexmap::IndexMap;
 use cranelift_entity::EntityRef;
 use salsa::Update;
 
 use super::{
+    binder::Binder,
     corelib::resolve_core_trait,
+    effects::rows::RowComponent,
     trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
     ty_check::{BodyOwner, EffectParamSite, infer_body},
-    ty_def::{ClosureTy, TyId},
+    ty_def::{ClosureTy, TyBase, TyData, TyId},
 };
 use crate::{
     analysis::HirAnalysisDb,
     core::semantic::EffectRequirement,
     hir_def::{
-        Body, ClosureDef, Cond, CondId, Expr, ExprId, Func, IdentId, Partial, Stmt, StmtId, Trait,
+        Body, CallableDef, ClosureDef, Cond, CondId, Expr, ExprId, Func, IdentId, Partial, Stmt,
+        StmtId, Trait,
         params::{FuncParamMode, callable_shape_name},
         scope_graph::ScopeId,
     },
@@ -86,51 +90,135 @@ impl CallableShape {
     }
 }
 
-/// The instance of `trait_` that `closure` implements, if `trait_` is the
-/// callable shape trait of the closure's parameter modes.
-pub(crate) fn closure_shape_inst<'db>(
-    db: &'db dyn HirAnalysisDb,
-    closure: ClosureTy<'db>,
-    trait_: Trait<'db>,
-) -> Option<TraitInstId<'db>> {
-    let shape = CallableShape::of(db, trait_)?;
-    if shape.modes != closure.modes(db) {
-        return None;
-    }
-    let mut args = vec![TyId::closure(db, closure)];
-    args.extend(closure.param_tys(db));
-    let mut bindings = IndexMap::new();
-    if shape.result_is_arg() {
-        args.push(closure.ret_ty(db));
-    } else {
-        bindings.insert(out_ident(db), closure.ret_ty(db));
-    }
-    Some(TraitInstId::new(db, trait_, args, bindings))
+/// A type whose values implement the callable shape traits of their
+/// parameters' modes: a closure, or a function item. A variant constructor,
+/// an `unsafe fn` and a projection are not callable values: a variant is
+/// made rather than called, an `unsafe fn` may only be called in an `unsafe`
+/// context, and a projection grants accesses rather than returning a value.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum CallableValue<'db> {
+    Closure(ClosureTy<'db>),
+    /// A function item with its generic arguments.
+    Func(Func<'db>, &'db [TyId<'db>]),
 }
 
-/// Both callable shape instances `closure` implements, `Fn` and `FnMut`.
-pub(crate) fn closure_shape_insts<'db>(
-    db: &'db dyn HirAnalysisDb,
-    closure: ClosureTy<'db>,
-) -> impl Iterator<Item = TraitInstId<'db>> {
-    [false, true].into_iter().filter_map(move |mut_receiver| {
-        let shape = CallableShape {
-            mut_receiver,
-            modes: closure.modes(db),
+impl<'db> CallableValue<'db> {
+    pub(crate) fn of(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<Self> {
+        if let Some(closure) = ty.as_closure(db) {
+            return Some(Self::Closure(closure));
+        }
+        let (base, args) = ty.decompose_ty_app(db);
+        let TyData::TyBase(TyBase::Func(CallableDef::Func(func))) = base.data(db) else {
+            return None;
         };
-        let trait_ = shape.trait_(db, closure.def(db).body.scope())?;
-        closure_shape_inst(db, closure, trait_)
-    })
+        (!func.is_unsafe(db) && !func.is_projection(db) && !func.is_raw_place(db))
+            .then_some(Self::Func(*func, args))
+    }
+
+    fn modes(self, db: &'db dyn HirAnalysisDb) -> Vec<FuncParamMode> {
+        match self {
+            Self::Closure(closure) => closure.modes(db),
+            Self::Func(func, _) => func.params(db).map(|param| param.mode(db)).collect(),
+        }
+    }
+
+    fn param_tys(self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        match self {
+            Self::Closure(closure) => closure.param_tys(db),
+            Self::Func(func, args) => func
+                .arg_tys(db)
+                .iter()
+                .map(|ty| ty.instantiate(db, args))
+                .collect(),
+        }
+    }
+
+    fn ret_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
+        match self {
+            Self::Closure(closure) => closure.ret_ty(db),
+            Self::Func(func, args) => CallableDef::Func(func).ret_ty(db).instantiate(db, args),
+        }
+    }
+
+    fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
+        match self {
+            Self::Closure(closure) => closure.def(db).body.scope(),
+            Self::Func(func, _) => func.scope(),
+        }
+    }
+
+    /// The effects a call runs, the shape's row `E`: those a closure's body
+    /// uses, or a function's own effects.
+    pub(crate) fn effects(self, db: &'db dyn HirAnalysisDb) -> Vec<RowComponent<'db>> {
+        match self {
+            Self::Closure(closure) => closure.effects(db).clone(),
+            Self::Func(func, args) => func
+                .effective_effect_requirements(db)
+                .iter()
+                .map(|requirement| RowComponent {
+                    name: requirement.binding_name,
+                    key: Binder::bind(func.into(), requirement.key.clone()).instantiate(db, args),
+                    is_mut: requirement.is_mut,
+                    key_syntax: requirement.binding_ty,
+                })
+                .collect(),
+        }
+    }
+
+    /// The instance of `trait_` the value implements, if `trait_` is the
+    /// callable shape trait of its parameters' modes.
+    fn shape_inst(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        self_ty: TyId<'db>,
+        trait_: Trait<'db>,
+    ) -> Option<TraitInstId<'db>> {
+        let shape = CallableShape::of(db, trait_)?;
+        if shape.modes != self.modes(db) {
+            return None;
+        }
+        let mut args = vec![self_ty];
+        args.extend(self.param_tys(db));
+        let mut bindings = IndexMap::new();
+        if shape.result_is_arg() {
+            args.push(self.ret_ty(db));
+        } else {
+            bindings.insert(out_ident(db), self.ret_ty(db));
+        }
+        Some(TraitInstId::new(db, trait_, args, bindings))
+    }
 }
 
-/// The builtin implementor of `goal` when its self type is a closure that
-/// implements its trait.
-pub(crate) fn closure_implementor<'db>(
+/// Both callable shape instances a value of type `ty` implements, `Fn` and
+/// `FnMut`, if it is a callable value.
+pub(crate) fn callable_shape_insts<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let Some(value) = CallableValue::of(db, ty) else {
+        return Vec::new();
+    };
+    [false, true]
+        .into_iter()
+        .filter_map(|mut_receiver| {
+            let shape = CallableShape {
+                mut_receiver,
+                modes: value.modes(db),
+            };
+            let trait_ = shape.trait_(db, value.scope(db))?;
+            value.shape_inst(db, ty, trait_)
+        })
+        .collect()
+}
+
+/// The builtin implementor of `goal` when its self type is a callable value
+/// that implements its trait.
+pub(crate) fn callable_implementor<'db>(
     db: &'db dyn HirAnalysisDb,
     goal: TraitInstId<'db>,
 ) -> Option<ImplementorId<'db>> {
-    let closure = goal.self_ty(db).as_closure(db)?;
-    let inst = closure_shape_inst(db, closure, goal.def(db))?;
+    let self_ty = goal.self_ty(db);
+    let inst = CallableValue::of(db, self_ty)?.shape_inst(db, self_ty, goal.def(db))?;
     let types = inst
         .assoc_type_bindings(db)
         .iter()
@@ -141,21 +229,22 @@ pub(crate) fn closure_implementor<'db>(
         TraitInstId::new_simple(db, inst.def(db), inst.args(db).clone()),
         Vec::new(),
         types,
-        ImplementorOrigin::Closure,
+        ImplementorOrigin::Callable,
     ))
 }
 
-/// `Out` of the callable shape trait `trait_` for the closure `self_ty`.
-pub(crate) fn closure_out_ty<'db>(
+/// `Out` of the callable shape trait `trait_` for the callable value
+/// `self_ty`.
+pub(crate) fn callable_out_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     self_ty: TyId<'db>,
     trait_: Trait<'db>,
     name: IdentId<'db>,
 ) -> Option<TyId<'db>> {
-    let closure = self_ty.as_closure(db)?;
+    let value = CallableValue::of(db, self_ty)?;
     let shape = CallableShape::of(db, trait_)?;
-    (name == out_ident(db) && !shape.result_is_arg() && shape.modes == closure.modes(db))
-        .then(|| closure.ret_ty(db))
+    (name == out_ident(db) && !shape.result_is_arg() && shape.modes == value.modes(db))
+        .then(|| value.ret_ty(db))
 }
 
 pub(crate) fn out_ident<'db>(db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
@@ -323,6 +412,21 @@ pub(crate) fn callee_closure<'db>(
         FuncParamMode::View
     };
     Some((closure, receiver))
+}
+
+/// The function item whose function a call of `func`, a method of the
+/// callable shape trait instance `inst`, runs.
+pub(crate) fn callee_function_item<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    inst: TraitInstId<'db>,
+) -> Option<TyId<'db>> {
+    let item = inst.self_ty(db);
+    let CallableValue::Func(..) = CallableValue::of(db, item)? else {
+        return None;
+    };
+    let shape = CallableShape::of(db, inst.def(db))?;
+    (func.name(db).to_opt()?.data(db) == shape.method()).then_some(item)
 }
 
 /// `closure` as its parent's typed body has it, generic over the parent's

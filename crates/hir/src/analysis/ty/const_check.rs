@@ -247,7 +247,11 @@ impl<'db> ConstFnChecker<'db, '_> {
                     self.check_expr(*else_);
                 }
             }
-            Expr::Call(_callee, args) => {
+            Expr::Call(_, args) => {
+                // A callable value's call runs a method on the callee.
+                if let Some(callee) = self.typed_body.call_receiver(self.db, expr) {
+                    self.check_expr(callee);
+                }
                 args.iter().for_each(|arg| self.check_expr(arg.expr));
                 self.check_call_target(expr);
             }

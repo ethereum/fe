@@ -816,6 +816,15 @@ pub enum BodyDiag<'db> {
     },
 
     NotCallable(DynLazySpan<'db>, TyId<'db>),
+    /// A method call `h.f(..)` whose receiver has no method `f` but a field
+    /// `f` holding a callable value, which `(h.f)(..)` calls. `receiver` is
+    /// the receiver's name when it is one.
+    CallableFieldCalledAsMethod {
+        primary: DynLazySpan<'db>,
+        field: IdentId<'db>,
+        receiver_ty: TyId<'db>,
+        receiver: Option<IdentId<'db>>,
+    },
 
     NotAMethod {
         span: LazyMethodCallExprSpan<'db>,
@@ -1223,6 +1232,7 @@ impl<'db> BodyDiag<'db> {
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,
             Self::UnsafeFieldRequiresUnsafe { .. } => 126,
+            Self::CallableFieldCalledAsMethod { .. } => 127,
             Self::ContractFieldNotInUses { .. } => 116,
             Self::AccessChoiceNeedsProjection { .. } => 117,
             Self::ArrayRepeatRequiresCopy { .. } => 71,

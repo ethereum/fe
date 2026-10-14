@@ -16,14 +16,26 @@ a product like a tuple (`TyId::is_product`): its fields are its captures.
 
 ## Shape implementations
 
-`ty::closure` is the single home for the relationship between a closure and
-the shape traits. `CallableShape::of` recognizes a core shape trait
+`ty::closure` is the single home for the relationship between a callable
+value and the shape traits. A callable value (`CallableValue`) is a closure
+or a function item, other than an `unsafe fn`, a projection or a variant
+constructor. `CallableShape::of` recognizes a core shape trait
 (`Fn_<modes>`, `FnMut_<modes>`, `Fn0`, `Fn<T, U>`) by name. The trait solver
-adds a `Closure` clause when a goal's self type is a closure, building an
-`ImplementorOrigin::Closure` implementor from the goal in the goal's own
-table; the normalizer resolves `Out` to the closure's result; the row `E`
-expands to the closure's components (`effects::rows`); method selection adds
-both shapes' methods as candidates, `Fn`'s `call` and `FnMut`'s `call_mut`.
+adds a `Callable` clause when a goal's self type is a callable value,
+building an `ImplementorOrigin::Callable` implementor from the goal in the
+goal's own table; the normalizer resolves `Out` to the value's result; the
+row `E` expands to a closure's components or a function's own effects
+(`effects::rows`); method selection adds both shapes' methods as
+candidates, `Fn`'s `call` and `FnMut`'s `call_mut`. A goal whose self type is
+a function item with inference variables still solves: the function is
+known, and the shape determines its generic arguments.
+
+A call `f(x)` whose callee is not a function item is a value call
+(`check_value_call`): method selection restricted to the shape traits
+(`select_callable_value_method`) picks `call`, else `call_mut`, and the call
+is checked as that method's call with the callee as the receiver. The typed
+body records value calls (`TypedBody::call_receiver`), so lowering and the
+later checks treat the callee as the receiver.
 
 ## Checking
 
@@ -57,3 +69,8 @@ A shape trait's `call` on a closure resolves to the closure body's instance
 parent's arguments the closure type carries, and its effects are the
 components of `call`'s row in order, with the providers the call binds;
 `RowProviderSubst` replaces the body's provider parameters with them.
+
+On a function item, `call` resolves as a call of the function itself, with
+`call`'s row components mapped to the function's effects in order. The item
+holds nothing, so the call site drops its receiver (`drops_receiver`): an
+instance's semantic body passes the function the operands after it.

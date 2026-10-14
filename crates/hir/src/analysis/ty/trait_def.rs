@@ -237,9 +237,9 @@ pub enum ImplementorOrigin<'db> {
     Hir(ImplTrait<'db>),
     VirtualContract(Contract<'db>),
     Assumption,
-    /// A closure's implementation of its callable shape traits
-    /// (`ty::closure`).
-    Closure,
+    /// A callable value's implementation of its callable shape traits: a
+    /// closure's or a function item's (`ty::closure`).
+    Callable,
     /// The compiler's structural implementation of a marker trait
     /// (`ty::clearable`).
     Structural,
@@ -823,7 +823,7 @@ pub(crate) fn selected_assoc_const_body_template<'db>(
                 ))
             }),
         ImplementorOrigin::VirtualContract(_)
-        | ImplementorOrigin::Closure
+        | ImplementorOrigin::Callable
         | ImplementorOrigin::Structural => None,
         ImplementorOrigin::Assumption => return None,
     };
@@ -991,8 +991,8 @@ impl<'db> ImplementorId<'db> {
             ImplementorOrigin::Assumption => {
                 panic!("requested HIR impl-trait for assumption-based implementor")
             }
-            ImplementorOrigin::Closure => {
-                panic!("requested HIR impl-trait for a closure's builtin implementor")
+            ImplementorOrigin::Callable => {
+                panic!("requested HIR impl-trait for a callable value's builtin implementor")
             }
             ImplementorOrigin::Structural => {
                 panic!("requested HIR impl-trait for a structural builtin implementor")
@@ -1049,7 +1049,7 @@ impl<'db> ImplementorId<'db> {
             }
             ImplementorOrigin::VirtualContract(_)
             | ImplementorOrigin::Assumption
-            | ImplementorOrigin::Closure
+            | ImplementorOrigin::Callable
             | ImplementorOrigin::Structural => PredicateListId::empty_list(db),
         }
     }

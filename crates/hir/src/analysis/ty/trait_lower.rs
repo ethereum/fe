@@ -164,7 +164,7 @@ pub(crate) fn complete_selected_impl<'db>(
         ImplementorOrigin::Hir(impl_trait) => lower_impl_trait(db, impl_trait),
         ImplementorOrigin::VirtualContract(_)
         | ImplementorOrigin::Assumption
-        | ImplementorOrigin::Closure
+        | ImplementorOrigin::Callable
         | ImplementorOrigin::Structural => Some(selected),
     }
 }
@@ -297,7 +297,7 @@ pub(crate) fn complete_impl_trait<'db>(
             .expect("a collected impl header must remain lowerable"),
         ImplementorOrigin::VirtualContract(_)
         | ImplementorOrigin::Assumption
-        | ImplementorOrigin::Closure
+        | ImplementorOrigin::Callable
         | ImplementorOrigin::Structural => implementor,
     }
 }
@@ -706,7 +706,7 @@ pub(crate) fn collect_implementor_methods<'db>(
         super::trait_def::ImplementorOrigin::Hir(impl_trait) => impl_trait,
         super::trait_def::ImplementorOrigin::VirtualContract(_)
         | super::trait_def::ImplementorOrigin::Assumption
-        | super::trait_def::ImplementorOrigin::Closure
+        | super::trait_def::ImplementorOrigin::Callable
         | super::trait_def::ImplementorOrigin::Structural => return methods,
     };
     let scope = impl_trait.scope();

@@ -754,7 +754,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         match expr.data(self.db, self.body) {
             Partial::Present(Expr::Call(_, args)) => {
                 let args = args.iter().map(|arg| arg.expr).collect::<Vec<_>>();
-                self.lower_call_like_expr(expr, ty, None, &args)
+                let receiver = self.typed_body.call_receiver(self.db, expr);
+                self.lower_call_like_expr(expr, ty, receiver, &args)
             }
             Partial::Present(Expr::MethodCall(receiver, _, _, args)) => {
                 let args = args.iter().map(|arg| arg.expr).collect::<Vec<_>>();
@@ -1121,7 +1122,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let value = self.lower_expr_operand(*value);
                 self.lower_cast(origin, value, from, ty)
             }
-            Expr::Call(_, args) => self.lower_call(expr, None, args),
+            Expr::Call(_, args) => {
+                self.lower_call(expr, self.typed_body.call_receiver(self.db, expr), args)
+            }
             Expr::Assert(args) => self.lower_assert(expr, args),
             Expr::UnsupportedMacroCall => {
                 unreachable!("unsupported macro calls must be rejected before semantic lowering")
@@ -1650,6 +1653,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let callee = call_site
                     .callee
                     .unwrap_or_else(|| panic!("call lowering plan missing callee for {expr:?}"));
+                // A function item called through a callable shape is not
+                // passed: the function takes the operands after it.
+                if call_site.drops_receiver {
+                    values.remove(0);
+                }
                 let effect_args = self.lower_effect_arg_slice(&call_site.effect_args);
                 self.emit_expr_with_origin(
                     SemOrigin::Expr(expr),
@@ -1689,12 +1697,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             let value = self.lower_expr(expr);
             return self.take_operand(expr, value);
         }
-        // A closure literal passed to a `mut` parameter is a temporary.
+        // A closure literal or function item path passed to a `mut`
+        // parameter is a temporary.
         if mode == FuncParamMode::Mut
-            && matches!(
+            && (matches!(
                 expr.data(self.db, self.body),
                 Partial::Present(Expr::Closure { .. })
-            )
+            ) || self.typed_body.value_path_ref(expr) == Some(ValuePathRef::FunctionItem))
         {
             let local = self.hoist_temporary(expr, ty);
             return self.emit_borrow(expr, SPlace::new(local), BorrowKind::Mut, ty);

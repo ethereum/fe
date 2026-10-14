@@ -294,11 +294,12 @@ impl<'db> UnsafeChecker<'db, '_> {
         }
     }
 
-    /// Whether a method call takes its receiver by `mut`.
-    fn takes_mut_receiver(&self, expr: ExprId) -> bool {
-        self.typed_body.callable_expr(expr).is_some_and(|callable| {
-            callable.callable_def().param_mode(self.db, 0) == FuncParamMode::Mut
-        })
+    /// The receiver of the call `expr`, a method call or a call of a callable
+    /// value, if the call takes it `mut`.
+    fn mut_receiver(&self, expr: ExprId) -> Option<ExprId> {
+        let receiver = self.typed_body.call_receiver(self.db, expr)?;
+        let callable = self.typed_body.callable_expr(expr)?;
+        (callable.callable_def().param_mode(self.db, 0) == FuncParamMode::Mut).then_some(receiver)
     }
     fn report_deref(&mut self, expr: ExprId) {
         self.push_unsafe(BodyDiag::UnsafeDerefRequiresUnsafe {
@@ -438,13 +439,16 @@ impl<'db> UnsafeChecker<'db, '_> {
             }
 
             Expr::Call(callee, args) => {
+                if let Some(receiver) = self.mut_receiver(expr) {
+                    self.check_place_write(receiver);
+                }
                 self.check_expr(*callee);
                 args.iter().for_each(|arg| self.check_expr(arg.expr));
                 self.check_call(expr);
             }
             Expr::MethodCall(receiver, _, _, args) => {
-                if self.takes_mut_receiver(expr) {
-                    self.check_place_write(*receiver);
+                if let Some(receiver) = self.mut_receiver(expr) {
+                    self.check_place_write(receiver);
                 }
                 self.check_expr(*receiver);
                 args.iter().for_each(|arg| self.check_expr(arg.expr));

@@ -13,7 +13,7 @@ use rustc_hash::FxHashMap;
 use super::{
     canonical::Canonical,
     canonical::Canonicalized,
-    closure::closure_out_ty,
+    closure::callable_out_ty,
     fold::{TyFoldable, TyFolder},
     trait_def::{TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints},
     trait_lower::complete_impl_assoc_ty,
@@ -266,7 +266,7 @@ impl<'db> TypeNormalizer<'db> {
             return None;
         }
 
-        if let Some(out) = closure_out_ty(
+        if let Some(out) = callable_out_ty(
             self.db,
             self.fold_ty(self.db, assoc.trait_.self_ty(self.db)),
             assoc.trait_.def(self.db),

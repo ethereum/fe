@@ -34,7 +34,8 @@ use crate::analysis::ty::trait_resolution::constraint::{
 };
 use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty};
 use crate::hir_def::{
-    CallableDef, FieldParent, ImplTrait, Trait, params::FuncParamMode, scope_graph::ScopeId,
+    CallArg, CallableDef, FieldParent, GenericArgListId, ImplTrait, Trait, params::FuncParamMode,
+    scope_graph::ScopeId,
 };
 use crate::{
     hir_def::{
@@ -104,6 +105,7 @@ use crate::analysis::semantic::{
 };
 use crate::analysis::ty::ty_def::{ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
+    closure::{CallableShape, CallableValue},
     const_ty::{
         CallableInputOrigin, ConstTyData, ConstTyId, LoweringContext,
         invalid_cause_from_eval_failure, origin_expr_for_const_eval_diag,
@@ -1288,6 +1290,7 @@ fn typed_body_for_bodyless_func<'db>(
         implicit_moves: FxHashSet::default(),
         place_entries: FxHashSet::default(),
         unsafe_splits: FxHashSet::default(),
+        value_calls: FxHashSet::default(),
         matched_places: FxHashSet::default(),
         inspected_places: FxHashSet::default(),
         covered_providers: FxHashSet::default(),
@@ -2010,7 +2013,13 @@ impl<'db> TyChecker<'db> {
         let query = CanonicalGoalQuery::new(db, goal, assumptions);
         match is_goal_query_satisfiable(db, solve_cx, &query) {
             GoalSatisfiability::Satisfied(solution) => {
-                if goal.self_ty(db).has_var(db) {
+                // A function item's shape determines its generic arguments:
+                // the function is known, so solving does not invent it.
+                let self_ty = goal.self_ty(db);
+                if self_ty.has_var(db)
+                    && !(CallableShape::of(db, goal.def(db)).is_some()
+                        && CallableValue::of(db, self_ty).is_some())
+                {
                     let outcome = if final_pass {
                         // Don't invent the self type at the end either; leave it alone
                         TraitObligationOutcome::Discharged
@@ -2148,8 +2157,8 @@ impl<'db> TyChecker<'db> {
              pending: &env::PendingMethod<'db>,
              expr_ty: TyId<'db>,
              receiver: ExprId,
-             generic_args: crate::hir_def::GenericArgListId<'db>,
-             call_args: &[crate::hir_def::CallArg<'db>],
+             generic_args: GenericArgListId<'db>,
+             call_args: &[CallArg<'db>],
              candidate: env::PendingMethodCandidate<'db>| {
                 let snap = this.snapshot_state();
 
@@ -2239,13 +2248,7 @@ impl<'db> TyChecker<'db> {
                         }
                     }
 
-                    let method_name_span = pending
-                        .expr
-                        .span(body)
-                        .into_method_call_expr()
-                        .method_name()
-                        .into();
-                    callable.process_constraints(this, pending.expr, method_name_span);
+                    callable.process_constraints(this, pending.expr, pending.span.clone());
 
                     let ret_ty = normalize_ty(
                         db,
@@ -2281,12 +2284,10 @@ impl<'db> TyChecker<'db> {
                         }
                     }
                     env::DeferredTask::Method(pending) => {
-                        let (receiver, generic_args, call_args) = match pending.expr.data(db, body)
-                        {
-                            Partial::Present(Expr::MethodCall(receiver, _, generic_args, args)) => {
-                                (*receiver, *generic_args, args.as_slice())
-                            }
-                            _ => continue,
+                        let Some((receiver, generic_args, call_args)) =
+                            pending_call_parts(db, body, &self.env, pending.expr)
+                        else {
+                            continue;
                         };
 
                         let Some(expr_prop) = self.env.typed_expr(pending.expr) else {
@@ -2331,7 +2332,7 @@ impl<'db> TyChecker<'db> {
 
                         if let [candidate] = viable.as_slice() {
                             if self.env.callable_expr(pending.expr).is_none() {
-                                let call_span = pending.expr.span(body).into_method_call_expr();
+                                let call_span = pending.expr.span(body);
                                 let inst = candidate.inst;
 
                                 let receiver_prop = self
@@ -2371,19 +2372,27 @@ impl<'db> TyChecker<'db> {
                                     });
                                 }
 
-                                if !callable.unify_generic_args(
-                                    self,
-                                    generic_args,
-                                    call_span.clone().generic_args(),
-                                ) {
-                                    progressed = true;
-                                    continue;
-                                }
+                                // A value call `f(..)` has no explicit generic
+                                // arguments of its own.
+                                let args_span = if self.env.is_value_call(pending.expr) {
+                                    call_span.into_call_expr().args()
+                                } else {
+                                    let call_span = call_span.into_method_call_expr();
+                                    if !callable.unify_generic_args(
+                                        self,
+                                        generic_args,
+                                        call_span.clone().generic_args(),
+                                    ) {
+                                        progressed = true;
+                                        continue;
+                                    }
+                                    call_span.args()
+                                };
 
                                 callable.check_args(
                                     self,
                                     call_args,
-                                    call_span.clone().args(),
+                                    args_span,
                                     Some((receiver, receiver_prop)),
                                     true,
                                 );
@@ -2391,7 +2400,7 @@ impl<'db> TyChecker<'db> {
                                 callable.process_constraints(
                                     self,
                                     pending.expr,
-                                    call_span.method_name().into(),
+                                    pending.span.clone(),
                                 );
 
                                 let ret_ty = self.normalize_ty(callable.ret_ty(db));
@@ -2473,11 +2482,10 @@ impl<'db> TyChecker<'db> {
                         continue;
                     }
 
-                    let (receiver, generic_args, call_args) = match pending.expr.data(db, body) {
-                        Partial::Present(Expr::MethodCall(receiver, _, generic_args, args)) => {
-                            (*receiver, *generic_args, args.as_slice())
-                        }
-                        _ => continue,
+                    let Some((receiver, generic_args, call_args)) =
+                        pending_call_parts(db, body, &self.env, pending.expr)
+                    else {
+                        continue;
                     };
 
                     let viable: Vec<_> = pending
@@ -2985,8 +2993,9 @@ impl<'db> TyChecker<'db> {
                 self.expr_has_authority(*receiver)
                     || args.iter().any(|arg| self.expr_has_authority(arg.expr))
             }
-            Partial::Present(Expr::Call(_, args)) => {
-                args.iter().any(|arg| self.expr_has_authority(arg.expr))
+            Partial::Present(Expr::Call(callee, args)) => {
+                (self.env.is_value_call(expr) && self.expr_has_authority(*callee))
+                    || args.iter().any(|arg| self.expr_has_authority(arg.expr))
             }
             _ => false,
         }
@@ -3888,6 +3897,9 @@ mod typed_body_tables {
         /// The tuples that are unsafe splits: an `unsafe` block's tail tuple
         /// of accesses, granted by one session.
         pub(super) unsafe_splits: FxHashSet<ExprId>,
+        /// The calls `f(..)` of callable values: the callee is the receiver
+        /// of a callable shape trait's method.
+        pub(super) value_calls: FxHashSet<ExprId>,
         /// The places a pattern is matched against, which bind each
         /// component where it lies.
         pub(super) matched_places: FxHashSet<ExprId>,
@@ -3982,9 +3994,37 @@ fn func_return_provenance_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
-fn call_like_expr_args(expr: &Expr<'_>) -> Option<Vec<ExprId>> {
+/// The receiver, explicit generic arguments and arguments of the deferred
+/// method call `expr`: a method call, or a call `f(..)` of a callable value,
+/// whose callee is the receiver.
+fn pending_call_parts<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+    env: &TyCheckEnv<'db>,
+    expr: ExprId,
+) -> Option<(ExprId, GenericArgListId<'db>, &'db [CallArg<'db>])> {
+    match expr.data(db, body) {
+        Partial::Present(Expr::MethodCall(receiver, _, generic_args, args)) => {
+            Some((*receiver, *generic_args, args.as_slice()))
+        }
+        Partial::Present(Expr::Call(callee, args)) if env.is_value_call(expr) => {
+            Some((*callee, GenericArgListId::none(db), args.as_slice()))
+        }
+        _ => None,
+    }
+}
+
+/// The operands of a call-like expression in parameter order: a receiver,
+/// including a value call's callee (`value_call`), first.
+fn call_like_expr_args(expr: &Expr<'_>, value_call: bool) -> Option<Vec<ExprId>> {
     match expr {
-        Expr::Call(_, args) => Some(args.iter().map(|arg| arg.expr).collect()),
+        Expr::Call(callee, args) => Some(
+            value_call
+                .then_some(*callee)
+                .into_iter()
+                .chain(args.iter().map(|arg| arg.expr))
+                .collect(),
+        ),
         Expr::MethodCall(receiver, _, _, args) => {
             let mut call_args = Vec::with_capacity(args.len() + 1);
             call_args.push(*receiver);
@@ -4572,6 +4612,19 @@ impl<'db> TypedBody<'db> {
         self.tables.unsafe_splits.contains(&expr)
     }
 
+    /// The receiver of the call `expr`: a method call's receiver, or the
+    /// callee of a call `f(..)` of a callable value, which runs a callable
+    /// shape trait's method on it.
+    pub fn call_receiver(&self, db: &'db dyn HirAnalysisDb, expr: ExprId) -> Option<ExprId> {
+        match expr.data(db, self.body()?) {
+            Partial::Present(Expr::MethodCall(receiver, ..)) => Some(*receiver),
+            Partial::Present(Expr::Call(callee, _)) if self.tables.value_calls.contains(&expr) => {
+                Some(*callee)
+            }
+            _ => None,
+        }
+    }
+
     /// Whether the function's own authority covers the resources the `with`
     /// value `expr` names: its place lies in an effect provider, or a
     /// provider in scope holds each static slot handle it holds.
@@ -4942,7 +4995,7 @@ impl<'db> TypedBody<'db> {
         };
 
         if let Some(SemanticExprLowering::Call { callable }) = self.semantic_expr_lowering(expr) {
-            let args = call_like_expr_args(expr_data)?;
+            let args = call_like_expr_args(expr_data, self.tables.value_calls.contains(&expr))?;
             if let CallableDef::VariantCtor(variant) = callable.callable_def() {
                 let mut sources = Vec::new();
                 for (field, arg) in args.into_iter().enumerate() {
@@ -5926,6 +5979,7 @@ impl<'db> TypedBody<'db> {
             implicit_moves: FxHashSet::default(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
+            value_calls: FxHashSet::default(),
             matched_places: FxHashSet::default(),
             inspected_places: FxHashSet::default(),
             covered_providers: FxHashSet::default(),

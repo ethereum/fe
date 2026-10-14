@@ -10,7 +10,7 @@ use crate::{
         ty::{
             assoc_const::{AssocConstUse, InherentConstUse},
             binder::Binder,
-            closure::{callee_closure, closure_template_ty},
+            closure::{callee_closure, callee_function_item, closure_template_ty},
             const_ty::{
                 ConstCanonEnv, ConstCanonMode, canonicalize_ty_for_mode,
                 inherent_const_body_and_impl_args, inherent_const_decl_ty,
@@ -45,6 +45,7 @@ use crate::{
         CallableDef, Const, Func, GenericParamOwner, HirIngot, IdentId, params::FuncParamMode,
         scope_graph::ScopeId,
     },
+    span::DynLazySpan,
 };
 use common::indexmap::IndexSet;
 use rustc_hash::FxHashMap;
@@ -315,6 +316,10 @@ pub(crate) struct SemanticCallCallee<'db> {
     pub concrete_dispatch: bool,
     pub effect_pairs: Vec<(usize, usize)>,
     pub provider_pairs: Vec<(u32, u32)>,
+    /// Whether the callee takes the call's operands after its receiver: a
+    /// callable shape's method called on a function item runs the function,
+    /// and the item holds nothing.
+    pub drops_receiver: bool,
 }
 
 pub(crate) fn semantic_callee_key_with_effect_providers<'db>(
@@ -566,6 +571,144 @@ fn semantic_callee_key_with_assumptions<'db>(
             concrete_dispatch: true,
             effect_pairs,
             provider_pairs,
+            drops_receiver: false,
+        }));
+    }
+    // A callable shape's method called on a function item runs the function,
+    // with the call's operands after the receiver. The components of `call`'s
+    // row are the function's effects, in order.
+    if let Some(inst) = callable.trait_inst()
+        && let Some(item) = callee_function_item(
+            db,
+            nominal_func,
+            normalize_ty(db, inst, impl_env.normalization_scope(db), assumptions),
+        )
+    {
+        let target = Callable::new(db, item, DynLazySpan::invalid(), None)
+            .expect("a function item is callable");
+        let CallableDef::Func(func) = target.callable_def() else {
+            unreachable!("a callable function item is a function")
+        };
+        let owner = BodyOwner::Func(func);
+        let (_, rows) = instantiated_effects(
+            db,
+            nominal_func,
+            callable.generic_args(),
+            impl_env.normalization_scope(db),
+            assumptions,
+        );
+        let func_rows = row_expansion_for_key(
+            db,
+            SemanticInstanceKey::new(
+                db,
+                owner,
+                GenericSubst::for_owner(db, func.into(), target.generic_args().to_vec()),
+                EffectProviderSubst::empty(db),
+                ImplEnv::empty(db, owner.scope()),
+            ),
+        );
+        // Each component's index in the call and among the function's
+        // effects.
+        let pairs: Vec<(usize, usize)> = rows
+            .components
+            .iter()
+            .filter_map(|component| {
+                let (&entry, steps) = component.path.steps.split_first()?;
+                let effect = if steps.is_empty() {
+                    entry
+                } else {
+                    func_rows
+                        .component(&RowPath {
+                            entry,
+                            steps: steps.to_vec(),
+                        })?
+                        .requirement
+                        .binding_idx
+                };
+                Some((component.requirement.binding_idx as usize, effect as usize))
+            })
+            .collect();
+        let effect_of = |nominal: usize| {
+            pairs
+                .iter()
+                .find(|(index, _)| *index == nominal)
+                .map(|&(_, effect)| effect)
+        };
+        let provider_of = |effect: usize| {
+            EffectEnvView::new(EffectParamSite::Func(func))
+                .resolved_binding(db, effect)
+                .map(|binding| binding.provider.provider_idx)
+        };
+        let target_effect_args = effect_args
+            .iter()
+            .map(|arg| {
+                let effect = effect_of(arg.binding_idx as usize).ok_or(
+                    MethodArgMapError::MissingEffectRole(arg.binding_idx as usize),
+                )?;
+                let mut arg = arg.clone();
+                arg.binding_idx = effect as u32;
+                arg.param_idx = effect;
+                Ok(arg)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let target_providers: Vec<_> = effect_providers
+            .iter()
+            .filter_map(|specialization| {
+                let provider_idx =
+                    provider_of(effect_of(specialization.provider.provider_idx as usize)?)?;
+                let mut specialization = specialization.clone();
+                specialization.provider.provider_idx = provider_idx;
+                Some(specialization)
+            })
+            .collect();
+        let Some(callee) = semantic_callee_key_with_assumptions(
+            db,
+            caller,
+            impl_env,
+            &target,
+            &target_effect_args,
+            &target_providers,
+            assumptions,
+            provider_resolution_mode,
+        )?
+        else {
+            return Ok(None);
+        };
+        // The function's effects and providers lie where its own call puts
+        // them.
+        let body_effect = |effect: usize| {
+            if callee.effect_pairs.is_empty() {
+                Some(effect)
+            } else {
+                callee
+                    .effect_pairs
+                    .iter()
+                    .find(|(index, _)| *index == effect)
+                    .map(|&(_, body)| body)
+            }
+        };
+        let body_provider = |provider: u32| {
+            callee
+                .provider_pairs
+                .iter()
+                .find(|(index, _)| *index == provider)
+                .map_or(provider, |&(_, body)| body)
+        };
+        let effect_pairs = pairs
+            .iter()
+            .filter_map(|&(nominal, effect)| Some((nominal, body_effect(effect)?)))
+            .collect();
+        let provider_pairs = pairs
+            .iter()
+            .filter_map(|&(nominal, effect)| {
+                Some((nominal as u32, body_provider(provider_of(effect)?)))
+            })
+            .collect();
+        return Ok(Some(SemanticCallCallee {
+            effect_pairs,
+            provider_pairs,
+            drops_receiver: true,
+            ..callee
         }));
     }
     let mut selected_trait_method: Option<(ResolvedImplInstance<'db>, TraitInstId<'db>)> = None;
@@ -957,6 +1100,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         ),
         effect_pairs,
         provider_pairs,
+        drops_receiver: false,
     }))
 }
 
