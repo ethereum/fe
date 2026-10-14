@@ -11,7 +11,7 @@ error[6-0003]: trait bound is not satisfied
    │             ---------------- required by this bound on `apply`
    ·
 62 │     apply(raw, 1)
-   │     ^^^^^ `fn raw` doesn't implement `Fn_v<u256, Out = u256>`
+   │     ^^^^^ `fn raw` doesn't implement `Fn(u256) -> u256`
 
 error[6-0003]: trait bound is not satisfied
    ┌─ callable_values.fe:66:5
@@ -20,7 +20,7 @@ error[6-0003]: trait bound is not satisfied
    │             ---------------- required by this bound on `apply`
    ·
 66 │     apply(first, 1)
-   │     ^^^^^ `fn first` doesn't implement `Fn_v<u256, Out = u256>`
+   │     ^^^^^ `fn first` doesn't implement `Fn(u256) -> u256`
 
 error[6-0003]: trait bound is not satisfied
    ┌─ callable_values.fe:70:5
@@ -29,7 +29,7 @@ error[6-0003]: trait bound is not satisfied
    │             ---------------- required by this bound on `apply`
    ·
 70 │     apply(two, 1)
-   │     ^^^^^ `fn two` doesn't implement `Fn_v<u256, Out = u256>`
+   │     ^^^^^ `fn two` doesn't implement `Fn(u256) -> u256`
 
 error[8-0021]: expected function, found `u256`
    ┌─ callable_values.fe:36:5
