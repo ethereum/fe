@@ -5103,6 +5103,13 @@ impl<'db> RmirEmitter<'db> {
                 }
             },
         };
+        let root_ty = self
+            .semantic_body
+            .normalized
+            .place_prefix_ty(self.db, place, 0)?;
+        if let Some(pinned) = self.pinned_place(bb, &runtime_place, root_ty) {
+            runtime_place = pinned;
+        }
         let mut current = self.project_place_class(&runtime_place);
         let mut projected = runtime_place.path.into_vec();
         for (idx, elem) in place.path.iter().enumerate() {
@@ -5154,6 +5161,23 @@ impl<'db> RmirEmitter<'db> {
                     current = self.project_place_class(&runtime_place);
                 }
             }
+            if let Some(ty) = self
+                .semantic_body
+                .normalized
+                .place_prefix_ty(self.db, place, idx + 1)
+                && self
+                    .semantic_body
+                    .owner()
+                    .state_index_space(self.db, ty)
+                    .is_some()
+            {
+                runtime_place.path = std::mem::take(&mut projected).into_boxed_slice();
+                if let Some(pinned) = self.pinned_place(bb, &runtime_place, ty) {
+                    runtime_place = pinned;
+                    current = self.project_place_class(&runtime_place);
+                }
+                projected = std::mem::take(&mut runtime_place.path).into_vec();
+            }
             if idx + 1 < place.path.len()
                 && let Some(target) = current.deref_target(self.db)
             {
@@ -5163,6 +5187,30 @@ impl<'db> RmirEmitter<'db> {
         }
         runtime_place.path = projected.into_boxed_slice();
         Some(runtime_place)
+    }
+
+    /// `place`, of type `ty`, rooted in the space `ty` is pinned to when it
+    /// lies in another: a place of a pinned type lies in the pin's space at
+    /// the same number, so a `TSlot` field of a storage struct is transient.
+    /// `None` when `ty` is unpinned or the place already lies there.
+    fn pinned_place(
+        &mut self,
+        bb: RBlockId,
+        place: &RuntimePlace<'db>,
+        ty: TyId<'db>,
+    ) -> Option<RuntimePlace<'db>> {
+        let space = self.semantic_body.owner().state_index_space(self.db, ty)?;
+        let addr_class = self.place_addr_class(place);
+        if addr_class.address_space() == Some(space) {
+            return None;
+        }
+        let addr = self.lower_place_addr_of_for_class(ty, bb, place.clone(), addr_class);
+        let slot = self.coerce_value(bb, addr, &word_class());
+        let class = provider_class_for_target_in_env(self.db, self.env, Some(ty), space);
+        Some(RuntimePlace {
+            root: PlaceRoot::Ref(self.coerce_value(bb, slot, &class)),
+            path: Box::default(),
+        })
     }
 
     /// The element at `key` of the collection at `collection`, of type

@@ -947,54 +947,88 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
         carriers: &[RuntimeCarrier<'db>],
         place: &NPlace<'db>,
     ) -> Option<PlaceReference<'db>> {
-        if let Some(entry) = self.place_entry_root(place) {
-            let EntryRoot {
-                element_ty,
-                space,
-                lane,
-                path,
-            } = entry?;
-            let root = || {
-                Some(stored_class_for_ty_in_env(
-                    self.db,
-                    self.type_env(),
+        let (root_ty, mut root_class, mut root_space, mut force_raw, mut lane, mut path) =
+            if let Some(entry) = self.place_entry_root(place) {
+                let EntryRoot {
                     element_ty,
-                ))
-            };
-            return Some(PlaceReference {
-                root_class: provider_class_for_target_in_env(
-                    self.db,
-                    self.type_env(),
-                    Some(element_ty),
                     space,
-                ),
-                root_space: space,
-                force_raw: false,
-                lane: lane || self.place_is_lane(root, &path, space)?,
-            });
-        }
-        let root_class =
-            normalized_place_root_transport_class_in_context(self, place.base, carriers)?;
-        let (root_space, force_raw) = match place.base {
-            NPlaceBase::CapabilityTarget { .. } | NPlaceBase::Deref { .. } => (
-                root_class.address_space().unwrap_or(AddressSpace::Memory),
-                matches!(&root_class, RuntimeClass::RawAddr { .. }),
-            ),
-            NPlaceBase::Root(root) => match &self.body.normalized.root(root)?.kind {
-                NRootKind::LocalSlot { .. }
-                | NRootKind::Temporary { .. }
-                | NRootKind::ParamPlace { .. } => (AddressSpace::Memory, false),
-                NRootKind::Provider { binding } => {
-                    (provider_root_space(binding, &root_class), false)
+                    lane,
+                    path,
+                } = entry?;
+                (
+                    Some(element_ty),
+                    provider_class_for_target_in_env(
+                        self.db,
+                        self.type_env(),
+                        Some(element_ty),
+                        space,
+                    ),
+                    space,
+                    false,
+                    lane,
+                    path,
+                )
+            } else {
+                let root_class =
+                    normalized_place_root_transport_class_in_context(self, place.base, carriers)?;
+                let (root_space, force_raw) = match place.base {
+                    NPlaceBase::CapabilityTarget { .. } | NPlaceBase::Deref { .. } => (
+                        root_class.address_space().unwrap_or(AddressSpace::Memory),
+                        matches!(&root_class, RuntimeClass::RawAddr { .. }),
+                    ),
+                    NPlaceBase::Root(root) => match &self.body.normalized.root(root)?.kind {
+                        NRootKind::LocalSlot { .. }
+                        | NRootKind::Temporary { .. }
+                        | NRootKind::ParamPlace { .. } => (AddressSpace::Memory, false),
+                        NRootKind::Provider { binding } => {
+                            (provider_root_space(binding, &root_class), false)
+                        }
+                        NRootKind::CapabilityRepresentation { .. } => (
+                            root_class.address_space().unwrap_or(AddressSpace::Memory),
+                            matches!(&root_class, RuntimeClass::RawAddr { .. }),
+                        ),
+                    },
+                };
+                (
+                    None,
+                    root_class,
+                    root_space,
+                    force_raw,
+                    false,
+                    place.path.clone(),
+                )
+            };
+        // A place of a type pinned to another space lies in the pin's space
+        // at the same number, as a `TSlot` field of a storage struct is
+        // transient: the innermost such step roots it, as lowering does.
+        let from = place.path.len() - path.len();
+        let mut space = root_space;
+        let mut pinned = None;
+        for steps in from..=place.path.len() {
+            let Some(ty) = self.body.normalized.place_prefix_ty(self.db, place, steps) else {
+                break;
+            };
+            if let Some(pin) = self.body.owner().state_index_space(self.db, ty) {
+                if pin != space {
+                    pinned = Some((steps, ty, pin));
                 }
-                NRootKind::CapabilityRepresentation { .. } => (
-                    root_class.address_space().unwrap_or(AddressSpace::Memory),
-                    matches!(&root_class, RuntimeClass::RawAddr { .. }),
-                ),
-            },
+                space = pin;
+            }
+        }
+        let root_ty = if let Some((steps, ty, pin)) = pinned {
+            root_class = provider_class_for_target_in_env(self.db, self.type_env(), Some(ty), pin);
+            root_space = pin;
+            force_raw = false;
+            path = NDataPath::new(&place.path.as_slice()[steps..]);
+            Some(ty)
+        } else {
+            root_ty
         };
-        let root = || normalized_place_root_class_in_context(self, place.base, carriers);
-        let lane = self.place_is_lane(root, &place.path, root_space)?;
+        let root = || match root_ty {
+            Some(ty) => Some(stored_class_for_ty_in_env(self.db, self.type_env(), ty)),
+            None => normalized_place_root_class_in_context(self, place.base, carriers),
+        };
+        lane |= self.place_is_lane(root, &path, root_space)?;
         Some(PlaceReference {
             root_class,
             root_space,
