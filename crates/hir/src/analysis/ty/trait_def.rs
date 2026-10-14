@@ -9,7 +9,10 @@ use crate::{
         },
         trait_resolution::{GoalSatisfiability, PredicateListId, Selection},
     },
-    hir_def::{Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, Trait},
+    hir_def::{
+        Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, Trait,
+        params::FuncParamMode,
+    },
 };
 use common::{
     indexmap::{IndexMap, IndexSet},
@@ -20,6 +23,7 @@ use salsa::Update;
 
 use super::{
     canonical::Canonical,
+    closure::CallableShape,
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
     trait_lower::collect_implementor_methods,
@@ -1286,6 +1290,39 @@ impl<'db> TraitInstId<'db> {
             let inst = self.pretty_print(db, false);
             let self_ty = self.self_ty(db);
             format!("{}: {}", self_ty.pretty_print(db), inst)
+        } else if let Some(shape) = CallableShape::of(db, self.def(db)) {
+            // A callable shape prints as the sugar that names it,
+            // `Fn(own A, B) -> R`; `-> _` when the result is left open.
+            let args = &self.args(db)[1..];
+            let (params, ret) = match args.split_last() {
+                Some((ret, params)) if shape.result_is_arg() => (params, Some(*ret)),
+                _ => (
+                    args,
+                    self.assoc_type_bindings(db)
+                        .get(&IdentId::new(db, "Out".to_string()))
+                        .copied(),
+                ),
+            };
+            let params: Vec<_> = shape
+                .modes
+                .iter()
+                .zip(params)
+                .map(|(mode, ty)| {
+                    let ty = ty.pretty_print(db);
+                    match mode {
+                        FuncParamMode::Own => format!("own {ty}"),
+                        FuncParamMode::Mut => format!("mut {ty}"),
+                        FuncParamMode::View => ty.clone(),
+                    }
+                })
+                .collect();
+            let name = if shape.mut_receiver { "FnMut" } else { "Fn" };
+            let ret = match ret {
+                Some(ret) if ret == TyId::unit(db) => String::new(),
+                Some(ret) => format!(" -> {}", ret.pretty_print(db)),
+                None => " -> _".to_string(),
+            };
+            format!("{name}({}){ret}", params.join(", "))
         } else {
             let mut s = self
                 .def(db)

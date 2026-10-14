@@ -8,7 +8,7 @@ error[6-0003]: trait bound is not satisfied
    ┌─ closures.fe:52:8
    │
 52 │     xs.fold(0, |acc: mut, x| acc)
-   │        ^^^^ `|mut u256, u256| -> u256` doesn't implement `FnMut_ov<u256, u256, Out = u256>`
+   │        ^^^^ `|mut u256, u256| -> u256` doesn't implement `FnMut(own u256, u256) -> u256`
    │
    ┌─ src/iter.fe:62:19
    │
