@@ -47,9 +47,9 @@ use crate::{
         project_field_class, project_index_class, project_variant_field_class, runtime_place_lane,
     },
     runtime::{
-        ConstRegionId, ConstScalar, IntrinsicArithBinOp, LayoutId, PlaceElem, PlaceRoot, RBlock,
-        RBlockId, RExpr, RLocal, RLocalId, RStmt, RTerminator, RefKind, RefView, RuntimeBody,
-        RuntimeCarrier, RuntimeClass, RuntimeCodeRegion, RuntimeExitBehavior,
+        ConstRegionId, ConstScalar, IntrinsicArithBinOp, Layout, LayoutId, PlaceElem, PlaceRoot,
+        RBlock, RBlockId, RExpr, RLocal, RLocalId, RStmt, RTerminator, RefKind, RefView,
+        RuntimeBody, RuntimeCarrier, RuntimeClass, RuntimeCodeRegion, RuntimeExitBehavior,
         RuntimeInterfaceSignature, RuntimeLocalRoot, RuntimePlace, RuntimeProviderBinding,
         RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole, VariantId,
         code_region::runtime_code_region_for_semantic_ref,
@@ -2179,14 +2179,14 @@ impl<'db> RmirEmitter<'db> {
         }
     }
 
-    fn lower_enum_make(
-        &mut self,
-        bb: RBlockId,
-        dst: RLocalId,
+    /// The field types of `variant` of `enum_ty`, a constructor of `arity`
+    /// fields.
+    fn enum_variant_field_tys(
+        &self,
         enum_ty: TyId<'db>,
         variant: VariantIndex,
-        fields: &[NOperand],
-    ) {
+        arity: usize,
+    ) -> Vec<TyId<'db>> {
         let enum_ = enum_ty
             .as_enum(self.db)
             .unwrap_or_else(|| panic!("enum construction reached non-enum type"));
@@ -2201,10 +2201,22 @@ impl<'db> RmirEmitter<'db> {
             .collect::<Vec<_>>();
         assert_eq!(
             field_tys.len(),
-            fields.len(),
+            arity,
             "enum constructor arity mismatch for {}::{variant:?}",
             enum_ty.pretty_print(self.db),
         );
+        field_tys
+    }
+
+    fn lower_enum_make(
+        &mut self,
+        bb: RBlockId,
+        dst: RLocalId,
+        enum_ty: TyId<'db>,
+        variant: VariantIndex,
+        fields: &[NOperand],
+    ) {
+        let field_tys = self.enum_variant_field_tys(enum_ty, variant, fields.len());
         let mut field_values = Vec::with_capacity(fields.len());
         let mut field_classes = Vec::with_capacity(fields.len());
         for (field, field_ty) in fields.iter().copied().zip(field_tys.iter().copied()) {
@@ -4574,46 +4586,81 @@ impl<'db> RmirEmitter<'db> {
         let ret = self.signature.ret.clone();
         RTerminator::Return(ret.and_then(|class| {
             value.map(|value| {
-                self.lower_enum_make_for_class(bb, value, &class)
+                self.lower_built_for_class(bb, value, &class)
                     .unwrap_or_else(|| self.lower_semantic_operand_for_class(bb, value, &class))
             })
         }))
     }
 
-    /// `operand`, built as an enum variant here, built again as `class`. The
-    /// value has no payload in the other variants, which `class` may give
-    /// other fields: the join of the values a body returns takes each
-    /// variant's fields from the values built as it.
-    fn lower_enum_make_for_class(
+    /// `operand`, built here as an enum variant or a struct or tuple, built
+    /// again as `class`. An enum value has no payload in its other variants,
+    /// which `class` may give other fields: the join of the values a body
+    /// returns takes each variant's fields from the values built as it,
+    /// wherever the enum lies in the value.
+    fn lower_built_for_class(
         &mut self,
         bb: RBlockId,
         operand: NOperand,
         class: &RuntimeClass<'db>,
     ) -> Option<RLocalId> {
-        let (
-            _,
-            NExpr::EnumMake {
-                enum_ty,
-                variant,
-                fields,
-            },
-        ) = self.semantic_body.normalized.defining_expr(operand.value)?
-        else {
+        let RuntimeClass::AggregateValue { layout } = class else {
             return None;
         };
-        let (enum_ty, variant, fields) = (*enum_ty, *variant, fields.clone());
-        let RuntimeClass::AggregateValue { .. } = class else {
-            return None;
+        let (_, expr) = self.semantic_body.normalized.defining_expr(operand.value)?;
+        let (variant, field_tys, fields, classes) = match (expr, layout.data(self.db)) {
+            (
+                NExpr::EnumMake {
+                    enum_ty,
+                    variant,
+                    fields,
+                },
+                Layout::Enum(data),
+            ) if data.variants[variant.0 as usize].fields.len() == fields.len() => (
+                Some(*variant),
+                self.enum_variant_field_tys(*enum_ty, *variant, fields.len()),
+                fields.clone(),
+                data.variants[variant.0 as usize].fields.clone(),
+            ),
+            (NExpr::AggregateMake { ty, fields }, Layout::Struct(data))
+                if !ty.is_array(self.db) && data.fields.len() == fields.len() =>
+            {
+                (
+                    None,
+                    self.aggregate_field_tys(*ty, fields.len()),
+                    fields.clone(),
+                    data.fields.clone(),
+                )
+            }
+            _ => return None,
         };
         let value = self.read_semantic_operand(bb, operand);
         if self.value_class(value) == Some(class) {
             return Some(value);
         }
+        let values = fields
+            .iter()
+            .zip(field_tys)
+            .zip(classes.iter())
+            .map(|((&field, field_ty), class)| {
+                let built = if self.class_is_runtime_zst(class) {
+                    None
+                } else {
+                    self.lower_built_for_class(bb, field, class)
+                };
+                built.unwrap_or_else(|| self.lower_ctor_field(bb, field, field_ty).0)
+            })
+            .collect::<Vec<_>>();
         let dst = self.alloc_runtime_temp(
             self.locals[value.index()].semantic_ty,
             RuntimeCarrier::Value(class.clone()),
         );
-        self.lower_enum_make(bb, dst, enum_ty, variant, &fields);
+        match variant {
+            Some(variant) => self.lower_enum_values(bb, dst, *layout, variant, &values),
+            None => {
+                let elems = aggregate_ctor_elems_for_layout(self.db, *layout, values.len());
+                self.lower_aggregate_values(bb, dst, *layout, &elems, &values);
+            }
+        }
         Some(dst)
     }
 
