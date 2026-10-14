@@ -594,7 +594,7 @@ note:
 75 │   pub fn with_logger<R, L: Logger, F: Fn<(), R>>(logger: own L, _ func: F) -> R uses F::E {
    │ ╭─────────────────────────────────────────────────────────────────────────────────────────^
 76 │ │     with (Logger = logger) {
-77 │ │         func.call(())
+77 │ │         func(())
 78 │ │     }
 79 │ │ }
    │ ╰─^ R
@@ -603,7 +603,7 @@ note:
    ┌─ core_hkt_effects.fe:76:5
    │
 76 │ ╭     with (Logger = logger) {
-77 │ │         func.call(())
+77 │ │         func(())
 78 │ │     }
    │ ╰─────^ R
 
@@ -618,27 +618,27 @@ note:
    │
 76 │       with (Logger = logger) {
    │ ╭────────────────────────────^
-77 │ │         func.call(())
+77 │ │         func(())
 78 │ │     }
    │ ╰─────^ R
 
 note:
    ┌─ core_hkt_effects.fe:77:9
    │
-77 │         func.call(())
+77 │         func(())
    │         ^^^^ F
 
 note:
    ┌─ core_hkt_effects.fe:77:9
    │
-77 │         func.call(())
-   │         ^^^^^^^^^^^^^ R
+77 │         func(())
+   │         ^^^^^^^^ R
 
 note:
-   ┌─ core_hkt_effects.fe:77:19
+   ┌─ core_hkt_effects.fe:77:14
    │
-77 │         func.call(())
-   │                   ^^ ()
+77 │         func(())
+   │              ^^ ()
 
 note:
    ┌─ core_hkt_effects.fe:83:1

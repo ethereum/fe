@@ -4172,6 +4172,32 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         ), primary.resolve(db), error_code)
             }
 
+            Self::CallableFieldCalledAsMethod {
+                primary,
+                field,
+                receiver_ty,
+                receiver,
+            } => {
+                let field = field.data(db);
+                let receiver = receiver.map_or("…".to_string(), |name| name.data(db).to_string());
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!(
+                        "no method named `{field}` found for `{}`",
+                        receiver_ty.pretty_print(db)
+                    ),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{field}` is a field holding a callable value"),
+                        span: primary.resolve(db),
+                    }],
+                    notes: vec![format!(
+                        "to call the field's value, parenthesize the field: `({receiver}.{field})(..)`"
+                    )],
+                    error_code,
+                }
+            }
+
             Self::CallGenericArgNumMismatch {
                 primary,
                 def_span,

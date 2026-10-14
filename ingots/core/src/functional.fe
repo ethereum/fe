@@ -21,9 +21,11 @@ pub trait Fn<T, U> {
 // for `Fn`, `mut self` for `FnMut`) and each parameter's mode are part of
 // the trait, since modes are not types, and the result is the associated
 // `Out`, which the callable determines. `Fn(own T) -> U` is `Fn<T, U>`.
-// `Fn` shapes are called with `call`, `FnMut` shapes with `call_mut`: method
-// resolution never depends on a receiver's mode. Each shape's `uses E` is the
-// row a closure fills with the effects it uses. Shapes have at most three
+// A call `f(x)` of a callable value runs its `Fn` shape's `call`, or its
+// `FnMut` shape's `call_mut`: method resolution never depends on a
+// receiver's mode. Closures and function items implement the shapes of their
+// parameters' modes. Each shape's `uses E` is the row of effects a call runs:
+// those a closure's body uses, or a function's own. Shapes have at most three
 // parameters.
 
 /// `Fn() -> Out`

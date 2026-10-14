@@ -13,7 +13,8 @@ use common::indexmap::IndexMap;
 use salsa::Update;
 
 use super::{
-    BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker, env::ClosureExpectation,
+    BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker, ValuePathRef,
+    env::ClosureExpectation,
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -658,12 +659,14 @@ impl<'db> Callable<'db> {
                     }
                 }
                 // A closure literal is a temporary its callee may mutate:
-                // its captures are its own, read-only.
+                // its captures are its own, read-only. A function item named
+                // by its path is a temporary that holds nothing.
                 FuncParamMode::Mut
                     if matches!(
                         given.expr.data(db, tc.body()),
                         Partial::Present(Expr::Closure { .. })
-                    ) => {}
+                    ) || tc.env.value_path_ref(given.expr)
+                        == Some(ValuePathRef::FunctionItem) => {}
                 FuncParamMode::Mut => {
                     diagnosed = true;
                     if access.is_some() {

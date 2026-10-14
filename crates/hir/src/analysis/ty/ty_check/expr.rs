@@ -87,8 +87,8 @@ use crate::analysis::{
         diagnostics::PathResDiag,
         is_scope_visible_from,
         method_selection::{
-            MethodCandidate, MethodSelectionError, select_method_candidate,
-            select_trait_method_candidates,
+            AmbiguousTraitMethods, MethodCandidate, MethodSelectionError,
+            select_callable_value_method, select_method_candidate, select_trait_method_candidates,
         },
         resolve_name_res_with_minter, resolve_query,
     },
@@ -1676,6 +1676,10 @@ impl<'db> TyChecker<'db> {
         ) && let Some(existing) = self.env.callable_expr(*callee)
         {
             existing.clone()
+        } else if !callee_prop.ty.base_ty(self.db).is_ty_var(self.db)
+            && !callee_prop.ty.is_func(self.db)
+        {
+            return self.check_value_call(expr, *callee, callee_prop, args);
         } else {
             match Callable::new(
                 self.db,
@@ -1713,6 +1717,194 @@ impl<'db> TyChecker<'db> {
 
         callable.process_constraints(self, expr, call_span.callee().into());
         self.finish_call(expr, callable)
+    }
+
+    /// Checks a call `f(..)` of a callable value as the call `f.call(..)` of
+    /// the callable shape trait it implements, or `f.call_mut(..)` of an
+    /// `FnMut` shape: the callee is the method's receiver.
+    fn check_value_call(
+        &mut self,
+        expr: ExprId,
+        callee: ExprId,
+        callee_prop: ExprProp<'db>,
+        args: &[HirCallArg<'db>],
+    ) -> ExprProp<'db> {
+        let call_span = expr.span(self.body()).into_call_expr();
+        let callee_span: DynLazySpan<'db> = callee.span(self.body()).into();
+        let callee_ty = callee_prop.ty;
+        let canonical = Canonicalized::new(self.db, callee_ty);
+        let candidate = match select_callable_value_method(
+            self.db,
+            &canonical,
+            self.env.scope(),
+            self.env.assumptions(),
+        ) {
+            Ok(candidate) => candidate,
+            Err(MethodSelectionError::AmbiguousTraitMethod(ambiguous)) => {
+                self.env.record_value_call(expr);
+                return self.defer_method_call(
+                    expr,
+                    callee_ty,
+                    &canonical,
+                    ambiguous,
+                    args,
+                    callee_span,
+                );
+            }
+            Err(MethodSelectionError::ReceiverTypeMustBeKnown) => {
+                self.push_diag(BodyDiag::TypeMustBeKnown(callee_span));
+                return ExprProp::invalid(self.db);
+            }
+            Err(_) => {
+                self.push_diag(BodyDiag::NotCallable(callee_span, callee_ty));
+                return ExprProp::invalid(self.db);
+            }
+        };
+        let (func_ty, trait_inst) = self.selected_method_ty(
+            candidate,
+            &canonical,
+            callee_ty,
+            expr.span(self.body()).into(),
+        );
+        let mut callable = match Callable::new(self.db, func_ty, callee_span.clone(), trait_inst) {
+            Ok(callable) => callable,
+            Err(diag) => {
+                self.push_diag(diag);
+                return ExprProp::invalid(self.db);
+            }
+        };
+        let expected = callable.callable_def.arg_tys(self.db).len() - 1;
+        if args.len() != expected {
+            let def_span = callee_ty
+                .as_closure(self.db)
+                .map_or(callee_span, |closure| {
+                    let def = closure.def(self.db);
+                    def.expr.span(def.body).into()
+                });
+            self.push_diag(BodyDiag::CallArgNumMismatch {
+                primary: call_span.args().into(),
+                def_span,
+                given: args.len(),
+                expected,
+            });
+            return ExprProp::invalid(self.db);
+        }
+        self.env.record_value_call(expr);
+        callable.check_args(
+            self,
+            args,
+            call_span.clone().args(),
+            Some((callee, callee_prop)),
+            false,
+        );
+        self.check_callable_effects(expr, &mut callable);
+        callable.process_constraints(self, expr, call_span.callee().into());
+        self.finish_call(expr, callable)
+    }
+
+    /// Whether a value of type `ty` has a field `name` that holds a callable
+    /// value: a function, or a value a call `f(..)` calls.
+    fn is_callable_field(&self, ty: TyId<'db>, name: IdentId<'db>) -> bool {
+        let Some(field_ty) = RecordLike::from_ty(ty).record_field_ty(self.db, name) else {
+            return false;
+        };
+        if field_ty.has_invalid(self.db) {
+            return false;
+        }
+        field_ty.is_func(self.db)
+            || !matches!(
+                select_callable_value_method(
+                    self.db,
+                    &Canonicalized::new(self.db, field_ty),
+                    self.env.scope(),
+                    self.env.assumptions(),
+                ),
+                Err(MethodSelectionError::NotFound | MethodSelectionError::ReceiverTypeMustBeKnown)
+            )
+    }
+
+    /// The function type of the method `candidate` selects for a receiver of
+    /// type `receiver_ty`, and the instance of its trait, if any. A
+    /// candidate that needs confirmation obliges the call at `span` to prove
+    /// its trait bound.
+    fn selected_method_ty(
+        &mut self,
+        candidate: MethodCandidate<'db>,
+        canonical: &Canonicalized<'db, TyId<'db>>,
+        receiver_ty: TyId<'db>,
+        span: DynLazySpan<'db>,
+    ) -> (TyId<'db>, Option<TraitInstId<'db>>) {
+        let method_name = candidate.name(self.db);
+        match candidate {
+            MethodCandidate::InherentMethod(cand) => (
+                self.extract_inherent_method_to_term(cand, receiver_ty),
+                None,
+            ),
+            MethodCandidate::TraitMethod(cand) => {
+                let inst = canonical.extract_solution(&mut self.table, cand.inst);
+                let inst = self.specialize_same_trait_method_inst(method_name, inst);
+                let func_ty = self.instantiate_trait_method_to_term(cand.method, receiver_ty, inst);
+                (func_ty, Some(inst))
+            }
+            MethodCandidate::NeedsConfirmation(cand) => {
+                let inst = canonical.extract_solution(&mut self.table, cand.inst);
+                let inst = self.specialize_same_trait_method_inst(method_name, inst);
+                self.env.register_trait_obligation(TraitObligation {
+                    goal: inst,
+                    origin: TraitObligationOrigin::GenericConfirmation,
+                    span,
+                });
+                let func_ty = self.instantiate_trait_method_to_term(cand.method, receiver_ty, inst);
+                (func_ty, Some(inst))
+            }
+        }
+    }
+
+    /// Defers a call whose method is one of several trait methods, which
+    /// argument and result types choose once the body is checked. `span` is
+    /// the method's name, or a value call's callee.
+    fn defer_method_call(
+        &mut self,
+        expr: ExprId,
+        receiver_ty: TyId<'db>,
+        canonical: &Canonicalized<'db, TyId<'db>>,
+        ambiguous: AmbiguousTraitMethods<'db>,
+        args: &[HirCallArg<'db>],
+        span: DynLazySpan<'db>,
+    ) -> ExprProp<'db> {
+        let method_name = ambiguous.candidates[0]
+            .cand
+            .method
+            .name(self.db)
+            .to_opt()
+            .expect("trait methods have names");
+        let typed = ExprProp::new(self.fresh_ty(), true);
+        self.env.type_expr(expr, typed.clone());
+        // The arguments are typed now so that they constrain the choice.
+        for arg in args {
+            self.check_expr_unknown(arg.expr);
+        }
+        let candidates = ambiguous
+            .candidates
+            .into_iter()
+            .map(|candidate| {
+                let inst = canonical.extract_solution(&mut self.table, candidate.cand.inst);
+                let inst = self.specialize_same_trait_method_inst(method_name, inst);
+                super::env::PendingMethodCandidate {
+                    inst,
+                    method: candidate.cand.method,
+                    needs_confirmation: candidate.needs_confirmation,
+                }
+            })
+            .collect();
+        self.env.register_pending_method(super::env::PendingMethod {
+            expr,
+            recv_ty: receiver_ty,
+            method_name,
+            candidates,
+            span,
+        });
+        typed
     }
 
     /// A callee's return type with the call's generic arguments filled in can
@@ -3434,80 +3626,53 @@ impl<'db> TyChecker<'db> {
         }
         let candidate = match candidate {
             Ok(candidate) => candidate,
-            Err(err) => {
-                if let MethodSelectionError::AmbiguousTraitMethod(ambiguous) = err {
-                    // Defer resolution using return-type constraints
-                    let ret_ty = self.fresh_ty();
-                    let typed = ExprProp::new(ret_ty, true);
-                    self.env.type_expr(expr, typed.clone());
-                    // Still type-check argument expressions so they have types and can
-                    // participate in later constraint solving.
-                    for arg in args.iter() {
-                        self.check_expr_unknown(arg.expr);
+            Err(MethodSelectionError::AmbiguousTraitMethod(ambiguous)) => {
+                return self.defer_method_call(
+                    expr,
+                    selected_receiver_ty,
+                    &canonical_r_ty,
+                    ambiguous,
+                    args,
+                    call_span.method_name().into(),
+                );
+            }
+            Err(MethodSelectionError::NotFound)
+                if self.is_callable_field(selected_receiver_ty, method_name) =>
+            {
+                let receiver = match receiver.data(self.db, self.body()) {
+                    Partial::Present(Expr::Path(Partial::Present(path)))
+                        if path.is_bare_ident(self.db) =>
+                    {
+                        path.ident(self.db).to_opt()
                     }
-                    let candidates = ambiguous
-                        .candidates
-                        .into_iter()
-                        .map(|candidate| {
-                            let inst = canonical_r_ty
-                                .extract_solution(&mut self.table, candidate.cand.inst);
-                            let inst = self.specialize_same_trait_method_inst(method_name, inst);
-                            super::env::PendingMethodCandidate {
-                                inst,
-                                method: candidate.cand.method,
-                                needs_confirmation: candidate.needs_confirmation,
-                            }
-                        })
-                        .collect();
-
-                    self.env.register_pending_method(super::env::PendingMethod {
-                        expr,
-                        recv_ty: selected_receiver_ty,
-                        method_name,
-                        candidates,
-                        span: call_span.method_name().into(),
-                    });
-                    return typed;
-                } else {
-                    let diag = body_diag_from_method_selection_err(
-                        self.db,
-                        err,
-                        Spanned::new(selected_receiver_ty, receiver.span(self.body()).into()),
-                        Spanned::new(method_name, call_span.method_name().into()),
-                    );
-                    self.push_diag(diag);
-                    return ExprProp::invalid(self.db);
-                }
-            }
-        };
-
-        let (func_ty, trait_inst) = match candidate {
-            MethodCandidate::InherentMethod(cand) => (
-                self.extract_inherent_method_to_term(cand, selected_receiver_ty),
-                None,
-            ),
-
-            MethodCandidate::TraitMethod(cand) => {
-                let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
-                let inst = self.specialize_same_trait_method_inst(method_name, inst);
-                let func_ty =
-                    self.instantiate_trait_method_to_term(cand.method, selected_receiver_ty, inst);
-                (func_ty, Some(inst))
-            }
-
-            MethodCandidate::NeedsConfirmation(cand) => {
-                let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
-                let inst = self.specialize_same_trait_method_inst(method_name, inst);
-                self.env.register_trait_obligation(TraitObligation {
-                    goal: inst,
-                    origin: TraitObligationOrigin::GenericConfirmation,
-                    span: call_span.clone().into(),
+                    _ => None,
+                };
+                self.push_diag(BodyDiag::CallableFieldCalledAsMethod {
+                    primary: call_span.method_name().into(),
+                    field: method_name,
+                    receiver_ty: selected_receiver_ty,
+                    receiver,
                 });
-                let func_ty =
-                    self.instantiate_trait_method_to_term(cand.method, selected_receiver_ty, inst);
-                (func_ty, Some(inst))
+                return ExprProp::invalid(self.db);
+            }
+            Err(err) => {
+                let diag = body_diag_from_method_selection_err(
+                    self.db,
+                    err,
+                    Spanned::new(selected_receiver_ty, receiver.span(self.body()).into()),
+                    Spanned::new(method_name, call_span.method_name().into()),
+                );
+                self.push_diag(diag);
+                return ExprProp::invalid(self.db);
             }
         };
+
+        let (func_ty, trait_inst) = self.selected_method_ty(
+            candidate,
+            &canonical_r_ty,
+            selected_receiver_ty,
+            call_span.clone().into(),
+        );
 
         let mut callable = match Callable::new(
             self.db,

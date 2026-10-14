@@ -8,7 +8,7 @@ use crate::analysis::{
     name_resolution::{available_traits_in_scope, is_scope_visible_from},
     ty::{
         canonical::{Canonical, Canonicalized, Solution},
-        closure::closure_shape_insts,
+        closure::{CallableShape, callable_shape_insts},
         fold::TyFoldable as _,
         method_table::{MethodProbe, ProbedMethod, probe_method},
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_and_ty, impls_for_ty},
@@ -112,13 +112,52 @@ pub(crate) fn select_method_candidate<'db>(
     assumptions: PredicateListId<'db>,
     trait_: Option<Trait<'db>>,
 ) -> Result<MethodCandidate<'db>, MethodSelectionError<'db>> {
+    let filter = trait_.map_or(TraitFilter::Any, TraitFilter::Trait);
+    select_filtered_method(db, receiver, method_name, scope, assumptions, filter)
+}
+
+/// Selects the method a call `f(..)` of the value `receiver` runs: `call`
+/// of a core callable shape trait whose receiver is `self`, else `call_mut`
+/// of one whose receiver is `mut self`. Other methods named `call` do not
+/// make a type callable.
+pub(crate) fn select_callable_value_method<'db>(
+    db: &'db dyn HirAnalysisDb,
+    receiver: &Canonicalized<'db, TyId<'db>>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Result<MethodCandidate<'db>, MethodSelectionError<'db>> {
+    let select = |name: &str| {
+        let name = IdentId::new(db, name.to_string());
+        select_filtered_method(
+            db,
+            receiver,
+            name,
+            scope,
+            assumptions,
+            TraitFilter::CallableShapes,
+        )
+    };
+    match select("call") {
+        Err(MethodSelectionError::NotFound) => select("call_mut"),
+        selected => selected,
+    }
+}
+
+fn select_filtered_method<'db>(
+    db: &'db dyn HirAnalysisDb,
+    receiver: &Canonicalized<'db, TyId<'db>>,
+    method_name: IdentId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    filter: TraitFilter<'db>,
+) -> Result<MethodCandidate<'db>, MethodSelectionError<'db>> {
     let receiver_ty = receiver.original();
     if receiver_ty.is_ty_var(db) {
         return Err(MethodSelectionError::ReceiverTypeMustBeKnown);
     }
 
     let candidates =
-        assemble_method_candidates(db, receiver, method_name, scope, assumptions, trait_);
+        assemble_method_candidates(db, receiver, method_name, scope, assumptions, filter);
 
     let selector = MethodSelector {
         db,
@@ -126,9 +165,22 @@ pub(crate) fn select_method_candidate<'db>(
         scope,
         candidates,
         assumptions,
+        filter,
     };
 
     selector.select()
+}
+
+/// The methods a selection considers.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TraitFilter<'db> {
+    /// Inherent methods, then the methods of every trait.
+    Any,
+    /// The methods of one trait.
+    Trait(Trait<'db>),
+    /// The methods of the core callable shape traits, which are visible
+    /// whether or not they are in scope.
+    CallableShapes,
 }
 
 pub(crate) fn select_trait_method_candidates<'db>(
@@ -144,8 +196,9 @@ pub(crate) fn select_trait_method_candidates<'db>(
         return Err(MethodSelectionError::ReceiverTypeMustBeKnown);
     }
 
+    let filter = TraitFilter::Trait(trait_);
     let candidates =
-        assemble_method_candidates(db, receiver, method_name, scope, assumptions, Some(trait_));
+        assemble_method_candidates(db, receiver, method_name, scope, assumptions, filter);
 
     let selector = MethodSelector {
         db,
@@ -153,6 +206,7 @@ pub(crate) fn select_trait_method_candidates<'db>(
         scope,
         candidates,
         assumptions,
+        filter,
     };
 
     selector.select_visible_trait_method_candidates()
@@ -164,7 +218,7 @@ fn assemble_method_candidates<'db>(
     method_name: IdentId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    trait_: Option<Trait<'db>>,
+    filter: TraitFilter<'db>,
 ) -> AssembledCandidates<'db> {
     CandidateAssembler {
         db,
@@ -172,7 +226,7 @@ fn assemble_method_candidates<'db>(
         method_name,
         scope,
         assumptions,
-        trait_,
+        filter,
         candidates: AssembledCandidates::default(),
     }
     .assemble()
@@ -188,7 +242,7 @@ struct CandidateAssembler<'db, 'a> {
     scope: ScopeId<'db>,
     /// The assumptions for the type bound in the current scope.
     assumptions: PredicateListId<'db>,
-    trait_: Option<Trait<'db>>,
+    filter: TraitFilter<'db>,
     candidates: AssembledCandidates<'db>,
 }
 
@@ -202,7 +256,7 @@ fn receiver_is_ty_param_like<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> 
 
 impl<'db, 'a> CandidateAssembler<'db, 'a> {
     fn assemble(mut self) -> AssembledCandidates<'db> {
-        if self.trait_.is_none() {
+        if self.filter == TraitFilter::Any {
             self.assemble_inherent_method_candidates();
         }
         self.assemble_trait_method_candidates();
@@ -231,11 +285,9 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
 
     fn assemble_trait_method_candidates(&mut self) {
         let scope_ingot = self.scope.ingot(self.db);
-        // Closures implement their callable shapes without HIR impls.
-        if let Some(closure) = self.receiver.original().as_closure(self.db) {
-            for inst in closure_shape_insts(self.db, closure) {
-                self.insert_assumption_trait_method_cand(inst);
-            }
+        // Callable values implement their callable shapes without HIR impls.
+        for inst in callable_shape_insts(self.db, self.receiver.original()) {
+            self.insert_assumption_trait_method_cand(inst);
         }
 
         // When the receiver is a type parameter (e.g. `D` in `fn f<D: Trait>(d: D)`),
@@ -255,7 +307,7 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
                     .filter(|&ingot| ingot != scope_ingot),
             ];
             for ingot in search_ingots.into_iter().flatten() {
-                let implementors = if let Some(trait_def) = self.trait_ {
+                let implementors = if let TraitFilter::Trait(trait_def) = self.filter {
                     impls_for_trait_and_ty(self.db, ingot, trait_def, self.receiver.canonical())
                 } else {
                     impls_for_ty(self.db, ingot, self.receiver.canonical())
@@ -293,7 +345,11 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
     }
 
     fn allow_trait(&self, trait_def: Trait<'db>) -> bool {
-        self.trait_.is_none_or(|t| t == trait_def)
+        match self.filter {
+            TraitFilter::Any => true,
+            TraitFilter::Trait(trait_) => trait_ == trait_def,
+            TraitFilter::CallableShapes => CallableShape::of(self.db, trait_def).is_some(),
+        }
     }
 
     fn insert_impl_trait_method_cand(&mut self, implementor: ImplementorId<'db>) {
@@ -356,6 +412,7 @@ struct MethodSelector<'db, 'a> {
     scope: ScopeId<'db>,
     candidates: AssembledCandidates<'db>,
     assumptions: PredicateListId<'db>,
+    filter: TraitFilter<'db>,
 }
 
 impl<'db, 'a> MethodSelector<'db, 'a> {
@@ -450,7 +507,10 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
         let visible: Vec<_> = checked
             .iter()
             .copied()
-            .filter(|(cand, _)| available_traits.contains(&cand.trait_def(self.db)))
+            .filter(|(cand, _)| {
+                self.filter == TraitFilter::CallableShapes
+                    || available_traits.contains(&cand.trait_def(self.db))
+            })
             .collect();
 
         match visible.len() {
@@ -881,9 +941,9 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
             let trait_def = pred.def(self.db);
             insert_trait(trait_def)
         }
-        // A closure's callable shapes are intrinsic to its type.
-        if let Some(closure) = self.receiver.original().as_closure(self.db) {
-            closure_shape_insts(self.db, closure).for_each(|inst| insert_trait(inst.def(self.db)));
+        // A callable value's shapes are intrinsic to its type.
+        for inst in callable_shape_insts(self.db, self.receiver.original()) {
+            insert_trait(inst.def(self.db));
         }
 
         traits

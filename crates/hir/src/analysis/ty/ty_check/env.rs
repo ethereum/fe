@@ -125,6 +125,8 @@ pub(crate) struct TyCheckEnv<'db> {
     place_entries: FxHashSet<ExprId>,
     /// The tuples that are unsafe splits (`check_unsafe_split`).
     unsafe_splits: FxHashSet<ExprId>,
+    /// The calls `f(..)` of callable values, whose callee is the receiver.
+    value_calls: FxHashSet<ExprId>,
     covered_providers: FxHashSet<ExprId>,
     /// The part of a projection's return shape each yield site grants.
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
@@ -247,6 +249,7 @@ impl<'db> TyCheckEnv<'db> {
             inspected_places: FxHashSet::default(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
+            value_calls: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
             yield_shapes: SecondaryMap::new(),
             for_loop_plans: SecondaryMap::new(),
@@ -878,6 +881,14 @@ impl<'db> TyCheckEnv<'db> {
         self.unsafe_splits.insert(tuple);
     }
 
+    pub(super) fn record_value_call(&mut self, call: ExprId) {
+        self.value_calls.insert(call);
+    }
+
+    pub(super) fn is_value_call(&self, call: ExprId) -> bool {
+        self.value_calls.contains(&call)
+    }
+
     pub(super) fn is_place_entry(&self, expr: ExprId) -> bool {
         self.place_entries.contains(&expr)
     }
@@ -1460,6 +1471,7 @@ impl<'db> TyCheckEnv<'db> {
             implicit_moves,
             place_entries: self.place_entries,
             unsafe_splits: self.unsafe_splits,
+            value_calls: self.value_calls,
             matched_places: self.matched_places,
             inspected_places: self.inspected_places,
             covered_providers: self.covered_providers,

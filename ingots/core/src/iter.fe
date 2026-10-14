@@ -64,7 +64,7 @@ pub trait Collection {
     {
         var acc = init
         for ref x in self {
-            acc = f.call_mut(acc, x)
+            acc = f(acc, x)
         }
         acc
     }
@@ -72,7 +72,7 @@ pub trait Collection {
     /// Whether `p` holds for some element.
     fn any<P: Fn(Self::Item) -> bool>(self, _ p: P) -> bool uses (E, P::E) {
         for ref x in self {
-            if p.call(x) {
+            if p(x) {
                 return true
             }
         }
@@ -83,7 +83,7 @@ pub trait Collection {
     fn count<P: Fn(Self::Item) -> bool>(self, _ p: P) -> usize uses (E, P::E) {
         var n = 0
         for ref x in self {
-            if p.call(x) {
+            if p(x) {
                 n += 1
             }
         }
@@ -94,7 +94,7 @@ pub trait Collection {
     fn find<P: Fn(Self::Item) -> bool>(self, _ p: P) -> Option<Self::Cursor> uses (E, P::E) {
         var cursor = self.start()
         while let Option::Some(c) = cursor {
-            if p.call(Collection::at(self, c)) {
+            if p(Collection::at(self, c)) {
                 return Option::Some(c)
             }
             cursor = self.next(c)
@@ -688,7 +688,7 @@ fn filtered<B: Collection, D: Driver<B>, P: Fn(D::Item) -> bool>(
     var state = state
     while let Option::Some(s) = state {
         let (_, ref item) = Driver<B>::at(d.inner, base, s)
-        if d.p.call(item) {
+        if (d.p)(item) {
             return Option::Some(s)
         }
         state = d.inner.next(base, s)
@@ -742,7 +742,7 @@ impl<B: Collection, D: Driver<B>, F: FnMut_v<D::Item>> Producer<B> for Map<D, F>
 
     fn produce(mut self, _ base: B, _ s: D::State) -> F::Out uses (B::E, E) {
         let (_, ref item) = Driver<B>::at(self.inner, base, s)
-        self.f.call_mut(item)
+        (self.f)(item)
     }
 }
 
