@@ -916,7 +916,10 @@ impl<'db> Trait<'db> {
             id,
             name,
             attributes,
-            vis,
+            TraitModifiers {
+                vis,
+                is_unsafe: ast.unsafe_kw().is_some(),
+            },
             generic_params,
             super_traits,
             where_clause,
@@ -1061,6 +1064,7 @@ impl<'db> ImplTrait<'db> {
             types,
             consts,
             AccessItems { rows, spaces },
+            ast.unsafe_kw().is_some(),
             ctxt.top_mod(),
             origin,
         );

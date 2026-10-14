@@ -5801,6 +5801,32 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 error_code,
             ),
 
+            Self::UnsafeImplMismatch { primary, trait_ } => {
+                let name = trait_.name(db).unwrap().data(db);
+                if trait_.is_unsafe(db) {
+                    let mut diag = primary_diag(
+                        severity,
+                        format!("implementing `{name}` requires `unsafe impl`"),
+                        format!("`{name}` is an `unsafe trait`"),
+                        primary.resolve(db),
+                        error_code,
+                    );
+                    diag.notes.push(
+                        "an `unsafe impl` asserts the contract the trait documents, which the compiler relies on without checking it"
+                            .to_string(),
+                    );
+                    diag
+                } else {
+                    primary_diag(
+                        severity,
+                        format!("`{name}` is not an `unsafe trait`"),
+                        "remove `unsafe` from this `impl`",
+                        primary.resolve(db),
+                        error_code,
+                    )
+                }
+            }
+
             Self::PinNotStateSpace { primary } => {
                 let mut diag = primary_diag(
                     severity,

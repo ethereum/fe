@@ -214,11 +214,13 @@ pub struct Location {
 ///
 /// The collection is pinned to its space (`Pinned`): it lives at one number
 /// there, and its region is its own fields at that number together with
-/// every location `locate` returns. `locate` must return locations within
-/// that region, and separated lanes for distinct keys; the compiler trusts
-/// it to. A memory collection, whose elements live in an allocation it owns,
-/// implements `Index` and `IndexMut` instead.
-pub trait StateIndex: Pinned {
+/// every location `locate` returns. The trait is unsafe to implement: the
+/// access checker relies on `locate` returning locations within that region,
+/// and separated lanes for distinct keys, without checking it, so each
+/// implementation is an `unsafe impl` that asserts both. A memory
+/// collection, whose elements live in an allocation it owns, implements
+/// `Index` and `IndexMut` instead.
+pub unsafe trait StateIndex: Pinned {
     /// The index operand, evaluated once and retained by the access.
     type Key: Copy
     /// The element's type.

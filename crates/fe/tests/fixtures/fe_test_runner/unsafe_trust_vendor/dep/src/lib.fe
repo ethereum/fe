@@ -17,24 +17,20 @@ pub fn round_trip(_ value: u256) -> u256 {
 }
 
 /// Slots of storage after the collection's root. Construction is safe;
-/// only indexing runs unsafe code, in `locate`.
+/// only indexing runs unsafe code: the `locate` of its `unsafe impl`, whose
+/// correctness the impl asserts.
 pub struct Slots<T> {}
 
 impl<T> Pinned for Slots<T> {
     space S = storage
 }
 
-impl<T> StateIndex for Slots<T> {
+unsafe impl<T> StateIndex for Slots<T> {
     type Key = u256
     type Entry = T
 
     fn locate(self, _ root: u256, _ key: u256) -> Location {
-        let scratch = ptr::alloc_bytes(32)
-        let offset = unsafe {
-            store_word(ptr: scratch, value: key)
-            load_word(scratch)
-        }
-        Location { slot: root + 1 + offset, offset: 0 }
+        Location { slot: root + 1 + key, offset: 0 }
     }
 }
 

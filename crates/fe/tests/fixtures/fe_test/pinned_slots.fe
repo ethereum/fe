@@ -12,7 +12,7 @@ impl Pinned for Words {
     space S = storage
 }
 
-impl StateIndex for Words {
+unsafe impl StateIndex for Words {
     type Key = u256
     type Entry = u256
 

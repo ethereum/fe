@@ -1451,6 +1451,7 @@ impl ToDoc for ast::ImplTrait {
         );
 
         attrs
+            .append(modifier_doc(self, ctx))
             .append(alloc.text("impl"))
             .append(generics)
             .append(trait_doc)

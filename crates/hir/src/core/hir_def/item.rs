@@ -1207,7 +1207,7 @@ pub struct Trait<'db> {
     pub name: Partial<IdentId<'db>>,
 
     pub(in crate::core) attributes: AttrListId<'db>,
-    pub vis: Visibility,
+    pub(in crate::core) modifiers: TraitModifiers,
     pub(in crate::core) generic_params: GenericParamListId<'db>,
     #[return_ref]
     pub(in crate::core) super_traits_refs: Vec<TraitRefId<'db>>,
@@ -1225,9 +1225,26 @@ pub struct Trait<'db> {
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
 
+/// A trait's visibility, and whether it is an `unsafe trait`, one whose
+/// implementations assert a contract the compiler relies on without checking
+/// it, so each is written `unsafe impl`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub struct TraitModifiers {
+    pub vis: Visibility,
+    pub is_unsafe: bool,
+}
+
 impl<'db> Trait<'db> {
     pub fn span(self) -> LazyTraitSpan<'db> {
         LazyTraitSpan::new(self)
+    }
+
+    pub fn vis(self, db: &dyn HirDb) -> Visibility {
+        self.modifiers(db).vis
+    }
+
+    pub fn is_unsafe(self, db: &dyn HirDb) -> bool {
+        self.modifiers(db).is_unsafe
     }
 
     pub fn rows(self, db: &'db dyn HirDb) -> &'db [AssocRow<'db>] {
@@ -1362,6 +1379,8 @@ pub struct ImplTrait<'db> {
     pub(in crate::core) consts: Vec<AssocConstDef<'db>>,
     #[return_ref]
     pub(in crate::core) access_items: AccessItems<'db>,
+    /// `unsafe impl`, of an `unsafe trait`.
+    pub is_unsafe: bool,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]

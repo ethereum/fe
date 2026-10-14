@@ -30,7 +30,7 @@ impl Pinned for Bytes {
     space S = storage
 }
 
-impl StateIndex for Bytes {
+unsafe impl StateIndex for Bytes {
     type Key = u256
     type Entry = u8
     type Lanes = ByteLanes
@@ -66,7 +66,7 @@ impl Pinned for PromisedBytes {
     space S = storage
 }
 
-impl StateIndex for PromisedBytes {
+unsafe impl StateIndex for PromisedBytes {
     type Key = u256
     type Entry = u8
     type Lanes = ByteLanes

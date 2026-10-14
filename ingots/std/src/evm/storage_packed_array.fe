@@ -55,7 +55,7 @@ impl Pinned for PackedWords {
     space S = storage
 }
 
-impl StateIndex for PackedWords {
+unsafe impl StateIndex for PackedWords {
     type Key = u256
     type Entry = u256
 

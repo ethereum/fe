@@ -402,6 +402,7 @@ module.exports = grammar({
     trait_definition: $ => seq(
       optional($.attribute_list),
       optional($.visibility),
+      optional('unsafe'),
       'trait',
       field('name', $.identifier),
       optional($.generic_param_list),
@@ -500,6 +501,7 @@ module.exports = grammar({
 
     impl_trait: $ => seq(
       optional($.attribute_list),
+      optional('unsafe'),
       'impl',
       optional($.generic_param_list),
       field('trait', $.trait_ref),

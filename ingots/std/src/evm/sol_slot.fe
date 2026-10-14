@@ -63,7 +63,7 @@ impl Pinned for Payload {
     space S = storage
 }
 
-impl StateIndex for Payload {
+unsafe impl StateIndex for Payload {
     type Key = u256
     type Entry = u256
 

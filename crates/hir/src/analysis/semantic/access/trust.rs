@@ -6,7 +6,8 @@
 //! walk starts from the bodies of a trust root's modules, follows calls into
 //! every ingot, including indexing's generated `locate` calls and the bodies
 //! of the contracts a body creates, and reports an untrusted ingot's unsafe
-//! code at the call in the user's code that first reaches it. An untrusted ingot's safe API stays
+//! code, an `unsafe` block, an `unsafe fn` or a method of an `unsafe impl`,
+//! at the call in the user's code that first reaches it. An untrusted ingot's safe API stays
 //! usable without trust.
 //!
 //! This is build policy, not typing: whether a caller builds depends on what
@@ -28,7 +29,7 @@ use crate::{
         semantic::{SemOrigin, diagnostics::SemanticDiagnosticSpan},
         ty::ty_check::BodyOwner,
     },
-    hir_def::{BlockKind, Expr, Partial, TopLevelMod},
+    hir_def::{BlockKind, Expr, ItemKind, Partial, TopLevelMod},
 };
 
 /// The ingots whose unsafe code may run, for a walk from a trust root.
@@ -69,12 +70,17 @@ impl UnsafeTrust {
     }
 }
 
-/// Where `owner`'s body runs unsafe code: all of it, for an `unsafe fn`, or
-/// its first `unsafe` block.
+/// Where `owner`'s body runs unsafe code: all of it, for an `unsafe fn` or
+/// a method of an `unsafe impl`, whose body is what the impl asserts correct,
+/// or its first `unsafe` block.
 fn unsafe_site<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> Option<SemOrigin<'db>> {
     let body = owner.body(db)?;
     if let BodyOwner::Func(func) = owner
-        && func.is_unsafe(db)
+        && (func.is_unsafe(db)
+            || matches!(
+                func.scope().parent_item(db),
+                Some(ItemKind::ImplTrait(impl_trait)) if impl_trait.is_unsafe(db)
+            ))
     {
         return Some(SemOrigin::Body(owner));
     }
