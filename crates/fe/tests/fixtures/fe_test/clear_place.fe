@@ -24,8 +24,8 @@ fn load(_ slot: u256) -> u256 uses (storage: RawStorage) {
     unsafe { storage.sload(slot) }
 }
 
-fn pointer_at(_ slot: u256) -> StorPtr<u256> uses (storage: RawStorage) {
-    unsafe { storage.stor_ptr(slot) }
+fn pointer_at(_ slot: u256) -> StorPtr<u256> {
+    slot as StorPtr<u256>
 }
 
 #[test]

@@ -219,15 +219,11 @@ pub trait Ctx: EvmCapabilitySeal {
 /// Low-level raw storage operations.
 ///
 /// A raw slot must not belong to anything the compiler allocated, such as a
-/// contract field: the borrow checker does not see accesses through it.
+/// contract field: the access checker does not see accesses through it. The
+/// same authority covers `*p` of a storage pointer, `slot as StorPtr<T>`.
 pub trait RawStorage: EvmCapabilitySeal {
     unsafe fn sload(self, _: u256) -> u256
     unsafe fn sstore(mut self, slot: u256, value: u256)
-    /// The caller must ensure that `slot` holds a `T` that nothing else
-    /// accesses while the pointer is in use.
-    unsafe fn stor_ptr<T>(self, _ slot: u256) -> StorPtr<T> {
-        slot as StorPtr<T>
-    }
 }
 
 /// The `T` at storage slot `slot`, as a storage place to read.
@@ -237,8 +233,7 @@ pub trait RawStorage: EvmCapabilitySeal {
 /// `T` derives from it.
 #[raw_place]
 pub unsafe fn storage_at<T>(_ slot: u256) -> ref T uses (storage: RawStorage) {
-    let ptr: StorPtr<T> = unsafe { storage.stor_ptr(slot) }
-    unsafe { ref *ptr }
+    unsafe { ref *(slot as StorPtr<T>) }
 }
 
 /// The `T` at storage slot `slot`, as a storage place to read and write.
@@ -246,8 +241,7 @@ pub unsafe fn storage_at<T>(_ slot: u256) -> ref T uses (storage: RawStorage) {
 /// The caller must ensure what `storage_at` requires.
 #[raw_place]
 pub unsafe fn storage_at_mut<T>(_ slot: u256) -> mut T uses (storage: mut RawStorage) {
-    let ptr: StorPtr<T> = unsafe { storage.stor_ptr(slot) }
-    unsafe { mut *ptr }
+    unsafe { mut *(slot as StorPtr<T>) }
 }
 
 /// Access to low-level EVM op functions (excluding raw stack ops).
@@ -257,11 +251,6 @@ pub trait RawOps: RawStorage {
     /// The caller must ensure that a valid `T` is encoded at `offset`.
     unsafe fn calldata_ptr<T>(self, _ offset: u256) -> CalldataPtr<T> {
         offset as CalldataPtr<T>
-    }
-    /// The caller must ensure that `slot` holds a `T` that nothing else
-    /// accesses while the pointer is in use.
-    unsafe fn tstor_ptr<T>(self, _ slot: u256) -> TStorPtr<T> {
-        slot as TStorPtr<T>
     }
     fn calldatacopy(
         mut self,

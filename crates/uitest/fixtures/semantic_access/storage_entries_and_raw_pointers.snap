@@ -9,6 +9,6 @@ error[16-0001]: access conflict in `fn Ledger::recv[0][0]`
    │
 31 │             let total = mut book.total
    │                         -------------- access opened here
-32 │             let p: StorPtr<Position> = unsafe { raw.stor_ptr(slot) }
+32 │             let p = slot as StorPtr<Position>
 33 │             unsafe { with (mut *p) { bump_debt() } }
    │                                      ^^^^^^^^^^^ cannot mutably access this place while a `mut` access of it is open

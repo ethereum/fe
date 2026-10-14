@@ -28,9 +28,8 @@ func private %__EffectHandleFieldDeref_recv_0_0(v0.i256, v1.i256) -> i256 {
         jump block1;
 
     block1:
-        v3.i256 = call %stor_ptr v0;
-        v5.i256 = call %write_cell v1 v3;
-        return v5;
+        v4.i256 = call %write_cell v1 v0;
+        return v4;
 }
 
 func private %__EffectHandleFieldDeref_recv_0_1(v0.i256) -> i256 {
@@ -38,12 +37,11 @@ func private %__EffectHandleFieldDeref_recv_0_1(v0.i256) -> i256 {
         jump block1;
 
     block1:
-        v2.i256 = call %stor_ptr v0;
-        v6.@layout_2 = insert_value undef.@layout_2 0.i256 v2;
-        v7.@layout_2 = insert_value v6 1.i256 1.i256;
-        v8.i256 = call %extract_ptr v7;
-        v9.i256 = call %read_cell v8;
-        return v9;
+        v5.@layout_2 = insert_value undef.@layout_2 0.i256 v0;
+        v6.@layout_2 = insert_value v5 1.i256 1.i256;
+        v7.i256 = call %extract_ptr v6;
+        v8.i256 = call %read_cell v7;
+        return v8;
 }
 
 func private %__EffectHandleFieldDeref_recv_0_2(v0.i256, v1.i256) -> i256 {
@@ -973,14 +971,6 @@ func inline(always) private %slice(v0.@layout_2, v1.i256, v2.i256) -> @layout_2 
         v20.i256 = sub v18 v1;
         v22.i1 = gt v2 v20;
         br v22 block2 block3;
-}
-
-func private %stor_ptr(v0.i256) -> i256 {
-    block0:
-        jump block1;
-
-    block1:
-        return v0;
 }
 
 func inline(always) private %impl_AbiFrame__store_word(v0.@layout_2, v1.i256, v2.i256) {

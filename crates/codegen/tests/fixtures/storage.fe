@@ -131,8 +131,8 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(Coin)]
 fn runtime() uses (evm: mut Evm) {
-    let store: StorPtr<CoinStore> = unsafe { evm.stor_ptr(0) }
-    let supply: StorPtr<TotalSupply> = unsafe { evm.stor_ptr(2) }
+    let store = 0 as u256 as StorPtr<CoinStore>
+    let supply = 2 as u256 as StorPtr<TotalSupply>
     unsafe {
         with (mut *store, mut *supply, RawOps = evm) {
             let selector = evm.calldataload(0) >> 224

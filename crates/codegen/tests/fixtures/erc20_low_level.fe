@@ -126,7 +126,7 @@ fn mint(to: Address, amount: u256) -> u256 uses (erc20: mut Erc20, ctx: Ctx, ops
 
 #[contract_init(Erc20Contract)]
 fn init() uses (evm: mut Evm) {
-    let erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
+    let erc20 = 0 as u256 as StorPtr<Erc20>
     unsafe {
         with (mut *erc20, Ctx = evm, RawOps = evm) {
             do_init()
@@ -146,7 +146,7 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(Erc20Contract)]
 fn runtime() uses (evm: mut Evm) {
-    let erc20: StorPtr<Erc20> = unsafe { evm.stor_ptr(0) }
+    let erc20 = 0 as u256 as StorPtr<Erc20>
     let selector = evm.calldataload(0) >> 224
     unsafe {
         with (mut *erc20, Ctx = evm, RawOps = evm) {

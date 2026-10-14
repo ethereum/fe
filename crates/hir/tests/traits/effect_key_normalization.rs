@@ -3119,14 +3119,20 @@ fn pointer_values_are_direct_values() {
         ),
     );
     let body = instance.body(&db);
-    let fe_hir::analysis::semantic::SStmtKind::Assign {
-        expr: fe_hir::analysis::semantic::SExpr::Call { callee, .. },
-        ..
-    } = &body.blocks[0].stmts[0].kind
-    else {
-        panic!("{body:#?}");
-    };
-    let callee = get_or_build_semantic_instance(&db, callee.key);
+    // The arm's first call is `extract_ptr(holder)`.
+    let callee = body
+        .blocks
+        .iter()
+        .flat_map(|block| block.stmts.iter())
+        .find_map(|stmt| match &stmt.kind {
+            fe_hir::analysis::semantic::SStmtKind::Assign {
+                expr: fe_hir::analysis::semantic::SExpr::Call { callee, .. },
+                ..
+            } => Some(callee.key),
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("{body:#?}"));
+    let callee = get_or_build_semantic_instance(&db, callee);
     let callee_body = callee.body(&db);
     assert!(
         callee_body
@@ -3595,7 +3601,7 @@ fn test_spaces() uses (st: mut RawStorage) {
         }
     }
 
-    let sp: StorPtr<Foo> = unsafe { st.stor_ptr(0) }
+    let sp = 0 as u256 as StorPtr<Foo>
     unsafe {
         with (mut *sp) {
             bump_stor()
@@ -3654,7 +3660,7 @@ fn write_cell(_ value: u256) uses (cell: mut Cell) {
 }
 
 fn test_projected(slot: u256, value: u256) uses (evm: mut Evm) {
-    let holder = unsafe { Holder { ptr: evm.stor_ptr(slot) } }
+    let holder = Holder { ptr: slot as StorPtr<Cell> }
     unsafe {
         with (mut *holder.ptr) {
             write_cell(value)
