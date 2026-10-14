@@ -82,10 +82,36 @@ fn assigned_pattern_child_carrier_ty<'db>(
 ) -> TyId<'db> {
     let (container_ty, parent_mode) = destructure_pattern_source(db, parent_carrier_ty);
     let projected_source = project_pattern_child_source_ty(db, container_ty, projection);
-    let (_, child_mode) = destructure_pattern_source(db, projected_source);
     let assigned_match = pattern_store.node(child).match_ty().raw();
-    let assigned_carrier = apply_pattern_borrow_mode(db, child_mode, assigned_match);
+    let assigned_carrier = with_source_carriers(db, projected_source, assigned_match);
     apply_pattern_borrow_mode(db, parent_mode, assigned_carrier)
+}
+
+/// `matched`, a pattern's match type, with the carriers `source` holds at the
+/// same positions. A match type has none, while the carrier of a projection's
+/// shape has one per access component, inside its tuples and sums too:
+/// `Option<(mut T, mut T)>` matches as `Option<(T, T)>`.
+fn with_source_carriers<'db>(
+    db: &'db dyn HirAnalysisDb,
+    source: TyId<'db>,
+    matched: TyId<'db>,
+) -> TyId<'db> {
+    let (source_base, source_args) = source.decompose_ty_app(db);
+    if let Some((_, inner)) = source.as_capability(db)
+        && matched.as_capability(db).is_none()
+    {
+        return TyId::app(db, source_base, with_source_carriers(db, inner, matched));
+    }
+    let (matched_base, matched_args) = matched.decompose_ty_app(db);
+    if source_base != matched_base || source_args.len() != matched_args.len() {
+        return matched;
+    }
+    source_args
+        .iter()
+        .zip(matched_args)
+        .fold(matched_base, |ty, (&source, &matched)| {
+            TyId::app(db, ty, with_source_carriers(db, source, matched))
+        })
 }
 
 impl<'db> DecisionTreeProjectionCache<'db> {
