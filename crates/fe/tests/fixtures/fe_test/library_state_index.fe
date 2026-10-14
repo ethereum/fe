@@ -31,7 +31,7 @@ impl Pinned for Counters {
     space S = storage
 }
 
-impl StateIndex for Counters {
+unsafe impl StateIndex for Counters {
     type Key = u256
     type Entry = u32
     type Lanes = U32Lanes

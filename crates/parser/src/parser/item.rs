@@ -114,8 +114,11 @@ impl super::Parse for ItemScope {
         let mut checkpoint = attr::parse_attr_list(parser)?;
         let modifiers = parse_item_modifiers(parser, &mut checkpoint);
 
-        if modifiers.is_unsafe && !is_fn_item_head(parser) {
-            parser.error("expected `fn` after `unsafe` keyword");
+        if modifiers.is_unsafe
+            && !is_fn_item_head(parser)
+            && !matches!(parser.current_kind(), Some(TraitKw | ImplKw))
+        {
+            parser.error("expected `fn`, `trait` or `impl` after `unsafe` keyword");
         } else if modifiers.is_pub
             && matches!(
                 parser.current_kind(),
@@ -156,7 +159,7 @@ impl super::Parse for ItemScope {
             Some(MsgKw) => parser.parse_cp(MsgScope::default(), checkpoint),
             Some(EnumKw) => parser.parse_cp(EnumScope::default(), checkpoint),
             Some(TraitKw) => parser.parse_cp(TraitScope::default(), checkpoint),
-            Some(ImplKw) => parser.parse_cp(ImplScope::default(), checkpoint),
+            Some(ImplKw) => parser.parse_cp(ImplScope::new(modifiers.is_unsafe), checkpoint),
             Some(UseKw) => parser.parse_cp(UseScope::default(), checkpoint),
             Some(ConstKw) => {
                 if is_fn_item_head(parser) {
@@ -836,7 +839,7 @@ impl super::Parse for TraitConstItemScope {
     }
 }
 
-define_scope! { ImplScope, Impl, (ForKw, LBrace) }
+define_scope! { ImplScope { is_unsafe: bool }, Impl, (ForKw, LBrace) }
 impl super::Parse for ImplScope {
     type Error = Recovery<ErrProof>;
 
@@ -865,6 +868,9 @@ impl super::Parse for ImplScope {
                 parser.bump();
             }
         } else {
+            if self.is_unsafe {
+                parser.error("an inherent `impl` cannot be `unsafe`; only a trait's can");
+            }
             parser.set_scope_recovery_stack(&[SyntaxKind::WhereKw, SyntaxKind::LBrace]);
         }
 

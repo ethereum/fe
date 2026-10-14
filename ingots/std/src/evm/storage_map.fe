@@ -209,7 +209,7 @@ impl<K, V> Pinned for StorageMap<K, V> {
     space S = storage
 }
 
-impl<K: StorageKey + Copy, V> StateIndex for StorageMap<K, V> {
+unsafe impl<K: StorageKey + Copy, V> StateIndex for StorageMap<K, V> {
     type Key = K
     type Entry = V
 

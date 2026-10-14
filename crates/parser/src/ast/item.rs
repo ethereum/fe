@@ -520,6 +520,7 @@ ast_node! {
 impl super::GenericParamsOwner for Impl {}
 impl super::WhereClauseOwner for Impl {}
 impl super::AttrListOwner for Impl {}
+impl super::ItemModifierOwner for Impl {}
 impl Impl {
     /// Returns the type of the impl.
     /// `Foo::Bar<T>` in `impl Foo::Bar<T> where .. { .. }`
@@ -543,6 +544,7 @@ ast_node! {
 impl super::GenericParamsOwner for ImplTrait {}
 impl super::WhereClauseOwner for ImplTrait {}
 impl super::AttrListOwner for ImplTrait {}
+impl super::ItemModifierOwner for ImplTrait {}
 impl ImplTrait {
     /// Returns the trait of the impl.
     /// `Foo` in `impl<T> Foo for Bar<T> { .. }`

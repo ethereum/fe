@@ -17,7 +17,7 @@ impl<P: Pinned> Pinned for Cell<P> {
     space S = P::S
 }
 
-impl<P: Pinned> StateIndex for Cell<P> {
+unsafe impl<P: Pinned> StateIndex for Cell<P> {
     type Key = u256
     type Entry = u256
 

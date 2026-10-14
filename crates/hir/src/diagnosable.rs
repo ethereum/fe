@@ -886,6 +886,23 @@ impl<'db> ImplTrait<'db> {
         })
     }
 
+    /// An implementation of an `unsafe trait` is an `unsafe impl`, and only
+    /// one is.
+    fn diags_unsafe_impl(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let trait_ = implementor.trait_def(db);
+        (trait_.is_unsafe(db) != self.is_unsafe(db)).then(|| {
+            ty::diagnostics::ImplDiag::UnsafeImplMismatch {
+                primary: self.span().trait_ref().into(),
+                trait_,
+            }
+            .into()
+        })
+    }
+
     fn diags_compiler_implemented_trait(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -2029,6 +2046,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(self.diags_view_copy(db, implementor));
         out.extend(self.diags_state_only_copy(db, implementor));
         out.extend(self.diags_compiler_implemented_trait(db, implementor));
+        out.extend(self.diags_unsafe_impl(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));

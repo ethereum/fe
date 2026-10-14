@@ -20,3 +20,13 @@ pub   unsafe fn raw(p: *u256) -> u256 {
 trait Read {
     unsafe   fn read(self) -> u256
 }
+
+pub   unsafe trait Trusted {
+    fn id(self) -> u256
+}
+
+unsafe   impl Trusted for u256 {
+    fn id(self) -> u256 {
+        self
+    }
+}

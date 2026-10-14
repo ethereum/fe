@@ -1535,6 +1535,13 @@ pub enum ImplDiag<'db> {
     /// A `Pinned` implementation whose space is not a state space, nor
     /// another pinned type's.
     PinNotStateSpace { primary: DynLazySpan<'db> },
+
+    /// An implementation of an `unsafe trait` without `unsafe impl`, or an
+    /// `unsafe impl` of a safe trait.
+    UnsafeImplMismatch {
+        primary: DynLazySpan<'db>,
+        trait_: Trait<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -1569,6 +1576,7 @@ impl ImplDiag<'_> {
             Self::MissingAssociatedSpace { .. } => 27,
             Self::CompilerImplementedTrait { .. } => 28,
             Self::PinNotStateSpace { .. } => 29,
+            Self::UnsafeImplMismatch { .. } => 30,
         }
     }
 }

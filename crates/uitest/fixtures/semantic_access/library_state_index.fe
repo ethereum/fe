@@ -13,7 +13,7 @@ impl Pinned for Cells {
     space S = storage
 }
 
-impl StateIndex for Cells {
+unsafe impl StateIndex for Cells {
     type Key = u256
     type Entry = u256
 

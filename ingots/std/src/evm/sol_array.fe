@@ -59,7 +59,7 @@ impl<T> Pinned for SolArray<T> {
     space S = storage
 }
 
-impl<T> StateIndex for SolArray<T> {
+unsafe impl<T> StateIndex for SolArray<T> {
     type Key = u256
     type Entry = T
     type Lanes = SolLanes

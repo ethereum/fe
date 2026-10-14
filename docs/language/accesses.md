@@ -237,6 +237,23 @@ pub fn truncate(mut self, _ len: u256) {
 
 Only struct and enum variant fields can be `unsafe`.
 
+## Unsafe traits
+
+A trait is declared `unsafe` when the compiler relies on a contract its
+implementations keep without checking it, and each implementation is an
+`unsafe impl` that asserts it; an `unsafe impl` of a safe trait is an error.
+`core::ops::StateIndex` is one: the access checker trusts its `locate` to keep
+entries inside the collection's region. The methods of an `unsafe impl` are
+ordinary safe code, and calling them is safe. A dependency's `unsafe impl`
+counts as unsafe code where it is used, as its `unsafe` blocks do, so it needs
+`allow_unsafe = true`.
+
+```fe
+unsafe impl<K: StorageKey + Copy, V> StateIndex for StorageMap<K, V> {
+    ..
+}
+```
+
 ## Indexing
 
 `c[k]` has one syntax and two kinds of implementation. Indexing a fixed array
@@ -264,15 +281,16 @@ overlap. A `mut` access to a struct holding collections covers their
 entries. A collection's methods take `self` or `mut self` and declare no
 effects: the authority is the access to its place, as for any data.
 
-A library type becomes a collection by implementing `core::ops::StateIndex`
-and pinning itself (`core::marker::Pinned`, below) to the state space its
-entries live in: `Key` and `Entry` are the index and the element type, and
-`locate(root, key)` returns the entry's `Location`, its slot and bit offset,
-for the collection rooted at slot `root`. `locate` declares no
-effects; the compiler calls it once when an access to `c[k]` opens and does
-the loads, stores and masking itself. It must keep every entry inside the
-collection's own region, hashing per entry or bounding the key, since the
-compiler trusts it to.
+A library type becomes a collection with an `unsafe impl` of
+`core::ops::StateIndex` and by pinning itself (`core::marker::Pinned`,
+below) to the state space its entries live in: `Key` and `Entry` are the
+index and the element type, and `locate(root, key)` returns the entry's
+`Location`, its slot and bit offset, for the collection rooted at slot
+`root`. `locate` declares no effects; the compiler calls it once when an
+access to `c[k]` opens and does the loads, stores and masking itself. It
+must keep every entry inside the collection's own region, hashing per entry
+or bounding the key, and distinct keys apart, which the `unsafe impl`
+asserts.
 
 A collection may pack small elements into lanes of shared slots, as a
 `SolArray` does for Solidity's packed array elements. Its `Lanes` codec
