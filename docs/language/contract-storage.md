@@ -13,7 +13,7 @@ range in each, and is placed among the storage fields. Fields that lie only in
 transient storage fill the transient numbers the others leave free.
 
 A storage collection, such as a `StorageMap`, `SolArray` or `TSlot`, is an
-owner at its slot, pinned to the space its `StateIndex` implementation names.
+owner at its slot, pinned to the space its `Pinned` implementation names.
 It takes whole slots of its own, never sharing one with packed neighbors,
 and at least one even when it has no fields, since its slot number is what
 identifies its contents: a `StorageMap`'s slot is reserved and never

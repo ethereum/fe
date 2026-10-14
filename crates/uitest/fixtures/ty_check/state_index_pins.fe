@@ -1,36 +1,33 @@
-use core::effect_ref::StateSpace
-use core::ops::StateIndex
+use core::marker::Pinned
+use core::ops::{Location, StateIndex}
 use std::evm::Ctx
 
-// Implementing `StateIndex` pins the implementor to its `SPACE`: it is
+// Implementing `Pinned` pins the implementor to its space `S`: it is
 // state-only. A memory collection implements `Index` instead.
 struct Cells {
     len: u256,
 }
 
+impl Pinned for Cells {
+    space S = storage
+}
+
 impl StateIndex for Cells {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
-        (root + 1 + key % 8, 0)
+    fn locate(self, _ root: u256, _ key: u256) -> Location {
+        Location { slot: root + 1 + key % 8, offset: 0 }
     }
 }
 
-// Rejected: a `StateIndex` collection's elements live in a state space.
+// Rejected: a type is pinned to a state space.
 struct Words {
     base: u256,
 }
 
-impl StateIndex for Words {
-    const SPACE: StateSpace = StateSpace::Memory
-    type Key = u256
-    type Entry = u256
-
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
-        (self.base + key * 32, 0)
-    }
+impl Pinned for Words {
+    space S = memory
 }
 
 // Rejected: a pinned type is never constructed as a memory value.
@@ -43,59 +40,52 @@ struct Noisy {
     len: u256,
 }
 
+impl Pinned for Noisy {
+    space S = storage
+}
+
 impl StateIndex for Noisy {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) uses (ctx: Ctx) {
-        (root + key + ctx.address().inner, 0)
+    fn locate(self, _ root: u256, _ key: u256) -> Location uses (ctx: Ctx) {
+        Location { slot: root + key + ctx.address().inner, offset: 0 }
     }
 }
 
 // A pin belongs to the implementation that applies to each instance.
-trait Placement {
-    const SPACE: StateSpace
-}
-
 struct InStorage {}
 
-impl Placement for InStorage {
-    const SPACE: StateSpace = StateSpace::Storage
+impl Pinned for InStorage {
+    space S = storage
 }
 
 struct InTransient {}
 
-impl Placement for InTransient {
-    const SPACE: StateSpace = StateSpace::TransientStorage
+impl Pinned for InTransient {
+    space S = transient
 }
 
 struct Cell<P> {
     base: u256,
 }
 
-impl<P: Placement> StateIndex for Cell<P> {
-    const SPACE: StateSpace = P::SPACE
-    type Key = u256
-    type Entry = u256
-
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
-        (root + 1 + key % 4, 0)
-    }
+impl<P: Pinned> Pinned for Cell<P> {
+    space S = P::S
 }
 
-// Rejected: `SPACE` is storage for `Cell<InStorage>`.
+// Rejected: `Cell<InStorage>` is pinned to storage.
 fn make_stored_cell() {
     let _cell: Cell<InStorage> = Cell { base: 0 }
 }
 
-// Rejected: `SPACE` is transient storage for `Cell<InTransient>`.
+// Rejected: `Cell<InTransient>` is pinned to transient storage.
 fn make_transient_cell() {
     let _cell: Cell<InTransient> = Cell { base: 0 }
 }
 
 // Rejected: some `Cell<P>` is pinned.
-fn make_any_cell<P: Placement>() {
+fn make_any_cell<P: Pinned>() {
     let _cell: Cell<P> = Cell { base: 0 }
 }
 
@@ -103,14 +93,8 @@ struct Split<P> {
     base: u256,
 }
 
-impl StateIndex for Split<InStorage> {
-    const SPACE: StateSpace = StateSpace::Storage
-    type Key = u256
-    type Entry = u256
-
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
-        (root + 1 + key % 4, 0)
-    }
+impl Pinned for Split<InStorage> {
+    space S = storage
 }
 
 struct Unplaced {}
@@ -123,4 +107,15 @@ fn make_unplaced_split() -> Split<Unplaced> {
 // Rejected: the implementation for `Split<InStorage>` pins it.
 fn make_stored_split() {
     let _split: Split<InStorage> = Split { base: 0 }
+}
+
+// Rejected: a forwarded space is another pinned type's.
+trait Placement {
+    space S
+}
+
+struct Forwarded<P> {}
+
+impl<P: Placement> Pinned for Forwarded<P> {
+    space S = P::S
 }

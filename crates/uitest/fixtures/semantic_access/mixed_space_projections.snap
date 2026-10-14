@@ -15,7 +15,7 @@ error[16-0001]: access conflict in `fn held_across`
 error[16-0007]: transport violation in `fn pick`
    ┌─ mixed_space_projections.fe:32:40
    │
-32 │         if c { mut self.value } else { mut self.hits[()] }
-   │                --------------          ^^^^^^^^^^^^^^^^^ this yield names transient storage, but another yield names storage
+32 │         if c { mut self.value } else { mut self.hits.value }
+   │                --------------          ^^^^^^^^^^^^^^^^^^^ this yield names transient storage, but another yield names storage
    │                │
    │                yields storage

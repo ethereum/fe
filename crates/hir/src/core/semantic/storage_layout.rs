@@ -18,7 +18,7 @@ use crate::{
                 AdtDef, AdtRef, ConcreteTypeView, instantiate_adt_field_for_concrete_demand,
             },
             const_ty::{ConcreteArrayLengthError, demand_concrete_array_length},
-            provider::state_index_space,
+            provider::pinned_space,
             state_index_tys,
             trait_resolution::PredicateListId,
             ty_check::contract_field_slot,
@@ -1002,14 +1002,12 @@ fn persistent_under_transient<'db>(
         }
         let assumptions = PredicateListId::empty_list(db);
         let mut parts = Vec::new();
-        if let Some(space) = state_index_space(db, scope, assumptions, ty) {
-            match space {
-                AddressSpace::Storage if transient => return Some(ty),
-                AddressSpace::Transient => transient = true,
-                _ => {}
-            }
-            parts.extend(state_index_tys(db, scope, ty, assumptions).map(|(_, output)| output));
+        match pinned_space(db, scope, assumptions, ty) {
+            Some(AddressSpace::Storage) if transient => return Some(ty),
+            Some(AddressSpace::Transient) => transient = true,
+            _ => {}
         }
+        parts.extend(state_index_tys(db, scope, ty, assumptions).map(|(_, output)| output));
         if let Some(adt) = ty.adt_def(db) {
             let args = ty.generic_args(db);
             parts.extend(

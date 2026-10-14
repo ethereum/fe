@@ -2,8 +2,7 @@
 // holds it: the fields of a transient cell are transient as a contract field,
 // as a field of a storage struct, and through a `mut` parameter, and the
 // storage words at the same numbers are untouched.
-use core::effect_ref::StateSpace
-use core::ops::StateIndex
+use core::marker::Pinned
 use std::evm::{Evm, RawStorage, SolSlot}
 
 struct Cell {
@@ -11,14 +10,8 @@ struct Cell {
     pub count: u256,
 }
 
-impl StateIndex for Cell {
-    const SPACE: StateSpace = StateSpace::TransientStorage
-    type Key = ()
-    type Entry = u256
-
-    fn locate(self, _ root: u256, _ key: ()) -> (u256, u256) {
-        (root, 0)
-    }
+impl Pinned for Cell {
+    space S = transient
 }
 
 struct Guarded {

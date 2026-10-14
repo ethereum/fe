@@ -5,9 +5,9 @@ expression: diags
 input_file: fixtures/semantic_access/library_state_index.fe
 ---
 error[16-0001]: access conflict in `fn conflict`
-   ┌─ library_state_index.fe:41:9
+   ┌─ library_state_index.fe:44:9
    │
-40 │         let cell = mut self[key]
+43 │         let cell = mut self[key]
    │                    ------------- access opened here
-41 │         self.touch()
+44 │         self.touch()
    │         ^^^^ cannot mutably access this place while a `mut` access of it is open

@@ -1,6 +1,6 @@
 use core::abi::{load_word, store_word}
-use core::effect_ref::StateSpace
-use core::ops::StateIndex
+use core::marker::Pinned
+use core::ops::{Location, StateIndex}
 use core::ptr
 use std::abi::Bytes
 
@@ -20,18 +20,21 @@ pub fn round_trip(_ value: u256) -> u256 {
 /// only indexing runs unsafe code, in `locate`.
 pub struct Slots<T> {}
 
+impl<T> Pinned for Slots<T> {
+    space S = storage
+}
+
 impl<T> StateIndex for Slots<T> {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = T
 
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+    fn locate(self, _ root: u256, _ key: u256) -> Location {
         let scratch = ptr::alloc_bytes(32)
         let offset = unsafe {
             store_word(ptr: scratch, value: key)
             load_word(scratch)
         }
-        (root + 1 + offset, 0)
+        Location { slot: root + 1 + offset, offset: 0 }
     }
 }
 

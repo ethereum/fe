@@ -1541,9 +1541,9 @@ fn discharge_requirement<'db>(
     }
     if symbolic {
         // Arguments that mention the caller's parameters may still decide
-        // the predicate, as `<TSlot<T> as StateIndex>::SPACE` does for every
-        // `T`: evaluated under the caller's assumptions, a value decides it,
-        // and only a blocked evaluation needs a premise.
+        // the predicate, when its value does not depend on them: evaluated
+        // under the caller's assumptions, a value decides it, and only a
+        // blocked evaluation needs a premise.
         if let Some(caller) = caller {
             let owner = BodyOwner::const_predicate(db, predicate);
             let impl_env = ImplEnv::new(

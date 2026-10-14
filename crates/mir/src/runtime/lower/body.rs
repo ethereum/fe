@@ -5168,7 +5168,7 @@ impl<'db> RmirEmitter<'db> {
                 && self
                     .semantic_body
                     .owner()
-                    .state_index_space(self.db, ty)
+                    .pinned_space(self.db, ty)
                     .is_some()
             {
                 runtime_place.path = std::mem::take(&mut projected).into_boxed_slice();
@@ -5199,7 +5199,7 @@ impl<'db> RmirEmitter<'db> {
         place: &RuntimePlace<'db>,
         ty: TyId<'db>,
     ) -> Option<RuntimePlace<'db>> {
-        let space = self.semantic_body.owner().state_index_space(self.db, ty)?;
+        let space = self.semantic_body.owner().pinned_space(self.db, ty)?;
         let addr_class = self.place_addr_class(place);
         if addr_class.address_space() == Some(space) {
             return None;
@@ -5228,8 +5228,8 @@ impl<'db> RmirEmitter<'db> {
     ) -> EntryPlace<'db> {
         let owner = self.semantic_body.owner();
         let space = owner
-            .state_index_space(self.db, collection_ty)
-            .expect("a collection whose elements are places declares their space");
+            .pinned_space(self.db, collection_ty)
+            .expect("a collection whose elements are places is pinned to their space");
         let lanes = owner.state_index_lanes(self.db, collection_ty);
         let word_ty = TyId::u256(self.db);
         let word = word_class();

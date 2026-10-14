@@ -1,5 +1,5 @@
-use core::ops::{StateIndex, clear_storage}
-use core::marker::Clearable
+use core::intrinsic::clear
+use core::marker::{Clearable, Pinned}
 use core::{ptr, size_of}
 use core::abi::{
     Abi,
@@ -138,23 +138,16 @@ pub use core::ptr::{CalldataPtr, StorPtr, TStorPtr}
 
 /// A transient storage cell holding a `T`, kept in a storage struct.
 ///
-/// A `TSlot` is a storage collection pinned to transient storage: its value
-/// lies there from the cell's number on, taking as many numbers as it has
-/// words, and the layout keeps them apart from other transient state.
-/// `slot[()]` is the value's place.
+/// A `TSlot` is pinned to transient storage: its value lies there from the
+/// cell's number on, taking as many numbers as it has words, and the layout
+/// keeps them apart from other transient state. `slot.value` is the value's
+/// place.
 pub struct TSlot<T> {
-    value: T,
+    pub value: T,
 }
 
-impl<T> StateIndex for TSlot<T> {
-    const SPACE: core::effect_ref::StateSpace = core::effect_ref::StateSpace::TransientStorage
-    type Key = ()
-    type Entry = T
-
-    #[inline(always)]
-    fn locate(self, _ root: u256, _ key: ()) -> (u256, u256) {
-        (root, 0)
-    }
+impl<T> Pinned for TSlot<T> {
+    space S = transient
 }
 
 impl<T> TSlot<T> {
@@ -162,19 +155,21 @@ impl<T> TSlot<T> {
     pub fn read(self) -> T
         where T: Copy
     {
-        self[()]
+        self.value
     }
 
     /// Writes the value.
     pub fn write(mut self, _ value: own T) {
-        self[()] = value
+        self.value = value
     }
 
     /// Zeroes the value.
     pub fn clear(mut self)
         where T: Clearable
     {
-        clear_storage(mut self, ())
+        // Transient storage starts zeroed, so zero is a value of every
+        // clearable `T` there.
+        unsafe { clear(mut self.value) }
     }
 }
 

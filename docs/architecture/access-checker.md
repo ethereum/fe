@@ -171,8 +171,8 @@ stack; they end at their `end`, in any order. In the projection's body:
   resolves per instance by the same path walk (`access::space::PathSpace`)
   that classifies yields, so the two agree on pins, entries and lanes. A
   place's space is its root's, unless a pinned type or an entry along its
-  path moves it into the type's pin or the collection's `SPACE`: a `TSlot`
-  held in a storage struct, and its `mut self.lock[()]`, are transient. The
+  path moves it into the type's pin or the collection's: a `TSlot` held in
+  a storage struct, and its `mut self.lock.value`, are transient. The
   innermost such step decides.
 - The `mut` components of a split are structurally disjoint.
 - A `#[raw_place]` projection has nothing to resume: after each yield it

@@ -1,7 +1,7 @@
 //! The space of a sub-place: where a path from a place in a known space
 //! takes it. Spec 19's `space(P.f) = pin(F)`: a step into a pinned type
-//! moves the place into the pin's space and an entry into its collection's
-//! `SPACE`; a lane, a packed field or entry of a state word, has memory
+//! moves the place into the pin's space, as does an entry of a collection,
+//! which lies in its collection's pinned space; a lane, a packed field or entry of a state word, has memory
 //! grants, the memory copies it is accessed through.
 use crate::{
     analysis::{
@@ -43,7 +43,7 @@ impl PathSpace {
     ) {
         match step {
             PlaceStep::Entry => {
-                if let Some(space) = instance.state_index_space(db, container) {
+                if let Some(space) = instance.pinned_space(db, container) {
                     self.moved = Some(space);
                 }
                 self.lane |= instance.state_index_lanes(db, container).is_some();

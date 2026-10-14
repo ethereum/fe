@@ -3,9 +3,9 @@
 // entries and lanes. An implementation's `space S = self[_]` is where its
 // elements lie, so a packed collection exports memory (S-50) and a plain
 // `@self` on a yield that crosses a pin is a mismatch (S-51).
-use core::effect_ref::StateSpace
+use core::marker::Pinned
 use core::iter::Collection
-use core::ops::{LaneCodec, StateIndex}
+use core::ops::{LaneCodec, Location, StateIndex}
 use core::option::Option
 use std::evm::{TSlot, keccak_words}
 
@@ -26,14 +26,17 @@ impl LaneCodec<u8> for ByteLanes {
 // Bytes packed 32 to a word.
 struct Bytes {}
 
+impl Pinned for Bytes {
+    space S = storage
+}
+
 impl StateIndex for Bytes {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u8
     type Lanes = ByteLanes
 
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
-        (keccak_words([key / 32, root]), (key % 32) * 8)
+    fn locate(self, _ root: u256, _ key: u256) -> Location {
+        Location { slot: keccak_words([key / 32, root]), offset: (key % 32) * 8 }
     }
 }
 
@@ -59,14 +62,17 @@ impl Collection for Bytes {
 // The same bytes, promising the collection's own space.
 struct PromisedBytes {}
 
+impl Pinned for PromisedBytes {
+    space S = storage
+}
+
 impl StateIndex for PromisedBytes {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u8
     type Lanes = ByteLanes
 
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
-        (keccak_words([key / 32, root]), (key % 32) * 8)
+    fn locate(self, _ root: u256, _ key: u256) -> Location {
+        Location { slot: keccak_words([key / 32, root]), offset: (key % 32) * 8 }
     }
 }
 
@@ -98,7 +104,7 @@ struct Guarded {
 impl Guarded {
     // Accepted: each names the space of the sub-place it yields.
     fn locked_mut(mut self) -> mut bool @self.locked {
-        mut self.locked[()]
+        mut self.locked.value
     }
 
     fn value_mut(mut self) -> mut u256 @self.value {
@@ -111,18 +117,18 @@ impl Guarded {
 
     // Rejected: the yield crosses `locked`'s pin, so `@self` is a mismatch.
     fn plain(mut self) -> mut bool @self {
-        mut self.locked[()]
+        mut self.locked.value
     }
 }
 
 // Accepted: a sub-place of an effect's target.
 fn locked_of() -> mut bool @g.locked uses (g: mut Guarded) {
-    mut g.locked[()]
+    mut g.locked.value
 }
 
 // Rejected: `value` lies in storage, the yield in transient storage.
 fn mislabeled() -> mut bool @g.value uses (g: mut Guarded) {
-    mut g.locked[()]
+    mut g.locked.value
 }
 
 msg M {

@@ -15,7 +15,7 @@ struct Guarded {
 
 impl Guarded {
     fn locked_mut(mut self) -> mut bool {
-        mut self.locked[()]
+        mut self.locked.value
     }
 
     fn value_mut(mut self) -> mut u256 {
@@ -24,12 +24,12 @@ impl Guarded {
 
     // Accepted: a transient place forwarded through a helper keeps its space.
     fn locked_forwarded(mut self) -> mut bool @transient {
-        forward(mut self.locked[()])
+        forward(mut self.locked.value)
     }
 
     // Rejected: the yields lie in storage and transient storage.
     fn pick(mut self, _ c: bool) -> mut u256 {
-        if c { mut self.value } else { mut self.hits[()] }
+        if c { mut self.value } else { mut self.hits.value }
     }
 }
 

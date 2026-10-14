@@ -19,10 +19,9 @@
 //! let first = owners[0]
 //! ```
 use core::abi::{AbiFrame, AbiSize, DynArray, Encode, store_word}
-use core::effect_ref::StateSpace
 use core::iter::{Bidirectional, Collection, CollectionMut}
-use core::marker::Clearable
-use core::ops::{LaneCodec, StateIndex, clear_storage}
+use core::marker::{Clearable, Pinned}
+use core::ops::{LaneCodec, Location, StateIndex, clear_storage}
 use core::option::Option
 use core::ptr
 use ingot::abi::{Sol, StaticAbiElement}
@@ -56,13 +55,16 @@ impl<T: SolPacked> LaneCodec<T> for SolLanes {
     }
 }
 
+impl<T> Pinned for SolArray<T> {
+    space S = storage
+}
+
 impl<T> StateIndex for SolArray<T> {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = T
     type Lanes = SolLanes
 
-    fn locate(self, _ root: u256, _ index: u256) -> (u256, u256) {
+    fn locate(self, _ root: u256, _ index: u256) -> Location {
         if index >= self.len {
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
@@ -70,19 +72,19 @@ impl<T> StateIndex for SolArray<T> {
     }
 }
 
-/// The slot and bit offset of element `index` of elements `bits` wide laid
-/// out from slot `first` on: `256 / bits` to a slot when they are lanes (at
-/// most 128 bits), else a whole number of slots each. Wraps modulo `2**256`,
-/// like Solidity's storage slot arithmetic.
+/// The location of element `index` of elements `bits` wide laid out from
+/// slot `first` on: `256 / bits` to a slot when they are lanes (at most 128
+/// bits), else a whole number of slots each. Wraps modulo `2**256`, like
+/// Solidity's storage slot arithmetic.
 #[arithmetic(unchecked)]
-fn element_location(first: u256, index: u256, bits: u256) -> (u256, u256) {
+fn element_location(first: u256, index: u256, bits: u256) -> Location {
     if bits == 0 {
-        (first, 0)
+        Location { slot: first, offset: 0 }
     } else if bits <= 128 {
         let per_slot = 256 / bits
-        (first + index / per_slot, (index % per_slot) * bits)
+        Location { slot: first + index / per_slot, offset: (index % per_slot) * bits }
     } else {
-        (first + index * ((bits + 255) / 256), 0)
+        Location { slot: first + index * ((bits + 255) / 256), offset: 0 }
     }
 }
 

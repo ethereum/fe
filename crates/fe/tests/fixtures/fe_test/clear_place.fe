@@ -85,15 +85,15 @@ pub contract Cells {
 
     recv ClearMsg {
         Run {} -> (u256, u256, u256) uses (mut cell) {
-            cell[()] = Pair { small: 7, other: 8, big: 9 }
-            unsafe { clear(mut cell[()].small) }
-            let other = cell[()].other as u256
-            let small = cell[()].small as u256
-            unsafe { clear(mut cell[()]) }
-            let big = cell[()].big
-            cell[()] = Pair { small: 1, other: 2, big: 3 }
+            cell.value = Pair { small: 7, other: 8, big: 9 }
+            unsafe { clear(mut cell.value.small) }
+            let other = cell.value.other as u256
+            let small = cell.value.small as u256
+            unsafe { clear(mut cell.value) }
+            let big = cell.value.big
+            cell.value = Pair { small: 1, other: 2, big: 3 }
             cell.clear()
-            (small + cell[()].small as u256, other, big + cell[()].big)
+            (small + cell.value.small as u256, other, big + cell.value.big)
         }
     }
 }
