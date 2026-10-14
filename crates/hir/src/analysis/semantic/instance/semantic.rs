@@ -1498,15 +1498,11 @@ impl<'db> SemanticInstance<'db> {
         normalize_ty(db, ty, self.normalization_scope(db), self.assumptions(db))
     }
 
-    /// The address space the elements of `ty` live in when its elements are
-    /// places (`core::ops::StateIndex`), in this instance.
+    /// The state space `ty` is pinned to (`core::marker::Pinned`), where a
+    /// collection's entries lie, in this instance.
     #[salsa::tracked]
-    pub fn state_index_space(
-        self,
-        db: &'db dyn HirAnalysisDb,
-        ty: TyId<'db>,
-    ) -> Option<AddressSpace> {
-        crate::analysis::ty::provider::state_index_space(
+    pub fn pinned_space(self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<AddressSpace> {
+        crate::analysis::ty::provider::pinned_space(
             db,
             self.normalization_scope(db),
             self.assumptions(db),

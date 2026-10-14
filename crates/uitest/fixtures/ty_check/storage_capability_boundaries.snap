@@ -10,7 +10,7 @@ error[3-0061]: `StorageMap<u256, u256>` is state-only
 9 │     store.balances = StorageMap {}
   │                      ^^^^^^^^^^^^^ a state-only type cannot be constructed as a value
   │
-  = `StorageMap<u256, u256>` is pinned to storage by its `StateIndex` implementation
+  = `StorageMap<u256, u256>` is pinned to storage by its `Pinned` implementation
   = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
 error[3-0061]: `TSlot<u256>` is state-only
@@ -19,7 +19,7 @@ error[3-0061]: `TSlot<u256>` is state-only
 22 │     slot = TSlot {}
    │            ^^^^^^^^ a state-only type cannot be constructed as a value
    │
-   = `TSlot<u256>` is pinned to transient storage by its `StateIndex` implementation
+   = `TSlot<u256>` is pinned to transient storage by its `Pinned` implementation
    = a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter
 
 error[8-0011]: missing fields in record pattern
@@ -79,7 +79,7 @@ error[8-0097]: call to unsafe function `at` requires an `unsafe` block or functi
  14 │     StorageMap<u256, u256>::at(0).get(1)
     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
     │
-    ┌─ src/evm/storage_map.fe:236:19
+    ┌─ src/evm/storage_map.fe:238:19
     │
-236 │     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
+238 │     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
     │                   -- callee defined here

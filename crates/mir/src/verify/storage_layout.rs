@@ -286,7 +286,7 @@ pub contract Layouts {
 
     recv LayoutMsg {
         Read -> u256 uses (words, maps, temp, fixed) {
-            words[0][0] + maps.get(key: 0) + temp[()] + fixed.value
+            words[0][0] + maps.get(key: 0) + temp.value + fixed.value
         }
     }
 }

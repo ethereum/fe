@@ -15,7 +15,7 @@ fn forward(_ x: mut bool) -> mut bool {
 
 impl Guarded {
     fn locked_forwarded(mut self) -> mut bool @transient {
-        forward(mut self.locked[()])
+        forward(mut self.locked.value)
     }
 
     fn value_mut(mut self) -> mut u256 {
@@ -42,7 +42,7 @@ pub contract C uses (storage: mut RawStorage) {
             let v = g.value_mut()
             v = 7
             // `locked` is transient 0, `value` storage 1; storage 0 is unused.
-            (g.locked[()], g.value, read_slot(0), read_slot(1))
+            (g.locked.value, g.value, read_slot(0), read_slot(1))
         }
     }
 }

@@ -17,6 +17,8 @@ use crate::analysis::ty::diagnostics::{
 use crate::analysis::ty::generic_defaults::{default_dependencies, type_default_diags};
 use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
+use crate::analysis::ty::provider::AddressSpace;
+use crate::analysis::ty::result_space::SpaceValue;
 use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::ty_def::{InvalidCause, TyId};
@@ -994,38 +996,44 @@ impl<'db> ImplTrait<'db> {
                 .into()
             })
             .collect();
+        let pinned = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Pinned"]);
+        let is_pin = pinned == Some(trait_);
         for name in trait_
             .spaces(db)
             .iter()
             .filter_map(|space| space.name.to_opt())
         {
-            match self
+            let Some((value, steps)) = self
                 .spaces(db)
                 .iter()
                 .find(|given| given.name.to_opt() == Some(name))
                 .and_then(|given| given.value)
-            {
-                None => diags.push(
+            else {
+                diags.push(
                     ImplDiag::MissingAssociatedSpace {
                         primary: primary(),
                         trait_,
                         name,
                     }
                     .into(),
-                ),
-                Some((value, steps))
-                    if value
-                        .to_opt()
-                        .and_then(|value| {
-                            ty::result_space::impl_space_value(db, self, value, steps)
-                        })
-                        .is_none() =>
-                {
-                    diags.push(if steps.steps(db).is_empty() {
-                        TyLowerDiag::UnknownResultSpace(primary()).into()
-                    } else {
-                        TyLowerDiag::InvalidResultSpacePath(primary()).into()
-                    });
+                );
+                continue;
+            };
+            match value
+                .to_opt()
+                .and_then(|value| ty::result_space::impl_space_value(db, self, value, steps))
+            {
+                None => diags.push(if steps.steps(db).is_empty() {
+                    TyLowerDiag::UnknownResultSpace(primary()).into()
+                } else {
+                    TyLowerDiag::InvalidResultSpacePath(primary()).into()
+                }),
+                // A pin is a state space, or another pinned type's.
+                Some(SpaceValue::Space(AddressSpace::Storage | AddressSpace::Transient))
+                    if is_pin => {}
+                Some(SpaceValue::Assoc(key)) if is_pin && Some(key.inst.def(db)) == pinned => {}
+                Some(_) if is_pin => {
+                    diags.push(ImplDiag::PinNotStateSpace { primary: primary() }.into())
                 }
                 Some(_) => {}
             }

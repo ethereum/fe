@@ -1531,6 +1531,10 @@ pub enum ImplDiag<'db> {
         primary: DynLazySpan<'db>,
         trait_: Trait<'db>,
     },
+
+    /// A `Pinned` implementation whose space is not a state space, nor
+    /// another pinned type's.
+    PinNotStateSpace { primary: DynLazySpan<'db> },
 }
 
 impl ImplDiag<'_> {
@@ -1564,6 +1568,7 @@ impl ImplDiag<'_> {
             Self::AccessItemNotDefinedInTrait { .. } => 26,
             Self::MissingAssociatedSpace { .. } => 27,
             Self::CompilerImplementedTrait { .. } => 28,
+            Self::PinNotStateSpace { .. } => 29,
         }
     }
 }

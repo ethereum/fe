@@ -51,8 +51,8 @@ pub contract B {
           uses (mut locked, protected_access_count, ctx: Ctx, call: mut Call)
         {
             // Non-reentrant entry sets the transient lock for the duration of this call.
-            assert!(!locked[()])
-            locked[()] = true
+            assert!(!locked.value)
+            locked.value = true
 
             let pre = protected_access_count
             call.call(
@@ -61,7 +61,7 @@ pub contract B {
                 value: 0,
                 message: AMsg::Callback { b: ctx.address() },
             )
-            locked[()] = false
+            locked.value = false
 
             let post = protected_access_count
             assert!(post == pre)
@@ -71,7 +71,7 @@ pub contract B {
         Protected -> u256
           uses (locked, mut protected_access_count)
         {
-            if !locked[()] {
+            if !locked.value {
                 protected_access_count += 1
             }
             protected_access_count

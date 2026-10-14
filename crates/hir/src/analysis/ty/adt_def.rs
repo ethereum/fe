@@ -10,10 +10,9 @@ use super::{
     binder::Binder,
     const_ty::ConstBodyLowering,
     corelib::resolve_core_trait,
-    provider::{AddressSpace, effect_space_from_resolved_trait_const},
-    trait_def::{
-        ResolvedImplInstance, TraitInstId, impls_for_trait_def, instantiate_selected_impl,
-    },
+    provider::AddressSpace,
+    result_space::{ResolvedSpace, SpaceKey, SpaceValue, impl_space_value, resolve_space_key},
+    trait_def::{ImplementorOrigin, TraitInstId, impls_for_trait_def},
     trait_resolution::{PredicateListId, constraint::collect_constraints},
     ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
     ty_lower::{
@@ -39,8 +38,8 @@ pub struct AdtDef<'db> {
     pub fields: Vec<AdtField<'db>>,
 }
 
-/// Where a type is pinned: to the state space its `core::ops::StateIndex`
-/// implementation names as `SPACE`. Implementing the trait is the pinning
+/// Where a type is pinned: to the state space its `core::marker::Pinned`
+/// implementation names as `S`. Implementing the trait is the pinning
 /// declaration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum Pin {
@@ -48,14 +47,14 @@ pub enum Pin {
     Unpinned,
     Pinned(AddressSpace),
     /// Whether the type is pinned depends on its parameters: separate
-    /// implementations, or a `SPACE` computed from them, pin some instances.
+    /// implementations, or a space forwarded from them, pin some instances.
     Undecided,
 }
 
-/// The pin of `ty`, from each `StateIndex` implementation that applies to
-/// some instance of it: its `SPACE`, as a constant when it does not depend
-/// on the implementation's parameters, else at the instance `ty` selects.
-/// The implementations agree on a pin, or the pin is undecided.
+/// The pin of `ty`, from each `Pinned` implementation that applies to some
+/// instance of it: the space it names, which pins every instance, or the
+/// space it forwards (`space S = P::S`) at the instance `ty` selects. The
+/// implementations agree on a pin, or the pin is undecided.
 #[salsa::tracked(cycle_fn = ty_pin_cycle_recover, cycle_initial = ty_pin_cycle_initial)]
 pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
     let Some(adt) = ty.adt_def(db) else {
@@ -68,11 +67,14 @@ pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
         ty
     };
     let scope = adt.scope(db);
-    let Some(state_index) = resolve_core_trait(db, scope, &["ops", "StateIndex"]) else {
+    let Some(pinned) = resolve_core_trait(db, scope, &["marker", "Pinned"]) else {
         return Pin::Unpinned;
     };
-    let goal = TraitInstId::new_simple(db, state_index, vec![ty]);
-    let mut pins = impls_for_trait_def(db, adt.ingot(db), state_index)
+    let goal = SpaceKey {
+        inst: TraitInstId::new_simple(db, pinned, vec![ty]),
+        space: 0,
+    };
+    let mut pins = impls_for_trait_def(db, adt.ingot(db), pinned)
         .iter()
         .filter(|implementor| {
             let mut table = UnificationTable::new(db);
@@ -80,11 +82,32 @@ pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
             let ty = table.instantiate_with_fresh_vars(ty);
             table.unify(instance.self_ty(db), ty).is_ok()
         })
-        .map(|implementor| {
-            let space = |resolved| effect_space_from_resolved_trait_const(db, scope, resolved);
-            space(ResolvedImplInstance::identity(db, *implementor))
-                .or_else(|| instantiate_selected_impl(db, *implementor, goal).and_then(space))
-                .map_or(Pin::Undecided, Pin::Pinned)
+        .filter_map(|implementor| {
+            let named = match implementor.origin(db) {
+                ImplementorOrigin::Hir(impl_trait) => impl_trait
+                    .spaces(db)
+                    .first()
+                    .and_then(|space| space.value)
+                    .and_then(|(value, steps)| {
+                        impl_space_value(db, impl_trait, value.to_opt()?, steps)
+                    }),
+                _ => None,
+            };
+            let space = match named {
+                Some(SpaceValue::Space(space)) => Some(space),
+                _ => match resolve_space_key(db, goal, scope, PredicateListId::empty_list(db)) {
+                    Some(ResolvedSpace::Space(space)) => Some(space),
+                    _ => None,
+                },
+            };
+            match space {
+                Some(space @ (AddressSpace::Storage | AddressSpace::Transient)) => {
+                    Some(Pin::Pinned(space))
+                }
+                // A pin to another space is an error at the implementation.
+                Some(_) => None,
+                None => Some(Pin::Undecided),
+            }
         });
     let Some(first) = pins.next() else {
         return Pin::Unpinned;

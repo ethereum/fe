@@ -1653,7 +1653,7 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 );
                 diag.notes.push(match (collection.pin(db), ty == collection) {
                     (Some(space), true) => format!(
-                        "`{ty_name}` is pinned to {} by its `StateIndex` implementation",
+                        "`{ty_name}` is pinned to {} by its `Pinned` implementation",
                         space.pretty()
                     ),
                     (Some(space), false) => format!(
@@ -5800,6 +5800,21 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 primary.resolve(db),
                 error_code,
             ),
+
+            Self::PinNotStateSpace { primary } => {
+                let mut diag = primary_diag(
+                    severity,
+                    "a type is pinned to a state space",
+                    "this space is not `storage` or `transient`",
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "give `space S = storage`, `space S = transient`, or another pinned type's space, `P::S`"
+                        .to_string(),
+                );
+                diag
+            }
 
             Self::MissingAssociatedType {
                 primary,

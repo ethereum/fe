@@ -1,4 +1,4 @@
-use ingot::marker::{Clearable, Copy}
+use ingot::marker::{Clearable, Copy, Pinned}
 
 pub trait Add<T = Self> {
     type Output = Self
@@ -198,6 +198,13 @@ pub trait Ord<T = Self> {
     fn ge(self, _ other: T) -> bool
 }
 
+/// Where an element of a `StateIndex` collection lies: its slot in the
+/// collection's state space, and its bit offset within that slot's word.
+pub struct Location {
+    pub slot: u256,
+    pub offset: u256,
+}
+
 /// A collection whose elements are places in a state space, as an array's
 /// are places: `c[k]` names the element at `k` with no call, a path that the
 /// access checker sees as `c` indexed by a dynamic key, and `c[k].f = v`
@@ -205,15 +212,13 @@ pub trait Ord<T = Self> {
 /// lives; the compiler calls `locate` once when it opens an access to the
 /// element.
 ///
-/// `SPACE` pins the implementor: it lives at one number in that space, its
-/// region is its own fields at that number together with every location
-/// `locate` returns, and a type holding it is state-only. `locate` must
-/// return locations within that region, and distinct keys separated lanes;
-/// the compiler trusts it to. A memory collection, whose elements live in an
-/// allocation it owns, implements `Index` and `IndexMut` instead.
-pub trait StateIndex {
-    /// The state space the elements live in, wherever the collection is.
-    const SPACE: ingot::effect_ref::StateSpace
+/// The collection is pinned to its space (`Pinned`): it lives at one number
+/// there, and its region is its own fields at that number together with
+/// every location `locate` returns. `locate` must return locations within
+/// that region, and separated lanes for distinct keys; the compiler trusts
+/// it to. A memory collection, whose elements live in an allocation it owns,
+/// implements `Index` and `IndexMut` instead.
+pub trait StateIndex: Pinned {
     /// The index operand, evaluated once and retained by the access.
     type Key: Copy
     /// The element's type.
@@ -223,11 +228,10 @@ pub trait StateIndex {
     /// 128, and otherwise keeps its type's storage layout. `()` packs none.
     type Lanes = ()
 
-    /// The location in `SPACE` of the element at `key` of the collection
-    /// rooted at `root`, and the element's bit offset within that word.
-    /// It declares no effects: it may read the collection's own region, such
-    /// as a length to check `key` against, and nothing else.
-    fn locate(self, _ root: u256, _ key: Self::Key) -> (u256, u256)
+    /// The location of the element at `key` of the collection rooted at
+    /// `root`. It declares no effects: it may read the collection's own
+    /// region, such as a length to check `key` against, and nothing else.
+    fn locate(self, _ root: u256, _ key: Self::Key) -> Location
 }
 
 /// Zeroes the element at `key` of a collection: its slots, or only its bits

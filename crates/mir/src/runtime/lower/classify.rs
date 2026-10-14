@@ -832,7 +832,7 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
                 .normalized
                 .place_prefix_ty(self.db, place, index)?;
             let owner = self.body.owner();
-            let space = owner.state_index_space(self.db, collection_ty)?;
+            let space = owner.pinned_space(self.db, collection_ty)?;
             Some(EntryRoot {
                 element_ty: self
                     .body
@@ -1008,7 +1008,7 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
             let Some(ty) = self.body.normalized.place_prefix_ty(self.db, place, steps) else {
                 break;
             };
-            if let Some(pin) = self.body.owner().state_index_space(self.db, ty) {
+            if let Some(pin) = self.body.owner().pinned_space(self.db, ty) {
                 if pin != space {
                     pinned = Some((steps, ty, pin));
                 }

@@ -1,5 +1,5 @@
-use core::effect_ref::StateSpace
-use core::ops::StateIndex
+use core::marker::Pinned
+use core::ops::{Location, StateIndex}
 use core::option::Option
 
 use super::effects::{RawStorage, storage_at_mut}
@@ -51,15 +51,18 @@ pub struct StoragePackedArray<const BITS: u256> {
 /// slot `s` is at `keccak256(s) + w`.
 struct PackedWords {}
 
+impl Pinned for PackedWords {
+    space S = storage
+}
+
 impl StateIndex for PackedWords {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 
     #[arithmetic(unchecked)]
     #[inline(always)]
-    fn locate(self, _ root: u256, _ word: u256) -> (u256, u256) {
-        (data_slot(root) + word, 0)
+    fn locate(self, _ root: u256, _ word: u256) -> Location {
+        Location { slot: data_slot(root) + word, offset: 0 }
     }
 }
 

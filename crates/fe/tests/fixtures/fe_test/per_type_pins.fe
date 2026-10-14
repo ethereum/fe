@@ -1,29 +1,28 @@
 // A pin belongs to the implementation that applies to each instance: here
-// `SPACE` comes from a type parameter, so `Cell<InStorage>` is pinned to
+// the space is a type parameter's pin, so `Cell<InStorage>` is pinned to
 // storage and takes a slot of its own in the contract layout.
-use core::effect_ref::StateSpace
-use core::ops::StateIndex
+use core::marker::Pinned
+use core::ops::{Location, StateIndex}
 use std::evm::{Evm, RawStorage, SolSlot, keccak_words}
-
-trait Placement {
-    const SPACE: StateSpace
-}
 
 struct InStorage {}
 
-impl Placement for InStorage {
-    const SPACE: StateSpace = StateSpace::Storage
+impl Pinned for InStorage {
+    space S = storage
 }
 
 struct Cell<P> {}
 
-impl<P: Placement> StateIndex for Cell<P> {
-    const SPACE: StateSpace = P::SPACE
+impl<P: Pinned> Pinned for Cell<P> {
+    space S = P::S
+}
+
+impl<P: Pinned> StateIndex for Cell<P> {
     type Key = u256
     type Entry = u256
 
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
-        (keccak_words([key, root]), 0)
+    fn locate(self, _ root: u256, _ key: u256) -> Location {
+        Location { slot: keccak_words([key, root]), offset: 0 }
     }
 }
 

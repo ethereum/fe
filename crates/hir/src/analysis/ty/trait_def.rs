@@ -280,15 +280,6 @@ pub struct ResolvedImplInstance<'db> {
 }
 
 impl<'db> ResolvedImplInstance<'db> {
-    /// `implementor` instantiated at its own parameters.
-    pub(crate) fn identity(db: &'db dyn HirAnalysisDb, implementor: ImplementorId<'db>) -> Self {
-        Self {
-            selected: implementor,
-            instantiated: implementor,
-            trait_inst: implementor.trait_(db),
-        }
-    }
-
     pub fn selected(self) -> ImplementorId<'db> {
         self.selected
     }

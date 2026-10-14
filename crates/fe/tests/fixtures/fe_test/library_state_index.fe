@@ -1,10 +1,10 @@
 // A packed map as a library collection: eight 32-bit counters to a word,
 // each word hashed with its index like Solady's `LibMap`, so any key stays
-// in the map's region. Implementing `StateIndex` with `SPACE` storage pins
-// it to storage: no attribute, and no raw storage authority at its uses.
-use core::effect_ref::StateSpace
+// in the map's region. Implementing `Pinned` with `S` storage pins it to
+// storage: no attribute, and no raw storage authority at its uses.
+use core::marker::Pinned
 use core::iter::{Collection, CollectionMut}
-use core::ops::{LaneCodec, StateIndex}
+use core::ops::{LaneCodec, Location, StateIndex}
 use core::option::Option
 use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words}
 
@@ -27,16 +27,19 @@ struct Counters {
     total: u256,
 }
 
+impl Pinned for Counters {
+    space S = storage
+}
+
 impl StateIndex for Counters {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u32
     type Lanes = U32Lanes
 
-    fn locate(self, _ root: u256, _ key: u256) -> (u256, u256) {
+    fn locate(self, _ root: u256, _ key: u256) -> Location {
         let bits = <Self::Lanes as LaneCodec<Self::Entry>>::BITS
         let per_word = 256 / bits
-        (keccak_words([key / per_word, root]), (key % per_word) * bits)
+        Location { slot: keccak_words([key / per_word, root]), offset: (key % per_word) * bits }
     }
 }
 

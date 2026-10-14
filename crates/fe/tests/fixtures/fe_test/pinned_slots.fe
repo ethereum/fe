@@ -1,20 +1,23 @@
 // A pinned type takes a whole slot of its own even without fields: its
 // number identifies its region, so sibling collections need distinct ones,
 // as Solidity reserves a mapping's slot. A plain zero-sized type takes none.
-use core::effect_ref::StateSpace
-use core::ops::StateIndex
+use core::marker::Pinned
+use core::ops::{Location, StateIndex}
 use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words, storage_at_mut}
 
 /// Words hashed with the map's number, like Solady's `LibMap`.
 struct Words {}
 
+impl Pinned for Words {
+    space S = storage
+}
+
 impl StateIndex for Words {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 
-    fn locate(self, _ root: u256, _ w: u256) -> (u256, u256) {
-        (keccak_words([w, root]), 0)
+    fn locate(self, _ root: u256, _ w: u256) -> Location {
+        Location { slot: keccak_words([w, root]), offset: 0 }
     }
 }
 

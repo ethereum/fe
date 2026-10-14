@@ -143,8 +143,8 @@ after a component or after the whole return: a space (`@memory`, `@storage`,
 (`@self`, `@total`), a sub-place of one (`@self.value`, `@self.pair.0`,
 `@self.cells[_]`), the resource a handle names (`@target(p)`), or an
 associated space (`@S`). A sub-place lies where its path leads: a step into a
-pinned type moves it into the pin's space, an entry into its collection's
-`SPACE`, and a packed field or entry is reached through a memory copy, so
+pinned type moves it into the pin's space, an entry into its collection's,
+and a packed field or entry is reached through a memory copy, so
 its grants lie in memory. Every yield must lie in the declared space, so
 `@self` on a struct holding a `TSlot` does not cover a yield of the `TSlot`'s
 value, while `@self.locked` does. An implementation gives its trait's
@@ -264,11 +264,11 @@ overlap. A `mut` access to a struct holding collections covers their
 entries. A collection's methods take `self` or `mut self` and declare no
 effects: the authority is the access to its place, as for any data.
 
-A library type becomes a collection by implementing `core::ops::StateIndex`:
-`SPACE`, a `core::effect_ref::StateSpace`, names the state space its entries
-live in, `Key` and `Entry` the index and the
-element type, and `locate(root, key)` returns the entry's slot and bit
-offset for the collection rooted at slot `root`. `locate` declares no
+A library type becomes a collection by implementing `core::ops::StateIndex`
+and pinning itself (`core::marker::Pinned`, below) to the state space its
+entries live in: `Key` and `Entry` are the index and the element type, and
+`locate(root, key)` returns the entry's `Location`, its slot and bit offset,
+for the collection rooted at slot `root`. `locate` declares no
 effects; the compiler calls it once when an access to `c[k]` opens and does
 the loads, stores and masking itself. It must keep every entry inside the
 collection's own region, hashing per entry or bounding the key, since the
@@ -290,16 +290,24 @@ balances.set(key: to, value: 0)     // rejected: `x` holds an entry of `balances
 x -= amount
 ```
 
-A `StateIndex` collection is *pinned* to its `SPACE`; implementing the
-trait is the whole declaration, so a library collection is pinned the same
-way. A type
+A type implementing `core::marker::Pinned` is *pinned* to its space `S`,
+`storage` or `transient`, or another pinned type's (`space S = P::S`):
+
+```fe
+impl<K, V> Pinned for StorageMap<K, V> {
+    space S = storage
+}
+```
+
+Implementing the trait is the whole declaration, so a library collection or
+cell is pinned the same way. A type
 holding a pinned type is *state-only*: never a value. It is not constructed,
 copied, moved out of storage or held in a memory aggregate; code reaches it
 through an access, a `mut` or view parameter, or an effect, and a plain
 binding of one (`let m = store.balances`) is its read access. A place's space
 follows its path: a field or element of a pinned type lies in the type's
-space, so a `TSlot` and its value lie in transient storage whatever holds
-the `TSlot`. A raw-slot constructor,
+space, so a `TSlot` and its value, `slot.value`, lie in transient storage
+whatever holds the `TSlot`. A raw-slot constructor,
 `unsafe fn at(slot) -> mut Self uses (storage: mut RawStorage)`, places a
 collection at a runtime slot, and its caller vouches that nothing else uses
 that slot. A `with` block may install a provider naming storage only when its

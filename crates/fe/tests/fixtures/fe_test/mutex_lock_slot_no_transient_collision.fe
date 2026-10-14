@@ -18,9 +18,9 @@ pub contract C {
         LockThenReadT1 -> u256 uses (t1, mut m) {
             // Neither transient flag was ever written; both reads must be
             // false even while the mutex lock bit is set.
-            let before = t1[()]
+            let before = t1.value
             m.lock()
-            let after = t1[()]
+            let after = t1.value
             m.unlock()
             var result = 0
             if before { result += 1 }

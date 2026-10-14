@@ -59,14 +59,14 @@ pub contract C uses (storage: mut RawStorage) {
             pair = Pair { left: 12, right: 13 }
             based = 14
             spaced.right = 15
-            flag[()] = true
+            flag.value = true
             (
                 read_slot(0),
                 read_slot(1),
                 read_slot(3),
                 read_slot(BASE + 1),
                 read_slot(namespaced(0x1234) + 1),
-                flag[()],
+                flag.value,
             )
         }
 
@@ -76,9 +76,9 @@ pub contract C uses (storage: mut RawStorage) {
         }
 
         Cell {} -> (u256, u256, u256) uses (mut cell, mut beside, mut storage) {
-            cell[()] = 21
+            cell.value = 21
             beside = 22
-            (cell[()], beside, read_slot(BASE + 2))
+            (cell.value, beside, read_slot(BASE + 2))
         }
     }
 }

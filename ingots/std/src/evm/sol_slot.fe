@@ -30,9 +30,9 @@
 //! `read_bytes`/`write_bytes` (and the `string` variants) use Solidity's
 //! layout for a `bytes` or `string` state variable in the slot.
 use core::abi::{ByteInput, Bytes, DynString, store_word}
-use core::effect_ref::StateSpace
 use core::num::IntDowncast
-use core::ops::{StateIndex, WrappingAdd}
+use core::marker::Pinned
+use core::ops::{Location, StateIndex, WrappingAdd}
 use core::ptr::{self, MemSpan}
 use super::crypto::keccak_words
 use super::effects::{Address, RawStorage, revert_error, storage_at_mut}
@@ -59,13 +59,16 @@ struct Payload {
     head: u256,
 }
 
+impl Pinned for Payload {
+    space S = storage
+}
+
 impl StateIndex for Payload {
-    const SPACE: StateSpace = StateSpace::Storage
     type Key = u256
     type Entry = u256
 
-    fn locate(self, _ root: u256, _ word: u256) -> (u256, u256) {
-        (data_slot(root).wrapping_add(word), 0)
+    fn locate(self, _ root: u256, _ word: u256) -> Location {
+        Location { slot: data_slot(root).wrapping_add(word), offset: 0 }
     }
 }
 

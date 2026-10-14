@@ -19,10 +19,9 @@ func private %__GuardContract_init(v0.i256) {
         jump block1;
 
     block1:
-        v3.@layout_4 = call %locate v0 v0;
-        v5.i256 = extract_value v3 0.i256;
-        v6.i256 = zext 0.i1 i256;
-        evm_tstore v5 v6;
+        v3.i256 = zext 0.i1 i256;
+        v5.i256 = and v3 255.i256;
+        evm_tstore v0 v5;
         return;
 }
 
@@ -42,15 +41,13 @@ func private %__GuardContract_recv_0_0(v0.i256, v1.i256) -> i1 {
 
     block3:
         evm_sstore v1 v5;
-        v14.@layout_4 = call %locate v0 v0;
-        v15.i256 = extract_value v14 0.i256;
-        v16.i256 = evm_tload v15;
+        v14.i256 = evm_tload v0;
+        v16.i256 = and v14 255.i256;
         v17.i1 = ne v16 0.i256;
         v18.i1 = is_zero v17;
-        v19.@layout_4 = call %locate v0 v0;
-        v20.i256 = extract_value v19 0.i256;
-        v21.i256 = zext v18 i256;
-        evm_tstore v20 v21;
+        v19.i256 = zext v18 i256;
+        v20.i256 = and v19 255.i256;
+        evm_tstore v0 v20;
         return v17;
 }
 
@@ -442,16 +439,6 @@ func inline(always) private %impl_trait_CallData__len(v0.@layout_0) -> i256 {
 
     block6:
         jump block4;
-}
-
-func inline(always) private %locate(v0.i256, v1.i256) -> @layout_4 {
-    block0:
-        jump block1;
-
-    block1:
-        v5.@layout_4 = insert_value undef.@layout_4 0.i256 v1;
-        v7.@layout_4 = insert_value v5 1.i256 0.i256;
-        return v7;
 }
 
 func inline(always) private %new() -> @layout_0 {

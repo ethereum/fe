@@ -1,14 +1,12 @@
-use common::indexmap::IndexMap;
 use salsa::Update;
 
 use crate::{
     analysis::{
         HirAnalysisDb,
-        semantic::{SemConstValue, sem_const_from_ty},
         ty::{
-            corelib::resolve_lib_type_path,
             normalize::normalize_ty,
-            trait_def::{ResolvedImplInstance, TraitInstId, resolve_trait_impl_instance},
+            result_space::{ResolvedSpace, SpaceKey, resolve_space_key},
+            trait_def::{TraitInstId, resolve_trait_impl_instance},
             trait_resolution::{PredicateListId, Selection, TraitSolveCx},
             ty_check::EffectParamSite,
             ty_def::TyId,
@@ -215,22 +213,27 @@ pub fn provider_semantics_for_specialized_call<'db>(
     semantics
 }
 
-/// The address space the elements of a collection whose elements are places
-/// (`core::ops::StateIndex`) live in: its implementation's `SPACE`.
+/// The state space `ty` is pinned to (`core::marker::Pinned`) under
+/// `assumptions`: the space its implementation's `S` names or forwards.
+/// A collection's entries (`core::ops::StateIndex`) lie in its space.
 #[salsa::tracked]
-pub fn state_index_space<'db>(
+pub fn pinned_space<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    collection_ty: TyId<'db>,
+    ty: TyId<'db>,
 ) -> Option<AddressSpace> {
-    let state_index = super::corelib::resolve_core_trait(db, scope, &["ops", "StateIndex"])?;
-    let inst = TraitInstId::new(db, state_index, vec![collection_ty], IndexMap::new());
-    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst) else {
-        return None;
+    let pinned = super::corelib::resolve_core_trait(db, scope, &["marker", "Pinned"])?;
+    let key = SpaceKey {
+        inst: TraitInstId::new_simple(db, pinned, vec![ty]),
+        space: 0,
     };
-    effect_space_from_resolved_trait_const(db, scope, resolved)
+    match resolve_space_key(db, key, scope, assumptions)? {
+        ResolvedSpace::Space(space @ (AddressSpace::Storage | AddressSpace::Transient)) => {
+            Some(space)
+        }
+        _ => None,
+    }
 }
 
 /// How a collection whose elements are places (`core::ops::StateIndex`)
@@ -280,47 +283,4 @@ pub fn state_index_lanes<'db>(
     .integer_value(db)?;
     let bits = u16::try_from(bits).ok()?;
     (bits > 0 && bits <= 128).then_some(StateIndexLanes { codec, bits })
-}
-
-pub(crate) fn effect_space_from_resolved_trait_const<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    resolved: ResolvedImplInstance<'db>,
-) -> Option<AddressSpace> {
-    let space_ident = IdentId::new(db, "SPACE".to_string());
-    let const_ty = super::const_ty::const_ty_from_resolved_trait_const(db, resolved, space_ident)?;
-    effect_space_from_const_ty(db, scope, const_ty)
-}
-
-pub(crate) fn effect_space_from_const_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    const_ty: super::const_ty::ConstTyId<'db>,
-) -> Option<AddressSpace> {
-    let evaluated = const_ty.evaluate(db, None);
-    let value = sem_const_from_ty(db, TyId::const_ty(db, evaluated))?;
-    let SemConstValue::Enum { ty, variant, .. } = value.value(db) else {
-        return None;
-    };
-    let enum_ = ty.as_enum(db)?;
-
-    // A `StateIndex` collection's `StateSpace`.
-    if resolve_lib_type_path(db, scope, "core::effect_ref::StateSpace")
-        .and_then(|space| space.adt_def(db))
-        .is_none_or(|space| super::adt_def::AdtRef::Enum(enum_) != space.adt_ref(db))
-    {
-        return None;
-    }
-
-    match enum_
-        .variants(db)
-        .nth(variant.0 as usize)?
-        .name(db)?
-        .data(db)
-        .as_str()
-    {
-        "Storage" => Some(AddressSpace::Storage),
-        "TransientStorage" => Some(AddressSpace::Transient),
-        _ => None,
-    }
 }

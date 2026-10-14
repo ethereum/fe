@@ -5,14 +5,6 @@
 /// provider type can satisfy a read-only (or mutable) effect whose domain is
 /// `T`. A raw pointer's target, `*p`, is a place like any other.
 
-/// A state space: the address spaces a `StateIndex` collection's elements
-/// live in. Both start zeroed: a slot no one wrote reads as zero, so the
-/// all-zero representation is a value of every type the space holds.
-pub enum StateSpace {
-    Storage,
-    TransientStorage,
-}
-
 /// Marker: `Self` can satisfy a read-only effect whose domain is `Target`.
 pub trait EffectRef<Target> {}
 
