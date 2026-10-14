@@ -54,7 +54,7 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(NestedStruct)]
 fn runtime() uses (evm: mut Evm) {
-    let outer: StorPtr<Outer> = unsafe { evm.stor_ptr(0) }
+    let outer = 0 as u256 as StorPtr<Outer>
     unsafe {
         with (mut *outer, RawOps = evm) {
             let selector = evm.calldataload(0) >> 224

@@ -45,7 +45,7 @@ pub contract EffectHandleFieldDeref {
 
     recv Msg {
         SeedSlot { slot, value } -> u256 uses (evm: mut Evm) {
-            let ptr: StorPtr<Cell> = unsafe { evm.stor_ptr(slot) }
+            let ptr = slot as StorPtr<Cell>
             unsafe {
                 with (mut *ptr) {
                     write_cell(value)
@@ -54,7 +54,7 @@ pub contract EffectHandleFieldDeref {
         }
 
         ReadViaHolder { slot } -> u256 uses (evm: mut Evm) {
-            let holder = unsafe { Holder { ptr: evm.stor_ptr(slot), tag: 1 } }
+            let holder = Holder { ptr: slot as StorPtr<Cell>, tag: 1 }
             let ptr = extract_ptr(holder)
             unsafe {
                 with (*ptr) {

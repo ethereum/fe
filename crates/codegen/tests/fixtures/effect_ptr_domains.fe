@@ -19,7 +19,7 @@ fn test_effect_ptr_domains() uses (st: mut RawStorage) {
         }
     }
 
-    let sp: StorPtr<Foo> = unsafe { st.stor_ptr(0) }
+    let sp = 0 as u256 as StorPtr<Foo>
     unsafe {
         with (mut *sp) {
             bump()

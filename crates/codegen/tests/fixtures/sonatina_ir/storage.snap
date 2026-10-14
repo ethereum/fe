@@ -429,82 +429,80 @@ func private %runtime() {
         jump block1;
 
     block1:
-        v2.i256 = call %stor_ptr__g2c78 0.i256;
-        v4.i256 = call %stor_ptr__gd216 2.i256;
-        v5.i256 = call %calldataload 0.i256;
-        v7.i256 = shr 224.i256 v5;
-        v9.i1 = eq v7 2877082652.i256;
-        br v9 block2 block7;
+        v3.i256 = call %calldataload 0.i256;
+        v5.i256 = shr 224.i256 v3;
+        v7.i1 = eq v5 2877082652.i256;
+        br v7 block2 block7;
 
     block2:
-        v11.i256 = call %calldataload 4.i256;
-        v13.i256 = call %calldataload 36.i256;
-        v14.i1 = eq v11 0.i256;
-        br v14 block12 block14;
+        v9.i256 = call %calldataload 4.i256;
+        v11.i256 = call %calldataload 36.i256;
+        v12.i1 = eq v9 0.i256;
+        br v12 block12 block14;
 
     block3:
-        v15.i256 = call %calldataload 4.i256;
-        v17.i256 = call %balance_of_raw v15 v2;
-        call %abi_encode v17;
+        v13.i256 = call %calldataload 4.i256;
+        v15.i256 = call %balance_of_raw v13 0.i256;
+        call %abi_encode v15;
         unreachable;
 
     block4:
-        v18.i256 = call %calldataload 4.i256;
-        v19.i256 = call %calldataload 36.i256;
-        v20.i1 = eq v18 0.i256;
-        br v20 block16 block18;
+        v16.i256 = call %calldataload 4.i256;
+        v17.i256 = call %calldataload 36.i256;
+        v18.i1 = eq v16 0.i256;
+        br v18 block16 block18;
 
     block5:
-        v22.i256 = call %total_supply v4;
-        call %abi_encode v22;
+        v20.i256 = call %total_supply 2.i256;
+        call %abi_encode v20;
         unreachable;
 
     block6:
         jump block20;
 
     block7:
-        v25.i1 = eq v7 1818602213.i256;
-        br v25 block3 block8;
+        v23.i1 = eq v5 1818602213.i256;
+        br v23 block3 block8;
 
     block8:
-        v28.i1 = eq v7 217554442.i256;
-        br v28 block4 block9;
+        v26.i1 = eq v5 217554442.i256;
+        br v26 block4 block9;
 
     block9:
-        v31.i1 = eq v7 960555502.i256;
-        br v31 block5 block10;
+        v29.i1 = eq v5 960555502.i256;
+        br v29 block5 block10;
 
     block10:
         jump block6;
 
     block11:
-        v32.i256 = phi (v36 block12) (v40 block13);
-        call %abi_encode v32;
+        v30.i256 = phi (v34 block12) (v38 block13);
+        call %abi_encode v30;
         unreachable;
 
     block12:
-        v36.i256 = call %credit_alice v13 v2 v4;
+        v34.i256 = call %credit_alice v11 0.i256 2.i256;
         jump block11;
 
     block13:
-        v40.i256 = call %credit_bob v13 v2 v4;
+        v38.i256 = call %credit_bob v11 0.i256 2.i256;
         jump block11;
 
     block14:
         jump block13;
 
     block15:
-        v41.@layout_2 = phi (v45 block16) (v48 block17);
-        v42.i256 = call %transfer_result_code v41;
-        call %abi_encode v42;
+        v39.@layout_2 = phi (v43 block16) (v46 block17);
+        v40.i256 = call %transfer_result_code v39;
+        call %abi_encode v40;
         unreachable;
 
     block16:
-        v45.@layout_2 = call %transfer_from_alice v19 v2;
+        v43.@layout_2 = call %transfer_from_alice v17 0.i256;
         jump block15;
 
     block17:
-        v48.@layout_2 = call %transfer_from_bob v19 v2;
+        v46.@layout_2 = call %transfer_from_bob v17 0.i256;
         jump block15;
 
     block18:
@@ -515,23 +513,23 @@ func private %runtime() {
         unreachable;
 
     block20:
-        v50.*i8 = evm_malloc 0.i256;
-        v51.i256 = ptr_to_int v50 i256;
-        v52.i256 = call %cast__gf0ab v51;
+        v48.*i8 = evm_malloc 0.i256;
+        v49.i256 = ptr_to_int v48 i256;
+        v50.i256 = call %cast__gf0ab v49;
         jump block22;
 
     block21:
         jump block19;
 
     block22:
-        v56.@layout_1 = insert_value undef.@layout_1 0.i256 v52;
-        v59.@layout_1 = insert_value v56 1.i256 0.i256;
-        v60.objref<i256> = obj.proj v0 0.i256;
-        v61.i256 = extract_value v59 0.i256;
+        v54.@layout_1 = insert_value undef.@layout_1 0.i256 v50;
+        v57.@layout_1 = insert_value v54 1.i256 0.i256;
+        v58.objref<i256> = obj.proj v0 0.i256;
+        v59.i256 = extract_value v57 0.i256;
+        obj.store v58 v59;
+        v60.objref<i256> = obj.proj v0 1.i256;
+        v61.i256 = extract_value v57 1.i256;
         obj.store v60 v61;
-        v62.objref<i256> = obj.proj v0 1.i256;
-        v63.i256 = extract_value v59 1.i256;
-        obj.store v62 v63;
         jump block21;
 }
 
@@ -556,22 +554,6 @@ func private %set_len(v0.objref<@layout_0>, v1.i256) {
         v11.objref<i256> = obj.proj v0 1.i256;
         obj.store v11 v1;
         return;
-}
-
-func private %stor_ptr__gd216(v0.i256) -> i256 {
-    block0:
-        jump block1;
-
-    block1:
-        return v0;
-}
-
-func private %stor_ptr__g2c78(v0.i256) -> i256 {
-    block0:
-        jump block1;
-
-    block1:
-        return v0;
 }
 
 func private %store_word(v0.i256, v1.i256) {

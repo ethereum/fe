@@ -29,7 +29,7 @@ pub contract C {
     mut state: Flagged,
 
     init() uses (mut state, evm: Evm) {
-        let flag = unsafe { evm.tstor_ptr<bool>(0xfe) }
+        let flag = 0xfe as u256 as TStorPtr<bool>
         state.attach(flag)
     }
 
