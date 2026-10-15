@@ -50,3 +50,65 @@ fn depth2<T: Copy>(_ x: T) -> u256 {
 fn depth1<T: Copy>(_ x: T) -> u256 {
     1
 }
+
+// Rejected: two calls grow it in different ways, so exponentially many
+// instances stay within the limits. Rejection follows one chain to the limit.
+fn branch<T: Copy>(_ x: T, _ n: u256) -> u256 {
+    if n == 0 { 0 } else { branch((x, 1 as u256), n - 1) + branch((1 as u256, x), n - 1) }
+}
+
+// Rejected: two functions grow it two ways between them.
+fn tick<T: Copy>(_ x: T, _ n: u256) -> u256 {
+    if n == 0 { 0 } else { tock((x, 1 as u256), n - 1) + tock((1 as u256, x), n - 1) }
+}
+
+fn tock<T: Copy>(_ x: T, _ n: u256) -> u256 {
+    if n == 0 { 0 } else { tick(x, n - 1) }
+}
+
+// Rejected: a blanket implementation grows it two ways through its own method.
+trait Split {
+    fn split(self, _ n: u256) -> u256
+}
+
+impl<T: Copy> Split for T {
+    fn split(self, _ n: u256) -> u256 {
+        if n == 0 { 0 } else { (Wrap { t: self }).split(n - 1) + (self, 1 as u256).split(n - 1) }
+    }
+}
+
+// Rejected at the growing call, not at the caller's.
+fn calls_branch() -> u256 {
+    branch(1 as u256, 2)
+}
+
+// Rejected at the growing call: a constant computed by recursion that grows
+// its arguments is not evaluated.
+const fn shallow<T: Copy>(_ x: T, _ n: u256) -> u256 {
+    if n == 0 { 0 } else { 1 + shallow((x, 1 as u256), n - 1) }
+}
+
+const SHALLOW: u256 = shallow(1 as u256, 3)
+
+// Accepted: deeply nested arguments that do not grow. Depth counts nesting
+// levels, so 32 levels of pairs and 6 levels of 12-tuples are well within it.
+fn id<T>(_ x: own T) -> T {
+    x
+}
+
+fn nested() {
+    let pairs: ((((((((((((((((((((((((((((((((u256, u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8), u8) = ((((((((((((((((((((((((((((((((1, 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0)
+    let _ = id(pairs)
+    let twelves: ((((((u256, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8), u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8), u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8), u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8), u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8), u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8) = ((((((1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    let _ = id(twelves)
+}
+
+// Rejected: a const argument that grows at every call makes a new instance
+// at each, as a growing type does.
+fn count_up<const N: usize>(_ x: u256) -> u256 {
+    if x == 0 { N as u256 } else { count_up<{ N + 1 }>(x - 1) }
+}
+
+fn calls_count_up() -> u256 {
+    count_up<0>(3)
+}

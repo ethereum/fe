@@ -1701,60 +1701,8 @@ impl<'db> SemanticInstance<'db> {
                 }
             }
         }
-        // Recursion that grows its generic arguments, as `f<T>` calling
-        // `f<(T, T)>`, makes a new instance at every call: a call making one
-        // whose arguments nest too deeply or are too large is rejected.
-        let calls = provisional_call_sites(db, self)
-            .sites
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, site)| {
-                Some((SemOrigin::Expr(ExprId::new(idx)), site.as_ref()?.callee?))
-            });
-        let loops = provisional_for_loop_call_sites(db, self)
-            .sites
-            .iter()
-            .enumerate()
-            .flat_map(|(idx, sites)| {
-                sites.iter().flat_map(move |sites| {
-                    sites.sites.iter().filter_map(move |site| {
-                        Some((SemOrigin::Stmt(StmtId::new(idx)), site.callee?))
-                    })
-                })
-            });
-        for (origin, callee) in calls.chain(loops) {
-            let args = callee.key.subst(db).generic_args(db);
-            let within = args
-                .iter()
-                .all(|&arg| tree_depth_within(db, arg, PROJECTION_DEPTH_LIMIT))
-                && args
-                    .iter()
-                    .try_fold(0usize, |total, &arg| {
-                        let size = tree_size_within(db, arg, PROJECTION_WORK_LIMIT - total)?;
-                        Some(total + size)
-                    })
-                    .is_some();
-            if !within {
-                let callee = checker_name(db, get_or_build_semantic_instance(db, callee.key));
-                return Err(SemanticBodyAdmissionError::InstanceLimit(
-                    SemanticDiagnosticId::new(
-                        db,
-                        SemanticDiagnostic::new(
-                            self,
-                            SemanticDiagnosticKind::InstanceLimit,
-                            format!(
-                                "this call instantiates `{callee}` with generic arguments that nest more \
-                             than {PROJECTION_DEPTH_LIMIT} levels deep or have more than \
-                             {PROJECTION_WORK_LIMIT} type nodes"
-                            ),
-                            SemanticDiagnosticSpan::Origin {
-                                owner: self.key(db).owner(db),
-                                origin,
-                            },
-                        ),
-                    ),
-                ));
-            }
+        if let Some(diag) = instance_limit_violation(db, self) {
+            return Err(SemanticBodyAdmissionError::InstanceLimit(diag));
         }
         Ok(())
     }
@@ -1807,6 +1755,116 @@ impl<'db> SemanticInstance<'db> {
             )
         )
     }
+}
+
+/// The first call, in `instance` or in any instance it makes, that makes an
+/// instance whose generic arguments nest more than [`PROJECTION_DEPTH_LIMIT`]
+/// levels deep or have more than [`PROJECTION_WORK_LIMIT`] type nodes.
+///
+/// Recursion that grows its generic arguments, as `f<T>` calling
+/// `f<(T, T)>`, makes a new instance at every call. Bounding each instance's
+/// arguments ends every chain of such calls, and rejecting every instance
+/// that reaches a rejected one stops at the first chain to end: recursion
+/// growing its arguments in two ways makes exponentially many instances
+/// within the bounds, of which this follows one chain.
+#[salsa::tracked(
+    cycle_fn = instance_limit_violation_cycle_recover,
+    cycle_initial = instance_limit_violation_cycle_initial
+)]
+fn instance_limit_violation<'db>(
+    db: &'db dyn HirAnalysisDb,
+    instance: SemanticInstance<'db>,
+) -> Option<SemanticDiagnosticId<'db>> {
+    if !instance
+        .key(db)
+        .typed_body(db)
+        .smir_lowering_issues(db)
+        .is_empty()
+    {
+        return None;
+    }
+    // Growth a function's own calls make is visible in its identity instance,
+    // where `{ N + 1 }` nests though concrete values do not grow.
+    if let BodyOwner::Func(_) = instance.key(db).owner(db) {
+        let identity = identity_semantic_instance_key(db, instance.key(db).owner(db));
+        if identity != instance.key(db)
+            && let Some(diag) =
+                instance_limit_violation(db, get_or_build_semantic_instance(db, identity))
+        {
+            return Some(diag);
+        }
+    }
+    let calls = provisional_call_sites(db, instance)
+        .sites
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, site)| {
+            Some((SemOrigin::Expr(ExprId::new(idx)), site.as_ref()?.callee?))
+        });
+    let loops = provisional_for_loop_call_sites(db, instance)
+        .sites
+        .iter()
+        .enumerate()
+        .flat_map(|(idx, sites)| {
+            sites.iter().flat_map(move |sites| {
+                sites
+                    .sites
+                    .iter()
+                    .filter_map(move |site| Some((SemOrigin::Stmt(StmtId::new(idx)), site.callee?)))
+            })
+        });
+    let calls: Vec<_> = calls.chain(loops).collect();
+    for &(origin, callee) in &calls {
+        let args = callee.key.subst(db).generic_args(db);
+        let within = args
+            .iter()
+            .all(|&arg| tree_depth_within(db, arg, PROJECTION_DEPTH_LIMIT))
+            && args
+                .iter()
+                .try_fold(0usize, |total, &arg| {
+                    let size = tree_size_within(db, arg, PROJECTION_WORK_LIMIT - total)?;
+                    Some(total + size)
+                })
+                .is_some();
+        if !within {
+            let callee = checker_name(db, get_or_build_semantic_instance(db, callee.key));
+            return Some(SemanticDiagnosticId::new(
+                db,
+                SemanticDiagnostic::new(
+                    instance,
+                    SemanticDiagnosticKind::InstanceLimit,
+                    format!(
+                        "this call instantiates `{callee}` with generic arguments that nest more \
+                         than {PROJECTION_DEPTH_LIMIT} levels deep or have more than \
+                         {PROJECTION_WORK_LIMIT} type nodes"
+                    ),
+                    SemanticDiagnosticSpan::Origin {
+                        owner: instance.key(db).owner(db),
+                        origin,
+                    },
+                ),
+            ));
+        }
+    }
+    calls.iter().find_map(|(_, callee)| {
+        instance_limit_violation(db, get_or_build_semantic_instance(db, callee.key))
+    })
+}
+
+fn instance_limit_violation_cycle_initial<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: SemanticInstance<'db>,
+) -> Option<SemanticDiagnosticId<'db>> {
+    None
+}
+
+fn instance_limit_violation_cycle_recover<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: &Option<SemanticDiagnosticId<'db>>,
+    _: u32,
+    _: SemanticInstance<'db>,
+) -> salsa::CycleRecoveryAction<Option<SemanticDiagnosticId<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
 }
 
 fn normalize_adt_field_types<'db>(
