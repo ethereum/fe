@@ -1,0 +1,1 @@
+A `for mut` loop over a base that ends in a built-in array index (`for mut x in grid[i]`, two such bases `by zip()`) and a binding of an indexed collection (`let m = store.maps[1]`) compile instead of panicking in semantic lowering.

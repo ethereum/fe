@@ -789,7 +789,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let args = args.iter().map(|arg| arg.expr).collect::<Vec<_>>();
                 self.lower_call_like_expr(expr, ty, Some(*receiver), &args)
             }
-            Partial::Present(Expr::Bin(base, index, BinOp::Index)) => {
+            // An `Index` call; a built-in index names a place, as below.
+            Partial::Present(Expr::Bin(base, index, BinOp::Index))
+                if self.typed_body.semantic_expr_lowering(expr).is_some() =>
+            {
                 self.lower_call_like_expr(expr, ty, Some(*base), &[*index])
             }
             Partial::Present(Expr::Try(inner)) => self.lower_try(expr, *inner, ty),
