@@ -2,6 +2,7 @@ use crate::analysis::HirAnalysisDb;
 use crate::analysis::place::resolve_place_field;
 use crate::analysis::semantic::effect_param_site;
 use crate::analysis::ty::adt_def::AdtRef;
+use crate::analysis::ty::closure::{closure_effect_requirements, closure_regions};
 use crate::analysis::ty::corelib::effect_key_state_access;
 use crate::analysis::ty::diagnostics::{BodyDiag, FuncBodyDiag};
 use crate::analysis::ty::effects::rows::expand_rows;
@@ -13,9 +14,9 @@ use crate::analysis::ty::ty_def::BorrowKind;
 use crate::analysis::ty::ty_def::TyId;
 use crate::core::semantic::EffectEnvView;
 use crate::hir_def::{
-    BinOp, BindingMarker, BlockKind, Body, CallableDef, Cond, CondId, EnumVariant, Expr, ExprId,
-    Field, FieldIndex, FieldParent, FuncParamMode, IdentId, Partial, Pat, PatId, Stmt, StmtId,
-    UnOp,
+    BinOp, BindingMarker, BlockKind, Body, CallableDef, ClosureDef, Cond, CondId, EnumVariant,
+    Expr, ExprId, Field, FieldIndex, FieldParent, FuncParamMode, IdentId, Partial, Pat, PatId,
+    Stmt, StmtId, UnOp,
 };
 use rustc_hash::FxHashSet;
 use std::iter;
@@ -114,16 +115,28 @@ impl<'db> UnsafeChecker<'db, '_> {
     }
 
     /// Reports an access through the state-pointer dereference `deref` that
-    /// the body's own effects do not cover, `unsafe` or not.
+    /// the body's own effects do not cover, `unsafe` or not. Inside a
+    /// closure those are the closure's row: a closure takes none of the
+    /// enclosing body's authority, since its caller provides its row.
     fn check_state_access(&mut self, deref: ExprId, is_mut: bool) {
         if !self.state_accesses.insert(deref) {
             return;
         }
         let scope = self.body.scope();
         let assumptions = self.typed_body.assumptions();
-        let requirements = effect_param_site(self.owner)
-            .map(|site| EffectEnvView::new(site).requirements(self.db))
-            .unwrap_or_default();
+        let closure = closure_regions(self.db, self.body).expr(deref);
+        let requirements = match closure {
+            Some(expr) => closure_effect_requirements(
+                self.db,
+                ClosureDef {
+                    body: self.body,
+                    expr,
+                },
+            ),
+            None => effect_param_site(self.owner)
+                .map(|site| EffectEnvView::new(site).requirements(self.db))
+                .unwrap_or_default(),
+        };
         let rows = expand_rows(self.db, &requirements, scope, assumptions);
         let covered = requirements
             .iter()
@@ -148,6 +161,7 @@ impl<'db> UnsafeChecker<'db, '_> {
                 BodyDiag::UncoveredStateAccess {
                     primary: deref.span(self.body).into(),
                     is_mut,
+                    in_closure: closure.is_some(),
                 }
                 .into(),
             );

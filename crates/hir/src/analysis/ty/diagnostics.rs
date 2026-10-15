@@ -1061,6 +1061,7 @@ pub enum BodyDiag<'db> {
     UncoveredStateAccess {
         primary: DynLazySpan<'db>,
         is_mut: bool,
+        in_closure: bool,
     },
 
     /// A closure in a constant context, which cannot evaluate it.

@@ -5073,22 +5073,43 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            BodyDiag::UncoveredStateAccess { primary, is_mut } => CompleteDiagnostic {
+            BodyDiag::UncoveredStateAccess {
+                primary,
+                is_mut,
+                in_closure,
+            } => CompleteDiagnostic {
                 severity,
-                message: "an access through a state pointer needs the function's own authority"
-                    .to_string(),
+                message: if *in_closure {
+                    "an access through a state pointer in a closure needs the closure's own authority"
+                } else {
+                    "an access through a state pointer needs the function's own authority"
+                }
+                .to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!(
-                        "this {} state the function's `uses` does not cover",
-                        if *is_mut { "writes" } else { "reads" }
+                        "this {} state the {} does not cover",
+                        if *is_mut { "writes" } else { "reads" },
+                        if *in_closure {
+                            "closure's row"
+                        } else {
+                            "function's `uses`"
+                        }
                     ),
                     span: primary.resolve(db),
                 }],
-                notes: vec![format!(
-                    "require it via `uses (storage: {}RawStorage)`; `unsafe` does not grant authority",
-                    if *is_mut { "mut " } else { "" }
-                )],
+                notes: vec![if *in_closure {
+                    format!(
+                        "a closure takes none of the enclosing function's authority; use `storage_at{}`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
+                        if *is_mut { "_mut" } else { "" },
+                        if *is_mut { "mut " } else { "" }
+                    )
+                } else {
+                    format!(
+                        "require it via `uses (storage: {}RawStorage)`; `unsafe` does not grant authority",
+                        if *is_mut { "mut " } else { "" }
+                    )
+                }],
                 error_code,
             },
 
