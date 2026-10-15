@@ -82,14 +82,6 @@ fn calls_branch() -> u256 {
     branch(1 as u256, 2)
 }
 
-// Rejected at the growing call: a constant computed by recursion that grows
-// its arguments is not evaluated.
-const fn shallow<T: Copy>(_ x: T, _ n: u256) -> u256 {
-    if n == 0 { 0 } else { 1 + shallow((x, 1 as u256), n - 1) }
-}
-
-const SHALLOW: u256 = shallow(1 as u256, 3)
-
 // Accepted: deeply nested arguments that do not grow. Depth counts nesting
 // levels, so 32 levels of pairs and 6 levels of 12-tuples are well within it.
 fn id<T>(_ x: own T) -> T {

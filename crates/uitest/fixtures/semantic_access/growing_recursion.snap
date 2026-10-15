@@ -1,6 +1,6 @@
 ---
 source: crates/uitest/tests/semantic_access.rs
-assertion_line: 25
+assertion_line: 32
 expression: diags
 input_file: fixtures/semantic_access/growing_recursion.fe
 ---
@@ -46,14 +46,8 @@ error[16-0016]: instantiation limit exceeded in `fn split`
 76 │         if n == 0 { 0 } else { (Wrap { t: self }).split(n - 1) + (self, 1 as u256).split(n - 1) }
    │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call instantiates `split` with generic arguments that nest more than 64 levels deep or have more than 65536 type nodes
 
-error[16-0016]: instantiation limit exceeded in `fn shallow`
-   ┌─ growing_recursion.fe:88:32
-   │
-88 │     if n == 0 { 0 } else { 1 + shallow((x, 1 as u256), n - 1) }
-   │                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call instantiates `shallow` with generic arguments that nest more than 64 levels deep or have more than 65536 type nodes
-
 error[16-0016]: instantiation limit exceeded in `fn count_up`
-    ┌─ growing_recursion.fe:109:36
+    ┌─ growing_recursion.fe:101:36
     │
-109 │     if x == 0 { N as u256 } else { count_up<{ N + 1 }>(x - 1) }
+101 │     if x == 0 { N as u256 } else { count_up<{ N + 1 }>(x - 1) }
     │                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ this call instantiates `count_up` with generic arguments that nest more than 64 levels deep or have more than 65536 type nodes

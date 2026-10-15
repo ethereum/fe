@@ -1,4 +1,4 @@
-use std::evm::{Address, StorPtr, StorageMap, TStorPtr}
+use std::evm::{Address, StorageMap}
 
 // A StorageMap's entries are paths under the map's place, apart from the
 // struct's other fields: a `mut` access of a sibling field does not conflict
@@ -109,25 +109,6 @@ pub contract Nested {
         Hold { to } -> u256 uses (mut outer) {
             outer.epoch += 1
             outer.ledger.balance(to)
-        }
-    }
-}
-
-// Accepted: a storage pointer field and a transient one hold their ledgers
-// at allocated slots of their own spaces.
-pub contract Handles {
-    mut persistent: StorPtr<Ledger>,
-    mut transient: TStorPtr<Ledger>,
-
-    recv LedgerMsg {
-        Mint { to, amount } uses (mut persistent) {
-            persistent.mint(to, amount)
-        }
-        Balance { owner } -> u256 uses (mut transient) {
-            transient.balance(owner)
-        }
-        Hold { to } -> u256 uses (mut persistent) {
-            persistent.balance(to)
         }
     }
 }

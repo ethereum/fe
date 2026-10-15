@@ -20,8 +20,15 @@ fn run_semantic_access(fixture: Fixture<&str>) {
     );
 
     let top_mod = db.top_mod(file);
-    let diags = db.mir_diagnostics_for_top_mod(top_mod);
-    let diags = db.format_complete_diagnostics(&diags);
+    // The access check assumes a sound typed body: a fixture with type
+    // errors reports those instead, so it cannot silently check less.
+    let hir = db.run_on_top_mod(top_mod);
+    let diags = if hir.has_errors(&db) {
+        hir.format_diags(&db)
+    } else {
+        let diags = db.mir_diagnostics_for_top_mod(top_mod);
+        db.format_complete_diagnostics(&diags)
+    };
     snap_test!(diags, fixture.path());
 }
 
