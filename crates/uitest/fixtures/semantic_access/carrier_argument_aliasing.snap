@@ -39,3 +39,45 @@ error[16-0001]: access conflict in `fn proj_alias`
    │             │
    │             access opened here
    │             cannot mutably access this place while a `ref` access of it is open
+
+error[16-0001]: access conflict in `fn recv_param`
+    ┌─ carrier_argument_aliasing.fe:129:9
+    │
+129 │         p.bump()
+    │         ^ this argument and an effect of the same call reach one place, and one of them is `mut`
+
+error[16-0001]: access conflict in `fn recv_binding`
+    ┌─ carrier_argument_aliasing.fe:137:9
+    │
+137 │         h.bump()
+    │         ^ this argument and an effect of the same call reach one place, and one of them is `mut`
+
+error[16-0001]: access conflict in `fn recv_mut_effect`
+    ┌─ carrier_argument_aliasing.fe:144:9
+    │
+144 │         p.bump_mut()
+    │         ^ this argument and an effect of the same call reach one place, and one of them is `mut`
+
+error[16-0001]: access conflict in `fn recv_projection`
+    ┌─ carrier_argument_aliasing.fe:151:17
+    │
+151 │         let g = p.proj()
+    │                 ^ this argument and an effect of the same call reach one place, and one of them is `mut`
+
+error[16-0001]: access conflict in `fn recv_field_effect`
+    ┌─ carrier_argument_aliasing.fe:159:9
+    │
+159 │         p.write_read()
+    │         ^ this argument and an effect of the same call reach one place, and one of them is `mut`
+
+error[16-0001]: access conflict in `fn recv_grant`
+    ┌─ carrier_argument_aliasing.fe:167:9
+    │
+167 │         g.bump()
+    │         ^ this argument and an effect of the same call reach one place, and one of them is `mut`
+
+error[16-0001]: access conflict in `fn recv_loop`
+    ┌─ carrier_argument_aliasing.fe:176:13
+    │
+176 │             x.bump()
+    │             ^ this argument and an effect of the same call reach one place, and one of them is `mut`

@@ -2008,6 +2008,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
             BodyOwner::Closure { .. } => None,
             _ => return Ok(()),
         };
+        // The places each argument passes, as the callee takes them.
+        let mut passed = Vec::new();
         for (position, arg) in args.iter().enumerate() {
             let Some(func) = func else {
                 break;
@@ -2033,6 +2035,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                         MemoryAccessKind::Read,
                         arg_origin,
                     )?;
+                    passed.push((regions, BorrowKind::Ref, arg_origin));
                 }
                 continue;
             }
@@ -2061,6 +2064,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             self.check_conflicts(
                 state, &regions, mode, &authority, siblings, kind, arg_origin,
             )?;
+            passed.push((regions, mode, arg_origin));
         }
         let mut footprints = Vec::new();
         if let Some(func) = func {
@@ -2082,7 +2086,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 parents: TokenSet::new(),
             });
         }
-        for footprint in footprints {
+        for footprint in &footprints {
             let kind = match footprint.mode {
                 BorrowKind::Mut => MemoryAccessKind::Write,
                 BorrowKind::Ref => MemoryAccessKind::Read,
@@ -2097,6 +2101,40 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 kind,
                 origin,
             )?;
+        }
+        // The callee takes its data parameters to be compatible with each
+        // other and with its effects, so the parts of one call never
+        // authorize each other: a `mut` one excludes any other of the same
+        // place, whatever accesses they are reached through. Two effects may
+        // alias, which the callee allows for.
+        let conflict = |(lhs, lhs_mode): (&[AbsPlace], BorrowKind),
+                        (rhs, rhs_mode): (&[AbsPlace], BorrowKind)| {
+            (lhs_mode == BorrowKind::Mut || rhs_mode == BorrowKind::Mut)
+                && self.any_overlap(lhs, rhs)
+        };
+        for (idx, (regions, mode, arg_origin)) in passed.iter().enumerate() {
+            if let Some((_, _, other)) = passed[idx + 1..]
+                .iter()
+                .find(|(other, other_mode, _)| conflict((regions, *mode), (other, *other_mode)))
+            {
+                let mut diag = self.diag(
+                    SemanticDiagnosticKind::AccessConflict,
+                    *other,
+                    "this argument and an earlier one of the same call reach one place, and one of them is `mut`".into(),
+                );
+                diag.push_secondary("the earlier argument".into(), self.span(*arg_origin));
+                return Err(diag);
+            }
+            if footprints
+                .iter()
+                .any(|footprint| conflict((regions, *mode), (&footprint.regions, footprint.mode)))
+            {
+                return Err(self.diag(
+                    SemanticDiagnosticKind::AccessConflict,
+                    *arg_origin,
+                    "this argument and an effect of the same call reach one place, and one of them is `mut`".into(),
+                ));
+            }
         }
         Ok(())
     }

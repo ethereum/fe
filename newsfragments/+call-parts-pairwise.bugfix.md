@@ -1,0 +1,1 @@
+A call's arguments, receiver and effect footprints are checked against each other, so a `mut self` receiver reached through a `mut` parameter, a `mut` binding, a projection grant or a `for mut` element can no longer be called with an effect provided by the same place, which let an open `ref` in the callee observe its writes.
