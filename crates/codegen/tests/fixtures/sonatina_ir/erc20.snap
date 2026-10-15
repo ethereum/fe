@@ -2350,7 +2350,8 @@ func inline(always) private %encode__gac80(v0.@layout_0, v1.@layout_2) {
 
     block1:
         v4.i256 = extract_value v0 0.i256;
-        v7.i256 = call %encode_field_at__gac80 v4 v1 0.i256 32.i256;
+        v7.@layout_2 = call %tail v1 32.i256;
+        v8.@layout_2 = call %encode_field__gac80 v4 v1 0.i256 v7;
         return;
 }
 
@@ -2380,55 +2381,7 @@ func inline(always) private %encode__g4320(v0.i256, v1.@layout_2) {
         return;
 }
 
-func inline(always) private %encode_field_at__gcb0a(v0.i8, v1.@layout_2, v2.i256, v3.i256) -> i256 {
-    block0:
-        jump block1;
-
-    block1:
-        br 0.i1 block2 block3;
-
-    block2:
-        v6.i256 = call %payload_size__g79ff v0;
-        call %impl_AbiFrame__store_word v1 v2 v3;
-        v11.@layout_2 = call %slice v1 v3 v6;
-        call %impl_trait_u8__encode__gf13e v0 v11;
-        v13.i256 = add v3 v6;
-        return v13;
-
-    block3:
-        jump block4;
-
-    block4:
-        v17.@layout_2 = call %slice v1 v2 32.i256;
-        call %impl_trait_u8__encode__gf13e v0 v17;
-        return v3;
-}
-
-func inline(always) private %encode_field_at__g472d(v0.i256, v1.@layout_2, v2.i256, v3.i256) -> i256 {
-    block0:
-        jump block1;
-
-    block1:
-        br 1.i1 block2 block3;
-
-    block2:
-        v6.i256 = call %payload_size__g3eb7 v0;
-        call %impl_AbiFrame__store_word v1 v2 v3;
-        v11.@layout_2 = call %slice v1 v3 v6;
-        call %encode__g4320 v0 v11;
-        v13.i256 = add v3 v6;
-        return v13;
-
-    block3:
-        jump block4;
-
-    block4:
-        v17.@layout_2 = call %slice v1 v2 32.i256;
-        call %encode__g4320 v0 v17;
-        return v3;
-}
-
-func inline(always) private %encode_field_at__gac80(v0.i256, v1.@layout_2, v2.i256, v3.i256) -> i256 {
+func inline(always) private %encode_field__gac80(v0.i256, v1.@layout_2, v2.i256, v3.@layout_2) -> @layout_2 {
     block0:
         jump block1;
 
@@ -2437,22 +2390,79 @@ func inline(always) private %encode_field_at__gac80(v0.i256, v1.@layout_2, v2.i2
 
     block2:
         v6.i256 = call %trait_AbiSize__payload_size__ge513 v0;
-        call %impl_AbiFrame__store_word v1 v2 v3;
-        v11.@layout_2 = call %slice v1 v3 v6;
-        call %impl_trait_u256__encode__gf13e v0 v11;
-        v13.i256 = add v3 v6;
-        return v13;
+        v8.i256 = call %impl_AbiFrame__len v1;
+        v10.i256 = call %impl_AbiFrame__len v3;
+        v11.i256 = sub v8 v10;
+        call %impl_AbiFrame__store_word v1 v2 v11;
+        v15.@layout_2 = call %slice v3 0.i256 v6;
+        call %impl_trait_u256__encode__gf13e v0 v15;
+        v17.@layout_2 = call %tail v3 v6;
+        return v17;
 
     block3:
         jump block4;
 
     block4:
-        v17.@layout_2 = call %slice v1 v2 32.i256;
-        call %impl_trait_u256__encode__gf13e v0 v17;
+        v21.@layout_2 = call %slice v1 v2 32.i256;
+        call %impl_trait_u256__encode__gf13e v0 v21;
         return v3;
 }
 
-func inline(always) private %encode_field_at__g09ca(v0.i1, v1.@layout_2, v2.i256, v3.i256) -> i256 {
+func inline(always) private %encode_field__g472d(v0.i256, v1.@layout_2, v2.i256, v3.@layout_2) -> @layout_2 {
+    block0:
+        jump block1;
+
+    block1:
+        br 1.i1 block2 block3;
+
+    block2:
+        v6.i256 = call %payload_size__g3eb7 v0;
+        v8.i256 = call %impl_AbiFrame__len v1;
+        v10.i256 = call %impl_AbiFrame__len v3;
+        v11.i256 = sub v8 v10;
+        call %impl_AbiFrame__store_word v1 v2 v11;
+        v15.@layout_2 = call %slice v3 0.i256 v6;
+        call %encode__g4320 v0 v15;
+        v17.@layout_2 = call %tail v3 v6;
+        return v17;
+
+    block3:
+        jump block4;
+
+    block4:
+        v21.@layout_2 = call %slice v1 v2 32.i256;
+        call %encode__g4320 v0 v21;
+        return v3;
+}
+
+func inline(always) private %encode_field__gcb0a(v0.i8, v1.@layout_2, v2.i256, v3.@layout_2) -> @layout_2 {
+    block0:
+        jump block1;
+
+    block1:
+        br 0.i1 block2 block3;
+
+    block2:
+        v6.i256 = call %payload_size__g79ff v0;
+        v8.i256 = call %impl_AbiFrame__len v1;
+        v10.i256 = call %impl_AbiFrame__len v3;
+        v11.i256 = sub v8 v10;
+        call %impl_AbiFrame__store_word v1 v2 v11;
+        v15.@layout_2 = call %slice v3 0.i256 v6;
+        call %impl_trait_u8__encode__gf13e v0 v15;
+        v17.@layout_2 = call %tail v3 v6;
+        return v17;
+
+    block3:
+        jump block4;
+
+    block4:
+        v21.@layout_2 = call %slice v1 v2 32.i256;
+        call %impl_trait_u8__encode__gf13e v0 v21;
+        return v3;
+}
+
+func inline(always) private %encode_field__g09ca(v0.i1, v1.@layout_2, v2.i256, v3.@layout_2) -> @layout_2 {
     block0:
         jump block1;
 
@@ -2461,22 +2471,25 @@ func inline(always) private %encode_field_at__g09ca(v0.i1, v1.@layout_2, v2.i256
 
     block2:
         v6.i256 = call %payload_size__gda9b v0;
-        call %impl_AbiFrame__store_word v1 v2 v3;
-        v11.@layout_2 = call %slice v1 v3 v6;
-        call %impl_trait_bool__encode__gf13e v0 v11;
-        v13.i256 = add v3 v6;
-        return v13;
+        v8.i256 = call %impl_AbiFrame__len v1;
+        v10.i256 = call %impl_AbiFrame__len v3;
+        v11.i256 = sub v8 v10;
+        call %impl_AbiFrame__store_word v1 v2 v11;
+        v15.@layout_2 = call %slice v3 0.i256 v6;
+        call %impl_trait_bool__encode__gf13e v0 v15;
+        v17.@layout_2 = call %tail v3 v6;
+        return v17;
 
     block3:
         jump block4;
 
     block4:
-        v17.@layout_2 = call %slice v1 v2 32.i256;
-        call %impl_trait_bool__encode__gf13e v0 v17;
+        v21.@layout_2 = call %slice v1 v2 32.i256;
+        call %impl_trait_bool__encode__gf13e v0 v21;
         return v3;
 }
 
-func inline(always) private %encode_field_at__g0c18(v0.i256, v1.@layout_2, v2.i256, v3.i256) -> i256 {
+func inline(always) private %encode_field__g0c18(v0.i256, v1.@layout_2, v2.i256, v3.@layout_2) -> @layout_2 {
     block0:
         jump block1;
 
@@ -2485,18 +2498,21 @@ func inline(always) private %encode_field_at__g0c18(v0.i256, v1.@layout_2, v2.i2
 
     block2:
         v6.i256 = call %payload_size__gc7cf v0;
-        call %impl_AbiFrame__store_word v1 v2 v3;
-        v11.@layout_2 = call %slice v1 v3 v6;
-        call %encode__g30cc v0 v11;
-        v13.i256 = add v3 v6;
-        return v13;
+        v8.i256 = call %impl_AbiFrame__len v1;
+        v10.i256 = call %impl_AbiFrame__len v3;
+        v11.i256 = sub v8 v10;
+        call %impl_AbiFrame__store_word v1 v2 v11;
+        v15.@layout_2 = call %slice v3 0.i256 v6;
+        call %encode__g30cc v0 v15;
+        v17.@layout_2 = call %tail v3 v6;
+        return v17;
 
     block3:
         jump block4;
 
     block4:
-        v17.@layout_2 = call %slice v1 v2 32.i256;
-        call %encode__g30cc v0 v17;
+        v21.@layout_2 = call %slice v1 v2 32.i256;
+        call %encode__g30cc v0 v21;
         return v3;
 }
 
@@ -2604,7 +2620,8 @@ func inline(always) private %encode_single_root_alloc__g09ca(v0.i1) -> @layout_1
         v3.@layout_1 = call %impl_MemBuffer__alloc v2;
         v4.i256 = call %impl_MemBuffer__ptr v3;
         v5.@layout_2 = call %from_raw_parts v4 v2;
-        v8.i256 = call %encode_field_at__g09ca v0 v5 0.i256 32.i256;
+        v8.@layout_2 = call %tail v5 32.i256;
+        v9.@layout_2 = call %encode_field__g09ca v0 v5 0.i256 v8;
         return v3;
 }
 
@@ -2617,7 +2634,8 @@ func inline(always) private %encode_single_root_alloc__g472d(v0.i256) -> @layout
         v3.@layout_1 = call %impl_MemBuffer__alloc v2;
         v4.i256 = call %impl_MemBuffer__ptr v3;
         v5.@layout_2 = call %from_raw_parts v4 v2;
-        v8.i256 = call %encode_field_at__g472d v0 v5 0.i256 32.i256;
+        v8.@layout_2 = call %tail v5 32.i256;
+        v9.@layout_2 = call %encode_field__g472d v0 v5 0.i256 v8;
         return v3;
 }
 
@@ -2630,7 +2648,8 @@ func inline(always) private %encode_single_root_alloc__gcb0a(v0.i8) -> @layout_1
         v3.@layout_1 = call %impl_MemBuffer__alloc v2;
         v4.i256 = call %impl_MemBuffer__ptr v3;
         v5.@layout_2 = call %from_raw_parts v4 v2;
-        v8.i256 = call %encode_field_at__gcb0a v0 v5 0.i256 32.i256;
+        v8.@layout_2 = call %tail v5 32.i256;
+        v9.@layout_2 = call %encode_field__gcb0a v0 v5 0.i256 v8;
         return v3;
 }
 
@@ -2643,7 +2662,8 @@ func inline(always) private %encode_single_root_alloc__gac80(v0.i256) -> @layout
         v3.@layout_1 = call %impl_MemBuffer__alloc v2;
         v4.i256 = call %impl_MemBuffer__ptr v3;
         v5.@layout_2 = call %from_raw_parts v4 v2;
-        v8.i256 = call %encode_field_at__gac80 v0 v5 0.i256 32.i256;
+        v8.@layout_2 = call %tail v5 32.i256;
+        v9.@layout_2 = call %encode_field__gac80 v0 v5 0.i256 v8;
         return v3;
 }
 
@@ -2656,7 +2676,8 @@ func inline(always) private %encode_single_root_alloc__g0c18(v0.i256) -> @layout
         v3.@layout_1 = call %impl_MemBuffer__alloc v2;
         v4.i256 = call %impl_MemBuffer__ptr v3;
         v5.@layout_2 = call %from_raw_parts v4 v2;
-        v8.i256 = call %encode_field_at__g0c18 v0 v5 0.i256 32.i256;
+        v8.@layout_2 = call %tail v5 32.i256;
+        v9.@layout_2 = call %encode_field__g0c18 v0 v5 0.i256 v8;
         return v3;
 }
 
@@ -2859,6 +2880,15 @@ func private %impl_trait_MemSlice__len(v0.objref<@layout_2>) -> i256 {
     block1:
         v2.i256 = call %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8a5a v0;
         return v2;
+}
+
+func inline(always) private %impl_AbiFrame__len(v0.@layout_2) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i256 = extract_value v0 1.i256;
+        return v3;
 }
 
 func inline(always) private %impl_trait_CallData__len(v0.@layout_0) -> i256 {
@@ -4223,6 +4253,32 @@ func inline(always) private %impl_AbiFrame__store_word(v0.@layout_2, v1.i256, v2
         v8.i256 = extract_value v6 0.i256;
         call %lib__abi__store_word v8 v2;
         return;
+}
+
+func inline(always) private %tail(v0.@layout_2, v1.i256) -> @layout_2 {
+    block0:
+        jump block1;
+
+    block1:
+        v4.i256 = extract_value v0 1.i256;
+        v6.i1 = gt v1 v4;
+        br v6 block2 block3;
+
+    block2:
+        call %index_out_of_bounds;
+        unreachable;
+
+    block3:
+        jump block4;
+
+    block4:
+        v9.i256 = extract_value v0 0.i256;
+        v11.i256 = call %ptr_offset v9 v1;
+        v12.i256 = extract_value v0 1.i256;
+        v13.i256 = sub v12 v1;
+        v15.@layout_2 = insert_value undef.@layout_2 0.i256 v11;
+        v16.@layout_2 = insert_value v15 1.i256 v13;
+        return v16;
 }
 
 func private %to_word__g3eb7(v0.i256) -> i256 {

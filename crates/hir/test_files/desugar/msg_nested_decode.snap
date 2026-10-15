@@ -37,13 +37,13 @@ mod InnerMsg {
 
         #[inline(always)]
         fn encode(own self, _ __fe_out: core::abi::AbiFrame) {
-            var __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
+            var __fe_tails = __fe_out.tail(<Self as core::abi::AbiSize>::HEAD_SIZE)
             var __fe_head_pos = 0
             let __fe_field_0 = self.marker
-            __fe_tail = core::abi::encode_field_at<std::abi::Sol, u256>(__fe_field_0, __fe_out, head_pos: __fe_head_pos, tail: __fe_tail)
+            __fe_tails = core::abi::encode_field<std::abi::Sol, u256>(__fe_field_0, __fe_out, head_pos: __fe_head_pos, tails: __fe_tails)
             __fe_head_pos = __fe_head_pos + core::abi::abi_field_head_size<u256>()
             let __fe_field_1 = self.data
-            core::abi::encode_field_at<std::abi::Sol, Bytes>(__fe_field_1, __fe_out, head_pos: __fe_head_pos, tail: __fe_tail)
+            core::abi::encode_field<std::abi::Sol, Bytes>(__fe_field_1, __fe_out, head_pos: __fe_head_pos, tails: __fe_tails)
         }
     }
 
@@ -94,10 +94,10 @@ mod OuterMsg {
 
         #[inline(always)]
         fn encode(own self, _ __fe_out: core::abi::AbiFrame) {
-            var __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
+            var __fe_tails = __fe_out.tail(<Self as core::abi::AbiSize>::HEAD_SIZE)
             var __fe_head_pos = 0
             let __fe_field_0 = self.inner
-            core::abi::encode_field_at<std::abi::Sol, InnerMsg::Inner>(__fe_field_0, __fe_out, head_pos: __fe_head_pos, tail: __fe_tail)
+            core::abi::encode_field<std::abi::Sol, InnerMsg::Inner>(__fe_field_0, __fe_out, head_pos: __fe_head_pos, tails: __fe_tails)
         }
     }
 
