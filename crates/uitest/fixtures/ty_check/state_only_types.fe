@@ -41,6 +41,37 @@ fn identity<T>(_ value: own T) -> T {
     value
 }
 
+enum Slot {
+    Held(StorageMap<u256, u256>),
+    Empty,
+}
+
+fn is_empty(_ slot: Slot) -> bool {
+    match slot {
+        Slot::Held(_) => false
+        Slot::Empty => true
+    }
+}
+
+fn second(_ pair: (StorageMap<u256, u256>, u256)) -> u256 {
+    pair.1
+}
+
+fn count(_ maps: [StorageMap<u256, u256>; 2]) -> u256 {
+    2
+}
+
+// Accepted: a projection yields a tuple of places, or an empty variant.
+fn both(
+    _ pair: mut Pair<StorageMap<u256, u256>>,
+) -> (mut StorageMap<u256, u256>, mut StorageMap<u256, u256>) {
+    (mut pair.left, mut pair.right)
+}
+
+fn pick(_ pair: Pair<StorageMap<u256, u256>>, _ left: bool) -> Option<ref StorageMap<u256, u256>> {
+    if left { Option::Some(ref pair.left) } else { Option::None }
+}
+
 pub contract C {
     mut ledger: Ledger,
     mut pair: Pair<StorageMap<u256, u256>>,
@@ -66,5 +97,10 @@ pub contract C {
         // Rejected: an `Option` holding a map is a value outside a
         // projection's yield site.
         let wrapped = Option::Some(ledger.balances)
+        // Rejected: a unit variant, a tuple literal and an array literal
+        // build memory values holding a map.
+        is_empty(Slot::Empty)
+        second((ledger.balances, 0))
+        count([ledger.balances, pair.left])
     }
 }

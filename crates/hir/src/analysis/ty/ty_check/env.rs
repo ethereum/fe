@@ -88,6 +88,9 @@ pub(crate) struct TyCheckEnv<'db> {
     /// Values moved out of closures' captures, with the expression that
     /// moves each and its type, to report once types are known.
     capture_moves: Vec<(ExprId, LocalBinding<'db>, TyId<'db>)>,
+    /// Accesses closures capture whose types were not yet known, with the
+    /// path that captures each, to check once types are known.
+    access_captures: Vec<(ExprId, LocalBinding<'db>, TyId<'db>)>,
     /// The rows of the closures checked so far.
     closure_effects: FxHashMap<ExprId, Vec<ResolvedEffectBindingInfo<'db>>>,
     /// The components of the rows a function's effects name, when its view
@@ -232,6 +235,7 @@ impl<'db> TyCheckEnv<'db> {
             closure_stack: Vec::new(),
             closure_expectations: FxHashMap::default(),
             capture_moves: Vec::new(),
+            access_captures: Vec::new(),
             closure_effects: FxHashMap::default(),
             row_components: Vec::new(),
             pending_vars: FxHashMap::default(),
@@ -1172,6 +1176,19 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn take_capture_moves(&mut self) -> Vec<(ExprId, LocalBinding<'db>, TyId<'db>)> {
         std::mem::take(&mut self.capture_moves)
+    }
+
+    pub(super) fn record_access_capture(
+        &mut self,
+        expr: ExprId,
+        binding: LocalBinding<'db>,
+        ty: TyId<'db>,
+    ) {
+        self.access_captures.push((expr, binding, ty));
+    }
+
+    pub(super) fn take_access_captures(&mut self) -> Vec<(ExprId, LocalBinding<'db>, TyId<'db>)> {
+        std::mem::take(&mut self.access_captures)
     }
 
     /// Whether `binding`, used in the innermost closure being checked, is

@@ -13,7 +13,7 @@ use crate::core::{
     },
     semantic::{EffectRequirement, EffectRequirementKey as SemanticEffectRequirementKey},
 };
-use crate::span::DynLazySpan;
+use crate::span::{DynLazySpan, types::LazyTySpan};
 
 use super::{
     BodyOwner, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef, RecordLike, RowArg, Typeable,
@@ -103,7 +103,6 @@ use crate::analysis::{
         normalize::normalize_ty,
         ty_check::{RecordInitLowering, TyChecker, path::RecordInitChecker},
         ty_def::{InvalidCause, TyId},
-        ty_lower::lower_hir_ty,
     },
 };
 use crate::hir_def::{BlockKind, ItemKind, scope_graph::ScopeId};
@@ -639,12 +638,14 @@ impl<'db> TyChecker<'db> {
         });
 
         self.env.enter_closure(def);
+        let closure_span = expr.span(self.body()).into_closure_expr();
         let mut param_tys = Vec::new();
         for (idx, param) in params.iter().enumerate() {
             let expected = expectation
                 .as_ref()
                 .map(|expectation| (expectation.modes[idx], expectation.params[idx]));
-            let (mode, ty) = self.closure_param(param, expected);
+            let span = closure_span.clone().params().param(idx).ty();
+            let (mode, ty) = self.closure_param(param, expected, span);
             let binding = LocalBinding::Param {
                 site: ParamSite::Closure(def),
                 idx,
@@ -656,7 +657,7 @@ impl<'db> TyChecker<'db> {
             param_tys.push((mode, ty));
         }
         let ret = match ret_ty {
-            Some(ret_ty) => self.lower_closure_ty(ret_ty),
+            Some(ret_ty) => self.lower_ty(ret_ty, closure_span.ret_ty(), true),
             None => expectation
                 .and_then(|expectation| expectation.ret)
                 .unwrap_or_else(|| self.fresh_ty()),
@@ -814,6 +815,7 @@ impl<'db> TyChecker<'db> {
         &mut self,
         param: &FuncParam<'db>,
         expected: Option<(FuncParamMode, TyId<'db>)>,
+        span: LazyTySpan<'db>,
     ) -> (FuncParamMode, TyId<'db>) {
         let annotation = param.ty.to_opt();
         let (mode, payload) = match annotation.map(|ty| ty.data(self.db)) {
@@ -829,19 +831,10 @@ impl<'db> TyChecker<'db> {
         };
         let mode = mode.or(expected.map(|(mode, _)| mode));
         let ty = match payload {
-            Some(ty) => self.lower_closure_ty(ty),
+            Some(ty) => self.lower_ty(ty, span, true),
             None => expected.map_or_else(|| self.fresh_ty(), |(_, ty)| ty),
         };
         (mode.unwrap_or(FuncParamMode::View), ty)
-    }
-
-    fn lower_closure_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
-        let ty = lower_hir_ty(self.db, ty, self.env.scope(), self.env.assumptions());
-        if ty.is_star_kind(self.db) {
-            ty
-        } else {
-            TyId::invalid(self.db, InvalidCause::Other)
-        }
     }
 
     fn check_unary(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
@@ -3837,7 +3830,11 @@ impl<'db> TyChecker<'db> {
                     if matches!(binding, LocalBinding::EffectParam { .. }) {
                         return self.capture_effect(binding);
                     }
-                    if access.is_some() && !ty.has_var(self.db) && !self.ty_is_copy(ty) {
+                    // An access's type still being inferred is checked once
+                    // it is known.
+                    if access.is_some() && ty.has_var(self.db) {
+                        self.env.record_access_capture(expr, binding, ty);
+                    } else if access.is_some() && !self.ty_is_copy(ty) {
                         self.push_diag(BodyDiag::AccessCapture {
                             primary: path_expr_span.into(),
                             name: binding.binding_name(&self.env),
