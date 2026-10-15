@@ -1,0 +1,1 @@
+An all-zero `Option` is now `None`, and an all-zero `Result` is `Ok` of zero: `Option` declares `None` first and `Result` declares `Ok` first, as in Rust. A never-written `StorageMap<K, Option<V>>` entry used to read as `Some` of zero.

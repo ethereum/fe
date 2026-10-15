@@ -12,8 +12,8 @@ type @layout_2 = {};
 type @layout_3 = {@layout_2};
 type @layout_4 = {i256, i256};
 type @layout_5 = enum {
-    #variant_0(i256),
-    #variant_1,
+    #variant_0,
+    #variant_1(i256),
 };
 
 global private const @layout_0 $const_region_0 = {0};
@@ -718,7 +718,7 @@ func private %search(v0.i256, v1.i256, v2.i256, v3.i256) -> @layout_5 {
         jump block5;
 
     block4:
-        v20.@layout_5 = enum.make @layout_5 #variant_1;
+        v20.@layout_5 = enum.make @layout_5 #variant_0;
         return v20;
 
     block5:
@@ -744,7 +744,7 @@ func private %search(v0.i256, v1.i256, v2.i256, v3.i256) -> @layout_5 {
 
     block9:
         v35.i256 = obj.load v4;
-        v36.@layout_5 = enum.make @layout_5 #variant_0 v35;
+        v36.@layout_5 = enum.make @layout_5 #variant_1 v35;
         return v36;
 
     block10:
@@ -767,7 +767,7 @@ func private %search_status(v0.i256, v1.i256, v2.i256, v3.i256) -> i256 {
     block1:
         v8.@layout_5 = call %search v3 v0 v1 v2;
         v9.enumtag(@layout_5) = enum.tag v8;
-        br_table v9 block5 (0.enumtag(@layout_5) block4);
+        br_table v9 block5 (1.enumtag(@layout_5) block4);
 
     block2:
         return v14;
@@ -776,8 +776,8 @@ func private %search_status(v0.i256, v1.i256, v2.i256, v3.i256) -> i256 {
         evm_invalid;
 
     block4:
-        enum.assert_variant v8 #variant_0;
-        v14.i256 = enum.extract v8 #variant_0 0.i256;
+        enum.assert_variant v8 #variant_1;
+        v14.i256 = enum.extract v8 #variant_1 0.i256;
         jump block2;
 
     block5:

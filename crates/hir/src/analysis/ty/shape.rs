@@ -363,23 +363,48 @@ pub fn lower_return_shape<'db>(
     }
 }
 
-/// The variant of `ty` that carries a payload, if `ty` is an `Option` or a
-/// `Result`: `Option::Some(T)` or `Result::Ok(T)` (`Result<E, T>`). The
-/// payload is the type argument with the variant's index; the other variant
-/// is empty or carries the error.
-pub(crate) fn sum_payload_variant<'db>(
+/// The sums whose payload variant can carry a shape or be taken by `?`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SumKind {
+    /// `Option<T>`: `None`, `Some(T)`.
+    Option,
+    /// `Result<E, T>`: `Ok(T)`, `Err(E)`.
+    Result,
+}
+
+impl SumKind {
+    /// The variant that carries the payload: `Some` or `Ok`. The other
+    /// variant is empty or carries the error.
+    pub(crate) fn payload_variant(self) -> u16 {
+        match self {
+            Self::Option => 1,
+            Self::Result => 0,
+        }
+    }
+
+    /// The type argument that is the payload's type: `T` in both.
+    pub(crate) fn payload_arg(self) -> usize {
+        match self {
+            Self::Option => 0,
+            Self::Result => 1,
+        }
+    }
+}
+
+/// Whether `ty` is an `Option` or a `Result`.
+pub(crate) fn sum_kind<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     ty: TyId<'db>,
-) -> Option<u16> {
+) -> Option<SumKind> {
     let is = |lib_path| {
         resolve_lib_type_path(db, scope, lib_path)
             .is_some_and(|lib| lib.base_ty(db) == ty.base_ty(db))
     };
     if is("core::option::Option") {
-        Some(0)
+        Some(SumKind::Option)
     } else if is("core::result::Result") {
-        Some(1)
+        Some(SumKind::Result)
     } else {
         None
     }
@@ -397,8 +422,8 @@ fn sum_shape_slot<'db>(
         TypeKind::Path(Partial::Present(path.strip_generic_args(db))),
     );
     let ctor = lower_hir_ty(db, ctor_hir, scope, assumptions);
-    let variant = sum_payload_variant(db, scope, ctor)?;
-    Some((ctor, variant, variant as usize))
+    let kind = sum_kind(db, scope, ctor)?;
+    Some((ctor, kind.payload_variant(), kind.payload_arg()))
 }
 
 fn sum_type_args<'db>(db: &'db dyn HirAnalysisDb, path: PathId<'db>) -> Option<Vec<HirTyId<'db>>> {

@@ -25,7 +25,7 @@ use crate::{
                 const_ty_or_abstract_from_inherent_const_use,
             },
             normalize::normalize_ty,
-            shape::{Shape, sum_payload_variant},
+            shape::{Shape, SumKind, sum_kind},
             ty_check::{
                 BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef,
                 ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics, RecordInitLowering,
@@ -854,8 +854,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let origin = SemOrigin::Expr(expr);
         let value = self.lower_source(inner);
         let sum_ty = self.locals[value.index()].ty;
-        let success = sum_payload_variant(self.db, self.body.scope(), sum_ty)
+        let kind = sum_kind(self.db, self.body.scope(), sum_ty)
             .expect("`?` applies to an `Option` or a `Result`");
+        let success = kind.payload_variant();
         let failure = 1 - success;
         let is_success = self.emit_expr_with_origin(
             origin,
@@ -878,7 +879,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         );
 
         self.switch_to(failure_bb);
-        let error = (failure == 0).then(|| {
+        let error = (kind == SumKind::Result).then(|| {
             SOperand::synthetic(self.emit_expr_with_origin(
                 origin,
                 sum_ty.generic_args(self.db)[0],
@@ -2282,8 +2283,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let option_ty = plan.call(ForLoopStep::Start).callable.ret_ty(self.db);
         let shape = &plan.shape;
         let some = VariantIndex(
-            sum_payload_variant(self.db, self.body.scope(), option_ty)
-                .expect("a loop state is an `Option`"),
+            sum_kind(self.db, self.body.scope(), option_ty)
+                .expect("a loop state is an `Option`")
+                .payload_variant(),
         );
         let state = self.alloc_temp(plan.state_ty);
         let body_bb = self.new_block();

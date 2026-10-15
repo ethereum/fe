@@ -69,7 +69,7 @@ use crate::analysis::ty::{
     fold::{TyFoldable as _, TyFolder},
     normalize::normalize_with_trait_evidence,
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
-    shape::{Shape, sum_payload_variant},
+    shape::{Shape, SumKind, sum_kind},
     trait_def::TraitInstId,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
@@ -950,7 +950,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
         let scope = self.env.scope();
-        let Some(variant) = sum_payload_variant(self.db, scope, ty) else {
+        let Some(kind) = sum_kind(self.db, scope, ty) else {
             self.push_diag(BodyDiag::TryOnNonSum {
                 primary: inner.span(self.body()).into(),
                 ty,
@@ -958,8 +958,8 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
         let ret = self.expected.fold_with(self.db, &mut self.table);
-        let carries_exit = sum_payload_variant(self.db, scope, ret) == Some(variant)
-            && (variant == 0
+        let carries_exit = sum_kind(self.db, scope, ret) == Some(kind)
+            && (kind == SumKind::Option
                 || self
                     .table
                     .unify(ty.generic_args(self.db)[0], ret.generic_args(self.db)[0])
@@ -982,7 +982,7 @@ impl<'db> TyChecker<'db> {
             };
         }
         let args = ty.generic_args(self.db);
-        ExprProp::new(args[variant as usize], true)
+        ExprProp::new(args[kind.payload_arg()], true)
     }
 
     fn check_cast(

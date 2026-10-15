@@ -7,8 +7,8 @@ use ingot::Result
 use ingot::panic
 
 pub enum Option<T> {
-    Some(T),
-    None
+    None,
+    Some(T)
 }
 
 impl<T> ingot::marker::Copy for Option<T>

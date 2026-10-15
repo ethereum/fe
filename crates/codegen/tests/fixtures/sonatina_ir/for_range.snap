@@ -8,8 +8,8 @@ target = "evm-ethereum-osaka"
 
 type @layout_0 = {i256, i256};
 type @layout_1 = enum {
-    #variant_0(i256),
-    #variant_1,
+    #variant_0,
+    #variant_1(i256),
 };
 
 global private const @layout_0 $const_region_0 = {0, 10};
@@ -22,7 +22,7 @@ func private %for_range_sum() -> i256 {
     block1:
         v3.constref<@layout_0> = const.ref $const_region_0;
         v4.@layout_1 = call %start v3;
-        v5.i1 = enum.is_variant v4 #variant_0;
+        v5.i1 = enum.is_variant v4 #variant_1;
         br v5 block5 block4;
 
     block2:
@@ -33,7 +33,7 @@ func private %for_range_sum() -> i256 {
 
     block3:
         v10.@layout_1 = call %next v3 v7;
-        v11.i1 = enum.is_variant v10 #variant_0;
+        v11.i1 = enum.is_variant v10 #variant_1;
         br v11 block6 block4;
 
     block4:
@@ -41,11 +41,11 @@ func private %for_range_sum() -> i256 {
         return v12;
 
     block5:
-        v14.i256 = enum.extract v4 #variant_0 0.i256;
+        v14.i256 = enum.extract v4 #variant_1 0.i256;
         jump block2;
 
     block6:
-        v16.i256 = enum.extract v10 #variant_0 0.i256;
+        v16.i256 = enum.extract v10 #variant_1 0.i256;
         jump block2;
 
     block7:
@@ -101,12 +101,12 @@ func inline(always) private %range_next(v0.i256, v1.i256) -> @layout_1 {
         br v6 block2 block3;
 
     block2:
-        v8.@layout_1 = enum.make @layout_1 #variant_0 v4;
+        v8.@layout_1 = enum.make @layout_1 #variant_1 v4;
         jump block4;
 
     block3:
-        v9.@layout_1 = enum.make @layout_1 #variant_1;
-        v10.@layout_1 = enum.make @layout_1 #variant_1;
+        v9.@layout_1 = enum.make @layout_1 #variant_0;
+        v10.@layout_1 = enum.make @layout_1 #variant_0;
         jump block4;
 
     block4:
@@ -123,12 +123,12 @@ func inline(always) private %range_start(v0.i256, v1.i256) -> @layout_1 {
         br v4 block2 block3;
 
     block2:
-        v6.@layout_1 = enum.make @layout_1 #variant_0 v0;
+        v6.@layout_1 = enum.make @layout_1 #variant_1 v0;
         jump block4;
 
     block3:
-        v7.@layout_1 = enum.make @layout_1 #variant_1;
-        v8.@layout_1 = enum.make @layout_1 #variant_1;
+        v7.@layout_1 = enum.make @layout_1 #variant_0;
+        v8.@layout_1 = enum.make @layout_1 #variant_0;
         jump block4;
 
     block4:

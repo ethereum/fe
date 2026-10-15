@@ -14,8 +14,8 @@ type @layout_4 = {@layout_3};
 type @layout_6 = {i256, i256};
 type @layout_7 = {i128, i64, i32, i32};
 type @layout_5 = enum {
-    #variant_0(i64),
-    #variant_1,
+    #variant_0,
+    #variant_1(i64),
 };
 
 global private const @layout_7 $const_region_0 = {2, 3, 4, 1};
@@ -589,7 +589,7 @@ func private %decode_u64_word(v0.i256) -> i64 {
     block1:
         v2.@layout_5 = call %downcast v0;
         v3.enumtag(@layout_5) = enum.tag v2;
-        br_table v3 block6 (0.enumtag(@layout_5) block5);
+        br_table v3 block6 (1.enumtag(@layout_5) block5);
 
     block2:
         return v8;
@@ -601,8 +601,8 @@ func private %decode_u64_word(v0.i256) -> i64 {
         evm_revert 0.i256 0.i256;
 
     block5:
-        enum.assert_variant v2 #variant_0;
-        v8.i64 = enum.extract v2 #variant_0 0.i256;
+        enum.assert_variant v2 #variant_1;
+        v8.i64 = enum.extract v2 #variant_1 0.i256;
         jump block2;
 
     block6:
@@ -629,8 +629,8 @@ func private %downcast(v0.i256) -> @layout_5 {
         return v14;
 
     block5:
-        v15.@layout_5 = enum.make @layout_5 #variant_1;
-        v16.@layout_5 = enum.make @layout_5 #variant_1;
+        v15.@layout_5 = enum.make @layout_5 #variant_0;
+        v16.@layout_5 = enum.make @layout_5 #variant_0;
         jump block7;
 
     block6:
@@ -648,8 +648,8 @@ func private %downcast(v0.i256) -> @layout_5 {
         br v25 block5 block6;
 
     block9:
-        v26.@layout_5 = enum.make @layout_5 #variant_1;
-        v27.@layout_5 = enum.make @layout_5 #variant_1;
+        v26.@layout_5 = enum.make @layout_5 #variant_0;
+        v27.@layout_5 = enum.make @layout_5 #variant_0;
         jump block11;
 
     block10:
@@ -661,13 +661,13 @@ func private %downcast(v0.i256) -> @layout_5 {
         jump block7;
 
     block12:
-        v32.@layout_5 = enum.make @layout_5 #variant_1;
-        v33.@layout_5 = enum.make @layout_5 #variant_1;
+        v32.@layout_5 = enum.make @layout_5 #variant_0;
+        v33.@layout_5 = enum.make @layout_5 #variant_0;
         jump block14;
 
     block13:
         v35.i64 = call %impl_trait_u64__from_word v2;
-        v36.@layout_5 = enum.make @layout_5 #variant_0 v35;
+        v36.@layout_5 = enum.make @layout_5 #variant_1 v35;
         jump block14;
 
     block14:
@@ -675,8 +675,8 @@ func private %downcast(v0.i256) -> @layout_5 {
         jump block11;
 
     block15:
-        v38.@layout_5 = enum.make @layout_5 #variant_1;
-        v39.@layout_5 = enum.make @layout_5 #variant_1;
+        v38.@layout_5 = enum.make @layout_5 #variant_0;
+        v39.@layout_5 = enum.make @layout_5 #variant_0;
         jump block17;
 
     block16:
@@ -694,13 +694,13 @@ func private %downcast(v0.i256) -> @layout_5 {
         br v46 block15 block16;
 
     block19:
-        v47.@layout_5 = enum.make @layout_5 #variant_1;
-        v48.@layout_5 = enum.make @layout_5 #variant_1;
+        v47.@layout_5 = enum.make @layout_5 #variant_0;
+        v48.@layout_5 = enum.make @layout_5 #variant_0;
         jump block21;
 
     block20:
         v50.i64 = call %impl_trait_u64__from_word v2;
-        v51.@layout_5 = enum.make @layout_5 #variant_0 v50;
+        v51.@layout_5 = enum.make @layout_5 #variant_1 v50;
         jump block21;
 
     block21:
