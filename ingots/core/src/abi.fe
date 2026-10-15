@@ -33,11 +33,14 @@ pub trait ByteInput {
     /// bytes in a live allocation.
     unsafe fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256)
 
-    /// Copy an already validated byte range into linear memory.
+    /// Copy a byte range the caller has validated into linear memory.
     ///
-    /// Callers must validate bounds before using this fast path, and ensure
-    /// that `dest` has room for `len` bytes in a live allocation.
-    /// Implementations may skip all checks; arbitrary byte lengths are supported.
+    /// The caller must ensure that `dest` has room for `len` bytes in a live
+    /// allocation. The range is validated only against a length the caller
+    /// was given, which may exceed the input, so the copy must stay safe for
+    /// any source range: an implementation may skip the check only where
+    /// reading past the end is itself safe, as calldata reads zeros there.
+    /// Arbitrary byte lengths are supported.
     unsafe fn copy_to_memory_unchecked(self, dest: *u8, src_offset: u256, len: u256) {
         self.copy_to_memory(dest: dest, src_offset: src_offset, len: len)
     }
@@ -1155,16 +1158,6 @@ impl ByteInput for ptr::MemSpan {
             super::panic()
         }
 
-        ptr::copy(
-            dest,
-            source: ptr::MemSpan::from_raw_parts(
-                ptr: ptr::offset_bytes(self.ptr(), src_offset),
-                len,
-            ),
-        )
-    }
-
-    unsafe fn copy_to_memory_unchecked(self, dest: *u8, src_offset: u256, len: u256) {
         ptr::copy(
             dest,
             source: ptr::MemSpan::from_raw_parts(
