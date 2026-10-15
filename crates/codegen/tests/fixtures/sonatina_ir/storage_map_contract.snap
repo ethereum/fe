@@ -55,14 +55,48 @@ func private %alloc(v0.i256) -> @layout_0 {
         return v2;
 }
 
-func private %alloc_bytes(v0.i256) -> i256 {
+func inline(always) private %core__lib__ptr__alloc_bytes_7e7d(v0.i256) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v2.*i8 = evm_malloc v0;
-        v3.i256 = ptr_to_int v2 i256;
-        return v3;
+        v3.i1 = gt v0 18446744073709551615.i256;
+        br v3 block2 block3;
+
+    block2:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 65.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block3:
+        jump block4;
+
+    block4:
+        v12.*i8 = evm_malloc v0;
+        v13.i256 = ptr_to_int v12 i256;
+        return v13;
+}
+
+func inline(always) private %core__lib__ptr__alloc_bytes_8b3e(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i1 = gt v0 18446744073709551615.i256;
+        br v3 block2 block3;
+
+    block2:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 65.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block3:
+        jump block4;
+
+    block4:
+        v12.*i8 = evm_malloc v0;
+        v13.i256 = ptr_to_int v12 i256;
+        return v13;
 }
 
 func private %alloc_uninit(v0.i256) -> @layout_0 {
@@ -70,12 +104,11 @@ func private %alloc_uninit(v0.i256) -> @layout_0 {
         jump block1;
 
     block1:
-        v2.*i8 = evm_malloc v0;
-        v3.i256 = ptr_to_int v2 i256;
-        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v3;
-        v8.@layout_0 = insert_value v6 1.i256 v0;
-        v10.@layout_0 = insert_value v8 2.i256 v0;
-        return v10;
+        v2.i256 = call %core__lib__ptr__alloc_bytes_7e7d v0;
+        v5.@layout_0 = insert_value undef.@layout_0 0.i256 v2;
+        v7.@layout_0 = insert_value v5 1.i256 v0;
+        v9.@layout_0 = insert_value v7 2.i256 v0;
+        return v9;
 }
 
 func private %calldataload(v0.i256) -> i256 {
@@ -329,7 +362,7 @@ func inline(always) private %locate(v0.i256, v1.i256, v2.i256) -> @layout_1 {
         evm_revert 0.i256 36.i256;
 
     block7:
-        v14.i256 = call %alloc_bytes v7;
+        v14.i256 = call %core__lib__ptr__alloc_bytes_8b3e v7;
         call %write_key v14 v2;
         v18.i256 = add v14 v5;
         mstore v18 v1 i256;
@@ -659,23 +692,22 @@ func private %runtime() {
         unreachable;
 
     block54:
-        v70.*i8 = evm_malloc 0.i256;
-        v71.i256 = ptr_to_int v70 i256;
-        v72.i256 = call %cast__gf0ab v71;
+        v70.i256 = call %core__lib__ptr__alloc_bytes_7e7d 0.i256;
+        v71.i256 = call %cast__gf0ab v70;
         jump block56;
 
     block55:
         jump block53;
 
     block56:
-        v76.@layout_1 = insert_value undef.@layout_1 0.i256 v72;
-        v78.@layout_1 = insert_value v76 1.i256 0.i256;
-        v79.objref<i256> = obj.proj v0 0.i256;
-        v80.i256 = extract_value v78 0.i256;
-        obj.store v79 v80;
-        v81.objref<i256> = obj.proj v0 1.i256;
-        v82.i256 = extract_value v78 1.i256;
-        obj.store v81 v82;
+        v75.@layout_1 = insert_value undef.@layout_1 0.i256 v71;
+        v77.@layout_1 = insert_value v75 1.i256 0.i256;
+        v78.objref<i256> = obj.proj v0 0.i256;
+        v79.i256 = extract_value v77 0.i256;
+        obj.store v78 v79;
+        v80.objref<i256> = obj.proj v0 1.i256;
+        v81.i256 = extract_value v77 1.i256;
+        obj.store v80 v81;
         jump block55;
 }
 

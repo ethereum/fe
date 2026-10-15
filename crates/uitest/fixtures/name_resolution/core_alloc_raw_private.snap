@@ -1,0 +1,16 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+assertion_line: 26
+expression: diags
+input_file: fixtures/name_resolution/core_alloc_raw_private.fe
+---
+error[2-0003]: `alloc_raw` is not visible
+   ┌─ core_alloc_raw_private.fe:6:10
+   │
+ 6 │     ptr::alloc_raw(len)
+   │          ^^^^^^^^^ `alloc_raw` is not visible
+   │
+   ┌─ src/ptr.fe:16:8
+   │
+16 │     fn alloc_raw(_ size: u256) -> *u8
+   │        --------- `alloc_raw` is defined here

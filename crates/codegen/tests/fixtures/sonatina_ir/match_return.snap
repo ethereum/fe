@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 416
+assertion_line: 388
 expression: output
 input_file: crates/codegen/tests/fixtures/match_return.fe
 ---
@@ -11,6 +11,28 @@ type @layout_0 = enum {
     #variant_0,
     #variant_1,
 };
+
+func inline(always) private %alloc_bytes(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i1 = gt v0 18446744073709551615.i256;
+        br v3 block2 block3;
+
+    block2:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 65.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block3:
+        jump block4;
+
+    block4:
+        v12.*i8 = evm_malloc v0;
+        v13.i256 = ptr_to_int v12 i256;
+        return v13;
+}
 
 func private %cast(v0.i256) -> i256 {
     block0:
@@ -41,23 +63,22 @@ func private %f(v0.@layout_0) {
         unreachable;
 
     block5:
-        v9.*i8 = evm_malloc 0.i256;
-        v10.i256 = ptr_to_int v9 i256;
-        v11.i256 = call %cast v10;
+        v9.i256 = call %alloc_bytes 0.i256;
+        v10.i256 = call %cast v9;
         jump block7;
 
     block6:
         jump block4;
 
     block7:
-        v15.@layout_1 = insert_value undef.@layout_1 0.i256 v11;
-        v18.@layout_1 = insert_value v15 1.i256 0.i256;
-        v19.objref<i256> = obj.proj v1 0.i256;
-        v20.i256 = extract_value v18 0.i256;
-        obj.store v19 v20;
-        v21.objref<i256> = obj.proj v1 1.i256;
-        v22.i256 = extract_value v18 1.i256;
-        obj.store v21 v22;
+        v14.@layout_1 = insert_value undef.@layout_1 0.i256 v10;
+        v17.@layout_1 = insert_value v14 1.i256 0.i256;
+        v18.objref<i256> = obj.proj v1 0.i256;
+        v19.i256 = extract_value v17 0.i256;
+        obj.store v18 v19;
+        v20.objref<i256> = obj.proj v1 1.i256;
+        v21.i256 = extract_value v17 1.i256;
+        obj.store v20 v21;
         jump block6;
 
     block8:
@@ -65,23 +86,22 @@ func private %f(v0.@layout_0) {
         unreachable;
 
     block9:
-        v24.*i8 = evm_malloc 0.i256;
-        v25.i256 = ptr_to_int v24 i256;
-        v26.i256 = call %cast v25;
+        v23.i256 = call %alloc_bytes 0.i256;
+        v24.i256 = call %cast v23;
         jump block11;
 
     block10:
         jump block8;
 
     block11:
-        v30.@layout_1 = insert_value undef.@layout_1 0.i256 v26;
-        v32.@layout_1 = insert_value v30 1.i256 0.i256;
-        v33.objref<i256> = obj.proj v2 0.i256;
-        v34.i256 = extract_value v32 0.i256;
+        v28.@layout_1 = insert_value undef.@layout_1 0.i256 v24;
+        v30.@layout_1 = insert_value v28 1.i256 0.i256;
+        v31.objref<i256> = obj.proj v2 0.i256;
+        v32.i256 = extract_value v30 0.i256;
+        obj.store v31 v32;
+        v33.objref<i256> = obj.proj v2 1.i256;
+        v34.i256 = extract_value v30 1.i256;
         obj.store v33 v34;
-        v35.objref<i256> = obj.proj v2 1.i256;
-        v36.i256 = extract_value v32 1.i256;
-        obj.store v35 v36;
         jump block10;
 }
 

@@ -14,10 +14,9 @@ func private %alloc__g36fc() -> i256 {
         jump block1;
 
     block1:
-        v1.*i8 = evm_malloc 64.i256;
-        v2.i256 = ptr_to_int v1 i256;
-        v3.i256 = call %cast__g8838 v2;
-        return v3;
+        v1.i256 = call %alloc_bytes 64.i256;
+        v2.i256 = call %cast__g8838 v1;
+        return v2;
 }
 
 func private %alloc_array(v0.i256) -> @layout_0 {
@@ -29,14 +28,26 @@ func private %alloc_array(v0.i256) -> @layout_0 {
         return v2;
 }
 
-func private %alloc_bytes(v0.i256) -> i256 {
+func inline(always) private %alloc_bytes(v0.i256) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v2.*i8 = evm_malloc v0;
-        v3.i256 = ptr_to_int v2 i256;
-        return v3;
+        v3.i1 = gt v0 18446744073709551615.i256;
+        br v3 block2 block3;
+
+    block2:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 65.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block3:
+        jump block4;
+
+    block4:
+        v12.*i8 = evm_malloc v0;
+        v13.i256 = ptr_to_int v12 i256;
+        return v13;
 }
 
 func private %alloc__g8571() -> i256 {
@@ -44,10 +55,9 @@ func private %alloc__g8571() -> i256 {
         jump block1;
 
     block1:
-        v1.*i8 = evm_malloc 64.i256;
-        v2.i256 = ptr_to_int v1 i256;
-        v3.i256 = call %cast__gcc0a v2;
-        return v3;
+        v1.i256 = call %alloc_bytes 64.i256;
+        v2.i256 = call %cast__gcc0a v1;
+        return v2;
 }
 
 func private %core__lib__ptr__impl_MemArray_065f__byte_len__ge513_14f0(v0.@layout_0) -> i256 {
@@ -250,12 +260,11 @@ func private %new_uninit(v0.i256) -> @layout_0 {
         evm_revert 0.i256 36.i256;
 
     block3:
-        v10.*i8 = evm_malloc v3;
-        v11.i256 = ptr_to_int v10 i256;
-        v12.i256 = call %cast__g5f1e v11;
-        v15.@layout_0 = insert_value undef.@layout_0 0.i256 v12;
-        v17.@layout_0 = insert_value v15 1.i256 v0;
-        return v17;
+        v10.i256 = call %alloc_bytes v3;
+        v11.i256 = call %cast__g5f1e v10;
+        v14.@layout_0 = insert_value undef.@layout_0 0.i256 v11;
+        v16.@layout_0 = insert_value v14 1.i256 v0;
+        return v16;
 }
 
 func private %new_zeroed(v0.i256) -> @layout_0 {

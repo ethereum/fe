@@ -12,7 +12,8 @@ extern {
     /// Allocates `size` bytes and returns a pointer to the first byte.
     /// The allocation establishes a byte extent, not initialized typed contents.
     /// Native `ref`/`mut` slots require a valid typed store before they are read.
-    pub fn alloc_raw(_ size: u256) -> *u8
+    /// Every allocation goes through `alloc_bytes`, which bounds the size.
+    fn alloc_raw(_ size: u256) -> *u8
 
     /// Copies `len` bytes between linear-memory regions.
     ///
@@ -100,7 +101,7 @@ impl<T> MemArray<T> {
     /// The caller must initialize each element before it is read.
     pub unsafe fn new_uninit(_ len: u256) -> Self {
         Self {
-            ptr: cast<u8, T>(alloc_raw(len * size_of<T>())),
+            ptr: cast<u8, T>(alloc_bytes(len * size_of<T>())),
             len,
         }
     }
@@ -238,7 +239,7 @@ impl<T> MemSlice<T> {
 
     /// An empty slice, which views nothing.
     pub fn empty() -> ref Self {
-        unsafe { Self::from_raw_parts(ptr: cast<u8, T>(alloc_raw(0)), len: 0) }
+        unsafe { Self::from_raw_parts(ptr: cast<u8, T>(alloc_bytes(0)), len: 0) }
     }
 
     pub fn ptr(self) -> *T {
@@ -366,19 +367,6 @@ impl MemSlice<u8> {
     }
 }
 
-/// The largest buffer capacity, as Solidity's largest allocation.
-const MAX_CAPACITY: u256 = 0xffffffffffffffff
-
-/// `capacity`, or a `Panic(0x41)` revert above `MAX_CAPACITY`: a buffer
-/// reserves its capacity without writing it, so nothing else would stop a
-/// larger one from wrapping the free memory pointer onto live allocations.
-fn bounded_capacity(_ capacity: u256) -> u256 {
-    if capacity > MAX_CAPACITY {
-        panic_code(PANIC_OUT_OF_MEMORY)
-    }
-    capacity
-}
-
 impl MemBuffer {
     /// A buffer of `len` zero bytes.
     pub fn alloc(_ len: u256) -> Self {
@@ -392,7 +380,7 @@ impl MemBuffer {
     /// The caller must write every byte before anything reads it.
     pub unsafe fn alloc_uninit(_ len: u256) -> Self {
         Self {
-            ptr: alloc_raw(len),
+            ptr: alloc_bytes(len),
             len,
             capacity: len,
         }
@@ -404,7 +392,7 @@ impl MemBuffer {
         // A fresh allocation of `capacity` bytes, none yet in the extent.
         unsafe {
             Self {
-                ptr: alloc_raw(bounded_capacity(capacity)),
+                ptr: alloc_bytes(capacity),
                 len: 0,
                 capacity,
             }
@@ -484,7 +472,7 @@ impl MemBuffer {
             capacity *= 2
         }
 
-        let replacement = alloc_raw(bounded_capacity(capacity))
+        let replacement = alloc_bytes(capacity)
         // The replacement holds every initialized byte, in `capacity` bytes.
         unsafe {
             copy(dest: replacement, source: self.span())
@@ -593,7 +581,7 @@ impl<const N: usize> FixedMemBuffer<N> {
     #[inline(always)]
     pub unsafe fn alloc_uninit() -> Self {
         Self {
-            ptr: alloc_raw(N as u256),
+            ptr: alloc_bytes(N as u256),
         }
     }
 
@@ -648,10 +636,21 @@ pub fn byte_ptr<T>(_ ptr: *T) -> *u8 {
 
 /// Allocates room for `T`, without establishing initialized `T` contents.
 pub fn alloc<T>() -> *T {
-    cast<u8, T>(alloc_raw(size_of<T>()))
+    cast<u8, T>(alloc_bytes(size_of<T>()))
 }
 
+/// The largest allocation, as Solidity's.
+const MAX_ALLOCATION: u256 = 0xffffffffffffffff
+
+/// Allocates `len` bytes, without initializing them. Reverts with
+/// `Panic(0x41)` above `2**64 - 1` bytes, like Solidity: an allocation is not
+/// written as it is made, so nothing else would stop a larger request from
+/// wrapping the free memory pointer onto live allocations.
+#[inline(always)]
 pub fn alloc_bytes(_ len: u256) -> *u8 {
+    if len > MAX_ALLOCATION {
+        panic_code(PANIC_OUT_OF_MEMORY)
+    }
     alloc_raw(len)
 }
 

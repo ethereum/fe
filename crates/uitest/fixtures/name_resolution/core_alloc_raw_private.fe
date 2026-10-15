@@ -1,0 +1,7 @@
+use core::ptr
+
+// The raw allocator does not bound its size, so only `ptr::alloc_bytes`,
+// which does, may call it.
+fn raw(len: u256) -> *u8 {
+    ptr::alloc_raw(len)
+}
