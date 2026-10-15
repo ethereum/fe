@@ -10,6 +10,7 @@
 //! carrier was derived from.
 use std::collections::BTreeSet;
 
+use common::ingot::IngotKind;
 use cranelift_entity::EntityRef;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
@@ -23,13 +24,14 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::{
-            SemOrigin, SemanticInstance,
+            SemOrigin, SemanticInstance, SemanticInstanceKey,
             access::{control::semantic_may_return, projection_result_spaces},
             definite_assignment::literal_index,
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticKind, SemanticDiagnosticSpan, operand_origin,
             },
-            get_or_build_semantic_instance,
+            effect_param_site, get_or_build_semantic_instance,
+            instance::row_expansion_for_key,
             normalized::{
                 NBlockId, NDataPath, NDataProjection, NEffectArg, NEffectArgValue, NExpr, NOperand,
                 NPlace, NPlaceBase, NRootKind, NStatement, NStatementKind, NStructuralPath,
@@ -52,7 +54,7 @@ use crate::{
         },
     },
     hir_def::{CallableDef, FuncParamMode, Partial, Stmt, scope_graph::ScopeId},
-    semantic::{EffectRequirementKey, ProviderSource},
+    semantic::{EffectRequirementKey, ProviderSource, effect_requirements_for_site},
 };
 
 type Diag<'db> = SemanticDiagnostic<'db>;
@@ -168,6 +170,8 @@ pub(super) struct Analysis<'a, 'db> {
     /// The values whose accesses an `end` closes. Normalization opens
     /// others for a single call, which closes them.
     ended: FxHashSet<NValueId>,
+    /// The values a call takes as arguments, and those they forward.
+    call_args: FxHashSet<NValueId>,
     /// The projection each session calls.
     sessions: FxHashMap<NValueId, SemanticInstance<'db>>,
     /// Each unsafe split component's split and position in it.
@@ -217,6 +221,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     _ => None,
                 })
                 .collect(),
+            call_args: call_args(body),
             sessions: FxHashMap::default(),
             split_of: body
                 .unsafe_splits
@@ -739,24 +744,28 @@ impl<'a, 'db> Analysis<'a, 'db> {
             // A borrow no `end` closes is not an access of its own: through
             // a carrier it names part of the carrier's access, and otherwise
             // it is normalization's view of a call argument, open for that
-            // call. A snapshot argument is passed by copy: its read is the
-            // whole access.
+            // call. A call argument reached through a carrier is opened for
+            // the call too, derived from the carrier, so a call's arguments
+            // and receiver are checked against each other whatever their
+            // places are reached through. A snapshot argument is passed by
+            // copy: its read is the whole access.
             NExpr::Borrow { place, .. } | NExpr::MakeView { place, .. }
                 if !self.ended.contains(&result) =>
             {
+                let snapshot = ty_is_snapshot(self.db, self.scope, place.ty, self.assumptions);
                 match place.base {
-                    NPlaceBase::CapabilityTarget { carrier } => self
-                        .direct(carrier)
-                        .into_iter()
-                        .map(|token| (token, Path::new()))
-                        .collect(),
                     NPlaceBase::Deref { .. } => Held::new(),
-                    NPlaceBase::Root(_)
-                        if ty_is_snapshot(self.db, self.scope, place.ty, self.assumptions) =>
+                    NPlaceBase::CapabilityTarget { carrier }
+                        if !self.call_args.contains(&result)
+                            || snapshot && matches!(expr, NExpr::Borrow { .. }) =>
                     {
-                        Held::new()
+                        self.direct(carrier)
+                            .into_iter()
+                            .map(|token| (token, Path::new()))
+                            .collect()
                     }
-                    NPlaceBase::Root(_) => {
+                    _ if snapshot => Held::new(),
+                    NPlaceBase::Root(_) | NPlaceBase::CapabilityTarget { .. } => {
                         let mode = match expr {
                             NExpr::Borrow { kind, .. } => *kind,
                             _ => BorrowKind::Ref,
@@ -780,7 +789,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 {
                     self.sessions
                         .insert(result, get_or_build_semantic_instance(self.db, callee.key));
-                    return self.open_session(result, origin, func, shape, args, effect_args);
+                    return self.open_session(result, origin, callee.key, shape, args, effect_args);
                 }
                 Held::new()
             }
@@ -821,11 +830,14 @@ impl<'a, 'db> Analysis<'a, 'db> {
         &mut self,
         result: NValueId,
         origin: SemOrigin<'db>,
-        func: crate::hir_def::Func<'db>,
+        callee: SemanticInstanceKey<'db>,
         shape: &Shape<'db>,
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
     ) -> Held {
+        let BodyOwner::Func(func) = callee.owner(self.db) else {
+            return Held::new();
+        };
         let mut reservations = TokenSet::new();
         for (position, arg) in args.iter().enumerate() {
             let param_mode = CallableDef::Func(func).param_mode(self.db, position);
@@ -855,10 +867,15 @@ impl<'a, 'db> Analysis<'a, 'db> {
             token.zero_sized = zero_sized;
             reservations.push(id);
         }
-        for (position, effect) in effect_args.iter().enumerate() {
-            let Some(footprint) = self.effect_footprint(func, effect) else {
-                continue;
-            };
+        let mut footprints: Vec<_> = args
+            .iter()
+            .enumerate()
+            .filter_map(|(position, arg)| self.capability_arg_footprint(func, position, arg))
+            .collect();
+        for effect in effect_args {
+            footprints.extend(self.effect_footprint(callee, effect));
+        }
+        for (position, footprint) in footprints.into_iter().enumerate() {
             let id = self.token(
                 result,
                 Site::Effect(position),
@@ -915,12 +932,50 @@ impl<'a, 'db> Analysis<'a, 'db> {
             .collect()
     }
 
+    /// Every persistent and transient slot, when the data argument at
+    /// `position` of a call of `func` is a reentrant or raw storage
+    /// capability: the callee may start an external execution or address
+    /// slots through it, as through an effect. Read through a view. The
+    /// methods `core` and `std` define on the capabilities say what they
+    /// reach themselves (`external_call_state_access`), so `ctx.caller()`
+    /// reaches nothing.
+    fn capability_arg_footprint(
+        &self,
+        func: crate::hir_def::Func<'db>,
+        position: usize,
+        arg: &NOperand,
+    ) -> Option<Footprint> {
+        if matches!(
+            func.top_mod(self.db).ingot(self.db).kind(self.db),
+            IngotKind::Core | IngotKind::Std
+        ) {
+            return None;
+        }
+        let mode = CallableDef::Func(func).param_mode(self.db, position);
+        let ty = self.body.values[arg.value.index()].ty;
+        let ty = ty.as_capability(self.db).map_or(ty, |(_, inner)| inner);
+        let access = effect_key_state_access(
+            self.db,
+            self.scope,
+            self.assumptions,
+            EffectRequirementKey::Type(ty),
+            mode != FuncParamMode::View,
+        )?;
+        Some(Footprint {
+            regions: state_regions(),
+            mode: access.borrow_kind(),
+            parents: TokenSet::new(),
+        })
+    }
+
     /// The domains an effect argument confers authority over, with its mode:
     /// every persistent and transient slot for a reentrant or raw storage
-    /// capability, and the supplied place or handle's domain otherwise.
+    /// capability, and the supplied place or handle's domain otherwise. The
+    /// requirement of a row's component is the one the callee's instance
+    /// expands it to.
     fn effect_footprint(
         &mut self,
-        func: crate::hir_def::Func<'db>,
+        callee: SemanticInstanceKey<'db>,
         effect: &NEffectArg<'db>,
     ) -> Option<Footprint> {
         let mode = if effect.required_mut {
@@ -932,10 +987,19 @@ impl<'a, 'db> Analysis<'a, 'db> {
             NEffectArgValue::Place(place) => place.ty,
             NEffectArgValue::Value(value) => self.body.values[value.value.index()].ty,
         };
-        let requirement = func
-            .effect_requirements(self.db)
+        let requirements = effect_param_site(callee.owner(self.db))
+            .map(|site| effect_requirements_for_site(self.db, site))
+            .unwrap_or_default();
+        let requirement = requirements
             .iter()
-            .find(|requirement| requirement.binding_idx == effect.binding_idx);
+            .find(|requirement| requirement.binding_idx == effect.binding_idx)
+            .or_else(|| {
+                row_expansion_for_key(self.db, callee)
+                    .components
+                    .iter()
+                    .map(|component| &component.requirement)
+                    .find(|requirement| requirement.binding_idx == effect.binding_idx)
+            });
         let key = requirement.map(|requirement| match &requirement.key {
             EffectRequirementKey::Type(_) => EffectRequirementKey::Type(arg_ty),
             key => key.clone(),
@@ -1535,14 +1599,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 } = expr
                 {
                     let siblings = self.split_siblings(*result);
-                    let result = self.check_call(
-                        callee.key.owner(self.db),
-                        args,
-                        effect_args,
-                        state,
-                        &siblings,
-                        origin,
-                    );
+                    let result =
+                        self.check_call(callee.key, args, effect_args, state, &siblings, origin);
                     self.report(result)?;
                 }
                 let opened = self.opened.get(result).cloned().unwrap_or_default();
@@ -1920,17 +1978,24 @@ impl<'a, 'db> Analysis<'a, 'db> {
     /// unsafe split, which it never conflicts with.
     fn check_call(
         &mut self,
-        owner: BodyOwner<'db>,
+        callee: SemanticInstanceKey<'db>,
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
         state: &State,
         siblings: &[TokenId],
         origin: SemOrigin<'db>,
     ) -> Result<(), Diag<'db>> {
-        let BodyOwner::Func(func) = owner else {
-            return Ok(());
+        // A closure's body runs its row's effects; its arguments are checked
+        // where its environment and parameters are built.
+        let func = match callee.owner(self.db) {
+            BodyOwner::Func(func) => Some(func),
+            BodyOwner::Closure { .. } => None,
+            _ => return Ok(()),
         };
         for (position, arg) in args.iter().enumerate() {
+            let Some(func) = func else {
+                break;
+            };
             let param_mode = CallableDef::Func(func).param_mode(self.db, position);
             let arg_origin = operand_origin(*arg, origin);
             let direct = self.passed_to(arg.value, param_mode);
@@ -1981,11 +2046,20 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 state, &regions, mode, &authority, siblings, kind, arg_origin,
             )?;
         }
-        let mut footprints: Vec<_> = effect_args
-            .iter()
-            .filter_map(|effect| self.effect_footprint(func, effect))
-            .collect();
-        if let Some(access) = external_call_state_access(self.db, func) {
+        let mut footprints = Vec::new();
+        if let Some(func) = func {
+            footprints.extend(
+                args.iter().enumerate().filter_map(|(position, arg)| {
+                    self.capability_arg_footprint(func, position, arg)
+                }),
+            );
+        }
+        for effect in effect_args {
+            footprints.extend(self.effect_footprint(callee, effect));
+        }
+        if let Some(func) = func
+            && let Some(access) = external_call_state_access(self.db, func)
+        {
             footprints.push(Footprint {
                 regions: state_regions(),
                 mode: access.borrow_kind(),
@@ -2091,6 +2165,23 @@ impl<'a, 'db> Analysis<'a, 'db> {
             };
             let authority = self.ancestors(&own);
             let origin = operand_origin(value, origin);
+            // The caller receives the referent whole: no part of it may be
+            // moved out, under the grant's own key or an ancestor's.
+            if let Some(hole) = state.moved.iter().find(|(key, hole)| {
+                matches!(key, MoveKey::Access(token) if authority.contains(token)
+                && self.tokens[*token as usize].regions.iter().any(|region| {
+                    let moved: Path = region.path.iter().chain(hole).cloned().collect();
+                    regions.iter().any(|granted| {
+                        granted.base == region.base && paths_overlap(&moved, &granted.path)
+                    })
+                }))
+            }) {
+                return Err(self.moved_diag(
+                    "cannot yield an access while its referent is moved out",
+                    origin,
+                    hole,
+                ));
+            }
             self.check_conflicts(state, &regions, mode, &authority, &own, kind, origin)?;
         }
         Ok(())
@@ -2260,6 +2351,35 @@ fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKind, TyId<'db
 }
 
 /// Every persistent and transient slot.
+/// The values a call of `body` takes as arguments, and the values they
+/// forward.
+fn call_args(body: &NormalizedBody<'_>) -> FxHashSet<NValueId> {
+    let mut args: FxHashSet<NValueId> = body
+        .blocks
+        .iter()
+        .flat_map(|block| &block.statements)
+        .filter_map(|statement| match &statement.kind {
+            NStatementKind::Define {
+                expr: NExpr::Call { args, .. },
+                ..
+            } => Some(args),
+            _ => None,
+        })
+        .flatten()
+        .map(|arg| arg.value)
+        .collect();
+    let mut pending: Vec<_> = args.iter().copied().collect();
+    while let Some(value) = pending.pop() {
+        if let Some((_, NExpr::Forward { src } | NExpr::StructuralRepack { value: src, .. })) =
+            body.defining_expr(value)
+            && args.insert(src.value)
+        {
+            pending.push(src.value);
+        }
+    }
+    args
+}
+
 fn state_regions() -> Vec<AbsPlace> {
     [AddressSpace::Storage, AddressSpace::Transient]
         .map(|space| AbsPlace::new(Base::State(space)))

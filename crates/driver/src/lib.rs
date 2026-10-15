@@ -249,6 +249,7 @@ pub fn check_library_requirements(db: &DriverDataBase) -> Vec<String> {
 fn init_ingot_graph(db: &mut DriverDataBase, ingot_url: &Url) -> bool {
     tracing::info!(target: "resolver", "Starting ingot resolution for: {}", ingot_url);
     let checkout_root = remote_checkout_root(ingot_url);
+    db.dependency_graph().register_root_ingot(db, ingot_url);
     let mut handler = IngotHandler::new(db);
     let mut ingot_graph_resolver = GraphResolverImpl::new(ingot_resolver(checkout_root));
 

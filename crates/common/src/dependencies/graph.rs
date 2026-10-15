@@ -26,6 +26,9 @@ pub struct DependencyGraph {
     workspace_root_by_member: HashMap<Url, Url>,
     expected_member_metadata: HashMap<Url, (SmolStr, Version)>,
     forced_dependency_arithmetic: HashMap<Url, ArithmeticMode>,
+    /// The ingots and workspaces a build was asked for, not reached as
+    /// dependencies.
+    root_ingots: HashSet<Url>,
 }
 
 #[salsa::tracked]
@@ -42,6 +45,7 @@ impl DependencyGraph {
             HashMap::new(),
             HashMap::new(),
             HashMap::new(),
+            HashSet::new(),
         )
     }
 
@@ -196,14 +200,28 @@ impl DependencyGraph {
         self.node_map(db).contains_key(url)
     }
 
-    /// Whether `url` is the user's own code rather than a dependency: a
-    /// workspace member, an ingot nothing in the graph depends on, or one the
-    /// graph does not know (a standalone file).
+    /// Records `url` as an ingot or workspace a build was asked for.
+    pub fn register_root_ingot(&self, db: &mut dyn InputDb, url: &Url) {
+        let mut roots = self.root_ingots(db);
+        if roots.insert(url.clone()) {
+            self.set_root_ingots(db).to(roots);
+        }
+    }
+
+    /// Whether `url` is the user's own code rather than a dependency: an
+    /// ingot a build was asked for or a member of its workspace, an ingot
+    /// nothing in the graph depends on, or one the graph does not know (a
+    /// standalone file). A member of a dependency's own workspace is a
+    /// dependency.
     pub fn is_trust_root(&self, db: &dyn InputDb, url: &Url) -> bool {
         let Some(&idx) = self.node_map(db).get(url) else {
             return true;
         };
-        self.workspace_root_by_member(db).contains_key(url)
+        let members = self.workspace_root_by_member(db);
+        let workspace = |url: &Url| members.get(url).unwrap_or(url).clone();
+        self.root_ingots(db)
+            .iter()
+            .any(|root| root == url || workspace(root) == workspace(url))
             || self
                 .graph(db)
                 .edges_directed(idx, Incoming)
