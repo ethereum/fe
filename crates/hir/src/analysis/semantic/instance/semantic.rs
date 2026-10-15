@@ -2209,11 +2209,23 @@ fn instantiate_effect_env_data_for_key<'db>(
                 .map(|component| Ok(component.requirement.clone())),
         )
         .collect::<Result<Vec<_>, _>>()?;
+    // A component that is a row forwarded unexpanded has no provider, as a
+    // declared row has none.
     let mut resolutions = view.resolutions(db);
-    resolutions.extend(components.iter().map(|component| ResolvedEffectBinding {
-        requirement_idx: component.requirement.binding_idx,
-        provider_idx: component.requirement.binding_idx,
-    }));
+    resolutions.extend(
+        components
+            .iter()
+            .filter(|component| {
+                matches!(
+                    component.requirement.key.kind(),
+                    EffectKeyKind::Type | EffectKeyKind::Trait
+                )
+            })
+            .map(|component| ResolvedEffectBinding {
+                requirement_idx: component.requirement.binding_idx,
+                provider_idx: component.requirement.binding_idx,
+            }),
+    );
     let providers =
         instantiate_provider_bindings_for_key(db, key, site, view.providers(db), &resolutions)?;
     let forwarded_witnesses =
