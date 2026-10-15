@@ -10,10 +10,14 @@ use super::{
     binder::Binder,
     const_ty::ConstBodyLowering,
     corelib::resolve_core_trait,
-    provider::AddressSpace,
-    result_space::{ResolvedSpace, SpaceKey, SpaceValue, impl_space_value, resolve_space_key},
-    trait_def::{ImplementorOrigin, TraitInstId, impls_for_trait_def},
-    trait_resolution::{PredicateListId, constraint::collect_constraints},
+    fold::TyFoldable,
+    provider::{AddressSpace, pinned_space},
+    result_space::{SpaceValue, impl_space_value},
+    trait_def::{ImplementorOrigin, impls_for_trait_def},
+    trait_resolution::{
+        GoalSatisfiability, PredicateListId, TraitSolveCx, constraint::collect_constraints,
+        is_goal_satisfiable,
+    },
     ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
     ty_lower::{
         CompleteSubst, GenericParamTypeSet, ParamDomainId, ParamSchemaId, lower_hir_ty_in_mode,
@@ -51,10 +55,11 @@ pub enum Pin {
     Undecided,
 }
 
-/// The pin of `ty`, from each `Pinned` implementation that applies to some
-/// instance of it: the space it names, which pins every instance, or the
-/// space it forwards (`space S = P::S`) at the instance `ty` selects. The
-/// implementations agree on a pin, or the pin is undecided.
+/// The pin of `ty`: the space of the `Pinned` implementation that trait
+/// selection picks for it, bounds checked, as lowering resolves it. A type
+/// no implementation is selected for is undecided while one could still
+/// apply to an instance of it (its parameters, or bounds they leave open),
+/// and unpinned otherwise.
 #[salsa::tracked(cycle_fn = ty_pin_cycle_recover, cycle_initial = ty_pin_cycle_initial)]
 pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
     let Some(adt) = ty.adt_def(db) else {
@@ -70,52 +75,41 @@ pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
     let Some(pinned) = resolve_core_trait(db, scope, &["marker", "Pinned"]) else {
         return Pin::Unpinned;
     };
-    let goal = SpaceKey {
-        inst: TraitInstId::new_simple(db, pinned, vec![ty]),
-        space: 0,
-    };
-    let mut pins = impls_for_trait_def(db, adt.ingot(db), pinned)
+    if let Some(space) = pinned_space(db, scope, PredicateListId::empty_list(db), ty) {
+        return Pin::Pinned(space);
+    }
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(PredicateListId::empty_list(db));
+    let may_apply = impls_for_trait_def(db, adt.ingot(db), pinned)
         .iter()
-        .filter(|implementor| {
-            let mut table = UnificationTable::new(db);
-            let instance = table.instantiate_with_fresh_vars(**implementor);
-            let ty = table.instantiate_with_fresh_vars(ty);
-            table.unify(instance.self_ty(db), ty).is_ok()
-        })
-        .filter_map(|implementor| {
-            let named = match implementor.origin(db) {
-                ImplementorOrigin::Hir(impl_trait) => impl_trait
+        .any(|implementor| {
+            // A pin to another space is an error at the implementation.
+            if let ImplementorOrigin::Hir(impl_trait) = implementor.origin(db)
+                && let Some(SpaceValue::Space(space)) = impl_trait
                     .spaces(db)
                     .first()
                     .and_then(|space| space.value)
                     .and_then(|(value, steps)| {
                         impl_space_value(db, impl_trait, value.to_opt()?, steps)
-                    }),
-                _ => None,
-            };
-            let space = match named {
-                Some(SpaceValue::Space(space)) => Some(space),
-                _ => match resolve_space_key(db, goal, scope, PredicateListId::empty_list(db)) {
-                    Some(ResolvedSpace::Space(space)) => Some(space),
-                    _ => None,
-                },
-            };
-            match space {
-                Some(space @ (AddressSpace::Storage | AddressSpace::Transient)) => {
-                    Some(Pin::Pinned(space))
-                }
-                // A pin to another space is an error at the implementation.
-                Some(_) => None,
-                None => Some(Pin::Undecided),
+                    })
+                && !matches!(space, AddressSpace::Storage | AddressSpace::Transient)
+            {
+                return false;
             }
+            let mut table = UnificationTable::new(db);
+            let instance = table.instantiate_with_fresh_vars(*implementor);
+            let ty = table.instantiate_with_fresh_vars(ty);
+            table.unify(instance.self_ty(db), ty).is_ok()
+                && instance.constraints(db).list(db).iter().all(|constraint| {
+                    !matches!(
+                        is_goal_satisfiable(db, solve_cx, constraint.fold_with(db, &mut table)),
+                        GoalSatisfiability::UnSat(_) | GoalSatisfiability::ContainsInvalid
+                    )
+                })
         });
-    let Some(first) = pins.next() else {
-        return Pin::Unpinned;
-    };
-    if pins.all(|pin| pin == first) {
-        first
-    } else {
+    if may_apply {
         Pin::Undecided
+    } else {
+        Pin::Unpinned
     }
 }
 

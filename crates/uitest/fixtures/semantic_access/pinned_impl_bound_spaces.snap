@@ -1,0 +1,11 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+assertion_line: 25
+expression: diags
+input_file: fixtures/semantic_access/pinned_impl_bound_spaces.fe
+---
+error[16-0007]: transport violation in `fn get_mut`
+   ┌─ pinned_impl_bound_spaces.fe:30:9
+   │
+30 │         mut self.v
+   │         ^^^^^^^^^^ this yield names memory, but the signature declares transient storage
