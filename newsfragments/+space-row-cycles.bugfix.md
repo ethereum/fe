@@ -1,0 +1,1 @@
+An associated space or effect row that names itself, directly (`space S = Self::S`, `uses E = Self::E`) or through other implementations, is rejected (6-0033, 6-0034) instead of overflowing the compiler's stack.

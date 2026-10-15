@@ -13,8 +13,9 @@
 //! a lane, whose grants are memory copies. A trait declares an associated
 //! space, `space S`, and each implementation gives it: a space by name,
 //! `self` or a sub-place of it (`self[_]`) for where the implementing value
-//! or its elements lie, or another associated space (`space S = B::S`). The
-//! access check
+//! or its elements lie, or another associated space (`space S = B::S`) of
+//! the implementation's own trait or a bound in scope, which must not lead
+//! back to itself. The access check
 //! holds each instance's yields to the contracts its signature declares, and
 //! an implementation's to its trait method's.
 use num_traits::ToPrimitive;
@@ -233,7 +234,7 @@ fn named_space(db: &dyn HirAnalysisDb, name: IdentId<'_>) -> Option<AddressSpace
     })
 }
 
-fn space_index<'db>(
+pub(crate) fn space_index<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_def: Trait<'db>,
     name: IdentId<'db>,
@@ -272,36 +273,76 @@ pub enum ResolvedSpace<'db> {
     Owner(TyId<'db>, SpacePathId<'db>),
 }
 
-/// What `key` is where the scope selects the implementations involved.
+/// What `key` is where the scope selects the implementations involved: none
+/// when an implementation is missing, or when the spaces name each other in a
+/// cycle, which the implementations report.
 pub fn resolve_space_key<'db>(
     db: &'db dyn HirAnalysisDb,
     key: SpaceKey<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> Option<ResolvedSpace<'db>> {
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(
-        db,
-        TraitSolveCx::new(db, scope).with_assumptions(assumptions),
-        key.inst,
-    ) else {
-        return None;
-    };
-    let ImplementorOrigin::Hir(impl_trait) = resolved.selected().origin(db) else {
-        return None;
-    };
-    let name = key.name(db)?;
-    let (value, steps) = impl_trait
-        .spaces(db)
-        .iter()
-        .find(|space| space.name.to_opt() == Some(name))?
-        .value?;
-    match impl_space_value(db, impl_trait, value.to_opt()?, steps)? {
-        SpaceValue::Space(space) => Some(ResolvedSpace::Space(space)),
-        SpaceValue::Owner(steps) => Some(ResolvedSpace::Owner(key.inst.self_ty(db), steps)),
-        SpaceValue::Assoc(inner) => {
-            let inner =
-                Binder::bind(impl_trait.into(), inner).instantiate(db, resolved.impl_args(db));
-            resolve_space_key(db, inner, scope, assumptions)
+    follow_space_key(db, key, scope, assumptions).ok().flatten()
+}
+
+/// Whether following `key`'s associated spaces comes back to one already
+/// followed, as `space S = Self::S` does.
+pub fn space_key_cycles<'db>(
+    db: &'db dyn HirAnalysisDb,
+    key: SpaceKey<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> bool {
+    follow_space_key(db, key, scope, assumptions).is_err()
+}
+
+/// The space `key` names, following each associated space an implementation
+/// gives to the next, or `Err` when one comes back to a space already
+/// followed.
+fn follow_space_key<'db>(
+    db: &'db dyn HirAnalysisDb,
+    mut key: SpaceKey<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Result<Option<ResolvedSpace<'db>>, ()> {
+    let mut followed = Vec::new();
+    loop {
+        if followed.contains(&key) {
+            return Err(());
+        }
+        followed.push(key);
+        let Selection::Unique(resolved) = resolve_trait_impl_instance(
+            db,
+            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+            key.inst,
+        ) else {
+            return Ok(None);
+        };
+        let ImplementorOrigin::Hir(impl_trait) = resolved.selected().origin(db) else {
+            return Ok(None);
+        };
+        let Some((value, steps)) = key.name(db).and_then(|name| {
+            impl_trait
+                .spaces(db)
+                .iter()
+                .find(|space| space.name.to_opt() == Some(name))?
+                .value
+        }) else {
+            return Ok(None);
+        };
+        match value
+            .to_opt()
+            .and_then(|value| impl_space_value(db, impl_trait, value, steps))
+        {
+            None => return Ok(None),
+            Some(SpaceValue::Space(space)) => return Ok(Some(ResolvedSpace::Space(space))),
+            Some(SpaceValue::Owner(steps)) => {
+                return Ok(Some(ResolvedSpace::Owner(key.inst.self_ty(db), steps)));
+            }
+            Some(SpaceValue::Assoc(inner)) => {
+                key =
+                    Binder::bind(impl_trait.into(), inner).instantiate(db, resolved.impl_args(db));
+            }
         }
     }
 }

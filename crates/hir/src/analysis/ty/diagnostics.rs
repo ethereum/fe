@@ -1572,6 +1572,20 @@ pub enum ImplDiag<'db> {
     /// A `Copy` implementation for a bare type parameter, which covers types
     /// whose fields, views and state the checks of a `Copy` type never see.
     BlanketCopy { primary: DynLazySpan<'db> },
+
+    /// An associated space whose value, followed through the spaces it names,
+    /// comes back to itself.
+    CyclicAssociatedSpace {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
+
+    /// An effect row whose components, expanded through the rows they name,
+    /// come back to it.
+    CyclicEffectRow {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -1609,6 +1623,8 @@ impl ImplDiag<'_> {
             Self::UnsafeImplMismatch { .. } => 30,
             Self::CopyFieldNotCopy { .. } => 31,
             Self::BlanketCopy { .. } => 32,
+            Self::CyclicAssociatedSpace { .. } => 33,
+            Self::CyclicEffectRow { .. } => 34,
         }
     }
 }

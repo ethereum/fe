@@ -5890,6 +5890,37 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 diag
             }
 
+            Self::CyclicEffectRow { primary, name } => {
+                let name = name.data(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("the effect row `{name}` names itself"),
+                    format!("expanding `{name}` through the rows it names comes back to it"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "an effect row must end in effects, or in other rows that do".to_string(),
+                );
+                diag
+            }
+
+            Self::CyclicAssociatedSpace { primary, name } => {
+                let name = name.data(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("the associated space `{name}` names itself"),
+                    format!("following `{name}` through the spaces it names comes back to it"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "an associated space must end in a space such as `storage`, `self`, or another type's space that does"
+                        .to_string(),
+                );
+                diag
+            }
+
             Self::BlanketCopy { primary } => {
                 let mut diag = primary_diag(
                     severity,

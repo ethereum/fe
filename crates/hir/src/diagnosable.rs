@@ -1093,10 +1093,34 @@ impl<'db> ImplTrait<'db> {
                 );
                 continue;
             };
-            match value
+            let resolved = value
                 .to_opt()
-                .and_then(|value| ty::result_space::impl_space_value(db, self, value, steps))
+                .and_then(|value| ty::result_space::impl_space_value(db, self, value, steps));
+            // A space that names another implementation's space must end in
+            // one: `space S = Self::S` names only itself.
+            if let Some(SpaceValue::Assoc(_)) = resolved
+                && let Ok(inst) = self.trait_inst_result(db)
+                && let Some(space) = ty::result_space::space_index(db, trait_, name)
+                && ty::result_space::space_key_cycles(
+                    db,
+                    ty::result_space::SpaceKey {
+                        inst,
+                        space: space as u16,
+                    },
+                    self.scope(),
+                    constraints_for(db, self.into()),
+                )
             {
+                diags.push(
+                    ImplDiag::CyclicAssociatedSpace {
+                        primary: primary(),
+                        name,
+                    }
+                    .into(),
+                );
+                continue;
+            }
+            match resolved {
                 None => diags.push(if steps.steps(db).is_empty() {
                     TyLowerDiag::UnknownResultSpace(primary()).into()
                 } else {
@@ -1110,6 +1134,34 @@ impl<'db> ImplTrait<'db> {
                     diags.push(ImplDiag::PinNotStateSpace { primary: primary() }.into())
                 }
                 Some(_) => {}
+            }
+        }
+        // A row whose components name rows must end in effects:
+        // `uses E = Self::E` names only itself.
+        if let Ok(inst) = self.trait_inst_result(db) {
+            for (row, name) in trait_
+                .rows(db)
+                .iter()
+                .enumerate()
+                .filter_map(|(row, decl)| Some((row, decl.name.to_opt()?)))
+            {
+                if ty::effects::rows::row_key_cycles(
+                    db,
+                    ty::effects::rows::RowKey {
+                        inst,
+                        row: row as u16,
+                    },
+                    self.scope(),
+                    constraints_for(db, self.into()),
+                ) {
+                    diags.push(
+                        ImplDiag::CyclicEffectRow {
+                            primary: primary(),
+                            name,
+                        }
+                        .into(),
+                    );
+                }
             }
         }
         diags
