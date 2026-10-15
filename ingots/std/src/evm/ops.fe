@@ -4,9 +4,9 @@
 /// provided via `std::evm::effects`. Public functions expose pure raw EVM
 /// operations for low-level code that needs an exact opcode shape.
 ///
-/// Operations that read or write memory through a raw pointer, or storage at a
-/// numeric slot, are `unsafe`: memory ranges must lie in live allocations, and
-/// storage slots must not belong to anything the compiler allocated.
+/// Raw memory operations require live allocations. Numeric state operations
+/// require appropriate tracked authority or a proof of disjoint access. These
+/// unsafe primitives stay behind the standard library's checked capabilities.
 extern {
     // -------------------------------------------------------------------------
     // Memory
@@ -19,6 +19,9 @@ extern {
     // -------------------------------------------------------------------------
     // Storage
     // -------------------------------------------------------------------------
+    /// Copies an arbitrary word, including declared state. The caller must
+    /// hold tracked shared/exclusive state authority or prove that no live
+    /// mutable access conflicts. No typed place is constructed.
     pub(ingot) unsafe fn sload(_: u256) -> u256
     pub(ingot) unsafe fn sstore(slot: u256, value: u256)
     // Trusted: `slot` must be exactly the `keccak256` output of a

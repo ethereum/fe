@@ -239,6 +239,27 @@ pub unsafe fn storage_at_mut<T>(_ slot: u256) -> mut T uses (storage: mut RawSto
     unsafe { mut *(slot as StorPtr<T>) }
 }
 
+/// Copies one word from the current contract's persistent storage.
+///
+/// Any slot is permitted, including declared contract state. Shared raw
+/// authority reserves state for reading, so the access checker rejects this
+/// call while a conflicting mutable access is live. The returned word is an
+/// independent value; no typed storage place or ownership claim escapes.
+#[inline(always)]
+pub fn read_storage_word(_ slot: u256) -> u256 uses (storage: RawStorage) {
+    unsafe { ops::sload(slot) }
+}
+
+/// Copies one word from the current contract's transaction-local storage.
+///
+/// This has the same authority and interference rules as `read_storage_word`.
+/// Every word is a valid `u256`. The internal pointer stays within this read;
+/// callers receive neither a pointer nor authority to write its slot.
+#[inline(always)]
+pub fn read_transient_word(_ slot: u256) -> u256 uses (storage: RawStorage) {
+    unsafe { *(slot as TStorPtr<u256>) }
+}
+
 /// Access to low-level EVM op functions (excluding raw stack ops).
 pub trait RawOps: RawStorage {
     fn calldataload(self, _: u256) -> u256
