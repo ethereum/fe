@@ -260,7 +260,7 @@ fn parse_item_modifiers<S: TokenStream>(
         match parser.current_kind() {
             Some(SyntaxKind::PubKw) => {
                 if checkpoint.is_none() {
-                    *checkpoint = Some(parser.checkpoint());
+                    *checkpoint = Some(parser.checkpoint_after_trivias());
                 }
 
                 if modifiers.is_pub {
@@ -288,7 +288,7 @@ fn parse_item_modifiers<S: TokenStream>(
             }
             Some(SyntaxKind::UnsafeKw) => {
                 if checkpoint.is_none() {
-                    *checkpoint = Some(parser.checkpoint());
+                    *checkpoint = Some(parser.checkpoint_after_trivias());
                 }
 
                 if modifiers.is_unsafe {
@@ -1093,7 +1093,7 @@ fn parse_trait_item_block<S: TokenStream>(
         let mut is_unsafe = false;
         while let Some(kind) = parser.current_kind().filter(|k| k.is_modifier_head()) {
             if kind == SyntaxKind::UnsafeKw && !is_unsafe {
-                checkpoint.get_or_insert_with(|| parser.checkpoint());
+                checkpoint.get_or_insert_with(|| parser.checkpoint_after_trivias());
                 parser.bump();
                 is_unsafe = true;
             } else if kind == SyntaxKind::UnsafeKw {

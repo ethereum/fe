@@ -13,9 +13,9 @@ Root@0..348
         WhiteSpace@10..11 " "
         TraitItemList@11..188
           LBrace@11..12 "{"
-          Func@12..45
-            Newline@12..13 "\n"
-            WhiteSpace@13..17 "    "
+          Newline@12..13 "\n"
+          WhiteSpace@13..17 "    "
+          Func@17..45
             UnsafeKw@17..23 "unsafe"
             WhiteSpace@23..24 " "
             FnKw@24..26 "fn"
@@ -34,9 +34,9 @@ Root@0..348
                 Path@41..45
                   PathSegment@41..45
                     Ident@41..45 "u256"
-          Func@45..80
-            Newline@45..46 "\n"
-            WhiteSpace@46..50 "    "
+          Newline@45..46 "\n"
+          WhiteSpace@46..50 "    "
+          Func@50..80
             UnsafeKw@50..56 "unsafe"
             WhiteSpace@56..57 " "
             ConstKw@57..62 "const"
@@ -74,9 +74,9 @@ Root@0..348
                 Path@101..105
                   PathSegment@101..105
                     Ident@101..105 "u256"
-          Func@105..150
-            Newline@105..106 "\n"
-            WhiteSpace@106..110 "    "
+          Newline@105..106 "\n"
+          WhiteSpace@106..110 "    "
+          Func@110..150
             UnsafeKw@110..116 "unsafe"
             WhiteSpace@116..117 " "
             FnKw@117..119 "fn"
@@ -116,9 +116,9 @@ Root@0..348
                         Path@146..150
                           PathSegment@146..150
                             Ident@146..150 "Copy"
-          Func@150..186
-            Newline@150..151 "\n"
-            WhiteSpace@151..155 "    "
+          Newline@150..151 "\n"
+          WhiteSpace@151..155 "    "
+          Func@155..186
             UnsafeKw@155..161 "unsafe"
             WhiteSpace@161..162 " "
             FnKw@162..164 "fn"
@@ -155,9 +155,9 @@ Root@0..348
         WhiteSpace@207..208 " "
         TraitItemList@208..279
           LBrace@208..209 "{"
-          Func@209..277
-            Newline@209..210 "\n"
-            WhiteSpace@210..214 "    "
+          Newline@209..210 "\n"
+          WhiteSpace@210..214 "    "
+          Func@214..277
             UnsafeKw@214..220 "unsafe"
             WhiteSpace@220..221 " "
             FnKw@221..223 "fn"
@@ -252,9 +252,9 @@ Root@0..348
                         Path@321..325
                           PathSegment@321..325
                             Ident@321..325 "Copy"
-          Func@325..345
-            Newline@325..326 "\n"
-            WhiteSpace@326..330 "    "
+          Newline@325..326 "\n"
+          WhiteSpace@326..330 "    "
+          Func@330..345
             UnsafeKw@330..336 "unsafe"
             WhiteSpace@336..337 " "
             FnKw@337..339 "fn"
