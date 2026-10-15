@@ -51,6 +51,37 @@ fn build(source: &Path, out: &Path, level: &str, extra: &[&str]) -> Output {
 }
 
 #[test]
+fn native_buffer_word_writes_preserve_unaligned_values_and_zero_gaps() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("word_writes.fe");
+    fs::write(
+        &source,
+        r#"
+use core::abi::ByteInput
+use core::ptr::MemBuffer
+
+pub fn main() -> i32 {
+    var buffer = MemBuffer::with_capacity(100)
+    buffer.write_word(offset: 4, value: 0x1234)
+    buffer.write_word(offset: 68, value: 0x5678)
+    assert!(buffer.len() == 100)
+    assert!(buffer.span().word_at(4) == 0x1234)
+    assert!(buffer.span().word_at(36) == 0)
+    assert!(buffer.span().word_at(68) == 0x5678)
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let result = Command::new(out.join("word_writes")).output().unwrap();
+        assert!(result.status.success(), "{result:?}");
+    }
+}
+
+#[test]
 fn native_workspace_build_selects_root_entries_and_reachable_dependencies() {
     let temp = tempdir().unwrap();
     let root = temp.path();

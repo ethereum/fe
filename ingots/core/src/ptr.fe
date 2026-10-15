@@ -527,6 +527,34 @@ impl MemBuffer {
         }
     }
 
+    /// Write a full word at a byte offset, which need not be word-aligned.
+    ///
+    /// The complete 32-byte word must fit within this buffer's capacity.
+    /// Extends the logical extent to include the word and zeroes any gap
+    /// between the previous extent and the write. Existing bytes outside
+    /// the word are preserved. The allocation never grows.
+    #[inline(always)]
+    #[arithmetic(unchecked)]
+    pub fn write_word(mut self, offset: u256, value: u256) {
+        if offset > self.capacity || 32 > self.capacity - offset {
+            index_out_of_bounds()
+        }
+        unsafe {
+            if offset > self.len {
+                zero_bytes(
+                    ptr: offset_bytes(self.ptr, self.len),
+                    len: offset - self.len,
+                )
+            }
+            *cast<u8, u256>(offset_bytes(self.ptr, offset)) = value
+        }
+        let end = offset + 32
+        if end > self.len {
+            // The word and any gap initialized every byte up to the new extent.
+            unsafe { self.len = end }
+        }
+    }
+
     /// Set the logical extent after initializing the added bytes.
     ///
     /// Every byte up to `len` must be initialized.
