@@ -2,7 +2,8 @@ use ingot::option::Option
 use ingot::marker::Copy
 use ingot::ops::{WrappingAdd, WrappingSub}
 use ingot::ptr::{MemArray, MemSlice}
-use ingot::assert
+use ingot::{assert, panic_code}
+use ingot::panics::PANIC_ASSERT
 use ingot::functional::FnMut_v
 
 /// A collection a loop traverses by cursor, projecting each element in turn.
@@ -834,7 +835,10 @@ impl FromProducer for MemArray {
             len += 1
             state = p.next(base, s)
         }
-        // Each element is initialized below before anything reads it.
+        // Each element is initialized below before anything reads it: a
+        // second pass that yields more elements reverts at the bounds check,
+        // and one that yields fewer, its producer having changed its own
+        // traversal, reverts before the uninitialized rest can be read.
         var out = unsafe { MemArray<T>::new_uninit(len) }
         var i: usize = 0
         state = p.start(base)
@@ -842,6 +846,9 @@ impl FromProducer for MemArray {
             out[i] = p.produce(base, s)
             i += 1
             state = p.next(base, s)
+        }
+        if i as u256 != len {
+            panic_code(PANIC_ASSERT)
         }
         out
     }

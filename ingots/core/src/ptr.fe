@@ -3,7 +3,7 @@ use super::marker::Copy
 use super::option::Option
 use super::ops::{Eq, Index, IndexMut, Len}
 use super::panic_code
-use super::panics::PANIC_INDEX_OUT_OF_BOUNDS
+use super::panics::{PANIC_INDEX_OUT_OF_BOUNDS, PANIC_OUT_OF_MEMORY}
 
 /// Dynamic allocation in linear memory.
 ///
@@ -366,6 +366,19 @@ impl MemSlice<u8> {
     }
 }
 
+/// The largest buffer capacity, as Solidity's largest allocation.
+const MAX_CAPACITY: u256 = 0xffffffffffffffff
+
+/// `capacity`, or a `Panic(0x41)` revert above `MAX_CAPACITY`: a buffer
+/// reserves its capacity without writing it, so nothing else would stop a
+/// larger one from wrapping the free memory pointer onto live allocations.
+fn bounded_capacity(_ capacity: u256) -> u256 {
+    if capacity > MAX_CAPACITY {
+        panic_code(PANIC_OUT_OF_MEMORY)
+    }
+    capacity
+}
+
 impl MemBuffer {
     /// A buffer of `len` zero bytes.
     pub fn alloc(_ len: u256) -> Self {
@@ -385,11 +398,13 @@ impl MemBuffer {
         }
     }
 
+    /// An empty buffer that holds `capacity` bytes before it grows. Reverts
+    /// with `Panic(0x41)` above `2**64 - 1` bytes, like Solidity.
     pub fn with_capacity(_ capacity: u256) -> Self {
         // A fresh allocation of `capacity` bytes, none yet in the extent.
         unsafe {
             Self {
-                ptr: alloc_raw(capacity),
+                ptr: alloc_raw(bounded_capacity(capacity)),
                 len: 0,
                 capacity,
             }
@@ -469,7 +484,7 @@ impl MemBuffer {
             capacity *= 2
         }
 
-        let replacement = alloc_raw(capacity)
+        let replacement = alloc_raw(bounded_capacity(capacity))
         // The replacement holds every initialized byte, in `capacity` bytes.
         unsafe {
             copy(dest: replacement, source: self.span())
