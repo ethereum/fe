@@ -3311,6 +3311,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
+            Self::NoStorageLayout { primary, ty, reason } => primary_diag(
+                severity,
+                "type has no storage layout",
+                format!("`{}` cannot be laid out in storage: {reason}", ty.pretty_print(db)),
+                primary.resolve(db),
+                error_code,
+            ),
+
             Self::WhereConstPredicateFailed(span) => primary_diag(
                 severity,
                 "const where predicate failed",

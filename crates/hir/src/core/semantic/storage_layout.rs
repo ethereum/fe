@@ -492,6 +492,27 @@ impl<'db> FieldWalker<'db> {
                 })
                 .collect();
             self.walk_sequence(items, path, dimensions, true)
+        } else if ty.as_closure(self.db).is_some() {
+            // A closure lies in storage as a product of its captures, as MIR
+            // stores it.
+            let source_captures = source.field_types(self.db);
+            let captures = ty.field_types(self.db);
+            if source.as_closure(self.db).is_none() || captures.len() != source_captures.len() {
+                self.push_error(ContractLayoutError::IncompleteAdtLayoutProjection { ty });
+                return WalkOutput::empty();
+            }
+            let items = captures
+                .into_iter()
+                .zip(source_captures)
+                .enumerate()
+                .map(|(idx, (capture, source_capture))| {
+                    (
+                        ConcreteTypeView::new(capture, source_capture),
+                        ContractLayoutPathSegment::TupleElement(idx as u32),
+                    )
+                })
+                .collect();
+            self.walk_sequence(items, path, dimensions, true)
         } else if ty.is_array(self.db) {
             self.walk_array(views, path, dimensions)
         } else if let Some(adt) = ty.adt_def(self.db) {
@@ -626,7 +647,15 @@ impl<'db> FieldWalker<'db> {
         }
         let element = ConcreteTypeView::new(args[0], source_args[0]);
         let len = match demand_concrete_array_length(self.db, args[1], source_args[1]) {
-            Ok(len) => len.and_then(|len| len.to_usize()),
+            Ok(None) => None,
+            Ok(Some(len)) => {
+                // A length the layout cannot count.
+                let Some(len) = len.to_usize() else {
+                    self.push_error(ContractLayoutError::LayoutExtentOverflow);
+                    return WalkOutput::empty();
+                };
+                Some(len)
+            }
             Err(ConcreteArrayLengthError::Invalid(cause)) => {
                 self.push_error(ContractLayoutError::InvalidConcreteArrayLength {
                     invalid: TyId::invalid(self.db, cause),
@@ -932,15 +961,21 @@ fn collect_field_plan<'db>(
 }
 
 /// The slots a value of `ty` takes in storage, as the layout places a
-/// contract field of its type, or `None` when `ty` has no storage layout.
+/// contract field of its type, or why `ty` has no storage layout.
 #[salsa::tracked]
-pub(crate) fn storage_slot_span<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<usize> {
+pub(crate) fn storage_slot_span<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+) -> Result<usize, ContractLayoutError<'db>> {
     let mut walker = FieldWalker {
         db,
         errors: Vec::new(),
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(ty), &[], &[]);
-    walker.errors.is_empty().then_some(output.span)
+    match walker.errors.into_iter().next() {
+        Some(error) => Err(error),
+        None => Ok(output.span),
+    }
 }
 
 /// Which fields of struct or tuple `ty` are lanes where a value of `ty` lies
@@ -1016,6 +1051,8 @@ fn state_parts<'db>(
                 .copied()
                 .filter(|arg| !matches!(arg.data(db), TyData::ConstTy(_))),
         );
+    } else if ty.as_closure(db).is_some() {
+        parts.extend(ty.field_types(db));
     }
     parts
         .into_iter()

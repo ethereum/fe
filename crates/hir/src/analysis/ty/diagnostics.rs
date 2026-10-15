@@ -570,6 +570,12 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         ty: TyId<'db>,
     },
+    /// `storage_slots` of a type with no storage layout, for `reason`.
+    NoStorageLayout {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        reason: &'static str,
+    },
     ConstValueMustBeKnown(DynLazySpan<'db>),
     ConstDependencyMustBeKnown {
         primary: DynLazySpan<'db>,
@@ -1194,6 +1200,7 @@ impl<'db> BodyDiag<'db> {
             Self::ReturnedTypeMismatch { .. } => 13,
             Self::TypeMustBeKnown(..) => 14,
             Self::TypeSizeOverflow { .. } => 88,
+            Self::NoStorageLayout { .. } => 128,
             Self::InvalidCast { .. } => 55,
             Self::ConstValueMustBeKnown(..) => 64,
             Self::ConstDependencyMustBeKnown { .. } => 90,

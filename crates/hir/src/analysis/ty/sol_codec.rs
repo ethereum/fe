@@ -70,7 +70,7 @@ pub(crate) fn sol_codec_bits<'db>(
     if elem.has_param(db) || elem.has_var(db) {
         return None;
     }
-    let slots = storage_slot_span(db, elem)?;
+    let slots = storage_slot_span(db, elem).ok()?;
     let u256 = TyId::u256(db);
     Some(const_ty_from_sem_const(
         db,

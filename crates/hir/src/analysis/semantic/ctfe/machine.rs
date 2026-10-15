@@ -2401,7 +2401,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             key.owner(self.db).scope(),
             key.instantiate_typed_body(self.db).assumptions(),
         );
-        let slots = storage_slot_span(self.db, ty).ok_or_else(|| CtfeError::InvalidOperation {
+        let slots = storage_slot_span(self.db, ty).map_err(|_| CtfeError::InvalidOperation {
             origin,
             message: format!("`{}` has no storage layout", ty.pretty_print(self.db)),
         })?;

@@ -1943,7 +1943,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             ConstIntrinsicKind::StorageSlots if ty.has_param(self.db) || ty.has_var(self.db) => {
                 None
             }
-            ConstIntrinsicKind::StorageSlots => storage_slot_span(self.db, ty).map(BigInt::from),
+            ConstIntrinsicKind::StorageSlots => {
+                storage_slot_span(self.db, ty).ok().map(BigInt::from)
+            }
         };
         let Some(size) = size else {
             let caller = self.instance.key(self.db);

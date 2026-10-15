@@ -65,6 +65,7 @@ use crate::{
     semantic::{
         EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding, ProviderSource,
         ResolvedEffectBinding, effect_param_provider_semantics, effect_requirements_for_site,
+        storage_slot_span,
     },
 };
 use common::indexmap::IndexMap;
@@ -1657,10 +1658,8 @@ impl<'db> SemanticInstance<'db> {
 
         if let Some(body) = typed_body.body() {
             for (expr, _) in body.exprs(db).iter() {
-                let Some(SemanticExprLowering::ConstIntrinsic {
-                    callable,
-                    kind: ConstIntrinsicKind::SizeOf,
-                }) = typed_body.semantic_expr_lowering(expr)
+                let Some(SemanticExprLowering::ConstIntrinsic { callable, kind }) =
+                    typed_body.semantic_expr_lowering(expr)
                 else {
                     continue;
                 };
@@ -1668,10 +1667,37 @@ impl<'db> SemanticInstance<'db> {
                     continue;
                 };
                 let arg = normalize_ty(db, arg, body.scope(), self.assumptions(db));
-                if let Err(error) = runtime_size_bytes(db, arg) {
-                    return Err(SemanticBodyAdmissionError::InvalidConcreteType(
-                        invalid_size_diagnostic(db, self, SemOrigin::Expr(expr), arg, error),
-                    ));
+                let origin = SemOrigin::Expr(expr);
+                match kind {
+                    ConstIntrinsicKind::SizeOf => {
+                        if let Err(error) = runtime_size_bytes(db, arg) {
+                            return Err(SemanticBodyAdmissionError::InvalidConcreteType(
+                                invalid_size_diagnostic(db, self, origin, arg, error),
+                            ));
+                        }
+                    }
+                    ConstIntrinsicKind::StorageSlots => {
+                        if let Err(error) = storage_slot_span(db, arg) {
+                            return Err(SemanticBodyAdmissionError::InvalidConcreteType(
+                                SemanticDiagnosticId::new(
+                                    db,
+                                    SemanticDiagnostic::new(
+                                        self,
+                                        SemanticDiagnosticKind::InvalidConcreteType,
+                                        format!(
+                                            "`{}` cannot be laid out in storage: {}",
+                                            arg.pretty_print(db),
+                                            error.summary()
+                                        ),
+                                        SemanticDiagnosticSpan::Origin {
+                                            owner: self.key(db).owner(db),
+                                            origin,
+                                        },
+                                    ),
+                                ),
+                            ));
+                        }
+                    }
                 }
             }
         }

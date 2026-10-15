@@ -105,6 +105,7 @@ use crate::analysis::{
         ty_def::{InvalidCause, TyId},
     },
 };
+use crate::core::semantic::storage_slot_span;
 use crate::hir_def::{BlockKind, ItemKind, scope_graph::ScopeId};
 use crate::semantic::{ProviderBinding, ProviderSource};
 use common::indexmap::IndexMap;
@@ -258,21 +259,33 @@ impl<'db> TyChecker<'db> {
         callable: Callable<'db>,
         kind: ConstIntrinsicKind,
     ) -> bool {
-        let ty = match kind {
-            ConstIntrinsicKind::SizeOf => callable.generic_args().first().copied(),
-            ConstIntrinsicKind::StorageSlots => None,
-        };
-        if let Some(ty) = ty {
+        if let Some(ty) = callable.generic_args().first().copied() {
             let ty = self.normalize_ty(ty);
-            if matches!(
-                runtime_size_bytes(self.db, ty),
-                Err(RuntimeSizeError::Overflow)
-            ) {
-                self.push_diag(BodyDiag::TypeSizeOverflow {
-                    primary: expr.span(self.body()).into(),
-                    ty,
-                });
-                return false;
+            let primary = expr.span(self.body()).into();
+            match kind {
+                ConstIntrinsicKind::SizeOf
+                    if matches!(
+                        runtime_size_bytes(self.db, ty),
+                        Err(RuntimeSizeError::Overflow)
+                    ) =>
+                {
+                    self.push_diag(BodyDiag::TypeSizeOverflow { primary, ty });
+                    return false;
+                }
+                // A type with parameters is laid out at each instance.
+                ConstIntrinsicKind::StorageSlots
+                    if !ty.has_param(self.db) && !ty.has_var(self.db) =>
+                {
+                    if let Err(error) = storage_slot_span(self.db, ty) {
+                        self.push_diag(BodyDiag::NoStorageLayout {
+                            primary,
+                            ty,
+                            reason: error.summary(),
+                        });
+                        return false;
+                    }
+                }
+                _ => {}
             }
         }
         self.env.register_const_intrinsic(expr, callable, kind);
