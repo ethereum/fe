@@ -295,9 +295,11 @@ asserts.
 A collection may pack small elements into lanes of shared slots, as a
 `SolArray` does for Solidity's packed array elements. Its `Lanes` codec
 (`core::ops::LaneCodec<Entry>`) packs an element coded in at most 128
-`BITS`, and `locate` can read `BITS` to step between elements. `SolArray`'s
-codec, `SolLanes`, uses an element's `SolPacked` encoding, and the compiler
-gives any other element `BITS` of 256 per slot its storage layout takes. A
+`BITS`; an element its codec does not pack keeps its storage layout, and
+`locate` steps by `core::intrinsic::storage_slots<T>()`, the slots it takes.
+`SolArray`'s codec, `SolLanes`, uses an element's `SolPacked` encoding, and
+the compiler gives any other element `BITS` of 256 per slot its storage
+layout takes. A
 lane is read and written in place, but a `mut` binding, argument, provided
 effect or yield of one works on a memory copy that is stored back into the
 lane when the access ends.

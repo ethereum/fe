@@ -252,8 +252,9 @@ pub fn clear_storage<C: StateIndex>(_ collection: mut C, _ key: C::Key)
 /// with the neighbouring elements. Reading the element loads the word and
 /// decodes it with `get`; writing it stores the word `set` returns, so only
 /// the element's bits change. A `BITS` above 128 packs nothing: the element
-/// takes whole words, `BITS / 256` rounded up, which a collection's `locate`
-/// may read to step from one element to the next.
+/// keeps its type's storage layout, `core::intrinsic::storage_slots<T>()`
+/// slots, which a collection's `locate` steps by from one element to the
+/// next.
 pub trait LaneCodec<T> {
     const BITS: u256
     /// The element in `word`'s lane at bit `offset`.

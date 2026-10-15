@@ -243,8 +243,14 @@ impl<'db> TyChecker<'db> {
         let CallableDef::Func(func) = callable_def else {
             return None;
         };
-        (resolve_lib_func_path(self.db, self.env.scope(), "core::size_of") == Some(func))
-            .then_some(ConstIntrinsicKind::SizeOf)
+        let path = |path| resolve_lib_func_path(self.db, self.env.scope(), path) == Some(func);
+        if path("core::size_of") {
+            Some(ConstIntrinsicKind::SizeOf)
+        } else if path("core::intrinsic::storage_slots") {
+            Some(ConstIntrinsicKind::StorageSlots)
+        } else {
+            None
+        }
     }
 
     fn check_and_register_const_intrinsic(
@@ -255,6 +261,7 @@ impl<'db> TyChecker<'db> {
     ) -> bool {
         let ty = match kind {
             ConstIntrinsicKind::SizeOf => callable.generic_args().first().copied(),
+            ConstIntrinsicKind::StorageSlots => None,
         };
         if let Some(ty) = ty {
             let ty = self.normalize_ty(ty);

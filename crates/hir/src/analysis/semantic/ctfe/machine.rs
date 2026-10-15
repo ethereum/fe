@@ -41,6 +41,7 @@ use crate::{
         },
     },
     core::hir_def::expr::LogicalBinOp,
+    core::semantic::storage_slot_span,
     hir_def::{ArithBinOp, BinOp, CompBinOp, UnOp, attr::ArithmeticMode},
     projection::{IndexSource, Projection},
 };
@@ -1950,6 +1951,9 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             Some(CtfeExternIntrinsic::SizeOf) => {
                 self.eval_intrinsic_size_of(instance, result_ty, args, origin)
             }
+            Some(CtfeExternIntrinsic::StorageSlots) => {
+                self.eval_intrinsic_storage_slots(instance, result_ty, args, origin)
+            }
             Some(CtfeExternIntrinsic::AsBytes) => {
                 self.eval_intrinsic_as_bytes(result_ty, args, origin)
             }
@@ -2366,6 +2370,35 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             })?
             .ok_or(CtfeError::NotConstEvaluable { origin })?;
         Ok(CtfeConstValue::int(self.db, result_ty, BigInt::from(size)))
+    }
+
+    fn eval_intrinsic_storage_slots(
+        &self,
+        instance: SemanticInstance<'db>,
+        result_ty: TyId<'db>,
+        args: &[CtfeConstValue<'db>],
+        origin: SemOrigin<'db>,
+    ) -> Result<CtfeConstValue<'db>, CtfeError<'db>> {
+        if !args.is_empty() {
+            return Err(CtfeError::NotConstEvaluable { origin });
+        }
+        let key = instance.key(self.db);
+        let ty = *key
+            .subst(self.db)
+            .generic_args(self.db)
+            .first()
+            .ok_or(CtfeError::NotConstEvaluable { origin })?;
+        let ty = normalize_ty(
+            self.db,
+            ty,
+            key.owner(self.db).scope(),
+            key.instantiate_typed_body(self.db).assumptions(),
+        );
+        let slots = storage_slot_span(self.db, ty).ok_or_else(|| CtfeError::InvalidOperation {
+            origin,
+            message: format!("`{}` has no storage layout", ty.pretty_print(self.db)),
+        })?;
+        Ok(CtfeConstValue::int(self.db, result_ty, BigInt::from(slots)))
     }
 
     fn eval_intrinsic_as_bytes(
