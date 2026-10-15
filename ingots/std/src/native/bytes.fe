@@ -1,12 +1,12 @@
 use core::Option
 use core::ptr
 
-// These private declarations have compiler-owned memory contracts. Raw addresses
-// never leave this module: ByteBuffer is the allocation owner.
+// Native owners share these declarations so allocation and release use the
+// same host ABI. Raw addresses never leave their owning implementation.
 extern {
-    fn malloc(size: u64) -> *u8
-    unsafe fn free(_ address: *u8)
-    fn is_null(_ address: *u8) -> bool
+    pub(ingot) fn malloc(size: u64) -> *u8
+    pub(ingot) unsafe fn free(_ address: *u8)
+    pub(ingot) fn is_null(_ address: *u8) -> bool
 }
 
 // Supported native hosts have 64-bit pointers. Keep each object within PTRDIFF_MAX.

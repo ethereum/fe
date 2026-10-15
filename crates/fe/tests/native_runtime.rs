@@ -15,7 +15,7 @@ use std::{
         ffi::OsStringExt,
         process::{CommandExt, ExitStatusExt},
     },
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Output, Stdio},
     thread,
     time::{Duration, Instant},
@@ -1053,34 +1053,7 @@ pub fn main() -> i32 {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native/byte_buffer_allocator.c");
     for level in ["0", "1", "2"] {
         let out = temp.path().join(format!("out-{level}"));
-        let report = temp.path().join(format!("report-{level}.tar.gz"));
-        build(
-            &source,
-            &out,
-            level,
-            &["--report", "--report-out", report.to_str().unwrap()],
-        );
-        let listing = Command::new("tar")
-            .arg("-tzf")
-            .arg(&report)
-            .output()
-            .unwrap();
-        assert!(listing.status.success(), "{listing:?}");
-        let listing = String::from_utf8(listing.stdout).unwrap();
-        let objects: Vec<_> = listing
-            .lines()
-            .filter(|name| name.ends_with("/allocation_failure.o"))
-            .collect();
-        assert_eq!(objects.len(), 1, "{listing}");
-        let extracted = Command::new("tar")
-            .arg("-xOf")
-            .arg(&report)
-            .arg(objects[0])
-            .output()
-            .unwrap();
-        assert!(extracted.status.success(), "{extracted:?}");
-        let object = out.join("allocation_failure.o");
-        fs::write(&object, extracted.stdout).unwrap();
+        let object = build_native_object(&source, &out, level);
         let executable = out.join("controlled_allocator");
         let linked = Command::new("cc")
             .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-fno-builtin"])
@@ -1334,4 +1307,115 @@ fn native_returned_reference_projections_mutate_the_original_at_o1() {
         .output()
         .unwrap();
     assert!(result.status.success(), "{result:?}");
+}
+
+fn build_native_object(source: &Path, out: &Path, level: &str) -> PathBuf {
+    let stem = source.file_stem().unwrap().to_str().unwrap();
+    let object_name = format!("{stem}.o");
+    let report = out.with_extension("tar.gz");
+    build(
+        source,
+        out,
+        level,
+        &["--report", "--report-out", report.to_str().unwrap()],
+    );
+    let listing = Command::new("tar")
+        .arg("-tzf")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert!(listing.status.success(), "{listing:?}");
+    let listing = String::from_utf8(listing.stdout).unwrap();
+    let objects: Vec<_> = listing
+        .lines()
+        .filter(|name| name.rsplit('/').next() == Some(object_name.as_str()))
+        .collect();
+    assert_eq!(objects.len(), 1, "{listing}");
+    let extracted = Command::new("tar")
+        .arg("-xOf")
+        .arg(&report)
+        .arg(objects[0])
+        .output()
+        .unwrap();
+    assert!(extracted.status.success(), "{extracted:?}");
+    let object = out.join(object_name);
+    fs::write(&object, extracted.stdout).unwrap();
+    object
+}
+
+#[test]
+fn native_fixed_stack_owns_slots_and_reclaims_allocations() {
+    let temp = tempdir().unwrap();
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native");
+    for level in ["0", "1", "2"] {
+        let out = temp.path().join(format!("out-{level}"));
+        let object = build_native_object(&fixtures.join("fixed_stack.fe"), &out, level);
+        for (stack_failure, buffer_failure, mode) in [
+            (0, 0, "0"),
+            (1, 0, "1"),
+            (0, 1, "2"),
+            (0, 2, "2"),
+            (0, 3, "2"),
+            (0, 4, "2"),
+        ] {
+            let executable = out.join(format!("stack-{stack_failure}-{buffer_failure}"));
+            let linked = Command::new("cc")
+                .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-fno-builtin"])
+                .arg(format!("-DFAIL_STACK={stack_failure}"))
+                .arg(format!("-DFAIL_BUFFER={buffer_failure}"))
+                .arg(&object)
+                .arg(fixtures.join("stack_allocator.c"))
+                .arg("-o")
+                .arg(&executable)
+                .output()
+                .unwrap();
+            assert!(linked.status.success(), "{linked:?}");
+            let result = Command::new(&executable).arg(mode).output().unwrap();
+            assert!(
+                result.status.success(),
+                "O{level} {stack_failure}/{buffer_failure}: {result:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn native_fixed_stack_reserves_its_owner_while_top_is_used() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("stack_access.fe");
+    for operation in [
+        "let value = stack.pop()\ncore::assert(top == value)",
+        "stack.release()\ncore::assert(top == 1)",
+    ] {
+        fs::write(
+            &source,
+            format!(
+                r#"
+use core::Option
+use std::native::FixedStack
+pub fn main() -> i32 {{
+    var stack: FixedStack<u256, 1> = match FixedStack::try_new() {{
+        Option::Some(stack) => stack,
+        Option::None => core::panic(),
+    }}
+    stack.try_push(1).unwrap()
+    let top = stack.top_mut()
+    {operation}
+    0
+}}
+"#
+            ),
+        )
+        .unwrap();
+        let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+            .arg("check")
+            .arg(&source)
+            .output()
+            .unwrap();
+        assert!(!result.status.success(), "{operation}: {result:?}");
+        assert!(
+            String::from_utf8_lossy(&result.stderr).contains("access conflict"),
+            "{operation}: {result:?}"
+        );
+    }
 }
