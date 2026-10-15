@@ -4079,6 +4079,22 @@ fn test_recursive_raw_pointers_execute_at_o0_and_o2() {
     }
 }
 
+/// Unoptimized, a fresh object holds whatever its memory last held, so
+/// clearing a packed element that is a struct, as `pop` on a `SolArray` of
+/// `Uint24` does, must write a zero value rather than copy a fresh object.
+#[test]
+fn test_sol_storage_collections_execute_at_o0() {
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/fe_test/sol_storage_collections.fe");
+    let fixture = fixture.to_str().expect("fixture path utf8");
+    let (output, exit_code) = run_fe_main(&["test", "--jobs", "1", "-O0", fixture]);
+    assert_eq!(exit_code, 0, "fe test -O0 failed:\n{output}");
+    assert!(
+        output.contains("19 passed; 0 failed"),
+        "expected every storage collection test to run at -O0:\n{output}"
+    );
+}
+
 #[test]
 fn test_cli_test_emit_ir_and_rmir_writes_artifacts() {
     let temp = tempdir().expect("tempdir");

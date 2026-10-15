@@ -14,8 +14,6 @@
 //! built and that variant's fields, which the caller's tests and extracts
 //! read, so no enum value carries the grant.
 
-use std::iter;
-
 use cranelift_entity::EntityRef;
 use hir::{
     analysis::{
@@ -23,7 +21,6 @@ use hir::{
         ty::ty_def::TyId,
     },
     hir_def::{BinOp, CompBinOp},
-    projection::IndexSource,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -31,10 +28,9 @@ use crate::{
     db::MirDb,
     instance::runtime::runtime_instance_lowered_body,
     runtime::{
-        ConstScalar, Layout, LayoutId, LowerError, PlaceElem, PlaceRoot, RBlock, RBlockId, RExpr,
-        RLocal, RLocalId, RStmt, RTerminator, ResolvedPlaceElem, ResolvedPlaceRootKind,
-        RuntimeBody, RuntimeCarrier, RuntimeClass, RuntimeLocalRoot, RuntimeProviderBindingId,
-        ScalarClass, ScalarRepr, ScalarRole, place::resolve_runtime_place, synthetic::uint_scalar,
+        Layout, LayoutId, LowerError, PlaceRoot, RBlock, RBlockId, RExpr, RLocal, RLocalId, RStmt,
+        RTerminator, RuntimeBody, RuntimeCarrier, RuntimeClass, RuntimeLocalRoot,
+        RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole, synthetic::uint_scalar,
     },
 };
 
@@ -59,138 +55,8 @@ pub(crate) fn inline_projections<'db>(
         let callee = runtime_instance_lowered_body(db, callee)?.body(db);
         inline_session(db, body, block, stmt, dst, &args, &callee);
     }
-    fold_constant_indices(db, body);
     prune_unreachable_blocks(body);
     Ok(())
-}
-
-/// Indexes with the constants inlining binds: a local assigned once, from a
-/// constant or a copy of such a local, as a projection's index parameter is
-/// when its argument is a constant, is a constant index. A statement that
-/// indexes out of range with a constant reverts there, so its block ends with
-/// the revert, and what only it reached is pruned instead of being lowered
-/// with no definition of the values the statement would have made.
-fn fold_constant_indices<'db>(db: &'db dyn MirDb, body: &mut RuntimeBody<'db>) {
-    let constants = constant_index_locals(body);
-    let mut folded = Vec::new();
-    let mut reverts = Vec::new();
-    for (block, data) in body.blocks.iter().enumerate() {
-        for (stmt, original) in data.stmts.iter().enumerate() {
-            let mut stmt_data = original.clone();
-            if fold_stmt_indices(db, body, &constants, &mut stmt_data) {
-                reverts.push((block, stmt));
-                break;
-            }
-            if stmt_data != *original {
-                folded.push((block, stmt, stmt_data));
-            }
-        }
-    }
-    for (block, stmt, data) in folded {
-        body.blocks[block].stmts[stmt] = data;
-    }
-    for (block, stmt) in reverts {
-        body.blocks[block].stmts.truncate(stmt);
-        body.blocks[block].terminator = RTerminator::RevertEmpty;
-        body.terminator_origins[block] = body.stmt_origins[block][stmt];
-        body.stmt_origins[block].truncate(stmt);
-    }
-}
-
-/// Folds `stmt`'s constant index locals into constant indices, returning
-/// whether it indexes out of range with a constant.
-fn fold_stmt_indices<'db>(
-    db: &'db dyn MirDb,
-    body: &RuntimeBody<'db>,
-    constants: &FxHashMap<RLocalId, Option<usize>>,
-    stmt: &mut RStmt<'db>,
-) -> bool {
-    // `None` is a constant too large for any index.
-    let out_of_range = |index: &mut IndexSource<RLocalId>, len: u64| {
-        if let IndexSource::Dynamic(local) = *index
-            && let Some(value) = constants.get(&local)
-        {
-            let Some(value) = *value else {
-                return true;
-            };
-            *index = IndexSource::Constant(value);
-        }
-        matches!(*index, IndexSource::Constant(value) if value as u64 >= len)
-    };
-    if let RStmt::AssertIndexInBounds { index, len } = stmt {
-        return out_of_range(index, *len);
-    }
-    let Some(place) = stmt.place_mut() else {
-        return false;
-    };
-    // A place that does not resolve is the verifier's to report.
-    let Ok(resolved) = resolve_runtime_place(db, &db, body, place) else {
-        return false;
-    };
-    let mut base = match resolved.root_kind {
-        ResolvedPlaceRootKind::Slot { class, .. }
-        | ResolvedPlaceRootKind::Ref { class, .. }
-        | ResolvedPlaceRootKind::Provider { class, .. }
-        | ResolvedPlaceRootKind::Ptr { class, .. } => class,
-    };
-    let mut any_out_of_range = false;
-    for (elem, resolved) in place.path.iter_mut().zip(resolved.path) {
-        if let PlaceElem::Index(index) = elem
-            && let Some(len) = base.array_len(db)
-        {
-            any_out_of_range |= out_of_range(index, len);
-        }
-        base = match resolved {
-            ResolvedPlaceElem::Field { class, .. }
-            | ResolvedPlaceElem::Index { class, .. }
-            | ResolvedPlaceElem::VariantField { class, .. }
-            | ResolvedPlaceElem::Deref { class, .. } => class,
-        };
-    }
-    any_out_of_range
-}
-
-/// The locals assigned once, from an unsigned integer constant or a copy of
-/// such a local, with their value: `None` when it exceeds every index.
-fn constant_index_locals(body: &RuntimeBody<'_>) -> FxHashMap<RLocalId, Option<usize>> {
-    let mut defs: FxHashMap<RLocalId, Option<&RExpr<'_>>> = body
-        .signature
-        .params
-        .iter()
-        .map(|param| (param.local, None))
-        .collect();
-    for stmt in body.blocks.iter().flat_map(|block| &block.stmts) {
-        if let RStmt::Assign { dst, expr } = stmt {
-            defs.entry(*dst)
-                .and_modify(|def| *def = None)
-                .or_insert(Some(expr));
-        }
-    }
-    let def = |local: &RLocalId| defs.get(local).copied().flatten();
-    let constant = |local: RLocalId| {
-        // The end of the copy chain; one longer than the locals is a cycle,
-        // which ends at a copy.
-        let source = iter::successors(Some(local), |local| match def(local)? {
-            RExpr::Use(source) => Some(*source),
-            _ => None,
-        })
-        .take(defs.len() + 1)
-        .last()?;
-        let RExpr::ConstScalar(ConstScalar::Int {
-            signed: false,
-            words,
-            ..
-        }) = def(&source)?
-        else {
-            return None;
-        };
-        Some(words.iter().try_fold(0usize, |value, byte| {
-            value.checked_mul(256)?.checked_add(usize::from(*byte))
-        }))
-    };
-    defs.keys()
-        .filter_map(|local| Some((*local, constant(*local)?)))
-        .collect()
 }
 
 /// Replaces the call at `stmt` of `block`, which assigns the session `dst`,
