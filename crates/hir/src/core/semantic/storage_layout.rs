@@ -411,8 +411,6 @@ impl<'db> WalkOutput<'db> {
 struct FieldWalker<'db> {
     db: &'db dyn HirAnalysisDb,
     errors: Vec<ContractLayoutError<'db>>,
-    /// The spaces the pinned types walked are pinned to.
-    content_spaces: Vec<AddressSpace>,
 }
 
 impl<'db> FieldWalker<'db> {
@@ -496,10 +494,7 @@ impl<'db> FieldWalker<'db> {
             // rather than by the slots its private fields take. It takes whole
             // slots, at least one even without fields: its root number derives
             // its region, so siblings need distinct ones.
-            if let Some(space) = ty.pin(self.db) {
-                if !self.content_spaces.contains(&space) {
-                    self.content_spaces.push(space);
-                }
+            if ty.pin(self.db).is_some() {
                 WalkOutput {
                     span: output.span.max(1),
                     ..WalkOutput::leaf(
@@ -871,7 +866,6 @@ fn collect_field_plan<'db>(
     let mut walker = FieldWalker {
         db,
         errors: Vec::new(),
-        content_spaces: Vec::new(),
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(declared), &[], &[]);
     // Every contract field outlives the call: code-backed ones too.
@@ -891,7 +885,9 @@ fn collect_field_plan<'db>(
     }
     // The field takes its numbers in its own space only when some part of
     // it lies outside a pinned type: a `TSlot` field leaves its storage
-    // number free.
+    // number free. It takes them in every space its parts and its
+    // collections' entries are pinned to, since each roots there at its
+    // number.
     let mut spaces = Vec::new();
     if output
         .leaves
@@ -900,7 +896,7 @@ fn collect_field_plan<'db>(
     {
         spaces.push(address_space);
     }
-    for space in walker.content_spaces {
+    for space in state_spaces(db, scope, declared) {
         if !spaces.contains(&space) {
             spaces.push(space);
         }
@@ -931,7 +927,6 @@ pub(crate) fn storage_slot_span<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) 
     let mut walker = FieldWalker {
         db,
         errors: Vec::new(),
-        content_spaces: Vec::new(),
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(ty), &[], &[]);
     walker.errors.is_empty().then_some(output.span)
@@ -949,7 +944,6 @@ pub(crate) fn storage_field_lanes<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>
     let mut walker = FieldWalker {
         db,
         errors: Vec::new(),
-        content_spaces: Vec::new(),
     };
     let shapes: Vec<_> = ty
         .field_types(db)
@@ -1047,6 +1041,38 @@ fn persistent_under_transient<'db>(
             .find_map(|part| walk(db, scope, part, transient, depth + 1, seen))
     }
     walk(db, scope, ty, false, 0, &mut FxHashSet::default())
+}
+
+/// The state spaces a value of `ty` has parts pinned to, in its own slots or
+/// in a collection's entries.
+fn state_spaces<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Vec<AddressSpace> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        depth: usize,
+        seen: &mut FxHashSet<TyId<'db>>,
+        spaces: &mut Vec<AddressSpace>,
+    ) {
+        if depth > MAX_STATE_NESTING || !seen.insert(ty) {
+            return;
+        }
+        if let Some(space) = pinned_space(db, scope, PredicateListId::empty_list(db), ty)
+            && !spaces.contains(&space)
+        {
+            spaces.push(space);
+        }
+        for part in state_parts(db, scope, ty) {
+            walk(db, scope, part, depth + 1, seen, spaces);
+        }
+    }
+    let mut spaces = Vec::new();
+    walk(db, scope, ty, 0, &mut FxHashSet::default(), &mut spaces);
+    spaces
 }
 
 /// The first memory or calldata pointer a value of `ty` keeps in state, in
