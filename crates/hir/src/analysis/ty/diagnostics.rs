@@ -1542,6 +1542,14 @@ pub enum ImplDiag<'db> {
         primary: DynLazySpan<'db>,
         trait_: Trait<'db>,
     },
+
+    /// A `Copy` implementation for a type with a field that is not `Copy`
+    /// under the implementation's bounds.
+    CopyFieldNotCopy {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        field_ty: TyId<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -1577,6 +1585,7 @@ impl ImplDiag<'_> {
             Self::CompilerImplementedTrait { .. } => 28,
             Self::PinNotStateSpace { .. } => 29,
             Self::UnsafeImplMismatch { .. } => 30,
+            Self::CopyFieldNotCopy { .. } => 31,
         }
     }
 }

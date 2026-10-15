@@ -5277,13 +5277,6 @@ impl<'db> TyChecker<'db> {
             self.calldata_pointer_of_place(base)
         }
     }
-
-    pub(super) fn is_pointer_deref_expr(&self, expr: ExprId) -> bool {
-        matches!(
-            expr.data(self.db, self.body()),
-            Partial::Present(Expr::Un(_, UnOp::Deref))
-        )
-    }
 }
 
 fn reify_unresolved_pattern_slots<'db, T>(

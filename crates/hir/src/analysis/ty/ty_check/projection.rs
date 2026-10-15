@@ -73,8 +73,7 @@ impl<'db> TyChecker<'db> {
                     .binding
                     .filter(|_| matches!(data, Expr::Path(..)))
                     .and_then(|binding| self.env.binding_access(&binding));
-                let is_place =
-                    self.env.expr_place(expr).is_some() || self.is_pointer_deref_expr(expr);
+                let is_place = self.env.is_place_expr(expr);
                 match (kind, binding_access) {
                     // Re-yield an access binding or parameter.
                     (BorrowKind::Mut, Some(access)) if access.is_mut() => {}
@@ -144,8 +143,7 @@ impl<'db> TyChecker<'db> {
                     // `index_mut` takes `mut self`: a place base must be
                     // writable, and a base an outer index grants becomes so by
                     // that index selecting `index_mut` too.
-                    let is_place =
-                        self.env.expr_place(*base).is_some() || self.is_pointer_deref_expr(*base);
+                    let is_place = self.env.is_place_expr(*base);
                     if !self.select_mut_place(*base) && is_place {
                         return false;
                     }

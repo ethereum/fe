@@ -7,8 +7,8 @@ use crate::analysis::ty::diagnostics::{BodyDiag, FuncBodyDiag};
 use crate::analysis::ty::effects::rows::expand_rows;
 use crate::analysis::ty::provider::AddressSpace;
 use crate::analysis::ty::shape::Shape;
-use crate::analysis::ty::ty_check::RecordInitLowering;
 use crate::analysis::ty::ty_check::{BodyOwner, TypedBody};
+use crate::analysis::ty::ty_check::{RecordInitLowering, transparent_newtype_field_ty};
 use crate::analysis::ty::ty_def::BorrowKind;
 use crate::analysis::ty::ty_def::TyId;
 use crate::core::semantic::EffectEnvView;
@@ -18,6 +18,7 @@ use crate::hir_def::{
     UnOp,
 };
 use rustc_hash::FxHashSet;
+use std::iter;
 
 /// Reports the unsafe operations of a body that are outside an unsafe
 /// context: an `unsafe { .. }` block, or the body of an `unsafe fn`. These are
@@ -224,6 +225,34 @@ impl<'db> UnsafeChecker<'db, '_> {
                     write: false,
                 });
             }
+        }
+    }
+
+    /// Reports the `unsafe` field a newtype cast `expr` of `inner`
+    /// initializes: the only field of a layer the cast builds, one of the
+    /// target's newtype layers above the first type `inner`'s type peels to.
+    fn check_cast_init(&mut self, expr: ExprId, inner: ExprId) {
+        let scope = self.owner.scope();
+        let peel = |ty| transparent_newtype_field_ty(self.db, scope, ty);
+        let from = self.typed_body.expr_ty(self.db, inner);
+        let from_layers: Vec<_> = iter::successors(Some(from), |ty| peel(*ty)).collect();
+        let mut ty = self.typed_body.expr_ty(self.db, expr);
+        while !from_layers.contains(&ty)
+            && let Some(field_ty) = peel(ty)
+        {
+            if let Some(AdtRef::Struct(struct_)) = ty.adt_ref(self.db)
+                && let Some(field) = FieldParent::Struct(struct_).fields(self.db).next()
+                && field.is_unsafe(self.db)
+                && let Some(name) = field.name(self.db)
+            {
+                self.push_unsafe(BodyDiag::UnsafeFieldRequiresUnsafe {
+                    primary: expr.span(self.body).into(),
+                    name,
+                    write: false,
+                });
+                return;
+            }
+            ty = field_ty;
         }
     }
 
@@ -434,9 +463,12 @@ impl<'db> UnsafeChecker<'db, '_> {
                 self.check_call(expr);
             }
 
-            Expr::Cast(inner, _) | Expr::ArrayRep(inner, _) | Expr::Try(inner) => {
+            Expr::Cast(inner, _) => {
+                self.check_cast_init(expr, *inner);
                 self.check_expr(*inner)
             }
+
+            Expr::ArrayRep(inner, _) | Expr::Try(inner) => self.check_expr(*inner),
 
             Expr::Call(callee, args) => {
                 if let Some(receiver) = self.mut_receiver(expr) {
