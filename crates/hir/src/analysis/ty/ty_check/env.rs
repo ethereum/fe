@@ -1,5 +1,5 @@
 use crate::{
-    analysis::place::{Place, PlaceBase, is_grant_place_expr, is_pointer_place_expr},
+    analysis::place::{Place, is_grant_place_expr, is_pointer_place_expr},
     hir_def::{
         BinOp, Body, ClosureDef, Contract, Expr, ExprId, Func, IdentId, Partial, Pat, PatId, Stmt,
         StmtId, TypeId as HirTypeId, UnOp, scope_graph::ScopeId,
@@ -37,13 +37,11 @@ use crate::analysis::{
             rows::{RowComponent, expand_rows},
         },
         fold::{TyFoldable, TyFolder},
-        normalize::normalize_ty,
         provider::AddressSpace,
         shape::Shape,
         trait_def::TraitInstId,
         trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
         ty_def::{BorrowKind, ClosureTy, InvalidCause, StringFallback, TyData, TyId, TyVarSort},
-        ty_is_copy,
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
     },
@@ -61,9 +59,6 @@ pub(crate) struct TyCheckEnv<'db> {
 
     pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
     expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
-    /// Owned-context moves and the type each value is moved as. Whether that
-    /// type is `Copy` is decided in `finish`, once inference has resolved it.
-    implicit_moves: FxHashMap<ExprId, TyId<'db>>,
     const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
     value_path_refs: SecondaryMap<ExprId, Option<ValuePathRef<'db>>>,
     callables: SecondaryMap<ExprId, Option<Callable<'db>>>,
@@ -85,9 +80,6 @@ pub(crate) struct TyCheckEnv<'db> {
     /// The closures whose bodies are being checked, innermost last.
     closure_stack: Vec<ActiveClosure<'db>>,
     closure_expectations: FxHashMap<ExprId, ClosureExpectation<'db>>,
-    /// Values moved out of closures' captures, with the expression that
-    /// moves each and its type, to report once types are known.
-    capture_moves: Vec<(ExprId, LocalBinding<'db>, TyId<'db>)>,
     /// Accesses closures capture whose types were not yet known, with the
     /// path that captures each, to check once types are known.
     access_captures: Vec<(ExprId, LocalBinding<'db>, TyId<'db>)>,
@@ -168,8 +160,6 @@ struct ActiveClosure<'db> {
     effects: Vec<ResolvedEffectBindingInfo<'db>>,
     params: Vec<LocalBinding<'db>>,
     captures: IndexMap<LocalBinding<'db>, TyId<'db>>,
-    /// The body's implicit moves, with the type each moves.
-    moves: Vec<(ExprId, TyId<'db>)>,
 }
 
 /// The callable shape a closure literal is expected to implement, from the
@@ -217,7 +207,6 @@ impl<'db> TyCheckEnv<'db> {
             body,
             pat_ty: SecondaryMap::new(),
             expr_ty: SecondaryMap::new(),
-            implicit_moves: FxHashMap::default(),
             const_refs: SecondaryMap::new(),
             value_path_refs: SecondaryMap::new(),
             callables: SecondaryMap::new(),
@@ -234,7 +223,6 @@ impl<'db> TyCheckEnv<'db> {
             binding_block_idx: FxHashMap::default(),
             closure_stack: Vec::new(),
             closure_expectations: FxHashMap::default(),
-            capture_moves: Vec::new(),
             access_captures: Vec::new(),
             closure_effects: FxHashMap::default(),
             row_components: Vec::new(),
@@ -915,10 +903,6 @@ impl<'db> TyCheckEnv<'db> {
         self.unsafe_splits.contains(&expr)
     }
 
-    pub(super) fn forget_implicit_move(&mut self, expr: ExprId) {
-        self.implicit_moves.remove(&expr);
-    }
-
     pub(super) fn binding_access(&self, binding: &LocalBinding<'db>) -> Option<BindingAccess> {
         binding_access(binding, |pat| self.pat_binding_modes[pat])
     }
@@ -1000,7 +984,6 @@ impl<'db> TyCheckEnv<'db> {
             effects: Vec::new(),
             params: Vec::new(),
             captures: IndexMap::new(),
-            moves: Vec::new(),
         });
         self.enter_lexical_scope();
     }
@@ -1047,19 +1030,6 @@ impl<'db> TyCheckEnv<'db> {
             })
             .collect();
         self.closure_effects.insert(expr, active.effects);
-        for (moved, ty) in active.moves {
-            if let Some(place) = self.expr_place(moved) {
-                let PlaceBase::Binding(binding) = place.base;
-                if active.captures.contains_key(&binding) {
-                    self.capture_moves.push((moved, binding, ty));
-                }
-            }
-        }
-        for (&binding, &ty) in &active.captures {
-            if self.binding_is_capture(binding) {
-                self.capture_moves.push((expr, binding, ty));
-            }
-        }
         let info = ClosureInfo {
             params: active.params,
             captures: active
@@ -1172,10 +1142,6 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn in_closure(&self) -> bool {
         !self.closure_stack.is_empty()
-    }
-
-    pub(super) fn take_capture_moves(&mut self) -> Vec<(ExprId, LocalBinding<'db>, TyId<'db>)> {
-        std::mem::take(&mut self.capture_moves)
     }
 
     pub(super) fn record_access_capture(
@@ -1355,13 +1321,6 @@ impl<'db> TyCheckEnv<'db> {
         self.deferred.push(DeferredTask::PrimitiveOp(pending))
     }
 
-    pub(super) fn record_implicit_move(&mut self, expr: ExprId, ty: TyId<'db>) {
-        self.implicit_moves.insert(expr, ty);
-        for active in &mut self.closure_stack {
-            active.moves.push((expr, ty));
-        }
-    }
-
     /// Completes the type checking environment by finalizing pending trait
     /// obligations and folding types with the unification table.
     ///
@@ -1418,20 +1377,6 @@ impl<'db> TyCheckEnv<'db> {
             });
         let assumptions = self.assumptions.fold_with(self.db, &mut prober);
         let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
-        let scope = prober.scope;
-        let implicit_moves = self
-            .implicit_moves
-            .iter()
-            .filter_map(|(expr, ty)| {
-                let ty = normalize_ty(
-                    self.db,
-                    ty.fold_with(self.db, &mut prober),
-                    scope,
-                    assumptions,
-                );
-                (!ty_is_copy(self.db, scope, ty, assumptions)).then_some(*expr)
-            })
-            .collect();
 
         self.semantic_expr_lowering
             .values_mut()
@@ -1485,7 +1430,6 @@ impl<'db> TyCheckEnv<'db> {
             pat_ty: self.pat_ty,
             expr_ty: self.expr_ty,
             yield_shapes: self.yield_shapes,
-            implicit_moves,
             place_entries: self.place_entries,
             unsafe_splits: self.unsafe_splits,
             value_calls: self.value_calls,

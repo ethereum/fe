@@ -10,8 +10,6 @@ fn read() -> u256 uses (store: Store) {
     store.n
 }
 
-fn consume(_ a: own Account) {}
-
 fn write_capture(_ xs: [u256; 2]) -> u256 {
     var total = 0
     let n = xs.fold(0, |acc, x| {
@@ -49,15 +47,6 @@ fn late_access_capture() -> u256 {
     let f = |x: u256| view_account(r) + x
     o = Option::Some(Account { balance: 5 })
     f(1)
-}
-
-fn move_capture() {
-    let a = Account { balance: 1 }
-    let xs: [u256; 1] = [1]
-    let _ = xs.any(|_x| {
-        consume(a)
-        true
-    })
 }
 
 fn arity(_ xs: [u256; 2]) -> u256 {

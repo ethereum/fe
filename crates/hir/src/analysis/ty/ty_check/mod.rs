@@ -1319,7 +1319,6 @@ fn typed_body_for_bodyless_func<'db>(
         pat_ty: SecondaryMap::new(),
         expr_ty: SecondaryMap::new(),
         yield_shapes: SecondaryMap::new(),
-        implicit_moves: FxHashSet::default(),
         place_entries: FxHashSet::default(),
         unsafe_splits: FxHashSet::default(),
         value_calls: FxHashSet::default(),
@@ -1429,9 +1428,8 @@ impl<'db> TyChecker<'db> {
             self.check_expr(root_expr, TyId::unit(self.db));
         } else {
             self.check_expr(root_expr, self.expected);
-            match self.projection_shape.clone() {
-                Some(shape) => self.check_yield_site(root_expr, &shape),
-                None => self.record_implicit_move_for_owned_expr(root_expr, self.expected),
+            if let Some(shape) = self.projection_shape.clone() {
+                self.check_yield_site(root_expr, &shape);
             }
         }
         self.check_access_uses();
@@ -1448,20 +1446,6 @@ impl<'db> TyChecker<'db> {
             let ty = self.normalize_ty(ty);
             if !ty.has_var(self.db) && !ty.has_invalid(self.db) && !self.ty_is_copy(ty) {
                 self.push_diag(BodyDiag::AccessCapture {
-                    primary: expr.span(self.body()).into(),
-                    name: binding.binding_name(&self.env),
-                });
-            }
-        }
-    }
-
-    /// Reports the non-`Copy` values moved out of closures' captures.
-    fn check_capture_moves(&mut self) {
-        for (expr, binding, ty) in self.env.take_capture_moves() {
-            let ty = ty.fold_with(self.db, &mut self.table);
-            let ty = self.normalize_ty(ty);
-            if !ty.has_var(self.db) && !ty.has_invalid(self.db) && !self.ty_is_copy(ty) {
-                self.push_diag(BodyDiag::MoveOutOfCapture {
                     primary: expr.span(self.body()).into(),
                     name: binding.binding_name(&self.env),
                 });
@@ -2729,84 +2713,6 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn record_implicit_move_for_owned_expr(&mut self, expr: ExprId, ty: TyId<'db>) {
-        self.record_implicit_move_for_owned_expr_inner(expr, Some(ty));
-    }
-
-    fn record_implicit_move_for_owned_expr_inner(
-        &mut self,
-        expr: ExprId,
-        expected_ty: Option<TyId<'db>>,
-    ) {
-        let db = self.db;
-        let body = self.body();
-        let Partial::Present(expr_data) = expr.data(db, body) else {
-            return;
-        };
-
-        // A block, branch, match, `with` or cast is consumed as the value of
-        // the place its tail reads, and lowering reads that place where the
-        // wrapper's value is used, so the move is recorded on the wrapper too.
-        let wraps = match expr_data {
-            Expr::Block(stmts, _) => {
-                let Some(Partial::Present(crate::hir_def::Stmt::Expr(tail))) =
-                    stmts.last().map(|last| last.data(db, body))
-                else {
-                    return;
-                };
-                self.record_implicit_move_for_owned_expr_inner(*tail, expected_ty);
-                true
-            }
-            Expr::With(_, body_expr) | Expr::Cast(body_expr, _) | Expr::If(_, body_expr, None) => {
-                self.record_implicit_move_for_owned_expr_inner(*body_expr, expected_ty);
-                true
-            }
-            Expr::If(_, then_expr, Some(else_expr)) => {
-                self.record_implicit_move_for_owned_expr_inner(*then_expr, expected_ty);
-                self.record_implicit_move_for_owned_expr_inner(*else_expr, expected_ty);
-                true
-            }
-            Expr::Match(_, arms) => {
-                let Partial::Present(arms) = arms else {
-                    return;
-                };
-                for arm in arms {
-                    self.record_implicit_move_for_owned_expr_inner(arm.body, expected_ty);
-                }
-                true
-            }
-            _ => false,
-        };
-        if !wraps && !self.is_assignable_expr(expr) {
-            return;
-        }
-
-        let Some(prop) = self.env.typed_expr(expr) else {
-            return;
-        };
-        let expr_ty = prop.ty.fold_with(self.db, &mut self.table);
-        let expr_ty = self.normalize_ty(expr_ty);
-        if expr_ty.has_invalid(self.db)
-            || expr_ty == TyId::unit(self.db)
-            || expr_ty.is_never(self.db)
-        {
-            return;
-        }
-
-        let expected_ty = expected_ty
-            .map(|ty| self.normalize_ty(ty))
-            .filter(|ty| {
-                !ty.has_invalid(self.db) && *ty != TyId::unit(self.db) && !ty.is_never(self.db)
-            })
-            .unwrap_or(expr_ty);
-
-        if self.ty_is_copy(expected_ty) {
-            return;
-        }
-
-        self.env.record_implicit_move(expr, expected_ty);
-    }
-
     fn lit_ty(&mut self, lit: &LitKind<'db>) -> TyId<'db> {
         match lit {
             LitKind::Bool(_) => TyId::bool(self.db),
@@ -3938,7 +3844,6 @@ mod typed_body_tables {
         pub(super) pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
         pub(super) expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
         pub(super) yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
-        pub(super) implicit_moves: FxHashSet<ExprId>,
         /// Index expressions naming an entry of a collection whose elements
         /// are places.
         pub(super) place_entries: FxHashSet<ExprId>,
@@ -4631,10 +4536,6 @@ impl<'db> TypedBody<'db> {
     /// grants.
     pub fn yield_shape(&self, expr: ExprId) -> Option<&Shape<'db>> {
         self.tables.yield_shapes[expr].as_ref()
-    }
-
-    pub fn is_implicit_move(&self, expr: ExprId) -> bool {
-        self.tables.implicit_moves.contains(&expr)
     }
 
     /// Whether the index expression `expr` names an entry of a collection
@@ -6034,7 +5935,6 @@ impl<'db> TypedBody<'db> {
             pat_ty: SecondaryMap::new(),
             expr_ty: SecondaryMap::new(),
             yield_shapes: SecondaryMap::new(),
-            implicit_moves: FxHashSet::default(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
             value_calls: FxHashSet::default(),
@@ -6509,7 +6409,6 @@ impl<'db> TyCheckerFinalizer<'db> {
     fn new(mut checker: TyChecker<'db>) -> Self {
         let assumptions = checker.env.assumptions();
         checker.resolve_deferred();
-        checker.check_capture_moves();
         checker.check_access_captures();
         let mut body = checker.env.finish(&mut checker.table);
         body.tables_mut().return_borrow_provider = checker.first_return_borrow_provider;

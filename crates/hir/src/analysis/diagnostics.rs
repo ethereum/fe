@@ -5143,18 +5143,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
-            BodyDiag::MoveOutOfCapture { primary, name } => CompleteDiagnostic {
-                severity,
-                message: format!("cannot move `{}` out of a closure's captures", name.data(db)),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "moved here".to_string(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec!["each call of a closure only views its captures".to_string()],
-                error_code,
-            },
-
             BodyDiag::MixedLoopBases { primary } => primary_diag(
                 severity,
                 "a two-base loop binds both items `mut` or neither",

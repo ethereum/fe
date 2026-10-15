@@ -684,12 +684,6 @@ impl<'db> Callable<'db> {
             if !diagnosed {
                 tc.equate_ty(actual, expected, given.expr_span.clone());
             }
-            if mode == FuncParamMode::Own {
-                // Owned arguments and variant fields are materialized: a
-                // place argument moves (or copies) its value.
-                let expected = tc.normalize_ty(expected);
-                tc.record_implicit_move_for_owned_expr(given.expr, expected);
-            }
             checked_inputs.push(tc.normalize_ty(actual));
         }
         self.checked_input_tys = Some(checked_inputs);

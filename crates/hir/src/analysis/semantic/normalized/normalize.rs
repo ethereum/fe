@@ -637,12 +637,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         expr: &SExpr<'db>,
     ) -> Result<NExpr<'db>, NormalizeError<'db>> {
         let dst_ty = self.normalized_local_ty(dst);
-        // A by-value binding owns what it reads, so it moves a non-`Copy`
-        // value out of its place.
-        let binds_value = matches!(
-            self.raw.locals[dst.index()].source,
-            Some(LocalBinding::Local { .. })
-        ) && !self.ty_is_copy(dst_ty);
         let normalized = match expr {
             SExpr::Forward(value) => NExpr::Forward {
                 src: self.read_operand(block, origin, *value, Some(ReadMode::Copy))?,
@@ -667,7 +661,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                         value.value,
                         dst_ty,
                         place,
-                        binds_value.then_some(ReadMode::Move),
+                        None,
                     )?
                 } else {
                     NExpr::Forward {
@@ -676,17 +670,15 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 }
             }
             SExpr::ReadPlace { place } | SExpr::InspectPlace { place } => {
-                // An inspection reads the value in place; a by-value binding
-                // takes it.
-                let mode = if matches!(expr, SExpr::InspectPlace { .. }) {
-                    Some(if self.ty_is_copy(dst_ty) {
+                // An inspection reads the value in place; any other read takes
+                // it.
+                let mode = matches!(expr, SExpr::InspectPlace { .. }).then(|| {
+                    if self.ty_is_copy(dst_ty) {
                         ReadMode::Copy
                     } else {
                         ReadMode::Read
-                    })
-                } else {
-                    binds_value.then_some(ReadMode::Move)
-                };
+                    }
+                });
                 if self.local_has_place(place.local)
                     || place
                         .path
@@ -797,7 +789,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 let (value, from) = if materialize_place {
                     let place =
                         self.place_for_local(block, raw_value.sem_origin(origin), raw_value.value)?;
-                    let mode = self.read_mode_for_place(origin, place.ty, &place);
+                    let mode = self.read_mode_for_place(place.ty);
                     let loaded = self.emit_define(
                         block,
                         None,
@@ -1198,8 +1190,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
     ) -> Result<NExpr<'db>, NormalizeError<'db>> {
         if result_ty == place.ty {
             return Ok(NExpr::Load {
-                mode: load_mode
-                    .unwrap_or_else(|| self.read_mode_for_place(origin, result_ty, &place)),
+                mode: load_mode.unwrap_or_else(|| self.read_mode_for_place(result_ty)),
                 place,
             });
         }
@@ -1225,8 +1216,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         }
         if structural_repack_mapping(self.db, self.instance, place.ty, result_ty).is_some() {
             Ok(NExpr::Load {
-                mode: load_mode
-                    .unwrap_or_else(|| self.read_mode_for_place(origin, place.ty, &place)),
+                mode: load_mode.unwrap_or_else(|| self.read_mode_for_place(place.ty)),
                 place,
             })
         } else if place.ty.as_capability(self.db).is_some()
@@ -1623,8 +1613,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             return self.read_local(block, origin, operand.value, forced_mode);
         }
         let place = self.place_for_local(block, origin, operand.value)?;
-        let mode =
-            forced_mode.unwrap_or_else(|| self.read_mode_for_place(origin, place.ty, &place));
+        let mode = forced_mode.unwrap_or_else(|| self.read_mode_for_place(place.ty));
         let value = self.emit_define(
             block,
             None,
@@ -1668,7 +1657,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 ty: inner,
                 origin,
             };
-            let mode = self.read_mode_for_place(origin, inner, &place);
+            let mode = self.read_mode_for_place(inner);
             let result = self.emit_define(
                 block,
                 None,
@@ -1720,9 +1709,8 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
     ) -> Result<NOperand, NormalizeError<'db>> {
         if self.root_for_local[local.index()].is_some() {
             let place = self.place_for_local(block, origin, local)?;
-            let mode = forced_mode.unwrap_or_else(|| {
-                self.read_mode_for_place(origin, self.raw.locals[local.index()].ty, &place)
-            });
+            let mode = forced_mode
+                .unwrap_or_else(|| self.read_mode_for_place(self.raw.locals[local.index()].ty));
             let value = self.emit_define(
                 block,
                 None,
@@ -1734,7 +1722,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             return Ok(self.operand(value, origin, mode));
         }
         let value = self.current_value(local)?;
-        let mode = forced_mode.unwrap_or_else(|| self.read_mode_for_value(origin, local));
+        let mode = forced_mode.unwrap_or_else(|| self.read_mode_for_value(local));
         Ok(self.operand(value, origin, mode))
     }
 
@@ -2329,76 +2317,28 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         result
     }
 
-    fn origin_is_implicit_move(&self, origin: SemOrigin<'db>) -> bool {
-        matches!(
-            origin,
-            crate::analysis::semantic::SemOrigin::Expr(expr)
-                if self.instance.key(self.db).instantiate_typed_body(self.db).is_implicit_move(expr)
-        )
-    }
-
-    fn read_mode_for_value(&self, origin: SemOrigin<'db>, local: SLocalId) -> ReadMode {
-        let local_id = local;
-        let local = &self.raw.locals[local_id.index()];
-        let source = self.current_values[local_id.index()]
-            .last()
-            .and_then(|value| self.values.get(value.index()))
-            .and_then(|value| value.source)
-            .or(local.source);
-        let ty = self.normalized_local_ty(local_id);
-        if ty.as_capability(self.db).is_some() {
+    /// A value read with no mode of its own: lowering emits one only where an
+    /// expression is evaluated as a value, which takes it, so a non-`Copy`
+    /// value moves. A capability carrier names its place and copies. The
+    /// reads that leave a value in place pass their mode: inspections, view
+    /// arguments and lent effects.
+    fn read_mode_for_value(&self, local: SLocalId) -> ReadMode {
+        let ty = self.normalized_local_ty(local);
+        if ty.as_capability(self.db).is_some() || self.ty_is_copy(ty) {
             ReadMode::Copy
-        } else if matches!(
-            source,
-            Some(LocalBinding::Param {
-                mode: FuncParamMode::View,
-                ..
-            })
-        ) {
-            if self.ty_is_copy(ty) {
-                ReadMode::Copy
-            } else {
-                ReadMode::Read
-            }
-        } else if self.origin_is_implicit_move(origin) || !self.ty_is_copy(ty) {
-            ReadMode::Move
         } else {
-            ReadMode::Copy
+            ReadMode::Move
         }
     }
 
-    fn read_mode_for_place(
-        &self,
-        origin: SemOrigin<'db>,
-        ty: TyId<'db>,
-        place: &NPlace<'db>,
-    ) -> ReadMode {
-        match place.base {
-            // A provider's handle names its place; any other non-`Copy` value
-            // moves, which the access checker rejects.
-            NPlaceBase::Root(root)
-                if matches!(self.roots[root.index()].kind, NRootKind::Provider { .. })
-                    && self.ty_is_copy(ty) =>
-            {
-                ReadMode::Copy
-            }
-            NPlaceBase::CapabilityTarget { .. } | NPlaceBase::Deref { .. } => {
-                if self.origin_is_implicit_move(origin) {
-                    if self.ty_is_copy(ty) {
-                        ReadMode::Copy
-                    } else {
-                        ReadMode::Move
-                    }
-                } else if self.ty_is_copy(ty) {
-                    ReadMode::Copy
-                } else {
-                    ReadMode::Read
-                }
-            }
-            NPlaceBase::Root(_) if self.origin_is_implicit_move(origin) || !self.ty_is_copy(ty) => {
-                ReadMode::Move
-            }
-            NPlaceBase::Root(_) => ReadMode::Copy,
+    /// A place read with no mode of its own, as `read_mode_for_value`: a
+    /// non-`Copy` value moves out of its place, through any access, which the
+    /// access checker rejects where the access does not own it.
+    fn read_mode_for_place(&self, ty: TyId<'db>) -> ReadMode {
+        if self.ty_is_copy(ty) {
+            ReadMode::Copy
+        } else {
+            ReadMode::Move
         }
     }
 }

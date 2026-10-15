@@ -543,6 +543,41 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         self.emit_expr_with_origin(SemOrigin::Synthetic, ty, expr)
     }
 
+    /// The field type of `ty` when it is a transparent newtype.
+    fn newtype_field(&self, ty: TyId<'db>) -> Option<TyId<'db>> {
+        let scope = self.body.scope();
+        transparent_newtype_field_ty(
+            self.db,
+            scope,
+            normalize_ty(self.db, ty, scope, self.assumptions),
+        )
+    }
+
+    /// A cast of the value of `value`, of type `from`, to `to`. One that
+    /// unwraps a newtype projects its operand's place, as a field access
+    /// does: it reads the leaf it reaches, not the whole value.
+    fn lower_cast_expr(
+        &mut self,
+        origin: SemOrigin<'db>,
+        value: ExprId,
+        from: TyId<'db>,
+        to: TyId<'db>,
+    ) -> SValueId {
+        if self.newtype_field(from).is_some()
+            && let Some(mut place) = self.try_lower_place(value)
+        {
+            let mut leaf = from;
+            while let Some(field_ty) = self.newtype_field(leaf) {
+                place.push_field(FieldIndex(0));
+                leaf = field_ty;
+            }
+            let read = self.emit_expr_with_origin(origin, leaf, SExpr::ReadPlace { place });
+            return self.lower_cast(origin, SOperand::expr(read, value), leaf, to);
+        }
+        let operand = self.lower_expr_operand(value);
+        self.lower_cast(origin, operand, from, to)
+    }
+
     /// A cast sees through transparent newtypes (`check_cast`): it unwraps
     /// the source's, converts the leaf and wraps the result in the target's.
     fn lower_cast(
@@ -552,23 +587,15 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         from: TyId<'db>,
         to: TyId<'db>,
     ) -> SValueId {
-        let scope = self.body.scope();
-        let newtype_field = |this: &Self, ty| {
-            transparent_newtype_field_ty(
-                this.db,
-                scope,
-                normalize_ty(this.db, ty, scope, this.assumptions),
-            )
-        };
         let mut layers = Vec::new();
         let mut leaf = to;
-        while let Some(field_ty) = newtype_field(self, leaf) {
+        while let Some(field_ty) = self.newtype_field(leaf) {
             layers.push(leaf);
             leaf = field_ty;
         }
         let mut from = from;
         let mut unwrapped = false;
-        while let Some(field_ty) = newtype_field(self, from) {
+        while let Some(field_ty) = self.newtype_field(from) {
             let field = SExpr::Field {
                 base: value,
                 field: FieldIndex(0),
@@ -621,7 +648,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// the operation consuming it runs, after the operands that follow it,
     /// which may write or move it. An immutable `Copy` variable reads the
     /// same anywhere.
-    fn take_operand(&mut self, expr: ExprId, value: SValueId) -> SValueId {
+    pub(super) fn take_operand(&mut self, expr: ExprId, value: SValueId) -> SValueId {
         let local = &self.locals[value.index()];
         if local.source.is_none()
             || !matches!(
@@ -1120,8 +1147,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             }
             Expr::Cast(value, _) => {
                 let from = self.expr_ty(*value);
-                let value = self.lower_expr_operand(*value);
-                self.lower_cast(origin, value, from, ty)
+                self.lower_cast_expr(origin, *value, from, ty)
             }
             Expr::Call(_, args) => {
                 self.lower_call(expr, self.typed_body.call_receiver(self.db, expr), args)
@@ -2180,10 +2206,23 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             let value = self.loop_base_operand(*expr, base).value;
             self.loop_bases.insert(*expr, value);
         }
-        // The driver, evaluated once into the loop's own copy, so the body
-        // cannot retarget it; a producer advances that copy.
+        // The driver is evaluated once, so the body cannot retarget it. A
+        // producer advances its own copy, which the loop takes; any other
+        // driver the loop holds as it does a base, by a view of its place for
+        // the whole loop, unless it is `Copy` or a fresh value.
         let driver = plan.driver.map(|driver| {
-            let value = SOperand::expr(self.lower_source(driver), driver);
+            let ty = self.expr_ty(driver);
+            if plan.item != ForLoopItem::Produced
+                && !ty_is_copy(self.db, self.body.scope(), ty, self.assumptions)
+                && let Some(place) = self.try_lower_place(driver)
+            {
+                return SOperand::expr(
+                    self.emit_borrow(driver, place, BorrowKind::Ref, ty),
+                    driver,
+                );
+            }
+            let value = self.lower_source(driver);
+            let value = SOperand::expr(self.take_operand(driver, value), driver);
             let ty = self.locals[value.value.index()].ty;
             let temp = self.alloc_local(ty, Mutability::Mutable, None);
             self.push_synthetic_stmt(SStmtKind::Assign {
@@ -2369,10 +2408,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
 
         self.lower_cond_branch(cond, then_bb, else_bb);
 
+        // Each branch's value passes to the join, so the join takes it.
         self.switch_to(then_bb);
         let then_value = self.lower_expr(then_expr);
         if !self.is_terminated(self.current) {
             join_reachable = true;
+            let then_value = self.take_operand(then_expr, then_value);
             self.push_synthetic_stmt(SStmtKind::Assign {
                 dst: result,
                 expr: SExpr::Forward(SOperand::expr(then_value, then_expr)),
@@ -2381,13 +2422,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
 
         self.switch_to(else_bb);
-        let else_value = if let Some(expr) = else_expr {
-            SOperand::expr(self.lower_expr(expr), expr)
-        } else {
-            SOperand::synthetic(self.unit_value())
-        };
+        let else_value = else_expr.map(|expr| (expr, self.lower_expr(expr)));
         if !self.is_terminated(self.current) {
             join_reachable = true;
+            let else_value = match else_value {
+                Some((expr, value)) => SOperand::expr(self.take_operand(expr, value), expr),
+                None => SOperand::synthetic(self.unit_value()),
+            };
             self.push_synthetic_stmt(SStmtKind::Assign {
                 dst: result,
                 expr: SExpr::Forward(else_value),

@@ -1090,13 +1090,6 @@ pub enum BodyDiag<'db> {
         name: IdentId<'db>,
     },
 
-    /// A non-`Copy` capture moved out of the closure's environment, which
-    /// each call only views.
-    MoveOutOfCapture {
-        primary: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    },
-
     /// A two-base loop binding one item `mut` and the other not.
     MixedLoopBases {
         primary: DynLazySpan<'db>,
@@ -1245,7 +1238,6 @@ impl<'db> BodyDiag<'db> {
             Self::ClosureArityMismatch { .. } => 109,
             Self::WriteToCapture { .. } => 110,
             Self::AccessCapture { .. } => 111,
-            Self::MoveOutOfCapture { .. } => 112,
             Self::MixedLoopBases { .. } => 114,
             Self::TupleOfAccesses { .. } => 115,
             Self::UnsafeSplitOperand { .. } => 118,

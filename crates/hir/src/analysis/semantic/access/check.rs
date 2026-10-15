@@ -1727,6 +1727,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
             NPlaceBase::Root(_) | NPlaceBase::Deref { .. } => None,
             NPlaceBase::CapabilityTarget { carrier } => self.carrier_key(carrier),
         };
+        // A closure's environment, data parameter 0, holds its captures, and
+        // each call of the closure only views them.
+        if kind == MemoryAccessKind::Move
+            && matches!(self.body.template_owner, BodyOwner::Closure { .. })
+            && resolved
+                .regions
+                .iter()
+                .any(|region| region.base == Base::Param(0))
+        {
+            return Err(self.diag(
+                SemanticDiagnosticKind::MoveConflict,
+                origin,
+                "cannot move out of a closure's captures, which each call of the closure only views"
+                    .into(),
+            ));
+        }
         if kind == MemoryAccessKind::Move
             && let Some(space @ (AddressSpace::Storage | AddressSpace::Transient)) = resolved
                 .regions

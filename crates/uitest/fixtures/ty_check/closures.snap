@@ -5,9 +5,9 @@ expression: diags
 input_file: fixtures/ty_check/closures.fe
 ---
 error[6-0003]: trait bound is not satisfied
-   ┌─ closures.fe:68:8
+   ┌─ closures.fe:57:8
    │
-68 │     xs.fold(0, |acc: mut, x| acc)
+57 │     xs.fold(0, |acc: mut, x| acc)
    │        ^^^^ `|mut u256, u256| -> u256` doesn't implement `FnMut(own u256, u256) -> u256`
    │
    ┌─ src/iter.fe:63:19
@@ -16,68 +16,60 @@ error[6-0003]: trait bound is not satisfied
    │                   ----------------------------- required by this bound on `fold`
 
 error[8-0019]: `break` is not allowed outside of a loop
-   ┌─ closures.fe:74:13
+   ┌─ closures.fe:63:13
    │
-74 │             break
+63 │             break
    │             ^^^^^ `break` is not allowed here
 
 error[8-0036]: missing effect `Store` required by `any`
-   ┌─ closures.fe:86:5
+   ┌─ closures.fe:75:5
    │
-86 │     xs.any(|x| x == read())
+75 │     xs.any(|x| x == read())
    │     ^^^^^^^^^^^^^^^^^^^^^^^ `any` requires effect `Store` to be in scope
    │
    = require it in this function's signature with `uses Store`, so that its callers provide it
    = or provide it to a block of this function with `with (Store = value) { .. }`
 
 error[8-0108]: closures cannot be used in constant contexts
-   ┌─ closures.fe:80:13
+   ┌─ closures.fe:69:13
    │
-80 │     let f = |x: u256| x
+69 │     let f = |x: u256| x
    │             ^^^^^^^^^^^ constant evaluation cannot evaluate a closure
 
 error[8-0109]: closure has the wrong number of parameters
-   ┌─ closures.fe:64:16
+   ┌─ closures.fe:53:16
    │
-64 │     xs.fold(0, |acc| acc)
+53 │     xs.fold(0, |acc| acc)
    │                ^^^^^^^^^ expected a closure taking 2 parameters, found 1
 
 error[8-0110]: cannot write to `total`, which a closure captures
-   ┌─ closures.fe:18:9
+   ┌─ closures.fe:16:9
    │
-18 │         total += x
+16 │         total += x
    │         ^^^^^ the closure only reads its copy
    │
    = closures capture by copy or move; thread state through parameters and results instead
 
 error[8-0110]: cannot write to `a`, which a closure captures
-   ┌─ closures.fe:28:17
+   ┌─ closures.fe:26:17
    │
-28 │         let r = mut a
+26 │         let r = mut a
    │                 ^^^^^ the closure only reads its copy
    │
    = closures capture by copy or move; thread state through parameters and results instead
 
 error[8-0111]: a closure cannot capture the access `accounts`
-   ┌─ closures.fe:35:32
+   ┌─ closures.fe:33:32
    │
-35 │     idx.fold(0, |acc, i| acc + accounts[i].balance)
+33 │     idx.fold(0, |acc, i| acc + accounts[i].balance)
    │                                ^^^^^^^^ an access of a non-`Copy` value is neither copied nor moved
    │
    = pass the value to the closure as a parameter instead
 
 error[8-0111]: a closure cannot capture the access `r`
-   ┌─ closures.fe:49:36
+   ┌─ closures.fe:47:36
    │
-49 │     let f = |x: u256| view_account(r) + x
+47 │     let f = |x: u256| view_account(r) + x
    │                                    ^ an access of a non-`Copy` value is neither copied nor moved
    │
    = pass the value to the closure as a parameter instead
-
-error[8-0112]: cannot move `a` out of a closure's captures
-   ┌─ closures.fe:58:17
-   │
-58 │         consume(a)
-   │                 ^ moved here
-   │
-   = each call of a closure only views its captures
