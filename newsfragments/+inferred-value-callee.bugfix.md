@@ -1,0 +1,1 @@
+Calling a value whose type still holds inference variables no longer panics the type checker: `let f = || 3; let r: u256 = f()`, `{ id }(x)`, and an effectful function item called through a block, an identity call or a closure (`{ note2 }(5, 2)`, `id(note2)(5, 2)`) compile and provide the item's effects.
