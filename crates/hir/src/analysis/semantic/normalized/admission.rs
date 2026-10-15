@@ -187,9 +187,8 @@ fn admission_failure<'db>(
         SemanticBodyAdmissionError::CallSiteFinalization(diag) => {
             SemanticBodyAdmission::InternalFailure(diag)
         }
-        SemanticBodyAdmissionError::InvalidConcreteType(diag) => {
-            SemanticBodyAdmission::Rejected(diag)
-        }
+        SemanticBodyAdmissionError::InvalidConcreteType(diag)
+        | SemanticBodyAdmissionError::InstanceLimit(diag) => SemanticBodyAdmission::Rejected(diag),
     }
 }
 

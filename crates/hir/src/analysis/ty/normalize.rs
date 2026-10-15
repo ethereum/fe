@@ -78,12 +78,14 @@ where
     normalize_from_assumptions(db, value, scope, PredicateListId::new(db, vec![evidence]))
 }
 
-/// How many projections may be in the middle of being resolved at once.
-const PROJECTION_DEPTH_LIMIT: usize = 64;
+/// How many projections may be in the middle of being resolved at once, and
+/// how deeply the generic arguments of one instance may nest.
+pub(crate) const PROJECTION_DEPTH_LIMIT: usize = 64;
 
 /// How many type nodes, counted as a tree, the projections resolved by one
-/// normalization may have in total.
-const PROJECTION_WORK_LIMIT: usize = 65536;
+/// normalization may have in total, as may the generic arguments of one
+/// instance.
+pub(crate) const PROJECTION_WORK_LIMIT: usize = 65536;
 
 pub struct TypeNormalizer<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -139,8 +141,8 @@ impl<'db> TypeNormalizer<'db> {
     }
 }
 
-/// The number of nodes in `ty` counted as a tree, if it is at most `limit`.
-fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize) -> Option<usize> {
+/// The types `ty` is made of, one level down.
+fn children<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'db>> {
     struct Children<'db> {
         db: &'db dyn HirAnalysisDb,
         children: Vec<TyId<'db>>,
@@ -153,6 +155,20 @@ fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize
             self.children.push(ty);
         }
     }
+    let mut children = Children {
+        db,
+        children: Vec::new(),
+    };
+    walk_ty(&mut children, ty);
+    children.children
+}
+
+/// The number of nodes in `ty` counted as a tree, if it is at most `limit`.
+pub(crate) fn tree_size_within<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    limit: usize,
+) -> Option<usize> {
     fn size<'db>(
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
@@ -162,13 +178,8 @@ fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize
         if let Some(&known) = memo.get(&ty) {
             return Some(known);
         }
-        let mut children = Children {
-            db,
-            children: Vec::new(),
-        };
-        walk_ty(&mut children, ty);
         let mut total = 1usize;
-        for child in children.children {
+        for child in children(db, ty) {
             total = total.checked_add(size(db, child, limit, memo)?)?;
             if total > limit {
                 return None;
@@ -181,6 +192,32 @@ fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize
         return None;
     }
     size(db, ty, limit, &mut FxHashMap::default())
+}
+
+/// Whether `ty`, as a tree, nests at most `limit` levels of types.
+pub(crate) fn tree_depth_within<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    limit: usize,
+) -> bool {
+    fn depth<'db>(
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+        limit: usize,
+        memo: &mut FxHashMap<TyId<'db>, usize>,
+    ) -> Option<usize> {
+        if let Some(&known) = memo.get(&ty) {
+            return (known <= limit).then_some(known);
+        }
+        let below = limit.checked_sub(1)?;
+        let mut deepest = 0;
+        for child in children(db, ty) {
+            deepest = deepest.max(depth(db, child, below, memo)?);
+        }
+        memo.insert(ty, deepest + 1);
+        Some(deepest + 1)
+    }
+    depth(db, ty, limit, &mut FxHashMap::default()).is_some()
 }
 
 impl<'db> TyFolder<'db> for TypeNormalizer<'db> {

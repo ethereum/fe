@@ -11,7 +11,7 @@ use crate::{
             access::{CallSiteRefinements, PathSpace, provisional_call_site_provider_refinements},
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticId, SemanticDiagnosticKind,
-                SemanticDiagnosticLabel, SemanticDiagnosticSpan,
+                SemanticDiagnosticLabel, SemanticDiagnosticSpan, checker_name,
             },
             effect_param_site,
             lower::{BindingRoleMode, lower_to_smir, lower_to_smir_with_call_sites},
@@ -30,7 +30,10 @@ use crate::{
             },
             fold::{TyFoldable, TyFolder},
             instantiate_trait_self,
-            normalize::normalize_ty,
+            normalize::{
+                PROJECTION_DEPTH_LIMIT, PROJECTION_WORK_LIMIT, normalize_ty, tree_depth_within,
+                tree_size_within,
+            },
             provider::{
                 AddressSpace, ProviderKind, ProviderTransport, RootProviderRegistration,
                 RootProviderScope, provider_semantics, provider_semantics_for_specialized_call,
@@ -56,7 +59,9 @@ use crate::{
             ty_lower::{ParamSchemaId, SubstError},
         },
     },
-    hir_def::{CallableDef, Contract, ExprId, FuncParamMode, SpacePathId, scope_graph::ScopeId},
+    hir_def::{
+        CallableDef, Contract, ExprId, FuncParamMode, SpacePathId, StmtId, scope_graph::ScopeId,
+    },
     semantic::{
         EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding, ProviderSource,
         ResolvedEffectBinding, effect_param_provider_semantics, effect_requirements_for_site,
@@ -139,6 +144,7 @@ pub(crate) enum SemanticBodyAdmissionError<'db> {
     IncompleteLoweringPlan(Box<[crate::analysis::ty::ty_check::SmirLoweringIssue]>),
     CallSiteFinalization(crate::analysis::semantic::SemanticDiagnosticId<'db>),
     InvalidConcreteType(crate::analysis::semantic::SemanticDiagnosticId<'db>),
+    InstanceLimit(crate::analysis::semantic::SemanticDiagnosticId<'db>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
@@ -1667,6 +1673,61 @@ impl<'db> SemanticInstance<'db> {
                         invalid_size_diagnostic(db, self, SemOrigin::Expr(expr), arg, error),
                     ));
                 }
+            }
+        }
+        // Recursion that grows its generic arguments, as `f<T>` calling
+        // `f<(T, T)>`, makes a new instance at every call: a call making one
+        // whose arguments nest too deeply or are too large is rejected.
+        let calls = provisional_call_sites(db, self)
+            .sites
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, site)| {
+                Some((SemOrigin::Expr(ExprId::new(idx)), site.as_ref()?.callee?))
+            });
+        let loops = provisional_for_loop_call_sites(db, self)
+            .sites
+            .iter()
+            .enumerate()
+            .flat_map(|(idx, sites)| {
+                sites.iter().flat_map(move |sites| {
+                    sites.sites.iter().filter_map(move |site| {
+                        Some((SemOrigin::Stmt(StmtId::new(idx)), site.callee?))
+                    })
+                })
+            });
+        for (origin, callee) in calls.chain(loops) {
+            let args = callee.key.subst(db).generic_args(db);
+            let within = args
+                .iter()
+                .all(|&arg| tree_depth_within(db, arg, PROJECTION_DEPTH_LIMIT))
+                && args
+                    .iter()
+                    .try_fold(0usize, |total, &arg| {
+                        let size = tree_size_within(db, arg, PROJECTION_WORK_LIMIT - total)?;
+                        Some(total + size)
+                    })
+                    .is_some();
+            if !within {
+                let callee = checker_name(db, get_or_build_semantic_instance(db, callee.key));
+                return Err(SemanticBodyAdmissionError::InstanceLimit(
+                    SemanticDiagnosticId::new(
+                        db,
+                        SemanticDiagnostic::new(
+                            self,
+                            SemanticDiagnosticKind::InstanceLimit,
+                            format!(
+                                "this call instantiates `{callee}` with generic arguments that nest more \
+                             than {PROJECTION_DEPTH_LIMIT} levels deep or have more than \
+                             {PROJECTION_WORK_LIMIT} type nodes"
+                            ),
+                            SemanticDiagnosticSpan::Origin {
+                                owner: self.key(db).owner(db),
+                                origin,
+                            },
+                        ),
+                    ),
+                ));
             }
         }
         Ok(())
