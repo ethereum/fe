@@ -84,3 +84,18 @@ fn effect_read_where_it_appears() {
     x = 5
     assert(with (x) { plus_effect() } == 12)
 }
+
+fn through_param(_ x: mut u256) -> u256 {
+    add(x, bump(mut x))
+}
+
+#[test]
+fn carrier_argument_read_where_it_appears() {
+    // A `Copy` value read through a `mut` parameter or binding is read before
+    // a later argument writes it, as a local's is.
+    var x: u256 = 5
+    assert(through_param(mut x) == 12)
+    var y: u256 = 5
+    let z = mut y
+    assert(add(z, bump(mut z)) == 12)
+}

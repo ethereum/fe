@@ -1739,17 +1739,27 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             return self.emit_borrow(expr, SPlace::new(local), BorrowKind::Mut, ty);
         }
         // An access binding passed to a view parameter is viewed through its
-        // carrier.
+        // carrier. Later arguments may write through a `mut` one, so an
+        // argument other than the receiver is taken where it appears, as a
+        // local's is: a snapshot is read there, and anything else viewed
+        // there.
+        let scope = self.body.scope();
         if matches!(
             expr.data(self.db, self.body),
             Partial::Present(Expr::Path(_))
         ) && let Some(binding) = self.typed_body.expr_binding(expr)
             && !self.capture_places.contains_key(&binding)
-            && self.typed_body.binding_access(binding).is_some()
+            && let Some(access) = self.typed_body.binding_access(binding)
         {
-            return self.binding_locals[&binding];
+            if receiver || !access.is_mut() {
+                return self.binding_locals[&binding];
+            }
+            if !ty_is_snapshot(self.db, scope, ty, self.assumptions)
+                && let Some(place) = self.try_lower_place(expr)
+            {
+                return self.emit_borrow(expr, place, BorrowKind::Ref, ty);
+            }
         }
-        let scope = self.body.scope();
         let in_place = mode == FuncParamMode::View
             && self.typed_body.expr_prop(self.db, expr).shape.is_none()
             && !ty_is_snapshot(self.db, scope, ty, self.assumptions)

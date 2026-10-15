@@ -8,18 +8,16 @@ error[16-0001]: access conflict in `fn via_param`
    ┌─ carrier_argument_aliasing.fe:39:5
    │
 39 │     b.set(b)
-   │     ^-------
+   │     ^     - access opened here
    │     │
-   │     access opened here
    │     cannot mutably access this place while a `ref` access of it is open
 
 error[16-0001]: access conflict in `fn via_binding`
    ┌─ carrier_argument_aliasing.fe:45:5
    │
 45 │     h.set(h)
-   │     ^-------
+   │     ^     - access opened here
    │     │
-   │     access opened here
    │     cannot mutably access this place while a `ref` access of it is open
 
 error[16-0001]: access conflict in `fn effect_alias`
@@ -27,17 +25,16 @@ error[16-0001]: access conflict in `fn effect_alias`
    │
 51 │         view_eff(s)
    │         ^^^^^^^^^^^
-   │         │
+   │         │        │
+   │         │        access opened here
    │         cannot mutably access this place while a `ref` access of it is open
-   │         access opened here
 
 error[16-0001]: access conflict in `fn proj_alias`
    ┌─ carrier_argument_aliasing.fe:57:13
    │
 57 │     let x = b.pick(b)
-   │             ^--------
+   │             ^      - access opened here
    │             │
-   │             access opened here
    │             cannot mutably access this place while a `ref` access of it is open
 
 error[16-0001]: access conflict in `fn recv_param`
