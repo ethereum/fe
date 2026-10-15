@@ -3350,10 +3350,10 @@ impl<'db> RmirEmitter<'db> {
             return Some(self.lower_panic_code(bb, *code));
         }
         if kind == RuntimeBuiltinFuncKind::Clear {
-            let [place] = args.as_slice() else {
-                return None;
-            };
-            self.lower_clear(bb, *place);
+            // A zero-sized place is erased: clearing it stores nothing.
+            if let [place] = args.as_slice() {
+                self.lower_clear(bb, *place);
+            }
             return Some(self.alloc_runtime_temp(TyId::unit(self.db), RuntimeCarrier::Erased));
         }
         let lowered = self.lower_extern_builtin(semantic, &args)?;
