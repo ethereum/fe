@@ -1,0 +1,44 @@
+// `collect` counts its producer's elements, allocates, then produces them. A
+// producer that changes its own traversal while producing yields fewer the
+// second time; collecting reverts rather than hand out the uninitialized
+// rest.
+use core::iter::{Collection, FromProducer, Producer}
+use core::option::Option
+use core::ptr::MemArray
+
+struct Shrink {
+    stop: usize,
+}
+
+impl<B: Collection<Item = u256, Cursor = usize>> Producer<B> for Shrink {
+    type State = usize
+    type Out = MemArray<u256>
+
+    fn start(self, _ base: B) -> Option<usize> uses B::E {
+        base.start()
+    }
+
+    fn next(self, _ base: B, _ s: usize) -> Option<usize> uses B::E {
+        if s + 1 >= self.stop {
+            return Option::None
+        }
+        base.next(s)
+    }
+
+    fn produce(mut self, _ base: B, _ s: usize) -> MemArray<u256> uses B::E {
+        self.stop = 1
+        MemArray<u256>::new_zeroed(1)
+    }
+}
+
+#[test(should_revert, selector = 0x4e487b71)]
+fn shrinking_producer_reverts() {
+    let out: MemArray<MemArray<u256>> = MemArray::collect([1, 2, 3, 4], Shrink { stop: 100 })
+    assert(out.len() == 4)
+}
+
+#[test]
+fn steady_producer_collects() {
+    let out: MemArray<MemArray<u256>> = MemArray::collect([1, 2, 3, 4], Shrink { stop: 0 })
+    assert(out.len() == 1)
+}

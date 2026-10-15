@@ -141,14 +141,13 @@ pub trait Abi {
 
     fn decoder_new() -> Self::Decoder
     fn decoder_with_base(_ base: u256) -> Self::Decoder
-
-    fn alloc(_ size: u256) -> *u8
 }
 
-/// ABI decoder with cursor state and an allocation hook.
+/// ABI decoder with cursor state.
 ///
 /// A decoder does not hold its input: each read is passed the input and
-/// validates the position against it.
+/// validates the position against it. Decoding allocates its payloads
+/// itself, so no implementation chooses where decoded bytes are written.
 pub trait AbiDecoder<A: Abi> {
     fn base(self) -> u256
     fn set_base(mut self, _ new_base: u256)
@@ -158,8 +157,6 @@ pub trait AbiDecoder<A: Abi> {
     fn read_u8<I: ByteInput>(mut self, _ input: I) -> u8
     fn read_word<I: ByteInput>(mut self, _ input: I) -> u256
     fn peek_word<I: ByteInput>(self, _ input: I, _ at: u256) -> u256
-
-    fn alloc(mut self, _ size: u256) -> *u8
 }
 
 /// ABI payload layout metadata and exact runtime payload size.
@@ -609,7 +606,7 @@ fn copy_dynamic_payload_from_with_input_len<A: Abi, I: ByteInput>(_ input: I, _ 
     let payload: (u256, u256) = checked_dynamic_payload_with_input_len<A, I>(input, pos, input_len)
     let data_len = payload.0
     let payload_size = payload.1
-    let data_ptr = A::alloc(payload_size)
+    let data_ptr = ptr::alloc_bytes(payload_size)
 
     unsafe { copy_dynamic_bytes(input, pos, data_ptr, data_len, payload_size) }
 
@@ -649,7 +646,7 @@ fn decode_string_payload_after_head<A: Abi, I: ByteInput, const N: usize>(_ inpu
         } else {
             // The input may end immediately after the last string byte.
             // Load from a full scratch word only after a bounded copy.
-            let scratch = A::alloc(32)
+            let scratch = ptr::alloc_bytes(32)
             unsafe {
                 store_word(ptr: scratch, value: 0)
                 input.copy_to_memory(dest: scratch, src_offset: data_start, len: data_len)
@@ -2074,7 +2071,7 @@ impl<A: Abi> Decode<A> for DynString {
     fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
         let payload_at = d.pos()
         let payload: (u256, u256) = checked_dynamic_payload_with_input_len<A, I>(input, payload_at, input.len())
-        let data_ptr = d.alloc(payload.1)
+        let data_ptr = ptr::alloc_bytes(payload.1)
 
         unsafe { copy_dynamic_bytes(input, payload_at, data_ptr, payload.0, payload.1) }
 
@@ -2105,7 +2102,7 @@ impl<A: Abi> Decode<A> for DynString {
     #[inline(always)]
     fn decode_from_prechecked_head<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
         let payload: (u256, u256) = checked_dynamic_payload_after_head<A, I>(input, pos, input_len)
-        let data_ptr = A::alloc(payload.1)
+        let data_ptr = ptr::alloc_bytes(payload.1)
 
         unsafe { copy_dynamic_bytes(input, pos, data_ptr, payload.0, payload.1) }
 
@@ -2404,7 +2401,7 @@ impl<A: Abi> Decode<A> for Bytes {
     fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
         let payload_at = d.pos()
         let payload: (u256, u256) = checked_dynamic_payload_with_input_len<A, I>(input, payload_at, input.len())
-        let data_ptr = d.alloc(payload.1)
+        let data_ptr = ptr::alloc_bytes(payload.1)
 
         unsafe { copy_dynamic_bytes(input, payload_at, data_ptr, payload.0, payload.1) }
 
@@ -2435,7 +2432,7 @@ impl<A: Abi> Decode<A> for Bytes {
     #[inline(always)]
     fn decode_from_prechecked_head<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
         let payload: (u256, u256) = checked_dynamic_payload_after_head<A, I>(input, pos, input_len)
-        let data_ptr = A::alloc(payload.1)
+        let data_ptr = ptr::alloc_bytes(payload.1)
 
         unsafe { copy_dynamic_bytes(input, pos, data_ptr, payload.0, payload.1) }
 
@@ -2547,7 +2544,7 @@ impl<A: Abi, T> Decode<A> for DynArray<T>
         let payload_end = dyn_array_payload_end_with_input_len<A, T, I>(input, tail_at: payload_at, elem_count: elem_count, input_len: input_len)
         let actual_size = payload_end - payload_at
         let payload_size = if T::IS_DYNAMIC { checked_padded_size<A>(actual_size) } else { actual_size }
-        let data_ptr = d.alloc(payload_size)
+        let data_ptr = ptr::alloc_bytes(payload_size)
 
         unsafe {
             if T::IS_DYNAMIC {
@@ -2580,7 +2577,7 @@ impl<A: Abi, T> Decode<A> for DynArray<T>
 
         let actual_size = payload_end - pos
         let payload_size = if T::IS_DYNAMIC { checked_padded_size<A>(actual_size) } else { actual_size }
-        let data_ptr = A::alloc(payload_size)
+        let data_ptr = ptr::alloc_bytes(payload_size)
 
         unsafe {
             if T::IS_DYNAMIC {

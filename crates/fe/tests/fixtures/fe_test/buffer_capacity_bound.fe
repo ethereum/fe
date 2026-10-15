@@ -1,0 +1,27 @@
+// A buffer reserves its capacity without writing it, so a capacity beyond
+// any allocation reverts with `Panic(0x41)` rather than wrap the free memory
+// pointer onto live allocations.
+use core::ptr::MemBuffer
+
+fn huge(_ x: u256) -> u256 {
+    x
+}
+
+#[test(should_revert, selector = 0x4e487b71)]
+fn huge_capacity_reverts() {
+    let _ = MemBuffer::with_capacity(huge(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff))
+}
+
+#[test(should_revert, selector = 0x4e487b71)]
+fn huge_reserve_reverts() {
+    var buf = MemBuffer::with_capacity(32)
+    buf.reserve(huge(0x10000000000000000))
+}
+
+#[test]
+fn bounded_capacity_allocates() {
+    var buf = MemBuffer::with_capacity(huge(64))
+    buf.reserve(100)
+    let other = MemBuffer::alloc(32)
+    assert(buf.capacity() >= 100 && other[0] == 0)
+}

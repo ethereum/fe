@@ -49,8 +49,9 @@ use core::ptr::{self, MemSpan}
 use core::result::Result
 use ingot::abi::FixedBytes
 use super::crypto
-use super::effects::Address
+use super::effects::{Address, revert_error}
 use super::ops
+use super::panic::{PANIC_ASSERT, Panic}
 
 /// Default initial capacity (in bytes) for `Packed::new`.
 const DEFAULT_CAPACITY: u256 = 128
@@ -80,8 +81,14 @@ pub trait EncodePacked {
     /// store their bytes directly.
     #[inline(always)]
     unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+        let width = self.packed_width()
         let packed = self.pack_into(Packed::with_capacity(bytes: 0))
         let source = packed.buffer.span()
+        // `dest` has room for `width` bytes: an encoding longer than its
+        // declared width reverts rather than write past it.
+        if source.len() > width {
+            revert_error(Panic::from(PANIC_ASSERT))
+        }
         ptr::copy(dest, source)
         source.len()
     }

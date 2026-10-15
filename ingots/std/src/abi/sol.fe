@@ -166,8 +166,6 @@ impl Abi for Sol {
     fn decoder_with_base(_ base: u256) -> SolDecoder {
         SolDecoder::with_base(base)
     }
-
-    fn alloc(_ size: u256) -> *u8 { ptr::alloc_bytes(size) }
 }
 
 /// A Solidity ABI decoder: a position in the input and the base that
@@ -350,9 +348,5 @@ impl AbiDecoder<Sol> for SolDecoder {
             revert_empty()
         }
         input.word_at(at)
-    }
-
-    fn alloc(mut self, _ size: u256) -> *u8 {
-        ptr::alloc_bytes(size)
     }
 }
