@@ -5196,9 +5196,20 @@ impl<'db> RmirEmitter<'db> {
     ) -> Option<RuntimePlace<'db>> {
         let space = self.semantic_body.owner().pinned_space(self.db, ty)?;
         let addr_class = self.place_addr_class(place);
-        if addr_class.address_space() == Some(space) {
+        let from = addr_class.address_space();
+        if from == Some(space) {
             return None;
         }
+        // Admission rejects a pinned type outside state, so only a place in
+        // the other state space moves, as a `TSlot` in a storage struct.
+        assert!(
+            !matches!(
+                from,
+                Some(AddressSpace::Memory | AddressSpace::Calldata | AddressSpace::Code)
+            ),
+            "a place of `{}`, pinned to {space:?}, lies in {from:?}",
+            ty.pretty_print(self.db)
+        );
         let addr = self.lower_place_addr_of_for_class(ty, bb, place.clone(), addr_class);
         let slot = self.coerce_value(bb, addr, &word_class());
         let class = provider_class_for_target_in_env(self.db, self.env, Some(ty), space);
@@ -5229,6 +5240,14 @@ impl<'db> RmirEmitter<'db> {
         let word_ty = TyId::u256(self.db);
         let word = word_class();
         let receiver_class = self.place_addr_class(&collection);
+        assert!(
+            matches!(
+                receiver_class.address_space(),
+                Some(AddressSpace::Storage | AddressSpace::Transient)
+            ),
+            "the collection `{}` lies outside state",
+            collection_ty.pretty_print(self.db)
+        );
         let receiver =
             self.lower_place_addr_of_for_class(collection_ty, bb, collection, receiver_class);
         let base = self.coerce_value(bb, receiver, &word);

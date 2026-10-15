@@ -149,6 +149,11 @@ pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> 
             .generic_args(db)
             .iter()
             .find_map(|elem| elem.pinned_part(db)),
+        // A memory pointer's target lies in memory, where a pinned type never
+        // does; a state pointer is a handle to a place in state.
+        TyData::TyBase(TyBase::Prim(PrimTy::Ptr(
+            AddressSpace::Memory | AddressSpace::Calldata | AddressSpace::Code,
+        ))) => ty.as_ptr(db)?.0.pinned_part(db),
         _ => None,
     }
 }

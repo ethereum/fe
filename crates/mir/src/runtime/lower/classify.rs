@@ -1010,6 +1010,12 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
             };
             if let Some(pin) = self.body.owner().pinned_space(self.db, ty) {
                 if pin != space {
+                    // Admission rejects a pinned type outside state.
+                    assert!(
+                        matches!(space, AddressSpace::Storage | AddressSpace::Transient),
+                        "a place of `{}`, pinned to {pin:?}, lies in {space:?}",
+                        ty.pretty_print(self.db)
+                    );
                     pinned = Some((steps, ty, pin));
                 }
                 space = pin;

@@ -1,0 +1,27 @@
+use core::marker::Pinned
+use core::ptr::MemArray
+
+// A generic body may hold its type parameter in memory; an instance whose
+// argument is pinned would hold a state-only value there.
+struct SCell {
+    pub v: u256,
+}
+
+impl Pinned for SCell {
+    space S = storage
+}
+
+fn zeroed_one<T>() -> u256 {
+    let arr = MemArray<T>::new_zeroed(1)
+    arr.len()
+}
+
+// Rejected: `zeroed_one<SCell>` holds `MemArray<SCell>` in memory.
+fn instantiate_pinned() -> u256 {
+    zeroed_one<SCell>()
+}
+
+// Accepted: `zeroed_one<u256>` holds plain words.
+fn instantiate_plain() -> u256 {
+    zeroed_one<u256>()
+}
