@@ -35,6 +35,22 @@ fn access_capture(_ accounts: [Account; 2]) -> u256 {
     idx.fold(0, |acc, i| acc + accounts[i].balance)
 }
 
+fn view_account(_ o: Option<Account>) -> u256 {
+    match o {
+        Option::Some(ref a) => a.balance
+        Option::None => 0
+    }
+}
+
+// The access's type is inferred only after the closure captures it.
+fn late_access_capture() -> u256 {
+    var o = Option::None
+    let r = ref o
+    let f = |x: u256| view_account(r) + x
+    o = Option::Some(Account { balance: 5 })
+    f(1)
+}
+
 fn move_capture() {
     let a = Account { balance: 1 }
     let xs: [u256; 1] = [1]

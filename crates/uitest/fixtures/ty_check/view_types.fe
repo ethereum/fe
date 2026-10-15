@@ -7,6 +7,18 @@ mod views {
         pub len: u256,
     }
 
+    #[view]
+    pub enum Mark {
+        Set(u256),
+        Unset,
+    }
+
+    // Accepted: its defining module builds a view's unit variant.
+    fn unset() -> u256 {
+        let mark = Mark::Unset
+        0
+    }
+
     pub struct Owner {
         pub start: u256,
         pub len: u256,
@@ -42,7 +54,7 @@ mod views {
     }
 }
 
-use views::{Owner, Span}
+use views::{Mark, Owner, Span}
 
 fn viewed(_ span: Span) -> u256 {
     span.len
@@ -82,6 +94,11 @@ impl Copy for Span {}
 fn outside() -> u256 {
     let span = Span { start: 0, len: 0 }
     span.len
+}
+
+fn unit_outside() -> u256 {
+    let mark = Mark::Unset
+    0
 }
 
 fn take<T>(_ x: own T) {}

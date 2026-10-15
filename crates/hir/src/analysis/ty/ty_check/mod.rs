@@ -1407,6 +1407,22 @@ impl<'db> TyChecker<'db> {
         self.report_initializer_markers();
     }
 
+    /// A closure may capture an access only of a `Copy` value, which it
+    /// copies: checked here for the accesses whose types were still being
+    /// inferred where they were captured.
+    fn check_access_captures(&mut self) {
+        for (expr, binding, ty) in self.env.take_access_captures() {
+            let ty = ty.fold_with(self.db, &mut self.table);
+            let ty = self.normalize_ty(ty);
+            if !ty.has_var(self.db) && !ty.has_invalid(self.db) && !self.ty_is_copy(ty) {
+                self.push_diag(BodyDiag::AccessCapture {
+                    primary: expr.span(self.body()).into(),
+                    name: binding.binding_name(&self.env),
+                });
+            }
+        }
+    }
+
     /// Reports the non-`Copy` values moved out of closures' captures.
     fn check_capture_moves(&mut self) {
         for (expr, binding, ty) in self.env.take_capture_moves() {
@@ -4820,6 +4836,15 @@ impl<'db> TypedBody<'db> {
         self.tables.for_loop_plans[stmt].as_ref()
     }
 
+    /// Whether `expr` is a base a `for` loop holds.
+    pub fn is_loop_base(&self, expr: ExprId) -> bool {
+        self.tables
+            .for_loop_plans
+            .values()
+            .flatten()
+            .any(|plan| plan.bases.contains(&expr))
+    }
+
     pub fn binding_source(
         &self,
         db: &'db dyn HirAnalysisDb,
@@ -6333,14 +6358,100 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
         }
 
         match expr_data {
-            Expr::RecordInit(..) => {
+            Expr::RecordInit(..) | Expr::Path(..)
+                if matches!(expr_data, Expr::RecordInit(..))
+                    || matches!(
+                        self.body.value_path_ref(expr),
+                        Some(ValuePathRef::UnitVariant(_))
+                    ) =>
+            {
                 let ty = self.body.expr_prop(self.db, expr).ty;
                 self.check_view_construction(ty, ctxt.span().unwrap().into());
+                // A unit variant at a projection's yield site builds the sum
+                // shape it yields, not a value.
+                if !matches!(self.body.yield_shape(expr), Some(Shape::Sum { .. })) {
+                    self.check_state_only_value(
+                        ty,
+                        ctxt.span().unwrap().into(),
+                        "constructed as a value",
+                    );
+                }
+            }
+            // A tuple of accesses is a projection's yield, an unsafe split or
+            // reported as an access used as a value, and a two-base loop
+            // holds the bases it names.
+            Expr::Tuple(elems) | Expr::Array(elems)
+                if !self.body.yield_shape(expr).is_some_and(Shape::has_access)
+                    && !elems.iter().any(|&elem| {
+                        self.body.is_loop_base(elem)
+                            || self.body.expr_prop(self.db, elem).shape.is_some()
+                    }) =>
+            {
+                let ty = self.body.expr_prop(self.db, expr).ty;
                 self.check_state_only_value(
                     ty,
                     ctxt.span().unwrap().into(),
                     "constructed as a value",
                 );
+            }
+            // A closure's signature takes `#[view]` and state-only types
+            // only where a function's may.
+            Expr::Closure { ret_ty, .. } => {
+                let db = self.db;
+                if let Some(closure) = self.body.expr_prop(db, expr).ty.as_closure(db)
+                    && let Some(body) = self.body.body()
+                {
+                    let normalize = |ty| normalize_ty(db, ty, body.scope(), self.assumptions);
+                    let span = ctxt.span().unwrap().into_closure_expr();
+                    let mut diags = Vec::new();
+                    for (idx, &(mode, ty)) in closure.params(db).iter().enumerate() {
+                        let ty = normalize(ty);
+                        let span: DynLazySpan<'db> = span.clone().params().param(idx).into();
+                        if let Some((ty, mode)) = view_param_misuse(db, mode, ty) {
+                            diags.push(TyLowerDiag::ViewTypeMode {
+                                span: span.clone(),
+                                ty,
+                                mode,
+                            });
+                        }
+                        if mode == FuncParamMode::Own
+                            && let Some(collection) = ty.pinned_part(db)
+                        {
+                            diags.push(TyLowerDiag::StateOnlyValue {
+                                span,
+                                ty,
+                                collection,
+                                position: "an `own` parameter",
+                            });
+                        }
+                    }
+                    let ret_span: DynLazySpan<'db> = if ret_ty.is_some() {
+                        span.ret_ty().into()
+                    } else {
+                        span.body().into()
+                    };
+                    let ret = Shape::Owned(normalize(closure.ret_ty(db)));
+                    if let Some((ty, mode)) = ret.view_misuse(db) {
+                        diags.push(TyLowerDiag::ViewTypeMode {
+                            span: ret_span.clone(),
+                            ty,
+                            mode,
+                        });
+                    }
+                    if let Some((ty, collection)) = ret.state_only_value(db) {
+                        diags.push(TyLowerDiag::StateOnlyValue {
+                            span: ret_span,
+                            ty,
+                            collection,
+                            position: "returned by value",
+                        });
+                    }
+                    self.diags.extend(
+                        diags
+                            .into_iter()
+                            .map(|diag| TyDiagCollection::from(diag).into()),
+                    );
+                }
             }
             Expr::Call(..) | Expr::MethodCall(..) => {
                 if let Some(callable) = self.body.callable_expr(expr).cloned() {
@@ -6367,6 +6478,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         let assumptions = checker.env.assumptions();
         checker.resolve_deferred();
         checker.check_capture_moves();
+        checker.check_access_captures();
         let mut body = checker.env.finish(&mut checker.table);
         body.tables_mut().return_borrow_provider = checker.first_return_borrow_provider;
         let direct_call_callees = body.body().map_or_else(FxHashSet::default, |body_id| {
