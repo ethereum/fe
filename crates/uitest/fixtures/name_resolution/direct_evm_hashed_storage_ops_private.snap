@@ -10,9 +10,9 @@ error[2-0003]: `sstore_hashed` is not visible
  6 │     unsafe { ops::sstore_hashed(slot, value: 1) }
    │                   ^^^^^^^^^^^^^ `sstore_hashed` is not visible
    │
-   ┌─ src/evm/ops.fe:30:26
+   ┌─ src/evm/ops.fe:33:26
    │
-30 │     pub(ingot) unsafe fn sstore_hashed(slot: u256, value: u256)
+33 │     pub(ingot) unsafe fn sstore_hashed(slot: u256, value: u256)
    │                          ------------- `sstore_hashed` is defined here
 
 error[2-0003]: `sload_hashed` is not visible
@@ -21,7 +21,7 @@ error[2-0003]: `sload_hashed` is not visible
  7 │     unsafe { ops::sload_hashed(slot) }
    │                   ^^^^^^^^^^^^ `sload_hashed` is not visible
    │
-   ┌─ src/evm/ops.fe:29:26
+   ┌─ src/evm/ops.fe:32:26
    │
-29 │     pub(ingot) unsafe fn sload_hashed(_: u256) -> u256
+32 │     pub(ingot) unsafe fn sload_hashed(_: u256) -> u256
    │                          ------------ `sload_hashed` is defined here
