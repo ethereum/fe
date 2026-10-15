@@ -1068,7 +1068,8 @@ impl Bytes {
         if offset >= self.len {
             super::panic()
         }
-        // The payload is padded to whole words, so the word is allocated.
+        // The word starts in the payload; see `mem_word_at` for the bytes
+        // past the padded payload that an unaligned word reaches.
         let word = unsafe { mem_word_at(base: self.payload_ptr(), offset) }
         let remaining = self.len - offset
         if remaining < 32 {
@@ -1119,7 +1120,11 @@ impl Eq for DynString {
     }
 }
 
-// The word at `offset` from `base` must lie in a live allocation.
+// The word's first byte, at `offset` from `base`, must lie in a live
+// allocation. Callers that read the last word of a span or payload let its
+// other bytes run up to 31 bytes past the allocation and mask them off: EVM
+// memory reads there are defined, while native targets need that much read
+// slack after every allocation, which their allocator does not yet leave.
 #[inline(always)]
 unsafe fn mem_word_at(base: *u8, offset: u256) -> u256 {
     *ptr::cast<u8, u256>(ptr::offset_bytes(base, offset))

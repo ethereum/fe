@@ -106,23 +106,22 @@ fn shuffles_keep_every_element() {
     assert!(seen == 0x1fe)
     assert!(items != [1, 2, 3, 4, 5, 6, 7, 8])
 
-    let memory = MemArray<u256>::new_zeroed(5)
-    let slice = memory.as_slice()
-    var i: u256 = 0
+    var memory = MemArray<u256>::new_zeroed(5)
+    var i: usize = 0
     while i < 5 {
-        unsafe { *slice.ptr_at(i) = i + 1 }
+        memory[i] = (i as u256) + 1
         i += 1
     }
     with (Rng = rng) {
-        unsafe { shuffle_slice(slice) }
+        shuffle_slice(mut memory.as_mut_slice())
     }
-    var total: u256 = 0
-    var k: u256 = 0
+    var seen_memory: u256 = 0
+    var k: usize = 0
     while k < 5 {
-        unsafe { total += *slice.ptr_at(k) }
+        seen_memory |= 1 << memory[k]
         k += 1
     }
-    assert!(total == 15)
+    assert!(seen_memory == 0x3e)
 }
 
 #[test]
