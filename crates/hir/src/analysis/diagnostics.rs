@@ -5850,6 +5850,21 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 diag
             }
 
+            Self::BlanketCopy { primary } => {
+                let mut diag = primary_diag(
+                    severity,
+                    "`Copy` cannot be implemented for a type parameter",
+                    "this would make every type the bounds admit `Copy`",
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "a `Copy` type's fields must be `Copy`, and a `#[view]` or state-only type has no copies; implement `Copy` for each type, where those are checked"
+                        .to_string(),
+                );
+                diag
+            }
+
             Self::UnsafeImplMismatch { primary, trait_ } => {
                 let name = trait_.name(db).unwrap().data(db);
                 if trait_.is_unsafe(db) {

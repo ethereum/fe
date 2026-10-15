@@ -901,6 +901,22 @@ impl<'db> ImplTrait<'db> {
         )
     }
 
+    /// `Copy` for a bare type parameter would cover types the other `Copy`
+    /// checks never see, which inspect the implementation's own self type.
+    fn diags_blanket_copy(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        (implementor.trait_def(db) == copy && implementor.self_ty(db).is_param(db)).then(|| {
+            ty::diagnostics::ImplDiag::BlanketCopy {
+                primary: self.span().ty().into(),
+            }
+            .into()
+        })
+    }
+
     /// A state-only type has no copies.
     fn diags_state_only_copy(
         self,
@@ -2078,6 +2094,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
 
         let mut out = validity_diags;
         out.extend(implementor.diags_method_conformance(db));
+        out.extend(self.diags_blanket_copy(db, implementor));
         out.extend(self.diags_view_copy(db, implementor));
         out.extend(self.diags_state_only_copy(db, implementor));
         out.extend(self.diags_copy_fields(db, implementor));

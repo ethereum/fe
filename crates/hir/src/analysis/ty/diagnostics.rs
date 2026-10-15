@@ -1559,6 +1559,10 @@ pub enum ImplDiag<'db> {
         ty: TyId<'db>,
         field_ty: TyId<'db>,
     },
+
+    /// A `Copy` implementation for a bare type parameter, which covers types
+    /// whose fields, views and state the checks of a `Copy` type never see.
+    BlanketCopy { primary: DynLazySpan<'db> },
 }
 
 impl ImplDiag<'_> {
@@ -1595,6 +1599,7 @@ impl ImplDiag<'_> {
             Self::PinNotStateSpace { .. } => 29,
             Self::UnsafeImplMismatch { .. } => 30,
             Self::CopyFieldNotCopy { .. } => 31,
+            Self::BlanketCopy { .. } => 32,
         }
     }
 }
