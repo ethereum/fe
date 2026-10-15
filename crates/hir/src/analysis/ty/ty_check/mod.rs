@@ -2696,25 +2696,27 @@ impl<'db> TyChecker<'db> {
             return;
         };
 
-        match expr_data {
+        // A block, branch, match, `with` or cast is consumed as the value of
+        // the place its tail reads, and lowering reads that place where the
+        // wrapper's value is used, so the move is recorded on the wrapper too.
+        let wraps = match expr_data {
             Expr::Block(stmts, _) => {
-                let Some(last) = stmts.last() else {
-                    return;
-                };
-                let Partial::Present(stmt) = last.data(db, body) else {
-                    return;
-                };
-                let crate::hir_def::Stmt::Expr(tail) = stmt else {
+                let Some(Partial::Present(crate::hir_def::Stmt::Expr(tail))) =
+                    stmts.last().map(|last| last.data(db, body))
+                else {
                     return;
                 };
                 self.record_implicit_move_for_owned_expr_inner(*tail, expected_ty);
+                true
             }
             Expr::With(_, body_expr) | Expr::Cast(body_expr, _) | Expr::If(_, body_expr, None) => {
                 self.record_implicit_move_for_owned_expr_inner(*body_expr, expected_ty);
+                true
             }
             Expr::If(_, then_expr, Some(else_expr)) => {
                 self.record_implicit_move_for_owned_expr_inner(*then_expr, expected_ty);
                 self.record_implicit_move_for_owned_expr_inner(*else_expr, expected_ty);
+                true
             }
             Expr::Match(_, arms) => {
                 let Partial::Present(arms) = arms else {
@@ -2723,40 +2725,38 @@ impl<'db> TyChecker<'db> {
                 for arm in arms {
                     self.record_implicit_move_for_owned_expr_inner(arm.body, expected_ty);
                 }
+                true
             }
-            _ => {
-                if !self.is_assignable_expr(expr) {
-                    return;
-                }
-
-                let Some(prop) = self.env.typed_expr(expr) else {
-                    return;
-                };
-                let expr_ty = prop.ty.fold_with(self.db, &mut self.table);
-                let expr_ty = self.normalize_ty(expr_ty);
-                if expr_ty.has_invalid(self.db)
-                    || expr_ty == TyId::unit(self.db)
-                    || expr_ty.is_never(self.db)
-                {
-                    return;
-                }
-
-                let expected_ty = expected_ty
-                    .map(|ty| self.normalize_ty(ty))
-                    .filter(|ty| {
-                        !ty.has_invalid(self.db)
-                            && *ty != TyId::unit(self.db)
-                            && !ty.is_never(self.db)
-                    })
-                    .unwrap_or(expr_ty);
-
-                if self.ty_is_copy(expected_ty) {
-                    return;
-                }
-
-                self.env.record_implicit_move(expr, expected_ty);
-            }
+            _ => false,
+        };
+        if !wraps && !self.is_assignable_expr(expr) {
+            return;
         }
+
+        let Some(prop) = self.env.typed_expr(expr) else {
+            return;
+        };
+        let expr_ty = prop.ty.fold_with(self.db, &mut self.table);
+        let expr_ty = self.normalize_ty(expr_ty);
+        if expr_ty.has_invalid(self.db)
+            || expr_ty == TyId::unit(self.db)
+            || expr_ty.is_never(self.db)
+        {
+            return;
+        }
+
+        let expected_ty = expected_ty
+            .map(|ty| self.normalize_ty(ty))
+            .filter(|ty| {
+                !ty.has_invalid(self.db) && *ty != TyId::unit(self.db) && !ty.is_never(self.db)
+            })
+            .unwrap_or(expr_ty);
+
+        if self.ty_is_copy(expected_ty) {
+            return;
+        }
+
+        self.env.record_implicit_move(expr, expected_ty);
     }
 
     fn lit_ty(&mut self, lit: &LitKind<'db>) -> TyId<'db> {

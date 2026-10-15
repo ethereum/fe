@@ -2125,7 +2125,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 self.body.scope(),
                 template_ty,
                 template.assumptions(),
-            ) && let Some(place) = self.try_lower_place(base)
+            ) && let Some(place) = self.try_lower_place_expr(base, true)
                 && (!place.path.is_empty()
                     || template_ty.as_generic_param(self.db).is_none()
                         && matches!(
@@ -2175,12 +2175,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             let value = self.loop_base_operand(*expr, base).value;
             self.loop_bases.insert(*expr, value);
         }
-        // The driver, evaluated once. A producer advances its own copy.
+        // The driver, evaluated once into the loop's own copy, so the body
+        // cannot retarget it; a producer advances that copy.
         let driver = plan.driver.map(|driver| {
             let value = SOperand::expr(self.lower_source(driver), driver);
-            if plan.item != ForLoopItem::Produced {
-                return value;
-            }
             let ty = self.locals[value.value.index()].ty;
             let temp = self.alloc_local(ty, Mutability::Mutable, None);
             self.push_synthetic_stmt(SStmtKind::Assign {

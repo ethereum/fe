@@ -33,3 +33,12 @@ error[16-0002]: move conflict in `fn whole_generic`
    │
 36 │     value
    │     ^^^^^ cannot move out of a place reached through a `ref` access
+
+error[16-0002]: move conflict in `fn index_noncopy`
+   ┌─ view_param_noncopy_projection_move.fe:45:92
+   │
+45 │   fn index_noncopy(slice: core::ptr::MemSlice<core::ptr::MemBuffer>) -> core::ptr::MemBuffer {
+   │ ╭────────────────────────────────────────────────────────────────────────────────────────────^
+46 │ │     slice[0]
+47 │ │ }
+   │ ╰─^ cannot move out of a place reached through a `ref` access

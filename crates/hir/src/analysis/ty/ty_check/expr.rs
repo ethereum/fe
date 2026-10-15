@@ -1670,14 +1670,16 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let mut callable = if matches!(
+        // Only a path names the function it calls; any other callee, even one
+        // of a function item's type, is a value the call evaluates first.
+        let is_path = matches!(
             callee.data(self.db, self.body()),
             Partial::Present(Expr::Path(..))
-        ) && let Some(existing) = self.env.callable_expr(*callee)
-        {
+        );
+        let mut callable = if is_path && let Some(existing) = self.env.callable_expr(*callee) {
             existing.clone()
         } else if !callee_prop.ty.base_ty(self.db).is_ty_var(self.db)
-            && !callee_prop.ty.is_func(self.db)
+            && (!is_path || !callee_prop.ty.is_func(self.db))
         {
             return self.check_value_call(expr, *callee, callee_prop, args);
         } else {
@@ -5064,6 +5066,21 @@ impl<'db> TyChecker<'db> {
                     .ty
             });
             checked_inputs.push(self.normalize_ty(rhs_ty));
+        }
+        // An operand the method takes `own` moves (or copies), as a call's
+        // `own` argument does.
+        let operands = match expr.data(self.db, self.body()) {
+            Partial::Present(Expr::Un(operand, _)) => vec![*operand],
+            Partial::Present(Expr::Bin(lhs, rhs, _) | Expr::AugAssign(lhs, rhs, _)) => {
+                vec![*lhs, *rhs]
+            }
+            _ => Vec::new(),
+        };
+        let callable_def = callable.callable_def();
+        for (idx, (operand, &ty)) in operands.into_iter().zip(&checked_inputs).enumerate() {
+            if callable_def.param_mode(self.db, idx) == FuncParamMode::Own {
+                self.record_implicit_move_for_owned_expr(operand, ty);
+            }
         }
         callable.set_checked_input_tys(checked_inputs);
         self.check_callable_effects(expr, &mut callable);
