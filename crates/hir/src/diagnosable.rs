@@ -866,6 +866,41 @@ impl<'db> ImplTrait<'db> {
         })
     }
 
+    /// A copy copies every field, so a `Copy` type's fields are `Copy` under
+    /// the implementation's bounds.
+    fn diags_copy_fields(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        if implementor.trait_def(db) != copy {
+            return None;
+        }
+        let ty = implementor.self_ty(db);
+        // A view or state-only type has no copies at all.
+        if ty.is_view(db) || ty.pinned_part(db).is_some() {
+            return None;
+        }
+        let args = ty.generic_args(db);
+        let assumptions = constraints_for(db, self.into());
+        let field_ty = ty
+            .adt_def(db)?
+            .fields(db)
+            .iter()
+            .flat_map(|variant| variant.iter_types(db))
+            .map(|field| field.instantiate(db, args))
+            .find(|&field| !ty::ty_is_copy(db, self.scope(), field, assumptions))?;
+        Some(
+            ty::diagnostics::ImplDiag::CopyFieldNotCopy {
+                primary: self.span().ty().into(),
+                ty,
+                field_ty,
+            }
+            .into(),
+        )
+    }
+
     /// A state-only type has no copies.
     fn diags_state_only_copy(
         self,
@@ -2045,6 +2080,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(implementor.diags_method_conformance(db));
         out.extend(self.diags_view_copy(db, implementor));
         out.extend(self.diags_state_only_copy(db, implementor));
+        out.extend(self.diags_copy_fields(db, implementor));
         out.extend(self.diags_compiler_implemented_trait(db, implementor));
         out.extend(self.diags_unsafe_impl(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));

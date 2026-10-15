@@ -18,6 +18,7 @@ use crate::{
                 AdtDef, AdtRef, ConcreteTypeView, instantiate_adt_field_for_concrete_demand,
             },
             const_ty::{ConcreteArrayLengthError, demand_concrete_array_length},
+            normalize::normalize_ty,
             provider::pinned_space,
             state_index_tys,
             trait_resolution::PredicateListId,
@@ -412,8 +413,6 @@ struct FieldWalker<'db> {
     errors: Vec<ContractLayoutError<'db>>,
     /// The spaces the pinned types walked are pinned to.
     content_spaces: Vec<AddressSpace>,
-    /// The first memory pointer the walked value holds.
-    call_pointer: Option<TyId<'db>>,
 }
 
 impl<'db> FieldWalker<'db> {
@@ -523,12 +522,6 @@ impl<'db> FieldWalker<'db> {
         {
             WalkOutput::empty()
         } else {
-            if matches!(
-                ty.as_ptr(self.db),
-                Some((_, AddressSpace::Memory | AddressSpace::Calldata))
-            ) {
-                self.call_pointer.get_or_insert(ty);
-            }
             WalkOutput::leaf(self.db, ty, path, dimensions, InlineLayoutLeafKind::Field)
         }
     }
@@ -867,12 +860,11 @@ fn collect_field_plan<'db>(
         db,
         errors: Vec::new(),
         content_spaces: Vec::new(),
-        call_pointer: None,
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(declared), &[], &[]);
     // Every contract field outlives the call: code-backed ones too.
     if walker.errors.is_empty()
-        && let Some(pointer) = walker.call_pointer
+        && let Some(pointer) = call_pointer_in_state(db, scope, declared)
     {
         walker.push_error(ContractLayoutError::CallPointerInState { pointer });
     }
@@ -928,7 +920,6 @@ pub(crate) fn storage_slot_span<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) 
         db,
         errors: Vec::new(),
         content_spaces: Vec::new(),
-        call_pointer: None,
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(ty), &[], &[]);
     walker.errors.is_empty().then_some(output.span)
@@ -947,7 +938,6 @@ pub(crate) fn storage_field_lanes<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>
         db,
         errors: Vec::new(),
         content_spaces: Vec::new(),
-        call_pointer: None,
     };
     let shapes: Vec<_> = ty
         .field_types(db)
@@ -981,6 +971,41 @@ pub(crate) fn storage_field_lanes<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>
 /// as in `struct G<T> { m: StorageMap<u256, G<[T; 1]>> }`.
 const MAX_STATE_NESTING: usize = 64;
 
+/// The types a value of `ty` holds in state: its fields, its tuple or array
+/// elements, and a collection's entries (`StateIndex::Entry`), which lie
+/// outside its own slots.
+fn state_parts<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Vec<TyId<'db>> {
+    let assumptions = PredicateListId::empty_list(db);
+    let mut parts: Vec<_> = state_index_tys(db, scope, ty, assumptions)
+        .map(|(_, entry)| entry)
+        .into_iter()
+        .collect();
+    if let Some(adt) = ty.adt_def(db) {
+        let args = ty.generic_args(db);
+        parts.extend(
+            adt.fields(db)
+                .iter()
+                .flat_map(|variant| variant.iter_types(db))
+                .map(|field| field.instantiate(db, args)),
+        );
+    } else if ty.is_tuple(db) || ty.is_array(db) {
+        parts.extend(
+            ty.generic_args(db)
+                .iter()
+                .copied()
+                .filter(|arg| !matches!(arg.data(db), TyData::ConstTy(_))),
+        );
+    }
+    parts
+        .into_iter()
+        .map(|part| normalize_ty(db, part, scope, assumptions))
+        .collect()
+}
+
 /// The persistent collection `ty` keeps inside a transient collection's
 /// contents, as the map of a `TSlot<StorageMap<K, V>>`, whose entries would
 /// persist after the value holding them is gone.
@@ -1000,35 +1025,47 @@ fn persistent_under_transient<'db>(
         if depth > MAX_STATE_NESTING || !seen.insert((ty, transient)) {
             return None;
         }
-        let assumptions = PredicateListId::empty_list(db);
-        let mut parts = Vec::new();
-        match pinned_space(db, scope, assumptions, ty) {
+        match pinned_space(db, scope, PredicateListId::empty_list(db), ty) {
             Some(AddressSpace::Storage) if transient => return Some(ty),
             Some(AddressSpace::Transient) => transient = true,
             _ => {}
         }
-        parts.extend(state_index_tys(db, scope, ty, assumptions).map(|(_, output)| output));
-        if let Some(adt) = ty.adt_def(db) {
-            let args = ty.generic_args(db);
-            parts.extend(
-                adt.fields(db)
-                    .iter()
-                    .flat_map(|variant| variant.iter_types(db))
-                    .map(|field| field.instantiate(db, args)),
-            );
-        } else if ty.is_tuple(db) || ty.is_array(db) {
-            parts.extend(
-                ty.generic_args(db)
-                    .iter()
-                    .copied()
-                    .filter(|arg| !matches!(arg.data(db), TyData::ConstTy(_))),
-            );
-        }
-        parts
+        state_parts(db, scope, ty)
             .into_iter()
             .find_map(|part| walk(db, scope, part, transient, depth + 1, seen))
     }
     walk(db, scope, ty, false, 0, &mut FxHashSet::default())
+}
+
+/// The first memory or calldata pointer a value of `ty` keeps in state, in
+/// its own slots or in a collection's entries: it would outlive the
+/// allocation or the call it points into.
+fn call_pointer_in_state<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<TyId<'db>> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        depth: usize,
+        seen: &mut FxHashSet<TyId<'db>>,
+    ) -> Option<TyId<'db>> {
+        if depth > MAX_STATE_NESTING || !seen.insert(ty) {
+            return None;
+        }
+        if matches!(
+            ty.as_ptr(db),
+            Some((_, AddressSpace::Memory | AddressSpace::Calldata))
+        ) {
+            return Some(ty);
+        }
+        state_parts(db, scope, ty)
+            .into_iter()
+            .find_map(|part| walk(db, scope, part, depth + 1, seen))
+    }
+    walk(db, scope, ty, 0, &mut FxHashSet::default())
 }
 
 /// Places each field: a field with `#[slot(e)]` at `e`, any other at the next

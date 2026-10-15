@@ -1,7 +1,7 @@
 use crate::{
     hir_def::{
         BinOp, CallArg as HirCallArg, Expr, ExprId, FieldIndex, GenericArgListId, IdentId,
-        ItemKind, LitKind, Partial, UnOp,
+        ItemKind, LitKind, Partial,
     },
     span::{
         DynLazySpan,
@@ -565,14 +565,6 @@ impl<'db> Callable<'db> {
             ));
         }
 
-        let body = tc.body();
-        let is_unary = |expr: ExprId, op: UnOp| {
-            matches!(
-                expr.data(db, body),
-                Partial::Present(Expr::Un(_, found)) if *found == op
-            )
-        };
-
         let mut checked_inputs = Vec::with_capacity(expected_arity);
         for (i, (mut given, expected)) in args.into_iter().zip(expected_arg_tys.iter()).enumerate()
         {
@@ -650,10 +642,7 @@ impl<'db> Callable<'db> {
                     tc.consume_access(given.expr);
                 }
                 FuncParamMode::Mut if is_receiver && access.is_none() => {
-                    if !given.expr_prop.is_mut
-                        && (tc.env.expr_place(given.expr).is_some()
-                            || is_unary(given.expr, UnOp::Deref))
-                    {
+                    if !given.expr_prop.is_mut && tc.env.is_place_expr(given.expr) {
                         tc.report_cannot_borrow_mut(given.expr, given.expr_span.clone());
                         diagnosed = true;
                     }

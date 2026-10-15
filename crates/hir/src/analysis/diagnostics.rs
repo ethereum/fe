@@ -5801,6 +5801,27 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 error_code,
             ),
 
+            Self::CopyFieldNotCopy {
+                primary,
+                ty,
+                field_ty,
+            } => {
+                let ty = ty.pretty_print(db);
+                let field_ty = field_ty.pretty_print(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("`{ty}` cannot be `Copy`"),
+                    format!("`{ty}` has a field of type `{field_ty}`, which is not `Copy`"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "a copy copies every field, so two copies of a field that owns memory would be two owners of it; a generic field needs a `Copy` bound on the implementation"
+                        .to_string(),
+                );
+                diag
+            }
+
             Self::UnsafeImplMismatch { primary, trait_ } => {
                 let name = trait_.name(db).unwrap().data(db);
                 if trait_.is_unsafe(db) {
