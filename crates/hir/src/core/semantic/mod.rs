@@ -5631,6 +5631,13 @@ impl<'db> FieldView<'db> {
                         collection: *collection,
                     }
                 }
+                ContractLayoutError::ZeroInvalidInState { invalid } => {
+                    TyLowerDiag::ContractFieldZeroInvalid {
+                        span,
+                        ty,
+                        invalid: *invalid,
+                    }
+                }
                 ContractLayoutError::ExplicitSlotInCode => TyLowerDiag::ContractFieldSlotInCode {
                     span: self.slot_span(db),
                 },

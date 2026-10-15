@@ -231,6 +231,14 @@ pub enum TyLowerDiag<'db> {
         collection: TyId<'db>,
     },
 
+    /// A type zero is no value of, held in contract state, which starts
+    /// zeroed.
+    ContractFieldZeroInvalid {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        invalid: TyId<'db>,
+    },
+
     ContractFieldLayoutInvariant {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
@@ -323,6 +331,7 @@ impl TyLowerDiag<'_> {
             Self::ContractFieldSlotOverlap { .. } => 64,
             Self::ContractFieldCallPointer { .. } => 65,
             Self::ContractFieldPersistentUnderTransient { .. } => 66,
+            Self::ContractFieldZeroInvalid { .. } => 69,
         }
     }
 }

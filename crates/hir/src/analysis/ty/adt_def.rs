@@ -1,6 +1,6 @@
 use crate::hir_def::{
-    Enum, GenericParamOwner, IdentId, ItemKind, Partial, Struct, TypeId as HirTyId, VariantKind,
-    scope_graph::ScopeId,
+    Enum, EnumVariant, FieldParent, GenericParamOwner, IdentId, ItemKind, Partial, Struct,
+    TypeId as HirTyId, VariantKind, scope_graph::ScopeId,
 };
 use crate::span::DynLazySpan;
 use common::ingot::Ingot;
@@ -196,6 +196,24 @@ impl<'db> AdtDef<'db> {
 
     pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.adt_ref(db), AdtRef::Struct(_))
+    }
+
+    /// Whether some field of some variant is an `unsafe` field, whose value
+    /// carries an invariant of the type: the all-zero representation need
+    /// not satisfy it, so zero is no value of the type.
+    pub(crate) fn has_unsafe_field(self, db: &'db dyn HirAnalysisDb) -> bool {
+        let parents: Vec<_> = match self.adt_ref(db) {
+            AdtRef::Struct(struct_) => vec![FieldParent::Struct(struct_)],
+            // Only a record variant names its fields, and so marks them.
+            AdtRef::Enum(enum_) => (0..self.fields(db).len())
+                .map(|idx| EnumVariant::new(enum_, idx))
+                .filter(|variant| matches!(variant.kind(db), VariantKind::Record(_)))
+                .map(FieldParent::Variant)
+                .collect(),
+        };
+        parents
+            .into_iter()
+            .any(|parent| parent.fields(db).any(|field| field.is_unsafe(db)))
     }
 
     pub fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {

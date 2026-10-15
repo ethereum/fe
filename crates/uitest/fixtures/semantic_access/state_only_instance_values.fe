@@ -2,7 +2,9 @@ use core::marker::Pinned
 use core::ptr::MemArray
 
 // A generic body may hold its type parameter in memory; an instance whose
-// argument is pinned would hold a state-only value there.
+// argument is pinned would hold a state-only value there. (A zeroed array
+// needs `T: Clearable`, which no pinned type is; an uninitialized one does
+// not.)
 struct SCell {
     pub v: u256,
 }
@@ -12,7 +14,8 @@ impl Pinned for SCell {
 }
 
 fn zeroed_one<T>() -> u256 {
-    let arr = MemArray<T>::new_zeroed(1)
+    // Nothing reads the uninitialized element.
+    let arr = unsafe { MemArray<T>::new_uninit(1) }
     arr.len()
 }
 

@@ -13,17 +13,11 @@ impl Pinned for SCell {
 }
 
 // Rejected: each array would hold its pinned elements in memory.
-fn cells() {
-    let _cells = MemArray<SCell>::new_zeroed(1)
-}
+fn cells(_ cells: own MemArray<SCell>) {}
 
-fn slots() {
-    let _slots = MemArray<TSlot<u256>>::new_zeroed(1)
-}
+fn slots(_ slots: own MemArray<TSlot<u256>>) {}
 
-fn maps() {
-    let _maps = MemArray<StorageMap<u256, u256>>::new_zeroed(1)
-}
+fn maps(_ maps: own MemArray<StorageMap<u256, u256>>) {}
 
 // Rejected: a memory pointer to a pinned type.
 fn cell_pointer(_ words: MemArray<u256>) {

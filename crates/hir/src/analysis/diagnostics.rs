@@ -2133,6 +2133,34 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
+            Self::ContractFieldZeroInvalid { span, ty, invalid } => {
+                let label = if ty == invalid {
+                    format!("`{}` has `unsafe` fields", ty.pretty_print(db))
+                } else {
+                    format!(
+                        "`{}` holds `{}`, which has `unsafe` fields",
+                        ty.pretty_print(db),
+                        invalid.pretty_print(db)
+                    )
+                };
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!(
+                        "contract state cannot hold `{}`",
+                        invalid.pretty_print(db)
+                    ),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: label,
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![
+                        "state starts zeroed, and the all-zero representation is no value of a type whose `unsafe` fields carry an invariant".to_string(),
+                    ],
+                    error_code,
+                }
+            }
+
 
             Self::ContractFieldSlotNotConst { span } => CompleteDiagnostic::new(
                 Severity::Error,

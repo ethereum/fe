@@ -190,6 +190,11 @@ pub enum ContractLayoutError<'db> {
     PersistentUnderTransient {
         collection: TyId<'db>,
     },
+    /// A type whose all-zero representation is not a value, which a state
+    /// space holds until it is written.
+    ZeroInvalidInState {
+        invalid: TyId<'db>,
+    },
 }
 
 impl ContractLayoutError<'_> {
@@ -211,6 +216,7 @@ impl ContractLayoutError<'_> {
             Self::PersistentUnderTransient { .. } => {
                 "a persistent collection lies in transient storage"
             }
+            Self::ZeroInvalidInState { .. } => "contract state holds a type zero is no value of",
         }
     }
 }
@@ -875,6 +881,11 @@ fn collect_field_plan<'db>(
         walker.push_error(ContractLayoutError::CallPointerInState { pointer });
     }
     if walker.errors.is_empty()
+        && let Some(invalid) = zero_invalid_in_state(db, scope, declared)
+    {
+        walker.push_error(ContractLayoutError::ZeroInvalidInState { invalid });
+    }
+    if walker.errors.is_empty()
         && address_space == AddressSpace::Storage
         && let Some(collection) = persistent_under_transient(db, scope, declared)
     {
@@ -1097,6 +1108,35 @@ fn call_pointer_in_state<'db>(
             ty.as_ptr(db),
             Some((_, AddressSpace::Memory | AddressSpace::Calldata))
         ) {
+            return Some(ty);
+        }
+        state_parts(db, scope, ty)
+            .into_iter()
+            .find_map(|part| walk(db, scope, part, depth + 1, seen))
+    }
+    walk(db, scope, ty, 0, &mut FxHashSet::default())
+}
+
+/// The first type a value of `ty` holds in state, in its own slots or in a
+/// collection's entries, whose all-zero representation is not a value: one
+/// with `unsafe` fields. A state space starts zeroed, so a slot no one wrote
+/// would read as such a value.
+fn zero_invalid_in_state<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<TyId<'db>> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        depth: usize,
+        seen: &mut FxHashSet<TyId<'db>>,
+    ) -> Option<TyId<'db>> {
+        if depth > MAX_STATE_NESTING || !seen.insert(ty) {
+            return None;
+        }
+        if ty.adt_def(db).is_some_and(|adt| adt.has_unsafe_field(db)) {
             return Some(ty);
         }
         state_parts(db, scope, ty)

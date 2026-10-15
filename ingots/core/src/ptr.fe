@@ -1,5 +1,5 @@
 use super::intrinsic::size_of
-use super::marker::Copy
+use super::marker::{Clearable, Copy}
 use super::option::Option
 use super::ops::{Eq, Index, IndexMut, Len}
 use super::panic_code
@@ -106,8 +106,11 @@ impl<T> MemArray<T> {
         }
     }
 
-    /// Zeroes the allocated bytes. Zero bytes do not establish native references.
-    pub fn new_zeroed(_ len: u256) -> Self {
+    /// `len` zero values: the allocated bytes zeroed, which is a value of a
+    /// `Clearable` type. Zero bytes do not establish native references.
+    pub fn new_zeroed(_ len: u256) -> Self
+        where T: Clearable
+    {
         var array = unsafe { Self::new_uninit(len) }
         array.zero()
         array
@@ -208,7 +211,11 @@ impl<T> MemArray<T> {
         b = tmp
     }
 
-    pub fn zero(mut self) {
+    /// Sets every element to its zero value: its bytes zeroed, which is a
+    /// value of a `Clearable` type.
+    pub fn zero(mut self)
+        where T: Clearable
+    {
         unsafe { zero_bytes(cast<T, u8>(self.ptr), self.byte_len()) }
     }
 }
