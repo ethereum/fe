@@ -531,9 +531,7 @@ impl<'db, I: LoweringInstSet + 'static> FunctionLowerer<'_, 'db, '_, I> {
                 )
             }
             ResolvedPlaceElem::Index { index, class } => {
-                let Lowered::Value(index) = self.checked_index_value(base, index)? else {
-                    return Ok(Lowered::Terminated);
-                };
+                let index = self.checked_index_value(base, index)?;
                 let native = self.native_class_layout(class)?.size().map_err(|err| {
                     LowerError::Unsupported(format!(
                         "unrepresentable native memory layout: {err:?}"

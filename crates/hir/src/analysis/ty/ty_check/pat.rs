@@ -12,10 +12,9 @@ use crate::analysis::{
         SemConstScalar, SemConstValue, SemOrigin, eval_const_ref,
         instance::resolve_semantic_const_ref,
     },
-    ty::adt_def::AdtRef,
+    ty::adt_def::{AdtRef, instantiate_adt_field_shape},
     ty::{
         assoc_const::{AssocConstUse, InherentConstUse},
-        binder::Binder,
         const_ty::{LoweringContext, instantiate_inherent_const_decl_ty},
         diagnostics::{BodyDiag, TraitConstraintDiag, TyDiagCollection},
         fold::TyFoldable,
@@ -25,7 +24,6 @@ use crate::analysis::{
         trait_def::TraitInstId,
         trait_resolution::{GoalSatisfiability, TraitSolveCx, is_goal_satisfiable},
         ty_def::{InvalidCause, Kind, TyId, TyVarSort},
-        ty_lower::lower_hir_ty,
     },
 };
 
@@ -812,22 +810,21 @@ impl<'db> TyChecker<'db> {
         variant_ty: TyId<'db>,
         elems: TupleTypeId<'db>,
     ) -> Vec<TyId<'db>> {
-        elems
-            .data(self.db)
-            .iter()
-            .map(|hir_ty| match hir_ty.to_opt() {
-                Some(ty) => {
-                    let ty = lower_hir_ty(
-                        self.db,
-                        ty,
-                        variant.enum_(self.db).scope(),
-                        self.env.assumptions(),
-                    );
-                    let instantiated = Binder::bind(variant.enum_(self.db).into(), ty)
-                        .instantiate(self.db, variant_ty.generic_args(self.db));
-                    self.normalize_ty(instantiated)
-                }
-                None => TyId::invalid(self.db, InvalidCause::ParseError),
+        // The variant's field types are lowered under the enum's own bounds.
+        let Some(adt) = variant_ty.adt_def(self.db) else {
+            return vec![TyId::invalid(self.db, InvalidCause::Other); elems.len(self.db)];
+        };
+        let args = variant_ty.generic_args(self.db);
+        (0..elems.len(self.db))
+            .map(|idx| {
+                let ty = instantiate_adt_field_shape(
+                    self.db,
+                    adt,
+                    usize::from(variant.variant.idx),
+                    idx,
+                    args,
+                );
+                self.normalize_ty(ty)
             })
             .collect()
     }

@@ -2040,12 +2040,14 @@ impl<'db> RmirEmitter<'db> {
     }
 
     fn aggregate_field_tys(&self, ty: TyId<'db>, arity: usize) -> Vec<TyId<'db>> {
+        let instance = self.semantic_body.owner();
+        let ty = instance.normalized_ty(self.db, ty);
         let field_tys = if ty.is_array(self.db) {
             let (_, args) = ty.decompose_ty_app(self.db);
             let elem_ty = args.first().copied().expect("array element type");
             vec![elem_ty; arity]
         } else {
-            ty.field_types(self.db)
+            instance.normalized_field_types(self.db, ty).to_vec()
         };
         assert_eq!(
             field_tys.len(),
@@ -2187,18 +2189,11 @@ impl<'db> RmirEmitter<'db> {
         variant: VariantIndex,
         arity: usize,
     ) -> Vec<TyId<'db>> {
-        let enum_ = enum_ty
-            .as_enum(self.db)
-            .unwrap_or_else(|| panic!("enum construction reached non-enum type"));
-        let args = enum_ty.generic_args(self.db);
-        let Some(enum_variant) = enum_.variants(self.db).nth(variant.0 as usize) else {
-            panic!("missing enum variant for {variant:?}");
-        };
-        let field_tys = enum_variant
-            .field_tys(self.db)
-            .into_iter()
-            .map(|field| field.instantiate(self.db, args))
-            .collect::<Vec<_>>();
+        let field_tys = self
+            .semantic_body
+            .owner()
+            .normalized_enum_variant_field_tys(self.db, enum_ty, variant)
+            .to_vec();
         assert_eq!(
             field_tys.len(),
             arity,
@@ -5477,49 +5472,7 @@ impl<'db> RmirEmitter<'db> {
             path: Box::default(),
         };
         if space.is_byte_addressed() {
-            let zero = match pointee.as_ref() {
-                RuntimeClass::Scalar(scalar) => {
-                    let zero = self
-                        .alloc_runtime_temp(ty, RuntimeCarrier::Value(pointee.as_ref().clone()));
-                    let expr = RExpr::ConstScalar(match scalar.repr {
-                        ScalarRepr::Bool => ConstScalar::Bool(false),
-                        ScalarRepr::Int { bits, signed } => ConstScalar::Int {
-                            bits,
-                            signed,
-                            words: Vec::new(),
-                        },
-                        ScalarRepr::Address { bits } => ConstScalar::Address {
-                            bits,
-                            bytes: Vec::new(),
-                        },
-                        ScalarRepr::FixedBytes { len } => {
-                            ConstScalar::FixedBytes(vec![0; usize::from(len)])
-                        }
-                    });
-                    self.push_stmt(bb, RStmt::Assign { dst: zero, expr });
-                    zero
-                }
-                // A fresh object is zeroed.
-                RuntimeClass::AggregateValue { layout } => {
-                    let zero = self.alloc_runtime_temp(
-                        ty,
-                        RuntimeCarrier::Value(RuntimeClass::object_ref(*layout)),
-                    );
-                    self.push_stmt(
-                        bb,
-                        RStmt::Assign {
-                            dst: zero,
-                            expr: RExpr::AllocObject { layout: *layout },
-                        },
-                    );
-                    zero
-                }
-                // An address or a storage handle is a word.
-                RuntimeClass::Ref { .. } | RuntimeClass::RawAddr { .. } => {
-                    let zero = self.alloc_word_const(bb, 0);
-                    self.coerce_value(bb, zero, &pointee)
-                }
-            };
+            let zero = self.alloc_zero_value(bb, ty, &pointee);
             self.write_value_to_place(bb, target, zero, &pointee);
             return;
         }
@@ -5562,6 +5515,83 @@ impl<'db> RmirEmitter<'db> {
             };
             self.write_value_to_place(bb, word, zero, &word_class());
         }
+    }
+
+    /// The value of `class` whose representation is all zeros, as a state
+    /// space holds before anything is written: zero scalars and words, an
+    /// aggregate of zero fields, an enum's first variant with zero fields. A
+    /// fresh object is not this: its contents are undefined.
+    fn alloc_zero_value(
+        &mut self,
+        bb: RBlockId,
+        ty: TyId<'db>,
+        class: &RuntimeClass<'db>,
+    ) -> RLocalId {
+        let expr = match class {
+            RuntimeClass::Scalar(scalar) => RExpr::ConstScalar(match scalar.repr {
+                ScalarRepr::Bool => ConstScalar::Bool(false),
+                ScalarRepr::Int { bits, signed } => ConstScalar::Int {
+                    bits,
+                    signed,
+                    words: Vec::new(),
+                },
+                ScalarRepr::Address { bits } => ConstScalar::Address {
+                    bits,
+                    bytes: Vec::new(),
+                },
+                ScalarRepr::FixedBytes { len } => {
+                    ConstScalar::FixedBytes(vec![0; usize::from(len)])
+                }
+            }),
+            // An address or a storage handle is a word.
+            RuntimeClass::Ref { .. } | RuntimeClass::RawAddr { .. } => {
+                let zero = self.alloc_word_const(bb, 0);
+                return self.coerce_value(bb, zero, class);
+            }
+            RuntimeClass::AggregateValue { layout } => match layout.data(self.db) {
+                Layout::Struct(data) => {
+                    let field_tys = self.aggregate_field_tys(ty, data.fields.len());
+                    let fields = data
+                        .fields
+                        .iter()
+                        .zip(field_tys)
+                        .map(|(field, field_ty)| self.alloc_zero_value(bb, field_ty, field))
+                        .collect();
+                    RExpr::AggregateMake {
+                        layout: *layout,
+                        fields,
+                    }
+                }
+                Layout::Array(data) => {
+                    let elem_ty = self.aggregate_field_tys(ty, 1)[0];
+                    let elem = self.alloc_zero_value(bb, elem_ty, &data.elem);
+                    RExpr::AggregateMake {
+                        layout: *layout,
+                        fields: vec![elem; data.len as usize].into_boxed_slice(),
+                    }
+                }
+                Layout::Enum(data) => {
+                    let classes = &data.variants[0].fields;
+                    let field_tys = self.enum_variant_field_tys(ty, VariantIndex(0), classes.len());
+                    let fields = classes
+                        .iter()
+                        .zip(field_tys)
+                        .map(|(field, field_ty)| self.alloc_zero_value(bb, field_ty, field))
+                        .collect();
+                    RExpr::EnumMake {
+                        layout: *layout,
+                        variant: VariantId {
+                            enum_layout: *layout,
+                            index: 0,
+                        },
+                        fields,
+                    }
+                }
+            },
+        };
+        let zero = self.alloc_runtime_temp(ty, RuntimeCarrier::Value(class.clone()));
+        self.push_stmt(bb, RStmt::Assign { dst: zero, expr });
+        zero
     }
 
     /// The address of `place` as a `target`, and the lane copy it lies in:

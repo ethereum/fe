@@ -6,6 +6,7 @@ mod tests;
 use memory_reference::{MemoryReference, ReferentLayout};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::mem;
 use std::sync::Arc;
 
 use common::layout::StorageLane;
@@ -31,6 +32,7 @@ use mir::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec1::{SmallVec, smallvec};
+use sonatina_codegen::cfg_edit::{CfgEditor, CleanupMode};
 use sonatina_ir::{
     BlockId, GlobalVariableData, GlobalVariableRef, HasInst, I256, Immediate, InstExt, InstId,
     InstSetBase, Linkage, Module, Signature, Type, Value, ValueId,
@@ -48,6 +50,7 @@ use sonatina_ir::{
             Memzero, Mload, Mstore, ObjAlloc, ObjIndex, ObjInitConst, ObjLoad, ObjMaterializeHeap,
             ObjProj, ObjStore, SymAddr, SymSize, SymbolRef,
         },
+        downcast,
         evm::{
             EvmAddMod, EvmAddress, EvmBalance, EvmBaseFee, EvmBlobBaseFee, EvmBlobHash,
             EvmBlockHash, EvmByte, EvmCall, EvmCallValue, EvmCalldataCopy, EvmCalldataLoad,
@@ -1025,6 +1028,8 @@ struct FunctionLowerer<'ctx, 'db, 'a, I: 'static> {
     vars: FxHashMap<RLocalId, Variable>,
     slot_roots: FxHashMap<RLocalId, SlotRoot>,
     checked_indices: FxHashMap<(RLocalId, u64), ValueId>,
+    /// The bounds checks of runtime indices (see `drop_dead_index_accesses`).
+    index_checks: Vec<IndexCheck>,
     pending_enum_proof: Option<PendingEnumProof<'db>>,
     shared_helper_blocks: FxHashMap<SharedHelperKind, BlockId>,
     /// Instructions of shared helper blocks (see [`build_shared_helper`]).
@@ -1033,6 +1038,14 @@ struct FunctionLowerer<'ctx, 'db, 'a, I: 'static> {
     shared_helper_index_by_block: FxHashMap<BlockId, usize>,
     /// Helpers requested while lowering the current statement.
     pending_shared_helpers: Vec<usize>,
+}
+
+/// A bounds check of a runtime index: `block` ends with the branch to the
+/// revert that `in_bounds`, the index compared with the length `len`, decides.
+struct IndexCheck {
+    block: BlockId,
+    in_bounds: InstId,
+    len: u64,
 }
 
 /// A block that several sites reuse by jumping to it (panic and revert
@@ -1105,6 +1118,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
             vars,
             slot_roots: FxHashMap::default(),
             checked_indices: FxHashMap::default(),
+            index_checks: Vec::new(),
             pending_enum_proof: None,
             shared_helper_blocks: FxHashMap::default(),
             shared_helper_insts: FxHashSet::default(),
@@ -1184,8 +1198,48 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
         }
         self.attribute_single_user_shared_helpers();
         self.fb.seal_all();
+        self.drop_dead_index_accesses();
         self.fb.finish();
         Ok(())
+    }
+
+    /// The SSA builder resolves a local's value only when it seals the
+    /// blocks, so an index read from a local can become a constant after its
+    /// bounds check and access were emitted. A check whose index became an
+    /// out-of-range constant always reverts: keep its revert edge and delete
+    /// the blocks only the access reached, which index out of range.
+    fn drop_dead_index_accesses(&mut self) {
+        let inst_set = self.module.inst_set();
+        let func = &mut self.fb.func;
+        let dead: Vec<_> = mem::take(&mut self.index_checks)
+            .into_iter()
+            .filter(|check| {
+                let lt = downcast::<&Lt>(inst_set, func.dfg.inst(check.in_bounds))
+                    .expect("an index check compares with `lt`");
+                matches!(
+                    func.dfg.value(*lt.lhs()),
+                    Value::Immediate { imm, .. }
+                        if immediate_to_u64_index(*imm).is_none_or(|index| index >= check.len)
+                )
+            })
+            .map(|check| check.block)
+            .collect();
+        if dead.is_empty() {
+            return;
+        }
+        let mut editor = CfgEditor::new(func, CleanupMode::Strict);
+        for block in dead {
+            // The branch takes its first edge, to the revert, out of bounds.
+            editor.retain_out_edges(block, &[true, false]);
+        }
+        let reachable = editor.cfg().reachable_blocks();
+        let unreachable: Vec<_> = editor
+            .func()
+            .layout
+            .iter_block()
+            .filter(|block| !reachable[*block])
+            .collect();
+        editor.delete_blocks_unreachable(&unreachable);
     }
 
     /// Instructions are arena-allocated with monotonically increasing ids and
@@ -1453,11 +1507,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 self.pending_enum_proof = None;
             }
             RStmt::AssertIndexInBounds { index, len } => {
-                let index = self.checked_index_source(*len, index)?;
-                if matches!(index, Lowered::Terminated) {
-                    self.pending_enum_proof = None;
-                    return Ok(Lowered::Terminated);
-                }
+                self.checked_index_source(*len, index)?;
                 self.pending_enum_proof = None;
             }
             RStmt::EnumAssertVariant { value, variant } => {
@@ -3289,10 +3339,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                     },
                     ResolvedPlaceElem::Index { index, class },
                 ) => {
-                    let Lowered::Value(index) = self.checked_index_value(&base_class, index)?
-                    else {
-                        return Ok(Lowered::Terminated);
-                    };
+                    let index = self.checked_index_value(&base_class, index)?;
                     PlaceTerminal::Object {
                         value: self.fb.insert_inst(
                             ObjIndex::new(self.module.inst_set(), value, index),
@@ -3340,10 +3387,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                     },
                     ResolvedPlaceElem::Index { index, class },
                 ) => {
-                    let Lowered::Value(index) = self.checked_index_value(&base_class, index)?
-                    else {
-                        return Ok(Lowered::Terminated);
-                    };
+                    let index = self.checked_index_value(&base_class, index)?;
                     PlaceTerminal::Const {
                         value: self.fb.insert_inst(
                             ConstIndex::new(self.module.inst_set(), value, index),
@@ -3379,9 +3423,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                     },
                     ResolvedPlaceElem::Index { index, class },
                 ) => {
-                    let Lowered::Value(idx) = self.checked_index_value(&base_class, index)? else {
-                        return Ok(Lowered::Terminated);
-                    };
+                    let idx = self.checked_index_value(&base_class, index)?;
                     let scale = self.ptr_index_stride_for_space(&base_class, space)?;
                     let scaled = if scale == 1 {
                         idx
@@ -6179,18 +6221,11 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
         self.emit_panic_revert(overflow, PANIC_OVERFLOW)
     }
 
-    fn emit_unconditional_empty_revert<T>(&mut self) -> Lowered<T> {
-        let revert_block = self.get_or_build_shared_helper(SharedHelperKind::EmptyRevert);
-        self.fb
-            .insert_inst_no_result(Jump::new(self.module.inst_set(), revert_block));
-        Lowered::Terminated
-    }
-
     fn checked_index_value(
         &mut self,
         base_class: &RuntimeClass<'db>,
         index: &IndexSource<RLocalId>,
-    ) -> Result<Lowered<ValueId>, LowerError> {
+    ) -> Result<ValueId, LowerError> {
         let len = base_class.array_len(self.module.db).ok_or_else(|| {
             LowerError::Internal("index projection on non-array class".to_string())
         })?;
@@ -6201,24 +6236,21 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
         &mut self,
         len: u64,
         index: &IndexSource<RLocalId>,
-    ) -> Result<Lowered<ValueId>, LowerError> {
+    ) -> Result<ValueId, LowerError> {
         match index {
             IndexSource::Constant(index) => {
-                self.checked_constant_index_value(len, u64::try_from(*index).ok())
+                let index = self.index_value(*index as u64);
+                self.checked_runtime_index_value(len, index)
             }
             IndexSource::Dynamic(index) => {
                 let local = *index;
                 if let Some(index) = self.checked_indices.get(&(local, len)) {
-                    return Ok(Lowered::Value(*index));
+                    return Ok(*index);
                 }
                 let index = self.local_value(local)?;
-                match self.checked_runtime_index_value(len, index)? {
-                    Lowered::Value(index) => {
-                        self.checked_indices.insert((local, len), index);
-                        Ok(Lowered::Value(index))
-                    }
-                    Lowered::Terminated => Ok(Lowered::Terminated),
-                }
+                let index = self.checked_runtime_index_value(len, index)?;
+                self.checked_indices.insert((local, len), index);
+                Ok(index)
             }
             IndexSource::Any => Err(LowerError::Internal(
                 "analysis wildcard index reached Sonatina lowering".to_string(),
@@ -6226,36 +6258,43 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
         }
     }
 
+    /// `index`, checked to be below `len`: an out-of-range index reverts. A
+    /// constant in range needs no check; a check whose index is, or after
+    /// sealing becomes, a constant out of range always reverts, and
+    /// `drop_dead_index_accesses` deletes the access behind it.
     fn checked_runtime_index_value(
         &mut self,
         len: u64,
         index: ValueId,
-    ) -> Result<Lowered<ValueId>, LowerError> {
-        if let Value::Immediate { imm, .. } = self.fb.func.dfg.value(index) {
-            return self.checked_constant_index_value(len, immediate_to_u64_index(*imm));
+    ) -> Result<ValueId, LowerError> {
+        if let Value::Immediate { imm, .. } = self.fb.func.dfg.value(index)
+            && let Some(constant) = immediate_to_u64_index(*imm)
+            && constant < len
+        {
+            return Ok(self.index_value(constant));
         }
-        let len = self.index_value(len);
+        let len_value = self.index_value(len);
         let in_bounds = self
             .fb
-            .insert_inst(Lt::new(self.module.inst_set(), index, len), Type::I1);
+            .insert_inst(Lt::new(self.module.inst_set(), index, len_value), Type::I1);
         let out_of_bounds = self
             .fb
             .insert_inst(IsZero::new(self.module.inst_set(), in_bounds), Type::I1);
+        self.index_checks.push(IndexCheck {
+            block: self
+                .fb
+                .current_block()
+                .expect("an index check is in a block"),
+            in_bounds: self
+                .fb
+                .func
+                .dfg
+                .value_inst(in_bounds)
+                .expect("`lt` has a result"),
+            len,
+        });
         self.emit_empty_revert(out_of_bounds)?;
-        Ok(Lowered::Value(index))
-    }
-
-    fn checked_constant_index_value(
-        &mut self,
-        len: u64,
-        index: Option<u64>,
-    ) -> Result<Lowered<ValueId>, LowerError> {
-        if let Some(index) = index
-            && index < len
-        {
-            return Ok(Lowered::Value(self.index_value(index)));
-        }
-        Ok(self.emit_unconditional_empty_revert())
+        Ok(index)
     }
 
     fn variant_ref(&self, variant: VariantId<'db>) -> Result<EnumVariantRef, LowerError> {

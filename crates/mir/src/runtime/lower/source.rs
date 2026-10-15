@@ -7,12 +7,8 @@ use hir::analysis::{
             NStatementKind, NValueDefinition, NValueId,
         },
     },
-    ty::{
-        pattern_types::{PatternProjectionStep, project_pattern_child_source_ty},
-        ty_def::TyId,
-    },
+    ty::ty_def::TyId,
 };
-use hir::hir_def::EnumVariant;
 
 use crate::{
     db::MirDb,
@@ -51,26 +47,20 @@ pub(super) fn data_path_index_bounds<'db>(
     path: &NDataPath,
 ) -> Vec<(NIndex, usize)> {
     let mut bounds = Vec::new();
+    ty = instance.normalized_ty(db, ty);
     for projection in path.iter() {
         while let Some((_, inner)) = ty.as_capability(db) {
             ty = inner;
         }
         ty = match projection {
-            NDataProjection::Field(index) => Some(project_pattern_child_source_ty(
-                db,
-                ty,
-                PatternProjectionStep::Field(usize::from(index.0)),
-            )),
-            NDataProjection::VariantField { variant, field } => ty.as_enum(db).map(|enum_| {
-                project_pattern_child_source_ty(
-                    db,
-                    ty,
-                    PatternProjectionStep::VariantField {
-                        variant: EnumVariant::new(enum_, usize::from(variant.0)),
-                        field_idx: usize::from(field.0),
-                    },
-                )
-            }),
+            NDataProjection::Field(index) => instance
+                .normalized_field_types(db, ty)
+                .get(usize::from(index.0))
+                .copied(),
+            NDataProjection::VariantField { variant, field } => instance
+                .normalized_enum_variant_field_tys(db, ty, *variant)
+                .get(usize::from(field.0))
+                .copied(),
             NDataProjection::Index(index) => {
                 let len = runtime_array_len(db, ty)
                     .expect("valid runtime array length")
@@ -79,7 +69,9 @@ pub(super) fn data_path_index_bounds<'db>(
                 if len == 0 {
                     return bounds;
                 }
-                ty.generic_args(db).first().copied()
+                ty.generic_args(db)
+                    .first()
+                    .map(|elem| instance.normalized_ty(db, *elem))
             }
             NDataProjection::Entry(_) => instance
                 .state_index_tys(db, ty)
