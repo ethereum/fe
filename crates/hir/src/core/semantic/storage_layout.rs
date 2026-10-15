@@ -513,11 +513,12 @@ impl<'db> FieldWalker<'db> {
             } else {
                 output
             }
+        // A contract value is its address, a word, as MIR lays it out.
         } else if ty.is_never(self.db)
             || ty.is_zero_sized(self.db)
             || matches!(
                 ty.base_ty(self.db).data(self.db),
-                TyData::TyBase(TyBase::Func(_) | TyBase::Contract(_))
+                TyData::TyBase(TyBase::Func(_))
             )
         {
             WalkOutput::empty()
@@ -699,8 +700,19 @@ impl<'db> FieldWalker<'db> {
             return WalkOutput::empty();
         }
         let db = self.db;
+        // A field's type normalized, as MIR lays out an associated type's
+        // field, `<K as Tr>::Out`, as the type it names.
+        let normalize = |ty| normalize_ty(db, ty, adt.scope(db), PredicateListId::empty_list(db));
         let field = |variant: usize, field: usize| {
-            instantiate_adt_field_for_concrete_demand(db, adt, variant, field, args, source_args)
+            let view = instantiate_adt_field_for_concrete_demand(
+                db,
+                adt,
+                variant,
+                field,
+                args,
+                source_args,
+            );
+            ConcreteTypeView::new(normalize(view.canonical), normalize(view.source))
         };
         match adt.adt_ref(self.db) {
             AdtRef::Struct(struct_) => {

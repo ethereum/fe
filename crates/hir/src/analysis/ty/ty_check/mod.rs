@@ -4055,6 +4055,7 @@ pub enum CodeRegionIntrinsicKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum ConstIntrinsicKind {
     SizeOf,
+    StorageSlots,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Update)]

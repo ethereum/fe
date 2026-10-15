@@ -3,6 +3,11 @@ extern {
     /// Return the byte size of a type at compile time.
     pub const fn size_of<T>() -> u256
 
+    /// The storage slots a value of `T` takes, as the contract layout places
+    /// a field of its type: what a collection steps by between elements it
+    /// keeps whole.
+    pub const fn storage_slots<T>() -> u256
+
     /// Converts a value into its byte representation.
     ///
     /// This is intended for compiler-generated code. Prefer using `core::AsBytes`.

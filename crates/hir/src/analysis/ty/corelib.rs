@@ -261,6 +261,7 @@ pub(crate) enum NumericExternIntrinsic {
 #[derive(Clone, Copy)]
 pub(crate) enum CtfeExternIntrinsic {
     SizeOf,
+    StorageSlots,
     AsBytes,
     Keccak256,
     Bitcast,
@@ -287,6 +288,8 @@ pub(crate) fn ctfe_extern_intrinsic_kind<'db>(
     }
     if lib_func_matches(db, func, "core::intrinsic::size_of") {
         Some(CtfeExternIntrinsic::SizeOf)
+    } else if lib_func_matches(db, func, "core::intrinsic::storage_slots") {
+        Some(CtfeExternIntrinsic::StorageSlots)
     } else if lib_func_matches(db, func, "core::intrinsic::__as_bytes") {
         Some(CtfeExternIntrinsic::AsBytes)
     } else if lib_func_matches(db, func, "core::intrinsic::__keccak256")

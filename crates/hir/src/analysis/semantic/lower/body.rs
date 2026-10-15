@@ -36,6 +36,7 @@ use crate::{
             ty_is_copy, ty_is_snapshot,
         },
     },
+    core::semantic::storage_slot_span,
     hir_def::{
         ArithBinOp, Body, CallArg, CallableDef, Cond, CondId, Expr, ExprId, Field as HirField,
         LitKind, MatchArm, Partial, Pat, PatId, PathId, Stmt, StmtId,
@@ -1922,23 +1923,27 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         callable: &Callable<'db>,
         kind: ConstIntrinsicKind,
     ) -> SValueId {
-        let ty = match kind {
-            ConstIntrinsicKind::SizeOf => normalize_ty(
-                self.db,
-                *callable
-                    .generic_args()
-                    .first()
-                    .expect("core::size_of lowering requires a concrete generic arg"),
-                self.body.scope(),
-                self.assumptions,
-            ),
-        };
+        let ty = normalize_ty(
+            self.db,
+            *callable
+                .generic_args()
+                .first()
+                .expect("a size intrinsic's lowering requires a generic arg"),
+            self.body.scope(),
+            self.assumptions,
+        );
         let result_ty = self.expr_ty(expr);
         // Admission reports failed concrete demands; raw lowering preserves
         // the symbolic form for provisional and not-yet-admitted bodies.
-        let size = match runtime_size_bytes(self.db, ty) {
-            Ok(size @ Some(_)) => size,
-            Ok(None) | Err(_) => None,
+        let size = match kind {
+            ConstIntrinsicKind::SizeOf => match runtime_size_bytes(self.db, ty) {
+                Ok(Some(size)) => Some(BigInt::from(size)),
+                Ok(None) | Err(_) => None,
+            },
+            ConstIntrinsicKind::StorageSlots if ty.has_param(self.db) || ty.has_var(self.db) => {
+                None
+            }
+            ConstIntrinsicKind::StorageSlots => storage_slot_span(self.db, ty).map(BigInt::from),
         };
         let Some(size) = size else {
             let caller = self.instance.key(self.db);
@@ -1962,13 +1967,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             .flatten()
             .expect("const intrinsic should resolve to a function")
             .key;
-            let const_expr = match kind {
-                ConstIntrinsicKind::SizeOf => ConstExpr::Invocation(ConstInvocation {
-                    key,
-                    args: Vec::new(),
-                    parameter_owner: caller.owner(self.db).scope(),
-                }),
-            };
+            let const_expr = ConstExpr::Invocation(ConstInvocation {
+                key,
+                args: Vec::new(),
+                parameter_owner: caller.owner(self.db).scope(),
+            });
             let const_ty = ConstTyId::new(
                 self.db,
                 ConstTyData::Abstract(ConstExprId::new(self.db, const_expr), result_ty),
@@ -1985,7 +1988,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             result_ty,
             SExpr::Const(SConst::from_trusted_source(
                 self.db,
-                int_const(self.db, result_ty, BigInt::from(size)),
+                int_const(self.db, result_ty, size),
             )),
         )
     }
