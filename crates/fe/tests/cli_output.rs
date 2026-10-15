@@ -3703,6 +3703,11 @@ fn test_cli_test_unsafe_trust_rejects_untrusted_unsafe_uses() {
             "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
         ),
         (
+            "unsafe_trust_workspace_member",
+            "dep::round_trip(7)",
+            "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
+        ),
+        (
             "unsafe_trust_untrusted_voucher",
             "mid::via_dep(7)",
             "`mid` allows `dep` to use unsafe code but is not trusted itself",

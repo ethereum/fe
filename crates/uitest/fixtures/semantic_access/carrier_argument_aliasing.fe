@@ -1,0 +1,79 @@
+// A call's arguments, receiver and effects are checked against each other
+// whether their places are roots or reached through a `mut` parameter or
+// binding: a `mut` one excludes any other of the same place.
+struct Buf {
+    n: u256,
+    m: u256,
+}
+
+impl Buf {
+    fn set(mut self, _ other: Buf) -> u256 {
+        self.n = 7
+        other.n
+    }
+
+    fn set_n(mut self, _ v: u256) {
+        self.n = v
+    }
+
+    fn pick(mut self, _ other: Buf) -> mut u256 {
+        mut self.n
+    }
+}
+
+struct State {
+    n: u256,
+}
+
+fn view_eff(_ s: State) -> u256 uses (st: mut State) {
+    st.n = 9
+    s.n
+}
+
+fn read(_ b: Buf, _ c: Buf) -> u256 {
+    b.n + c.n
+}
+
+// Rejected: `mut self` and a view of the same place.
+fn via_param(_ b: mut Buf) -> u256 {
+    b.set(b)
+}
+
+// Rejected: through a `mut` binding too.
+fn via_binding(_ b: mut Buf) -> u256 {
+    let h = mut b
+    h.set(h)
+}
+
+// Rejected: a view argument and a `mut` effect of the same place.
+fn effect_alias(_ s: mut State) -> u256 {
+    with (State = s) {
+        view_eff(s)
+    }
+}
+
+// Rejected: a projection's `mut self` and a view argument.
+fn proj_alias(_ b: mut Buf) {
+    let x = b.pick(b)
+    x = 1
+}
+
+// Accepted: a snapshot argument is a copy.
+fn snapshot_arg(_ b: mut Buf) {
+    b.set_n(b.m + 1)
+}
+
+// Accepted: two views.
+fn two_views(_ b: mut Buf) -> u256 {
+    read(b, b)
+}
+
+// Accepted: disjoint parts.
+struct Two {
+    a: Buf,
+    b: Buf,
+}
+
+fn disjoint(_ t: mut Two) -> u256 {
+    t.a.set(t.b)
+}

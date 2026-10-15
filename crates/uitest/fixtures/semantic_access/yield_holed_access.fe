@@ -1,0 +1,66 @@
+// A yielded grant gives the caller its whole referent, so no part of it may
+// be moved out when the projection yields, under the grant's own access or
+// one it derives from.
+use core::option::Option
+use core::ptr::MemArray
+
+struct Holder {
+    a: u256,
+    b: MemArray<u256>,
+}
+
+struct Pair {
+    x: MemArray<u256>,
+    y: MemArray<u256>,
+}
+
+struct Outer {
+    p: Pair,
+}
+
+impl Holder {
+    // Rejected: the yielded access's referent was moved out.
+    fn p1(mut self) -> mut MemArray<u256> {
+        let g = mut self.b
+        let v = g
+        yield g
+        self.a = v[0]
+        g = v
+    }
+
+    // Rejected: a tuple component.
+    fn p2(mut self) -> (u256, mut MemArray<u256>) {
+        let g = mut self.b
+        let v = g
+        yield (1, g)
+        g = v
+    }
+
+    // Rejected: a sum payload.
+    fn p3(mut self) -> Option<mut MemArray<u256>> {
+        let g = mut self.b
+        let v = g
+        yield Option::Some(g)
+        g = v
+    }
+}
+
+impl Outer {
+    // Rejected: a child access of the whole holed parent.
+    fn whole(mut self) -> mut Pair {
+        let g = mut self.p
+        let v = g.x
+        let h = mut g
+        yield h
+        g.x = v
+    }
+
+    // Accepted: the child's referent holds no hole.
+    fn other(mut self) -> mut MemArray<u256> {
+        let g = mut self.p
+        let v = g.x
+        let h = mut g.y
+        yield h
+        g.x = v
+    }
+}

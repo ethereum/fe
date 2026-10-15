@@ -1,0 +1,37 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+assertion_line: 25
+expression: diags
+input_file: fixtures/semantic_access/yield_holed_access.fe
+---
+error[16-0002]: move conflict in `fn p1`
+   ┌─ yield_holed_access.fe:26:15
+   │
+25 │         let v = g
+   │                 - value is moved here
+26 │         yield g
+   │               ^ cannot yield an access while its referent is moved out
+
+error[16-0002]: move conflict in `fn p2`
+   ┌─ yield_holed_access.fe:35:15
+   │
+34 │         let v = g
+   │                 - value is moved here
+35 │         yield (1, g)
+   │               ^^^^^^ cannot yield an access while its referent is moved out
+
+error[16-0002]: move conflict in `fn p3`
+   ┌─ yield_holed_access.fe:43:15
+   │
+42 │         let v = g
+   │                 - value is moved here
+43 │         yield Option::Some(g)
+   │               ^^^^^^^^^^^^^^^ cannot yield an access while its referent is moved out
+
+error[16-0002]: move conflict in `fn whole`
+   ┌─ yield_holed_access.fe:53:17
+   │
+52 │         let v = g.x
+   │                 --- value is moved here
+53 │         let h = mut g
+   │                 ^^^^^ cannot use a value after it was moved
