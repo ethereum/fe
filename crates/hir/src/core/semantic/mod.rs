@@ -5638,6 +5638,14 @@ impl<'db> FieldView<'db> {
                         invalid: *invalid,
                     }
                 }
+                ContractLayoutError::EntryLayout { entry, reason } => {
+                    TyLowerDiag::ContractFieldEntryLayout {
+                        span,
+                        ty,
+                        entry: *entry,
+                        reason,
+                    }
+                }
                 ContractLayoutError::ExplicitSlotInCode => TyLowerDiag::ContractFieldSlotInCode {
                     span: self.slot_span(db),
                 },

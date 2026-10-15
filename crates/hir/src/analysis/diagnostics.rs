@@ -2133,6 +2133,29 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
+            Self::ContractFieldEntryLayout {
+                span,
+                ty,
+                entry,
+                reason,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "the entries of `{}` cannot be laid out in storage",
+                    ty.pretty_print(db)
+                ),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("an entry `{}`: {reason}", entry.pretty_print(db)),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "a collection lays each entry out like a field, at the slots it locates"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
             Self::ContractFieldZeroInvalid { span, ty, invalid } => {
                 let label = if ty == invalid {
                     format!("`{}` has `unsafe` fields", ty.pretty_print(db))

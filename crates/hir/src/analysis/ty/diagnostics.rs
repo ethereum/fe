@@ -239,6 +239,14 @@ pub enum TyLowerDiag<'db> {
         invalid: TyId<'db>,
     },
 
+    /// A collection entry type in contract state with no storage layout.
+    ContractFieldEntryLayout {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        entry: TyId<'db>,
+        reason: &'static str,
+    },
+
     ContractFieldLayoutInvariant {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
@@ -332,6 +340,7 @@ impl TyLowerDiag<'_> {
             Self::ContractFieldCallPointer { .. } => 65,
             Self::ContractFieldPersistentUnderTransient { .. } => 66,
             Self::ContractFieldZeroInvalid { .. } => 69,
+            Self::ContractFieldEntryLayout { .. } => 70,
         }
     }
 }

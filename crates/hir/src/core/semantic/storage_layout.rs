@@ -195,6 +195,11 @@ pub enum ContractLayoutError<'db> {
     ZeroInvalidInState {
         invalid: TyId<'db>,
     },
+    /// A collection entry type that cannot be laid out, for `reason`.
+    EntryLayout {
+        entry: TyId<'db>,
+        reason: &'static str,
+    },
 }
 
 impl ContractLayoutError<'_> {
@@ -217,6 +222,7 @@ impl ContractLayoutError<'_> {
                 "a persistent collection lies in transient storage"
             }
             Self::ZeroInvalidInState { .. } => "contract state holds a type zero is no value of",
+            Self::EntryLayout { .. } => "a collection entry cannot be laid out",
         }
     }
 }
@@ -915,6 +921,14 @@ fn collect_field_plan<'db>(
         walker.push_error(ContractLayoutError::ZeroInvalidInState { invalid });
     }
     if walker.errors.is_empty()
+        && let Some((entry, error)) = entry_layout_error(db, scope, declared)
+    {
+        walker.push_error(ContractLayoutError::EntryLayout {
+            entry,
+            reason: error.summary(),
+        });
+    }
+    if walker.errors.is_empty()
         && address_space == AddressSpace::Storage
         && let Some(collection) = persistent_under_transient(db, scope, declared)
     {
@@ -1175,6 +1189,38 @@ fn zero_invalid_in_state<'db>(
         }
         if ty.adt_def(db).is_some_and(|adt| adt.has_unsafe_field(db)) {
             return Some(ty);
+        }
+        state_parts(db, scope, ty)
+            .into_iter()
+            .find_map(|part| walk(db, scope, part, depth + 1, seen))
+    }
+    walk(db, scope, ty, 0, &mut FxHashSet::default())
+}
+
+/// The first collection entry type a value of `ty` holds in state that has no
+/// storage layout, with why: an entry is laid out like a field, at the slots
+/// its collection locates.
+fn entry_layout_error<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<(TyId<'db>, ContractLayoutError<'db>)> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        depth: usize,
+        seen: &mut FxHashSet<TyId<'db>>,
+    ) -> Option<(TyId<'db>, ContractLayoutError<'db>)> {
+        if depth > MAX_STATE_NESTING || !seen.insert(ty) {
+            return None;
+        }
+        let assumptions = PredicateListId::empty_list(db);
+        if let Some((_, entry)) = state_index_tys(db, scope, ty, assumptions) {
+            let entry = normalize_ty(db, entry, scope, assumptions);
+            if let Err(error) = storage_slot_span(db, entry) {
+                return Some((entry, error));
+            }
         }
         state_parts(db, scope, ty)
             .into_iter()
