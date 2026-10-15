@@ -11,8 +11,8 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::instance::{
-            GenericSubst, ImplEnv, SemanticInstance, SemanticInstanceKey,
-            get_or_build_semantic_instance,
+            GenericSubst, ImplEnv, SemanticBodyAdmissionError, SemanticInstance,
+            SemanticInstanceKey, get_or_build_semantic_instance,
         },
         semantic::{
             BlockedInfo, ConstDemandKind, ConstDependency, EvalFailure, EvalOutcome, FieldIndex,
@@ -1404,9 +1404,16 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 if inference_met_lowering_cycle(self.db, infer_body(self.db, owner)) {
                     return Err(CtfeError::InvalidBody { origin });
                 }
+                // Recursion growing its generic arguments meets the instance
+                // limits one call per level, as evaluation meets its own.
                 instance
                     .admitted_body(self.db)
-                    .map_err(|_| CtfeError::InvalidBody { origin })
+                    .map_err(|error| match error {
+                        SemanticBodyAdmissionError::InstanceLimit(_) => {
+                            CtfeError::RecursionLimitExceeded { origin }
+                        }
+                        _ => CtfeError::InvalidBody { origin },
+                    })
             }
         }
     }
