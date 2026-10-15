@@ -30,6 +30,7 @@ use super::{
     },
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     effects::{place_effect_provider_param_index_map, rows::RowComponent},
+    normalize::normalize_ty,
     trait_def::{TraitInstId, TraitRefId},
     trait_resolution::{PredicateListId, WellFormedness},
     ty_lower::collect_generic_params,
@@ -1126,10 +1127,19 @@ fn ty_field_types<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'d
         closure.captures(db).to_vec()
     } else if let Some(adt_def) = ty.adt_def(db) {
         match adt_def.adt_ref(db) {
+            // A field's type normalized, as layouts see an associated type's
+            // field, `<K as Tr>::Out`, as the type it names.
             AdtRef::Struct(_) => {
                 let args = ty.generic_args(db);
                 (0..adt_def.fields(db)[0].num_types())
-                    .map(|idx| instantiate_adt_field_shape(db, adt_def, 0, idx, args))
+                    .map(|idx| {
+                        normalize_ty(
+                            db,
+                            instantiate_adt_field_shape(db, adt_def, 0, idx, args),
+                            adt_def.scope(db),
+                            PredicateListId::empty_list(db),
+                        )
+                    })
                     .collect()
             }
             _ => vec![],

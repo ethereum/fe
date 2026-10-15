@@ -11,6 +11,7 @@ use super::{
     const_ty::ConstBodyLowering,
     corelib::resolve_core_trait,
     fold::TyFoldable,
+    normalize::normalize_ty,
     provider::{AddressSpace, pinned_space},
     result_space::{SpaceValue, impl_space_value},
     trait_def::{ImplementorOrigin, impls_for_trait_def},
@@ -140,10 +141,19 @@ pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> 
             if args.len() != adt.params(db).len() {
                 return None;
             }
+            // A field of an associated type holds the type it names.
             adt.fields(db)
                 .iter()
                 .flat_map(|variant| variant.iter_types(db))
-                .find_map(|field| field.instantiate(db, args).pinned_part(db))
+                .find_map(|field| {
+                    normalize_ty(
+                        db,
+                        field.instantiate(db, args),
+                        adt.scope(db),
+                        PredicateListId::empty_list(db),
+                    )
+                    .pinned_part(db)
+                })
         }
         TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_) | PrimTy::Array)) => ty
             .generic_args(db)
