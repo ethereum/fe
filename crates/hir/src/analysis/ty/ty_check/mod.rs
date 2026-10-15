@@ -147,19 +147,51 @@ pub fn check_const_body<'db>(
     // An invalid declared type suppresses body/value checking. Diagnose the
     // declaration itself rather than passing an invalid constant to CTFE.
     if let Some(hir_ty) = const_.hir_ty(db) {
-        diags.extend(
-            super::ty_error::collect_hir_ty_diags(
-                db,
-                const_.scope(),
-                hir_ty,
-                const_.span().ty(),
-                PredicateListId::empty_list(db),
-            )
-            .into_iter()
-            .map(Into::into),
+        let ty_diags = super::ty_error::collect_hir_ty_diags(
+            db,
+            const_.scope(),
+            hir_ty,
+            const_.span().ty(),
+            PredicateListId::empty_list(db),
         );
+        if ty_diags.is_empty() {
+            diags.extend(
+                const_type_diag(db, const_.span().ty().into(), const_.ty(db)).map(Into::into),
+            );
+        }
+        diags.extend(ty_diags.into_iter().map(Into::into));
     }
     (diags, body)
+}
+
+/// A const is an owned value, copied at each use, so its type is neither a
+/// `#[view]` type, whose values are made only in its own module, nor a
+/// state-only one.
+pub(crate) fn const_type_diag<'db>(
+    db: &'db dyn HirAnalysisDb,
+    span: DynLazySpan<'db>,
+    ty: TyId<'db>,
+) -> Option<TyDiagCollection<'db>> {
+    if let Some(view) = ty.is_view(db).then_some(ty).or_else(|| ty.view_part(db)) {
+        return Some(
+            TyLowerDiag::ViewTypeMode {
+                span,
+                ty: view,
+                mode: "the type of a `const`",
+            }
+            .into(),
+        );
+    }
+    let collection = ty.pinned_part(db)?;
+    Some(
+        TyLowerDiag::StateOnlyValue {
+            span,
+            ty,
+            collection,
+            position: "the type of a `const`",
+        }
+        .into(),
+    )
 }
 
 #[salsa::tracked(return_ref)]

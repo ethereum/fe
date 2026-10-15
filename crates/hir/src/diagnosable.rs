@@ -836,6 +836,12 @@ impl<'db> Impl<'db> {
                 );
                 if !ty_diags.is_empty() {
                     diags.extend(ty_diags);
+                } else if let Some(ty) = impl_const.ty(db) {
+                    diags.extend(ty::ty_check::const_type_diag(
+                        db,
+                        impl_const.span().ty().into(),
+                        ty,
+                    ));
                 }
             }
 
@@ -1213,6 +1219,11 @@ impl<'db> ImplTrait<'db> {
                 }
                 continue;
             }
+            diags.extend(ty::ty_check::const_type_diag(
+                db,
+                impl_const.span().ty().into(),
+                impl_header_ty,
+            ));
 
             let Some(trait_const) = trait_hir.const_(db, name) else {
                 continue;
