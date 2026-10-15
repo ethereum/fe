@@ -1715,9 +1715,10 @@ impl<'db> TyChecker<'db> {
 
         callable.check_args(self, args, call_span.clone().args(), None, false);
 
-        self.check_callable_effects(expr, &mut callable);
-
+        // The callee's bounds infer what its rows need, such as the
+        // arguments of a function item passed for an `F: Fn(..)`.
         callable.process_constraints(self, expr, call_span.callee().into());
+        self.check_callable_effects(expr, &mut callable);
         self.finish_call(expr, callable)
     }
 
@@ -1799,8 +1800,8 @@ impl<'db> TyChecker<'db> {
             Some((callee, callee_prop)),
             false,
         );
-        self.check_callable_effects(expr, &mut callable);
         callable.process_constraints(self, expr, call_span.callee().into());
+        self.check_callable_effects(expr, &mut callable);
         self.finish_call(expr, callable)
     }
 
@@ -2045,16 +2046,7 @@ impl<'db> TyChecker<'db> {
         // Each component of a callee row the call expands is resolved like the
         // callee's own effects, in a slot numbered after them.
         let rows = self.callee_rows(callable, func);
-        // A row has no provider of its own: its reserved provider slot is `()`.
-        for requirement in func.effective_effect_requirements(self.db) {
-            if requirement.key.key_row().is_some()
-                && let Some(Some(slot)) =
-                    callee_provider_arg_idx_by_effect.get(requirement.binding_idx as usize)
-                && let Some(&provider_var) = callable.generic_args().get(*slot)
-            {
-                self.table.unify(provider_var, TyId::unit(self.db)).ok();
-            }
-        }
+        self.unify_row_provider_slots(callable, func);
         let row_paths: FxHashMap<u32, RowPath> = rows
             .components
             .iter()
@@ -2348,6 +2340,20 @@ impl<'db> TyChecker<'db> {
         *callable.effect_providers_mut() = providers;
 
         resolved_args
+    }
+
+    /// A row has no provider of its own: its reserved provider slot is `()`,
+    /// whether the function is called or used as a value.
+    fn unify_row_provider_slots(&mut self, callable: &Callable<'db>, func: Func<'db>) {
+        let provider_slots = place_effect_provider_param_index_map(self.db, func);
+        for requirement in func.effective_effect_requirements(self.db) {
+            if requirement.key.key_row().is_some()
+                && let Some(Some(slot)) = provider_slots.get(requirement.binding_idx as usize)
+                && let Some(&provider_var) = callable.generic_args().get(*slot)
+            {
+                self.table.unify(provider_var, TyId::unit(self.db)).ok();
+            }
+        }
     }
 
     /// The callee's rows as this call instantiates them.
@@ -3728,10 +3734,8 @@ impl<'db> TyChecker<'db> {
             false,
         );
 
-        // Check required effects for the method call
-        self.check_callable_effects(expr, &mut callable);
-
         callable.process_constraints(self, expr, call_span.method_name().into());
+        self.check_callable_effects(expr, &mut callable);
         self.finish_call(expr, callable)
     }
 
@@ -3906,6 +3910,9 @@ impl<'db> TyChecker<'db> {
                             .expect("function item path should resolve to callable");
                     if !unify_generic_args(self, &mut callable) {
                         return ExprProp::invalid(self.db);
+                    }
+                    if let CallableDef::Func(func) = callable.callable_def {
+                        self.unify_row_provider_slots(&callable, func);
                     }
 
                     self.env

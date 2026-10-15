@@ -634,10 +634,20 @@ fn semantic_callee_key_with_assumptions<'db>(
                 .find(|(index, _)| *index == nominal)
                 .map(|&(_, effect)| effect)
         };
+        // A declared effect's provider is its resolution's; a row
+        // component's is numbered as the component, as the instance's
+        // effect env numbers it.
         let provider_of = |effect: usize| {
             EffectEnvView::new(EffectParamSite::Func(func))
                 .resolved_binding(db, effect)
                 .map(|binding| binding.provider.provider_idx)
+                .or_else(|| {
+                    func_rows
+                        .components
+                        .iter()
+                        .any(|component| component.requirement.binding_idx as usize == effect)
+                        .then_some(effect as u32)
+                })
         };
         let target_effect_args = effect_args
             .iter()
