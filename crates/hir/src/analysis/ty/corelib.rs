@@ -1,4 +1,5 @@
 use common::ingot::IngotKind;
+use rustc_hash::FxHashSet;
 
 use crate::{
     analysis::{
@@ -10,6 +11,7 @@ use crate::{
                 GoalSatisfiability, PredicateListId, TraitSolveCx, goal_holds, is_goal_satisfiable,
             },
             ty_def::{BorrowKind, TyBase, TyData, TyId},
+            visitor::{TyVisitable, TyVisitor, walk_ty},
         },
     },
     hir_def::{
@@ -511,6 +513,58 @@ pub fn effect_key_state_access<'db>(
 /// The seal of the std EVM capabilities, which only the zero-sized
 /// `std::evm::Evm` implements.
 const EVM_CAPABILITY_SEAL: &str = "std::evm::effects::EvmCapabilitySeal";
+
+/// Whether every bound `assumptions` place on the type parameters of `ty`
+/// is a sealed std EVM capability trait, which only `std::evm::Evm`
+/// implements: a generic body then reaches no more through a value of `ty`
+/// than those bounds give it, whatever `ty` is instantiated with. A bound of
+/// any other trait could be implemented to reach more.
+pub fn bounded_by_sealed_capabilities<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    ty: TyId<'db>,
+) -> bool {
+    struct Params<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: FxHashSet<TyId<'db>>,
+    }
+    impl<'db> TyVisitor<'db> for Params<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+        fn visit_ty(&mut self, ty: TyId<'db>) {
+            if matches!(ty.data(self.db), TyData::TyParam(_)) {
+                self.found.insert(ty);
+            }
+            walk_ty(self, ty)
+        }
+    }
+    let params = |ty: TyId<'db>| {
+        let mut params = Params {
+            db,
+            found: FxHashSet::default(),
+        };
+        ty.visit_with(&mut params);
+        params.found
+    };
+    let Some(seal) = resolve_lib_trait_path(db, scope, EVM_CAPABILITY_SEAL) else {
+        return false;
+    };
+    // An effect's provider evidence (`EffectRef`) names its binding, not a
+    // trait an implementation could make reach more.
+    let effect_ref = resolve_core_trait(db, scope, &["EffectRef"]);
+    let own = params(ty);
+    !own.is_empty()
+        && assumptions.list(db).iter().all(|bound| {
+            effect_ref.is_some_and(|effect_ref| trait_reaches(db, bound.def(db), effect_ref))
+                || !bound
+                    .args(db)
+                    .iter()
+                    .any(|arg| !params(*arg).is_disjoint(&own))
+                || trait_reaches(db, bound.def(db), seal)
+        })
+}
 
 /// Whether `ty` implements the std EVM capability seal, so a place of it holds
 /// nothing even when `ty` is a type parameter bounded by `Ctx` or `Log`.
