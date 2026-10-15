@@ -2198,13 +2198,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
         if let NTerminatorKind::Yield { value, .. } = terminator.kind {
             self.check_grant_creation(value, &state, terminator.origin)?;
         }
-        if matches!(
-            terminator.kind,
-            NTerminatorKind::Return(_) | NTerminatorKind::Yield { .. }
-        ) && let Some(moved) = state
-            .moved
-            .iter()
-            .find(|(key, _)| matches!(key, MoveKey::Param(_)))
+        // A frame a yield suspends may hold a parameter's hole it restores in
+        // its slide, which ends in a return; the grant may not reach it.
+        if matches!(terminator.kind, NTerminatorKind::Return(_))
+            && let Some(moved) = state
+                .moved
+                .iter()
+                .find(|(key, _)| matches!(key, MoveKey::Param(_)))
         {
             let origin = self
                 .moved_at
@@ -2261,14 +2261,20 @@ impl<'a, 'db> Analysis<'a, 'db> {
             let origin = operand_origin(value, origin);
             // The caller receives the referent whole: no part of it may be
             // moved out, under the grant's own key or an ancestor's.
-            if let Some(hole) = state.moved.iter().find(|(key, hole)| {
-                matches!(key, MoveKey::Access(token) if authority.contains(token)
-                && self.tokens[*token as usize].regions.iter().any(|region| {
-                    let moved: Path = region.path.iter().chain(hole).cloned().collect();
-                    regions.iter().any(|granted| {
-                        granted.base == region.base && paths_overlap(&moved, &granted.path)
-                    })
-                }))
+            if let Some(hole) = state.moved.iter().find(|(key, hole)| match key {
+                MoveKey::Access(token) => {
+                    authority.contains(token)
+                        && self.tokens[*token as usize].regions.iter().any(|region| {
+                            let moved: Path = region.path.iter().chain(hole).cloned().collect();
+                            regions.iter().any(|granted| {
+                                granted.base == region.base && paths_overlap(&moved, &granted.path)
+                            })
+                        })
+                }
+                MoveKey::Param(param) => regions.iter().any(|granted| {
+                    granted.base == Base::Param(*param) && paths_overlap(hole, &granted.path)
+                }),
+                MoveKey::Value(_) | MoveKey::Root(_) => false,
             }) {
                 return Err(self.moved_diag(
                     "cannot yield an access while its referent is moved out",

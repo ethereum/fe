@@ -937,14 +937,18 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             return self.lower_expr_inner(expr);
         };
         let origin = SemOrigin::Expr(expr);
-        // An access binding is re-yielded through its carrier. A view
-        // parameter is viewed below like any place: its carrier is a view,
+        // An access binding of the kind the shape names is re-yielded through
+        // its carrier. A `mut` one where the shape names `ref`, and a view
+        // parameter, are borrowed below like any place: a view's carrier is
         // not the grant the shape names, and a snapshot one is a
         // session-owned copy.
         if let Some(binding) = self.typed_body.expr_binding(expr)
             && !self.capture_places.contains_key(&binding)
             && let Some(&local) = self.binding_locals.get(&binding)
-            && self.locals[local.index()].ty.as_borrow(self.db).is_some()
+            && self.locals[local.index()]
+                .ty
+                .as_borrow(self.db)
+                .is_some_and(|(carrier, _)| carrier == kind)
         {
             let ty = self.locals[local.index()].ty;
             return self.emit_expr_with_origin(
