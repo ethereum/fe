@@ -543,14 +543,20 @@ pub fn abi_field_end_with_input_len<A: Abi, T, I>(_ input: I, base: u256, pos: u
     where T: AbiSpan<A> + AbiSize,
           I: ByteInput
 {
-    if T::IS_DYNAMIC {
+    let end = if T::IS_DYNAMIC {
         let tail_rel = input.word_at(pos)
         let tail_at = checked_tail<A>(base, tail_rel)
         checked_frame_end<A>(tail_at, T::HEAD_SIZE, input_len)
-        return T::payload_end_with_input_len(input, base: tail_at, pos: tail_at, input_len: input_len)
+        T::payload_end_with_input_len(input, base: tail_at, pos: tail_at, input_len: input_len)
+    } else {
+        T::payload_end_with_input_len(input, base: base, pos: pos, input_len: input_len)
     }
-
-    T::payload_end_with_input_len(input, base: base, pos: pos, input_len: input_len)
+    // `AbiSpan` and `AbiSize` are safe traits, so a payload end reported past
+    // the input is a decode error, not a range to copy.
+    if end > input_len {
+        A::decode_error()
+    }
+    end
 }
 
 fn round_up_words(_ len: u256) -> u256 {

@@ -1649,8 +1649,8 @@ impl<T: SolWordRepr + SolInt> EncodePacked for T {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self.canonical_word(), T::BITS / 8)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self.canonical_word(), T::BITS / 8, room)
 
     }
 }

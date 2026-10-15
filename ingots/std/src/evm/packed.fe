@@ -72,33 +72,42 @@ pub trait EncodePacked {
     /// or aliasing an exclusive borrow of the builder.
     fn pack_into(own self, _ p: own Packed) -> Packed
 
-    /// Writes the packed bytes at `dest` and returns how many were written.
+    /// Writes the packed bytes at `dest` and returns how many were written,
+    /// reverting with `Panic(0x01)` rather than write more than `room` bytes.
     ///
-    /// The caller must ensure that `dest` has room for `packed_width()` bytes
-    /// plus 32 bytes of slack in a live allocation, because word-sized values
-    /// are written with one full-word store.
+    /// The caller must ensure that `dest` has room for `room` bytes plus 32
+    /// bytes of slack in a live allocation, because word-sized values are
+    /// written with one full-word store. `room` comes from the caller's own
+    /// `packed_width()` calls, which a safe implementation need not answer
+    /// the same way twice, so implementations check it.
     /// The default goes through a `Packed` builder; std's implementations
     /// store their bytes directly.
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        let width = self.packed_width()
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let packed = self.pack_into(Packed::with_capacity(bytes: 0))
         let source = packed.buffer.span()
-        // `dest` has room for `width` bytes: an encoding longer than its
-        // declared width reverts rather than write past it.
-        if source.len() > width {
-            revert_error(Panic::from(PANIC_ASSERT))
-        }
+        check_room(width: source.len(), room)
         ptr::copy(dest, source)
         source.len()
     }
 }
 
-/// Writes the low `width` bytes of `value` big-endian at `dest` with a single
-/// word store (clobbering the following `32 - width` bytes) and returns `width`.
-/// The caller must ensure that `dest` has room for 32 bytes.
+/// Reverts with `Panic(0x01)` when `width` bytes do not fit in `room`.
 #[inline(always)]
-pub(ingot) unsafe fn write_word_prefix(_ dest: *u8, _ value: u256, _ width: u256) -> u256 {
+fn check_room(width: u256, room: u256) {
+    if width > room {
+        revert_error(Panic::from(PANIC_ASSERT))
+    }
+}
+
+/// Writes the low `width` bytes of `value` big-endian at `dest` with a single
+/// word store (clobbering the following `32 - width` bytes) and returns `width`,
+/// reverting when `width` exceeds `room`.
+/// The caller must ensure that `dest` has room for `room` bytes plus 32 bytes
+/// of slack.
+#[inline(always)]
+pub(ingot) unsafe fn write_word_prefix(_ dest: *u8, _ value: u256, _ width: u256, room: u256) -> u256 {
+    check_room(width, room)
     store_word(ptr: dest, value: value << ((32 - width) * 8))
     width
 }
@@ -111,7 +120,7 @@ pub(ingot) unsafe fn write_word_prefix(_ dest: *u8, _ value: u256, _ width: u256
 pub fn encode_packed<T: EncodePacked>(_ value: own T) -> Packed {
     let width = value.packed_width()
     var buffer = ptr::MemBuffer::with_capacity(width + 32)
-    let written = unsafe { value.write_packed(buffer.ptr()) }
+    let written = unsafe { value.write_packed(buffer.ptr(), room: width) }
     unsafe { buffer.set_len(written) }
     Packed { buffer }
 }
@@ -121,7 +130,7 @@ pub fn encode_packed<T: EncodePacked>(_ value: own T) -> Packed {
 pub fn keccak_packed<T: EncodePacked>(_ value: own T) -> u256 {
     let width = value.packed_width()
     let buffer = ptr::alloc_bytes(width + 32)
-    let written = unsafe { value.write_packed(buffer) }
+    let written = unsafe { value.write_packed(buffer, room: width) }
     unsafe { crypto::keccak256(MemSpan::from_raw_parts(ptr: buffer, len: written)) }
 }
 
@@ -357,8 +366,8 @@ impl EncodePacked for u8 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self as u256, 1)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self as u256, 1, room)
     }
 }
 
@@ -370,8 +379,8 @@ impl EncodePacked for u16 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self as u256, 2)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self as u256, 2, room)
     }
 }
 
@@ -383,8 +392,8 @@ impl EncodePacked for u32 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self as u256, 4)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self as u256, 4, room)
     }
 }
 
@@ -396,8 +405,8 @@ impl EncodePacked for u64 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self as u256, 8)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self as u256, 8, room)
     }
 }
 
@@ -409,8 +418,8 @@ impl EncodePacked for u128 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self as u256, 16)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self as u256, 16, room)
     }
 }
 
@@ -422,8 +431,8 @@ impl EncodePacked for u256 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self, 32)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self, 32, room)
     }
 }
 
@@ -440,9 +449,9 @@ impl EncodePacked for i8 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let bits: u8 = self.downcast_truncate()
-        write_word_prefix(dest, bits as u256, 1)
+        write_word_prefix(dest, bits as u256, 1, room)
     }
 }
 
@@ -455,9 +464,9 @@ impl EncodePacked for i16 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let bits: u16 = self.downcast_truncate()
-        write_word_prefix(dest, bits as u256, 2)
+        write_word_prefix(dest, bits as u256, 2, room)
     }
 }
 
@@ -470,9 +479,9 @@ impl EncodePacked for i32 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let bits: u32 = self.downcast_truncate()
-        write_word_prefix(dest, bits as u256, 4)
+        write_word_prefix(dest, bits as u256, 4, room)
     }
 }
 
@@ -485,9 +494,9 @@ impl EncodePacked for i64 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let bits: u64 = self.downcast_truncate()
-        write_word_prefix(dest, bits as u256, 8)
+        write_word_prefix(dest, bits as u256, 8, room)
     }
 }
 
@@ -500,9 +509,9 @@ impl EncodePacked for i128 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let bits: u128 = self.downcast_truncate()
-        write_word_prefix(dest, bits as u256, 16)
+        write_word_prefix(dest, bits as u256, 16, room)
     }
 }
 
@@ -515,9 +524,9 @@ impl EncodePacked for i256 {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let bits: u256 = self.downcast_truncate()
-        write_word_prefix(dest, bits as u256, 32)
+        write_word_prefix(dest, bits as u256, 32, room)
     }
 }
 
@@ -529,8 +538,8 @@ impl EncodePacked for bool {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self as u256, 1)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self as u256, 1, room)
     }
 }
 
@@ -542,12 +551,12 @@ impl EncodePacked for Address {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         // Non-canonical addresses revert, as in `Packed::address`.
         if self.inner >> 160 != 0 {
             ops::revert_empty()
         }
-        write_word_prefix(dest, self.inner, 20)
+        write_word_prefix(dest, self.inner, 20, room)
     }
 }
 
@@ -560,8 +569,8 @@ impl<const N: usize> EncodePacked for String<N> {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
-        write_word_prefix(dest, self as u256, self.len() as u256)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self as u256, self.len() as u256, room)
     }
 }
 
@@ -573,7 +582,8 @@ impl<const N: usize> EncodePacked for [u8; N] {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        check_room(width: N as u256, room)
         var i: usize = 0
         while i < N {
             *ptr::offset_bytes(dest, i as u256) = self[i]
@@ -593,13 +603,13 @@ impl<const N: usize> EncodePacked for FixedBytes<N> {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         // Unsupported widths and non-canonical values revert, as in
         // `Packed::fixed_bytes`.
         if N == 0 || N > 32 || (N < 32 && self.val >> ((N as u256) * 8) != 0) {
             ops::revert_empty()
         }
-        write_word_prefix(dest, self.val, N as u256)
+        write_word_prefix(dest, self.val, N as u256, room)
     }
 }
 
@@ -613,8 +623,9 @@ impl EncodePacked for Bytes {
         p
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         let source = self.payload_span()
+        check_room(width: source.len(), room)
         ptr::copy(dest, source)
         source.len()
     }
@@ -639,9 +650,9 @@ impl<T0> EncodePacked for (T0,)
         self.0.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -658,10 +669,10 @@ impl<T0, T1> EncodePacked for (T0, T1)
         self.1.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -679,11 +690,11 @@ impl<T0, T1, T2> EncodePacked for (T0, T1, T2)
         self.2.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -703,12 +714,12 @@ impl<T0, T1, T2, T3> EncodePacked for (T0, T1, T2, T3)
         self.3.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -730,13 +741,13 @@ impl<T0, T1, T2, T3, T4> EncodePacked for (T0, T1, T2, T3, T4)
         self.4.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -759,14 +770,14 @@ impl<T0, T1, T2, T3, T4, T5> EncodePacked for (T0, T1, T2, T3, T4, T5)
         self.5.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -791,15 +802,15 @@ impl<T0, T1, T2, T3, T4, T5, T6> EncodePacked for (T0, T1, T2, T3, T4, T5, T6)
         self.6.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -825,16 +836,16 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7> EncodePacked for (T0, T1, T2, T3, T4, T5, T
         self.7.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -863,17 +874,17 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8> EncodePacked
         self.8.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -904,18 +915,18 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> EncodePacked
         self.9.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
-        written += self.9.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.9.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -947,19 +958,19 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> EncodePacked
         self.10.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
-        written += self.9.write_packed(ptr::offset_bytes(dest, written))
-        written += self.10.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.9.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.10.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -992,20 +1003,20 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> EncodePacked
         self.11.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
-        written += self.9.write_packed(ptr::offset_bytes(dest, written))
-        written += self.10.write_packed(ptr::offset_bytes(dest, written))
-        written += self.11.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.9.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.10.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.11.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -1041,21 +1052,21 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> EncodePacked
         self.12.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
-        written += self.9.write_packed(ptr::offset_bytes(dest, written))
-        written += self.10.write_packed(ptr::offset_bytes(dest, written))
-        written += self.11.write_packed(ptr::offset_bytes(dest, written))
-        written += self.12.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.9.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.10.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.11.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.12.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -1092,22 +1103,22 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> EncodePacked
         self.13.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
-        written += self.9.write_packed(ptr::offset_bytes(dest, written))
-        written += self.10.write_packed(ptr::offset_bytes(dest, written))
-        written += self.11.write_packed(ptr::offset_bytes(dest, written))
-        written += self.12.write_packed(ptr::offset_bytes(dest, written))
-        written += self.13.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.9.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.10.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.11.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.12.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.13.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -1145,23 +1156,23 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> EncodePack
         self.14.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
-        written += self.9.write_packed(ptr::offset_bytes(dest, written))
-        written += self.10.write_packed(ptr::offset_bytes(dest, written))
-        written += self.11.write_packed(ptr::offset_bytes(dest, written))
-        written += self.12.write_packed(ptr::offset_bytes(dest, written))
-        written += self.13.write_packed(ptr::offset_bytes(dest, written))
-        written += self.14.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.9.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.10.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.11.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.12.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.13.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.14.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
@@ -1201,24 +1212,24 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> Encod
         self.15.pack_into(p)
     }
     #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 {
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
         var written: u256 = 0
-        written += self.0.write_packed(ptr::offset_bytes(dest, written))
-        written += self.1.write_packed(ptr::offset_bytes(dest, written))
-        written += self.2.write_packed(ptr::offset_bytes(dest, written))
-        written += self.3.write_packed(ptr::offset_bytes(dest, written))
-        written += self.4.write_packed(ptr::offset_bytes(dest, written))
-        written += self.5.write_packed(ptr::offset_bytes(dest, written))
-        written += self.6.write_packed(ptr::offset_bytes(dest, written))
-        written += self.7.write_packed(ptr::offset_bytes(dest, written))
-        written += self.8.write_packed(ptr::offset_bytes(dest, written))
-        written += self.9.write_packed(ptr::offset_bytes(dest, written))
-        written += self.10.write_packed(ptr::offset_bytes(dest, written))
-        written += self.11.write_packed(ptr::offset_bytes(dest, written))
-        written += self.12.write_packed(ptr::offset_bytes(dest, written))
-        written += self.13.write_packed(ptr::offset_bytes(dest, written))
-        written += self.14.write_packed(ptr::offset_bytes(dest, written))
-        written += self.15.write_packed(ptr::offset_bytes(dest, written))
+        written += self.0.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.1.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.2.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.3.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.4.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.5.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.6.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.7.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.8.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.9.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.10.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.11.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.12.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.13.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.14.write_packed(ptr::offset_bytes(dest, written), room: room - written)
+        written += self.15.write_packed(ptr::offset_bytes(dest, written), room: room - written)
         written
     }
 }
