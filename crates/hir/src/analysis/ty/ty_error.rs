@@ -8,7 +8,7 @@ use crate::analysis::{
     HirAnalysisDb,
     name_resolution::{
         ExpectedPathKind, PathRes, diagnostics::PathResDiag, resolve_path_with_minter,
-        resolve_path_with_observer_and_minter,
+        resolve_path_with_observer_and_minter, resolve_trait_path_with_observer_and_minter,
     },
     ty::visitor::{TyVisitor, walk_ty},
 };
@@ -395,12 +395,11 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
         // TODO(diags): In the future, refine this to walk only generic args
         // under the trait ref and surface kind/arg mismatches with precise
         // spans when available from semantic lowering.
-        let resolved = resolve_path_with_observer_and_minter(
+        let resolved = resolve_trait_path_with_observer_and_minter(
             self.db,
             path,
             scope,
             self.assumptions,
-            false,
             &mut check_visibility,
             &self.path_context(),
         );

@@ -814,6 +814,70 @@ where
     )
 }
 
+/// Resolves `path` written where a trait is expected.
+///
+/// A trait path can never name an associated type, but an associated type of
+/// an enclosing trait lexically shadows a same-named trait (`trait Abi { type
+/// Decoder: Decoder<Self> }`). A bare ident naming such an associated type is
+/// looked up from outside the shadowing trait instead. This happens before
+/// the path is resolved, since resolving the associated type would reject the
+/// generic args a trait path may carry. Those args are still lowered in
+/// `scope`, so they can reference the trait's own generic params.
+pub(crate) fn resolve_trait_path_with_observer_and_minter<'db, F>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    observer: &mut F,
+    lowering_cx: &LoweringContext<'db>,
+) -> PathResolutionResult<'db, PathRes<'db>>
+where
+    F: FnMut(PathId<'db>, &PathRes<'db>),
+{
+    let shadowed_trait = || {
+        if path.parent(db).is_some() {
+            return None;
+        }
+        let shadow = resolve_ident_to_bucket(db, path, scope)
+            .pick(NameDomain::TYPE)
+            .as_ref()
+            .ok()?;
+        let NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _)) = shadow.kind else {
+            return None;
+        };
+        // The shadow can only come from a trait that encloses the use site.
+        if !scope.is_transitive_child_of(db, shadowing_trait.scope()) {
+            return None;
+        }
+        let outer = resolve_ident_to_bucket(db, path, shadowing_trait.scope().parent(db)?)
+            .pick(NameDomain::TYPE)
+            .as_ref()
+            .ok()?;
+        matches!(
+            outer.kind,
+            NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_)))
+        )
+        .then_some(outer)
+    };
+
+    let Some(nameres) = shadowed_trait() else {
+        return resolve_path_with_observer_and_minter(
+            db,
+            path,
+            scope,
+            assumptions,
+            false,
+            observer,
+            lowering_cx,
+        );
+    };
+    let res =
+        resolve_name_res_with_minter(db, nameres, None, path, scope, assumptions, lowering_cx)?;
+    lowering_cx.record_resolution(path, &res);
+    observer(path, &res);
+    Ok(res)
+}
+
 /// How a path written where a type is expected chooses between the type and
 /// the value its last segment can name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
