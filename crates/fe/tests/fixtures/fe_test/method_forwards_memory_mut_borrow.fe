@@ -21,7 +21,7 @@ pub contract C {
     recv Msg {
         ForwardLocal -> u256 uses (holder) {
             var local = 7
-            let value = forward(holder, mut local)
+            let value = mut forward(holder, mut local)
             value += 5
             value
         }

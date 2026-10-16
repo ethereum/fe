@@ -23,14 +23,14 @@ fn reads_and_writes_by_method() {
 
     xs.at_mut(1) = 5
     xs.at_mut(2) += 10
-    let first = xs.at_mut(0)
+    let first = mut xs.at_mut(0)
     first *= 7
     assert(xs[0] == 7 && xs[1] == 5 && xs[2] == 13)
 
     var counters = [Counter { n: 0 }, Counter { n: 4 }]
     counters.at_mut(1).bump()
     assert(counters[1].n == 5)
-    increment(xs.at_mut(1))
+    increment(mut xs.at_mut(1))
     assert(xs[1] == 6)
 }
 

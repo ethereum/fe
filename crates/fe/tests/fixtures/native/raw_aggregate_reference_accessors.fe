@@ -10,7 +10,7 @@ fn second(_ pointer: *Pair) -> ref u64 { unsafe { ref (*pointer).second } }
 pub fn main() -> i32 {
     let pointer = ptr::alloc<Pair>()
     unsafe { *pointer = Pair { first: 4, second: 2 } }
-    let view = edit(pointer)
+    let view = mut edit(pointer)
     view.first += 1
     core::assert(read(pointer).first == 5)
     core::assert(read_generic(pointer).second == 2)

@@ -32,14 +32,14 @@ impl Cell {
 // the caller uses the grant, then the receiver.
 fn case01_direct() -> u256 {
     var c = Cell { v: 1 }
-    let x = c.direct()
+    let x = mut c.direct()
     x += 1
     c.v
 }
 
 fn case01_slide() -> u256 {
     var c = Cell { v: 1 }
-    let x = c.written_back()
+    let x = mut c.written_back()
     x += 1
     c.v
 }
@@ -48,7 +48,7 @@ fn case01_slide() -> u256 {
 // is open.
 fn case01_direct_conflict() -> u256 {
     var c = Cell { v: 1 }
-    let x = c.direct()
+    let x = mut c.direct()
     let v = c.v
     x += 1
     v
@@ -56,7 +56,7 @@ fn case01_direct_conflict() -> u256 {
 
 fn case01_slide_conflict() -> u256 {
     var c = Cell { v: 1 }
-    let x = c.written_back()
+    let x = mut c.written_back()
     let v = c.v
     x += 1
     v
@@ -69,14 +69,14 @@ fn counter() -> mut u256 {
 
 // 2. Accepted: a no-argument projection yields a mutable local.
 fn case02_session_owned() -> u256 {
-    let c = counter()
+    let c = mut counter()
     c += 1
     c
 }
 
 // 2. Rejected: a view descendant blocks writes through the parent grant.
 fn case02_view_blocks_write() -> u256 {
-    let c = counter()
+    let c = mut counter()
     let r = ref c
     c = 1
     r
@@ -110,7 +110,7 @@ fn inner(_ c: mut Cell) -> mut u256 {
 }
 
 fn outer(_ c: mut Cell) -> mut u256 {
-    let x = inner(mut c)
+    let x = mut inner(mut c)
     yield mut x
     x += 1
 }
@@ -118,7 +118,7 @@ fn outer(_ c: mut Cell) -> mut u256 {
 // 4. Accepted: an outer slide uses the inner grant it retains.
 fn case04_retained_inner_grant() -> u256 {
     var c = Cell { v: 1 }
-    let x = outer(mut c)
+    let x = mut outer(mut c)
     x = 5
     c.v
 }
@@ -127,8 +127,8 @@ fn case04_retained_inner_grant() -> u256 {
 fn case05_out_of_order() -> u256 {
     var p = Cell { v: 1 }
     var q = Cell { v: 2 }
-    let a = p.direct()
-    let b = q.direct()
+    let a = mut p.direct()
+    let b = mut q.direct()
     a = 3
     b = 4
     p.v + q.v
@@ -265,7 +265,7 @@ fn bump_and_ping(_ x: mut u256) uses (call: mut Call) {
 pub contract Case17FrameGrant {
     mut vault: Vault,
     init() uses (mut vault, call: mut Call) {
-        let x = snapshot(mut vault)
+        let x = mut snapshot(mut vault)
         bump_and_ping(mut x)
         x += 1
     }
@@ -338,10 +338,10 @@ fn with_loan() -> ref u256 uses (vault: mut Vault, call: mut Call) {
 pub contract Case22OwnReservation {
     mut value: u256,
     init() uses (mut value, call: mut Call) {
-        let n = ramp_and_slide_call()
+        let n = mut ramp_and_slide_call()
         n += 1
         let first = n
-        let m = through_helper()
+        let m = mut through_helper()
         m += first
         let total = m
         value = total
@@ -438,7 +438,7 @@ pub contract Case33CopyArraySpace {
 pub contract Case33CopyArrayMutSpace {
     mut cells: [u256; 4],
     init() uses (mut cells, call: mut Call) {
-        let x = cells.at_mut(0)
+        let x = mut cells.at_mut(0)
         ping()
         x = 1
     }
@@ -539,7 +539,7 @@ fn bump(_ x: mut u256) {
 // 38. Accepted: writes through an input-rooted `mut` grant, directly and
 // through a helper.
 fn case38_grant_writes(_ p: mut Pair) {
-    let x = first_of(mut p)
+    let x = mut first_of(mut p)
     x += 1
     bump(mut x)
 }
@@ -547,7 +547,7 @@ fn case38_grant_writes(_ p: mut Pair) {
 // 38. Rejected: an independent access to the reserved owner while the grant
 // is live.
 fn case38_owner_access(_ p: mut Pair) {
-    let x = first_of(mut p)
+    let x = mut first_of(mut p)
     p.b = 1
     x += 1
 }

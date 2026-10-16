@@ -48,7 +48,7 @@ impl Holder {
     // Accepted: the export is a reborrow through the inner grant, which the
     // slide uses after the caller's access ends.
     fn reborrowed(mut self) -> mut u256 {
-        let x = self.written_back()
+        let x = mut self.written_back()
         yield mut x
         x += 1
     }

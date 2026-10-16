@@ -33,7 +33,7 @@ fn index_reads_base() -> u256 {
 // Accepted: a temporary receiver is hoisted, then its projection's session
 // opens after the arguments.
 fn temporary_receiver_chain() -> u256 {
-    let value = make().value_mut()
+    let value = mut make().value_mut()
     value
 }
 

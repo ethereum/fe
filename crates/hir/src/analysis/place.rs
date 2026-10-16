@@ -221,11 +221,10 @@ pub fn is_grant_place_expr(
     is_access: &dyn Fn(ExprId) -> bool,
 ) -> bool {
     match expr.data(db, body) {
-        Partial::Present(Expr::Call(..) | Expr::MethodCall(..) | Expr::Bin(_, _, BinOp::Index))
-            if is_access(expr) =>
-        {
-            true
-        }
+        // A `?` on a sum shape grants its payload's access, as the call does.
+        Partial::Present(
+            Expr::Call(..) | Expr::MethodCall(..) | Expr::Bin(_, _, BinOp::Index) | Expr::Try(_),
+        ) if is_access(expr) => true,
         Partial::Present(Expr::Field(base, _) | Expr::Bin(base, _, BinOp::Index)) => {
             is_grant_place_expr(db, body, *base, is_access)
         }

@@ -846,7 +846,8 @@ pub(super) enum AccessBinding {
     /// binding takes a value or an access by `TyChecker::binding_access_kind`.
     Result,
     /// A projection's result bound whole to the single name of a `let`: a
-    /// `mut` result stays the access, as `let x = xs.at_mut(0)`.
+    /// `mut` result of a type with no values stays the access, as
+    /// `let s = buf.span_mut()`.
     LetResult,
 }
 
@@ -3292,10 +3293,10 @@ impl<'db> TyChecker<'db> {
     /// `var x` is a mutable value. A plain name takes a value as `let x = e`
     /// does, except that a type with no value reading (`#[view]` or
     /// state-only) binds a read access, whatever the grant's mode, and a
-    /// `let` binding a `mut` result whole keeps it. A value of a read result
-    /// is a copy, so a non-`Copy`
-    /// one needs `ref`; one of a `mut` result may move, as through any `mut`
-    /// access.
+    /// `let` binding such a `mut` result whole keeps it. A `let` binding a
+    /// `mut` result of any other type whole needs `mut`. A value of a read
+    /// result is a copy, so a non-`Copy` one needs `ref`; one of a `mut`
+    /// result may move, as through any `mut` access.
     fn binding_access_kind(
         &mut self,
         pat: PatId,
@@ -3331,6 +3332,12 @@ impl<'db> TyChecker<'db> {
                 Some(BorrowKind::Ref)
             }
             (AccessBinding::LetResult, BindingMarker::Plain) if kind == BorrowKind::Mut => {
+                if ty.has_value_reading(self.db) {
+                    self.push_diag(BodyDiag::MutBindingRequired {
+                        primary: primary(),
+                        ty,
+                    });
+                }
                 Some(kind)
             }
             (_, BindingMarker::Plain) if !ty.has_value_reading(self.db) => Some(BorrowKind::Ref),

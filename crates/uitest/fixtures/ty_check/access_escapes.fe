@@ -40,7 +40,7 @@ fn field_of(_ holder: mut Holder) -> mut u256 {
 
 fn yields_ok() -> u256 {
     var holder = Holder { value: 1 }
-    let value = field_of(mut holder)
+    let value = mut field_of(mut holder)
     value += 1
     holder.value
 }

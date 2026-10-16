@@ -3767,6 +3767,24 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
+            Self::MutBindingRequired { primary, ty } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut` result needs a `mut` binding".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "this binds a mutable access of `{}` under a plain name",
+                        ty.pretty_print(db)
+                    ),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "a plain `let` binds a value; write `let x = mut …`, or `unsafe { mut … }` for a block's result, to hold the access"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
             Self::MarkedBindingWithoutAccess { primary, marker } => {
                 let (marker, fix) = if *marker {
                     ("mut", "write `var` for a mutable value")

@@ -36,7 +36,7 @@ impl Holder {
     }
 
     fn projection_result(mut self) -> ref u256 {
-        let g = self.a_mut()
+        let g = mut self.a_mut()
         g
     }
 

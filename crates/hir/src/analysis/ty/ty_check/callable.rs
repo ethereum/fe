@@ -638,8 +638,30 @@ impl<'db> Callable<'db> {
                         tc.consume_access(given.expr);
                     }
                 }
+                // A projection's `mut` result is marked `mut` like a place,
+                // unless its type has no values, so the type says it is an
+                // access (`fill(buf.span_mut())`).
+                FuncParamMode::Mut
+                    if access == Some(BorrowKind::Mut)
+                        && (is_receiver
+                            || tc.is_named_access(given.expr)
+                            || !given.expr_prop.ty.has_value_reading(db)) =>
+                {
+                    tc.consume_access(given.expr);
+                }
                 FuncParamMode::Mut if access == Some(BorrowKind::Mut) => {
                     tc.consume_access(given.expr);
+                    tc.push_diag(BodyDiag::ExplicitBorrowRequired {
+                        primary: given.expr_span.clone(),
+                        kind: BorrowKind::Mut,
+                        suggestion: place_borrow_suggestion(
+                            db,
+                            tc.body(),
+                            given.expr,
+                            BorrowKind::Mut,
+                        ),
+                    });
+                    diagnosed = true;
                 }
                 FuncParamMode::Mut if is_receiver && access.is_none() => {
                     if !given.expr_prop.is_mut && tc.env.is_place_expr(given.expr) {
@@ -807,6 +829,28 @@ fn place_expr_hint<'db>(
             let base = place_expr_hint(db, body, *base)?;
             let index = expr_hint(db, body, *index)?;
             Some(format!("{base}[{index}]"))
+        }
+        Partial::Present(Expr::Try(inner)) => {
+            Some(format!("{}?", place_expr_hint(db, body, *inner)?))
+        }
+        Partial::Present(Expr::MethodCall(
+            receiver,
+            Partial::Present(name),
+            generic_args,
+            args,
+        )) if generic_args.is_empty(db) => {
+            let receiver = place_expr_hint(db, body, *receiver)?;
+            let args = args
+                .iter()
+                .map(|arg| {
+                    let value = expr_hint(db, body, arg.expr)?;
+                    Some(match arg.label {
+                        Some(label) => format!("{}: {value}", label.data(db)),
+                        None => value,
+                    })
+                })
+                .collect::<Option<Vec<_>>>()?;
+            Some(format!("{receiver}.{}({})", name.data(db), args.join(", ")))
         }
         _ => None,
     }

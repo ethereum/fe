@@ -90,13 +90,13 @@ fn a_constant_index_through_a_copy_reverts() {
 #[test(should_revert)]
 fn a_constant_index_before_a_slide_reverts() {
     var s = S { arr: [1, 2], log: 0 }
-    let x = s.logged(5)
+    let x = mut s.logged(5)
     x = 3
 }
 
 #[test(should_revert)]
 fn a_constant_index_at_one_of_two_yields_reverts() {
     var s = S { arr: [1, 2], log: 0 }
-    let y = s.either(5, true)
+    let y = mut s.either(5, true)
     y = 7
 }

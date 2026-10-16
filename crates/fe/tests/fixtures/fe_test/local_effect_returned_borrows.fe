@@ -18,7 +18,7 @@ fn view() -> ref Pair uses (pair: Pair) {
 fn writes_through_a_returned_borrow() {
     var count: u256 = 1
     with (mut count) {
-        let r = slot()
+        let r = mut slot()
         r = 5
     }
     assert(count == 5)

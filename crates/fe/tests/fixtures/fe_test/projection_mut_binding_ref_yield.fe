@@ -41,7 +41,7 @@ fn mut_binding_as_ref() {
 fn hole_restored_after_the_yield() {
     var h = Holder { a: 3, b: MemArray::new_zeroed(1) }
     h.b[0] = 9
-    let a = h.a_while_b_held()
+    let a = mut h.a_while_b_held()
     a += 1
     assert(h.a == 4 && h.b[0] == 9)
 }

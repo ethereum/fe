@@ -29,7 +29,7 @@ pub contract C {
         Pick { c } -> u256 uses (mut s) {
             s.a = 1
             s.b = 2
-            let x = s.pick(c)
+            let x = mut s.pick(c)
             x = 42
             s.a as u256 * 1000 + s.b as u256
         }

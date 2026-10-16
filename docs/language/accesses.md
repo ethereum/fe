@@ -14,7 +14,9 @@ fn consume(_ item: own Item) { .. }         // own: the callee takes the value
 ```
 
 A view or `mut` argument is a place of the caller's (`bump(mut counter)`);
-an owned argument is moved, or copied if its type is `Copy`.
+an owned argument is moved, or copied if its type is `Copy`. A projection's
+`mut` result is marked like a place (`bump(mut xs.at_mut(0))`), unless its
+type has no value, as a view's does (`fill(buf.span_mut())`).
 
 A view argument that is a scalar or a handle (an integer, `bool`,
 `Address`, a raw pointer, or any `core::marker::Snapshot` type) is a
@@ -32,9 +34,11 @@ xs[1] = 5        // rejected: `x` views `xs` in place
 
 ## Bindings
 
-`let` binds an immutable value, and `var` a mutable one; neither is ever an
-access. `let h = mut p.x` and `let r = ref p.x` bind an access to a place,
-with the marker on the initializer. An access is open from the binding to
+`let` binds an immutable value, and `var` a mutable one. An access is
+written: `let h = mut p.x` and `let r = ref p.x` bind an access to a place,
+with the marker on the initializer. Only a type with no value, a `#[view]`
+such as `MemSlice` or a state-only type such as a storage collection, binds
+its access under a plain name ([Projections](#projections), [Views](#views)). An access is open from the binding to
 its last use, and while it is open no other access may overlap it unless
 both read: `p.x` cannot be read while `h` is open, nor written while `r` is.
 `let mut x = …` is not Fe: write `var x = …` for a mutable value, or
@@ -104,15 +108,17 @@ A projection's result binds like a place. A plain name takes a value: a
 `ref` result of any other type is an error whose fix is `let v = ref xs[i]`,
 which keeps the access; `(i, ref x)` and `for ref x in xs` do the same for a
 component and an element. Whether a type is `Copy` is decided by the
-body's declared bounds, never by an instance. A `mut` result bound whole by
-`let` stays an access (`let x = xs.at_mut(0)`), since a copy would discard
-the writes the call asks for; `var x = xs.at_mut(0)` copies the element and
-warns, since writes to `x` reach nothing. The components of a `mut` result
+body's declared bounds, never by an instance. A whole `mut` result is bound
+`mut` as well: `let x = mut xs.at_mut(0)` holds the access, and a plain
+`let x = xs.at_mut(0)` is an error, since its value would discard the writes
+the call asks for; `var x = xs.at_mut(0)` copies the element and warns,
+since writes to `x` reach nothing. The components of a `mut` result
 take values as a place's do, so `Some(mut v)` writes through and a plain
-`Some(v)` is an immutable copy. A type with no value reading binds its read
-access under a plain name: a `#[view]` result (`let s = buf.span()`), and a
-state-only one (`let m = store.balances`); `let t = s` reborrows the access
-the same way.
+`Some(v)` is an immutable copy. A type with no value reading binds its
+access under a plain name, `mut` for a whole `mut` result and a read access
+otherwise: a `#[view]` result (`let s = buf.span()` or
+`let s = buf.span_mut()`) and a state-only one (`let m = store.balances`);
+`let t = s` reborrows the access the same way.
 
 Copying a result ends the projection's session at the binding, so its slide
 runs there rather than at the binding's last use.

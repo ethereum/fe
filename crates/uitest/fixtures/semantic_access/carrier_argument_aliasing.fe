@@ -54,7 +54,7 @@ fn effect_alias(_ s: mut State) -> u256 {
 
 // Rejected: a projection's `mut self` and a view argument.
 fn proj_alias(_ b: mut Buf) {
-    let x = b.pick(b)
+    let x = mut b.pick(b)
     x = 1
 }
 
@@ -148,7 +148,7 @@ fn recv_mut_effect(_ p: mut Counter) -> u256 {
 // Rejected: a projection's `mut self` and an effect of the same place.
 fn recv_projection(_ p: mut Counter) {
     with (Counter = p) {
-        let g = p.proj()
+        let g = mut p.proj()
         g += 1
     }
 }
@@ -162,7 +162,7 @@ fn recv_field_effect(_ p: mut Outer) -> u256 {
 
 // Rejected: a projection's grant as the receiver.
 fn recv_grant(_ o: mut Outer) -> u256 {
-    let g = o.get_mut()
+    let g = mut o.get_mut()
     with (Counter = g) {
         g.bump()
     }

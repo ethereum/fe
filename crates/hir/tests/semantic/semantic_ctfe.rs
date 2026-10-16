@@ -1502,7 +1502,7 @@ fn canonicalize_tracks_mutation_through_accesses() {
         ),
         (
             "projection",
-            "let alias = holder.value_mut()\n alias = 1",
+            "let alias = mut holder.value_mut()\n alias = 1",
             "holder.value == 1",
             false,
         ),

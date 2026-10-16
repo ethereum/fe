@@ -36,7 +36,7 @@ pub contract C {
         Run -> u256 uses (mut s, storage: RawStorage) {
             s.a = 1
             s.b = 2
-            let a = s.a_mem()
+            let a = mut s.a_mem()
             a += 5
             read_storage_word(0)
         }

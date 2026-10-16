@@ -678,6 +678,14 @@ pub enum BodyDiag<'db> {
         ty: TyId<'db>,
     },
 
+    /// A plain `let` of a projection's whole `mut` result of a type with
+    /// values: a plain binding takes a value, and a value would discard the
+    /// writes the call asks for, so the access is written `let x = mut …`.
+    MutBindingRequired {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+    },
+
     /// A `ref` or `mut` binding of an owned value, which has no access to
     /// hold. `marker` is `true` for `mut`.
     MarkedBindingWithoutAccess {
@@ -1243,6 +1251,7 @@ impl<'db> BodyDiag<'db> {
             Self::TupleOfAccesses { .. } => 115,
             Self::UnsafeSplitOperand { .. } => 118,
             Self::RefBindingRequired { .. } => 119,
+            Self::MutBindingRequired { .. } => 129,
             Self::MarkedBindingWithoutAccess { .. } => 120,
             Self::MutAccessCopied { .. } => 121,
             Self::VarOfAccess { .. } => 122,

@@ -61,7 +61,7 @@ pub contract Lanes {
         Projection -> u256 uses (mut counts) {
             counts.push(1)
             counts.push(2)
-            let p = pick(mut counts, 1)
+            let p = mut pick(mut counts, 1)
             p += 100
             counts[0] as u256 * 1000 + counts[1] as u256
         }
@@ -69,7 +69,7 @@ pub contract Lanes {
             counts.push(1)
             counts.push(2)
             with (mut counts[0]) {
-                let g = granted()
+                let g = mut granted()
                 g += 5
             }
             counts[0] as u256 * 1000 + counts[1] as u256

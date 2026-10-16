@@ -1,6 +1,6 @@
 ---
 source: crates/uitest/tests/semantic_access.rs
-assertion_line: 25
+assertion_line: 32
 expression: diags
 input_file: fixtures/semantic_access/let_projection_bindings.fe
 ---
@@ -23,7 +23,7 @@ error[16-0001]: access conflict in `fn non_copy`
 error[16-0001]: access conflict in `fn mut_projection`
    ┌─ let_projection_bindings.fe:51:18
    │
-50 │     let word = cell.get_mut()
-   │                -------------- projection opened here
+50 │     let word = mut cell.get_mut()
+   │                    -------------- projection opened here
 51 │     let before = cell.word
    │                  ^^^^^^^^^ cannot read this place while a `mut` projection of it is open

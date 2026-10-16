@@ -27,7 +27,7 @@ struct Probe<T> {
 }
 
 fn place<F>(_ f: own F) -> u256 uses (storage: mut RawStorage) {
-    let probe = unsafe { storage_at_mut<Probe<F>>(0x40) }
+    let probe = unsafe { mut storage_at_mut<Probe<F>>(0x40) }
     probe.f = f
     probe.end = 0xee
     storage_slots<F>()
