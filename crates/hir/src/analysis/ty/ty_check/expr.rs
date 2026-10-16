@@ -1860,6 +1860,7 @@ impl<'db> TyChecker<'db> {
             Some((callee, callee_prop)),
             false,
         );
+        self.refuse_evidence_value_call_args(args);
         callable.process_constraints(self, expr, call_span.callee().into());
         self.check_callable_effects(expr, &mut callable);
         self.finish_call(expr, callable)

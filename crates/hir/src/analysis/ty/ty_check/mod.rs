@@ -1368,6 +1368,7 @@ fn typed_body_for_bodyless_func<'db>(
         path_applications: Vec::new(),
         with_choice_bindings: Vec::new(),
         function_value_choices: Vec::new(),
+        closure_choices: Vec::new(),
         choice_refusals: Vec::new(),
     }
     .into()
@@ -3937,6 +3938,9 @@ mod typed_body_tables {
         /// Function values and the non-ordinary choices they would carry.
         pub(super) function_value_choices:
             Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
+        /// Uses inside closure bodies and the slot choices they read.
+        pub(super) closure_choices:
+            Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
         /// Trait uses refused once their decisions are known.
         pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
     }
@@ -4361,6 +4365,13 @@ impl<'db> TypedBody<'db> {
         &self,
     ) -> &[(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)] {
         &self.tables.function_value_choices
+    }
+
+    /// Uses inside closure bodies and the slot choices they read.
+    pub(crate) fn closure_choices(
+        &self,
+    ) -> &[(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)] {
+        &self.tables.closure_choices
     }
 
     /// Trait uses refused once their decisions are known.
@@ -6026,6 +6037,7 @@ impl<'db> TypedBody<'db> {
             path_applications: Vec::new(),
             with_choice_bindings: Vec::new(),
             function_value_choices: Vec::new(),
+            closure_choices: Vec::new(),
             choice_refusals: Vec::new(),
         }
         .into()

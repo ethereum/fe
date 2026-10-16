@@ -531,7 +531,7 @@ impl<'db> TyChecker<'db> {
             // A mutable place holding evidence was refused where it was bound.
             let refused_place = prop
                 .binding
-                .is_some_and(|binding| self.is_mutable_evidence_place(binding.is_mut(), ty));
+                .is_some_and(|binding| self.is_mutable_evidence_place(&binding, ty));
             if refused_place {
                 self.env.with_choice_bindings.push(value);
                 return Some(false);
@@ -909,11 +909,11 @@ impl<'db> TyChecker<'db> {
     /// Record what an immutable `let` binding of an evidence value means, so
     /// later uses of the binding read it instead of re-deriving it.
     pub(super) fn record_binding_choice(&mut self, pat: PatId, init: ExprId, prop: &ExprProp<'db>) {
-        let Some(LocalBinding::Local { pat, is_mut }) = self.env.pat_binding(pat) else {
+        let Some(binding @ LocalBinding::Local { pat, .. }) = self.env.pat_binding(pat) else {
             return;
         };
         let ty = self.resolved_ty(prop.ty);
-        if self.is_mutable_evidence_place(is_mut, ty) {
+        if self.is_mutable_evidence_place(&binding, ty) {
             // No mutable place holds evidence, in a field or not (RD121).
             self.push_diag(BodyDiag::EvidenceMutableStorage {
                 primary: pat.span(self.body()).into(),
@@ -924,11 +924,8 @@ impl<'db> TyChecker<'db> {
         if evidence_goal(self.db, self.env.scope(), ty).is_none() {
             return;
         }
-        let choice = if is_mut {
-            Err(SourceError::Reported)
-        } else {
-            self.denote_evidence(init, prop)
-        };
+        // A mutable binding of evidence was refused above.
+        let choice = self.denote_evidence(init, prop);
         self.env.set_binding_choice(pat, choice);
     }
 
@@ -938,10 +935,7 @@ impl<'db> TyChecker<'db> {
     pub(super) fn refuse_evidence_params(&mut self) {
         let params = self.env.params().to_vec();
         for binding in params {
-            let LocalBinding::Param {
-                ty, is_mut, site, ..
-            } = binding
-            else {
+            let LocalBinding::Param { ty, site, .. } = binding else {
                 continue;
             };
             if !self.holds_evidence(ty) {
@@ -950,7 +944,7 @@ impl<'db> TyChecker<'db> {
             let primary = binding.def_span(&self.env);
             if matches!(site, ParamSite::ContractInit(_)) {
                 self.push_diag(BodyDiag::EvidenceChoiceNotCompileTime { primary });
-            } else if self.is_mutable_evidence_place(is_mut, ty) {
+            } else if self.is_mutable_evidence_place(&binding, ty) {
                 self.push_diag(BodyDiag::EvidenceMutableStorage { primary });
             }
         }
@@ -988,14 +982,41 @@ impl<'db> TyChecker<'db> {
     }
 
     /// The one rule for mutable evidence places (RD121): a mutable binding
-    /// of a value that holds evidence, or a mutable borrow of one.
-    fn is_mutable_evidence_place(&self, is_mut: bool, ty: TyId<'db>) -> bool {
-        (is_mut && self.holds_evidence(ty))
+    /// or a mutable access (a `mut` parameter, `let x = mut p`) of a value
+    /// that holds evidence, or a mutable borrow of one.
+    fn is_mutable_evidence_place(&self, binding: &LocalBinding<'db>, ty: TyId<'db>) -> bool {
+        let mutable = binding.is_mut()
+            || self
+                .env
+                .binding_access(binding)
+                .is_some_and(|access| access.is_mut());
+        (mutable && self.holds_evidence(ty))
             || matches!(
                 ty.as_capability(self.db),
                 Some((crate::analysis::ty::ty_def::CapabilityKind::Mut, inner))
                     if self.holds_evidence(inner)
             )
+    }
+
+    /// A call of a callable value (a closure, or a function reached through
+    /// a block) runs a body that receives no decisions from the call: an
+    /// argument that holds evidence is refused, not delivered.
+    pub(super) fn refuse_evidence_value_call_args(
+        &mut self,
+        args: &[crate::hir_def::CallArg<'db>],
+    ) {
+        for arg in args {
+            let Some(prop) = self.env.typed_expr(arg.expr) else {
+                continue;
+            };
+            let ty = self.resolved_ty(prop.ty);
+            if self.holds_evidence(ty) {
+                self.push_diag(BodyDiag::ObligationOpening {
+                    primary: arg.expr.span(self.body()).into(),
+                    reason: "evidence cannot be passed to a callable value yet; call the function by name",
+                });
+            }
+        }
     }
 
     /// Denote the evidence arguments of a call, in parameter order.
@@ -1557,6 +1578,45 @@ impl<'db> TyCheckEnv<'db> {
                 Err(refusal) => self.choice_refusals.push((expr, refusal)),
             }
         }
+        // A closure's body runs as its own instance, which receives none of
+        // its enclosing function's slots. The slot choices its uses read are
+        // recorded: a bound it reads is treated as reached, so no caller may
+        // deliver an opened choice into it, and an evidence choice it reads
+        // is refused (`check_choice_uses`).
+        let closure_uses = self
+            .closure_exprs
+            .iter()
+            .filter_map(|(expr, inside)| inside.then_some(expr))
+            .collect::<Vec<_>>();
+        for expr in closure_uses {
+            let mut read: Vec<Choice<'db>> = Vec::new();
+            if let Some(SemanticExprLowering::Call { callable }) =
+                self.semantic_expr_lowering[expr].as_ref()
+            {
+                read.extend(callable.choice());
+                read.extend(callable.delivered().iter().map(|(_, choice)| *choice));
+            }
+            let delivered = match self.const_refs[expr] {
+                Some(ConstRef::TraitConst(use_)) => {
+                    read.extend(use_.choice());
+                    use_.delivered()
+                }
+                Some(ConstRef::InherentConst(use_)) => use_.delivered(),
+                _ => None,
+            };
+            if let Some(list) = delivered {
+                read.extend(list.items(db).iter().map(|(_, choice)| *choice));
+            }
+            let mut slots = Vec::new();
+            for choice in read {
+                if matches!(choice, Choice::Slot(_)) && !slots.contains(&choice) {
+                    slots.push(choice);
+                }
+            }
+            if !slots.is_empty() {
+                self.closure_choices.push((expr, slots));
+            }
+        }
     }
 
     /// A trait constant use with its decisions: its own slot's, and one for
@@ -1732,7 +1792,11 @@ pub(super) fn own_type_reads<'db>(
             note(goal, false);
         }
     }
-    for (_, captured) in typed.function_value_choices() {
+    for (_, captured) in typed
+        .function_value_choices()
+        .iter()
+        .chain(typed.closure_choices())
+    {
         for choice in captured {
             if let Choice::Slot(SlotRef::Bound(goal)) = choice {
                 note(*goal, false);
@@ -1783,6 +1847,20 @@ pub(super) fn check_choice_uses<'db>(
             }
             .into(),
         );
+    }
+    for (expr, read) in typed.closure_choices() {
+        if read
+            .iter()
+            .any(|choice| !matches!(choice, Choice::Slot(SlotRef::Bound(_))))
+        {
+            diags.push(
+                BodyDiag::ObligationOpening {
+                    primary: expr.span(body).into(),
+                    reason: "a closure cannot read an evidence choice of its enclosing function yet",
+                }
+                .into(),
+            );
+        }
     }
     for (expr, captured) in typed.function_value_choices() {
         if captured

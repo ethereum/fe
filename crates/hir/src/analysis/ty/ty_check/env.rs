@@ -148,6 +148,10 @@ pub(crate) struct TyCheckEnv<'db> {
     pub(super) with_choice_bindings: Vec<ExprId>,
     /// Function values and the non-ordinary choices they would carry.
     pub(super) function_value_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
+    /// Expressions checked inside a closure's body.
+    pub(super) closure_exprs: SecondaryMap<ExprId, bool>,
+    /// Uses inside closure bodies and the slot choices they read.
+    pub(super) closure_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
     /// Trait uses refused once their decisions are known.
     pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
 }
@@ -268,6 +272,8 @@ impl<'db> TyCheckEnv<'db> {
             binding_choices: SecondaryMap::new(),
             with_choice_bindings: Vec::new(),
             function_value_choices: Vec::new(),
+            closure_exprs: SecondaryMap::new(),
+            closure_choices: Vec::new(),
             choice_refusals: Vec::new(),
         };
 
@@ -1279,6 +1285,9 @@ impl<'db> TyCheckEnv<'db> {
         if let Some(frame) = self.choice_frames.current() {
             self.use_frames[expr] = Some(frame);
         }
+        if self.in_closure() {
+            self.closure_exprs[expr] = true;
+        }
     }
 
     pub(super) fn db(&self) -> &'db dyn HirAnalysisDb {
@@ -1560,6 +1569,7 @@ impl<'db> TyCheckEnv<'db> {
             path_applications: self.path_applications,
             with_choice_bindings: self.with_choice_bindings,
             function_value_choices: self.function_value_choices,
+            closure_choices: self.closure_choices,
             choice_refusals: self.choice_refusals,
         }
         .into()

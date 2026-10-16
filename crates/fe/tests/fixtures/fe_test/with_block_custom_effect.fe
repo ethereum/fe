@@ -34,8 +34,8 @@ fn test_with_temp_block_custom_effect() {
 
 #[test]
 fn test_nested_with_restores_outer_provider() {
-    let mut outer = Counter { value: 1 }
-    let mut inner = Counter { value: 100 }
+    var outer = Counter { value: 1 }
+    var inner = Counter { value: 100 }
 
     with (Counter = outer) {
         inc()
