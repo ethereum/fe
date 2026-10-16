@@ -60,15 +60,15 @@ pub contract Spaces {
 
     recv Use {
         Go uses (mut written_back, mut direct, mut holder) {
-            let a = written_back.slot()
+            let a = mut written_back.slot()
             a += 1
-            let b = direct.slot()
+            let b = mut direct.slot()
             b += 1
-            let c = holder.own_place()
+            let c = mut holder.own_place()
             c += 1
             let (_, mut d) = holder.frame()
             d += 1
-            let e = holder.mislabeled()
+            let e = mut holder.mislabeled()
             e += 1
         }
     }

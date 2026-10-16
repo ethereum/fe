@@ -177,8 +177,6 @@ impl<'db> TyChecker<'db> {
             };
             if prop.shape.is_some() {
                 self.bind_pattern_source(*pat, *expr, &prop, true);
-            } else if self.pattern_binds_any(*pat) {
-                self.record_implicit_move_for_owned_expr(*expr, prop.ty);
             }
             if let Some(else_) = else_ {
                 let else_ty = self
@@ -325,12 +323,6 @@ impl<'db> TyChecker<'db> {
                         .is_some()
                 {
                     plan.item = ForLoopItem::Access(BorrowKind::Ref);
-                }
-                // A producer advances its own copy of the driver.
-                if let Some(driver) = plan.driver
-                    && plan.item == ForLoopItem::Produced
-                {
-                    self.record_implicit_move_for_owned_expr_inner(driver, None);
                 }
                 let pattern_shape = plan.pattern_shape().clone();
                 self.check_pat(*pat, pattern_shape.erased_ty(self.db));
@@ -775,11 +767,11 @@ impl<'db> TyChecker<'db> {
             };
 
             self.push_diag(diag);
-        } else if ret_ty_ok && let Some(expr) = returned_expr {
-            match self.projection_shape.clone() {
-                Some(shape) => self.check_yield_site(expr, &shape),
-                None => self.record_implicit_move_for_owned_expr(expr, self.expected),
-            }
+        } else if ret_ty_ok
+            && let Some(expr) = returned_expr
+            && let Some(shape) = self.projection_shape.clone()
+        {
+            self.check_yield_site(expr, &shape);
         }
 
         if ret_ty_ok

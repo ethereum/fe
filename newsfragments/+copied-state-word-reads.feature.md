@@ -1,1 +1,0 @@
-Added `std::evm::read_storage_word` and `std::evm::read_transient_word`, safe reads that copy one word from any persistent or transient slot, including declared contract state. They need only shared `RawStorage` authority, and the access checker rejects them while a mutable access of contract state is open.

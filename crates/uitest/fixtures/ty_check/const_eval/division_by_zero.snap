@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/const_eval/division_by_zero.fe
 ---
-error[3-0069]: division by zero in const context
+error[3-0071]: division by zero in const context
   ┌─ division_by_zero.fe:5:18
   │
 2 │     1 / 0

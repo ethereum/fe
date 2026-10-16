@@ -1,7 +1,7 @@
 // An encoding writes through an `AbiFrame`, which checks every write against
 // the sizes `AbiSize` reported. An encoding that disagrees with them panics
 // instead of writing past its frame.
-use core::abi::{AbiFrame, AbiSize, Encode, encode_alloc}
+use core::abi::{AbiFrame, AbiSize, Encode, encode_alloc, encode_field}
 use std::abi::{Bytes, Sol}
 
 // Reports one word but writes two.
@@ -51,6 +51,25 @@ impl Encode<Sol> for Sparse {
     }
 }
 
+// Reports a payload with no room after its head for its field's tail.
+struct ShortTails {}
+
+impl AbiSize for ShortTails {
+    const HEAD_SIZE: u256 = 32
+    const IS_DYNAMIC: bool = true
+
+    fn payload_size(self) -> u256 {
+        32
+    }
+}
+
+impl Encode<Sol> for ShortTails {
+    fn encode(own self, _ out: AbiFrame) {
+        let bytes = Bytes::from_word_prefix(word: 0xaa << 248, len: 1)
+        let _ = encode_field<Sol, Bytes>(bytes, out, head_pos: 0, tails: out.tail(32))
+    }
+}
+
 #[test]
 fn writes_within_the_frame() {
     let buffer = encode_alloc<Sol, (u256, Sparse, u256)>((1, Sparse {}, 2))
@@ -76,4 +95,10 @@ fn writing_past_a_field_panics() {
 #[test(should_revert, selector = 0x4e487b71)]
 fn writing_past_a_tail_panics() {
     let _ = encode_alloc<Sol, (u256, Undersized)>((1, Undersized {}))
+}
+
+// A field's tail must fit in what earlier tails left of the frame.
+#[test(should_revert, selector = 0x4e487b71)]
+fn a_tail_past_the_frame_panics() {
+    let _ = encode_alloc<Sol, ShortTails>(ShortTails {})
 }

@@ -190,6 +190,16 @@ pub enum ContractLayoutError<'db> {
     PersistentUnderTransient {
         collection: TyId<'db>,
     },
+    /// A type whose all-zero representation is not a value, which a state
+    /// space holds until it is written.
+    ZeroInvalidInState {
+        invalid: TyId<'db>,
+    },
+    /// A collection entry type that cannot be laid out, for `reason`.
+    EntryLayout {
+        entry: TyId<'db>,
+        reason: &'static str,
+    },
 }
 
 impl ContractLayoutError<'_> {
@@ -211,6 +221,8 @@ impl ContractLayoutError<'_> {
             Self::PersistentUnderTransient { .. } => {
                 "a persistent collection lies in transient storage"
             }
+            Self::ZeroInvalidInState { .. } => "contract state holds a type zero is no value of",
+            Self::EntryLayout { .. } => "a collection entry cannot be laid out",
         }
     }
 }
@@ -411,8 +423,6 @@ impl<'db> WalkOutput<'db> {
 struct FieldWalker<'db> {
     db: &'db dyn HirAnalysisDb,
     errors: Vec<ContractLayoutError<'db>>,
-    /// The spaces the pinned types walked are pinned to.
-    content_spaces: Vec<AddressSpace>,
 }
 
 impl<'db> FieldWalker<'db> {
@@ -488,6 +498,27 @@ impl<'db> FieldWalker<'db> {
                 })
                 .collect();
             self.walk_sequence(items, path, dimensions, true)
+        } else if ty.as_closure(self.db).is_some() {
+            // A closure lies in storage as a product of its captures, as MIR
+            // stores it.
+            let source_captures = source.field_types(self.db);
+            let captures = ty.field_types(self.db);
+            if source.as_closure(self.db).is_none() || captures.len() != source_captures.len() {
+                self.push_error(ContractLayoutError::IncompleteAdtLayoutProjection { ty });
+                return WalkOutput::empty();
+            }
+            let items = captures
+                .into_iter()
+                .zip(source_captures)
+                .enumerate()
+                .map(|(idx, (capture, source_capture))| {
+                    (
+                        ConcreteTypeView::new(capture, source_capture),
+                        ContractLayoutPathSegment::TupleElement(idx as u32),
+                    )
+                })
+                .collect();
+            self.walk_sequence(items, path, dimensions, true)
         } else if ty.is_array(self.db) {
             self.walk_array(views, path, dimensions)
         } else if let Some(adt) = ty.adt_def(self.db) {
@@ -496,10 +527,7 @@ impl<'db> FieldWalker<'db> {
             // rather than by the slots its private fields take. It takes whole
             // slots, at least one even without fields: its root number derives
             // its region, so siblings need distinct ones.
-            if let Some(space) = ty.pin(self.db) {
-                if !self.content_spaces.contains(&space) {
-                    self.content_spaces.push(space);
-                }
+            if ty.pin(self.db).is_some() {
                 WalkOutput {
                     span: output.span.max(1),
                     ..WalkOutput::leaf(
@@ -625,7 +653,15 @@ impl<'db> FieldWalker<'db> {
         }
         let element = ConcreteTypeView::new(args[0], source_args[0]);
         let len = match demand_concrete_array_length(self.db, args[1], source_args[1]) {
-            Ok(len) => len.and_then(|len| len.to_usize()),
+            Ok(None) => None,
+            Ok(Some(len)) => {
+                // A length the layout cannot count.
+                let Some(len) = len.to_usize() else {
+                    self.push_error(ContractLayoutError::LayoutExtentOverflow);
+                    return WalkOutput::empty();
+                };
+                Some(len)
+            }
             Err(ConcreteArrayLengthError::Invalid(cause)) => {
                 self.push_error(ContractLayoutError::InvalidConcreteArrayLength {
                     invalid: TyId::invalid(self.db, cause),
@@ -871,7 +907,6 @@ fn collect_field_plan<'db>(
     let mut walker = FieldWalker {
         db,
         errors: Vec::new(),
-        content_spaces: Vec::new(),
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(declared), &[], &[]);
     // Every contract field outlives the call: code-backed ones too.
@@ -879,6 +914,19 @@ fn collect_field_plan<'db>(
         && let Some(pointer) = call_pointer_in_state(db, scope, declared)
     {
         walker.push_error(ContractLayoutError::CallPointerInState { pointer });
+    }
+    if walker.errors.is_empty()
+        && let Some(invalid) = zero_invalid_in_state(db, scope, declared)
+    {
+        walker.push_error(ContractLayoutError::ZeroInvalidInState { invalid });
+    }
+    if walker.errors.is_empty()
+        && let Some((entry, error)) = entry_layout_error(db, scope, declared)
+    {
+        walker.push_error(ContractLayoutError::EntryLayout {
+            entry,
+            reason: error.summary(),
+        });
     }
     if walker.errors.is_empty()
         && address_space == AddressSpace::Storage
@@ -891,7 +939,9 @@ fn collect_field_plan<'db>(
     }
     // The field takes its numbers in its own space only when some part of
     // it lies outside a pinned type: a `TSlot` field leaves its storage
-    // number free.
+    // number free. It takes them in every space its parts and its
+    // collections' entries are pinned to, since each roots there at its
+    // number.
     let mut spaces = Vec::new();
     if output
         .leaves
@@ -900,7 +950,7 @@ fn collect_field_plan<'db>(
     {
         spaces.push(address_space);
     }
-    for space in walker.content_spaces {
+    for space in state_spaces(db, scope, declared) {
         if !spaces.contains(&space) {
             spaces.push(space);
         }
@@ -925,16 +975,21 @@ fn collect_field_plan<'db>(
 }
 
 /// The slots a value of `ty` takes in storage, as the layout places a
-/// contract field of its type, or `None` when `ty` has no storage layout.
+/// contract field of its type, or why `ty` has no storage layout.
 #[salsa::tracked]
-pub(crate) fn storage_slot_span<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<usize> {
+pub(crate) fn storage_slot_span<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+) -> Result<usize, ContractLayoutError<'db>> {
     let mut walker = FieldWalker {
         db,
         errors: Vec::new(),
-        content_spaces: Vec::new(),
     };
     let output = walker.walk_ty(ConcreteTypeView::identity(ty), &[], &[]);
-    walker.errors.is_empty().then_some(output.span)
+    match walker.errors.into_iter().next() {
+        Some(error) => Err(error),
+        None => Ok(output.span),
+    }
 }
 
 /// Which fields of struct or tuple `ty` are lanes where a value of `ty` lies
@@ -949,7 +1004,6 @@ pub(crate) fn storage_field_lanes<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>
     let mut walker = FieldWalker {
         db,
         errors: Vec::new(),
-        content_spaces: Vec::new(),
     };
     let shapes: Vec<_> = ty
         .field_types(db)
@@ -1011,6 +1065,8 @@ fn state_parts<'db>(
                 .copied()
                 .filter(|arg| !matches!(arg.data(db), TyData::ConstTy(_))),
         );
+    } else if ty.as_closure(db).is_some() {
+        parts.extend(ty.field_types(db));
     }
     parts
         .into_iter()
@@ -1049,6 +1105,38 @@ fn persistent_under_transient<'db>(
     walk(db, scope, ty, false, 0, &mut FxHashSet::default())
 }
 
+/// The state spaces a value of `ty` has parts pinned to, in its own slots or
+/// in a collection's entries.
+fn state_spaces<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Vec<AddressSpace> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        depth: usize,
+        seen: &mut FxHashSet<TyId<'db>>,
+        spaces: &mut Vec<AddressSpace>,
+    ) {
+        if depth > MAX_STATE_NESTING || !seen.insert(ty) {
+            return;
+        }
+        if let Some(space) = pinned_space(db, scope, PredicateListId::empty_list(db), ty)
+            && !spaces.contains(&space)
+        {
+            spaces.push(space);
+        }
+        for part in state_parts(db, scope, ty) {
+            walk(db, scope, part, depth + 1, seen, spaces);
+        }
+    }
+    let mut spaces = Vec::new();
+    walk(db, scope, ty, 0, &mut FxHashSet::default(), &mut spaces);
+    spaces
+}
+
 /// The first memory or calldata pointer a value of `ty` keeps in state, in
 /// its own slots or in a collection's entries: it would outlive the
 /// allocation or the call it points into.
@@ -1072,6 +1160,67 @@ fn call_pointer_in_state<'db>(
             Some((_, AddressSpace::Memory | AddressSpace::Calldata))
         ) {
             return Some(ty);
+        }
+        state_parts(db, scope, ty)
+            .into_iter()
+            .find_map(|part| walk(db, scope, part, depth + 1, seen))
+    }
+    walk(db, scope, ty, 0, &mut FxHashSet::default())
+}
+
+/// The first type a value of `ty` holds in state, in its own slots or in a
+/// collection's entries, whose all-zero representation is not a value: one
+/// with `unsafe` fields. A state space starts zeroed, so a slot no one wrote
+/// would read as such a value.
+fn zero_invalid_in_state<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<TyId<'db>> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        depth: usize,
+        seen: &mut FxHashSet<TyId<'db>>,
+    ) -> Option<TyId<'db>> {
+        if depth > MAX_STATE_NESTING || !seen.insert(ty) {
+            return None;
+        }
+        if ty.adt_def(db).is_some_and(|adt| adt.has_unsafe_field(db)) {
+            return Some(ty);
+        }
+        state_parts(db, scope, ty)
+            .into_iter()
+            .find_map(|part| walk(db, scope, part, depth + 1, seen))
+    }
+    walk(db, scope, ty, 0, &mut FxHashSet::default())
+}
+
+/// The first collection entry type a value of `ty` holds in state that has no
+/// storage layout, with why: an entry is laid out like a field, at the slots
+/// its collection locates.
+fn entry_layout_error<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<(TyId<'db>, ContractLayoutError<'db>)> {
+    fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        ty: TyId<'db>,
+        depth: usize,
+        seen: &mut FxHashSet<TyId<'db>>,
+    ) -> Option<(TyId<'db>, ContractLayoutError<'db>)> {
+        if depth > MAX_STATE_NESTING || !seen.insert(ty) {
+            return None;
+        }
+        let assumptions = PredicateListId::empty_list(db);
+        if let Some((_, entry)) = state_index_tys(db, scope, ty, assumptions) {
+            let entry = normalize_ty(db, entry, scope, assumptions);
+            if let Err(error) = storage_slot_span(db, entry) {
+                return Some((entry, error));
+            }
         }
         state_parts(db, scope, ty)
             .into_iter()

@@ -704,6 +704,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     if self.is_terminated(self.current) {
                         false
                     } else {
+                        // The arm's value passes to the join, which takes it.
+                        let arm_value = self.take_operand(arm.body, arm_value);
                         self.push_synthetic_stmt(SStmtKind::Assign {
                             dst: result,
                             expr: SExpr::Forward(SOperand::expr(arm_value, arm.body)),

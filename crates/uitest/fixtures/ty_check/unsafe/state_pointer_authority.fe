@@ -1,5 +1,5 @@
 use core::ptr
-use std::evm::{RawStorage, StorPtr, TStorPtr}
+use std::evm::{RawStorage, StorPtr, TStorPtr, storage_at_mut}
 
 fn bump() uses (value: mut u256) {
     value += 1
@@ -53,4 +53,26 @@ fn memory(_ p: *u256) {
 // Rejected inside an `unsafe fn` too.
 unsafe fn unsafe_hidden(_ p: StorPtr<u256>) -> u256 {
     *p
+}
+
+fn apply<F: Fn()>(_ f: F) uses F::E {
+    f()
+}
+
+// Rejected: a closure takes none of the enclosing function's authority; its
+// own row gives it none.
+fn closure_deref() uses (storage: mut RawStorage) {
+    apply(|| unsafe { *(0 as u256 as StorPtr<u256>) = 9 })
+}
+
+fn closure_captured_pointer() uses (storage: mut RawStorage) {
+    let p = 0 as u256 as StorPtr<u256>
+    let f = || unsafe { *p = 9 }
+    f()
+}
+
+// Accepted: `storage_at_mut` puts `storage: mut RawStorage` in the closure's
+// row, which its caller provides.
+fn closure_storage_at() uses (storage: mut RawStorage) {
+    apply(|| unsafe { storage_at_mut<u256>(0) = 9 })
 }

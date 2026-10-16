@@ -154,6 +154,12 @@ fn children<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'db>> {
         fn visit_ty(&mut self, ty: TyId<'db>) {
             self.children.push(ty);
         }
+        // An application is one type with its constructor: `(A, B)` is made
+        // of `A` and `B`, not of `(A,)` applied to `B`.
+        fn visit_app(&mut self, abs: TyId<'db>, arg: TyId<'db>) {
+            walk_ty(self, abs);
+            self.children.push(arg);
+        }
     }
     let mut children = Children {
         db,

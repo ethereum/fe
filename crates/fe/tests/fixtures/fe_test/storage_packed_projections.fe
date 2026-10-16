@@ -42,7 +42,7 @@ impl Me for u8 {
 }
 
 fn set_b() uses (pair: mut Pair) {
-    let b = pair.b_mut()
+    let b = mut pair.b_mut()
     b = 0x2a
 }
 
@@ -52,17 +52,17 @@ fn b() -> u8 uses (pair: Pair) {
 }
 
 fn set_generic_b() uses (pair: mut Generic<u8>) {
-    let b = pair.b_mut()
+    let b = mut pair.b_mut()
     b = 0x2a
 }
 
 fn set_element_b() uses (pairs: mut Pairs) {
-    let b = pairs.b_mut(1)
+    let b = mut pairs.b_mut(1)
     b = 0x2a
 }
 
 fn set_b_through_receiver() uses (pair: mut Pair) {
-    let b = pair.b.me()
+    let b = mut pair.b.me()
     b = 0x2a
 }
 

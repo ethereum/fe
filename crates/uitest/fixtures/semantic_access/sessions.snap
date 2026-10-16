@@ -1,6 +1,6 @@
 ---
 source: crates/uitest/tests/semantic_access.rs
-assertion_line: 25
+assertion_line: 32
 expression: diags
 input_file: fixtures/semantic_access/sessions.fe
 ---
@@ -15,18 +15,18 @@ error[16-0001]: access conflict in `fn aliased`
 error[16-0001]: access conflict in `fn receiver_used_during_session`
    ┌─ sessions.fe:41:13
    │
-40 │     let a = p.a_mut()
-   │             - access opened here
+40 │     let a = mut p.a_mut()
+   │                 - access opened here
 41 │     let b = p.b
    │             ^^^ cannot read this place while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn opaque_sub_places`
-   ┌─ sessions.fe:51:13
+   ┌─ sessions.fe:51:17
    │
-50 │     let a = p.a_mut()
-   │             - access opened here
-51 │     let b = p.b_mut()
-   │             ^ cannot mutably access this place while a `mut` access of it is open
+50 │     let a = mut p.a_mut()
+   │                 - access opened here
+51 │     let b = mut p.b_mut()
+   │                 ^ cannot mutably access this place while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn view_of_grant_blocks_write`
     ┌─ sessions.fe:111:5

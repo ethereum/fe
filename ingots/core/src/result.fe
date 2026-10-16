@@ -9,8 +9,8 @@ use ingot::panic_with_value
 
 #[must_use]
 pub enum Result<E, T> {
-    Err(E),
     Ok(T),
+    Err(E),
 }
 
 impl<E, T> ingot::marker::Copy for Result<E, T>

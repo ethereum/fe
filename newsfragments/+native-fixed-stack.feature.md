@@ -1,1 +1,0 @@
-Added `std::native::FixedStack<T, CAPACITY>`, a fixed-capacity stack for native builds: `try_new` and `try_push` report a failed allocation or a full stack instead of aborting, `top_mut` gives mutable access to the top element while the stack stays reserved, `pop` moves the top element out, and `release` frees the emptied stack.

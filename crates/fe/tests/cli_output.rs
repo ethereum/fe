@@ -3647,6 +3647,21 @@ fn test_cli_test_dependency_inherent_const() {
 }
 
 #[test]
+fn test_cli_test_dependency_blanket_pin() {
+    // A dependency's blanket `Pinned` implementation pins only the types its
+    // bound admits, not every type of a downstream ingot.
+    let fixture_dir = fe_test_runner_fixture_dir("dependency_blanket_pin");
+    let fixture_dir_str = fixture_dir.to_str().expect("fixture dir utf8");
+
+    let (output, exit_code) = run_fe_main(&["test", "--jobs", "1", fixture_dir_str]);
+    assert_eq!(exit_code, 0, "fe test failed:\n{output}");
+    assert!(
+        output.contains("plain_type_is_a_memory_value") && output.contains("1 passed"),
+        "expected the downstream plain type to stay a memory value, got:\n{output}"
+    );
+}
+
+#[test]
 fn test_cli_test_dependency_arithmetic_override() {
     let fixture_dir = fe_test_runner_fixture_dir("dependency_arithmetic_override");
     let fixture_dir_str = fixture_dir.to_str().expect("fixture dir utf8");

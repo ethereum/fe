@@ -367,9 +367,9 @@ Root@0..754
         Newline@412..413 "\n"
         ImplItemList@413..600
           LBrace@413..414 "{"
-          Func@414..598
-            Newline@414..415 "\n"
-            WhiteSpace@415..419 "    "
+          Newline@414..415 "\n"
+          WhiteSpace@415..419 "    "
+          Func@419..598
             PubKw@419..422 "pub"
             WhiteSpace@422..423 " "
             FnKw@423..425 "fn"

@@ -840,7 +840,11 @@ pub trait Super: Ctx + RawOps + Log + Create + Call {}
 struct Private {}
 
 /// Default EVM effect provider (zero-sized).
-pub struct Evm { seal: Private }
+///
+/// Its seal is an `unsafe` field: an `Evm` is the authority the runtime
+/// grants, which safe code cannot establish, so no zeroed or stored value
+/// stands in for one.
+pub struct Evm { unsafe seal: Private }
 
 impl EvmCapabilitySeal for Evm {}
 

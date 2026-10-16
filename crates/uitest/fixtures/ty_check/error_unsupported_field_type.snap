@@ -13,9 +13,9 @@ error[6-0003]: trait bound is not satisfied
   7 │ │ }
     │ ╰─^ `Opaque` doesn't implement `AbiSize`
     │
-    ┌─ src/abi.fe:357:32
+    ┌─ src/abi.fe:371:32
     │
-357 │ pub fn dynamic_payload_size<T: AbiSize>(_ value: T) -> u256 {
+371 │ pub fn dynamic_payload_size<T: AbiSize>(_ value: T) -> u256 {
     │                                ------- required by this bound on `dynamic_payload_size`
 
 error[6-0003]: trait bound is not satisfied
@@ -27,10 +27,10 @@ error[6-0003]: trait bound is not satisfied
   7 │ │ }
     │ ╰─^ `Opaque` doesn't implement `Encode<Sol>`
     │
-    ┌─ src/abi.fe:450:14
+    ┌─ src/abi.fe:468:14
     │
-450 │     where T: Encode<A> + AbiSize
-    │              --------- required by this bound on `encode_field_at`
+468 │     where T: Encode<A> + AbiSize
+    │              --------- required by this bound on `encode_field`
 
 error[6-0003]: trait bound is not satisfied
     ┌─ error_unsupported_field_type.fe:4:1
@@ -41,7 +41,7 @@ error[6-0003]: trait bound is not satisfied
   7 │ │ }
     │ ╰─^ `Opaque` doesn't implement `AbiSize`
     │
-    ┌─ src/abi.fe:450:26
+    ┌─ src/abi.fe:468:26
     │
-450 │     where T: Encode<A> + AbiSize
-    │                          ------- required by this bound on `encode_field_at`
+468 │     where T: Encode<A> + AbiSize
+    │                          ------- required by this bound on `encode_field`

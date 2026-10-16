@@ -19,9 +19,9 @@ error[8-0018]: left-hand side of assignment is immutable
    │     ^ immutable assignment
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ mutability_variants.fe:13:13
+   ┌─ mutability_variants.fe:13:17
    │
 12 │     let xs: [u256; 2] = [1, 2]
    │         -- `xs` does not provide mutable access
-13 │     let x = xs.at_mut(0)
-   │             ^^ cannot borrow as `mut`
+13 │     let x = mut xs.at_mut(0)
+   │                 ^^ cannot borrow as `mut`

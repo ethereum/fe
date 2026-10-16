@@ -7,8 +7,8 @@ input_file: crates/codegen/tests/fixtures/for_array.fe
 target = "evm-ethereum-osaka"
 
 type @layout_0 = enum {
-    #variant_0(i256),
-    #variant_1,
+    #variant_0,
+    #variant_1(i256),
 };
 
 global private const [i64; 25] $const_region_0 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25];
@@ -22,13 +22,13 @@ func inline(always) private %first_index(v0.i256) -> @layout_0 {
         br v3 block2 block3;
 
     block2:
-        v4.@layout_0 = enum.make @layout_0 #variant_1;
-        v5.@layout_0 = enum.make @layout_0 #variant_1;
+        v4.@layout_0 = enum.make @layout_0 #variant_0;
+        v5.@layout_0 = enum.make @layout_0 #variant_0;
         jump block4;
 
     block3:
-        v6.@layout_0 = enum.make @layout_0 #variant_0 0.i256;
-        v7.@layout_0 = enum.make @layout_0 #variant_0 0.i256;
+        v6.@layout_0 = enum.make @layout_0 #variant_1 0.i256;
+        v7.@layout_0 = enum.make @layout_0 #variant_1 0.i256;
         jump block4;
 
     block4:
@@ -44,7 +44,7 @@ func private %for_array_sum() -> i64 {
         v25.constref<[i64; 25]> = const.ref $const_region_0;
         v26.constref<[i64; 25]> = const.ref $const_region_0;
         v28.@layout_0 = call %start v26;
-        v29.i1 = enum.is_variant v28 #variant_0;
+        v29.i1 = enum.is_variant v28 #variant_1;
         br v29 block5 block4;
 
     block2:
@@ -54,7 +54,7 @@ func private %for_array_sum() -> i64 {
 
     block3:
         v34.@layout_0 = call %next v26 v31;
-        v35.i1 = enum.is_variant v34 #variant_0;
+        v35.i1 = enum.is_variant v34 #variant_1;
         br v35 block6 block4;
 
     block4:
@@ -62,11 +62,11 @@ func private %for_array_sum() -> i64 {
         return v36;
 
     block5:
-        v39.i256 = enum.extract v28 #variant_0 0.i256;
+        v39.i256 = enum.extract v28 #variant_1 0.i256;
         jump block2;
 
     block6:
-        v41.i256 = enum.extract v34 #variant_0 0.i256;
+        v41.i256 = enum.extract v34 #variant_1 0.i256;
         jump block2;
 
     block7:
@@ -129,12 +129,12 @@ func inline(always) private %next_index(v0.i256, v1.i256) -> @layout_0 {
         br v6 block2 block3;
 
     block2:
-        v8.@layout_0 = enum.make @layout_0 #variant_0 v4;
+        v8.@layout_0 = enum.make @layout_0 #variant_1 v4;
         jump block4;
 
     block3:
-        v9.@layout_0 = enum.make @layout_0 #variant_1;
-        v10.@layout_0 = enum.make @layout_0 #variant_1;
+        v9.@layout_0 = enum.make @layout_0 #variant_0;
+        v10.@layout_0 = enum.make @layout_0 #variant_0;
         jump block4;
 
     block4:

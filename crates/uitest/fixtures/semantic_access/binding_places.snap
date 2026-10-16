@@ -34,9 +34,9 @@ error[16-0001]: access conflict in `fn component_ref`
     ┌─ binding_places.fe:109:5
     │
 108 │     let (i, ref x) = at(words, 0)
-    │                      ------------ projection opened here
+    │                         ----- access opened here
 109 │     words.set(0, 5)
-    │     ^^^^^ cannot mutably access this place while a `ref` projection of it is open
+    │     ^^^^^ cannot mutably access this place while a `ref` access of it is open
 
 error[16-0002]: move conflict in `fn unrestored`
     ┌─ binding_places.fe:138:22

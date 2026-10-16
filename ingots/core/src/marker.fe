@@ -19,20 +19,23 @@ pub trait Snapshot: Copy {}
 
 /// A type pinned to a state space: a value of it, and every place in it,
 /// lies in `S` wherever it is held, so it and any type holding it are
-/// state-only. `S` is `storage` or `transient`, or another pinned type's
-/// space, `P::S`. A state space starts zeroed: a slot no one wrote reads as
-/// zero, so the all-zero representation is a value of every type it holds.
+/// state-only. `S` is `storage` or `transient`, or the space of a type
+/// parameter bounded by `Pinned`, `P::S`. A state space starts zeroed: a slot no one wrote reads as
+/// zero, so state holds only types whose all-zero representation is a
+/// value, those without `unsafe` fields.
 /// A storage collection is pinned (`StateIndex`), and so is a cell such as
 /// `TSlot`.
 pub trait Pinned {
     space S
 }
 
-/// A type whose stored value is cleared by zeroing its slots and lanes:
-/// scalars, raw pointers and aggregates of clearable types. A storage
-/// collection is not, since its entries lie outside its own slots, so
-/// nothing holding one can be cleared. The compiler implements this trait;
-/// it cannot be implemented.
+/// A type whose all-zero representation is a value, so a stored value is
+/// cleared by zeroing its slots and lanes: scalars, raw pointers and
+/// aggregates of clearable types without `unsafe` fields. A type with
+/// `unsafe` fields is not, since they carry an invariant zero need not
+/// satisfy; nor is a storage collection, since its entries lie outside its
+/// own slots, so nothing holding one can be cleared. The compiler implements
+/// this trait; it cannot be implemented.
 pub trait Clearable {}
 
 // Built-in primitive types are trivially copyable.

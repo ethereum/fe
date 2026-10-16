@@ -188,24 +188,34 @@ pub fn expand_rows<'db>(
             continue;
         };
         let entry = RowPath::entry(requirement.binding_idx);
+        // Each component with the rows expanded above it: a row that names
+        // itself is reported at its implementation and stays abstract here.
         let mut pending: Vec<_> = components
             .into_iter()
             .enumerate()
             .rev()
-            .map(|(index, component)| (entry.child(index), component))
+            .map(|(index, component)| (entry.child(index), component, vec![row]))
             .collect();
-        while let Some((path, component)) = pending.pop() {
-            if let Some(inner) = component.key.key_row()
-                && let Some(components) = direct_row_components(db, inner, scope, assumptions)
-            {
-                pending.extend(
-                    components
-                        .into_iter()
-                        .enumerate()
-                        .rev()
-                        .map(|(index, component)| (path.child(index), component)),
-                );
-                continue;
+        while let Some((path, component, above)) = pending.pop() {
+            if let Some(inner) = component.key.key_row() {
+                if above.contains(&inner) {
+                    out.abstract_rows.push((requirement.binding_idx, inner));
+                    continue;
+                }
+                if let Some(components) = direct_row_components(db, inner, scope, assumptions) {
+                    let mut above = above;
+                    above.push(inner);
+                    pending.extend(
+                        components
+                            .into_iter()
+                            .enumerate()
+                            .rev()
+                            .map(|(index, component)| {
+                                (path.child(index), component, above.clone())
+                            }),
+                    );
+                    continue;
+                }
             }
             out.components.push(RowComponentRequirement {
                 path,
@@ -224,21 +234,70 @@ pub fn expand_rows<'db>(
     out
 }
 
-/// Whether `key`'s row is known to have no effects.
+/// Whether `key`'s row is known to have no effects. A row that names itself,
+/// which its implementation reports, is not.
 pub(crate) fn row_is_empty<'db>(
     db: &'db dyn HirAnalysisDb,
     key: RowKey<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> bool {
-    direct_row_components(db, key, scope, assumptions).is_some_and(|components| {
-        components.iter().all(|component| {
-            component
-                .key
-                .key_row()
-                .is_some_and(|inner| row_is_empty(db, inner, scope, assumptions))
-        })
-    })
+    fn empty<'db>(
+        db: &'db dyn HirAnalysisDb,
+        key: RowKey<'db>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        above: &mut Vec<RowKey<'db>>,
+    ) -> bool {
+        if above.contains(&key) {
+            return false;
+        }
+        above.push(key);
+        let empty = direct_row_components(db, key, scope, assumptions).is_some_and(|components| {
+            components.iter().all(|component| {
+                component
+                    .key
+                    .key_row()
+                    .is_some_and(|inner| empty(db, inner, scope, assumptions, above))
+            })
+        });
+        above.pop();
+        empty
+    }
+    empty(db, key, scope, assumptions, &mut Vec::new())
+}
+
+/// Whether `key`'s row, expanded through the rows its components name, comes
+/// back to a row being expanded, as `uses E = Self::E` does.
+pub(crate) fn row_key_cycles<'db>(
+    db: &'db dyn HirAnalysisDb,
+    key: RowKey<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> bool {
+    fn cycles<'db>(
+        db: &'db dyn HirAnalysisDb,
+        key: RowKey<'db>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        above: &mut Vec<RowKey<'db>>,
+    ) -> bool {
+        if above.contains(&key) {
+            return true;
+        }
+        above.push(key);
+        let cycles = direct_row_components(db, key, scope, assumptions).is_some_and(|components| {
+            components.iter().any(|component| {
+                component
+                    .key
+                    .key_row()
+                    .is_some_and(|inner| cycles(db, inner, scope, assumptions, above))
+            })
+        });
+        above.pop();
+        cycles
+    }
+    cycles(db, key, scope, assumptions, &mut Vec::new())
 }
 
 /// The components `key`'s implementation gives its row, if the scope

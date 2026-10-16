@@ -476,6 +476,9 @@ impl SOperand {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub enum SExpr<'db> {
+    /// Passes a value on as it is, copying it: never the read of a
+    /// non-`Copy` binding by value, which `UseValue` is, so it forwards values
+    /// a read already took, such as a join's branch values.
     Forward(SOperand),
     UseValue(SOperand),
     ReadPlace {

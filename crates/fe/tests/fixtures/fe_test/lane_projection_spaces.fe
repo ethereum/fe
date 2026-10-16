@@ -39,11 +39,11 @@ pub contract C uses (storage: mut RawStorage) {
 
     recv M {
         Go -> (u8, u8, u256) uses (mut p, mut storage) {
-            let a = p.a_mut()
+            let a = mut p.a_mut()
             a += 3
-            let picked = p.pick(true)
+            let picked = mut p.pick(true)
             picked += 1
-            let scratch = p.pick(false)
+            let scratch = mut p.pick(false)
             scratch = 9
             (p.a, p.b, read_slot(0))
         }

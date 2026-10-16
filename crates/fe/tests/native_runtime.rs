@@ -476,10 +476,10 @@ pub fn main() -> i32 {
     core::assert(handle.calls == 2)
     core::assert(handle.value == 22)
     var pair = Pair { first: 20, second: 40 }
-    increment(pair.pick(true))
-    increment(pair.pick(false))
-    increment(pair.pick(true))
-    let second = pair.pick(false)
+    increment(mut pair.pick(true))
+    increment(mut pair.pick(false))
+    increment(mut pair.pick(true))
+    let second = mut pair.pick(false)
     second += 1
     core::assert(pair.first == 22)
     core::assert(pair.second == 42)
@@ -1446,7 +1446,7 @@ pub fn main() -> i32 {{
         Option::None => core::panic(),
     }}
     stack.try_push(1).unwrap()
-    let top = stack.top_mut()
+    let top = mut stack.top_mut()
     {operation}
     0
 }}

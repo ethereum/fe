@@ -69,7 +69,7 @@ use crate::analysis::ty::{
     fold::{TyFoldable as _, TyFolder},
     normalize::normalize_with_trait_evidence,
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
-    shape::{Shape, sum_payload_variant},
+    shape::{Shape, SumKind, sum_kind},
     trait_def::TraitInstId,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
@@ -104,6 +104,7 @@ use crate::analysis::{
         ty_def::{InvalidCause, TyId},
     },
 };
+use crate::core::semantic::storage_slot_span;
 use crate::hir_def::{BlockKind, ItemKind, scope_graph::ScopeId};
 use crate::semantic::{ProviderBinding, ProviderSource};
 use common::indexmap::IndexMap;
@@ -257,21 +258,33 @@ impl<'db> TyChecker<'db> {
         callable: Callable<'db>,
         kind: ConstIntrinsicKind,
     ) -> bool {
-        let ty = match kind {
-            ConstIntrinsicKind::SizeOf => callable.generic_args().first().copied(),
-            ConstIntrinsicKind::StorageSlots => None,
-        };
-        if let Some(ty) = ty {
+        if let Some(ty) = callable.generic_args().first().copied() {
             let ty = self.normalize_ty(ty);
-            if matches!(
-                runtime_size_bytes(self.db, ty),
-                Err(RuntimeSizeError::Overflow)
-            ) {
-                self.push_diag(BodyDiag::TypeSizeOverflow {
-                    primary: expr.span(self.body()).into(),
-                    ty,
-                });
-                return false;
+            let primary = expr.span(self.body()).into();
+            match kind {
+                ConstIntrinsicKind::SizeOf
+                    if matches!(
+                        runtime_size_bytes(self.db, ty),
+                        Err(RuntimeSizeError::Overflow)
+                    ) =>
+                {
+                    self.push_diag(BodyDiag::TypeSizeOverflow { primary, ty });
+                    return false;
+                }
+                // A type with parameters is laid out at each instance.
+                ConstIntrinsicKind::StorageSlots
+                    if !ty.has_param(self.db) && !ty.has_var(self.db) =>
+                {
+                    if let Err(error) = storage_slot_span(self.db, ty) {
+                        self.push_diag(BodyDiag::NoStorageLayout {
+                            primary,
+                            ty,
+                            reason: error.summary(),
+                        });
+                        return false;
+                    }
+                }
+                _ => {}
             }
         }
         self.env.register_const_intrinsic(expr, callable, kind);
@@ -670,7 +683,6 @@ impl<'db> TyChecker<'db> {
         let return_borrow_provider = self.first_return_borrow_provider.take();
         let loops = self.env.swap_loop_stack(Vec::new());
         self.check_expr(body, ret);
-        self.record_implicit_move_for_owned_expr(body, ret);
         self.env.swap_loop_stack(loops);
         self.first_return_borrow_provider = return_borrow_provider;
         self.explicit_yields = explicit_yields;
@@ -937,7 +949,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
         let scope = self.env.scope();
-        let Some(variant) = sum_payload_variant(self.db, scope, ty) else {
+        let Some(kind) = sum_kind(self.db, scope, ty) else {
             self.push_diag(BodyDiag::TryOnNonSum {
                 primary: inner.span(self.body()).into(),
                 ty,
@@ -945,8 +957,8 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
         let ret = self.expected.fold_with(self.db, &mut self.table);
-        let carries_exit = sum_payload_variant(self.db, scope, ret) == Some(variant)
-            && (variant == 0
+        let carries_exit = sum_kind(self.db, scope, ret) == Some(kind)
+            && (kind == SumKind::Option
                 || self
                     .table
                     .unify(ty.generic_args(self.db)[0], ret.generic_args(self.db)[0])
@@ -968,13 +980,8 @@ impl<'db> TyChecker<'db> {
                 ..ExprProp::new(payload.erased_ty(self.db), true)
             };
         }
-        // Like the `match` it stands for, `?` moves its operand only when it
-        // takes out a non-`Copy` payload or error.
         let args = ty.generic_args(self.db);
-        if !args.iter().all(|arg| self.ty_is_copy(*arg)) {
-            self.record_implicit_move_for_owned_expr(inner, ty);
-        }
-        ExprProp::new(args[variant as usize], true)
+        ExprProp::new(args[kind.payload_arg()], true)
     }
 
     fn check_cast(
@@ -4368,10 +4375,7 @@ impl<'db> TyChecker<'db> {
                 }
             };
 
-            let prop = rec_checker.tc.check_expr(field.expr, expected);
-            rec_checker
-                .tc
-                .record_implicit_move_for_owned_expr(field.expr, prop.ty);
+            rec_checker.tc.check_expr(field.expr, expected);
         }
 
         if let Err(diag) = rec_checker.finalize(span.into(), false) {
@@ -4467,8 +4471,7 @@ impl<'db> TyChecker<'db> {
         };
 
         for (elem, elem_ty) in elems.iter().zip(elem_tys.iter()) {
-            let prop = self.check_expr(*elem, *elem_ty);
-            self.record_implicit_move_for_owned_expr(*elem, prop.ty);
+            self.check_expr(*elem, *elem_ty);
         }
 
         let ty = TyId::tuple_with_elems(self.db, &elem_tys);
@@ -4491,9 +4494,7 @@ impl<'db> TyChecker<'db> {
         };
 
         for elem in elems {
-            let prop = self.check_expr(*elem, expected_elem_ty);
-            expected_elem_ty = prop.ty;
-            self.record_implicit_move_for_owned_expr(*elem, expected_elem_ty);
+            expected_elem_ty = self.check_expr(*elem, expected_elem_ty).ty;
         }
 
         let ty = TyId::array_with_len(self.db, expected_elem_ty, elems.len());
@@ -4775,7 +4776,6 @@ impl<'db> TyChecker<'db> {
         );
 
         self.check_assign_lhs(*lhs, &typed_lhs);
-        self.record_implicit_move_for_owned_expr(*rhs, rhs_prop.ty);
 
         ExprProp::new(TyId::unit(self.db), true)
     }
@@ -5082,21 +5082,6 @@ impl<'db> TyChecker<'db> {
                     .ty
             });
             checked_inputs.push(self.normalize_ty(rhs_ty));
-        }
-        // An operand the method takes `own` moves (or copies), as a call's
-        // `own` argument does.
-        let operands = match expr.data(self.db, self.body()) {
-            Partial::Present(Expr::Un(operand, _)) => vec![*operand],
-            Partial::Present(Expr::Bin(lhs, rhs, _) | Expr::AugAssign(lhs, rhs, _)) => {
-                vec![*lhs, *rhs]
-            }
-            _ => Vec::new(),
-        };
-        let callable_def = callable.callable_def();
-        for (idx, (operand, &ty)) in operands.into_iter().zip(&checked_inputs).enumerate() {
-            if callable_def.param_mode(self.db, idx) == FuncParamMode::Own {
-                self.record_implicit_move_for_owned_expr(operand, ty);
-            }
         }
         callable.set_checked_input_tys(checked_inputs);
         self.check_callable_effects(expr, &mut callable);

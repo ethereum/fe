@@ -41,14 +41,14 @@ use crate::{
         },
         ty::{
             corelib::{
-                MemoryAccessKind, effect_key_state_access, external_call_state_access,
-                is_sealed_evm_capability,
+                MemoryAccessKind, bounded_by_sealed_capabilities, effect_key_state_access,
+                external_call_state_access, is_sealed_evm_capability,
             },
             provider::{AddressSpace, provider_semantics},
             result_space::PlaceStep,
             shape::Shape,
             trait_resolution::PredicateListId,
-            ty_check::{BodyOwner, LocalBinding},
+            ty_check::{BodyOwner, LocalBinding, infer_body},
             ty_def::{BorrowKind, CapabilityKind, TyId},
             ty_is_snapshot,
         },
@@ -870,7 +870,9 @@ impl<'a, 'db> Analysis<'a, 'db> {
         let mut footprints: Vec<_> = args
             .iter()
             .enumerate()
-            .filter_map(|(position, arg)| self.capability_arg_footprint(func, position, arg))
+            .filter_map(|(position, arg)| {
+                self.capability_arg_footprint(BodyOwner::Func(func), position, arg)
+            })
             .collect();
         for effect in effect_args {
             footprints.extend(self.effect_footprint(callee, effect));
@@ -941,31 +943,69 @@ impl<'a, 'db> Analysis<'a, 'db> {
     /// reaches nothing.
     fn capability_arg_footprint(
         &self,
-        func: crate::hir_def::Func<'db>,
+        owner: BodyOwner<'db>,
         position: usize,
         arg: &NOperand,
     ) -> Option<Footprint> {
-        if matches!(
-            func.top_mod(self.db).ingot(self.db).kind(self.db),
-            IngotKind::Core | IngotKind::Std
-        ) {
+        if let BodyOwner::Func(func) = owner
+            && matches!(
+                func.top_mod(self.db).ingot(self.db).kind(self.db),
+                IngotKind::Core | IngotKind::Std
+            )
+        {
             return None;
         }
-        let mode = CallableDef::Func(func).param_mode(self.db, position);
+        let mode = callee_param_mode(self.db, owner, position)?;
+        let declared = match owner {
+            BodyOwner::Func(func) => func.params(self.db).nth(position).map(|p| p.ty(self.db)),
+            _ => None,
+        };
         let ty = self.body.values[arg.value.index()].ty;
         let ty = ty.as_capability(self.db).map_or(ty, |(_, inner)| inner);
-        let access = effect_key_state_access(
-            self.db,
-            self.scope,
-            self.assumptions,
-            EffectRequirementKey::Type(ty),
-            mode != FuncParamMode::View,
-        )?;
+        let access =
+            self.capability_state_access(owner, declared, ty, mode != FuncParamMode::View)?;
         Some(Footprint {
             regions: state_regions(),
             mode: access.borrow_kind(),
             parents: TokenSet::new(),
         })
+    }
+
+    /// The state a capability of type `ty`, passed to `owner` where it
+    /// declares `declared`, lets the call reach. A parameter whose bounds
+    /// are all sealed std capability traits reaches only what they give the
+    /// callee, which is checked generically, so `C: Ctx` reaches nothing
+    /// even for an `Evm` argument; any other parameter reaches what the
+    /// argument's own type does, since an unsealed bound may be implemented
+    /// or routed to reach it.
+    fn capability_state_access(
+        &self,
+        owner: BodyOwner<'db>,
+        declared: Option<TyId<'db>>,
+        ty: TyId<'db>,
+        is_mut: bool,
+    ) -> Option<MemoryAccessKind> {
+        if let Some(declared) = declared
+            && let BodyOwner::Func(_) = owner
+        {
+            let assumptions = infer_body(self.db, owner).1.assumptions();
+            if bounded_by_sealed_capabilities(self.db, owner.scope(), assumptions, declared) {
+                return effect_key_state_access(
+                    self.db,
+                    owner.scope(),
+                    assumptions,
+                    EffectRequirementKey::Type(declared),
+                    is_mut,
+                );
+            }
+        }
+        effect_key_state_access(
+            self.db,
+            self.scope,
+            self.assumptions,
+            EffectRequirementKey::Type(ty),
+            is_mut,
+        )
     }
 
     /// The domains an effect argument confers authority over, with its mode:
@@ -1000,19 +1040,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     .map(|component| &component.requirement)
                     .find(|requirement| requirement.binding_idx == effect.binding_idx)
             });
-        let key = requirement.map(|requirement| match &requirement.key {
-            EffectRequirementKey::Type(_) => EffectRequirementKey::Type(arg_ty),
-            key => key.clone(),
-        });
-        if let Some(key) = key
-            && let Some(access) = effect_key_state_access(
+        let access = requirement.and_then(|requirement| match &requirement.key {
+            EffectRequirementKey::Type(declared) => self.capability_state_access(
+                callee.owner(self.db),
+                Some(*declared),
+                arg_ty,
+                effect.required_mut,
+            ),
+            key => effect_key_state_access(
                 self.db,
                 self.scope,
                 self.assumptions,
-                key,
+                key.clone(),
                 effect.required_mut,
-            )
-        {
+            ),
+        });
+        if let Some(access) = access {
             return Some(Footprint {
                 regions: state_regions(),
                 mode: access.borrow_kind(),
@@ -1727,6 +1770,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
             NPlaceBase::Root(_) | NPlaceBase::Deref { .. } => None,
             NPlaceBase::CapabilityTarget { carrier } => self.carrier_key(carrier),
         };
+        // A closure's environment, data parameter 0, holds its captures, and
+        // each call of the closure only views them.
+        if kind == MemoryAccessKind::Move
+            && matches!(self.body.template_owner, BodyOwner::Closure { .. })
+            && resolved
+                .regions
+                .iter()
+                .any(|region| region.base == Base::Param(0))
+        {
+            return Err(self.diag(
+                SemanticDiagnosticKind::MoveConflict,
+                origin,
+                "cannot move out of a closure's captures, which each call of the closure only views"
+                    .into(),
+            ));
+        }
         if kind == MemoryAccessKind::Move
             && let Some(space @ (AddressSpace::Storage | AddressSpace::Transient)) = resolved
                 .regions
@@ -1985,18 +2044,20 @@ impl<'a, 'db> Analysis<'a, 'db> {
         siblings: &[TokenId],
         origin: SemOrigin<'db>,
     ) -> Result<(), Diag<'db>> {
-        // A closure's body runs its row's effects; its arguments are checked
-        // where its environment and parameters are built.
-        let func = match callee.owner(self.db) {
+        // A closure is called as a function whose first parameter is its
+        // environment.
+        let owner = callee.owner(self.db);
+        let func = match owner {
             BodyOwner::Func(func) => Some(func),
             BodyOwner::Closure { .. } => None,
             _ => return Ok(()),
         };
+        // The places each argument passes, as the callee takes them.
+        let mut passed = Vec::new();
         for (position, arg) in args.iter().enumerate() {
-            let Some(func) = func else {
-                break;
+            let Some(param_mode) = callee_param_mode(self.db, owner, position) else {
+                continue;
             };
-            let param_mode = CallableDef::Func(func).param_mode(self.db, position);
             let arg_origin = operand_origin(*arg, origin);
             let direct = self.passed_to(arg.value, param_mode);
             if direct.is_empty() {
@@ -2017,6 +2078,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                         MemoryAccessKind::Read,
                         arg_origin,
                     )?;
+                    passed.push((regions, BorrowKind::Ref, arg_origin));
                 }
                 continue;
             }
@@ -2045,15 +2107,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
             self.check_conflicts(
                 state, &regions, mode, &authority, siblings, kind, arg_origin,
             )?;
+            passed.push((regions, mode, arg_origin));
         }
-        let mut footprints = Vec::new();
-        if let Some(func) = func {
-            footprints.extend(
-                args.iter().enumerate().filter_map(|(position, arg)| {
-                    self.capability_arg_footprint(func, position, arg)
-                }),
-            );
-        }
+        let mut footprints: Vec<_> = args
+            .iter()
+            .enumerate()
+            .filter_map(|(position, arg)| self.capability_arg_footprint(owner, position, arg))
+            .collect();
         for effect in effect_args {
             footprints.extend(self.effect_footprint(callee, effect));
         }
@@ -2066,7 +2126,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 parents: TokenSet::new(),
             });
         }
-        for footprint in footprints {
+        for footprint in &footprints {
             let kind = match footprint.mode {
                 BorrowKind::Mut => MemoryAccessKind::Write,
                 BorrowKind::Ref => MemoryAccessKind::Read,
@@ -2081,6 +2141,40 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 kind,
                 origin,
             )?;
+        }
+        // The callee takes its data parameters to be compatible with each
+        // other and with its effects, so the parts of one call never
+        // authorize each other: a `mut` one excludes any other of the same
+        // place, whatever accesses they are reached through. Two effects may
+        // alias, which the callee allows for.
+        let conflict = |(lhs, lhs_mode): (&[AbsPlace], BorrowKind),
+                        (rhs, rhs_mode): (&[AbsPlace], BorrowKind)| {
+            (lhs_mode == BorrowKind::Mut || rhs_mode == BorrowKind::Mut)
+                && self.any_overlap(lhs, rhs)
+        };
+        for (idx, (regions, mode, arg_origin)) in passed.iter().enumerate() {
+            if let Some((_, _, other)) = passed[idx + 1..]
+                .iter()
+                .find(|(other, other_mode, _)| conflict((regions, *mode), (other, *other_mode)))
+            {
+                let mut diag = self.diag(
+                    SemanticDiagnosticKind::AccessConflict,
+                    *other,
+                    "this argument and an earlier one of the same call reach one place, and one of them is `mut`".into(),
+                );
+                diag.push_secondary("the earlier argument".into(), self.span(*arg_origin));
+                return Err(diag);
+            }
+            if footprints
+                .iter()
+                .any(|footprint| conflict((regions, *mode), (&footprint.regions, footprint.mode)))
+            {
+                return Err(self.diag(
+                    SemanticDiagnosticKind::AccessConflict,
+                    *arg_origin,
+                    "this argument and an effect of the same call reach one place, and one of them is `mut`".into(),
+                ));
+            }
         }
         Ok(())
     }
@@ -2104,13 +2198,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
         if let NTerminatorKind::Yield { value, .. } = terminator.kind {
             self.check_grant_creation(value, &state, terminator.origin)?;
         }
-        if matches!(
-            terminator.kind,
-            NTerminatorKind::Return(_) | NTerminatorKind::Yield { .. }
-        ) && let Some(moved) = state
-            .moved
-            .iter()
-            .find(|(key, _)| matches!(key, MoveKey::Param(_)))
+        // A frame a yield suspends may hold a parameter's hole it restores in
+        // its slide, which ends in a return; the grant may not reach it.
+        if matches!(terminator.kind, NTerminatorKind::Return(_))
+            && let Some(moved) = state
+                .moved
+                .iter()
+                .find(|(key, _)| matches!(key, MoveKey::Param(_)))
         {
             let origin = self
                 .moved_at
@@ -2167,14 +2261,20 @@ impl<'a, 'db> Analysis<'a, 'db> {
             let origin = operand_origin(value, origin);
             // The caller receives the referent whole: no part of it may be
             // moved out, under the grant's own key or an ancestor's.
-            if let Some(hole) = state.moved.iter().find(|(key, hole)| {
-                matches!(key, MoveKey::Access(token) if authority.contains(token)
-                && self.tokens[*token as usize].regions.iter().any(|region| {
-                    let moved: Path = region.path.iter().chain(hole).cloned().collect();
-                    regions.iter().any(|granted| {
-                        granted.base == region.base && paths_overlap(&moved, &granted.path)
-                    })
-                }))
+            if let Some(hole) = state.moved.iter().find(|(key, hole)| match key {
+                MoveKey::Access(token) => {
+                    authority.contains(token)
+                        && self.tokens[*token as usize].regions.iter().any(|region| {
+                            let moved: Path = region.path.iter().chain(hole).cloned().collect();
+                            regions.iter().any(|granted| {
+                                granted.base == region.base && paths_overlap(&moved, &granted.path)
+                            })
+                        })
+                }
+                MoveKey::Param(param) => regions.iter().any(|granted| {
+                    granted.base == Base::Param(*param) && paths_overlap(hole, &granted.path)
+                }),
+                MoveKey::Value(_) | MoveKey::Root(_) => false,
             }) {
                 return Err(self.moved_diag(
                     "cannot yield an access while its referent is moved out",
@@ -2378,6 +2478,23 @@ fn call_args(body: &NormalizedBody<'_>) -> FxHashSet<NValueId> {
         }
     }
     args
+}
+
+/// The mode of a callee's parameter at `position`: a closure's first is its
+/// environment, in the mode the closure is called with.
+fn callee_param_mode<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: BodyOwner<'db>,
+    position: usize,
+) -> Option<FuncParamMode> {
+    match owner {
+        BodyOwner::Func(func) => Some(CallableDef::Func(func).param_mode(db, position)),
+        BodyOwner::Closure { ty, receiver, .. } => match position.checked_sub(1) {
+            None => Some(receiver),
+            Some(idx) => ty.modes(db).get(idx).copied(),
+        },
+        _ => None,
+    }
 }
 
 fn state_regions() -> Vec<AbsPlace> {

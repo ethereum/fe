@@ -231,6 +231,22 @@ pub enum TyLowerDiag<'db> {
         collection: TyId<'db>,
     },
 
+    /// A type zero is no value of, held in contract state, which starts
+    /// zeroed.
+    ContractFieldZeroInvalid {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        invalid: TyId<'db>,
+    },
+
+    /// A collection entry type in contract state with no storage layout.
+    ContractFieldEntryLayout {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        entry: TyId<'db>,
+        reason: &'static str,
+    },
+
     ContractFieldLayoutInvariant {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
@@ -338,7 +354,9 @@ impl TyLowerDiag<'_> {
             Self::ContractFieldSlotOverlap { .. } => 64,
             Self::ContractFieldCallPointer { .. } => 65,
             Self::ContractFieldPersistentUnderTransient { .. } => 66,
-            Self::RevealedConstFault { .. } => 69,
+            Self::ContractFieldZeroInvalid { .. } => 69,
+            Self::ContractFieldEntryLayout { .. } => 70,
+            Self::RevealedConstFault { .. } => 71,
         }
     }
 }
@@ -577,6 +595,12 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         ty: TyId<'db>,
     },
+    /// `storage_slots` of a type with no storage layout, for `reason`.
+    NoStorageLayout {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        reason: &'static str,
+    },
     ConstValueMustBeKnown(DynLazySpan<'db>),
     ConstDependencyMustBeKnown {
         primary: DynLazySpan<'db>,
@@ -666,6 +690,14 @@ pub enum BodyDiag<'db> {
     /// A plain binding of a projection's read result that is neither `Copy`
     /// nor a `#[view]` type: it has no value reading, so it needs `ref`.
     RefBindingRequired {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+    },
+
+    /// A plain `let` of a projection's whole `mut` result of a type with
+    /// values: a plain binding takes a value, and a value would discard the
+    /// writes the call asks for, so the access is written `let x = mut …`.
+    MutBindingRequired {
         primary: DynLazySpan<'db>,
         ty: TyId<'db>,
     },
@@ -1053,6 +1085,7 @@ pub enum BodyDiag<'db> {
     UncoveredStateAccess {
         primary: DynLazySpan<'db>,
         is_mut: bool,
+        in_closure: bool,
     },
 
     /// A closure in a constant context, which cannot evaluate it.
@@ -1078,13 +1111,6 @@ pub enum BodyDiag<'db> {
     /// A closure capturing an access (a view, `ref` or `mut` binding or
     /// parameter) of a non-`Copy` value, which it can neither copy nor move.
     AccessCapture {
-        primary: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    },
-
-    /// A non-`Copy` capture moved out of the closure's environment, which
-    /// each call only views.
-    MoveOutOfCapture {
         primary: DynLazySpan<'db>,
         name: IdentId<'db>,
     },
@@ -1201,6 +1227,7 @@ impl<'db> BodyDiag<'db> {
             Self::ReturnedTypeMismatch { .. } => 13,
             Self::TypeMustBeKnown(..) => 14,
             Self::TypeSizeOverflow { .. } => 88,
+            Self::NoStorageLayout { .. } => 128,
             Self::InvalidCast { .. } => 55,
             Self::ConstValueMustBeKnown(..) => 64,
             Self::ConstDependencyMustBeKnown { .. } => 90,
@@ -1236,11 +1263,11 @@ impl<'db> BodyDiag<'db> {
             Self::ClosureArityMismatch { .. } => 109,
             Self::WriteToCapture { .. } => 110,
             Self::AccessCapture { .. } => 111,
-            Self::MoveOutOfCapture { .. } => 112,
             Self::MixedLoopBases { .. } => 114,
             Self::TupleOfAccesses { .. } => 115,
             Self::UnsafeSplitOperand { .. } => 118,
             Self::RefBindingRequired { .. } => 119,
+            Self::MutBindingRequired { .. } => 129,
             Self::MarkedBindingWithoutAccess { .. } => 120,
             Self::MutAccessCopied { .. } => 121,
             Self::VarOfAccess { .. } => 122,
@@ -1573,6 +1600,24 @@ pub enum ImplDiag<'db> {
         ty: TyId<'db>,
         field_ty: TyId<'db>,
     },
+
+    /// A `Copy` implementation for a bare type parameter, which covers types
+    /// whose fields, views and state the checks of a `Copy` type never see.
+    BlanketCopy { primary: DynLazySpan<'db> },
+
+    /// An associated space whose value, followed through the spaces it names,
+    /// comes back to itself.
+    CyclicAssociatedSpace {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
+
+    /// An effect row whose components, expanded through the rows they name,
+    /// come back to it.
+    CyclicEffectRow {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -1609,6 +1654,9 @@ impl ImplDiag<'_> {
             Self::PinNotStateSpace { .. } => 29,
             Self::UnsafeImplMismatch { .. } => 30,
             Self::CopyFieldNotCopy { .. } => 31,
+            Self::BlanketCopy { .. } => 32,
+            Self::CyclicAssociatedSpace { .. } => 33,
+            Self::CyclicEffectRow { .. } => 34,
         }
     }
 }

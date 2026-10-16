@@ -801,14 +801,17 @@ where
 
         let db = self.db();
         let self_expr = self.path_expr(PathId::from_ident(db, IdentId::make_self(db)));
-        let tail_ident = self.generated_ident("tail");
+        let tails_ident = self.generated_ident("tails");
         let head_pos_ident = self.generated_ident("head_pos");
         let head_size = self.abi_size_assoc_expr(TypeId::fallback_self_ty(db), "HEAD_SIZE");
-        let tail_pat = self.push_pat(Pat::Path(
-            Partial::Present(PathId::from_ident(db, tail_ident)),
+        let out = self.ident_expr(out_ident);
+        let tails =
+            self.method_call_expr(out, IdentId::new(db, "tail".to_string()), vec![head_size]);
+        let tails_pat = self.push_pat(Pat::Path(
+            Partial::Present(PathId::from_ident(db, tails_ident)),
             BindingMarker::Var,
         ));
-        self.emit_stmt(Stmt::Let(tail_pat, None, Some(head_size), None));
+        self.emit_stmt(Stmt::Let(tails_pat, None, Some(tails), None));
         let head_pos_pat = self.push_pat(Pat::Path(
             Partial::Present(PathId::from_ident(db, head_pos_ident)),
             BindingMarker::Var,
@@ -840,12 +843,12 @@ where
             );
             let encode_field_path = PathId::from_ident(db, self.roots.core)
                 .push_str(db, "abi")
-                .push_str_args(db, "encode_field_at", encode_field_args);
+                .push_str_args(db, "encode_field", encode_field_args);
             let encode_field_callee = self.path_expr(encode_field_path);
             let field_value = self.ident_expr(field_ident);
             let out_arg = self.ident_expr(out_ident);
             let head_pos_arg = self.ident_expr(head_pos_ident);
-            let tail_arg = self.ident_expr(tail_ident);
+            let tails_arg = self.ident_expr(tails_ident);
             let call = self.call_expr_with_args(
                 encode_field_callee,
                 vec![
@@ -862,8 +865,8 @@ where
                         expr: head_pos_arg,
                     },
                     CallArg {
-                        label: Some(IdentId::new(db, "tail".to_string())),
-                        expr: tail_arg,
+                        label: Some(IdentId::new(db, "tails".to_string())),
+                        expr: tails_arg,
                     },
                 ],
             );
@@ -872,9 +875,9 @@ where
                 continue;
             }
 
-            let tail_place = self.ident_expr(tail_ident);
-            let assign_tail = self.push_expr(Expr::Assign(tail_place, call));
-            self.emit_expr_stmt(assign_tail);
+            let tails_place = self.ident_expr(tails_ident);
+            let assign_tails = self.push_expr(Expr::Assign(tails_place, call));
+            self.emit_expr_stmt(assign_tails);
 
             let abi_head_size_args = GenericArgListId::given(
                 db,

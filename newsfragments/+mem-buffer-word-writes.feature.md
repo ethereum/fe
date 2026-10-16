@@ -1,1 +1,0 @@
-Added `MemBuffer::write_word`, a bounds-checked write of a 32-byte word at any byte offset within the buffer's capacity. It never grows the allocation; it extends the buffer's length to cover the word and zeroes any gap before it.

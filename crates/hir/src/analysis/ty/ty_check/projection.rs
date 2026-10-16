@@ -67,7 +67,7 @@ impl<'db> TyChecker<'db> {
             return;
         }
         match shape {
-            Shape::Owned(ty) => self.record_implicit_move_for_owned_expr(expr, *ty),
+            Shape::Owned(_) => {}
             Shape::Access(kind, _) => {
                 let binding_access = prop
                     .binding
@@ -108,8 +108,6 @@ impl<'db> TyChecker<'db> {
                 };
                 match (ctor, data) {
                     (Some(ctor), Expr::Call(_, args)) if ctor == *variant && args.len() == 1 => {
-                        // The payload is yielded, not moved into the variant.
-                        self.env.forget_implicit_move(args[0].expr);
                         self.check_yield_site(args[0].expr, payload);
                     }
                     // The empty variant grants nothing.

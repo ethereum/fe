@@ -237,10 +237,9 @@ pub unsafe trait StateIndex: Pinned {
 }
 
 /// Zeroes the element at `key` of a collection: its slots, or only its bits
-/// of a slot it shares. A state space starts zeroed, so the element reads as
-/// its type's zero value, which there every type has. The element must be
-/// `Clearable`: one holding a storage collection is not cleared by zeroing
-/// its own slots.
+/// of a slot it shares. The element must be `Clearable`: zero is a value of
+/// it, and one holding a storage collection is not cleared by zeroing its own
+/// slots.
 pub fn clear_storage<C: StateIndex>(_ collection: mut C, _ key: C::Key)
     where C::Entry: Clearable
 {

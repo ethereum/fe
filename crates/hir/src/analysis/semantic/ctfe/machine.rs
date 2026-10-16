@@ -1404,8 +1404,8 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 if inference_met_lowering_cycle(self.db, infer_body(self.db, owner)) {
                     return Err(CtfeError::InvalidBody { origin });
                 }
-                // Recursion growing its generic arguments meets the instance
-                // limits one call per level, as evaluation meets its own.
+                // An instance that reaches the instance limits recurses
+                // without end, as evaluation past its own limit does.
                 instance
                     .admitted_body(self.db)
                     .map_err(|error| match error {
@@ -2408,7 +2408,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             key.owner(self.db).scope(),
             key.instantiate_typed_body(self.db).assumptions(),
         );
-        let slots = storage_slot_span(self.db, ty).ok_or_else(|| CtfeError::InvalidOperation {
+        let slots = storage_slot_span(self.db, ty).map_err(|_| CtfeError::InvalidOperation {
             origin,
             message: format!("`{}` has no storage layout", ty.pretty_print(self.db)),
         })?;

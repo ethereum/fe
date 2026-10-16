@@ -49,12 +49,12 @@ pub contract Holder {
 
     recv Bump {
         Either { flag } uses (mut counter) {
-            let x = counter.either(flag)
+            let x = mut counter.either(flag)
             x += 1
         }
 
         Memory { flag } uses (mut counter) {
-            let x = counter.either_memory(flag)
+            let x = mut counter.either_memory(flag)
             x += 1
         }
     }
@@ -63,7 +63,7 @@ pub contract Holder {
 // A memory counter instantiates `either` with both sites in memory.
 fn memory_either(_ flag: bool) -> u256 {
     var counter = Counter { n: 0, m: 0 }
-    let x = counter.either(flag)
+    let x = mut counter.either(flag)
     x += 1
     counter.n + counter.m
 }
