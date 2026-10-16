@@ -12,7 +12,8 @@ extern {
     /// Allocates `size` bytes and returns a pointer to the first byte.
     /// The allocation establishes a byte extent, not initialized typed contents.
     /// Native `ref`/`mut` slots require a valid typed store before they are read.
-    /// Every allocation goes through `alloc_bytes`, which bounds the size.
+    /// Every allocation goes through `alloc_bytes`, which bounds the size, or
+    /// `alloc_bytes_unchecked`, whose callers bound it.
     fn alloc_raw(_ size: u256) -> *u8
 
     /// Copies `len` bytes between linear-memory regions.
@@ -647,7 +648,7 @@ pub fn alloc<T>() -> *T {
 }
 
 /// The largest allocation, as Solidity's.
-const MAX_ALLOCATION: u256 = 0xffffffffffffffff
+pub(ingot) const MAX_ALLOCATION: u256 = 0xffffffffffffffff
 
 /// Allocates `len` bytes, without initializing them. Reverts with
 /// `Panic(0x41)` above `2**64 - 1` bytes, like Solidity: an allocation is not
@@ -658,6 +659,13 @@ pub fn alloc_bytes(_ len: u256) -> *u8 {
     if len > MAX_ALLOCATION {
         panic_code(PANIC_OUT_OF_MEMORY)
     }
+    alloc_raw(len)
+}
+
+/// Allocates `len` bytes, without initializing them or bounding `len`. The
+/// caller must ensure `len <= MAX_ALLOCATION`.
+#[inline(always)]
+pub(ingot) unsafe fn alloc_bytes_unchecked(_ len: u256) -> *u8 {
     alloc_raw(len)
 }
 

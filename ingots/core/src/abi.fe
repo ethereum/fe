@@ -577,12 +577,17 @@ fn round_up_words(_ len: u256) -> u256 {
     (((len - 1) / 32) + 1) * 32
 }
 
+/// The largest word-aligned allocation. Decoders reject a payload that does
+/// not fit it, and allocate the rest without the allocator's bound.
+const MAX_PAYLOAD_LEN: u256 = ptr::MAX_ALLOCATION - 31
+
 #[inline(always)]
 fn checked_dynamic_payload_after_head<A: Abi, I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> (u256, u256) {
     let data_len = input.word_at(pos)
     // The caller has already validated the length word. Require the actual
-    // bytes and ensure that rounding plus the length word cannot overflow.
-    if data_len > input_len - (pos + 32) || data_len > 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc0 {
+    // bytes, few enough that they and the length word, rounded up to a word,
+    // fit `MAX_PAYLOAD_LEN`.
+    if data_len > input_len - (pos + 32) || data_len > MAX_PAYLOAD_LEN - 32 {
         A::decode_error()
     }
     let payload_size = (data_len + 63) & 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0
@@ -626,7 +631,8 @@ fn copy_dynamic_payload_from_with_input_len<A: Abi, I: ByteInput>(_ input: I, _ 
     let payload: (u256, u256) = checked_dynamic_payload_with_input_len<A, I>(input, pos, input_len)
     let data_len = payload.0
     let payload_size = payload.1
-    let data_ptr = ptr::alloc_bytes(payload_size)
+    // A checked payload fits `MAX_PAYLOAD_LEN`.
+    let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload_size) }
 
     unsafe { copy_dynamic_bytes(input, pos, data_ptr, data_len, payload_size) }
 
@@ -2086,7 +2092,8 @@ impl<A: Abi> Decode<A> for DynString {
     fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
         let payload_at = d.pos()
         let payload: (u256, u256) = checked_dynamic_payload_with_input_len<A, I>(input, payload_at, input.len())
-        let data_ptr = ptr::alloc_bytes(payload.1)
+        // A checked payload fits `MAX_PAYLOAD_LEN`.
+        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload.1) }
 
         unsafe { copy_dynamic_bytes(input, payload_at, data_ptr, payload.0, payload.1) }
 
@@ -2117,7 +2124,8 @@ impl<A: Abi> Decode<A> for DynString {
     #[inline(always)]
     fn decode_from_prechecked_head<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
         let payload: (u256, u256) = checked_dynamic_payload_after_head<A, I>(input, pos, input_len)
-        let data_ptr = ptr::alloc_bytes(payload.1)
+        // A checked payload fits `MAX_PAYLOAD_LEN`.
+        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload.1) }
 
         unsafe { copy_dynamic_bytes(input, pos, data_ptr, payload.0, payload.1) }
 
@@ -2416,7 +2424,8 @@ impl<A: Abi> Decode<A> for Bytes {
     fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
         let payload_at = d.pos()
         let payload: (u256, u256) = checked_dynamic_payload_with_input_len<A, I>(input, payload_at, input.len())
-        let data_ptr = ptr::alloc_bytes(payload.1)
+        // A checked payload fits `MAX_PAYLOAD_LEN`.
+        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload.1) }
 
         unsafe { copy_dynamic_bytes(input, payload_at, data_ptr, payload.0, payload.1) }
 
@@ -2447,7 +2456,8 @@ impl<A: Abi> Decode<A> for Bytes {
     #[inline(always)]
     fn decode_from_prechecked_head<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
         let payload: (u256, u256) = checked_dynamic_payload_after_head<A, I>(input, pos, input_len)
-        let data_ptr = ptr::alloc_bytes(payload.1)
+        // A checked payload fits `MAX_PAYLOAD_LEN`.
+        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload.1) }
 
         unsafe { copy_dynamic_bytes(input, pos, data_ptr, payload.0, payload.1) }
 
@@ -2540,12 +2550,17 @@ fn dyn_array_payload_end_with_input_len<A: Abi, T, I>(_ input: I, tail_at: u256,
     max_u256(a: head_end, b: prev_end)
 }
 
-// Owned tails must remain word-aligned when embedded before another field.
-fn checked_padded_size<A: Abi>(_ size: u256) -> u256 {
-    if size > 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0 {
+// An array payload lies within its input, so with the input at most
+// `MAX_PAYLOAD_LEN` bytes the payload fits it, rounded up to a word or not.
+// Owned tails of dynamic elements must remain word-aligned when embedded
+// before another field.
+#[arithmetic(unchecked)]
+#[inline(always)]
+fn checked_payload_size<A: Abi>(_ actual_size: u256, _ input_len: u256, padded: bool) -> u256 {
+    if input_len > MAX_PAYLOAD_LEN {
         A::decode_error()
     }
-    round_up_words(size)
+    if padded { (actual_size + 31) & 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0 } else { actual_size }
 }
 
 impl<A: Abi, T> Decode<A> for DynArray<T>
@@ -2558,8 +2573,9 @@ impl<A: Abi, T> Decode<A> for DynArray<T>
         let elem_count = input.word_at(payload_at)
         let payload_end = dyn_array_payload_end_with_input_len<A, T, I>(input, tail_at: payload_at, elem_count: elem_count, input_len: input_len)
         let actual_size = payload_end - payload_at
-        let payload_size = if T::IS_DYNAMIC { checked_padded_size<A>(actual_size) } else { actual_size }
-        let data_ptr = ptr::alloc_bytes(payload_size)
+        let payload_size = checked_payload_size<A>(actual_size, input_len, padded: T::IS_DYNAMIC)
+        // A checked payload fits `MAX_PAYLOAD_LEN`.
+        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload_size) }
 
         unsafe {
             if T::IS_DYNAMIC {
@@ -2591,8 +2607,9 @@ impl<A: Abi, T> Decode<A> for DynArray<T>
         let payload_end = dyn_array_payload_end_with_input_len<A, T, I>(input, tail_at: pos, elem_count: elem_count, input_len: input_len)
 
         let actual_size = payload_end - pos
-        let payload_size = if T::IS_DYNAMIC { checked_padded_size<A>(actual_size) } else { actual_size }
-        let data_ptr = ptr::alloc_bytes(payload_size)
+        let payload_size = checked_payload_size<A>(actual_size, input_len, padded: T::IS_DYNAMIC)
+        // A checked payload fits `MAX_PAYLOAD_LEN`.
+        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload_size) }
 
         unsafe {
             if T::IS_DYNAMIC {

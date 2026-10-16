@@ -1,0 +1,1 @@
+Decoding a `bytes`, `string` or dynamic-array argument into memory no longer pays a separate allocation-size check, about 30 gas per argument: the decoder's own bound on the payload now keeps it within the allocation limit. Byte data longer than `2**64 - 64` bytes, and arrays in inputs longer than `2**64 - 32` bytes, are decode errors.
