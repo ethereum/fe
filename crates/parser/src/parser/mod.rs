@@ -656,6 +656,15 @@ impl<S: TokenStream> Parser<S> {
         self.builder.checkpoint()
     }
 
+    /// A checkpoint for a node that starts at the next token, after the
+    /// leading trivias, which belong to the parent node as `enter` adds them.
+    fn checkpoint_after_trivias(&mut self) -> Checkpoint {
+        if !self.parents.is_empty() {
+            self.bump_trivias();
+        }
+        self.checkpoint()
+    }
+
     /// Bumps the current token and
     /// current branch.
     fn bump_raw(&mut self) {

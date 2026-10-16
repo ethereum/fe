@@ -286,7 +286,9 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
     fn assemble_trait_method_candidates(&mut self) {
         let scope_ingot = self.scope.ingot(self.db);
         // Callable values implement their callable shapes without HIR impls.
-        for inst in callable_shape_insts(self.db, self.receiver.original()) {
+        // The shapes are built from the canonical receiver, whose variables
+        // are the ones a candidate's check seeds its table with.
+        for inst in callable_shape_insts(self.db, self.receiver.canonical().value()) {
             self.insert_assumption_trait_method_cand(inst);
         }
 
@@ -942,7 +944,7 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
             insert_trait(trait_def)
         }
         // A callable value's shapes are intrinsic to its type.
-        for inst in callable_shape_insts(self.db, self.receiver.original()) {
+        for inst in callable_shape_insts(self.db, self.receiver.canonical().value()) {
             insert_trait(inst.def(self.db));
         }
 

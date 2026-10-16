@@ -11,7 +11,7 @@ pub fn main() -> i32 {
     core::assert(read(pointer) == 42)
     core::assert(read_generic(pointer) == 42)
     core::assert(forward(pointer) == 42)
-    let view = edit(pointer)
+    let view = mut edit(pointer)
     view += 1
     core::assert(read(pointer) == 43)
     let byte = ptr::alloc<u8>()

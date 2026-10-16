@@ -149,19 +149,51 @@ pub fn check_const_body<'db>(
     // An invalid declared type suppresses body/value checking. Diagnose the
     // declaration itself rather than passing an invalid constant to CTFE.
     if let Some(hir_ty) = const_.hir_ty(db) {
-        diags.extend(
-            super::ty_error::collect_hir_ty_diags(
-                db,
-                const_.scope(),
-                hir_ty,
-                const_.span().ty(),
-                PredicateListId::empty_list(db),
-            )
-            .into_iter()
-            .map(Into::into),
+        let ty_diags = super::ty_error::collect_hir_ty_diags(
+            db,
+            const_.scope(),
+            hir_ty,
+            const_.span().ty(),
+            PredicateListId::empty_list(db),
         );
+        if ty_diags.is_empty() {
+            diags.extend(
+                const_type_diag(db, const_.span().ty().into(), const_.ty(db)).map(Into::into),
+            );
+        }
+        diags.extend(ty_diags.into_iter().map(Into::into));
     }
     (diags, body)
+}
+
+/// A const is an owned value, copied at each use, so its type is neither a
+/// `#[view]` type, whose values are made only in its own module, nor a
+/// state-only one.
+pub(crate) fn const_type_diag<'db>(
+    db: &'db dyn HirAnalysisDb,
+    span: DynLazySpan<'db>,
+    ty: TyId<'db>,
+) -> Option<TyDiagCollection<'db>> {
+    if let Some(view) = ty.is_view(db).then_some(ty).or_else(|| ty.view_part(db)) {
+        return Some(
+            TyLowerDiag::ViewTypeMode {
+                span,
+                ty: view,
+                mode: "the type of a `const`",
+            }
+            .into(),
+        );
+    }
+    let collection = ty.pinned_part(db)?;
+    Some(
+        TyLowerDiag::StateOnlyValue {
+            span,
+            ty,
+            collection,
+            position: "the type of a `const`",
+        }
+        .into(),
+    )
 }
 
 #[salsa::tracked(return_ref)]
@@ -873,7 +905,8 @@ pub(super) enum AccessBinding {
     /// binding takes a value or an access by `TyChecker::binding_access_kind`.
     Result,
     /// A projection's result bound whole to the single name of a `let`: a
-    /// `mut` result stays the access, as `let x = xs.at_mut(0)`.
+    /// `mut` result of a type with no values stays the access, as
+    /// `let s = buf.span_mut()`.
     LetResult,
 }
 
@@ -1361,7 +1394,6 @@ fn typed_body_for_bodyless_func<'db>(
         pat_ty: SecondaryMap::new(),
         expr_ty: SecondaryMap::new(),
         yield_shapes: SecondaryMap::new(),
-        implicit_moves: FxHashSet::default(),
         place_entries: FxHashSet::default(),
         unsafe_splits: FxHashSet::default(),
         value_calls: FxHashSet::default(),
@@ -1509,9 +1541,8 @@ impl<'db> TyChecker<'db> {
             self.check_expr(root_expr, TyId::unit(self.db));
         } else {
             self.check_expr(root_expr, self.expected);
-            match self.projection_shape.clone() {
-                Some(shape) => self.check_yield_site(root_expr, &shape),
-                None => self.record_implicit_move_for_owned_expr(root_expr, self.expected),
+            if let Some(shape) = self.projection_shape.clone() {
+                self.check_yield_site(root_expr, &shape);
             }
         }
         self.check_access_uses();
@@ -1528,20 +1559,6 @@ impl<'db> TyChecker<'db> {
             let ty = self.normalize_ty(ty);
             if !ty.has_var(self.db) && !ty.has_invalid(self.db) && !self.ty_is_copy(ty) {
                 self.push_diag(BodyDiag::AccessCapture {
-                    primary: expr.span(self.body()).into(),
-                    name: binding.binding_name(&self.env),
-                });
-            }
-        }
-    }
-
-    /// Reports the non-`Copy` values moved out of closures' captures.
-    fn check_capture_moves(&mut self) {
-        for (expr, binding, ty) in self.env.take_capture_moves() {
-            let ty = ty.fold_with(self.db, &mut self.table);
-            let ty = self.normalize_ty(ty);
-            if !ty.has_var(self.db) && !ty.has_invalid(self.db) && !self.ty_is_copy(ty) {
-                self.push_diag(BodyDiag::MoveOutOfCapture {
                     primary: expr.span(self.body()).into(),
                     name: binding.binding_name(&self.env),
                 });
@@ -2877,84 +2894,6 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn record_implicit_move_for_owned_expr(&mut self, expr: ExprId, ty: TyId<'db>) {
-        self.record_implicit_move_for_owned_expr_inner(expr, Some(ty));
-    }
-
-    fn record_implicit_move_for_owned_expr_inner(
-        &mut self,
-        expr: ExprId,
-        expected_ty: Option<TyId<'db>>,
-    ) {
-        let db = self.db;
-        let body = self.body();
-        let Partial::Present(expr_data) = expr.data(db, body) else {
-            return;
-        };
-
-        // A block, branch, match, `with` or cast is consumed as the value of
-        // the place its tail reads, and lowering reads that place where the
-        // wrapper's value is used, so the move is recorded on the wrapper too.
-        let wraps = match expr_data {
-            Expr::Block(stmts, _) => {
-                let Some(Partial::Present(crate::hir_def::Stmt::Expr(tail))) =
-                    stmts.last().map(|last| last.data(db, body))
-                else {
-                    return;
-                };
-                self.record_implicit_move_for_owned_expr_inner(*tail, expected_ty);
-                true
-            }
-            Expr::With(_, body_expr) | Expr::Cast(body_expr, _) | Expr::If(_, body_expr, None) => {
-                self.record_implicit_move_for_owned_expr_inner(*body_expr, expected_ty);
-                true
-            }
-            Expr::If(_, then_expr, Some(else_expr)) => {
-                self.record_implicit_move_for_owned_expr_inner(*then_expr, expected_ty);
-                self.record_implicit_move_for_owned_expr_inner(*else_expr, expected_ty);
-                true
-            }
-            Expr::Match(_, arms) => {
-                let Partial::Present(arms) = arms else {
-                    return;
-                };
-                for arm in arms {
-                    self.record_implicit_move_for_owned_expr_inner(arm.body, expected_ty);
-                }
-                true
-            }
-            _ => false,
-        };
-        if !wraps && !self.is_assignable_expr(expr) {
-            return;
-        }
-
-        let Some(prop) = self.env.typed_expr(expr) else {
-            return;
-        };
-        let expr_ty = prop.ty.fold_with(self.db, &mut self.table);
-        let expr_ty = self.normalize_ty(expr_ty);
-        if expr_ty.has_invalid(self.db)
-            || expr_ty == TyId::unit(self.db)
-            || expr_ty.is_never(self.db)
-        {
-            return;
-        }
-
-        let expected_ty = expected_ty
-            .map(|ty| self.normalize_ty(ty))
-            .filter(|ty| {
-                !ty.has_invalid(self.db) && *ty != TyId::unit(self.db) && !ty.is_never(self.db)
-            })
-            .unwrap_or(expr_ty);
-
-        if self.ty_is_copy(expected_ty) {
-            return;
-        }
-
-        self.env.record_implicit_move(expr, expected_ty);
-    }
-
     fn lit_ty(&mut self, lit: &LitKind<'db>) -> TyId<'db> {
         match lit {
             LitKind::Bool(_) => TyId::bool(self.db),
@@ -3534,10 +3473,10 @@ impl<'db> TyChecker<'db> {
     /// `var x` is a mutable value. A plain name takes a value as `let x = e`
     /// does, except that a type with no value reading (`#[view]` or
     /// state-only) binds a read access, whatever the grant's mode, and a
-    /// `let` binding a `mut` result whole keeps it. A value of a read result
-    /// is a copy, so a non-`Copy`
-    /// one needs `ref`; one of a `mut` result may move, as through any `mut`
-    /// access.
+    /// `let` binding such a `mut` result whole keeps it. A `let` binding a
+    /// `mut` result of any other type whole needs `mut`. A value of a read
+    /// result is a copy, so a non-`Copy` one needs `ref`; one of a `mut`
+    /// result may move, as through any `mut` access.
     fn binding_access_kind(
         &mut self,
         pat: PatId,
@@ -3573,6 +3512,12 @@ impl<'db> TyChecker<'db> {
                 Some(BorrowKind::Ref)
             }
             (AccessBinding::LetResult, BindingMarker::Plain) if kind == BorrowKind::Mut => {
+                if ty.has_value_reading(self.db) {
+                    self.push_diag(BodyDiag::MutBindingRequired {
+                        primary: primary(),
+                        ty,
+                    });
+                }
                 Some(kind)
             }
             (_, BindingMarker::Plain) if !ty.has_value_reading(self.db) => Some(BorrowKind::Ref),
@@ -4087,7 +4032,6 @@ mod typed_body_tables {
         pub(super) pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
         pub(super) expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
         pub(super) yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
-        pub(super) implicit_moves: FxHashSet<ExprId>,
         /// Index expressions naming an entry of a collection whose elements
         /// are places.
         pub(super) place_entries: FxHashSet<ExprId>,
@@ -4780,10 +4724,6 @@ impl<'db> TypedBody<'db> {
     /// grants.
     pub fn yield_shape(&self, expr: ExprId) -> Option<&Shape<'db>> {
         self.tables.yield_shapes[expr].as_ref()
-    }
-
-    pub fn is_implicit_move(&self, expr: ExprId) -> bool {
-        self.tables.implicit_moves.contains(&expr)
     }
 
     /// Whether the index expression `expr` names an entry of a collection
@@ -6183,7 +6123,6 @@ impl<'db> TypedBody<'db> {
             pat_ty: SecondaryMap::new(),
             expr_ty: SecondaryMap::new(),
             yield_shapes: SecondaryMap::new(),
-            implicit_moves: FxHashSet::default(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
             value_calls: FxHashSet::default(),
@@ -6658,7 +6597,6 @@ impl<'db> TyCheckerFinalizer<'db> {
     fn new(mut checker: TyChecker<'db>) -> Self {
         let assumptions = checker.env.assumptions();
         checker.resolve_deferred();
-        checker.check_capture_moves();
         checker.check_access_captures();
         let mut body = checker.env.finish(&mut checker.table);
         body.tables_mut().return_borrow_provider = checker.first_return_borrow_provider;

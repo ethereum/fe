@@ -1,22 +1,22 @@
 ---
 source: crates/uitest/tests/semantic_access.rs
-assertion_line: 25
+assertion_line: 32
 expression: diags
 input_file: fixtures/semantic_access/acceptance.fe
 ---
 error[16-0001]: access conflict in `fn case01_direct_conflict`
    ┌─ acceptance.fe:52:13
    │
-51 │     let x = c.direct()
-   │             - access opened here
+51 │     let x = mut c.direct()
+   │                 - access opened here
 52 │     let v = c.v
    │             ^^^ cannot read this place while a `mut` access of it is open
 
 error[16-0001]: access conflict in `fn case01_slide_conflict`
    ┌─ acceptance.fe:60:13
    │
-59 │     let x = c.written_back()
-   │             - access opened here
+59 │     let x = mut c.written_back()
+   │                 - access opened here
 60 │     let v = c.v
    │             ^^^ cannot read this place while a `mut` access of it is open
 
@@ -63,8 +63,8 @@ error[16-0001]: access conflict in `fn case12_payload_view`
 error[16-0001]: access conflict in `fn Case17FrameGrant::__init__`
     ┌─ acceptance.fe:269:9
     │
-268 │         let x = snapshot(mut vault)
-    │                          --------- access opened here
+268 │         let x = mut snapshot(mut vault)
+    │                              --------- access opened here
 269 │         bump_and_ping(mut x)
     │         ^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `mut` access of it is open
 
@@ -96,8 +96,8 @@ error[16-0001]: access conflict in `fn Case33CopyArraySpace::__init__`
 error[16-0001]: access conflict in `fn Case33CopyArrayMutSpace::__init__`
     ┌─ acceptance.fe:442:9
     │
-441 │         let x = cells.at_mut(0)
-    │                 ----- access opened here
+441 │         let x = mut cells.at_mut(0)
+    │                     ----- access opened here
 442 │         ping()
     │         ^^^^^^ this call may write storage while a `mut` access of it is open
 
@@ -128,8 +128,8 @@ error[16-0001]: access conflict in `fn case34_duplicated`
 error[16-0001]: access conflict in `fn case38_owner_access`
     ┌─ acceptance.fe:551:5
     │
-550 │     let x = first_of(mut p)
-    │                      ----- access opened here
+550 │     let x = mut first_of(mut p)
+    │                          ----- access opened here
 551 │     p.b = 1
     │     ^^^^^^^ cannot write to this place while a `mut` access of it is open
 

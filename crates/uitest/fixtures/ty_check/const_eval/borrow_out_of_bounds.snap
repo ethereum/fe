@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/const_eval/borrow_out_of_bounds.fe
 ---
-error[3-0069]: index out of bounds in const context
+error[3-0071]: index out of bounds in const context
    ┌─ borrow_out_of_bounds.fe:44:22
    │
  9 │     let a = ref values[idx]
@@ -12,7 +12,7 @@ error[3-0069]: index out of bounds in const context
 44 │ const BORROWED: u8 = borrowed(3)
    │                      ^^^^^^^^^^^ while evaluating this
 
-error[3-0069]: index out of bounds in const context
+error[3-0071]: index out of bounds in const context
    ┌─ borrow_out_of_bounds.fe:45:26
    │
 15 │     let a = mut values[idx]
@@ -21,7 +21,7 @@ error[3-0069]: index out of bounds in const context
 45 │ const BORROWED_MUT: u8 = borrowed_mut(3)
    │                          ^^^^^^^^^^^^^^^ while evaluating this
 
-error[3-0069]: index out of bounds in const context
+error[3-0071]: index out of bounds in const context
    ┌─ borrow_out_of_bounds.fe:46:22
    │
 21 │     values[idx].get()
@@ -30,7 +30,7 @@ error[3-0069]: index out of bounds in const context
 46 │ const RECEIVER: u8 = receiver(3)
    │                      ^^^^^^^^^^^ while evaluating this
 
-error[3-0069]: index out of bounds in const context
+error[3-0071]: index out of bounds in const context
    ┌─ borrow_out_of_bounds.fe:47:25
    │
 25 │     let a = ref values[idx]
@@ -39,7 +39,7 @@ error[3-0069]: index out of bounds in const context
 47 │ const THROUGH_REF: u8 = through_ref(3)
    │                         ^^^^^^^^^^^^^^ while evaluating this
 
-error[3-0069]: index out of bounds in const context
+error[3-0071]: index out of bounds in const context
    ┌─ borrow_out_of_bounds.fe:48:24
    │
 40 │     let a = ref values[idx].x

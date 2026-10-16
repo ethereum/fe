@@ -3,7 +3,7 @@ mod lower_runtime;
 mod native_tests;
 pub(crate) mod observability;
 #[cfg(feature = "cranelift")]
-pub use native_tests::{NativeTestEntry, NativeTestModule, emit_test_module_native};
+pub use native_tests::{NativeTestEntry, NativeTestSuite, emit_test_suite_native};
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 

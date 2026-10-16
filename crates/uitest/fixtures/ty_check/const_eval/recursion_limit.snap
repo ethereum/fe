@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/const_eval/recursion_limit.fe
 ---
-error[3-0069]: const evaluation exceeded the recursion limit
+error[3-0071]: const evaluation exceeded the recursion limit
   ┌─ recursion_limit.fe:5:18
   │
 2 │     recurse()

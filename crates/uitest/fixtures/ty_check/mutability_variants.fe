@@ -10,7 +10,7 @@ fn view_is_not_writable() {
 // `at_mut` needs a mutable receiver.
 fn immutable_receiver() {
     let xs: [u256; 2] = [1, 2]
-    let x = xs.at_mut(0)
+    let x = mut xs.at_mut(0)
     x = 3
 }
 

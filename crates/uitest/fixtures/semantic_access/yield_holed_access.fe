@@ -64,3 +64,64 @@ impl Outer {
         g.x = v
     }
 }
+
+// A `mut` parameter's hole may be held across a yield that does not export
+// it, and restored in the slide.
+struct Halves {
+    a: MemArray<u256>,
+    b: MemArray<u256>,
+}
+
+impl Halves {
+    // Accepted: the hole is disjoint from the grant and restored.
+    fn disjoint(mut self) -> mut MemArray<u256> {
+        let v = self.b
+        yield mut self.a
+        self.b = v
+    }
+
+    // Rejected: the grant is the hole.
+    fn exported(mut self) -> mut MemArray<u256> {
+        let v = self.b
+        yield mut self.b
+        self.b = v
+    }
+
+    // Rejected: the grant holds the hole.
+    fn whole(mut self) -> mut Halves {
+        let v = self.b
+        yield self
+        self.b = v
+    }
+
+    // Accepted.
+    fn disjoint_ref(mut self) -> ref MemArray<u256> {
+        let v = self.b
+        yield ref self.a
+        self.b = v
+    }
+
+    // Rejected: the slide never restores it.
+    fn unrestored(mut self) -> mut MemArray<u256> {
+        let v = self.b
+        yield mut self.a
+    }
+
+    // Accepted: the empty variant restores before it returns.
+    fn restored_on_each_path(mut self, _ c: bool) -> Option<mut MemArray<u256>> {
+        let v = self.b
+        if c {
+            self.b = v
+            return Option::None
+        }
+        yield Option::Some(mut self.a)
+        self.b = v
+    }
+}
+
+// Accepted: a free function's `mut` parameter.
+fn disjoint_param(_ h: mut Halves) -> mut MemArray<u256> {
+    let v = h.b
+    yield mut h.a
+    h.b = v
+}

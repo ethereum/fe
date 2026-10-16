@@ -586,9 +586,7 @@ const fn relay<const N: usize>() -> u8 { selected<N>() }
 
 #[test]
 fn pure_term_replay_keeps_source_assignment_order() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        "pure_term_order.fe".into(),
+    for source in [
         r#"
 const fn reversed<const N: u8>() -> u8 {
     let first = N / 0
@@ -596,18 +594,47 @@ const fn reversed<const N: u8>() -> u8 {
     second + first
 }
 "#,
-    );
-    let (module, _) = db.top_mod(file);
-    db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "reversed"));
-    let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
-    let max = integer_const_arg(&db, u8_ty, 255);
-    let result = assert_specialization_law(&db, owner, &[max]);
-    assert!(matches!(
-        result,
-        EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
-            if matches!(root_error(error), CtfeError::DivisionByZero { .. })
-    ));
+        r#"
+trait Value { const RESULT: u8 }
+struct Marker<const N: u8> {}
+impl<const N: u8> Value for Marker<N> {
+    const RESULT: u8 = {
+        let first = N / 0
+        let second = N + 1
+        second + first
+    }
+}
+const fn reversed<const N: u8>() -> u8 { Marker<N>::RESULT }
+"#,
+        r#"
+struct Marker<const N: u8> {}
+impl<const N: u8> Marker<N> {
+    const RESULT: u8 = {
+        let first = N / 0
+        let second = N + 1
+        second + first
+    }
+}
+const fn reversed<const N: u8>() -> u8 { Marker<N>::RESULT }
+"#,
+    ] {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone("pure_term_order.fe".into(), source);
+        let (module, _) = db.top_mod(file);
+        db.assert_no_diags(module);
+        let owner = BodyOwner::Func(function(&db, module, "reversed"));
+        let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
+        let max = integer_const_arg(&db, u8_ty, 255);
+        let result = assert_specialization_law(&db, owner, &[max]);
+        assert!(
+            matches!(
+                result,
+                EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
+                    if matches!(root_error(error), CtfeError::DivisionByZero { .. })
+            ),
+            "{source}: {result:?}"
+        );
+    }
 }
 
 #[test]
@@ -2865,25 +2892,25 @@ const fn digits(value: usize) -> usize {
 struct Suffix<const LEN: usize> {}
 impl<const LEN: usize> AsBytes for Suffix<LEN> {
     const N: usize = digits(value: LEN) + 2
-    const fn as_bytes(self) -> [u8; Self::N] {
+    const fn append_to<const M: usize>(self, _ writer: mut core::ByteWriter<M>) {
         var out: [u8; Self::N] = [0; Self::N]
         out[0] = 91
-        out
+        writer.push_array(out)
     }
 }
 
 struct Forward<const LEN: usize> {}
 impl<const LEN: usize> AsBytes for Forward<LEN> {
     const N: usize = LEN
-    const fn as_bytes(self) -> [u8; Self::N] { [0; LEN] }
+    const fn append_to<const M: usize>(self, _ writer: mut core::ByteWriter<M>) { writer.push_array([0; LEN]) }
 }
 struct One<T> { value: T }
 impl<T: AsBytes> AsBytes for One<T> {
     const N: usize = T::N
-    const fn as_bytes(self) -> [u8; Self::N] { self.value.as_bytes() }
+    const fn append_to<const M: usize>(self, _ writer: mut core::ByteWriter<M>) { writer.append(self.value) }
 }
-const fn bare() -> [u8; 3] { Forward<3> {}.as_bytes() }
-const fn projected() -> [u8; 3] { One { value: [5 as u8; 3] }.as_bytes() }
+const fn bare() -> [u8; 3] { Forward<3> {}.as_bytes().to_array() }
+const fn projected() -> [u8; 3] { One { value: [5 as u8; 3] }.as_bytes().to_array() }
 "#,
     );
     let (module, _) = db.top_mod(file);

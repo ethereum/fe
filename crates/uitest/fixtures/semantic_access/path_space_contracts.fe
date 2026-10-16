@@ -143,18 +143,18 @@ pub contract C {
 
     recv M {
         Go -> u256 uses (mut g, mut bytes, mut promised) {
-            let l = g.locked_mut()
+            let l = mut g.locked_mut()
             l = true
-            let v = g.value_mut()
+            let v = mut g.value_mut()
             v += 1
-            let f = g.first()
+            let f = mut g.first()
             f += 1
-            let p = g.plain()
+            let p = mut g.plain()
             p = false
             with (Guarded = g) {
-                let k = locked_of()
+                let k = mut locked_of()
                 k = false
-                let m = mislabeled()
+                let m = mut mislabeled()
                 m = true
             }
             let b = bytes.at(0)

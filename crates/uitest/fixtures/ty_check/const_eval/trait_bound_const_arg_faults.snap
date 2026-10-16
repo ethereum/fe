@@ -51,7 +51,7 @@ error[3-0034]: arithmetic overflow in const context
 16 │ struct Bounded<T: Has<{ 2 - 3 }>> {}
    │                         ^^^^^ checked arithmetic overflowed during const evaluation
 
-error[3-0069]: division by zero in const context
+error[3-0071]: division by zero in const context
    ┌─ trait_bound_const_arg_faults.fe:38:32
    │
 34 │ type Inverse<const N: usize> = [u8; { 7 / N }]
@@ -60,7 +60,7 @@ error[3-0069]: division by zero in const context
 38 │ fn applies_faulting_default<T: Shaped<0>>() {}
    │                                ^^^^^^^^^ in a default this reference applies
 
-error[3-0069]: division by zero in const context
+error[3-0071]: division by zero in const context
    ┌─ trait_bound_const_arg_faults.fe:50:33
    │
 46 │ impl<const N: usize> Type for Width<N> { type Item = [u8; { 8 / N }] }

@@ -2171,6 +2171,57 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
+            Self::ContractFieldEntryLayout {
+                span,
+                ty,
+                entry,
+                reason,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "the entries of `{}` cannot be laid out in storage",
+                    ty.pretty_print(db)
+                ),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("an entry `{}`: {reason}", entry.pretty_print(db)),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "a collection lays each entry out like a field, at the slots it locates"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::ContractFieldZeroInvalid { span, ty, invalid } => {
+                let label = if ty == invalid {
+                    format!("`{}` has `unsafe` fields", ty.pretty_print(db))
+                } else {
+                    format!(
+                        "`{}` holds `{}`, which has `unsafe` fields",
+                        ty.pretty_print(db),
+                        invalid.pretty_print(db)
+                    )
+                };
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!(
+                        "contract state cannot hold `{}`",
+                        invalid.pretty_print(db)
+                    ),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: label,
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![
+                        "state starts zeroed, and the all-zero representation is no value of a type whose `unsafe` fields carry an invariant".to_string(),
+                    ],
+                    error_code,
+                }
+            }
+
 
             Self::ContractFieldSlotNotConst { span } => CompleteDiagnostic::new(
                 Severity::Error,
@@ -3321,6 +3372,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
+            Self::NoStorageLayout { primary, ty, reason } => primary_diag(
+                severity,
+                "type has no storage layout",
+                format!("`{}` cannot be laid out in storage: {reason}", ty.pretty_print(db)),
+                primary.resolve(db),
+                error_code,
+            ),
+
             Self::WhereConstPredicateFailed(span) => primary_diag(
                 severity,
                 "const where predicate failed",
@@ -3730,6 +3789,24 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }],
                 notes: vec![
                     "mark the binding `ref` to hold the access, as `let x = ref …`, `(i, ref x)` or `for ref x in …`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::MutBindingRequired { primary, ty } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut` result needs a `mut` binding".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "this binds a mutable access of `{}` under a plain name",
+                        ty.pretty_print(db)
+                    ),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "a plain `let` binds a value; write `let x = mut …`, or `unsafe { mut … }` for a block's result, to hold the access"
                         .to_string(),
                 ],
                 error_code,
@@ -5041,22 +5118,43 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            BodyDiag::UncoveredStateAccess { primary, is_mut } => CompleteDiagnostic {
+            BodyDiag::UncoveredStateAccess {
+                primary,
+                is_mut,
+                in_closure,
+            } => CompleteDiagnostic {
                 severity,
-                message: "an access through a state pointer needs the function's own authority"
-                    .to_string(),
+                message: if *in_closure {
+                    "an access through a state pointer in a closure needs the closure's own authority"
+                } else {
+                    "an access through a state pointer needs the function's own authority"
+                }
+                .to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!(
-                        "this {} state the function's `uses` does not cover",
-                        if *is_mut { "writes" } else { "reads" }
+                        "this {} state the {} does not cover",
+                        if *is_mut { "writes" } else { "reads" },
+                        if *in_closure {
+                            "closure's row"
+                        } else {
+                            "function's `uses`"
+                        }
                     ),
                     span: primary.resolve(db),
                 }],
-                notes: vec![format!(
-                    "require it via `uses (storage: {}RawStorage)`; `unsafe` does not grant authority",
-                    if *is_mut { "mut " } else { "" }
-                )],
+                notes: vec![if *in_closure {
+                    format!(
+                        "a closure takes none of the enclosing function's authority; use `storage_at{}`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
+                        if *is_mut { "_mut" } else { "" },
+                        if *is_mut { "mut " } else { "" }
+                    )
+                } else {
+                    format!(
+                        "require it via `uses (storage: {}RawStorage)`; `unsafe` does not grant authority",
+                        if *is_mut { "mut " } else { "" }
+                    )
+                }],
                 error_code,
             },
 
@@ -5108,18 +5206,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }],
                 notes: vec!["pass the value to the closure as a parameter instead".to_string()],
-                error_code,
-            },
-
-            BodyDiag::MoveOutOfCapture { primary, name } => CompleteDiagnostic {
-                severity,
-                message: format!("cannot move `{}` out of a closure's captures", name.data(db)),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "moved here".to_string(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec!["each call of a closure only views its captures".to_string()],
                 error_code,
             },
 
@@ -5855,6 +5941,52 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 );
                 diag.notes.push(
                     "a copy copies every field, so two copies of a field that owns memory would be two owners of it; a generic field needs a `Copy` bound on the implementation"
+                        .to_string(),
+                );
+                diag
+            }
+
+            Self::CyclicEffectRow { primary, name } => {
+                let name = name.data(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("the effect row `{name}` names itself"),
+                    format!("expanding `{name}` through the rows it names comes back to it"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "an effect row must end in effects, or in other rows that do".to_string(),
+                );
+                diag
+            }
+
+            Self::CyclicAssociatedSpace { primary, name } => {
+                let name = name.data(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("the associated space `{name}` names itself"),
+                    format!("following `{name}` through the spaces it names comes back to it"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "an associated space must end in a space such as `storage`, `self`, or another type's space that does"
+                        .to_string(),
+                );
+                diag
+            }
+
+            Self::BlanketCopy { primary } => {
+                let mut diag = primary_diag(
+                    severity,
+                    "`Copy` cannot be implemented for a type parameter",
+                    "this would make every type the bounds admit `Copy`",
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "a `Copy` type's fields must be `Copy`, and a `#[view]` or state-only type has no copies; implement `Copy` for each type, where those are checked"
                         .to_string(),
                 );
                 diag

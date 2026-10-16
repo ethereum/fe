@@ -59,17 +59,38 @@ func private %alloc(v0.i256) -> @layout_0 {
         return v2;
 }
 
+func inline(always) private %alloc_bytes(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i1 = gt v0 18446744073709551615.i256;
+        br v3 block2 block3;
+
+    block2:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 65.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block3:
+        jump block4;
+
+    block4:
+        v12.*i8 = evm_malloc v0;
+        v13.i256 = ptr_to_int v12 i256;
+        return v13;
+}
+
 func private %alloc_uninit(v0.i256) -> @layout_0 {
     block0:
         jump block1;
 
     block1:
-        v2.*i8 = evm_malloc v0;
-        v3.i256 = ptr_to_int v2 i256;
-        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v3;
-        v8.@layout_0 = insert_value v6 1.i256 v0;
-        v10.@layout_0 = insert_value v8 2.i256 v0;
-        return v10;
+        v2.i256 = call %alloc_bytes v0;
+        v5.@layout_0 = insert_value undef.@layout_0 0.i256 v2;
+        v7.@layout_0 = insert_value v5 1.i256 v0;
+        v9.@layout_0 = insert_value v7 2.i256 v0;
+        return v9;
 }
 
 func private %calldataload(v0.i256) -> i256 {
@@ -435,23 +456,22 @@ func private %runtime() {
         unreachable;
 
     block21:
-        v35.*i8 = evm_malloc 0.i256;
-        v36.i256 = ptr_to_int v35 i256;
-        v37.i256 = call %cast__gf0ab v36;
+        v35.i256 = call %alloc_bytes 0.i256;
+        v36.i256 = call %cast__gf0ab v35;
         jump block23;
 
     block22:
         jump block20;
 
     block23:
-        v41.@layout_1 = insert_value undef.@layout_1 0.i256 v37;
-        v43.@layout_1 = insert_value v41 1.i256 0.i256;
-        v44.objref<i256> = obj.proj v0 0.i256;
-        v45.i256 = extract_value v43 0.i256;
-        obj.store v44 v45;
-        v46.objref<i256> = obj.proj v0 1.i256;
-        v47.i256 = extract_value v43 1.i256;
-        obj.store v46 v47;
+        v40.@layout_1 = insert_value undef.@layout_1 0.i256 v36;
+        v42.@layout_1 = insert_value v40 1.i256 0.i256;
+        v43.objref<i256> = obj.proj v0 0.i256;
+        v44.i256 = extract_value v42 0.i256;
+        obj.store v43 v44;
+        v45.objref<i256> = obj.proj v0 1.i256;
+        v46.i256 = extract_value v42 1.i256;
+        obj.store v45 v46;
         jump block22;
 }
 

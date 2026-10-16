@@ -14,7 +14,7 @@ fn inner(_ c: mut Cell) -> mut u256 {
 }
 
 fn outer(_ c: mut Cell) -> mut u256 {
-    let x = inner(mut c)
+    let x = mut inner(mut c)
     yield mut x
     x += 1
 }
@@ -24,7 +24,7 @@ fn outer(_ c: mut Cell) -> mut u256 {
 #[test]
 fn case04_resumption_order() {
     var c = Cell { v: 0 }
-    let x = outer(mut c)
+    let x = mut outer(mut c)
     x = 5
     assert!(c.v == 61)
 }
@@ -41,7 +41,7 @@ fn case11_break_runs_slide_once() {
     var c = Cell { v: 0 }
     var i: u256 = 0
     while i < 3 {
-        let x = tally(mut c)
+        let x = mut tally(mut c)
         if i == 1 {
             break
         }
@@ -58,7 +58,7 @@ fn written_back(_ c: mut Cell) -> mut u256 {
 }
 
 fn optional(_ c: mut Cell, _ give: bool) -> Option<mut u256> {
-    let x = written_back(mut c)
+    let x = mut written_back(mut c)
     if !give {
         return Option::None
     }
@@ -92,7 +92,7 @@ fn replaceable(_ c: mut Cell) -> mut Cell {
 #[test]
 fn case26_replaced_referent() {
     var c = Cell { v: 1 }
-    let x = replaceable(mut c)
+    let x = mut replaceable(mut c)
     x = Cell { v: 40 }
     assert!(c.v == 42)
 }
@@ -182,7 +182,7 @@ fn bump(_ x: mut u256) {
 #[test]
 fn case38_grant_writes() {
     var c = Cell { v: 1 }
-    let x = first_of(mut c)
+    let x = mut first_of(mut c)
     x += 1
     bump(mut x)
     assert(c.v == 3)
@@ -275,10 +275,10 @@ pub contract Case22OwnReservation {
     mut value: u256,
 
     init() uses (mut value, call: mut Call) {
-        let n = ramp_and_slide_call()
+        let n = mut ramp_and_slide_call()
         n += 1
         let first = n
-        let m = through_helper()
+        let m = mut through_helper()
         m += first
         let total = m
         value = total

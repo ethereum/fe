@@ -37,9 +37,9 @@ pub contract C uses (storage: mut RawStorage) {
 
     recv M {
         Run -> (bool, u256, u256, u256) uses (mut g, mut storage) {
-            let l = g.locked_forwarded()
+            let l = mut g.locked_forwarded()
             l = true
-            let v = g.value_mut()
+            let v = mut g.value_mut()
             v = 7
             // `locked` is transient 0, `value` storage 1; storage 0 is unused.
             (g.locked.value, g.value, read_slot(0), read_slot(1))

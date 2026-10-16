@@ -54,7 +54,7 @@ fn effect_alias(_ s: mut State) -> u256 {
 
 // Rejected: a projection's `mut self` and a view argument.
 fn proj_alias(_ b: mut Buf) {
-    let x = b.pick(b)
+    let x = mut b.pick(b)
     x = 1
 }
 
@@ -76,4 +76,110 @@ struct Two {
 
 fn disjoint(_ t: mut Two) -> u256 {
     t.a.set(t.b)
+}
+
+struct Counter {
+    n: u256,
+}
+
+impl Counter {
+    fn bump(mut self) -> u256 uses (st: Counter) {
+        let r = ref st.n
+        self.n = 5
+        r
+    }
+
+    fn bump_mut(mut self) -> u256 uses (st: mut Counter) {
+        self.n = 5
+        st.n = 6
+        self.n
+    }
+
+    fn proj(mut self) -> mut u256 uses (st: Counter) {
+        let seen = st.n
+        yield mut self.n
+        self.n += seen
+    }
+}
+
+struct Inner {
+    n: u256,
+}
+
+struct Outer {
+    inner: Inner,
+    s: Counter,
+}
+
+impl Outer {
+    fn write_read(mut self) -> u256 uses (i: Inner) {
+        self.inner.n = 5
+        i.n
+    }
+
+    fn get_mut(mut self) -> mut Counter {
+        mut self.s
+    }
+}
+
+// Rejected: `mut self` through a `mut` parameter and a read effect of the
+// same place.
+fn recv_param(_ p: mut Counter) -> u256 {
+    with (Counter = p) {
+        p.bump()
+    }
+}
+
+// Rejected: through a `mut` binding.
+fn recv_binding(_ p: mut Counter) -> u256 {
+    let h = mut p
+    with (Counter = h) {
+        h.bump()
+    }
+}
+
+// Rejected: a `mut` effect of the same place.
+fn recv_mut_effect(_ p: mut Counter) -> u256 {
+    with (Counter = p) {
+        p.bump_mut()
+    }
+}
+
+// Rejected: a projection's `mut self` and an effect of the same place.
+fn recv_projection(_ p: mut Counter) {
+    with (Counter = p) {
+        let g = mut p.proj()
+        g += 1
+    }
+}
+
+// Rejected: an effect provided by a field of the receiver.
+fn recv_field_effect(_ p: mut Outer) -> u256 {
+    with (Inner = p.inner) {
+        p.write_read()
+    }
+}
+
+// Rejected: a projection's grant as the receiver.
+fn recv_grant(_ o: mut Outer) -> u256 {
+    let g = mut o.get_mut()
+    with (Counter = g) {
+        g.bump()
+    }
+}
+
+// Rejected: a `for mut` element as the receiver.
+fn recv_loop(_ xs: mut [Counter; 2]) -> u256 {
+    var total: u256 = 0
+    for mut x in xs {
+        total += with (Counter = x) {
+            x.bump()
+        }
+    }
+    total
+}
+
+// Accepted: a data parameter is disjoint from the enclosing function's effect.
+fn recv_enclosing(_ p: mut Counter) -> u256 uses (st: Counter) {
+    p.bump()
 }

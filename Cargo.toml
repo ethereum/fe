@@ -56,10 +56,10 @@ tracing-tree = "0.4.0"
 wasm-bindgen-test = "0.3"
 semver = "1.0.26"
 petgraph = "0.8"
-sonatina-ir = { git = "https://github.com/fe-lang/sonatina", rev = "1544e570257cbb1e453283b8a81b25b828ec3ca0" }
-sonatina-triple = { git = "https://github.com/fe-lang/sonatina", rev = "1544e570257cbb1e453283b8a81b25b828ec3ca0" }
-sonatina-codegen = { git = "https://github.com/fe-lang/sonatina", rev = "1544e570257cbb1e453283b8a81b25b828ec3ca0" }
-sonatina-verifier = { git = "https://github.com/fe-lang/sonatina", rev = "1544e570257cbb1e453283b8a81b25b828ec3ca0" }
+sonatina-ir = { git = "https://github.com/fe-lang/sonatina", rev = "cdb34cbb9563333cde4d2c64b594a0807d23e80c" }
+sonatina-triple = { git = "https://github.com/fe-lang/sonatina", rev = "cdb34cbb9563333cde4d2c64b594a0807d23e80c" }
+sonatina-codegen = { git = "https://github.com/fe-lang/sonatina", rev = "cdb34cbb9563333cde4d2c64b594a0807d23e80c" }
+sonatina-verifier = { git = "https://github.com/fe-lang/sonatina", rev = "cdb34cbb9563333cde4d2c64b594a0807d23e80c" }
 
 [profile.dev]
 # Set to 0 to make the build faster and debugging more difficult.

@@ -1,6 +1,6 @@
 use crate::hir_def::{
-    Enum, GenericParamOwner, IdentId, ItemKind, Partial, Struct, TypeId as HirTyId, VariantKind,
-    scope_graph::ScopeId,
+    Enum, EnumVariant, FieldParent, GenericParamOwner, IdentId, ItemKind, Partial, Struct,
+    TypeId as HirTyId, VariantKind, scope_graph::ScopeId,
 };
 use crate::span::DynLazySpan;
 use common::ingot::Ingot;
@@ -10,10 +10,15 @@ use super::{
     binder::Binder,
     const_ty::ConstBodyLowering,
     corelib::resolve_core_trait,
-    provider::AddressSpace,
-    result_space::{ResolvedSpace, SpaceKey, SpaceValue, impl_space_value, resolve_space_key},
-    trait_def::{ImplementorOrigin, TraitInstId, impls_for_trait_def},
-    trait_resolution::{PredicateListId, constraint::collect_constraints},
+    fold::TyFoldable,
+    normalize::normalize_ty,
+    provider::{AddressSpace, pinned_space},
+    result_space::{SpaceValue, impl_space_value},
+    trait_def::{ImplementorOrigin, impls_for_trait_def},
+    trait_resolution::{
+        GoalSatisfiability, PredicateListId, TraitSolveCx, constraint::collect_constraints,
+        is_goal_satisfiable,
+    },
     ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
     ty_lower::{
         CompleteSubst, GenericParamTypeSet, ParamDomainId, ParamSchemaId, lower_hir_ty_in_mode,
@@ -51,10 +56,11 @@ pub enum Pin {
     Undecided,
 }
 
-/// The pin of `ty`, from each `Pinned` implementation that applies to some
-/// instance of it: the space it names, which pins every instance, or the
-/// space it forwards (`space S = P::S`) at the instance `ty` selects. The
-/// implementations agree on a pin, or the pin is undecided.
+/// The pin of `ty`: the space of the `Pinned` implementation that trait
+/// selection picks for it, bounds checked, as lowering resolves it. A type
+/// no implementation is selected for is undecided while one could still
+/// apply to an instance of it (its parameters, or bounds they leave open),
+/// and unpinned otherwise.
 #[salsa::tracked(cycle_fn = ty_pin_cycle_recover, cycle_initial = ty_pin_cycle_initial)]
 pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
     let Some(adt) = ty.adt_def(db) else {
@@ -70,52 +76,41 @@ pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
     let Some(pinned) = resolve_core_trait(db, scope, &["marker", "Pinned"]) else {
         return Pin::Unpinned;
     };
-    let goal = SpaceKey {
-        inst: TraitInstId::new_simple(db, pinned, vec![ty]),
-        space: 0,
-    };
-    let mut pins = impls_for_trait_def(db, adt.ingot(db), pinned)
+    if let Some(space) = pinned_space(db, scope, PredicateListId::empty_list(db), ty) {
+        return Pin::Pinned(space);
+    }
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(PredicateListId::empty_list(db));
+    let may_apply = impls_for_trait_def(db, adt.ingot(db), pinned)
         .iter()
-        .filter(|implementor| {
-            let mut table = UnificationTable::new(db);
-            let instance = table.instantiate_with_fresh_vars(**implementor);
-            let ty = table.instantiate_with_fresh_vars(ty);
-            table.unify(instance.self_ty(db), ty).is_ok()
-        })
-        .filter_map(|implementor| {
-            let named = match implementor.origin(db) {
-                ImplementorOrigin::Hir(impl_trait) => impl_trait
+        .any(|implementor| {
+            // A pin to another space is an error at the implementation.
+            if let ImplementorOrigin::Hir(impl_trait) = implementor.origin(db)
+                && let Some(SpaceValue::Space(space)) = impl_trait
                     .spaces(db)
                     .first()
                     .and_then(|space| space.value)
                     .and_then(|(value, steps)| {
                         impl_space_value(db, impl_trait, value.to_opt()?, steps)
-                    }),
-                _ => None,
-            };
-            let space = match named {
-                Some(SpaceValue::Space(space)) => Some(space),
-                _ => match resolve_space_key(db, goal, scope, PredicateListId::empty_list(db)) {
-                    Some(ResolvedSpace::Space(space)) => Some(space),
-                    _ => None,
-                },
-            };
-            match space {
-                Some(space @ (AddressSpace::Storage | AddressSpace::Transient)) => {
-                    Some(Pin::Pinned(space))
-                }
-                // A pin to another space is an error at the implementation.
-                Some(_) => None,
-                None => Some(Pin::Undecided),
+                    })
+                && !matches!(space, AddressSpace::Storage | AddressSpace::Transient)
+            {
+                return false;
             }
+            let mut table = UnificationTable::new(db);
+            let instance = table.instantiate_with_fresh_vars(*implementor);
+            let ty = table.instantiate_with_fresh_vars(ty);
+            table.unify(instance.self_ty(db), ty).is_ok()
+                && instance.constraints(db).list(db).iter().all(|constraint| {
+                    !matches!(
+                        is_goal_satisfiable(db, solve_cx, constraint.fold_with(db, &mut table)),
+                        GoalSatisfiability::UnSat(_) | GoalSatisfiability::ContainsInvalid
+                    )
+                })
         });
-    let Some(first) = pins.next() else {
-        return Pin::Unpinned;
-    };
-    if pins.all(|pin| pin == first) {
-        first
-    } else {
+    if may_apply {
         Pin::Undecided
+    } else {
+        Pin::Unpinned
     }
 }
 
@@ -146,15 +141,29 @@ pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> 
             if args.len() != adt.params(db).len() {
                 return None;
             }
+            // A field of an associated type holds the type it names.
             adt.fields(db)
                 .iter()
                 .flat_map(|variant| variant.iter_types(db))
-                .find_map(|field| field.instantiate(db, args).pinned_part(db))
+                .find_map(|field| {
+                    normalize_ty(
+                        db,
+                        field.instantiate(db, args),
+                        adt.scope(db),
+                        PredicateListId::empty_list(db),
+                    )
+                    .pinned_part(db)
+                })
         }
         TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_) | PrimTy::Array)) => ty
             .generic_args(db)
             .iter()
             .find_map(|elem| elem.pinned_part(db)),
+        // A memory pointer's target lies in memory, where a pinned type never
+        // does; a state pointer is a handle to a place in state.
+        TyData::TyBase(TyBase::Prim(PrimTy::Ptr(
+            AddressSpace::Memory | AddressSpace::Calldata | AddressSpace::Code,
+        ))) => ty.as_ptr(db)?.0.pinned_part(db),
         _ => None,
     }
 }
@@ -187,6 +196,24 @@ impl<'db> AdtDef<'db> {
 
     pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.adt_ref(db), AdtRef::Struct(_))
+    }
+
+    /// Whether some field of some variant is an `unsafe` field, whose value
+    /// carries an invariant of the type: the all-zero representation need
+    /// not satisfy it, so zero is no value of the type.
+    pub(crate) fn has_unsafe_field(self, db: &'db dyn HirAnalysisDb) -> bool {
+        let parents: Vec<_> = match self.adt_ref(db) {
+            AdtRef::Struct(struct_) => vec![FieldParent::Struct(struct_)],
+            // Only a record variant names its fields, and so marks them.
+            AdtRef::Enum(enum_) => (0..self.fields(db).len())
+                .map(|idx| EnumVariant::new(enum_, idx))
+                .filter(|variant| matches!(variant.kind(db), VariantKind::Record(_)))
+                .map(FieldParent::Variant)
+                .collect(),
+        };
+        parents
+            .into_iter()
+            .any(|parent| parent.fields(db).any(|field| field.is_unsafe(db)))
     }
 
     pub fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {

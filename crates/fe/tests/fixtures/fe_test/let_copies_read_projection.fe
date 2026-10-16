@@ -48,7 +48,7 @@ fn method_projection_binding_copies() {
 #[test]
 fn mut_projection_binding_stays_an_access() {
     var cell = Cell { word: 1 }
-    let word = cell.get_mut()
+    let word = mut cell.get_mut()
     word = 3
     assert!(cell.word == 3)
 }

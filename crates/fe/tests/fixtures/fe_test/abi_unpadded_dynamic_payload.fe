@@ -223,7 +223,8 @@ fn every_byte_boundary_preserves_data_and_clears_padding() {
 }
 
 // Model a large input without allocating it, so the span checks must reject
-// an overflowing padded size themselves rather than fail during allocation.
+// a payload too long to allocate themselves rather than fail during
+// allocation.
 struct LengthInput { data_len: u256 }
 impl Copy for LengthInput {}
 impl ByteInput for LengthInput {
@@ -235,13 +236,13 @@ impl ByteInput for LengthInput {
 
 #[test]
 fn largest_padded_dynamic_payload_span_is_accepted() {
-    let data = LengthInput { data_len: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc0 }
-    assert!(<Bytes as AbiSpan<Sol>>::payload_end(data, base: 0, pos: 0) == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0)
+    let data = LengthInput { data_len: 0xffffffffffffffc0 }
+    assert!(<Bytes as AbiSpan<Sol>>::payload_end(data, base: 0, pos: 0) == 0xffffffffffffffe0)
 }
 
 #[test(should_revert)]
-fn padded_dynamic_payload_size_overflow_is_rejected() {
-    let data = LengthInput { data_len: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc1 }
+fn padded_dynamic_payload_past_the_allocation_bound_is_rejected() {
+    let data = LengthInput { data_len: 0xffffffffffffffc1 }
     let _ = <Bytes as AbiSpan<Sol>>::payload_end(data, base: 0, pos: 0)
 }
 

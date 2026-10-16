@@ -96,6 +96,8 @@ fn token_doc_item_node_piece<'a>(
         piece!(ast::Pat),
         piece!(ast::TraitRef, space_before),
         piece!(ast::Type, space_before),
+        // A block is an expression: it takes its own arm first, with its space.
+        piece!(ast::BlockExpr, space_before),
         piece!(ast::Expr),
         piece!(ast::TupleType),
         piece!(ast::RecordFieldDefList, space_before),
@@ -106,7 +108,6 @@ fn token_doc_item_node_piece<'a>(
         piece!(ast::RecvArmList, space_before),
         piece!(ast::MsgVariantList, space_before),
         piece!(ast::MsgVariantParams, space_before),
-        piece!(ast::BlockExpr, space_before),
         ast::ItemList::cast(node.clone()).map(|items| {
             TokenPiece::new(block_items_doc(items.syntax(), ast::Item::cast, ctx)).space_before()
         }),

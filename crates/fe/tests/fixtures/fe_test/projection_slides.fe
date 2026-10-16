@@ -42,7 +42,7 @@ impl Cell {
     // The ramp's own sessions finish on every exit: returning the empty
     // variant runs the inner write-back but no outer slide.
     fn maybe_via(mut self, _ present: bool) -> Option<mut u256> {
-        let x = self.cached()
+        let x = mut self.cached()
         x += 5
         if !present {
             return Option::None
@@ -69,7 +69,7 @@ impl Cell {
 
 fn ended_on_two_paths(_ early: bool) -> u256 {
     var cell = Cell { v: 1 }
-    let x = cell.cached()
+    let x = mut cell.cached()
     if early {
         x += 10
         return cell.v + 1000
@@ -81,7 +81,7 @@ fn ended_on_two_paths(_ early: bool) -> u256 {
 #[test]
 fn write_back_lands_after_the_last_use() {
     var cell = Cell { v: 1 }
-    let x = cell.cached()
+    let x = mut cell.cached()
     x += 5
     assert!(cell.v == 6)
 }
@@ -89,7 +89,7 @@ fn write_back_lands_after_the_last_use() {
 #[test]
 fn slide_reads_the_callers_writes() {
     var cell = Cell { v: 1 }
-    let x = cell.from_zero()
+    let x = mut cell.from_zero()
     x = 9
     assert!(cell.v == 10)
 }
@@ -98,12 +98,12 @@ fn slide_reads_the_callers_writes() {
 fn slide_follows_either_yield() {
     // Writes to the session's temporary are not written back.
     var a = Cell { v: 1 }
-    let x = a.pick(true)
+    let x = mut a.pick(true)
     x += 5
     assert!(a.v == 101)
 
     var b = Cell { v: 1 }
-    let y = b.pick(false)
+    let y = mut b.pick(false)
     y += 5
     assert!(b.v == 106)
 }
@@ -113,7 +113,7 @@ fn each_iteration_runs_its_session() {
     var cell = Cell { v: 1 }
     var i: u256 = 0
     while i < 3 {
-        let x = cell.cached()
+        let x = mut cell.cached()
         x += 1
         i += 1
     }
@@ -156,7 +156,7 @@ fn empty_variant_finishes_the_ramp_sessions() {
 #[test]
 fn nested_sessions_end_innermost_first() {
     var cell = Cell { v: 1 }
-    let x = cell.via()
+    let x = mut cell.via()
     x += 1
     assert!(cell.v == 20)
 }
@@ -175,7 +175,7 @@ pub contract Counter {
 
     recv Msg {
         Bump -> u256 uses (mut cell) {
-            let x = cell.cached()
+            let x = mut cell.cached()
             x += 1
             cell.v
         }

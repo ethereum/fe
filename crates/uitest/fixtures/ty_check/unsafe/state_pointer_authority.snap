@@ -43,3 +43,19 @@ error[8-0107]: an access through a state pointer needs the function's own author
    │     ^^ this reads state the function's `uses` does not cover
    │
    = require it via `uses (storage: RawStorage)`; `unsafe` does not grant authority
+
+error[8-0107]: an access through a state pointer in a closure needs the closure's own authority
+   ┌─ state_pointer_authority.fe:65:23
+   │
+65 │     apply(|| unsafe { *(0 as u256 as StorPtr<u256>) = 9 })
+   │                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this writes state the closure's row does not cover
+   │
+   = a closure takes none of the enclosing function's authority; use `storage_at_mut`, or a function with `uses (storage: mut RawStorage)`, whose requirement the closure's row takes
+
+error[8-0107]: an access through a state pointer in a closure needs the closure's own authority
+   ┌─ state_pointer_authority.fe:70:25
+   │
+70 │     let f = || unsafe { *p = 9 }
+   │                         ^^ this writes state the closure's row does not cover
+   │
+   = a closure takes none of the enclosing function's authority; use `storage_at_mut`, or a function with `uses (storage: mut RawStorage)`, whose requirement the closure's row takes

@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/const_eval/assert.fe
 ---
-error[3-0069]: assertion failed in const context
+error[3-0071]: assertion failed in const context
    ┌─ assert.fe:19:26
    │
 15 │     assert!(false)
@@ -12,7 +12,7 @@ error[3-0069]: assertion failed in const context
 19 │ const PLAIN_BAD: usize = fail_plain()
    │                          ^^^^^^^^^^^^ while evaluating this
 
-error[3-0069]: assertion failed in const context
+error[3-0071]: assertion failed in const context
    ┌─ assert.fe:26:28
    │
 22 │     assert!(false, "ctfe boom")
@@ -23,7 +23,7 @@ error[3-0069]: assertion failed in const context
    │
    = assertion message: ctfe boom
 
-error[3-0069]: assertion failed in const context
+error[3-0071]: assertion failed in const context
    ┌─ assert.fe:37:27
    │
 29 │     assert!(false, "nested boom")
