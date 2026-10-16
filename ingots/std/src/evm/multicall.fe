@@ -23,12 +23,12 @@
 //! payment several times.
 //!
 //! OpenZeppelin's ERC-2771 context suffix handling is not included.
-use core::abi::{Bytes, DynArray}
+use core::abi::Bytes
 use core::ptr::MemBuffer
 use super::effects::{Call, Ctx, bubble_revert_or}
 use super::returndata::ReturnData
 use super::ops
-use ingot::abi::{DynArrayAccess, DynVec, sol::sol}
+use ingot::abi::{DynArray, DynVec, sol::sol}
 
 /// A batched call failed without revert data. Selector `0xd6bda275`, as
 /// OpenZeppelin's `Errors.FailedCall`.

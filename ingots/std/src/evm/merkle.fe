@@ -27,7 +27,7 @@
 ///     merkle::verify(proof, root: store.root, leaf)
 /// }
 /// ```
-use core::abi::DynArray
+use ingot::abi::DynArray
 use core::ptr::{self, MemSlice}
 use ingot::abi::Bytes32
 use super::ops

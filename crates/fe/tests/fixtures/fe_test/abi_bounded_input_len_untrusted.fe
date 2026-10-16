@@ -1,7 +1,8 @@
 // The public decode entry points take the input's length from their caller.
 // A length larger than the memory input must not let a decode copy bytes from
 // past the input: each of these fails instead of reading another allocation.
-use core::abi::{Bytes, Decode, DynArray, DynString, decode_field_from_prechecked_head, decode_frame_from, decode_msg_field_from}
+use core::abi::{Bytes, Decode, DynString, decode_field_from_prechecked_head, decode_frame_from, decode_msg_field_from}
+use std::abi::DynArray
 use core::ptr::{MemArray, MemBuffer, MemSpan}
 use std::abi::Sol
 use std::evm::{Call, Create, Evm}

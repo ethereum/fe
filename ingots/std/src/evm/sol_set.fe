@@ -15,7 +15,8 @@
 //! if operators.add(operator) { /* newly added */ }
 //! let n = operators.len()
 //! ```
-use core::abi::{AbiFrame, AbiSize, DynArray, Encode, store_word}
+use core::abi::{AbiFrame, AbiSize, Encode, store_word}
+use ingot::abi::DynArray
 use core::iter::{Bidirectional, Collection}
 use core::ops::{WrappingAdd, WrappingSub}
 use core::ptr

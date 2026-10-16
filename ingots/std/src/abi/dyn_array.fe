@@ -1,28 +1,106 @@
 use core::abi::{
+    Abi,
+    AbiDecoder,
     AbiFrame,
     AbiSize,
+    AbiSpan,
+    ByteInput,
     Decode,
-    DynArray,
     Encode,
+    abi_field_end_with_input_len,
     abi_field_head_size,
+    checked_frame_end,
+    copy_payload,
     decode_field_from_prechecked_head,
+    decode_frame_from,
     encode_alloc,
+    load_word,
     store_word,
 }
+use core::default::Default
+use core::iter::{Bidirectional, Collection}
+use core::marker::{Copy, Snapshot}
 use ingot::abi::{Sol, StaticAbi}
 use core::ptr::{self, MemBuffer, MemSpan}
-use core::ops::{Index, Len}
+use core::ops::{Index, Len, WrappingAdd, WrappingSub}
 use core::size_of
 use ingot::evm::panic::{PANIC_ASSERT, PANIC_INDEX_OUT_OF_BOUNDS, Panic}
 use ingot::evm::revert_error
 
-/// Element access for `DynArray<T>`.
+/// Owned handle to a Solidity-style dynamic array (`T[]`) stored in linear memory.
 ///
-/// This is an extension trait rather than an inherent method because
-/// `DynArray` is defined in `core`, which cannot name the Solidity ABI
-/// decoder that element access relies on. It is re-exported from the std
-/// prelude, so `arr.get(index)` works without an extra import.
-pub trait DynArrayAccess<T> {
+/// `data` points at the ABI payload for the array: the length word followed by the
+/// tuple-encoded element heads/tails.
+pub struct DynArray<T> {
+    unsafe data: *u8,
+    unsafe len: u256,
+    unsafe size: u256,
+}
+
+impl<T> Copy for DynArray<T> {}
+
+// A memory buffer handle is a snapshot of where its contents lie.
+impl<T> Snapshot for DynArray<T> {}
+
+impl<T> Default for DynArray<T> {
+    fn default() -> Self {
+        DynArray::empty()
+    }
+}
+
+impl<T> DynArray<T> {
+    pub fn empty() -> Self {
+        let data = ptr::alloc_bytes(32)
+        unsafe { store_word(ptr: data, value: 0) }
+        // A 32-byte tail holding length zero.
+        unsafe {
+            Self::from_validated_abi_tail(data: data, len: 0, size: 32)
+        }
+    }
+
+    /// `data` must point to a validated ABI tail of `size` initialized
+    /// bytes in a live allocation, holding `len` elements.
+    unsafe fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
+        DynArray { data, len, size }
+    }
+
+    /// Construct an array handle over a complete ABI tail.
+    ///
+    /// `data` must point to `size` valid bytes. Static-element arrays are
+    /// validated exactly; callers constructing dynamic-element arrays must
+    /// ensure their nested tails are valid and end at `size`.
+    pub unsafe fn from_abi_tail(data: *u8, len: u256, size: u256) -> Self
+        where T: AbiSize
+    {
+        let minimum_size = 32 + (len * abi_field_head_size<T>())
+        if size < 32
+            || size % 32 != 0
+            || size < minimum_size
+            || (!T::IS_DYNAMIC && size != minimum_size)
+            || (len == 0 && size != 32)
+            || load_word(data) != len
+        {
+            core::panic()
+        }
+        Self::from_validated_abi_tail(data, len, size)
+    }
+
+    pub fn len(self) -> u256 {
+        self.len
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.len == 0
+    }
+
+    pub fn encoded_size(self) -> u256 {
+        self.size
+    }
+
+    pub fn encoded_span(self) -> ref MemSpan {
+        unsafe { MemSpan::from_raw_parts(ptr: self.data, len: self.size) }
+    }
+
     /// The element at `index`. Reverts with Solidity `Panic(0x32)` if
     /// `index >= len()`.
     ///
@@ -40,16 +118,12 @@ pub trait DynArrayAccess<T> {
     /// Any ABI element works: one-word values, multi-word static structs
     /// and tuples, and dynamic elements such as `Bytes` or structs holding
     /// them, whose tail offset is validated against the array payload.
-    fn get(self, _ index: u256) -> T
-}
-
-impl<T> DynArrayAccess<T> for DynArray<T>
-    where T: Decode<Sol> + AbiSize
-{
     #[inline(always)]
     #[arithmetic(unchecked)]
-    fn get(self, _ index: u256) -> T {
-        if index >= self.len() {
+    pub fn get(self, _ index: u256) -> T
+        where T: Decode<Sol> + AbiSize
+    {
+        if index >= self.len {
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
 
@@ -64,18 +138,217 @@ impl<T> DynArrayAccess<T> for DynArray<T>
                 self.encoded_span(),
                 base: 32,
                 head_pos,
-                input_len: self.encoded_size(),
+                input_len: self.size,
             )
         }
         // A static element decodes from its own head alone. As a span of its
         // own, the head bounds each of the decoder's reads by constants.
         let head = unsafe {
             MemSpan::from_raw_parts(
-                ptr: ptr::offset_bytes(self.encoded_span().ptr(), head_pos),
+                ptr: ptr::offset_bytes(self.data, head_pos),
                 len: abi_field_head_size<T>(),
             )
         }
         T::decode_from(head, 0)
+    }
+}
+
+impl<T> AbiSize for DynArray<T>
+    where T: AbiSize
+{
+    const HEAD_SIZE: u256 = 32
+    const IS_DYNAMIC: bool = true
+
+    fn payload_size(self) -> u256 {
+        self.encoded_size()
+    }
+}
+
+impl<A: Abi, T> Decode<A> for DynArray<T>
+    where T: AbiSpan<A> + AbiSize
+{
+    fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        let payload_at = d.pos()
+        let input_len = input.len()
+        checked_frame_end<A>(payload_at, Self::HEAD_SIZE, input_len)
+        decode_payload_at<A, T, I>(input, payload_at, input_len)
+    }
+
+    #[inline(always)]
+    fn decode_from<I: ByteInput>(_ input: I, _ pos: u256) -> Self {
+        let input_len = input.len()
+        decode_frame_from<A, Self, I>(input, pos, input_len)
+    }
+
+    #[inline(always)]
+    fn decode_from_prechecked_head<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
+        decode_payload_at<A, T, I>(input, pos, input_len)
+    }
+
+    #[inline(always)]
+    fn decode_from_bounded<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
+        decode_frame_from<A, Self, I>(input, pos, input_len)
+    }
+}
+
+/// The array whose payload starts at `pos`, whose length word the caller
+/// has bounds-checked, copied into its own allocation.
+#[inline(always)]
+fn decode_payload_at<A: Abi, T, I>(_ input: I, _ pos: u256, _ input_len: u256) -> DynArray<T>
+    where T: AbiSpan<A> + AbiSize,
+          I: ByteInput
+{
+    let elem_count = input.word_at(pos)
+    let payload_end = payload_end_with_input_len<A, T, I>(input, tail_at: pos, elem_count, input_len)
+    // The payload ends within the input, and the copy is its checked tail.
+    unsafe {
+        let (data, size) = copy_payload<A, I>(input, pos, actual_size: payload_end - pos, input_len, padded: T::IS_DYNAMIC)
+        DynArray::from_validated_abi_tail(data, len: elem_count, size)
+    }
+}
+
+impl<A: Abi, T> Encode<A> for DynArray<T>
+    where T: AbiSize
+{
+    #[inline(always)]
+    fn encode(own self, _ out: AbiFrame) {
+        out.copy_from(at: 0, self.encoded_span())
+    }
+}
+
+impl<A: Abi, T> AbiSpan<A> for DynArray<T>
+    where T: AbiSpan<A> + AbiSize
+{
+    fn payload_end<I: ByteInput>(_ input: I, base: u256, pos: u256) -> u256 {
+        let input_len = input.len()
+        Self::payload_end_with_input_len(input, base: base, pos: pos, input_len: input_len)
+    }
+
+    fn payload_end_with_input_len<I: ByteInput>(_ input: I, base: u256, pos: u256, input_len: u256) -> u256 {
+        let _ = base
+        checked_frame_end<A>(pos, Self::HEAD_SIZE, input_len)
+        let elem_count = input.word_at(pos)
+        payload_end_with_input_len<A, T, I>(input, tail_at: pos, elem_count, input_len)
+    }
+}
+
+fn max_u256(a: u256, b: u256) -> u256 {
+    if a >= b { a } else { b }
+}
+
+fn payload_end_scan_with_input_len<A: Abi, T, I>(_ input: I, elems_base: u256, head_end: u256, elem_count: u256, input_len: u256) -> u256
+    where T: AbiSpan<A> + AbiSize,
+          I: ByteInput
+{
+    var head_pos = elems_base
+    var end = head_end
+    var i: u256 = 0
+    while i < elem_count {
+        end = max_u256(a: end, b: abi_field_end_with_input_len<A, T, I>(input, base: elems_base, pos: head_pos, input_len))
+        head_pos += abi_field_head_size<T>()
+        i += 1
+    }
+    end
+}
+
+// The head bounds prove the products and positions fit; tail offset wrapping
+// is checked explicitly before falling back to the checked field scan.
+#[arithmetic(unchecked)]
+fn payload_end_with_input_len<A: Abi, T, I>(_ input: I, tail_at: u256, elem_count: u256, input_len: u256) -> u256
+    where T: AbiSpan<A> + AbiSize,
+          I: ByteInput
+{
+    let elems_base = checked_frame_end<A>(tail_at, 32, input_len)
+    let element_head_size = abi_field_head_size<T>()
+    if element_head_size != 0 && elem_count > (input_len - elems_base) / element_head_size {
+        A::decode_error()
+    }
+    let head_size = elem_count * element_head_size
+    let head_end = elems_base + head_size
+
+    if elem_count == 0 || !T::IS_DYNAMIC {
+        return head_end
+    }
+
+    var prev_offset = head_size
+    var prev_end = head_end
+    var i: u256 = 0
+    while i < elem_count {
+        let head_pos = elems_base + (i * abi_field_head_size<T>())
+        let offset = input.word_at(head_pos)
+        if offset < prev_offset || offset % 32 != 0 {
+            return payload_end_scan_with_input_len<A, T, I>(input, elems_base, head_end, elem_count, input_len)
+        }
+
+        let tail_at = elems_base + offset
+        if tail_at < elems_base || prev_end > tail_at {
+            return payload_end_scan_with_input_len<A, T, I>(input, elems_base, head_end, elem_count, input_len)
+        }
+
+        prev_offset = offset
+        prev_end = abi_field_end_with_input_len<A, T, I>(input, base: elems_base, pos: head_pos, input_len)
+        i += 1
+    }
+
+    max_u256(a: head_end, b: prev_end)
+}
+
+/// An element by position, decoded into a temporary.
+impl<T> Index<usize> for DynArray<T>
+    where T: Decode<Sol> + AbiSize
+{
+    type Output = T
+
+    fn index(self, _ index: usize) -> ref T {
+        self.get(index as u256)
+    }
+}
+
+impl<T> Len for DynArray<T> {
+    fn len(self) -> usize {
+        self.len as usize
+    }
+}
+
+/// A loop over a `DynArray` sees each element decoded into a temporary.
+impl<T> Collection for DynArray<T>
+    where T: Decode<Sol> + AbiSize
+{
+    type Cursor = usize
+    type Item = T
+
+    #[inline(always)]
+    fn start(self) -> usize {
+        0
+    }
+
+    #[inline(always)]
+    fn has(self, _ c: usize) -> bool {
+        (c as u256) < self.len
+    }
+
+    #[inline(always)]
+    fn next(self, _ c: usize) -> usize {
+        c.wrapping_add(1)
+    }
+
+    #[inline(always)]
+    fn at(self, _ c: usize) -> ref T {
+        self.get(c as u256)
+    }
+}
+
+impl<T> Bidirectional for DynArray<T>
+    where T: Decode<Sol> + AbiSize
+{
+    #[inline(always)]
+    fn last(self) -> usize {
+        (self.len as usize).wrapping_sub(1)
+    }
+
+    #[inline(always)]
+    fn prev(self, _ c: usize) -> usize {
+        c.wrapping_sub(1)
     }
 }
 

@@ -18,7 +18,8 @@
 //! owners.push(owner)
 //! let first = owners[0]
 //! ```
-use core::abi::{AbiFrame, AbiSize, DynArray, Encode, store_word}
+use core::abi::{AbiFrame, AbiSize, Encode, store_word}
+use ingot::abi::DynArray
 use core::iter::{Bidirectional, Collection}
 use core::marker::{Clearable, Pinned, Storage}
 use core::ops::{LaneCodec, Location, StateIndex, WrappingAdd, WrappingSub, clear_storage}

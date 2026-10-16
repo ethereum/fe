@@ -2,7 +2,8 @@
 // payload that would not fit it is a decode error (an empty revert), not an
 // allocation: byte data longer than `2**64 - 64` bytes, or an array in an
 // input longer than `2**64 - 32` bytes.
-use core::abi::{Bytes, Decode, DynArray, DynString}
+use core::abi::{Bytes, Decode, DynString}
+use std::abi::DynArray
 use core::ptr::MemBuffer
 use std::abi::Sol
 use std::evm::Evm

@@ -1,4 +1,4 @@
-/// `DynArrayAccess::get`: element reads from decoded `DynArray` parameters,
+/// `DynArray::get`: element reads from decoded `DynArray` parameters,
 /// out-of-bounds panics, Solidity-style canonicalization of element words
 /// (dirty `Address` upper bits revert on read, matching parameter decoding),
 /// and dirty-word canonicalization for `Address` elements.

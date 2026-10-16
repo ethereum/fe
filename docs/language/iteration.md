@@ -31,7 +31,8 @@ before the first) is a cursor that names none. `at` is `mut?`: a loop whose
 item is `mut` takes it at `mut`, which needs a `mut Collection` (or a
 `mut Driver<B>`), and `Bidirectional` (`last`, `prev`) traverses in reverse.
 Arrays, `MemArray`, `MemSlice`, ranges, `SolArray` and `SolEnumerableSet` are
-collections; a collection declares the effects its methods need (`uses E`).
+collections, and so is `DynArray`, whose loop decodes each element as it
+reaches it; a collection declares the effects its methods need (`uses E`).
 
 A loop that copies each item (a `Copy` element bound by a plain name or
 `var`, or a producer's value) holds

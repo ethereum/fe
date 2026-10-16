@@ -1,7 +1,8 @@
 // A user type's `AbiSpan`/`AbiSize` are safe traits, so the decoder bounds
 // what they report by the input: a payload end past the input is a decode
 // error, not a copy from past the input.
-use core::abi::{AbiSize, AbiSpan, ByteInput, Decode, DynArray}
+use core::abi::{AbiSize, AbiSpan, ByteInput, Decode}
+use std::abi::DynArray
 use core::ptr::{MemArray, MemBuffer}
 use std::abi::Sol
 

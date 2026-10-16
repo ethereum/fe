@@ -9,10 +9,10 @@ use core::abi::{
     Bytes,
     Decode,
     DynString,
-    DynArray,
     Encode,
 }
 use core::num::IntDowncast
+use ingot::abi::DynArray
 use ingot::evm::Address
 use ingot::evm::TopicValue
 use ingot::evm::ops::revert_empty

@@ -627,6 +627,39 @@ unsafe fn copy_padded_payload<I: ByteInput>(_ input: I, _ pos: u256, _ dest: *u8
     input.copy_to_memory_unchecked(dest: dest, src_offset: pos, len: actual_size)
 }
 
+// An array payload lies within its input, so with the input at most
+// `MAX_PAYLOAD_LEN` bytes the payload fits it, rounded up to a word or not.
+// Owned tails of dynamic elements must remain word-aligned when embedded
+// before another field.
+#[arithmetic(unchecked)]
+#[inline(always)]
+fn checked_payload_size<A: Abi>(_ actual_size: u256, _ input_len: u256, padded: bool) -> u256 {
+    if input_len > MAX_PAYLOAD_LEN {
+        A::decode_error()
+    }
+    if padded { (actual_size + 31) & 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0 } else { actual_size }
+}
+
+/// A fresh tail holding the `actual_size` payload bytes at `pos` of
+/// `input`, and its size: `actual_size`, rounded up to whole words when
+/// `padded`, as owned tails of dynamic elements are. Reverts unless
+/// `input_len` fits `MAX_PAYLOAD_LEN`.
+///
+/// The caller must ensure that the payload lies within the first
+/// `input_len` bytes of `input`.
+#[inline(always)]
+pub unsafe fn copy_payload<A: Abi, I: ByteInput>(_ input: I, _ pos: u256, actual_size: u256, input_len: u256, padded: bool) -> (*u8, u256) {
+    let size = checked_payload_size<A>(actual_size, input_len, padded)
+    // A checked payload fits `MAX_PAYLOAD_LEN`.
+    let data = ptr::alloc_bytes_unchecked(size)
+    if padded {
+        copy_padded_payload(input, pos, data, actual_size, size)
+    } else {
+        input.copy_to_memory_unchecked(dest: data, src_offset: pos, len: size)
+    }
+    (data, size)
+}
+
 fn copy_dynamic_payload_from_with_input_len<A: Abi, I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> (*u8, u256, u256) {
     let payload: (u256, u256) = checked_dynamic_payload_with_input_len<A, I>(input, pos, input_len)
     let data_len = payload.0
@@ -1194,70 +1227,6 @@ impl ByteInput for ptr::MemSpan {
                 len,
             ),
         )
-    }
-}
-
-/// Owned handle to a Solidity-style dynamic array (`T[]`) stored in linear memory.
-///
-/// `data` points at the ABI payload for the array: the length word followed by the
-/// tuple-encoded element heads/tails.
-pub struct DynArray<T> {
-    unsafe data: *u8,
-    unsafe len: u256,
-    unsafe size: u256,
-}
-
-impl<T> DynArray<T> {
-    pub fn empty() -> Self {
-        let data = ptr::alloc_bytes(32)
-        unsafe { store_word(ptr: data, value: 0) }
-        // A 32-byte tail holding length zero.
-        unsafe {
-            Self::from_validated_abi_tail(data: data, len: 0, size: 32)
-        }
-    }
-
-    /// `data` must point to a validated ABI tail of `size` initialized
-    /// bytes in a live allocation, holding `len` elements.
-    unsafe fn from_validated_abi_tail(data: *u8, len: u256, size: u256) -> Self {
-        DynArray { data, len, size }
-    }
-
-    /// Construct an array handle over a complete ABI tail.
-    ///
-    /// `data` must point to `size` valid bytes. Static-element arrays are
-    /// validated exactly; callers constructing dynamic-element arrays must
-    /// ensure their nested tails are valid and end at `size`.
-    pub unsafe fn from_abi_tail(data: *u8, len: u256, size: u256) -> Self
-        where T: AbiSize
-    {
-        let minimum_size = 32 + (len * abi_field_head_size<T>())
-        if size < 32
-            || size % 32 != 0
-            || size < minimum_size
-            || (!T::IS_DYNAMIC && size != minimum_size)
-            || (len == 0 && size != 32)
-            || mem_word_at(base: data, offset: 0) != len
-        {
-            super::panic()
-        }
-        Self::from_validated_abi_tail(data, len, size)
-    }
-
-    pub fn len(self) -> u256 {
-        self.len
-    }
-
-    pub fn is_empty(self) -> bool {
-        self.len == 0
-    }
-
-    pub fn encoded_size(self) -> u256 {
-        self.size
-    }
-
-    pub fn encoded_span(self) -> ref ptr::MemSpan {
-        unsafe { ptr::MemSpan::from_raw_parts(ptr: self.data, len: self.size) }
     }
 }
 
@@ -1865,17 +1834,6 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> AbiSi
             + dynamic_payload_size(self.13)
             + dynamic_payload_size(self.14)
             + dynamic_payload_size(self.15)
-    }
-}
-
-impl<T> AbiSize for DynArray<T>
-    where T: AbiSize
-{
-    const HEAD_SIZE: u256 = 32
-    const IS_DYNAMIC: bool = true
-
-    fn payload_size(self) -> u256 {
-        self.encoded_size()
     }
 }
 
@@ -2491,173 +2449,6 @@ impl<A: Abi> Encode<A> for Bytes {
     #[inline(always)]
     fn encode(own self, _ out: AbiFrame) {
         out.copy_from(at: 0, self.encoded_span())
-    }
-}
-
-fn dyn_array_payload_end_scan_with_input_len<A: Abi, T, I>(_ input: I, elems_base: u256, head_end: u256, elem_count: u256, input_len: u256) -> u256
-    where T: AbiSpan<A> + AbiSize,
-          I: ByteInput
-{
-    var head_pos = elems_base
-    var end = head_end
-    var i: u256 = 0
-    while i < elem_count {
-        end = max_u256(a: end, b: abi_field_end_with_input_len<A, T, I>(input, base: elems_base, pos: head_pos, input_len: input_len))
-        head_pos += abi_field_head_size<T>()
-        i += 1
-    }
-    end
-}
-
-// The head bounds prove the products and positions fit; tail offset wrapping
-// is checked explicitly before falling back to the checked field scan.
-#[arithmetic(unchecked)]
-fn dyn_array_payload_end_with_input_len<A: Abi, T, I>(_ input: I, tail_at: u256, elem_count: u256, input_len: u256) -> u256
-    where T: AbiSpan<A> + AbiSize,
-          I: ByteInput
-{
-    let elems_base = checked_frame_end<A>(tail_at, 32, input_len)
-    let element_head_size = abi_field_head_size<T>()
-    if element_head_size != 0 && elem_count > (input_len - elems_base) / element_head_size {
-        A::decode_error()
-    }
-    let head_size = elem_count * element_head_size
-    let head_end = elems_base + head_size
-
-    if elem_count == 0 || !T::IS_DYNAMIC {
-        return head_end
-    }
-
-    var prev_offset = head_size
-    var prev_end = head_end
-    var i: u256 = 0
-    while i < elem_count {
-        let head_pos = elems_base + (i * abi_field_head_size<T>())
-        let offset = input.word_at(head_pos)
-        if offset < prev_offset || offset % 32 != 0 {
-            return dyn_array_payload_end_scan_with_input_len<A, T, I>(input, elems_base: elems_base, head_end: head_end, elem_count: elem_count, input_len: input_len)
-        }
-
-        let tail_at = elems_base + offset
-        if tail_at < elems_base || prev_end > tail_at {
-            return dyn_array_payload_end_scan_with_input_len<A, T, I>(input, elems_base: elems_base, head_end: head_end, elem_count: elem_count, input_len: input_len)
-        }
-
-        prev_offset = offset
-        prev_end = abi_field_end_with_input_len<A, T, I>(input, base: elems_base, pos: head_pos, input_len: input_len)
-        i += 1
-    }
-
-    max_u256(a: head_end, b: prev_end)
-}
-
-// An array payload lies within its input, so with the input at most
-// `MAX_PAYLOAD_LEN` bytes the payload fits it, rounded up to a word or not.
-// Owned tails of dynamic elements must remain word-aligned when embedded
-// before another field.
-#[arithmetic(unchecked)]
-#[inline(always)]
-fn checked_payload_size<A: Abi>(_ actual_size: u256, _ input_len: u256, padded: bool) -> u256 {
-    if input_len > MAX_PAYLOAD_LEN {
-        A::decode_error()
-    }
-    if padded { (actual_size + 31) & 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0 } else { actual_size }
-}
-
-impl<A: Abi, T> Decode<A> for DynArray<T>
-    where T: AbiSpan<A> + AbiSize
-{
-    fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
-        let payload_at = d.pos()
-        let input_len = input.len()
-        checked_frame_end<A>(payload_at, Self::HEAD_SIZE, input_len)
-        let elem_count = input.word_at(payload_at)
-        let payload_end = dyn_array_payload_end_with_input_len<A, T, I>(input, tail_at: payload_at, elem_count: elem_count, input_len: input_len)
-        let actual_size = payload_end - payload_at
-        let payload_size = checked_payload_size<A>(actual_size, input_len, padded: T::IS_DYNAMIC)
-        // A checked payload fits `MAX_PAYLOAD_LEN`.
-        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload_size) }
-
-        unsafe {
-            if T::IS_DYNAMIC {
-                copy_padded_payload(input, payload_at, data_ptr, actual_size, payload_size)
-            } else {
-                input.copy_to_memory_unchecked(dest: data_ptr, src_offset: payload_at, len: payload_size)
-            }
-        }
-
-        // The payload was checked and copied into this tail above.
-        unsafe {
-            DynArray::from_validated_abi_tail(
-                data: data_ptr,
-                len: elem_count,
-                size: payload_size,
-            )
-        }
-    }
-
-    #[inline(always)]
-    fn decode_from<I: ByteInput>(_ input: I, _ pos: u256) -> Self {
-        let input_len = input.len()
-        decode_frame_from<A, Self, I>(input, pos, input_len)
-    }
-
-    #[inline(always)]
-    fn decode_from_prechecked_head<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
-        let elem_count = input.word_at(pos)
-        let payload_end = dyn_array_payload_end_with_input_len<A, T, I>(input, tail_at: pos, elem_count: elem_count, input_len: input_len)
-
-        let actual_size = payload_end - pos
-        let payload_size = checked_payload_size<A>(actual_size, input_len, padded: T::IS_DYNAMIC)
-        // A checked payload fits `MAX_PAYLOAD_LEN`.
-        let data_ptr = unsafe { ptr::alloc_bytes_unchecked(payload_size) }
-
-        unsafe {
-            if T::IS_DYNAMIC {
-                copy_padded_payload(input, pos, data_ptr, actual_size, payload_size)
-            } else {
-                input.copy_to_memory_unchecked(dest: data_ptr, src_offset: pos, len: payload_size)
-            }
-        }
-
-        // The payload was checked and copied into this tail above.
-        unsafe {
-            DynArray::from_validated_abi_tail(
-                data: data_ptr,
-                len: elem_count,
-                size: payload_size,
-            )
-        }
-    }
-
-    #[inline(always)]
-    fn decode_from_bounded<I: ByteInput>(_ input: I, _ pos: u256, _ input_len: u256) -> Self {
-        decode_frame_from<A, Self, I>(input, pos, input_len)
-    }
-}
-
-impl<A: Abi, T> Encode<A> for DynArray<T>
-    where T: AbiSize
-{
-    #[inline(always)]
-    fn encode(own self, _ out: AbiFrame) {
-        out.copy_from(at: 0, self.encoded_span())
-    }
-}
-
-impl<A: Abi, T> AbiSpan<A> for DynArray<T>
-    where T: AbiSpan<A> + AbiSize
-{
-    fn payload_end<I: ByteInput>(_ input: I, base: u256, pos: u256) -> u256 {
-        let input_len = input.len()
-        Self::payload_end_with_input_len(input, base: base, pos: pos, input_len: input_len)
-    }
-
-    fn payload_end_with_input_len<I: ByteInput>(_ input: I, base: u256, pos: u256, input_len: u256) -> u256 {
-        let _ = base
-        checked_frame_end<A>(pos, Self::HEAD_SIZE, input_len)
-        let elem_count = input.word_at(pos)
-        dyn_array_payload_end_with_input_len<A, T, I>(input, tail_at: pos, elem_count: elem_count, input_len: input_len)
     }
 }
 

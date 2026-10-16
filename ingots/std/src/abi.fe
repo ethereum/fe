@@ -1,5 +1,5 @@
 /// Common Solidity ABI dynamic types and memory-backed byte views.
-pub use core::abi::{Bytes, BytesView, DynArray, DynString}
+pub use core::abi::{Bytes, BytesView, DynString}
 pub use core::ptr::MemSpan
 
 /// UTF-8 text stored as Solidity ABI `string`.
@@ -8,7 +8,7 @@ pub type Text = DynString
 /// Solidity ABI dynamic array.
 pub type Vec<T> = DynArray<T>
 pub use sol::{self, *}
-pub use dyn_array::{DynArrayAccess, DynVec, MemVec, canonical_dyn_array, dyn_array_from}
+pub use dyn_array::{DynArray, DynVec, MemVec, canonical_dyn_array, dyn_array_from}
 pub use array_view::{ArrayView, decode_array_view, decode_array_view_at}
 
 use core::ptr

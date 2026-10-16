@@ -1,4 +1,4 @@
-use super::abi::{Bytes, DynArray, DynString}
+use super::abi::{Bytes, DynString}
 
 // Marker traits for language-level behavior.
 //
@@ -49,12 +49,10 @@ impl Copy for () {}
 impl<const N: usize> Copy for String<N> {}
 impl Copy for Bytes {}
 impl Copy for DynString {}
-impl<T> Copy for DynArray<T> {}
 
 // A memory buffer handle is a snapshot of where its contents lie.
 impl Snapshot for Bytes {}
 impl Snapshot for DynString {}
-impl<T> Snapshot for DynArray<T> {}
 impl<T, const N: usize> Copy for [T; N]
     where T: Copy
 {}

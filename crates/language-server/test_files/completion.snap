@@ -25,7 +25,6 @@ completions:
   - Decode (Interface)
   - Default (Interface)
   - Drawable (Interface)
-  - DynArrayAccess (Interface)
   - DynVec (Struct)
   - Encode (Interface)
   - Err (EnumMember)
