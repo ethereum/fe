@@ -2,8 +2,9 @@ use crate::core::hir_def::GenericArg;
 use crate::hir_def::{CallableDef, Func};
 use crate::{
     core::hir_def::{
-        Const, Enum, EnumVariant, GenericParamOwner, HirIngot, IdentId, Impl, ImplTrait, ItemKind,
-        Partial, PathId, PathKind, Trait, TypeBound, TypeKind, VariantKind, scope_graph::ScopeId,
+        Const, Enum, EnumVariant, GenericArgListId, GenericParamOwner, HirIngot, IdentId, Impl,
+        ImplTrait, ItemKind, Partial, PathId, PathKind, Trait, TypeBound, TypeKind, VariantKind,
+        scope_graph::ScopeId,
     },
     core::semantic::trait_self_predicate,
     span::{DynLazySpan, path::LazyPathSpan},
@@ -816,13 +817,15 @@ where
 
 /// Resolves `path` written where a trait is expected.
 ///
-/// A trait path can never name an associated type, but an associated type of
-/// an enclosing trait lexically shadows a same-named trait (`trait Abi { type
-/// Decoder: Decoder<Self> }`). A bare ident naming such an associated type is
-/// looked up from outside the shadowing trait instead. This happens before
-/// the path is resolved, since resolving the associated type would reject the
-/// generic args a trait path may carry. Those args are still lowered in
-/// `scope`, so they can reference the trait's own generic params.
+/// What the path names is looked up before any generic args are lowered
+/// against it. A trait path can never name an associated type, but an
+/// associated type of an enclosing trait lexically shadows a same-named trait
+/// (`trait Abi { type Decoder: Decoder<Self> }`). A bare ident naming such an
+/// associated type is looked up from outside the shadowing trait instead,
+/// while its generic args are still lowered in `scope`, so they can reference
+/// the trait's own generic params. A path naming anything else that isn't a
+/// trait is resolved without its generic args, so it's reported as not being
+/// a trait rather than for the args that thing doesn't take.
 pub(crate) fn resolve_trait_path_with_observer_and_minter<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
@@ -834,48 +837,43 @@ pub(crate) fn resolve_trait_path_with_observer_and_minter<'db, F>(
 where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
-    let shadowed_trait = || {
-        if path.parent(db).is_some() {
-            return None;
-        }
-        let shadow = resolve_ident_to_bucket(db, path, scope)
-            .pick(NameDomain::TYPE)
-            .as_ref()
-            .ok()?;
-        let NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _)) = shadow.kind else {
-            return None;
-        };
+    let is_trait = |kind| matches!(kind, NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))));
+    let definition = resolve_type_path_definition(db, path, scope);
+    if let Some(NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _))) = definition
+        && path.parent(db).is_none()
         // The shadow can only come from a trait that encloses the use site.
-        if !scope.is_transitive_child_of(db, shadowing_trait.scope()) {
-            return None;
-        }
-        let outer = resolve_ident_to_bucket(db, path, shadowing_trait.scope().parent(db)?)
-            .pick(NameDomain::TYPE)
-            .as_ref()
-            .ok()?;
-        matches!(
-            outer.kind,
-            NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_)))
-        )
-        .then_some(outer)
-    };
+        && scope.is_transitive_child_of(db, shadowing_trait.scope())
+        && let Some(outer_scope) = shadowing_trait.scope().parent(db)
+        && let Ok(outer) = resolve_ident_to_bucket(db, path, outer_scope).pick(NameDomain::TYPE)
+        && is_trait(outer.kind)
+    {
+        let res =
+            resolve_name_res_with_minter(db, outer, None, path, scope, assumptions, lowering_cx)?;
+        lowering_cx.record_resolution(path, &res);
+        observer(path, &res);
+        return Ok(res);
+    }
 
-    let Some(nameres) = shadowed_trait() else {
-        return resolve_path_with_observer_and_minter(
+    let path = match definition {
+        Some(kind) if !is_trait(kind) => PathId::new(
             db,
-            path,
-            scope,
-            assumptions,
-            false,
-            observer,
-            lowering_cx,
-        );
+            PathKind::Ident {
+                ident: path.ident(db),
+                generic_args: GenericArgListId::none(db),
+            },
+            path.parent(db),
+        ),
+        _ => path,
     };
-    let res =
-        resolve_name_res_with_minter(db, nameres, None, path, scope, assumptions, lowering_cx)?;
-    lowering_cx.record_resolution(path, &res);
-    observer(path, &res);
-    Ok(res)
+    resolve_path_with_observer_and_minter(
+        db,
+        path,
+        scope,
+        assumptions,
+        false,
+        observer,
+        lowering_cx,
+    )
 }
 
 /// How a path written where a type is expected chooses between the type and
