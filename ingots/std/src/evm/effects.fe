@@ -1200,22 +1200,14 @@ pub fn decode_returndata<R>(_ ret: MemSpan) -> R
 ///
 /// This bubbles revert data on call failure and reuses the regular Solidity
 /// decoder, so short or non-canonical returndata also reverts.
+/// Shared call authority accounts for read-only reentry into contract state.
 pub fn staticcall_decode<R>(addr: Address, gas: u256, args: MemSpan) -> R
+    uses (call: Call)
     where R: Decode<Sol> + AbiSize
 {
-    let ret = MemBuffer::empty()
-    let success = unsafe {
-        ops::staticcall(
-            gas,
-            addr: addr.inner,
-            args_offset: args.ptr(),
-            args_len: args.len(),
-            ret_offset: ret.ptr(),
-            ret_len: ret.len(),
-        ) != 0
-    }
-
-    if !success {
+    var ret = MemBuffer::empty()
+    let outcome = call.raw_staticcall(addr, gas, args, ret: mut ret)
+    if !outcome.success() {
         bubble_last_revert()
     }
 
