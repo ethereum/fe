@@ -15,8 +15,8 @@ use crate::{
         },
     },
     hir_def::{
-        ArithBinOp, BinOp, CallableDef, CompBinOp, Func, IdentId, ItemKind, PathId, Trait, UnOp,
-        scope_graph::ScopeId,
+        ArithBinOp, BinOp, CallableDef, CompBinOp, Func, HirIngot, IdentId, ItemKind, PathId,
+        Trait, UnOp, scope_graph::ScopeId,
     },
     semantic::EffectRequirementKey,
 };
@@ -28,14 +28,28 @@ pub fn resolve_core_trait<'db>(
     segments: &[&str],
 ) -> Option<Trait<'db>> {
     let (module_segments, [trait_name]) = segments.split_last_chunk::<1>()?;
-    let mut module_path = lib_root_path(db, scope, "core");
+    // Operator syntax names a compiler library requirement, not a lexical
+    // `core` binding. Reuse the dependency roots used by name resolution;
+    // resolving from the user's scope would let `mod core {}` intercept it.
+    let own_ingot = scope.top_mod(db).ingot(db);
+    let core = if own_ingot.is_core(db) {
+        own_ingot
+    } else {
+        own_ingot
+            .resolved_external_ingots(db)
+            .iter()
+            .find_map(|(name, ingot)| (name.data(db) == "core").then_some(*ingot))?
+    };
+    let core_scope = core.root_mod(db).scope();
+    let mut module_path = PathId::from_ident(db, IdentId::make_ingot(db));
 
     for segment in module_segments {
         module_path = module_path.push_str(db, segment);
     }
 
     let assumptions = PredicateListId::empty_list(db);
-    let Ok(PathRes::Mod(module_scope)) = resolve_path(db, module_path, scope, assumptions, false)
+    let Ok(PathRes::Mod(module_scope)) =
+        resolve_path(db, module_path, core_scope, assumptions, false)
     else {
         return None;
     };
