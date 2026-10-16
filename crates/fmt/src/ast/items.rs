@@ -543,10 +543,20 @@ fn func_sig_to_doc<'a>(
     let force_where_break = has_where && (ctx.config.where_new_line || core_flat_len > 60);
     let force_clause_break = force_uses_break || force_where_break;
 
+    // Without a body, a line break ends the signature, so `uses` has to stay
+    // on its line.
+    let has_body = sig
+        .syntax()
+        .parent()
+        .and_then(ast::Func::cast)
+        .is_some_and(|func| func.body().is_some());
+
     let uses_doc = sig.uses_clause().map_or_else(
         || alloc.nil(),
         |u| {
-            if force_uses_break {
+            if !has_body {
+                alloc.text(" ").append(u.to_doc(ctx))
+            } else if force_uses_break {
                 alloc.hardline().append(u.to_doc(ctx))
             } else {
                 alloc.line().append(u.to_doc(ctx))

@@ -18,6 +18,14 @@ fn format_snap(fixture: Fixture<&str>) {
 }
 
 #[test]
+fn long_bodiless_signatures_keep_uses_on_their_line() {
+    // A line break ends a signature without a body, so `uses` can't move to
+    // the next line as it does before a body.
+    let source = "trait Call {\n    fn call(self, _ a0: own A0, _ a1: own A1, _ a2: own A2) -> Self::Out uses E\n}\n";
+    assert_formats_to(source, source);
+}
+
+#[test]
 fn deeply_nested_tuples_format_in_linear_time() {
     // Each tuple level used to format its elements twice, so 40 levels took
     // about 2^40 steps.
