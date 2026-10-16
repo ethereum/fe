@@ -1,1 +1,0 @@
-A struct field of an associated type is the type it names wherever a layout or the state-only rule looks at it: a lane of such a field can be projected into memory, and a struct whose associated-type field holds a pinned type is state-only.

@@ -1,1 +1,0 @@
-A variable used as a call argument, an aggregate field or an operator operand is now read where it appears, before the operands after it run: `add(x, bump(mut x))`, `(x, bump(mut x))` and `x + bump(mut x)` read `x` before `bump` resets it, including when `x` is an effect.

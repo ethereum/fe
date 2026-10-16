@@ -1,1 +1,0 @@
-A `const` item or associated `const` cannot have a `#[view]` or state-only type. A const is an owned value copied at each use, so a view const let another module make the view's values, and an associated `const ZERO: Self` let generic code pass a view as `own`.

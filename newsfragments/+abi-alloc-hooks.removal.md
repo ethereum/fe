@@ -1,1 +1,0 @@
-The `alloc` methods of `core::abi::Abi` and `core::abi::AbiDecoder` are removed: decoding allocates its payloads itself, so no implementation can choose where decoded bytes are written. Drop them from custom ABI and decoder implementations.

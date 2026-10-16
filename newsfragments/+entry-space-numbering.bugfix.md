@@ -1,1 +1,0 @@
-A contract field takes its slot numbers in every state space its collections' entries lie in, so a `StorageMap<K, TSlot<V>>` field and a transient collection field no longer get the same transient numbers, whose entries aliased.

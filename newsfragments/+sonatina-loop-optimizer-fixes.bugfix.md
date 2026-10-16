@@ -1,1 +1,0 @@
-A `?` inside a `for` loop no longer fails to compile at the default optimization level: Sonatina's loop optimizations kept moving an enum payload read above the test of its variant. Copying a `Copy` struct inside a loop also no longer runs an optimizer pass on a value it had already removed.

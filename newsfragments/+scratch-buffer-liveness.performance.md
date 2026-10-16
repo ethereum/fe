@@ -1,1 +1,0 @@
-Loops that hash into scratch buffers, such as Merkle proof verification and the deposit contract's `get_deposit_root`, use less gas: the backend no longer turns those buffers into persistent heap allocations when no function exposes a pointer to memory it cannot track.

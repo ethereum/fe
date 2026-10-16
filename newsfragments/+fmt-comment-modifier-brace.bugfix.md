@@ -1,1 +1,0 @@
-The formatter keeps the space before a method body when a comment precedes a method with modifiers (`pub fn`, `pub unsafe fn`): such an item no longer starts at the comment, so the comment belongs to the impl or trait body, as one before any other item does.

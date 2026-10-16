@@ -1,1 +1,0 @@
-A `mut` access binding yielded or returned where a `ref` result is expected (`fn f(_ p: mut u256) -> ref u256 { p }`, `(1, g)`, `Some(g)`) views its place instead of failing with an internal access-checking error, and a projection may hold a `mut` parameter's hole across a yield that does not export it and restore it in the slide.

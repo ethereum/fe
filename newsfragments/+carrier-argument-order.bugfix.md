@@ -1,1 +1,0 @@
-An argument reached through a `mut` parameter or binding is taken where it appears, as a local's is: `add(x, bump(mut x))` reads `x` before `bump` writes it, and a non-`Copy` view argument followed by a `mut` argument of the same place is rejected, instead of the read happening when the call runs.

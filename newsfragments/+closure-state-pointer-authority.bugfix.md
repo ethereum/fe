@@ -1,1 +1,0 @@
-A state-pointer dereference inside a closure needs authority in the closure's own row, which its caller provides, rather than the enclosing function's `uses`, so `unsafe` code in a closure can no longer write state its caller holds open (8-0107). `storage_at_mut` in a closure still works: it adds the requirement to the closure's row.

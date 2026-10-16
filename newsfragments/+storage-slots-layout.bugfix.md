@@ -1,1 +1,0 @@
-`storage_slots<T>()` counts a closure's slots as the product of its captures, as MIR stores it, instead of one slot, and reports a type with no storage layout (8-0128, or 16-0010 at a generic instance) instead of failing in MIR lowering. A contract field of an array too long to lay out reports the extent overflow rather than an incomplete layout.
