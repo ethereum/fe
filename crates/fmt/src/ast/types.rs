@@ -105,13 +105,63 @@ macro_rules! block_list_auto_impl {
 block_list_auto_impl!(block_list_auto, block_list);
 block_list_auto_impl!(block_list_spaced_auto, block_list_spaced);
 
+/// Returns true if the first non-trivia token of the node is `<` (a qualified
+/// type such as `<T as Trait>::Item`). Such a node must not be emitted
+/// directly after another `<`, or the two would lex as a single `<<` shift
+/// token on reparse; callers insert a space between them.
+pub(crate) fn starts_with_lt(syntax: &parser::SyntaxNode) -> bool {
+    syntax
+        .descendants_with_tokens()
+        .filter_map(|child| child.into_token())
+        .find(|token| {
+            !matches!(
+                token.kind(),
+                SyntaxKind::WhiteSpace
+                    | SyntaxKind::Newline
+                    | SyntaxKind::Comment
+                    | SyntaxKind::DocComment
+            )
+        })
+        .is_some_and(|token| token.kind() == SyntaxKind::Lt)
+}
+
+/// Comments directly after an item's attribute list are rendered together with
+/// the attributes (see `ast::AttrList::to_doc`), so they don't count here.
 pub fn has_comment_tokens(syntax: &parser::SyntaxNode) -> bool {
     syntax.children_with_tokens().any(|child| {
         matches!(
             child,
             NodeOrToken::Token(t) if matches!(t.kind(), SyntaxKind::Comment | SyntaxKind::DocComment)
+                && !(t.kind() == SyntaxKind::Comment && follows_attr_list(&t))
         )
     })
+}
+
+/// Returns true if only trivia separates the token from a preceding attribute
+/// list of an item or statement (not the inner attributes of a module, whose
+/// following comments belong to the module's items).
+pub(crate) fn follows_attr_list(token: &parser::SyntaxToken) -> bool {
+    let mut prev = token.prev_sibling_or_token();
+    while let Some(el) = prev {
+        match el {
+            NodeOrToken::Token(t)
+                if matches!(
+                    t.kind(),
+                    SyntaxKind::WhiteSpace | SyntaxKind::Newline | SyntaxKind::Comment
+                ) =>
+            {
+                prev = t.prev_sibling_or_token();
+            }
+            NodeOrToken::Node(node) => {
+                return node.kind() == SyntaxKind::AttrList
+                    && node
+                        .parent()
+                        .is_some_and(|parent| parent.kind() != SyntaxKind::ItemList);
+            }
+            NodeOrToken::Token(_) => return false,
+        }
+    }
+    false
 }
 
 pub(crate) fn hardlines<'a>(alloc: &'a RcAllocator, count: usize) -> Doc<'a> {
@@ -200,6 +250,13 @@ impl<'a> TokenDocBuilder<'a> {
 
     fn push_piece(&mut self, piece: TokenPiece<'a>) {
         let alloc = &self.ctx.alloc;
+
+        // Leading newlines inside a node are the enclosing container's
+        // concern (it emits the separation between entries); rendering them
+        // here too would add another blank line on every format pass.
+        if self.is_start {
+            self.pending_newlines = 0;
+        }
 
         if self.pending_newlines > 0 {
             let doc = hardlines(alloc, self.pending_newlines).append(piece.doc);
@@ -294,6 +351,8 @@ fn token_doc_inner<'a>(
                 }
 
                 match token.kind() {
+                    // Rendered with the attribute list they follow.
+                    SyntaxKind::Newline | SyntaxKind::Comment if follows_attr_list(&token) => {}
                     SyntaxKind::Newline => builder.bump_newlines(&token),
                     SyntaxKind::WhiteSpace => {}
                     SyntaxKind::Comment | SyntaxKind::DocComment => builder.push_comment(&token),
@@ -1093,8 +1152,16 @@ impl ToDoc for ast::QualifiedType {
                 None => return alloc.nil(),
             };
 
+            // A qualified type nested directly inside another (`< <A as B>::C
+            // as D>`) needs a space after the opening `<` so it doesn't lex
+            // as `<<`.
+            let open = if self.ty().is_some_and(|t| starts_with_lt(t.syntax())) {
+                "< "
+            } else {
+                "<"
+            };
             return alloc
-                .text("<")
+                .text(open)
                 .append(ty)
                 .append(alloc.text(" as "))
                 .append(trait_path)
@@ -1217,9 +1284,9 @@ impl ToDoc for ast::AssocTypeGenericArg {
 impl ToDoc for ast::TupleType {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         if !has_comment_tokens(self.syntax()) {
-            let mut items: Vec<_> = self.elem_tys().map(|ty| ty.to_doc(ctx)).collect();
-            if items.len() == 1 {
-                return singleton_tuple(ctx, "(", ")", items.pop().unwrap());
+            let mut elems = self.elem_tys();
+            if let (Some(ty), None) = (elems.next(), elems.next()) {
+                return singleton_tuple(ctx, "(", ")", ty.to_doc(ctx));
             }
         }
 

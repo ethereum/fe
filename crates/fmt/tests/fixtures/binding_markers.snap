@@ -1,6 +1,5 @@
 ---
 source: crates/fmt/tests/format_snapshots.rs
-assertion_line: 17
 expression: output
 input_file: tests/fixtures/binding_markers.fe
 ---
@@ -11,7 +10,7 @@ fn markers(c: Cells, p: Pair) {
     match p {
         Pair { ref a, mut b, .. } => {},
     }
-    if let Some(ref v,) = p.opt {}
+    if let Some(ref v) = p.opt {}
     let z = ref p
     var w = p.a
 }
