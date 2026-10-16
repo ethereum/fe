@@ -1,0 +1,1 @@
+Contracts use less gas and code: the backend removes memory zero fills that later writes cover, such as the zeroing of a freshly allocated return buffer (ERC20 runtime shrinks from 938 to 865 bytes), and knows that calldata, return data, code and memory sizes are below `2**62` bytes, so checks on lengths derived from them fold (a 64-element Merkle proof verifies for 36 gas less).
