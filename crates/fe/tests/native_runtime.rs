@@ -307,12 +307,12 @@ fn fail_assertion() { core::assert(false) }
                 .to_string_lossy()
                 .starts_with("fe-native-test-")
         }));
-        let ir = fs::read_to_string(temp.path().join("out/cases.native-0.test.sona")).unwrap();
+        let ir = fs::read_to_string(temp.path().join("out/cases.native.test.sona")).unwrap();
         assert!(
             !ir.contains("fail_assertion"),
             "filtered test must not be compiled"
         );
-        assert!(temp.path().join("out/cases.native-0.test.rmir").exists());
+        assert!(temp.path().join("out/cases.native.test.rmir").exists());
         let listing = Command::new("tar")
             .arg("-tzf")
             .arg(&report)
@@ -1449,4 +1449,167 @@ pub fn main() -> i32 {{
             "{operation}: {result:?}"
         );
     }
+}
+
+#[test]
+fn native_runner_shares_helpers_across_modules_and_keeps_test_identities() {
+    let temp = tempdir().unwrap();
+    let root = temp.path().join("shared_tests");
+    fs::create_dir_all(root.join("src")).unwrap();
+    let root = root.as_path();
+    fs::write(
+        root.join("fe.toml"),
+        "[ingot]\nname = \"shared_tests\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/lib.fe"),
+        "pub fn shared_answer() -> u256 { 42 }\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/alpha.fe"),
+        r#"
+use ingot::shared_answer
+extern {
+    fn abs(_ value: i32) -> i32
+}
+#[test]
+fn same_name() { core::assert(shared_answer() == 42) }
+#[test]
+fn keep_alpha() {
+    core::assert(shared_answer() == 42)
+    core::assert(abs(-42) == 42)
+}
+"#,
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/beta.fe"),
+        r#"
+use ingot::shared_answer
+extern {
+    fn abs(_ value: i32) -> i32
+}
+#[test]
+fn same_name() { core::assert(shared_answer() == 0) }
+#[test]
+fn keep_beta() {
+    core::assert(shared_answer() == 42)
+    core::assert(abs(-7) == 7)
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+            .args(["test", "--backend", "native", "--jobs", "2", "-O", level])
+            .arg(root)
+            .output()
+            .unwrap();
+        assert!(!result.status.success(), "{result:?}");
+        assert!(
+            String::from_utf8_lossy(&result.stdout).contains("3 passed; 1 failed"),
+            "{result:?}"
+        );
+
+        let report = root.join(format!("report-{level}.tar.gz"));
+        let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+            .args([
+                "test",
+                "--backend",
+                "native",
+                "--grouped",
+                "--filter",
+                "keep_",
+                "--emit",
+                "ir,rmir",
+                "--report",
+                "--report-out",
+            ])
+            .arg(&report)
+            .args(["-O", level])
+            .arg(root)
+            .output()
+            .unwrap();
+        assert!(result.status.success(), "{result:?}");
+        assert!(
+            String::from_utf8_lossy(&result.stdout).contains("2 passed; 0 failed"),
+            "{result:?}"
+        );
+        let rmir = fs::read_to_string(root.join("out/shared_tests.native.test.rmir")).unwrap();
+        assert_eq!(
+            rmir.lines()
+                .filter(|line| line.contains("inline=")
+                    && line.contains("owner=")
+                    && line.contains("shared_answer"))
+                .count(),
+            1,
+            "{rmir}"
+        );
+        let ir = fs::read_to_string(root.join("out/shared_tests.native.test.sona")).unwrap();
+        assert_eq!(
+            ir.lines()
+                .filter(|line| line.starts_with("declare external %abs("))
+                .count(),
+            1,
+            "{ir}"
+        );
+        assert!(
+            !ir.contains("same_name"),
+            "filtered tests must not enter the shared graph"
+        );
+        let listing = Command::new("tar")
+            .arg("-tzf")
+            .arg(report)
+            .output()
+            .unwrap();
+        assert!(listing.status.success(), "{listing:?}");
+        let listing = String::from_utf8_lossy(&listing.stdout);
+        assert_eq!(
+            listing
+                .lines()
+                .filter(|line| line.ends_with("/tests.o"))
+                .count(),
+            1,
+            "{listing}"
+        );
+        assert_eq!(
+            listing
+                .lines()
+                .filter(|line| line.ends_with("/status.txt"))
+                .count(),
+            2,
+            "{listing}"
+        );
+    }
+
+    let report = root.join("report-no-matches.tar.gz");
+    let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+        .args([
+            "test",
+            "--backend",
+            "native",
+            "--filter",
+            "missing_test",
+            "--report",
+            "--report-out",
+        ])
+        .arg(&report)
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{result:?}");
+    let listing = Command::new("tar")
+        .arg("-tzf")
+        .arg(report)
+        .output()
+        .unwrap();
+    assert!(listing.status.success(), "{listing:?}");
+    assert!(
+        !String::from_utf8_lossy(&listing.stdout)
+            .lines()
+            .any(|line| line.ends_with("/tests.o")),
+        "no selected tests must not create a native object"
+    );
 }

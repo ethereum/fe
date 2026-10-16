@@ -1,6 +1,6 @@
 use driver::DriverDataBase;
 use hir::hir_def::TopLevelMod;
-use mir::{build_test_runtime_package, format_runtime_package};
+use mir::{build_native_test_runtime_package, format_runtime_package};
 use sonatina_codegen::{Compile, isa::cranelift::CraneliftObjectBackend};
 use sonatina_ir::{Linkage, ir_writer::ModuleWriter};
 
@@ -19,24 +19,24 @@ pub struct NativeTestEntry {
     pub symbol: String,
 }
 
-/// One compiled object for every selected test in a source module.
+/// One compiled object for every selected test in a suite.
 #[derive(Debug)]
-pub struct NativeTestModule {
+pub struct NativeTestSuite {
     pub tests: Vec<NativeTestEntry>,
     pub object: Vec<u8>,
     pub ir: Option<String>,
     pub rmir: Option<String>,
 }
 
-pub fn emit_test_module_native(
+pub fn emit_test_suite_native(
     db: &DriverDataBase,
-    top_mod: TopLevelMod<'_>,
+    top_mods: &[TopLevelMod<'_>],
     opt_level: OptLevel,
     filter: Option<&str>,
     emit_ir: bool,
     emit_rmir: bool,
-) -> Result<Option<NativeTestModule>, LowerError> {
-    let package = build_test_runtime_package(db, top_mod, filter)?;
+) -> Result<Option<NativeTestSuite>, LowerError> {
+    let package = build_native_test_runtime_package(db, top_mods, filter)?;
     if package.root_objects(db).is_empty() {
         return Ok(None);
     }
@@ -83,7 +83,7 @@ pub fn emit_test_module_native(
         .compile()
         .map(|artifact| artifact.into_bytes())
         .map_err(|errors| LowerError::Internal(format_cranelift_errors(&errors)))?;
-    Ok(Some(NativeTestModule {
+    Ok(Some(NativeTestSuite {
         tests,
         object,
         ir,
