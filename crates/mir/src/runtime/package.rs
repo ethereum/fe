@@ -455,50 +455,75 @@ pub fn build_test_runtime_package<'db>(
     top_mod: TopLevelMod<'db>,
     filter: Option<&str>,
 ) -> Result<RuntimePackage<'db>, LowerError> {
+    build_test_package(db, &[top_mod], filter, |_, name| sanitize_object_name(name))
+}
+
+/// Build one reachable runtime graph for every selected native test in a suite.
+/// Object identities remain distinct when source modules use the same test name.
+pub fn build_native_test_runtime_package<'db>(
+    db: &'db dyn MirDb,
+    top_mods: &[TopLevelMod<'db>],
+    filter: Option<&str>,
+) -> Result<RuntimePackage<'db>, LowerError> {
+    build_test_package(db, top_mods, filter, |index, name| {
+        format!("__native_test_{index}_{}", sanitize_object_name(name))
+    })
+}
+
+fn build_test_package<'db>(
+    db: &'db dyn MirDb,
+    top_mods: &[TopLevelMod<'db>],
+    filter: Option<&str>,
+    object_name: impl Fn(usize, &str) -> String,
+) -> Result<RuntimePackage<'db>, LowerError> {
+    let &top_mod = top_mods.first().ok_or_else(|| {
+        LowerError::Unsupported("test runtime package needs a source module".into())
+    })?;
     let mut roots = Vec::new();
     let mut objects = Vec::new();
-    for &func in top_mod.all_funcs(db) {
-        if func.top_mod(db) != top_mod {
-            continue;
-        }
-        let Some(attrs) = ItemKind::from(func).attrs(db) else {
-            continue;
-        };
-        if attrs.get_attr(db, "test").is_none() {
-            continue;
-        }
+    for &module in top_mods {
+        for &func in module.all_funcs(db) {
+            if func.top_mod(db) != module {
+                continue;
+            }
+            let Some(attrs) = ItemKind::from(func).attrs(db) else {
+                continue;
+            };
+            if attrs.get_attr(db, "test").is_none() {
+                continue;
+            }
 
-        let name = func
-            .name(db)
-            .to_opt()
-            .map(|name| name.data(db).to_string())
-            .unwrap_or_else(|| "<anonymous>".to_string());
-        if let Some(filter) = filter
-            && !name.contains(filter)
-        {
-            continue;
-        }
+            let name = func
+                .name(db)
+                .to_opt()
+                .map(|name| name.data(db).to_string())
+                .unwrap_or_else(|| "<anonymous>".to_string());
+            if let Some(filter) = filter
+                && !name.contains(filter)
+            {
+                continue;
+            }
 
-        let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func))?;
-        let entry_args =
-            entry_semantic_args_plan(db, EntryEffectContext::TestFunc { func }, semantic)?;
-        let runtime_root = runtime_instance_for_semantic(db, semantic);
-        let root = synthetic_instance(
-            db,
-            RuntimeSyntheticSpec::TestRoot {
-                name: name.clone(),
-                callee: runtime_root,
-                entry_args,
-            },
-            Vec::new(),
-        );
-        roots.push(root);
-        objects.push((
-            sanitize_object_name(&name),
-            vec![(RuntimeSectionName::Test(name), root)],
-        ));
+            let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func))?;
+            let entry_args =
+                entry_semantic_args_plan(db, EntryEffectContext::TestFunc { func }, semantic)?;
+            let runtime_root = runtime_instance_for_semantic(db, semantic);
+            let root = synthetic_instance(
+                db,
+                RuntimeSyntheticSpec::TestRoot {
+                    name: name.clone(),
+                    callee: runtime_root,
+                    entry_args,
+                },
+                Vec::new(),
+            );
+            roots.push(root);
+            objects.push((
+                object_name(objects.len(), &name),
+                vec![(RuntimeSectionName::Test(name), root)],
+            ));
+        }
     }
-
     let primary = (objects.len() == 1).then(|| objects[0].0.clone());
     let package = build_sectioned_package(db, top_mod, roots, objects, primary.as_deref())?;
     verify_runtime_package(db, package)

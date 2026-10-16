@@ -10,7 +10,7 @@ use std::{
 };
 
 use camino::Utf8PathBuf;
-use codegen::{OptLevel, emit_test_module_native};
+use codegen::{OptLevel, emit_test_suite_native};
 use driver::DriverDataBase;
 use hir::hir_def::TopLevelMod;
 use tempfile::{Builder, TempDir};
@@ -20,7 +20,7 @@ use crate::native::link_executable;
 use super::{
     CompiledTest, NativeTestLimits, ReportContext, SingleTestJob, SuitePreparation,
     TestEmitSelection, TestOutcome, TestResult, default_test_emit_dir, emit_with_catch_unwind,
-    has_test_functions, test_emit_stem, write_test_emit_artifact,
+    test_emit_stem, write_test_emit_artifact,
 };
 
 #[cfg(target_os = "linux")]
@@ -36,7 +36,6 @@ struct NativeExecutable {
 #[derive(Debug, Clone)]
 pub(super) struct NativeTestCase {
     name: String,
-    module_index: usize,
     entry_index: usize,
     executable: Arc<NativeExecutable>,
 }
@@ -210,10 +209,9 @@ impl NativeTestCase {
         let (passed, error_message) = match result {
             Ok((status, stdout, stderr, reason)) => {
                 if let Some(report) = report {
-                    let dir = report.root_dir.join(format!(
-                        "artifacts/native/module-{}/test-{}",
-                        self.module_index, self.entry_index
-                    ));
+                    let dir = report
+                        .root_dir
+                        .join(format!("artifacts/native/test-{}", self.entry_index));
                     let _ = fs::create_dir_all(&dir);
                     let _ = fs::write(dir.join("stdout.txt"), &stdout);
                     let _ = fs::write(dir.join("stderr.txt"), &stderr);
@@ -297,109 +295,91 @@ pub(super) fn prepare_tests(
             let out_dir = (!emit.is_empty())
                 .then(|| default_test_emit_dir(source_path))
                 .transpose()?;
-            let mut jobs = Vec::new();
-            for (module_index, top_mod) in top_mods.into_iter().enumerate() {
-                if !has_test_functions(db, top_mod) {
-                    continue;
-                }
-                let Some(module) = emit_test_module_native(
-                    db,
-                    top_mod,
-                    opt_level,
-                    filter,
-                    emit.ir || report.is_some(),
-                    emit.rmir || report.is_some(),
-                )
-                .map_err(|err| err.to_string())?
-                else {
-                    continue;
-                };
-                let directory = Builder::new()
-                    .prefix("fe-native-test-")
-                    .tempdir()
-                    .map_err(|err| format!("failed to create native test directory: {err}"))?;
-                let object = directory.path().join("tests.o");
-                let launcher = directory.path().join("launcher.c");
-                let executable_path = directory.path().join("tests");
-                fs::write(&object, &module.object)
-                    .map_err(|err| format!("failed to write native test object: {err}"))?;
+            let Some(module) = emit_test_suite_native(
+                db,
+                &top_mods,
+                opt_level,
+                filter,
+                emit.ir || report.is_some(),
+                emit.rmir || report.is_some(),
+            )
+            .map_err(|err| err.to_string())?
+            else {
+                return Ok(Vec::new());
+            };
+            let directory = Builder::new()
+                .prefix("fe-native-test-")
+                .tempdir()
+                .map_err(|err| format!("failed to create native test directory: {err}"))?;
+            let object = directory.path().join("tests.o");
+            let launcher = directory.path().join("launcher.c");
+            let executable_path = directory.path().join("tests");
+            fs::write(&object, &module.object)
+                .map_err(|err| format!("failed to write native test object: {err}"))?;
 
-                // Each test starts in its own process; every test in this module
-                // shares the same compiled object and linked dispatcher.
-                let mut source = String::from("#include <string.h>\n");
-                for test in &module.tests {
-                    let symbol = &test.symbol;
-                    let _ = writeln!(source, "extern void {symbol}(void);");
-                }
-                source.push_str("int main(int argc, char **argv) {\nif (argc != 2) return 2;\n");
-                for (index, test) in module.tests.iter().enumerate() {
-                    let symbol = &test.symbol;
-                    let _ = writeln!(
-                        source,
-                        "if (strcmp(argv[1], \"{index}\") == 0) {{ {symbol}(); return 0; }}"
-                    );
-                }
-                source.push_str("return 2;\n}\n");
-                fs::write(&launcher, source)
-                    .map_err(|err| format!("failed to write native test launcher: {err}"))?;
-                link_executable(&[&launcher, &object], &executable_path)?;
-
-                if let Some(out_dir) = &out_dir {
-                    let stem = format!("{}.native-{module_index}", test_emit_stem(suite_key));
-                    if emit.ir
-                        && let Some(ir) = &module.ir
-                    {
-                        write_test_emit_artifact(out_dir, &stem, "sona", ir, &mut artifact_output)?;
-                    }
-                    if emit.rmir
-                        && let Some(rmir) = &module.rmir
-                    {
-                        write_test_emit_artifact(
-                            out_dir,
-                            &stem,
-                            "rmir",
-                            rmir,
-                            &mut artifact_output,
-                        )?;
-                    }
-                }
-                if let Some(report) = report {
-                    let dir = report
-                        .root_dir
-                        .join(format!("artifacts/native/module-{module_index}"));
-                    fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
-                    for filename in ["tests.o", "launcher.c", "tests"] {
-                        fs::copy(directory.path().join(filename), dir.join(filename)).map_err(
-                            |err| format!("failed to retain native test {filename}: {err}"),
-                        )?;
-                    }
-                    if let Some(ir) = &module.ir {
-                        fs::write(dir.join("tests.sona"), ir).map_err(|err| err.to_string())?;
-                    }
-                    if let Some(rmir) = &module.rmir {
-                        fs::write(dir.join("tests.rmir"), rmir).map_err(|err| err.to_string())?;
-                    }
-                }
-                let executable = Arc::new(NativeExecutable { directory });
-                jobs.extend(
-                    module
-                        .tests
-                        .into_iter()
-                        .enumerate()
-                        .map(|(entry_index, test)| SingleTestJob {
-                            suite_key: suite_key.to_string(),
-                            case: CompiledTest::Native(NativeTestCase {
-                                name: test.name,
-                                module_index,
-                                entry_index,
-                                executable: Arc::clone(&executable),
-                            }),
-                            evm_trace: None,
-                            report_root: report.map(|ctx| ctx.root_dir.clone()),
-                        }),
+            // Each test starts in its own process; every test in this suite
+            // shares the same compiled object and linked dispatcher.
+            let mut source = String::from("#include <string.h>\n");
+            for test in &module.tests {
+                let symbol = &test.symbol;
+                let _ = writeln!(source, "extern void {symbol}(void);");
+            }
+            source.push_str("int main(int argc, char **argv) {\nif (argc != 2) return 2;\n");
+            for (index, test) in module.tests.iter().enumerate() {
+                let symbol = &test.symbol;
+                let _ = writeln!(
+                    source,
+                    "if (strcmp(argv[1], \"{index}\") == 0) {{ {symbol}(); return 0; }}"
                 );
             }
-            Ok(jobs)
+            source.push_str("return 2;\n}\n");
+            fs::write(&launcher, source)
+                .map_err(|err| format!("failed to write native test launcher: {err}"))?;
+            link_executable(&[&launcher, &object], &executable_path)?;
+
+            if let Some(out_dir) = &out_dir {
+                let stem = format!("{}.native", test_emit_stem(suite_key));
+                if emit.ir
+                    && let Some(ir) = &module.ir
+                {
+                    write_test_emit_artifact(out_dir, &stem, "sona", ir, &mut artifact_output)?;
+                }
+                if emit.rmir
+                    && let Some(rmir) = &module.rmir
+                {
+                    write_test_emit_artifact(out_dir, &stem, "rmir", rmir, &mut artifact_output)?;
+                }
+            }
+            if let Some(report) = report {
+                let dir = report.root_dir.join("artifacts/native");
+                fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
+                for filename in ["tests.o", "launcher.c", "tests"] {
+                    fs::copy(directory.path().join(filename), dir.join(filename))
+                        .map_err(|err| format!("failed to retain native test {filename}: {err}"))?;
+                }
+                if let Some(ir) = &module.ir {
+                    fs::write(dir.join("tests.sona"), ir).map_err(|err| err.to_string())?;
+                }
+                if let Some(rmir) = &module.rmir {
+                    fs::write(dir.join("tests.rmir"), rmir).map_err(|err| err.to_string())?;
+                }
+            }
+            let executable = Arc::new(NativeExecutable { directory });
+            Ok(module
+                .tests
+                .into_iter()
+                .enumerate()
+                .map(|(entry_index, test)| SingleTestJob {
+                    suite_key: suite_key.to_string(),
+                    case: CompiledTest::Native(NativeTestCase {
+                        name: test.name,
+                        entry_index,
+                        executable: Arc::clone(&executable),
+                    }),
+                    evm_trace: None,
+                    report_root: report.map(|ctx| ctx.root_dir.clone()),
+                })
+                .collect())
         },
         "native",
         suite,
@@ -465,7 +445,6 @@ mod tests {
         fs::set_permissions(&executable, fs::Permissions::from_mode(0o700)).unwrap();
         let case = NativeTestCase {
             name: "forking".to_string(),
-            module_index: 0,
             entry_index: 0,
             executable: Arc::new(NativeExecutable { directory }),
         };
