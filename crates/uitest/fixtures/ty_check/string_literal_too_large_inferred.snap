@@ -24,7 +24,7 @@ error[6-0003]: trait bound is not satisfied
     │     `(DynString, String<1>)` doesn't implement `AsBytes`
     │     trait bound `DynString: AsBytes` is not satisfied
     │
-    ┌─ src/bytes.fe:443:24
+    ┌─ src/bytes.fe:679:24
     │
-443 │ pub const fn keccak<T: AsBytes>(_ x: T) -> u256 {
+679 │ pub const fn keccak<T: AsBytes>(_ x: T) -> u256 {
     │                        ------- required by this bound on `keccak`

@@ -43,7 +43,7 @@ mod sized {
     impl<const LEN: usize> Literal for String<LEN> {
         const SIZE: usize = LEN
         fn bytes(self) -> [u8; Self::SIZE] {
-            self.as_bytes()
+            self.as_bytes().to_array()
         }
     }
 
