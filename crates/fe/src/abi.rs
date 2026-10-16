@@ -161,6 +161,16 @@ pub fn generate_contract_abi(
         for input in entry.inputs.iter_mut().flatten() {
             input.indexed = None;
         }
+        // Solidity's built-in errors are implicit. Declaring them as custom
+        // errors makes consumers such as ethers reject the entire ABI.
+        if let Some([input]) = entry.inputs.as_deref()
+            && matches!(
+                (entry.name.as_deref(), input.ty.as_str()),
+                (Some("Panic"), "uint256") | (Some("Error"), "string")
+            )
+        {
+            continue;
+        }
         entries.push(entry);
     }
 
@@ -1863,6 +1873,111 @@ pub contract C {
         assert!(failure.get("anonymous").is_none());
         assert!(failure.get("stateMutability").is_none());
     }
+    #[test]
+    fn builtin_panic_is_implicit_in_contract_abi() {
+        let entries = abi_entries(
+            r#"
+use core::ptr::MemBuffer
+use std::abi::sol
+use std::evm::{Panic, revert_error}
+#[error]
+struct Failure { code: u256 }
+msg M {
+    #[selector = sol("allocate(uint256)")]
+    Allocate { capacity: u256 },
+    #[selector = sol("fail()")]
+    Fail {},
+}
+pub contract C {
+    init(fail: bool) {
+        if fail { revert_error(Panic::from(1)) }
+    }
+    recv M {
+        Allocate { capacity } { let _ = MemBuffer::with_capacity(capacity) }
+        Fail {} { revert_error(Failure { code: 7 }) }
+    }
+}
+"#,
+            "C",
+        );
+        let errors: Vec<_> = entries
+            .iter()
+            .filter(|entry| entry["type"] == "error")
+            .collect();
+        assert_eq!(errors.len(), 1, "{entries:?}");
+        assert_eq!(errors[0]["name"], "Failure");
+        assert!(entries.iter().any(|entry| entry["type"] == "constructor"));
+        assert_eq!(
+            entries
+                .iter()
+                .filter(|entry| entry["type"] == "function")
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn builtin_error_string_is_implicit_in_contract_abi() {
+        let entries = abi_entries(
+            r#"
+use std::abi::{DynString, sol}
+use std::evm::revert_error
+#[error]
+struct Error { reason: DynString }
+msg M {
+    #[selector = sol("fail(string)")]
+    Fail { reason: DynString },
+}
+pub contract C {
+    recv M { Fail { reason } { revert_error(Error { reason }) } }
+}
+"#,
+            "C",
+        );
+        assert!(
+            !entries.iter().any(|entry| entry["type"] == "error"),
+            "{entries:?}"
+        );
+        assert_eq!(entries.len(), 1, "{entries:?}");
+        assert_eq!(entries[0]["name"], "fail");
+    }
+
+    #[test]
+    fn custom_errors_named_like_builtins_keep_distinct_signatures() {
+        let entries = abi_entries(
+            r#"
+use std::abi::sol
+use std::evm::{Address, revert_error}
+#[error]
+struct Panic { account: Address }
+#[error]
+struct Error { code: u256 }
+msg M {
+    #[selector = sol("fail(bool)")]
+    Fail { panic: bool },
+}
+pub contract C {
+    recv M {
+        Fail { panic } {
+            if panic { revert_error(Panic { account: Address::zero() }) }
+            revert_error(Error { code: 7 })
+        }
+    }
+}
+"#,
+            "C",
+        );
+        let errors: Vec<_> = entries
+            .iter()
+            .filter(|entry| entry["type"] == "error")
+            .collect();
+        assert_eq!(errors.len(), 2, "{entries:?}");
+        for (name, ty) in [("Panic", "address"), ("Error", "uint256")] {
+            let entry = errors.iter().find(|entry| entry["name"] == name).unwrap();
+            assert_eq!(entry["inputs"][0]["type"], ty);
+        }
+    }
+
     #[test]
     fn custom_errors_include_panic_with_value() {
         let entries = abi_entries(
