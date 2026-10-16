@@ -9,6 +9,8 @@
 use common::InputDb;
 use dir_test::{Fixture, dir_test};
 use driver::DriverDataBase;
+#[cfg(feature = "cranelift")]
+use fe_codegen::emit_module_native_ir;
 use fe_codegen::{OptLevel, emit_module_sonatina_ir, emit_module_sonatina_ir_optimized};
 use std::{collections::HashSet, path::Path};
 use test_utils::_macro_support::_insta::{self, Settings};
@@ -32,6 +34,78 @@ fn with_top_mod_for_source<T>(
         .expect("file should be loaded");
     let top_mod = db.top_mod(file);
     f(&db, top_mod)
+}
+
+#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "black_box_keeps_measured_work_between_gas_reads.fe")]
+fn black_box_keeps_measured_work_between_gas_reads(fixture: Fixture<&str>) {
+    for level in [OptLevel::O1, OptLevel::O2, OptLevel::Os] {
+        let ir = with_top_mod_for_source(&fixture, |db, top_mod| {
+            emit_module_sonatina_ir_optimized(db, top_mod, level, None)
+                .expect("optimized Sonatina IR should emit")
+        });
+
+        // Each recv arm reads the gas twice in one block; collect the instruction
+        // names between the two reads.
+        let measured: Vec<Vec<&str>> = ir
+            .split("\n\n")
+            .filter_map(|block| {
+                let insts: Vec<&str> = block
+                    .lines()
+                    .filter_map(|line| line.split(" = ").nth(1)?.split_whitespace().next())
+                    .map(|inst| inst.trim_end_matches(';'))
+                    .collect();
+                let first = insts.iter().position(|&inst| inst == "evm_gas")?;
+                let len = insts[first + 1..]
+                    .iter()
+                    .position(|&inst| inst == "evm_gas")?;
+                Some(insts[first + 1..first + 1 + len].to_vec())
+            })
+            .collect();
+        let [kept, discarded] = [true, false].map(|boxed| {
+            measured
+                .iter()
+                .find(|insts| insts.contains(&"black_box") == boxed)
+                .unwrap_or_else(|| panic!("missing measured arm (black_box: {boxed}):\n{ir}"))
+        });
+
+        assert!(
+            kept.iter()
+                .position(|&inst| inst == "xor")
+                .is_some_and(|work| {
+                    kept[..work].contains(&"black_box") && kept[work..].contains(&"black_box")
+                }),
+            "the boxed input, the work and the boxed result must stay between the gas reads: \
+         {kept:?}\n{ir}"
+        );
+        assert!(
+            !discarded.contains(&"xor"),
+            "discarded pure work is expected to be removed: {discarded:?}\n{ir}"
+        );
+    }
+}
+
+#[cfg(feature = "cranelift")]
+#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "black_box_native_target_unsupported.fe")]
+fn black_box_reports_unsupported_native_target(fixture: Fixture<&str>) {
+    let err = with_top_mod_for_source(&fixture, |db, top_mod| {
+        emit_module_native_ir(db, top_mod, OptLevel::O0)
+            .expect_err("the native target has no BlackBox instruction")
+    });
+    assert!(err.to_string().contains("BlackBox"), "{err}");
+}
+
+#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "black_box_rejects_*.fe")]
+fn black_box_rejects_non_scalar_arguments(fixture: Fixture<&str>) {
+    let err = with_top_mod_for_source(&fixture, |db, top_mod| {
+        let diagnostics = db.run_on_top_mod(top_mod);
+        assert!(diagnostics.is_empty(), "{}", diagnostics.format_diags(db));
+        emit_module_sonatina_ir(db, top_mod).expect_err("black_box only accepts scalars")
+    });
+    let message = err.to_string();
+    assert!(
+        message.contains("`core::hint::black_box` requires a scalar argument"),
+        "unexpected error message:\n{message}"
+    );
 }
 
 fn sonatina_function_names(ir: &str) -> Vec<String> {
