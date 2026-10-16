@@ -413,8 +413,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             self.origin_ingot,
             prepared.query.goal,
         );
-        let mut clauses =
-            Vec::with_capacity(prepared.query.assumptions.list(self.db).len() + 1);
+        let mut clauses = Vec::with_capacity(prepared.query.assumptions.list(self.db).len() + 1);
         if let Some(candidate) = prepared.query.selected_candidate {
             // Named definitions need not be ordinary-discovery candidates. Apply
             // the same header unification and prerequisite checks to this root.
@@ -562,6 +561,9 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     root_goal: query.goal,
                     remaining_goals,
                     selected_impl,
+                    establishes_goal: false,
+                    impl_conditions: Vec::new(),
+                    trait_conditions: Vec::new(),
                 };
                 return Ok(self.continue_branch(key, branch, query.assumptions));
             }

@@ -26,6 +26,10 @@ impl<Data> LexicalFrames<Data> {
         self.frames.last_mut().expect("lexical chain has a root")
     }
 
+    pub(crate) fn root_mut(&mut self) -> &mut Data {
+        self.frames.first_mut().expect("lexical chain has a root")
+    }
+
     pub(crate) fn inner_first(&self) -> impl Iterator<Item = &Data> {
         self.frames.iter().rev()
     }

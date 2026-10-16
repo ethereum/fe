@@ -466,7 +466,7 @@ impl std::fmt::Debug for CheckedImplApplication<'_> {
 }
 
 fn checked_type<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
-    !ty.has_invalid(db) && !ty.has_var(db) && !ty.has_hole(db) && !ty.has_projection(db)
+    !ty.has_invalid(db) && !ty.has_var(db) && !ty.has_projection(db)
 }
 
 /// Header reconstruction alone is deliberately not a checked application.
@@ -588,7 +588,7 @@ impl<'db> CheckedImplApplication<'db> {
         self.resolved.instantiated_assoc_ty(self.db, name)
     }
     pub fn method(&self, name: IdentId<'db>) -> Selection<ResolvedMethodInstance<'db>> {
-        method_instance_from_resolved(self.db, self.origin, self.resolved, name)
+        method_instance_from_resolved(self.db, self.resolved, name)
     }
     pub fn revalidate(
         &self,
@@ -739,14 +739,13 @@ pub fn resolve_trait_method_instance<'db>(
         Selection::Ambiguous(_) => return Selection::Ambiguous(IndexSet::new()),
         Selection::NotFound => return Selection::NotFound,
     };
-    method_instance_from_resolved(db, solve_cx, resolved, method)
+    method_instance_from_resolved(db, resolved, method)
 }
 
 /// Assemble method metadata from one reconstructed application. Retained
 /// consumers use this path without running implementation discovery again.
 fn method_instance_from_resolved<'db>(
     db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
     resolved: ResolvedImplInstance<'db>,
     method: IdentId<'db>,
 ) -> Selection<ResolvedMethodInstance<'db>> {
