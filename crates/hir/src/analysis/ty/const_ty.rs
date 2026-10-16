@@ -430,6 +430,7 @@ pub(crate) fn ty_is_fully_ground<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>)
         | TyData::AssocTy(_)
         | TyData::QualifiedTy(_)
         | TyData::Invalid(_) => false,
+        TyData::ConstraintTerm(goal) => trait_inst_is_fully_ground(db, *goal),
         TyData::TyApp(abs, arg) => ty_is_fully_ground(db, *abs) && ty_is_fully_ground(db, *arg),
         TyData::ConstTy(const_ty) => const_ty_is_fully_ground(db, *const_ty),
         TyData::TyBase(_) | TyData::Never => true,
@@ -452,6 +453,9 @@ fn trait_inst_is_fully_ground<'db>(db: &'db dyn HirAnalysisDb, inst: TraitInstId
 
 fn sem_const_is_fully_ground<'db>(db: &'db dyn HirAnalysisDb, value: SemConstId<'db>) -> bool {
     match value.value(db) {
+        SemConstValue::Evidence { ty, choice } => {
+            ty_is_fully_ground(db, *ty) && trait_inst_is_fully_ground(db, choice.goal())
+        }
         SemConstValue::Unit => true,
         SemConstValue::Scalar { ty, .. } => ty_is_fully_ground(db, *ty),
         SemConstValue::Description(term) => const_ty_is_fully_ground(db, *term),
@@ -913,6 +917,10 @@ fn canonicalize_sem_const_for_mode<'db>(
             .into_boxed_slice()
     };
     let value = match value.value(db) {
+        SemConstValue::Evidence { ty, choice } => SemConstValue::Evidence {
+            ty: canonicalize_ty_for_mode(db, *ty, env, mode),
+            choice: *choice,
+        },
         SemConstValue::Unit => SemConstValue::Unit,
         SemConstValue::Scalar { ty, value } => SemConstValue::Scalar {
             ty: canonicalize(*ty),
@@ -980,6 +988,10 @@ pub fn canonicalize_ty_for_mode<'db>(
                 canonicalize_trait_inst_for_mode(db, assoc.trait_.as_predicate(db), env, mode)
                     .trait_ref(db),
                 assoc.name,
+            ),
+            TyData::ConstraintTerm(goal) => TyId::new(
+                db,
+                TyData::ConstraintTerm(canonicalize_trait_inst_for_mode(db, *goal, env, mode)),
             ),
             TyData::QualifiedTy(trait_inst) => TyId::qualified_ty(
                 db,
@@ -2051,7 +2063,10 @@ pub(crate) fn const_ty_from_assoc_const_use<'db>(
     db: &'db dyn HirAnalysisDb,
     assoc: AssocConstUse<'db>,
 ) -> Option<ConstTyId<'db>> {
-    const_ty_from_trait_const(db, assoc.solve_cx(db), assoc.inst(), assoc.name())
+    let Selection::Unique(resolved) = assoc.selected_impl(db) else {
+        return None;
+    };
+    const_ty_from_resolved_trait_const(db, resolved, assoc.name())
 }
 
 /// Whether `start_body`'s value definition can re-enter `start_body` when

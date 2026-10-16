@@ -13,10 +13,10 @@ use crate::{
         BindingMarker, BlockKind, Body, BodyKind, EffectParamListId, Expr, ExprId, FieldDefListId,
         FieldIndex, Func, FuncModifiers, FuncParam, FuncParamListId, FuncParamMode, FuncParamName,
         FuncReturn, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
-        ImplTrait, IntegerId, ItemKind, LitKind, Mod, NormalAttr, Partial, Pat, PatId, PathId,
-        PathKind, Stmt, StmtId, Struct, TopLevelMod, TrackedItemId, TrackedItemVariant, TraitRefId,
-        TypeBound, TypeGenericArg, TypeGenericParam, TypeId, TypeKind, TypeMode, UnOp, Visibility,
-        WhereClauseId, expr::CallArg,
+        ImplTrait, ImplTraitModifiers, IntegerId, ItemKind, LitKind, Mod, NormalAttr, Partial, Pat,
+        PatId, PathId, PathKind, Stmt, StmtId, Struct, TopLevelMod, TrackedItemId,
+        TrackedItemVariant, TraitRefId, TypeBound, TypeGenericArg, TypeGenericParam, TypeId,
+        TypeKind, TypeMode, UnOp, Visibility, WhereClauseId, expr::CallArg,
     },
     span::{DesugaredOrigin, HirOrigin},
 };
@@ -449,7 +449,7 @@ where
             types,
             consts,
             AccessItems::default(),
-            false,
+            ImplTraitModifiers::default(),
             self.top_mod(),
             origin,
         )

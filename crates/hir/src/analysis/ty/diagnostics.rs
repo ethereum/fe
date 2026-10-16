@@ -401,6 +401,30 @@ pub enum MarkerPosition {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum BodyDiag<'db> {
+    /// `prove<G>()` cannot provide `G` here.
+    ObligationIntroduction {
+        primary: DynLazySpan<'db>,
+        reason: &'static str,
+    },
+    /// A `with` header names no admissible choice, or gives one slot twice.
+    ObligationOpening {
+        primary: DynLazySpan<'db>,
+        reason: &'static str,
+    },
+    /// An evidence value that selects a choice is not known at compile time.
+    EvidenceChoiceNotCompileTime {
+        primary: DynLazySpan<'db>,
+    },
+    /// A mutable place holds an evidence value (RD121).
+    EvidenceMutableStorage {
+        primary: DynLazySpan<'db>,
+    },
+    /// A type reads a constant of a slot that an enclosing `with` opened, or a
+    /// call delivers a choice into a slot its callee's types read. The core
+    /// gives such a type no meaning.
+    ChoiceDependentType {
+        primary: DynLazySpan<'db>,
+    },
     TypeMismatch {
         span: DynLazySpan<'db>,
         expected: TyId<'db>,
@@ -1182,6 +1206,11 @@ impl<'db> BodyDiag<'db> {
 
     pub(crate) fn local_code(&self) -> u16 {
         match self {
+            Self::ObligationIntroduction { .. } => 97,
+            Self::ObligationOpening { .. } => 98,
+            Self::EvidenceChoiceNotCompileTime { .. } => 120,
+            Self::EvidenceMutableStorage { .. } => 100,
+            Self::ChoiceDependentType { .. } => 122,
             Self::TypeMismatch { .. } => 0,
             Self::InfiniteOccurrence(..) => 1,
             Self::DuplicatedRestPat(..) => 2,
@@ -1314,6 +1343,14 @@ impl<'db> BodyDiag<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TraitLowerDiag<'db> {
+    /// RD108: a named implementation may not change an ordinary
+    /// implementation's associated types.
+    NamedAssociatedTypeMismatch {
+        primary: ImplTrait<'db>,
+        name: IdentId<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
+    },
     ConflictTraitImpl {
         primary: ImplTrait<'db>,
         conflict_with: ImplTrait<'db>,
@@ -1334,6 +1371,7 @@ pub enum TraitLowerDiag<'db> {
 impl TraitLowerDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
+            Self::NamedAssociatedTypeMismatch { .. } => 5,
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
             Self::CyclicSuperTraits { .. } => 2,

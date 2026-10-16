@@ -23,9 +23,11 @@ use crate::{
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
+            trait_choice::{Resolved, SlotChoices, body_deliveries},
             trait_def::{
                 ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId,
-                assoc_const_body_template_for_trait_inst, resolve_trait_method_instance,
+                method_instance_from_resolved, resolve_trait_method_instance,
+                selected_assoc_const_body_template,
             },
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
@@ -439,7 +441,7 @@ pub fn generated_callee_key<'db>(
     let callee = semantic_callee_key_with_assumptions(
         db,
         None,
-        ImplEnv::new(db, scope, assumptions, Vec::new()),
+        ImplEnv::new(db, scope, assumptions, Vec::new(), SlotChoices::default()),
         &callable,
         &[],
         &[],
@@ -473,6 +475,29 @@ pub fn core_method_callee_key<'db>(
         .unwrap_or_else(|| panic!("{trait_path:?} declares {name}"));
     let trait_inst = TraitInstId::new_simple(db, trait_def, args);
     generated_callee_key(db, scope, assumptions, func, Some(trait_inst), &[])
+}
+
+/// The instance a call made while checking runs, for a caller in `scope`
+/// with no slot choices of its own: the key a lowered call gets, so a
+/// factory call evaluated for its evidence has the call's one meaning.
+pub(crate) fn checked_call_key<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    callable: &Callable<'db>,
+) -> Option<SemanticInstanceKey<'db>> {
+    let callee = semantic_callee_key_with_assumptions(
+        db,
+        None,
+        ImplEnv::new(db, scope, assumptions, Vec::new(), SlotChoices::default()),
+        callable,
+        &[],
+        &[],
+        assumptions,
+        ProviderResolutionMode::Final,
+    )
+    .ok()??;
+    callee.concrete_dispatch.then_some(callee.key)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -733,14 +758,35 @@ fn semantic_callee_key_with_assumptions<'db>(
         })
         .collect::<Vec<_>>();
     let mut subst_args = callable.generic_args().to_vec();
+    // What the caller decided, read through the caller's own delivered
+    // choices. A known choice selects its implementation, no decision or an
+    // undelivered bound selects the ordinary one, and a pending choice
+    // selects nothing: the call stays symbolic (L1).
+    let caller_choices = impl_env.choices(db);
+    let chosen = caller_choices.resolve(callable.choice());
     let body_func = if let Some(inst) = callable.trait_inst()
         && let Some(name) = nominal_func.name(db).to_opt()
-        && let Selection::Unique(method) = resolve_trait_method_instance(
-            db,
-            TraitSolveCx::new(db, impl_env.normalization_scope(db)).with_assumptions(assumptions),
-            inst,
-            name,
-        )
+        && let Selection::Unique(method) = {
+            let cx = TraitSolveCx::new(db, impl_env.normalization_scope(db))
+                .with_assumptions(assumptions);
+            match chosen {
+                Resolved::Known(known) => known
+                    .resolved_instance(
+                        db,
+                        crate::analysis::ty::trait_resolution::normalize_trait_inst_preserving_validity(
+                            db,
+                            inst,
+                            impl_env.normalization_scope(db),
+                            assumptions,
+                        ),
+                    )
+                    .map_or(Selection::NotFound, |resolved| {
+                        method_instance_from_resolved(db, resolved, name)
+                    }),
+                Resolved::Ordinary => resolve_trait_method_instance(db, cx, inst, name),
+                Resolved::Pending => Selection::NotFound,
+            }
+        }
         && let Some(impl_func) = method.body()
     {
         let scope = impl_env.normalization_scope(db);
@@ -851,7 +897,30 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else {
         nominal_func
     };
+    // What the body that runs receives: the goals it declares (its own and
+    // its implementation's bounds, a default body's `Self`) and its evidence
+    // parameters, from what the call delivers, resolved in the caller.
+    let delivered = SlotChoices::from_resolved(
+        body_deliveries(db, callable.delivered(), nominal_func, body_func)
+            .into_iter()
+            .map(|(slot, choice)| (slot, caller_choices.resolve(Some(choice))))
+            .collect(),
+    );
     let owner = BodyOwner::Func(body_func);
+    // One meaning for the call: where the checker knew the body (a known or
+    // ordinary choice), the instance runs that body.
+    #[cfg(debug_assertions)]
+    if !matches!(
+        callable.choice(),
+        Some(crate::analysis::ty::trait_choice::Choice::Slot(_))
+    ) && let Some((checked, _)) =
+        callable.called_body(db, impl_env.normalization_scope(db), assumptions)
+    {
+        debug_assert_eq!(
+            checked, body_func,
+            "the instance selects a different body than the checker read for this call"
+        );
+    }
     // An implementation selected without relying on a caller assumption.
     let selected_impl = selected_trait_method.is_some_and(|(resolved, _)| {
         !matches!(
@@ -1044,6 +1113,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             assumptions
         },
         witnesses.into_iter().collect::<Vec<_>>(),
+        delivered,
     );
 
     if matches!(provider_resolution_mode, ProviderResolutionMode::Final)
@@ -1267,12 +1337,15 @@ fn semantic_const_key_for_inherent_const<'db>(
     let (body, impl_args) =
         inherent_const_body_and_impl_args(db, use_.impl_(), use_.receiver_ty(), use_.name())?;
     let ty = inherent_const_decl_ty(db, use_.impl_(), use_.name())?;
+    let choices = use_
+        .delivered()
+        .map_or_else(SlotChoices::default, |list| list.to_body(db, body));
     Some(SemanticInstanceKey::new(
         db,
         BodyOwner::AnonConstBody { body, expected: ty },
         GenericSubst::for_owner(db, use_.impl_().into(), impl_args),
         EffectProviderSubst::empty(db),
-        ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), vec![]),
+        ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), vec![], choices),
     ))
 }
 
@@ -1280,12 +1353,16 @@ fn semantic_const_key_for_assoc_const<'db>(
     db: &'db dyn HirAnalysisDb,
     assoc: AssocConstUse<'db>,
 ) -> Option<SemanticInstanceKey<'db>> {
-    let (body, ty, subst) = assoc_const_body_template_for_trait_inst(
-        db,
-        assoc.solve_cx(db),
-        assoc.inst(),
-        assoc.name(),
-    )?;
+    let Selection::Unique(resolved) = assoc.selected_impl(db) else {
+        return None;
+    };
+    let (body, ty, subst) = selected_assoc_const_body_template(db, resolved, assoc.name())?;
+    // What the constant body receives: the decisions the use recorded for its
+    // bounds, a default body's `Self` among them (RD114: default equals
+    // explicit), read through the same body mapping as a call's.
+    let choices = assoc
+        .delivered()
+        .map_or_else(SlotChoices::default, |list| list.to_body(db, body));
     Some(SemanticInstanceKey::new(
         db,
         BodyOwner::AnonConstBody { body, expected: ty },
@@ -1296,6 +1373,7 @@ fn semantic_const_key_for_assoc_const<'db>(
             assoc.origin_scope(),
             assoc.assumptions(),
             vec![assoc.inst()],
+            choices,
         ),
     ))
 }

@@ -1795,6 +1795,21 @@ fn select_assoc_const_candidate<'db>(
         }
     });
 
+    // A goal with only named implementations has no impl here; inside the
+    // `with` that opened it, it is a premise for this exact receiver.
+    if !unresolved && matches.is_empty() {
+        matches.extend(
+            assumptions
+                .extend_all_bounds(db)
+                .list(db)
+                .iter()
+                .copied()
+                .filter(|pred| {
+                    pred.self_ty(db) == receiver_ty && pred.def(db).const_(db, name).is_some()
+                }),
+        );
+    }
+
     if unresolved || matches.len() > 1 {
         AssocConstSelection::Ambiguous(matches.into_iter().collect())
     } else if let Some(inst) = matches.into_iter().next() {

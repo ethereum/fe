@@ -248,6 +248,8 @@ impl<'db> TyChecker<'db> {
             Some(ConstIntrinsicKind::SizeOf)
         } else if path("core::intrinsic::storage_slots") {
             Some(ConstIntrinsicKind::StorageSlots)
+        } else if path("core::obligations::prove") {
+            Some(ConstIntrinsicKind::Prove)
         } else {
             None
         }
@@ -256,10 +258,21 @@ impl<'db> TyChecker<'db> {
     fn check_and_register_const_intrinsic(
         &mut self,
         expr: ExprId,
-        callable: Callable<'db>,
+        mut callable: Callable<'db>,
         kind: ConstIntrinsicKind,
     ) -> bool {
-        if let Some(ty) = callable.generic_args().first().copied() {
+        let ty = match kind {
+            ConstIntrinsicKind::SizeOf | ConstIntrinsicKind::StorageSlots => {
+                callable.generic_args().first().copied()
+            }
+            ConstIntrinsicKind::Prove => {
+                if !self.decide_prove(expr, &mut callable) {
+                    return false;
+                }
+                None
+            }
+        };
+        if let Some(ty) = ty {
             let ty = self.normalize_ty(ty);
             let primary = expr.span(self.body()).into();
             match kind {
@@ -1541,6 +1554,12 @@ impl<'db> TyChecker<'db> {
         if let Some(value) = self.try_get_literal_int(expr) {
             return Some(value);
         }
+        // Inside a `with`, a trait constant here would be read before its
+        // decision is recorded; leave the bound to the checked value.
+        if self.env.choice_frames.current().is_some() && !self.reads_only_literals_and_consts(expr)
+        {
+            return None;
+        }
         if let Some(const_ref) = self.env.expr_const_ref(expr)
             && let Some(const_ref) =
                 resolve_semantic_const_ref(self.db, const_ref, expected, SemOrigin::Expr(expr))
@@ -1594,9 +1613,28 @@ impl<'db> TyChecker<'db> {
         result_discarded: bool,
     ) -> ExprProp<'db> {
         self.env.effect_env_mut().push_frame();
+        let choice_header = self.env.choice_frames.current();
+        let outer_premises = self.env.assumptions();
+        // A failed opening makes the block invalid. Checking it without the
+        // choice would let its uses fall back to the ordinary implementation.
+        let mut opening_failed = false;
 
         for binding in bindings {
+            if binding.key_path.is_none()
+                && let Some(opened) = self.open_named_binding(choice_header, binding.value)
+            {
+                opening_failed |= !opened;
+                continue;
+            }
             let value_prop = self.check_expr_unknown(binding.value);
+            if binding.key_path.is_none()
+                && let Some(opened) =
+                    self.open_evidence_binding(choice_header, binding.value, &value_prop)
+            {
+                opening_failed |= !opened;
+                continue;
+            }
+
             // A provider confers authority over its place for the body; it
             // opens no access.
             self.consume_access(binding.value);
@@ -1664,7 +1702,12 @@ impl<'db> TyChecker<'db> {
         } else {
             self.check_expr(body_expr, expected)
         };
+        self.env.choice_frames.restore(choice_header);
+        self.env.restore_assumptions(outer_premises);
         self.env.effect_env_mut().pop_frame();
+        if opening_failed {
+            return ExprProp::invalid(self.db);
+        }
         result
     }
 
@@ -1721,6 +1764,16 @@ impl<'db> TyChecker<'db> {
         }
 
         callable.check_args(self, args, call_span.clone().args(), None, false);
+        self.deliver_evidence_args(&mut callable, args, 0);
+        if self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into()) {
+            // Keep the result's shape so the refusal is the only diagnostic
+            // and inference around the call still resolves.
+            let ret_ty = callable.ret_ty(self.db);
+            return ExprProp::new(
+                super::super::trait_choice::invalidate_consts(self.db, ret_ty),
+                true,
+            );
+        }
 
         // The callee's bounds infer what its rows need, such as the
         // arguments of a function item passed for an `F: Fn(..)`.
@@ -1863,6 +1916,8 @@ impl<'db> TyChecker<'db> {
                     goal: inst,
                     origin: TraitObligationOrigin::GenericConfirmation,
                     span,
+                    premises: self.env.assumptions(),
+                    frame: self.env.choice_frames.current(),
                 });
                 let func_ty = self.instantiate_trait_method_to_term(cand.method, receiver_ty, inst);
                 (func_ty, Some(inst))
@@ -3740,6 +3795,17 @@ impl<'db> TyChecker<'db> {
             Some((*receiver, receiver_prop)),
             false,
         );
+        // The receiver is parameter 0.
+        self.deliver_evidence_args(&mut callable, args, 1);
+        if self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into()) {
+            // Keep the result's shape so the refusal is the only diagnostic
+            // and inference around the call still resolves.
+            let ret_ty = callable.ret_ty(self.db);
+            return ExprProp::new(
+                super::super::trait_choice::invalidate_consts(self.db, ret_ty),
+                true,
+            );
+        }
 
         callable.process_constraints(self, expr, call_span.method_name().into());
         self.check_callable_effects(expr, &mut callable);
@@ -4000,6 +4066,8 @@ impl<'db> TyChecker<'db> {
                                     goal: inst,
                                     origin: TraitObligationOrigin::GenericConfirmation,
                                     span: path_expr_span.clone().into(),
+                                    premises: self.env.assumptions(),
+                                    frame: self.env.choice_frames.current(),
                                 });
                             }
                             let method_ty = if cand.method.is_method(self.db) {
@@ -4097,6 +4165,8 @@ impl<'db> TyChecker<'db> {
                         goal: inst,
                         origin: TraitObligationOrigin::GenericConfirmation,
                         span: path_expr_span.clone().into(),
+                        premises: self.env.assumptions(),
+                        frame: self.env.choice_frames.current(),
                     });
 
                     let func_ty = self.instantiate_trait_assoc_fn_to_term(
@@ -4131,6 +4201,9 @@ impl<'db> TyChecker<'db> {
                     );
 
                     if !super::trait_const_goal_has_foreign_params(self.db, inst, self.env.scope())
+                        && !self
+                            .env
+                            .frame_proves(self.env.choice_frames.current(), inst)
                         && let GoalSatisfiability::UnSat(_) =
                             is_goal_satisfiable(self.db, self.env.proof_context(), inst)
                     {
@@ -4261,6 +4334,11 @@ impl<'db> TyChecker<'db> {
                     ty.fold_with(self.db, &mut self.table)
                 };
 
+                // A record whose field types read an opened slot is a
+                // choice-dependent type (RD120's own example).
+                if self.refuse_choice_dependent_ty(ty, span.clone().path().into()) {
+                    return ExprProp::invalid(self.db);
+                }
                 let record_like = RecordLike::from_ty(ty);
                 if record_like.is_record(self.db) {
                     self.env
@@ -4304,6 +4382,9 @@ impl<'db> TyChecker<'db> {
                     resolved_ty.fold_with(self.db, &mut self.table)
                 };
                 let variant = crate::analysis::name_resolution::ResolvedVariant { ty, ..variant };
+                if self.refuse_choice_dependent_ty(ty, span.clone().path().into()) {
+                    return ExprProp::invalid(self.db);
+                }
 
                 let record_like = RecordLike::from_variant(variant);
                 if record_like.is_record(self.db) {
@@ -4519,6 +4600,7 @@ impl<'db> TyChecker<'db> {
 
             let len_ty = ConstTyId::from_body(self.db, len_body, expected_len_ty, None);
             let len_ty = TyId::const_ty(self.db, len_ty);
+            self.refuse_choice_dependent_ty(len_ty, len_body.span().into());
             let array_ty = TyId::app(self.db, array, len_ty);
 
             if let Some(diag) = array_ty.emit_diag(self.db, len_body.span().into()) {
@@ -4948,6 +5030,8 @@ impl<'db> TyChecker<'db> {
                             goal: inst,
                             origin: TraitObligationOrigin::GenericConfirmation,
                             span: expr.span(self.body()).into(),
+                            premises: self.env.assumptions(),
+                            frame: self.env.choice_frames.current(),
                         });
                     }
                     let func_ty = self.instantiate_trait_method_to_term(
@@ -5026,6 +5110,8 @@ impl<'db> TyChecker<'db> {
                             goal: inst,
                             origin: TraitObligationOrigin::GenericConfirmation,
                             span: expr.span(self.body()).into(),
+                            premises: self.env.assumptions(),
+                            frame: self.env.choice_frames.current(),
                         });
                     }
 
@@ -5360,7 +5446,7 @@ fn body_diag_from_method_selection_err<'db>(
     }
 }
 
-fn resolve_ident_expr<'db>(
+pub(super) fn resolve_ident_expr<'db>(
     db: &'db dyn HirAnalysisDb,
     env: &TyCheckEnv<'db>,
     path: PathId<'db>,

@@ -7,14 +7,15 @@ use crate::{
     span::DynLazySpan,
 };
 
-use crate::hir_def::CallableDef;
 use crate::hir_def::params::FuncParamMode;
+use crate::hir_def::{CallableDef, ItemKind};
 use common::indexmap::IndexMap;
 use cranelift_entity::{PrimaryMap, SecondaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 use thin_vec::ThinVec;
 
+use super::choice::{ChoiceFrames, FrameId, SourceError};
 use super::effect_env as keyed_effect_env;
 use super::owner::BodyOwner;
 use super::{
@@ -39,6 +40,7 @@ use crate::analysis::{
         fold::{TyFoldable, TyFolder},
         provider::AddressSpace,
         shape::Shape,
+        trait_choice::Choice,
         trait_def::TraitInstId,
         trait_resolution::{
             PredicateListId, TraitSolveCx, constraint::collect_func_effect_provider_constraints,
@@ -61,10 +63,10 @@ pub(crate) struct TyCheckEnv<'db> {
 
     pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
     expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
-    const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
+    pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
     value_path_refs: SecondaryMap<ExprId, Option<ValuePathRef<'db>>>,
-    callables: SecondaryMap<ExprId, Option<Callable<'db>>>,
-    semantic_expr_lowering: SecondaryMap<ExprId, Option<SemanticExprLowering<'db>>>,
+    pub(super) callables: SecondaryMap<ExprId, Option<Callable<'db>>>,
+    pub(super) semantic_expr_lowering: SecondaryMap<ExprId, Option<SemanticExprLowering<'db>>>,
     record_init_lowering: SecondaryMap<ExprId, Option<super::RecordInitLowering<'db>>>,
     closure_infos: SecondaryMap<ExprId, Option<ClosureInfo<'db>>>,
     resolved_field_index: SecondaryMap<ExprId, Option<u16>>,
@@ -135,6 +137,19 @@ pub(crate) struct TyCheckEnv<'db> {
     /// passed through, each with the span of the expression or pattern whose
     /// path it is.
     path_applications: Vec<(DynLazySpan<'db>, TyId<'db>)>,
+
+    /// The trait choices of the enclosing `with` blocks.
+    pub(super) choice_frames: ChoiceFrames<'db>,
+    /// The choice frame each expression was checked in, when one was open.
+    pub(super) use_frames: SecondaryMap<ExprId, Option<FrameId>>,
+    /// What each evidence-typed `let` binding denotes.
+    binding_choices: SecondaryMap<PatId, Option<Result<Choice<'db>, SourceError>>>,
+    /// `with` binding values that opened a trait choice.
+    pub(super) with_choice_bindings: Vec<ExprId>,
+    /// Function values and the non-ordinary choices they would carry.
+    pub(super) function_value_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
+    /// Trait uses refused once their decisions are known.
+    pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
 }
 
 /// A closure expression's parameters and captured bindings, in the order of
@@ -248,9 +263,30 @@ impl<'db> TyCheckEnv<'db> {
             yield_shapes: SecondaryMap::new(),
             for_loop_plans: SecondaryMap::new(),
             path_applications: Vec::new(),
+            choice_frames: ChoiceFrames::default(),
+            use_frames: SecondaryMap::new(),
+            binding_choices: SecondaryMap::new(),
+            with_choice_bindings: Vec::new(),
+            function_value_choices: Vec::new(),
+            choice_refusals: Vec::new(),
         };
 
         env.enter_scope(body.expr(db));
+
+        // A named implementation's own body sees itself for its own slot.
+        if let Some(ItemKind::ImplTrait(implementation)) = owner_scope.parent_item(db)
+            && implementation.selection_name(db).is_some()
+            && let Some(implementor) =
+                crate::analysis::ty::trait_lower::lower_impl_trait(db, implementation)
+        {
+            let goal = implementor.trait_inst(db);
+            let choice =
+                crate::analysis::ty::trait_choice::KnownChoice::own(db, implementation, goal);
+            env.choice_frames.seed(
+                crate::analysis::ty::trait_choice::slot_goal(db, goal),
+                Choice::Known(choice),
+            );
+        }
 
         match owner {
             BodyOwner::Func(func) => {
@@ -754,6 +790,20 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
+    /// Add the goal an enclosing `with` opened as a premise of its body. The
+    /// caller restores the previous premises when the block ends.
+    pub(super) fn add_opened_premise(&mut self, goal: TraitInstId<'db>) {
+        let mut preds = self.assumptions.list(self.db).to_vec();
+        if !preds.contains(&goal) {
+            preds.push(goal);
+            self.assumptions = PredicateListId::new(self.db, preds).extend_all_bounds(self.db);
+        }
+    }
+
+    pub(super) fn restore_assumptions(&mut self, assumptions: PredicateListId<'db>) {
+        self.assumptions = assumptions;
+    }
+
     pub(crate) fn assumptions(&self) -> PredicateListId<'db> {
         // Return the assumptions we computed in new, which includes
         // both generic bounds (if any) AND the effect parameter bounds.
@@ -768,6 +818,11 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(crate) fn base_assumptions(&self) -> PredicateListId<'db> {
         self.base_assumptions
+    }
+
+    /// The owner's value parameters, in order.
+    pub(super) fn params(&self) -> &[LocalBinding<'db>] {
+        &self.param_bindings
     }
 
     pub(super) fn body(&self) -> Body<'db> {
@@ -1221,6 +1276,43 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn enter_expr(&mut self, expr: ExprId) {
         self.expr_stack.push(expr);
+        if let Some(frame) = self.choice_frames.current() {
+            self.use_frames[expr] = Some(frame);
+        }
+    }
+
+    pub(super) fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.db
+    }
+
+    pub(super) fn binding_choice(&self, pat: PatId) -> Option<Result<Choice<'db>, SourceError>> {
+        self.binding_choices[pat]
+    }
+
+    pub(super) fn set_binding_choice(
+        &mut self,
+        pat: PatId,
+        choice: Result<Choice<'db>, SourceError>,
+    ) {
+        self.binding_choices[pat] = Some(choice);
+    }
+
+    /// The choice a checked `prove<G>()` call produced.
+    pub(super) fn prove_choice(&self, expr: ExprId) -> Option<Choice<'db>> {
+        match self.semantic_expr_lowering[expr].as_ref()? {
+            SemanticExprLowering::ConstIntrinsic {
+                callable,
+                kind: ConstIntrinsicKind::Prove,
+            } => callable.choice(),
+            _ => None,
+        }
+    }
+
+    pub(super) fn semantic_call(&self, expr: ExprId) -> Option<&Callable<'db>> {
+        match self.semantic_expr_lowering[expr].as_ref()? {
+            SemanticExprLowering::Call { callable } => Some(callable),
+            _ => None,
+        }
     }
 
     pub(super) fn leave_expr(&mut self) {
@@ -1383,13 +1475,18 @@ impl<'db> TyCheckEnv<'db> {
                         .map(|ty| ty.fold_with(self.db, &mut prober));
                 }
             });
-        let assumptions = self.assumptions.fold_with(self.db, &mut prober);
-        let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
-
         self.semantic_expr_lowering
             .values_mut()
             .flatten()
             .for_each(|lowering| *lowering = lowering.clone().fold_with(self.db, &mut prober));
+        self.callables
+            .values_mut()
+            .flatten()
+            .for_each(|callable| *callable = callable.clone().fold_with(self.db, &mut prober));
+        self.record_choice_decisions();
+        let assumptions = self.assumptions.fold_with(self.db, &mut prober);
+        let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
+
         self.record_init_lowering
             .values_mut()
             .flatten()
@@ -1461,6 +1558,9 @@ impl<'db> TyCheckEnv<'db> {
             expr_place,
             expr_places,
             path_applications: self.path_applications,
+            with_choice_bindings: self.with_choice_bindings,
+            function_value_choices: self.function_value_choices,
+            choice_refusals: self.choice_refusals,
         }
         .into()
     }
@@ -2219,6 +2319,12 @@ pub(super) struct TraitObligation<'db> {
     pub goal: TraitInstId<'db>,
     pub origin: TraitObligationOrigin<'db>,
     pub span: DynLazySpan<'db>,
+    /// The premises in force where the obligation arose, including goals an
+    /// enclosing `with` opened; it is solved under them even when deferred.
+    pub premises: PredicateListId<'db>,
+    /// The choice frame where it arose: a goal the frame answers with a known
+    /// choice was proved when that choice was opened.
+    pub frame: Option<super::choice::FrameId>,
 }
 
 impl<'db> TyCheckEnv<'db> {}

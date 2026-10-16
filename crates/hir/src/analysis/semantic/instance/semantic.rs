@@ -1698,6 +1698,9 @@ impl<'db> SemanticInstance<'db> {
                             ));
                         }
                     }
+                    // A proof's choice is decided while checking; it admits no
+                    // concrete demand here.
+                    ConstIntrinsicKind::Prove => {}
                 }
             }
         }

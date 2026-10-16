@@ -71,7 +71,7 @@ fn pretty_print_ty_for_mismatch<'db>(db: &'db dyn SpannedHirAnalysisDb, ty: TyId
                 }
             }
         }
-        TyData::ConstTy(_) => ty.pretty_print(db).to_string(),
+        TyData::ConstTy(_) | TyData::ConstraintTerm(_) => ty.pretty_print(db).to_string(),
         TyData::Never => "!".to_string(),
         TyData::Invalid(cause) => format!("invalid({})", cause.pretty_print(db)),
     }
@@ -2575,6 +2575,41 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 "type mismatch",
                 format_type_mismatch_message(db, *expected, *given),
                 span.resolve(db),
+                error_code,
+            ),
+            Self::ObligationIntroduction { primary, reason } => primary_diag(
+                severity,
+                "trait evidence introduction failed",
+                *reason,
+                primary.resolve(db),
+                error_code,
+            ),
+            Self::ObligationOpening { primary, reason } => primary_diag(
+                severity,
+                "trait evidence opening failed",
+                *reason,
+                primary.resolve(db),
+                error_code,
+            ),
+            Self::ChoiceDependentType { primary } => primary_diag(
+                severity,
+                "type depends on an opened trait choice",
+                "a type or pattern whose constants depend on a `with` choice is not supported yet",
+                primary.resolve(db),
+                error_code,
+            ),
+            Self::EvidenceMutableStorage { primary } => primary_diag(
+                severity,
+                "evidence cannot be stored in a mutable place",
+                "bind evidence immutably",
+                primary.resolve(db),
+                error_code,
+            ),
+            Self::EvidenceChoiceNotCompileTime { primary } => primary_diag(
+                severity,
+                "evidence choice must be known at compile time",
+                "this source is not a compile-time evidence value",
+                primary.resolve(db),
                 error_code,
             ),
             Self::InfiniteOccurrence(span) => primary_diag(
@@ -5225,6 +5260,23 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
         let error_code =
             GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code());
         match self {
+            Self::NamedAssociatedTypeMismatch {
+                primary,
+                name,
+                expected,
+                given,
+            } => primary_diag(
+                Severity::Error,
+                "named implementation changes an ordinary associated type",
+                format!(
+                    "`{}` must remain `{}`, but this implementation defines `{}`",
+                    name.data(db),
+                    expected.pretty_print(db),
+                    given.pretty_print(db)
+                ),
+                primary.span().resolve(db),
+                error_code,
+            ),
             Self::ExternalTraitForExternalType(impl_trait) => primary_diag(
                 Severity::Error,
                 "external trait cannot be implemented for external type",

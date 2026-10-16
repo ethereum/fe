@@ -146,6 +146,10 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 TyId::assoc_ty(db, folded_trait, assoc.name)
             }
 
+            ConstraintTerm(trait_inst) => {
+                TyId::new(db, ConstraintTerm(trait_inst.fold_with(db, folder)))
+            }
+
             QualifiedTy(trait_inst) => {
                 let folded_trait = trait_inst.fold_with(db, folder);
                 TyId::qualified_ty(db, folded_trait)
@@ -207,6 +211,10 @@ where
             .unwrap_or_else(|| SemConstId::new(db, SemConstValue::Description(*term)));
     }
     let value = match value.value(db) {
+        SemConstValue::Evidence { ty, choice } => SemConstValue::Evidence {
+            ty: folder.fold_ty(db, *ty),
+            choice: choice.fold_with(db, folder),
+        },
         SemConstValue::Unit => SemConstValue::Unit,
         SemConstValue::Scalar { ty, value } => SemConstValue::Scalar {
             ty: folder.fold_ty(db, *ty),
@@ -292,6 +300,7 @@ impl<'db> TyFoldable<'db> for SemanticInstanceKey<'db> {
                 folder.fold_scope(env.normalization_scope(db)),
                 env.assumptions(db).fold_with(db, folder),
                 env.witnesses(db).clone().fold_with(db, folder),
+                env.choices(db).clone().fold_with(db, folder),
             ),
         )
     }

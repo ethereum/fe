@@ -1917,6 +1917,9 @@ impl<'db> GenericParamOwner<'db> {
                 let TypeBound::Trait(tr) = bound else {
                     continue;
                 };
+                if ty::ty_lower::is_core_constraint_bound(db, scope, *tr) {
+                    continue;
+                }
                 let span = view
                     .span()
                     .into_type_param()

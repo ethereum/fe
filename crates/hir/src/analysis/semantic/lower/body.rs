@@ -1299,14 +1299,22 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let ty = self.expr_ty(expr);
         // A constant is selected in the instance's environment: the bounds its
         // use was checked under, once substituted, may hold only by the bounds
-        // of the context the instance was made for.
+        // of the context the instance was made for. Its decisions are read
+        // through the instance's choices.
+        let choices = self
+            .instance
+            .key(self.db)
+            .impl_env(self.db)
+            .choices(self.db);
         let const_ref = match const_ref {
-            ConstRef::TraitConst(use_) => {
-                ConstRef::TraitConst(use_.with_env(use_.origin_scope(), self.assumptions))
-            }
-            ConstRef::InherentConst(use_) => {
-                ConstRef::InherentConst(use_.with_env(use_.origin_scope(), self.assumptions))
-            }
+            ConstRef::TraitConst(use_) => ConstRef::TraitConst(
+                use_.with_env(use_.origin_scope(), self.assumptions)
+                    .specialize(self.db, choices),
+            ),
+            ConstRef::InherentConst(use_) => ConstRef::InherentConst(
+                use_.with_env(use_.origin_scope(), self.assumptions)
+                    .specialize(self.db, choices),
+            ),
             ConstRef::Const(_) => const_ref,
         };
         if let Some(const_ref) =
@@ -1967,6 +1975,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         callable: &Callable<'db>,
         kind: ConstIntrinsicKind,
     ) -> SValueId {
+        if kind == ConstIntrinsicKind::Prove {
+            return self.lower_prove(expr, callable);
+        }
         let ty = normalize_ty(
             self.db,
             *callable
@@ -1990,6 +2001,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             ConstIntrinsicKind::StorageSlots => {
                 storage_slot_span(self.db, ty).ok().map(BigInt::from)
             }
+            ConstIntrinsicKind::Prove => unreachable!("lowered above"),
         };
         let Some(size) = size else {
             let caller = self.instance.key(self.db);
@@ -2036,6 +2048,54 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 self.db,
                 int_const(self.db, result_ty, size),
             )),
+        )
+    }
+
+    /// `prove<G>()` is the evidence value of the choice the checker decided,
+    /// read through this instance's delivered choices. In an instance whose
+    /// evidence parameter is not yet supplied, it is that parameter's value.
+    fn lower_prove(&mut self, expr: ExprId, callable: &Callable<'db>) -> SValueId {
+        let origin = SemOrigin::Expr(expr);
+        let result_ty = self.expr_ty(expr);
+        let choice = callable
+            .choice()
+            .expect("a checked `prove` call records its choice");
+        if let Some(known) = self
+            .instance
+            .key(self.db)
+            .impl_env(self.db)
+            .choices(self.db)
+            .resolve(Some(choice))
+            .known()
+        {
+            let value = SemConstId::new(
+                self.db,
+                SemConstValue::Evidence {
+                    ty: result_ty,
+                    choice: known,
+                },
+            );
+            return self.emit_expr_with_origin(
+                origin,
+                result_ty,
+                SExpr::Const(SConst::from_trusted_source(self.db, value)),
+            );
+        }
+        let idx = choice
+            .evidence_param()
+            .expect("`prove` records a known choice or an evidence parameter");
+        let local = self
+            .binding_locals
+            .iter()
+            .find_map(|(binding, local)| {
+                matches!(binding, LocalBinding::Param { idx: param, .. } if *param == idx as usize)
+                    .then_some(*local)
+            })
+            .expect("an evidence parameter has a local");
+        self.emit_expr_with_origin(
+            origin,
+            result_ty,
+            SExpr::UseValue(SOperand::inherited(local)),
         )
     }
 

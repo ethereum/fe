@@ -59,6 +59,7 @@ pub(crate) mod scratch;
 pub mod shape;
 pub(crate) mod sol_codec;
 pub(crate) mod subst;
+pub mod trait_choice;
 pub mod trait_def;
 pub mod trait_lower;
 pub mod trait_resolution; // This line was previously 'pub mod name_resolution;'

@@ -1379,15 +1379,33 @@ pub struct ImplTrait<'db> {
     pub(in crate::core) consts: Vec<AssocConstDef<'db>>,
     #[return_ref]
     pub(in crate::core) access_items: AccessItems<'db>,
-    /// `unsafe impl`, of an `unsafe trait`.
-    pub is_unsafe: bool,
+    pub(in crate::core) modifiers: ImplTraitModifiers<'db>,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
 }
 
+/// What an implementation's header adds to its trait and type.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, salsa::Update)]
+pub struct ImplTraitModifiers<'db> {
+    /// `unsafe impl`, of an `unsafe trait`.
+    pub is_unsafe: bool,
+    /// `impl T for S as N`: a named implementation, out of ordinary lookup.
+    pub selection_name: Option<IdentId<'db>>,
+}
+
 impl<'db> ImplTrait<'db> {
+    /// `unsafe impl`, of an `unsafe trait`.
+    pub fn is_unsafe(self, db: &'db dyn HirDb) -> bool {
+        self.modifiers(db).is_unsafe
+    }
+
+    /// The name of a named implementation, `N` in `impl T for S as N`.
+    pub fn selection_name(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
+        self.modifiers(db).selection_name
+    }
+
     pub fn span(self) -> LazyImplTraitSpan<'db> {
         LazyImplTraitSpan::new(self)
     }

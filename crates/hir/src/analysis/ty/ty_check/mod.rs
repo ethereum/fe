@@ -1,4 +1,6 @@
 mod callable;
+mod choice;
+pub(crate) use choice::body_slot_uses;
 mod const_requirements;
 pub use const_requirements::{EvaluationStop, RequirementFailure};
 pub(crate) use const_requirements::{
@@ -85,9 +87,9 @@ use super::{
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
-    trait_def::{TraitInstId, resolve_trait_method_instance},
+    trait_def::TraitInstId,
     trait_resolution::{
-        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
+        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx,
         goal_query_has_no_distinct_solution, is_goal_query_satisfiable, is_goal_satisfiable,
     },
     ty_def::{
@@ -873,6 +875,7 @@ pub(super) fn checked_body<'db>(
         let requirements = const_requirements::check_body_requirements(db, owner, &typed);
         recursive = requirements.recursive;
         diags.extend(requirements.diags);
+        diags.extend(choice::check_choice_uses(db, &typed, owner.scope()));
     }
     CheckedBody {
         diags,
@@ -988,6 +991,24 @@ fn infer_body_cycle_recover<'db>(
     _key: BodyInferenceKey<'db>,
 ) -> salsa::CycleRecoveryAction<(Vec<FuncBodyDiag<'db>>, TypedBody<'db>)> {
     salsa::CycleRecoveryAction::Iterate
+}
+
+/// Whether inference refused a trait choice the body depends on. Such a body
+/// must not be evaluated: its uses have no choice, and a value computed from it
+/// could let an evidence cycle converge on an arbitrary choice.
+pub(crate) fn inference_refused_a_choice<'db>(
+    (diags, _): &(Vec<FuncBodyDiag<'db>>, TypedBody<'db>),
+) -> bool {
+    diags.iter().any(|diag| {
+        matches!(
+            diag,
+            FuncBodyDiag::Body(
+                BodyDiag::ObligationOpening { .. }
+                    | BodyDiag::ObligationIntroduction { .. }
+                    | BodyDiag::EvidenceChoiceNotCompileTime { .. }
+            )
+        )
+    })
 }
 
 /// Whether inference met a type lowering cycle, in the body or in the
@@ -1345,6 +1366,9 @@ fn typed_body_for_bodyless_func<'db>(
         expr_place: SecondaryMap::new(),
         expr_places: PrimaryMap::new(),
         path_applications: Vec::new(),
+        with_choice_bindings: Vec::new(),
+        function_value_choices: Vec::new(),
+        choice_refusals: Vec::new(),
     }
     .into()
 }
@@ -1401,6 +1425,7 @@ impl<'db> TyChecker<'db> {
     fn run(&mut self) {
         self.check_effect_param_keys_resolve();
         self.check_own_param_types();
+        self.refuse_evidence_params();
 
         if let BodyOwner::ContractRecvArm {
             contract,
@@ -2019,7 +2044,7 @@ impl<'db> TyChecker<'db> {
     ) -> TraitObligationOutcome<'db> {
         let db = self.db;
         let scope = self.env.scope();
-        let assumptions = self.env.assumptions();
+        let assumptions = obligation.premises;
 
         if self.has_dead_inference_keys(&obligation.goal) {
             return TraitObligationOutcome::Discharged;
@@ -2041,6 +2066,9 @@ impl<'db> TyChecker<'db> {
         let goal = obligation.goal;
         let flags = collect_flags(db, goal);
         if flags.contains(TyFlags::HAS_INVALID) || self.has_dead_inference_keys(&goal) {
+            return TraitObligationOutcome::Discharged;
+        }
+        if self.env.frame_proves(obligation.frame, goal) {
             return TraitObligationOutcome::Discharged;
         }
 
@@ -2404,6 +2432,8 @@ impl<'db> TyChecker<'db> {
                                         goal: inst,
                                         origin: env::TraitObligationOrigin::GenericConfirmation,
                                         span: call_span.clone().into(),
+                                        premises: self.env.assumptions(),
+                                        frame: self.env.choice_frames.current(),
                                     });
                                 }
 
@@ -2834,6 +2864,13 @@ impl<'db> TyChecker<'db> {
             )
         }) {
             self.push_diag(diag)
+        }
+
+        if self.refuse_choice_dependent_ty(ty, span.clone().into())
+            || self.refuse_choice_dependent_hir_ty(hir_ty, span.clone().into())
+        {
+            // Keep the type's shape so the refusal is the only diagnostic.
+            return super::trait_choice::invalidate_consts(self.db, ty);
         }
 
         if star_kind_required && ty.is_star_kind(self.db) {
@@ -3894,6 +3931,14 @@ mod typed_body_tables {
         /// expression or pattern whose path it is. Const requirements check
         /// them there (`check_body_requirements`).
         pub(super) path_applications: Vec<(DynLazySpan<'db>, TyId<'db>)>,
+        /// `with` binding values that open a trait choice rather than provide
+        /// an effect. Their meaning is compile-time only.
+        pub(super) with_choice_bindings: Vec<ExprId>,
+        /// Function values and the non-ordinary choices they would carry.
+        pub(super) function_value_choices:
+            Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
+        /// Trait uses refused once their decisions are known.
+        pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
     }
 }
 use typed_body_tables::TypedBodyTables;
@@ -4018,6 +4063,8 @@ pub enum CodeRegionIntrinsicKind {
 pub enum ConstIntrinsicKind {
     SizeOf,
     StorageSlots,
+    /// `core::obligations::prove`: the callable carries the decided choice.
+    Prove,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
@@ -4307,6 +4354,25 @@ impl<'db> TypedBody<'db> {
     /// path it is.
     pub(super) fn path_applications(&self) -> &[(DynLazySpan<'db>, TyId<'db>)] {
         &self.tables.path_applications
+    }
+
+    /// Function values and the non-ordinary choices they would carry.
+    pub(crate) fn function_value_choices(
+        &self,
+    ) -> &[(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)] {
+        &self.tables.function_value_choices
+    }
+
+    /// Trait uses refused once their decisions are known.
+    pub(crate) fn choice_refusals(
+        &self,
+    ) -> &[(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)] {
+        &self.tables.choice_refusals
+    }
+
+    /// Whether a `with` binding value opens a trait choice.
+    pub fn is_with_choice_binding(&self, value: ExprId) -> bool {
+        self.tables.with_choice_bindings.contains(&value)
     }
 
     pub fn body(&self) -> Option<Body<'db>> {
@@ -5166,21 +5232,12 @@ impl<'db> TypedBody<'db> {
         visited_locals: &mut FxHashSet<PatId>,
     ) -> Option<Vec<ReturnSource>> {
         let callable = self.callable_expr(expr)?;
-        let CallableDef::Func(mut func) = callable.callable_def() else {
+        let CallableDef::Func(func) = callable.callable_def() else {
             return None;
         };
-        if let Some(inst) = callable.trait_inst()
-            && let Some(name) = func.name(db).to_opt()
-            && let Selection::Unique(method) = resolve_trait_method_instance(
-                db,
-                TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
-                inst,
-                name,
-            )
-            && let Some(body_func) = method.body()
-        {
-            func = body_func;
-        }
+        let func = callable
+            .called_body(db, body.scope(), self.assumptions())
+            .map_or(func, |(body, _)| body);
         let callee_sources = self.forwarded_return_param_sources_from_callable(db, func)?;
         let mut merged = FxHashSet::default();
         for callee_source in callee_sources {
@@ -5967,6 +6024,9 @@ impl<'db> TypedBody<'db> {
             expr_place: SecondaryMap::new(),
             expr_places: PrimaryMap::new(),
             path_applications: Vec::new(),
+            with_choice_bindings: Vec::new(),
+            function_value_choices: Vec::new(),
+            choice_refusals: Vec::new(),
         }
         .into()
     }

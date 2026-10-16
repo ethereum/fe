@@ -215,6 +215,26 @@ impl<'db> TyChecker<'db> {
         self.ready_constructor(ty, ConstructorKind::Literal(lit, ty), Vec::new())
     }
 
+    /// The status of a constant pattern, read through its decisions
+    /// (`pattern_constant`); one whose choice is not known here is refused.
+    fn constant_pattern_status(
+        &mut self,
+        cref: ConstRef<'db>,
+        expected: TyId<'db>,
+        span: impl Into<crate::span::DynLazySpan<'db>>,
+    ) -> PatternAnalysisStatus {
+        let Some(decided) = self.pattern_constant(cref) else {
+            self.push_diag(BodyDiag::ChoiceDependentType {
+                primary: span.into(),
+            });
+            return PatternAnalysisStatus::Invalid;
+        };
+        self.eval_const_pattern_literal(decided, expected)
+            .map_or(PatternAnalysisStatus::Unsupported, |lit| {
+                self.literal_constructor_status(expected, lit)
+            })
+    }
+
     fn eval_const_pattern_literal(
         &self,
         cref: ConstRef<'db>,
@@ -239,7 +259,8 @@ impl<'db> TyChecker<'db> {
                 value: SemConstScalar::Bool(flag),
                 ..
             } => Some(LitKind::Bool(*flag)),
-            SemConstValue::Unit
+            SemConstValue::Evidence { .. }
+            | SemConstValue::Unit
             | SemConstValue::Description(..)
             | SemConstValue::Tuple { .. }
             | SemConstValue::Struct { .. }
@@ -508,18 +529,11 @@ impl<'db> TyChecker<'db> {
                 {
                     let instantiated = ty_binder.instantiate(self.db, inst.args(self.db));
                     let ty = self.table.instantiate_to_term(instantiated);
-                    let cref = ConstRef::TraitConst(AssocConstUse::new(
-                        self.env.scope(),
-                        self.env.assumptions(),
-                        inst,
-                        name,
-                    ));
+                    let assoc =
+                        AssocConstUse::new(self.env.scope(), self.env.assumptions(), inst, name);
                     (
                         ty,
-                        self.eval_const_pattern_literal(cref, expected)
-                            .map_or(PatternAnalysisStatus::Unsupported, |lit| {
-                                self.literal_constructor_status(expected, lit)
-                            }),
+                        self.constant_pattern_status(ConstRef::TraitConst(assoc), expected, span),
                     )
                 } else {
                     (
@@ -544,13 +558,7 @@ impl<'db> TyChecker<'db> {
                         recv_ty,
                         name,
                     ));
-                    (
-                        ty,
-                        self.eval_const_pattern_literal(cref, expected)
-                            .map_or(PatternAnalysisStatus::Unsupported, |lit| {
-                                self.literal_constructor_status(expected, lit)
-                            }),
-                    )
+                    (ty, self.constant_pattern_status(cref, expected, span))
                 } else {
                     (
                         TyId::invalid(self.db, InvalidCause::Other),

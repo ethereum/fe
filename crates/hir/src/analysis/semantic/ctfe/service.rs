@@ -2,6 +2,7 @@ use cranelift_entity::EntityRef;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
+use crate::analysis::ty::trait_choice::SlotChoices;
 use crate::analysis::{
     HirAnalysisDb,
     semantic::{
@@ -953,7 +954,9 @@ fn force_immutable_description<'db>(
         }
         SemConstValue::Tuple { elems, .. } | SemConstValue::Array { elems, .. } => elems,
         SemConstValue::Struct { fields, .. } | SemConstValue::Enum { fields, .. } => fields,
-        SemConstValue::Unit | SemConstValue::Scalar { .. } => return Ok(value),
+        SemConstValue::Unit | SemConstValue::Scalar { .. } | SemConstValue::Evidence { .. } => {
+            return Ok(value);
+        }
     };
     let fields = fields
         .iter()
@@ -1407,6 +1410,7 @@ fn force_const_computation_in_context<'db>(
                     use_.origin_scope(),
                     use_.assumptions(),
                     vec![use_.inst()],
+                    SlotChoices::default(),
                 ),
                 cx,
                 origin,
@@ -1435,7 +1439,13 @@ fn force_const_computation_in_context<'db>(
                 db,
                 const_ty,
                 computation.result_ty(db),
-                ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), Vec::new()),
+                ImplEnv::new(
+                    db,
+                    use_.origin_scope(),
+                    use_.assumptions(),
+                    Vec::new(),
+                    SlotChoices::default(),
+                ),
                 cx,
                 origin,
             )

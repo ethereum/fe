@@ -11,7 +11,7 @@ use crate::{
     },
     hir_def::{
         Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, Trait,
-        params::FuncParamMode,
+        params::FuncParamMode, scope_graph::ScopeId,
     },
 };
 use common::{
@@ -26,6 +26,7 @@ use super::{
     closure::CallableShape,
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
+    normalize::normalize_ty,
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         TraitSolveCx, constraint::collect_candidate_constraints, is_goal_satisfiable,
@@ -37,6 +38,57 @@ use super::{
     visitor::{TyVisitable, TyVisitor},
 };
 use crate::analysis::HirAnalysisDb;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImplSelectionClass<'db> {
+    Ordinary,
+    Named(IdentId<'db>),
+}
+
+/// Selection names classify authored declarations; they are not values or
+/// implementation identity. Ordinary discovery uses only unnamed declarations.
+pub fn impl_selection_class<'db>(
+    db: &'db dyn HirAnalysisDb,
+    item: ImplTrait<'db>,
+) -> ImplSelectionClass<'db> {
+    item.selection_name(db)
+        .map_or(ImplSelectionClass::Ordinary, ImplSelectionClass::Named)
+}
+
+/// The ingot-local fallback namespace for explicit selection. A candidate still
+/// requires the checked application boundary before it can supply evidence.
+pub fn named_impl_candidates<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    name: IdentId<'db>,
+) -> Vec<ImplTrait<'db>> {
+    ingot_trait_env(db, scope.top_mod(db).ingot(db))
+        .named_by_name
+        .get(&name)
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// The named implementations of `trait_def` in the ingot, kept out of
+/// ordinary lookup.
+pub(crate) fn named_impls_for_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    trait_def: Trait<'db>,
+) -> Vec<ImplTrait<'db>> {
+    let mut out = ingot_trait_env(db, ingot)
+        .named_by_name
+        .values()
+        .flatten()
+        .copied()
+        .filter(|item| {
+            super::trait_lower::lower_impl_trait(db, *item)
+                .is_some_and(|candidate| candidate.trait_def(db) == trait_def)
+        })
+        .collect::<Vec<_>>();
+    out.sort_by_key(|item| format!("{item:?}"));
+    out
+}
 
 /// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref, cycle_fn=ingot_trait_env_cycle_recover, cycle_initial=ingot_trait_env_cycle_initial)]
@@ -258,6 +310,7 @@ fn ingot_trait_env_cycle_initial<'db>(
         impls: FxHashMap::default(),
         impls_by_self: FxHashMap::default(),
         unindexed_self_impls: Vec::new(),
+        named_by_name: FxHashMap::default(),
         ingot,
     }
 }
@@ -602,6 +655,45 @@ impl<'db> CheckedImplApplication<'db> {
     }
 }
 
+/// RD108: a named declaration cannot redefine an output of the ordinary
+/// application. This is definition admission, independent of any opening.
+pub(crate) fn named_output_mismatch<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementation: ImplTrait<'db>,
+    candidate: ImplementorId<'db>,
+) -> Option<(IdentId<'db>, TyId<'db>, TyId<'db>)> {
+    let context = TraitSolveCx::new(db, implementation.scope())
+        .with_assumptions(crate::semantic::param_env(db, implementation.into()));
+    let header = candidate.trait_inst(db);
+    let goal = TraitInstId::new_simple(db, header.def(db), header.args(db).clone());
+    let Selection::Unique(ordinary) = resolve_trait_impl_instance(db, context, goal) else {
+        return None;
+    };
+    if !matches!(ordinary.selected().origin(db), ImplementorOrigin::Hir(_)) {
+        return None;
+    }
+    for assoc in goal.def(db).assoc_types(db) {
+        let Some(name) = assoc.name(db) else {
+            continue;
+        };
+        let (Some(expected), Some(given)) = (
+            ordinary.instantiated_assoc_ty(db, name),
+            candidate.assoc_ty(db, name),
+        ) else {
+            continue;
+        };
+        let expected = normalize_ty(db, expected, implementation.scope(), context.assumptions());
+        let given = normalize_ty(db, given, implementation.scope(), context.assumptions());
+        if expected.has_invalid(db) || given.has_invalid(db) {
+            continue;
+        }
+        if UnificationTable::new(db).unify(expected, given).is_err() {
+            return Some((name, expected, given));
+        }
+    }
+    None
+}
+
 /// A selected method retains the proof origin and the nominal trait reference.
 /// A trait default body selected through an assumption remains generic-bound
 /// dispatch until a concrete implementation is chosen.
@@ -744,7 +836,7 @@ pub fn resolve_trait_method_instance<'db>(
 
 /// Assemble method metadata from one reconstructed application. Retained
 /// consumers use this path without running implementation discovery again.
-fn method_instance_from_resolved<'db>(
+pub(crate) fn method_instance_from_resolved<'db>(
     db: &'db dyn HirAnalysisDb,
     resolved: ResolvedImplInstance<'db>,
     method: IdentId<'db>,
@@ -1048,6 +1140,9 @@ pub(crate) struct TraitEnv<'db> {
     /// that must be considered for every receiver type.
     unindexed_self_impls: Vec<ImplTrait<'db>>,
 
+    /// Explicit aliases remain separate from all ordinary discovery indexes.
+    named_by_name: FxHashMap<IdentId<'db>, Vec<ImplTrait<'db>>>,
+
     ingot: Ingot<'db>,
 }
 
@@ -1057,6 +1152,12 @@ impl<'db> TraitEnv<'db> {
         let mut impls_by_self: FxHashMap<ImplSelfKey<'db>, Vec<ImplTrait<'db>>> =
             FxHashMap::default();
         let mut unindexed_self_impls = Vec::new();
+        let mut named_by_name: FxHashMap<IdentId<'db>, Vec<ImplTrait<'db>>> = FxHashMap::default();
+        for &item in ingot.all_impl_traits(db).iter() {
+            if let ImplSelectionClass::Named(name) = impl_selection_class(db, item) {
+                named_by_name.entry(name).or_default().push(item);
+            }
+        }
 
         for impl_map in ingot
             .resolved_external_ingots(db)
@@ -1070,21 +1171,31 @@ impl<'db> TraitEnv<'db> {
                 impls
                     .entry(*trait_def)
                     .or_default()
-                    .extend(implementors.iter().copied());
+                    .extend(implementors.iter().copied().filter(|&item| {
+                        impl_selection_class(db, item) == ImplSelectionClass::Ordinary
+                    }));
             }
             for (self_key, implementors) in &impl_map.by_self {
-                impls_by_self
-                    .entry(*self_key)
-                    .or_default()
-                    .extend(implementors.iter().copied());
+                impls_by_self.entry(*self_key).or_default().extend(
+                    implementors.iter().copied().filter(|&item| {
+                        impl_selection_class(db, item) == ImplSelectionClass::Ordinary
+                    }),
+                );
             }
-            unindexed_self_impls.extend(impl_map.unindexed_self.iter().copied());
+            unindexed_self_impls.extend(
+                impl_map
+                    .unindexed_self
+                    .iter()
+                    .copied()
+                    .filter(|&item| impl_selection_class(db, item) == ImplSelectionClass::Ordinary),
+            );
         }
 
         Self {
             impls,
             impls_by_self,
             unindexed_self_impls,
+            named_by_name,
             ingot,
         }
     }

@@ -23,7 +23,7 @@ use super::{
             collect_candidate_constraints, collect_constraints, collect_func_decl_constraints,
         },
     },
-    ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
+    ty_def::{InvalidCause, Kind, PrimTy, TyBase, TyData, TyId, TyParam},
 };
 use crate::analysis::name_resolution::{
     NameDomain, NameResKind, PathRes, TypePosition, path_resolver::PathResolutionResult,
@@ -197,6 +197,118 @@ fn lower_opt_hir_ty_impl<'db>(
         || TyId::invalid(db, InvalidCause::ParseError),
         |hir_ty| lower_hir_ty_impl(db, hir_ty, scope, assumptions, lowering_cx),
     )
+}
+
+/// The trait goals whose constants the constant bodies written in `ty` read:
+/// array lengths and constant generic arguments, before lowering evaluates
+/// them. Each goal is in slot form (no associated-type equalities).
+pub(crate) fn hir_ty_const_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    fn ty_reads<'db>(
+        db: &'db dyn HirAnalysisDb,
+        ty: Partial<HirTyId<'db>>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        reads: &mut Vec<TraitInstId<'db>>,
+    ) {
+        let Partial::Present(ty) = ty else {
+            return;
+        };
+        match ty.data(db) {
+            HirTyKind::Ptr(inner) | HirTyKind::Mode(_, inner) => {
+                ty_reads(db, *inner, scope, assumptions, reads)
+            }
+            HirTyKind::Tuple(tuple) => {
+                for elem in tuple.data(db) {
+                    ty_reads(db, *elem, scope, assumptions, reads);
+                }
+            }
+            HirTyKind::Array(elem, len) => {
+                ty_reads(db, *elem, scope, assumptions, reads);
+                if let Partial::Present(body) = len {
+                    body_reads(db, *body, scope, assumptions, reads);
+                }
+            }
+            HirTyKind::Path(path) => {
+                if let Partial::Present(path) = path {
+                    path_reads(db, *path, scope, assumptions, reads);
+                }
+            }
+            HirTyKind::Never => {}
+        }
+    }
+    fn path_reads<'db>(
+        db: &'db dyn HirAnalysisDb,
+        path: PathId<'db>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        reads: &mut Vec<TraitInstId<'db>>,
+    ) {
+        let mut segment = Some(path);
+        while let Some(path) = segment {
+            if let crate::core::hir_def::PathKind::QualifiedType { type_, trait_ } = path.kind(db) {
+                ty_reads(db, Partial::Present(type_), scope, assumptions, reads);
+                if let Partial::Present(trait_path) = trait_.path(db) {
+                    path_reads(db, trait_path, scope, assumptions, reads);
+                }
+            }
+            for arg in path.generic_args(db).data(db) {
+                match arg {
+                    GenericArg::Type(arg) => ty_reads(db, arg.ty, scope, assumptions, reads),
+                    GenericArg::Const(arg) => {
+                        if let Partial::Present(body) = arg.value {
+                            body_reads(db, body, scope, assumptions, reads);
+                        }
+                    }
+                    GenericArg::AssocType(_) => {}
+                }
+            }
+            segment = path.parent(db);
+        }
+    }
+    fn body_reads<'db>(
+        db: &'db dyn HirAnalysisDb,
+        body: Body<'db>,
+        scope: ScopeId<'db>,
+        assumptions: PredicateListId<'db>,
+        reads: &mut Vec<TraitInstId<'db>>,
+    ) {
+        if let Some(path) = const_body_simple_path(db, body)
+            && let Ok(PathRes::TraitConst(recv_ty, inst, _)) =
+                crate::analysis::name_resolution::resolve_path(db, path, scope, assumptions, true)
+        {
+            let mut args = inst.args(db).clone();
+            if let Some(self_arg) = args.first_mut() {
+                *self_arg = recv_ty;
+            }
+            reads.push(TraitInstId::new(
+                db,
+                inst.def(db),
+                args,
+                common::indexmap::IndexMap::new(),
+            ));
+            return;
+        }
+        // A compound body: the trait uses its own check recorded. Lengths and
+        // constant arguments in the core are `usize`.
+        let owner = super::ty_check::BodyOwner::AnonConstBody {
+            body,
+            expected: TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))),
+        };
+        let typed = &super::ty_check::infer_body(db, owner).1;
+        reads.extend(
+            super::ty_check::body_slot_uses(db, typed)
+                .into_iter()
+                .map(|(goal, _)| goal),
+        );
+    }
+    let mut reads = Vec::new();
+    ty_reads(db, Partial::Present(ty), scope, assumptions, &mut reads);
+    reads
 }
 
 fn const_body_simple_path<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<PathId<'db>> {
@@ -379,6 +491,68 @@ pub(crate) fn lower_const_body_path<'db>(
     )
 }
 
+fn lower_constraint_term<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: Partial<PathId<'db>>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    minter: &LoweringContext<'db>,
+) -> Option<TyId<'db>> {
+    use crate::analysis::name_resolution::resolve_type_path_definition;
+    use crate::hir_def::{ItemKind, PathKind, TraitRefId};
+    let path = path.to_opt()?;
+    let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))) =
+        resolve_type_path_definition(db, path, scope)?
+    else {
+        return None;
+    };
+    let (GenericArg::Type(subject), rest) = path.generic_args(db).data(db).split_first()? else {
+        return Some(TyId::invalid(db, InvalidCause::Other));
+    };
+    let subject = lower_opt_hir_ty_with_minter(db, subject.ty, scope, assumptions, minter);
+    if !subject.is_star_kind(db) {
+        return Some(TyId::invalid(
+            db,
+            InvalidCause::NormalTypeExpected { given: subject },
+        ));
+    }
+    let reference_path = PathId::new(
+        db,
+        PathKind::Ident {
+            ident: path.ident(db),
+            generic_args: GenericArgListId::given(db, rest.to_vec()),
+        },
+        path.parent(db),
+    );
+    let goal = super::trait_lower::lower_trait_ref_with_minter(
+        db,
+        subject,
+        TraitRefId::new(db, Partial::Present(reference_path)),
+        scope,
+        assumptions,
+        None,
+        minter,
+    )
+    .ok()?;
+    if rest
+        .iter()
+        .filter(|arg| matches!(arg, GenericArg::AssocType(_)))
+        .count()
+        != goal.assoc_type_bindings(db).len()
+    {
+        return None;
+    }
+    for (name, ty) in goal.assoc_type_bindings(db) {
+        let declaration = goal.def(db).assoc_ty(db, *name)?;
+        let expected = lower_kind_in_bounds(db, goal.def(db).scope(), &declaration.bounds)
+            .unwrap_or(Kind::Star);
+        if !expected.does_match(ty.kind(db)) {
+            return None;
+        }
+    }
+    Some(TyId::new(db, TyData::ConstraintTerm(goal)))
+}
+
 fn lower_path_impl<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -387,6 +561,10 @@ fn lower_path_impl<'db>(
     position: TypePosition,
     lowering_cx: &LoweringContext<'db>,
 ) -> TyId<'db> {
+    if let Some(goal) = lower_constraint_term(db, path, scope, assumptions, lowering_cx) {
+        return goal;
+    }
+
     let Some(path) = path.to_opt() else {
         return TyId::invalid(db, InvalidCause::ParseError);
     };
@@ -1454,7 +1632,8 @@ impl<'db> GenericParamCollector<'db> {
                 GenericParam::Type(param) => {
                     let name = param.name;
 
-                    let kind = lower_kind_in_bounds(param.bounds.as_slice());
+                    let kind =
+                        lower_kind_in_bounds(self.db, self.owner.scope(), param.bounds.as_slice());
                     let default_hir_ty = param.default_ty;
                     self.params
                         .push(TyParamPrecursor::ty_param(name, kind, default_hir_ty));
@@ -1665,6 +1844,32 @@ impl<'db> TyParamPrecursor<'db> {
     }
 }
 
+/// Recognize the designated kind marker by declaration identity, not spelling.
+pub(crate) fn is_core_constraint_bound<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    reference: crate::hir_def::TraitRefId<'db>,
+) -> bool {
+    use crate::analysis::name_resolution::resolve_type_path_definition;
+    let Some(path) = reference.path(db).to_opt() else {
+        return false;
+    };
+    // The designated marker is nullary. Definition lookup deliberately ignores
+    // arguments, so it must not turn malformed applications into a kind bound.
+    if (0..path.len(db)).any(|index| {
+        path.segment(db, index)
+            .is_some_and(|segment| !segment.generic_args(db).data(db).is_empty())
+    }) {
+        return false;
+    }
+    let marker_path = super::corelib::lib_root_path(db, scope, "core")
+        .push_str(db, "obligations")
+        .push_str(db, "Constraint");
+    matches!((resolve_type_path_definition(db, path, scope),
+              resolve_type_path_definition(db, marker_path, scope)),
+        (Some(NameResKind::Scope(found)), Some(NameResKind::Scope(marker))) if found == marker)
+}
+
 pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
     match kind {
         HirKindBound::Mono => Kind::Star,
@@ -1685,10 +1890,19 @@ pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
 
 /// Helper for extracting a lowered kind from a slice of HIR `TypeBound`s.
 /// Returns the first kind bound if present.
-pub(super) fn lower_kind_in_bounds<'db>(bounds: &[TypeBound<'db>]) -> Option<Kind> {
+pub(super) fn lower_kind_in_bounds<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    bounds: &[TypeBound<'db>],
+) -> Option<Kind> {
     for bound in bounds {
         if let TypeBound::Kind(Partial::Present(k)) = bound {
             return Some(lower_kind(k));
+        }
+        if let TypeBound::Trait(reference) = bound
+            && is_core_constraint_bound(db, scope, *reference)
+        {
+            return Some(Kind::Constraint);
         }
     }
     None

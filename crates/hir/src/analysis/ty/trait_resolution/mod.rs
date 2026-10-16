@@ -494,6 +494,19 @@ pub(crate) fn check_ty_wf<'db>(
                 return wf;
             }
         }
+        TyData::ConstraintTerm(goal) => {
+            // A requirement term describes a goal without establishing it.
+            for &arg in goal
+                .args(db)
+                .iter()
+                .chain(goal.assoc_type_bindings(db).values())
+            {
+                let wf = check_ty_wf(db, solve_cx, arg);
+                if !wf.is_wf() {
+                    return wf;
+                }
+            }
+        }
         TyData::QualifiedTy(inst) => {
             let wf = check_projected_trait_use_wf(db, solve_cx, *inst);
             if !wf.is_wf() {
@@ -585,6 +598,7 @@ fn check_sem_const_wf<'db>(
     value: SemConstId<'db>,
 ) -> WellFormedness<'db> {
     match value.value(db) {
+        SemConstValue::Evidence { ty, .. } => check_ty_wf(db, solve_cx, *ty),
         SemConstValue::Description(term) => check_ty_wf(db, solve_cx, TyId::const_ty(db, *term)),
         SemConstValue::Tuple { elems, .. } | SemConstValue::Array { elems, .. } => {
             for child in elems.iter().copied() {

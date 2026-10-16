@@ -1147,7 +1147,10 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             SemConstValue::Enum {
                 variant, fields, ..
             } => (Some(*variant), fields),
-            SemConstValue::Scalar { .. } | SemConstValue::Unit | SemConstValue::Description(..) => {
+            SemConstValue::Scalar { .. }
+            | SemConstValue::Unit
+            | SemConstValue::Description(..)
+            | SemConstValue::Evidence { .. } => {
                 return Err(NormalizeError::UnresolvedCapabilityConst(ty));
             }
         };
