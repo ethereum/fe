@@ -1027,6 +1027,7 @@ impl Bytes {
     }
 
     /// Build up to 32 bytes from the most-significant bytes of one word.
+    #[inline(always)]
     pub fn from_word_prefix(word: u256, len: u256) -> Self {
         if len > 32 {
             super::panic()

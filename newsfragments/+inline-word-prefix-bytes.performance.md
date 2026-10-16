@@ -1,0 +1,1 @@
+`Bytes::from_word_prefix`, which builds short byte strings such as the SSZ little-endian encodings, is inlined, so a constant length folds its checks and its encoder's size: the deposit contract's `get_deposit_count` uses 119 gas less and `deposit` 100.
