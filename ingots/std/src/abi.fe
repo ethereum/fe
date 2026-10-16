@@ -45,7 +45,7 @@ pub fn bytes_from_words<const N: usize>(_ words: [u256; N]) -> Bytes {
         unsafe { store_word(ptr: ptr::offset_bytes(data, 32 + (i as u256) * 32), value: words[i]) }
         i += 1
     }
-    unsafe { Bytes::from_abi_tail(data: data, len: len, size: size) }
+    unsafe { Bytes::from_abi_tail(data: data, len: len as usize, size: size) }
 }
 
 /// Allocate a `Bytes` of byte length `LEN` from `N` u256 words.
@@ -74,5 +74,5 @@ pub fn bytes_from_words_prefix<const LEN: usize, const N: usize>(_ words: [u256;
         unsafe { store_word(ptr: ptr::offset_bytes(data, 32 + (i as u256) * 32), value: words[i]) }
         i += 1
     }
-    unsafe { Bytes::from_abi_tail(data: data, len: len, size: size) }
+    unsafe { Bytes::from_abi_tail(data: data, len: len as usize, size: size) }
 }

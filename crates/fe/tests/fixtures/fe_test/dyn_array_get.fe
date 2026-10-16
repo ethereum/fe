@@ -22,15 +22,15 @@ pub contract Arr {
 
     recv ArrMsg {
         GetAt { values, index } -> u256 {
-            values.get(index)
+            values.get(index as usize)
         }
 
         AddrAt { addrs, index } -> u256 {
-            addrs.get(index).word()
+            addrs.get(index as usize).word()
         }
 
         AddrLen { addrs } -> u256 {
-            addrs.len()
+            addrs.len() as u256
         }
     }
 }
@@ -85,7 +85,7 @@ fn test_array_constructor_rejects_overflowing_element_frame() {
     // a DynArray that can bypass get's validated-frame invariant.
     let len: u256 = 1 << 251
     unsafe { store_word(ptr: data, value: len) }
-    let values: DynArray<u256> = unsafe { DynArray::from_abi_tail(data, len, size: 32) }
+    let values: DynArray<u256> = unsafe { DynArray::from_abi_tail(data, len: len as usize, size: 32) }
     let _ = values.get(0)
 }
 
@@ -95,7 +95,7 @@ fn test_array_constructor_rejects_overflowing_length_header() {
     // The element bytes fit, but adding the array's length word overflows.
     let len: u256 = (1 << 251) - 1
     unsafe { store_word(ptr: data, value: len) }
-    let values: DynArray<u256> = unsafe { DynArray::from_abi_tail(data, len, size: 32) }
+    let values: DynArray<u256> = unsafe { DynArray::from_abi_tail(data, len: len as usize, size: 32) }
     let _ = values.get(0)
 }
 

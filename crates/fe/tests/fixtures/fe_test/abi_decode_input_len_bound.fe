@@ -32,15 +32,15 @@ pub contract Decoder {
     recv Probe {
         LongBytes {} -> u256 {
             let b: Bytes = <Bytes as Decode<Sol>>::decode_from_prechecked_head(input(LONG - 32).span(), 0, LONG)
-            b.len()
+            b.len() as u256
         }
         LongString {} -> u256 {
             let s: DynString = <DynString as Decode<Sol>>::decode_from_prechecked_head(input(LONG - 32).span(), 0, LONG)
-            s.len()
+            s.len() as u256
         }
         LongArray {} -> u256 {
             let a: DynArray<u256> = <DynArray<u256> as Decode<Sol>>::decode_from_prechecked_head(input(1 << 58).span(), 0, LONG)
-            a.len()
+            a.len() as u256
         }
     }
 }

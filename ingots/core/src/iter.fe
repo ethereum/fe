@@ -196,7 +196,7 @@ impl<T> Collection for MemArray<T> {
 
     #[inline(always)]
     fn has(self, _ c: usize) -> bool {
-        (c as u256) < self.len()
+        c < self.len()
     }
 
     #[inline(always)]
@@ -213,7 +213,7 @@ impl<T> Collection for MemArray<T> {
 impl<T> Bidirectional for MemArray<T> {
     #[inline(always)]
     fn last(self) -> usize {
-        (self.len() as usize).wrapping_sub(1)
+        self.len().wrapping_sub(1)
     }
 
     #[inline(always)]
@@ -233,7 +233,7 @@ impl<T> Collection for MemSlice<T> {
 
     #[inline(always)]
     fn has(self, _ c: usize) -> bool {
-        (c as u256) < self.len()
+        c < self.len()
     }
 
     #[inline(always)]
@@ -250,7 +250,7 @@ impl<T> Collection for MemSlice<T> {
 impl<T> Bidirectional for MemSlice<T> {
     #[inline(always)]
     fn last(self) -> usize {
-        (self.len() as usize).wrapping_sub(1)
+        self.len().wrapping_sub(1)
     }
 
     #[inline(always)]
@@ -697,7 +697,7 @@ impl FromProducer for MemArray {
         uses (B::E, P::E)
     {
         var p = p
-        var len: u256 = 0
+        var len: usize = 0
         var s = p.start(base)
         while p.has(base, s) {
             len += 1
@@ -715,7 +715,7 @@ impl FromProducer for MemArray {
             i += 1
             s = p.next(base, s)
         }
-        if i as u256 != len {
+        if i != len {
             panic_code(PANIC_ASSERT)
         }
         out

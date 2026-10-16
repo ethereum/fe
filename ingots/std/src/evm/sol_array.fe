@@ -192,7 +192,7 @@ impl<T> SolArray<T> {
             value.encode(unsafe { AbiFrame::from_raw_parts(ptr: ptr::offset_bytes(data, 32 + i * 32), len: 32) })
             i += 1
         }
-        unsafe { DynArray::from_abi_tail(data, len, size) }
+        unsafe { DynArray::from_abi_tail(data, len: len as usize, size) }
     }
 }
 

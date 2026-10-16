@@ -16,16 +16,16 @@ impl Copy for Entry {}
 /// The entries' ABI encodings after a length word, in a fresh zeroed buffer.
 fn encode_entries(_ entries: MemSlice<Entry>) -> *u8 {
     let len = entries.len()
-    let size = 32 + len * 64
+    let size = 32 + len as u256 * 64
     let data = ptr::alloc_bytes(size)
     unsafe {
         ptr::zero_bytes(data, size)
-        store_word(ptr: data, value: len)
+        store_word(ptr: data, value: len as u256)
     }
     let out = unsafe { AbiFrame::from_raw_parts(ptr: ptr::offset_bytes(data, 32), len: size - 32) }
-    var tails = out.tail(len * 64)
+    var tails = out.tail(len as u256 * 64)
     var i: usize = 0
-    while (i as u256) < len {
+    while i < len {
         tails = encode_field<Sol, Entry>(entries[i], out, head_pos: i as u256 * 64, tails)
         i += 1
     }

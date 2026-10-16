@@ -131,10 +131,10 @@ pub contract C {
         }
         Hops { first, hops } -> u256 {
             var sum = first.fee.val as u256
-            var i: u256 = 0
+            var i: usize = 0
             while i < hops.len() {
                 let hop = hops.get(i)
-                sum += hop.key.fee.val as u256 + hop.data.len()
+                sum += hop.key.fee.val as u256 + hop.data.len() as u256
                 i += 1
             }
             sum
@@ -275,7 +275,7 @@ fn canonical_dyn_array_takes_non_copy_elements() {
         (8, Bytes::from_word_prefix(word: 0, len: 32)),
     ])
     let span = hops.encoded_span()
-    let named = unsafe { canonical_dyn_array(DynArray<Named>::from_abi_tail(data: span.ptr(), len: 2, size: span.len())) }
+    let named = unsafe { canonical_dyn_array(DynArray<Named>::from_abi_tail(data: span.ptr(), len: 2, size: span.len() as u256)) }
     assert(named.get(0).item.value == 7)
     assert(named.get(0).name.byte_at(0) == 0xaa)
     assert(named.get(1).item.value == 8)
@@ -373,11 +373,11 @@ fn canonical_dyn_array_of_zero_size_elements_is_constant_time() {
     let count: u256 = 1 << 200
     let data = MemBuffer::alloc(32)
     unsafe { store_word(ptr: data.ptr(), value: count) }
-    let units = unsafe { canonical_dyn_array(DynArray<()>::from_abi_tail(data: data.ptr(), len: count, size: 32)) }
-    assert(units.len() == count)
+    let units = unsafe { canonical_dyn_array(DynArray<()>::from_abi_tail(data: data.ptr(), len: count as usize, size: 32)) }
+    assert(units.len() == count as usize)
     assert(units.encoded_size() == 32)
-    let empties = unsafe { canonical_dyn_array(DynArray<Empty>::from_abi_tail(data: data.ptr(), len: count, size: 32)) }
-    assert(empties.len() == count)
+    let empties = unsafe { canonical_dyn_array(DynArray<Empty>::from_abi_tail(data: data.ptr(), len: count as usize, size: 32)) }
+    assert(empties.len() == count as usize)
     assert(empties.encoded_size() == 32)
 }
 
@@ -388,7 +388,7 @@ fn abi_struct_wide_tuple_fields_round_trip() {
         sixteen: (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
     }
     let encoded = encode_abi_payload(value)
-    let decoded = <WideTuples as Decode<Sol>>::decode_from_bounded(encoded.span(), 0, encoded.len())
+    let decoded = <WideTuples as Decode<Sol>>::decode_from_bounded(encoded.span(), 0, encoded.len() as u256)
     assert(decoded.five.3 == 4)
     assert(decoded.five.4.byte_at(0) == 0xaa)
     assert(decoded.sixteen.0 == 1)

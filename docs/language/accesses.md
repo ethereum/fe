@@ -183,11 +183,11 @@ or at `mut`, and `mut?` is `ref` or `mut` accordingly, wherever `ref` and
 `mut` may be written.
 
 ```fe
-pub fn at(mut? self, _ index: u256) -> mut? T {
+pub fn at(mut? self, _ index: usize) -> mut? T {
     unsafe { mut? *self.ptr_at(index) }
 }
 
-pub fn split_at(mut? self, _ mid: u256) -> (mut? Self, mut? Self) { .. }
+pub fn split_at(mut? self, _ mid: usize) -> (mut? Self, mut? Self) { .. }
 ```
 
 Its body is checked once per mode: the `ref` body cannot write through a

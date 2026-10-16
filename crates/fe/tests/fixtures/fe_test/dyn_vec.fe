@@ -67,7 +67,7 @@ fn entries() -> DynArray<Entry> {
 }
 
 fn assert_words<const N: usize>(_ data: MemSpan, _ expected: [u256; N]) {
-    assert(data.len() == (N as u256) * 32)
+    assert(data.len() == N * 32)
     var i: usize = 0
     while i < N {
         assert(data.word_at((i as u256) * 32) == expected[i])
