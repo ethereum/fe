@@ -950,20 +950,23 @@ pub fn canonicalize_ty_for_mode<'db>(
     env: ConstCanonEnv<'db>,
     mode: ConstCanonMode,
 ) -> TyId<'db> {
+    // A type is a DAG: `memo` canonicalizes each shared subtree once, where a
+    // tree walk is exponential in the depth of a type like `(x, x)`.
     fn canonicalize_ty_impl<'db>(
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
         env: ConstCanonEnv<'db>,
         mode: ConstCanonMode,
         finalize_self: bool,
+        memo: &mut FxHashMap<(TyId<'db>, bool), TyId<'db>>,
     ) -> TyId<'db> {
-        let ty = env.apply_assoc_evidence(db, ty);
-        let env = env.without_assoc_evidence();
-
-        let mut ty = match ty.data(db) {
+        if let Some(&canonical) = memo.get(&(ty, finalize_self)) {
+            return canonical;
+        }
+        let mut canonical = match ty.data(db) {
             TyData::TyApp(abs, arg) => {
-                let abs = canonicalize_ty_impl(db, *abs, env, mode, false);
-                let arg = canonicalize_ty_impl(db, *arg, env, mode, true);
+                let abs = canonicalize_ty_impl(db, *abs, env, mode, false, memo);
+                let arg = canonicalize_ty_impl(db, *arg, env, mode, true, memo);
                 match mode {
                     ConstCanonMode::Stored => TyId::app_structural(db, abs, arg),
                     ConstCanonMode::Identity | ConstCanonMode::Display => TyId::app(db, abs, arg),
@@ -990,14 +993,23 @@ pub fn canonicalize_ty_for_mode<'db>(
         };
 
         if finalize_self && !matches!(mode, ConstCanonMode::Stored) {
-            ty = complete_default_const_args_for_identity(db, ty);
-            ty = normalize_ty(db, ty, env.scope, env.assumptions);
+            canonical = complete_default_const_args_for_identity(db, canonical);
+            canonical = normalize_ty(db, canonical, env.scope, env.assumptions);
         }
-
-        ty
+        memo.insert((ty, finalize_self), canonical);
+        canonical
     }
 
-    canonicalize_ty_impl(db, ty, env, mode, true)
+    // Associated-type evidence applies to the whole type, once.
+    let ty = env.apply_assoc_evidence(db, ty);
+    canonicalize_ty_impl(
+        db,
+        ty,
+        env.without_assoc_evidence(),
+        mode,
+        true,
+        &mut FxHashMap::default(),
+    )
 }
 
 pub fn canonicalize_trait_inst_for_mode<'db>(
