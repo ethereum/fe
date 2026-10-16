@@ -1729,7 +1729,7 @@ pub contract RawStaticTarget {
 use std::abi::sol
 use core::ptr
 use core::abi::store_word
-use std::evm::{Evm, Address, Ctx, staticcall_decode}
+use std::evm::{Address, Call, Ctx, staticcall_decode}
 
 const WORD_SELECTOR: u32 = sol("word()")
 const FLAG_SELECTOR: u32 = sol("flag()")
@@ -1744,15 +1744,15 @@ msg RawStaticCallerMsg {
 
 pub contract RawStaticCaller {
     recv RawStaticCallerMsg {
-        CallWord { target } -> u256 uses (evm: mut Evm) {
+        CallWord { target } -> u256 uses (ctx: Ctx, call: Call) {
             let args = ptr::MemBuffer::alloc(4)
             unsafe { store_word(ptr: args.ptr(), value: (WORD_SELECTOR as u256) << 224) }
-            staticcall_decode(addr: target, gas: evm.gas(), args: args.span())
+            staticcall_decode(addr: target, gas: ctx.gas(), args: args.span())
         }
-        CallFlag { target } -> bool uses (evm: mut Evm) {
+        CallFlag { target } -> bool uses (ctx: Ctx, call: Call) {
             let args = ptr::MemBuffer::alloc(4)
             unsafe { store_word(ptr: args.ptr(), value: (FLAG_SELECTOR as u256) << 224) }
-            staticcall_decode(addr: target, gas: evm.gas(), args: args.span())
+            staticcall_decode(addr: target, gas: ctx.gas(), args: args.span())
         }
     }
 }
