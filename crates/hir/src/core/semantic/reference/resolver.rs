@@ -27,7 +27,7 @@ use super::{
         impl_references, impl_trait_references, struct_references, trait_references,
         type_alias_references, use_references,
     },
-    resolve_path_with_recv_fallback, typed_body_for_body,
+    typed_body_for_body,
 };
 
 /// A pre-resolved scope reference: target scope paired with the span
@@ -103,7 +103,7 @@ fn resolve_references<'db>(
                 for idx in 0..=last_idx {
                     if let Some(seg_path) = pv.path.segment(db, idx) {
                         let is_self_ty = seg_path.is_self_ty(db);
-                        for scope in resolve_path_with_recv_fallback(db, seg_path, pv.scope) {
+                        for scope in pv.segment_targets(db, idx) {
                             results.push(ResolvedScopeTarget {
                                 scope,
                                 span: pv.span.clone().segment(idx).ident().into(),

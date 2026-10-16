@@ -7,10 +7,14 @@ use crate::{
     HirDb,
     hir_def::{
         Body, Contract, Enum, Expr, ExprId, Func, Impl, ImplTrait, Pat, PatId, Struct, Trait,
-        TypeAlias, Use, UsePathId,
+        TraitRefId, TypeAlias, Use, UsePathId,
     },
-    span::lazy_spans::{LazyBodySpan, LazyExprSpan, LazyPatSpan, LazyPathSpan, LazyUsePathSpan},
-    visitor::{Visitor, VisitorCtxt, walk_expr, walk_pat, walk_path, walk_use_path},
+    span::lazy_spans::{
+        LazyBodySpan, LazyExprSpan, LazyPatSpan, LazyPathSpan, LazyTraitRefSpan, LazyUsePathSpan,
+    },
+    visitor::{
+        Visitor, VisitorCtxt, walk_expr, walk_pat, walk_path, walk_trait_ref, walk_use_path,
+    },
 };
 
 use super::{
@@ -37,6 +41,9 @@ pub(super) struct ReferenceCollector<'db> {
     /// Tracks the current context when visiting paths inside a body.
     /// Set before walking expressions/patterns that contain paths.
     path_context: PathContext,
+    /// Set while visiting a trait reference, until its own path is visited.
+    /// Paths in that path's generic arguments are not trait references.
+    trait_ref: bool,
     /// Whether nested bodies are skipped. An item's collector skips them:
     /// every body, including a field type's array length and a `where`
     /// condition, is an item of its own, whose references `body_references`
@@ -53,6 +60,7 @@ impl<'db> ReferenceCollector<'db> {
             current_body: None,
             current_use: None,
             path_context: PathContext::None,
+            trait_ref: false,
             skip_body,
         }
     }
@@ -64,6 +72,7 @@ impl<'db> ReferenceCollector<'db> {
             current_body: Some(body),
             current_use: None,
             path_context: PathContext::None,
+            trait_ref: false,
             skip_body: false,
         }
     }
@@ -71,8 +80,9 @@ impl<'db> ReferenceCollector<'db> {
 
 impl<'db> Visitor<'db> for ReferenceCollector<'db> {
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
+        let trait_ref = std::mem::take(&mut self.trait_ref);
         if let Some(span) = ctxt.span() {
-            let mut path_view = PathView::new(path, ctxt.scope(), span);
+            let mut path_view = PathView::new(path, ctxt.scope(), span, trait_ref);
 
             // Attach body context if we're inside a body expression/pattern
             match self.path_context {
@@ -90,6 +100,16 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
             self.refs.push(ReferenceView::Path(path_view));
         }
         walk_path(self, ctxt, path);
+    }
+
+    fn visit_trait_ref(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
+        trait_ref: TraitRefId<'db>,
+    ) {
+        self.trait_ref = true;
+        walk_trait_ref(self, ctxt, trait_ref);
+        self.trait_ref = false;
     }
 
     fn visit_body(&mut self, ctxt: &mut VisitorCtxt<'db, LazyBodySpan<'db>>, body: Body<'db>) {
