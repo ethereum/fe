@@ -719,9 +719,10 @@ impl<'db> BodyTermWalk<'_, 'db> {
                 provenance.opaque = true;
                 (provenance, Vec::new())
             }
-            SExpr::Const(SConst::Ref(reference))
-                if matches!(reference.instance(db).owner(db), BodyOwner::Const(..)) =>
-            {
+            SExpr::Const(SConst::Ref(reference)) => {
+                // Resolved trait and inherent constants use anonymous bodies.
+                // Their keys already retain selection evidence and substituted
+                // parameters, just as a module constant's key retains its owner.
                 let mut nested_frames = self.frames.to_vec();
                 nested_frames.push(TermCallFrame {
                     origin: reference.origin(db),

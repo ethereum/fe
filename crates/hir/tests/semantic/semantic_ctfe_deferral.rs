@@ -586,9 +586,7 @@ const fn relay<const N: usize>() -> u8 { selected<N>() }
 
 #[test]
 fn pure_term_replay_keeps_source_assignment_order() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        "pure_term_order.fe".into(),
+    for source in [
         r#"
 const fn reversed<const N: u8>() -> u8 {
     let first = N / 0
@@ -596,18 +594,47 @@ const fn reversed<const N: u8>() -> u8 {
     second + first
 }
 "#,
-    );
-    let (module, _) = db.top_mod(file);
-    db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "reversed"));
-    let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
-    let max = integer_const_arg(&db, u8_ty, 255);
-    let result = assert_specialization_law(&db, owner, &[max]);
-    assert!(matches!(
-        result,
-        EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
-            if matches!(root_error(error), CtfeError::DivisionByZero { .. })
-    ));
+        r#"
+trait Value { const RESULT: u8 }
+struct Marker<const N: u8> {}
+impl<const N: u8> Value for Marker<N> {
+    const RESULT: u8 = {
+        let first = N / 0
+        let second = N + 1
+        second + first
+    }
+}
+const fn reversed<const N: u8>() -> u8 { Marker<N>::RESULT }
+"#,
+        r#"
+struct Marker<const N: u8> {}
+impl<const N: u8> Marker<N> {
+    const RESULT: u8 = {
+        let first = N / 0
+        let second = N + 1
+        second + first
+    }
+}
+const fn reversed<const N: u8>() -> u8 { Marker<N>::RESULT }
+"#,
+    ] {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone("pure_term_order.fe".into(), source);
+        let (module, _) = db.top_mod(file);
+        db.assert_no_diags(module);
+        let owner = BodyOwner::Func(function(&db, module, "reversed"));
+        let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
+        let max = integer_const_arg(&db, u8_ty, 255);
+        let result = assert_specialization_law(&db, owner, &[max]);
+        assert!(
+            matches!(
+                result,
+                EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
+                    if matches!(root_error(error), CtfeError::DivisionByZero { .. })
+            ),
+            "{source}: {result:?}"
+        );
+    }
 }
 
 #[test]

@@ -785,6 +785,55 @@ impl<'db> RebaseConstUseEnv<'db> {
 }
 
 impl<'db> TyFolder<'db> for RebaseConstUseEnv<'db> {
+    fn fold_const_context_key(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        key: SemanticInstanceKey<'db>,
+    ) -> SemanticInstanceKey<'db> {
+        // An empty context needs no rebasing; the owner supplies its own
+        // declared bounds. Adding the stored list would introduce unrelated
+        // sibling bounds into every retained source key.
+        if key.impl_env(db).assumptions(db).is_empty(db) {
+            return key.super_fold_with(db, self);
+        }
+        // A retained computation's source and call frames carry selection
+        // contexts too. Never fold the old assumptions: they can contain the
+        // bound currently being collected, making every cycle grow another
+        // copy of its provenance. Preserve the selected body and witnesses.
+        let env = key.impl_env(db);
+        let key = SemanticInstanceKey::new(
+            db,
+            key.owner(db),
+            key.subst(db),
+            key.effect_providers(db),
+            ImplEnv::new(
+                db,
+                env.normalization_scope(db),
+                PredicateListId::empty_list(db),
+                env.witnesses(db).clone(),
+            ),
+        )
+        .super_fold_with(db, self);
+        let (scope, assumptions) = self.env(
+            db,
+            env.normalization_scope(db),
+            key.owner(db).scope(),
+            mentioned_params(db, &key),
+        );
+        SemanticInstanceKey::new(
+            db,
+            key.owner(db),
+            key.subst(db),
+            key.effect_providers(db),
+            ImplEnv::new(
+                db,
+                scope,
+                assumptions,
+                key.impl_env(db).witnesses(db).clone(),
+            ),
+        )
+    }
+
     fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
         // A use's environment is replaced, never folded: it can hold the
         // whole list the use was lowered under.
@@ -1116,10 +1165,23 @@ pub fn canonicalize_const_ty_for_mode<'db>(
         ConstCanonMode::Stored => canonicalized,
         ConstCanonMode::Identity => concretize_const_ty_if_ground(db, canonicalized, env)
             .or_else(|| {
-                let ConstTyData::UnEvaluated { ty: Some(ty), .. } = canonicalized.data(db) else {
-                    return None;
+                // A selected constant can reduce to an open parameter even
+                // when the whole expression is not ground. Reduce it before
+                // its enclosing invocation takes on a comparison identity.
+                // Stored terms keep their selection context for later forces.
+                let ty = match canonicalized.data(db) {
+                    ConstTyData::UnEvaluated { ty: Some(ty), .. } => *ty,
+                    ConstTyData::Abstract(expr, ty)
+                        if matches!(
+                            expr.data(db),
+                            ConstExpr::TraitConst(_) | ConstExpr::InherentConst(_)
+                        ) =>
+                    {
+                        *ty
+                    }
+                    _ => return None,
                 };
-                let evaluated = canonicalized.evaluate(db, Some(*ty));
+                let evaluated = canonicalized.evaluate(db, Some(ty));
                 (evaluated != canonicalized && evaluated.ty(db).invalid_cause(db).is_none())
                     .then(|| canonicalize_const_ty_for_mode(db, evaluated, env, mode))
             })
@@ -3200,7 +3262,9 @@ mod tests {
 
     use super::*;
     use crate::{
-        analysis::semantic::{bool_const, int_const, sem_const_from_ty, tuple_const},
+        analysis::semantic::{
+            bool_const, identity_semantic_instance_key, int_const, sem_const_from_ty, tuple_const,
+        },
         analysis::ty::{
             generic_defaults::{GenericDefault, generic_default},
             ty_def::PrimTy,
@@ -3230,6 +3294,122 @@ mod tests {
         let name = IdentId::new(db, "N".to_string());
         let param = TyParam::normal_param(name, 0, Kind::Star, module.scope(), Some(0));
         ConstTyId::new(db, ConstTyData::TyParam(param, ty))
+    }
+
+    #[test]
+    fn selected_const_invocation_arguments_share_extent_identity() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "selected_const_invocation_identity.fe".into(),
+            r#"
+const fn word_len(_ n: usize) -> usize {
+    n / 32 + if n % 32 == 0 { 0 } else { 1 }
+}
+trait Size { const N: usize }
+struct Blob<const N: usize> {}
+impl<const LEN: usize> Size for Blob<LEN> { const N: usize = LEN }
+impl<const N: usize> Blob<N> { const WIDTH: usize = N }
+fn extents<const N: usize, const OTHER: usize>(
+    _ selected: [u256; word_len(Blob<N>::N)],
+    _ direct: [u256; word_len(N)],
+    _ inherent: [u256; word_len(Blob<N>::WIDTH)],
+    _ other: [u256; word_len(OTHER)],
+    _ offset: [u256; word_len({ N + 32 })],
+) {}
+"#,
+        );
+        let (module, _) = db.top_mod(file);
+        db.assert_no_diags(module);
+        let func = find_func(&db, module, "extents");
+        let lengths: Vec<_> = func
+            .arg_tys(&db)
+            .iter()
+            .map(|binder| binder.skip_binder().generic_args(&db)[1])
+            .collect();
+        let normalized: Vec<_> = lengths
+            .iter()
+            .copied()
+            .map(|ty| normalize_const_tys_for_comparison(&db, ty))
+            .collect();
+        let details: Vec<_> = lengths
+            .iter()
+            .zip(&normalized)
+            .map(|(before, after)| format!("{:?} -> {:?}", before.data(&db), after.data(&db)))
+            .collect();
+        assert_eq!(normalized[0], normalized[1], "{details:#?}");
+        assert_eq!(normalized[2], normalized[1], "{details:#?}");
+        assert_ne!(normalized[3], normalized[1]);
+        assert_ne!(normalized[4], normalized[1]);
+    }
+
+    #[test]
+    fn retained_const_contexts_rebase_without_erasing_invocation_evidence() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "retained_const_contexts.fe".into(),
+            "trait Gate {}\nconst fn value<T: Gate>() -> usize { 0 }",
+        );
+        let (module, _) = db.top_mod(file);
+        db.assert_no_diags(module);
+        let func = find_func(&db, module, "value");
+        let identity = identity_semantic_instance_key(&db, BodyOwner::Func(func));
+        let assumptions = func.assumptions(&db);
+        let witnesses = assumptions.list(&db).clone();
+        let key = SemanticInstanceKey::new(
+            &db,
+            identity.owner(&db),
+            identity.subst(&db),
+            identity.effect_providers(&db),
+            ImplEnv::new(&db, func.scope(), assumptions, witnesses.clone()),
+        );
+        let term = TyId::const_ty(
+            &db,
+            ConstTyId::new(
+                &db,
+                ConstTyData::Abstract(
+                    ConstExprId::new(
+                        &db,
+                        ConstExpr::Invocation(ConstInvocation {
+                            key,
+                            args: Vec::new(),
+                        }),
+                    ),
+                    TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))),
+                ),
+            ),
+        );
+        let folded = term.fold_with(&db, &mut RebaseConstUseEnv::Identity);
+        assert_eq!(
+            folded, term,
+            "an invocation's evidence determines its value identity"
+        );
+        let context = RebaseConstUseEnv::Identity.fold_const_context_key(&db, key);
+        assert!(context.impl_env(&db).assumptions(&db).is_empty(&db));
+        assert_eq!(context.owner(&db), key.owner(&db));
+        assert_eq!(context.subst(&db), key.subst(&db));
+        assert_eq!(context.impl_env(&db).witnesses(&db), &witnesses);
+        let stored = RebaseConstUseEnv::stored(&db, assumptions.list(&db).iter().copied())
+            .fold_const_context_key(&db, key);
+        assert_eq!(stored.impl_env(&db).assumptions(&db), assumptions);
+        assert_eq!(stored.impl_env(&db).witnesses(&db), &witnesses);
+        let empty = SemanticInstanceKey::new(
+            &db,
+            key.owner(&db),
+            key.subst(&db),
+            key.effect_providers(&db),
+            ImplEnv::new(
+                &db,
+                func.scope(),
+                PredicateListId::empty_list(&db),
+                witnesses,
+            ),
+        );
+        let folded = RebaseConstUseEnv::stored(&db, assumptions.list(&db).iter().copied())
+            .fold_const_context_key(&db, empty);
+        assert_eq!(
+            folded, empty,
+            "an empty context must not acquire sibling bounds"
+        );
     }
 
     #[test]

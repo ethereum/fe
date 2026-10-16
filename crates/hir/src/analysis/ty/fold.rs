@@ -45,6 +45,17 @@ pub trait TyFolder<'db> {
         scope
     }
 
+    fn fold_const_context_key(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        key: SemanticInstanceKey<'db>,
+    ) -> SemanticInstanceKey<'db>
+    where
+        Self: Sized,
+    {
+        key.fold_with(db, self)
+    }
+
     fn fold_const_capture(
         &mut self,
         db: &'db dyn HirAnalysisDb,
@@ -107,7 +118,7 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                         source,
                     } => Computation {
                         description: Box::new(description.as_ref().clone().fold_with(db, folder)),
-                        source: source.fold_with(db, folder),
+                        source: folder.fold_const_context_key(db, *source),
                     },
                     Invalid(ty) => Invalid(folder.fold_ty(db, *ty)),
                     Abstract(expr, ty) => {
