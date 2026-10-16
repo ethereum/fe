@@ -15,8 +15,8 @@ use crate::{
         },
     },
     hir_def::{
-        ArithBinOp, BinOp, CallableDef, CompBinOp, Func, IdentId, ItemKind, PathId, Trait, UnOp,
-        scope_graph::ScopeId,
+        ArithBinOp, BinOp, CallableDef, CompBinOp, Func, FuncParamMode, IdentId, ItemKind, PathId,
+        Trait, UnOp, scope_graph::ScopeId,
     },
     semantic::EffectRequirementKey,
 };
@@ -437,7 +437,8 @@ fn trait_reaches<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>, target: Tr
 /// The persistent and transient state an external execution started by `func`
 /// can access. A call or creation can reenter the contract and write any slot;
 /// a static call only reads; precompiles cannot call back. Methods of reentrant
-/// std capabilities start such executions.
+/// std capabilities start such executions; shared receiver authority only
+/// permits reads, while mutable or owned authority can write.
 pub fn external_call_state_access<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -462,7 +463,7 @@ pub fn external_call_state_access<'db>(
         return None;
     }
     Some(
-        if lib_func_matches(db, func, "std::evm::effects::Call::raw_staticcall") {
+        if CallableDef::Func(func).param_mode(db, 0) == FuncParamMode::View {
             MemoryAccessKind::Read
         } else {
             MemoryAccessKind::Write
