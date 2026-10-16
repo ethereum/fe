@@ -3,7 +3,7 @@
 // resolve to the user types in `msg`, `#[abi]` and `#[event]` fields.
 use core::abi::Decode
 use std::abi::{Sol, sol}
-use std::evm::{Evm, RawMem, encode_abi_payload}
+use std::evm::{Evm, encode_abi_payload}
 
 #[abi]
 pub struct D {
@@ -97,7 +97,7 @@ fn fields_spelled_like_generated_names() uses (evm: mut Evm) {
 }
 
 #[test]
-fn abi_struct_fields_named_like_generated_params() uses (mem: mut RawMem) {
+fn abi_struct_fields_named_like_generated_params() {
     let encoded = encode_abi_payload(Both { d: D { x: 1 }, i: I { y: 2 }, l: 3 })
     let decoded = <Both as Decode<Sol>>::decode_from_bounded(encoded.span(), 0, encoded.len())
     assert(decoded.d.x == 1)

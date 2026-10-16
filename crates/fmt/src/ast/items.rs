@@ -96,6 +96,8 @@ fn token_doc_item_node_piece<'a>(
         piece!(ast::Pat),
         piece!(ast::TraitRef, space_before),
         piece!(ast::Type, space_before),
+        // A block is an expression: it takes its own arm first, with its space.
+        piece!(ast::BlockExpr, space_before),
         piece!(ast::Expr),
         piece!(ast::TupleType),
         piece!(ast::RecordFieldDefList, space_before),
@@ -106,7 +108,6 @@ fn token_doc_item_node_piece<'a>(
         piece!(ast::RecvArmList, space_before),
         piece!(ast::MsgVariantList, space_before),
         piece!(ast::MsgVariantParams, space_before),
-        piece!(ast::BlockExpr, space_before),
         ast::ItemList::cast(node.clone()).map(|items| {
             TokenPiece::new(block_items_doc(items.syntax(), ast::Item::cast, ctx)).space_before()
         }),
@@ -243,6 +244,16 @@ fn block_items_doc<'a, T: ToDoc>(
     for child in syntax.children_with_tokens() {
         let entry_doc = match child {
             NodeOrToken::Node(node) => {
+                // Modifier checkpoints can include leading trivia in the item.
+                // Count its separator here, alongside trivia owned by the list.
+                pending_newlines += node
+                    .children_with_tokens()
+                    .take_while(|child| {
+                        matches!(child, NodeOrToken::Token(token) if matches!(token.kind(), SyntaxKind::Newline | SyntaxKind::WhiteSpace))
+                    })
+                    .filter_map(NodeOrToken::into_token)
+                    .map(|token| newline_count(token.text()))
+                    .sum::<usize>();
                 if node.kind() == SyntaxKind::AttrList {
                     // A module's inner attributes (`#![...]`), one per line,
                     // each kept exactly as written so string arguments keep
@@ -469,7 +480,13 @@ fn func_sig_to_doc<'a>(
 
     let ret_doc = sig.ret_ty().map_or_else(
         || alloc.nil(),
-        |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
+        |ty| {
+            let ret = alloc.text(" -> ").append(ty.to_doc(ctx));
+            match sig.ret_space() {
+                Some(space) => ret.append(alloc.text(" ")).append(space.to_doc(ctx)),
+                None => ret,
+            }
+        },
     );
 
     let has_uses = sig.uses_clause().is_some();
@@ -722,6 +739,9 @@ impl ToDoc for ast::FuncParam {
         if self.mut_token().is_some() {
             doc = doc.append(alloc.text("mut "));
         }
+        if self.var_token().is_some() {
+            doc = doc.append(alloc.text("var "));
+        }
         if self.ref_token().is_some() {
             doc = doc.append(alloc.text("ref "));
         }
@@ -849,6 +869,10 @@ impl ToDoc for ast::RecordFieldDef {
         let mut doc = attrs;
 
         doc = doc.append(visibility_doc(self.pub_kw(), self.vis_restriction(), ctx));
+
+        if self.unsafe_kw().is_some() {
+            doc = doc.append(alloc.text("unsafe "));
+        }
 
         if self.mut_kw().is_some() {
             doc = doc.append(alloc.text("mut "));
@@ -1251,7 +1275,62 @@ impl ToDoc for ast::TraitItem {
             TraitItemKind::Func(func) => func.to_doc(ctx),
             TraitItemKind::Type(ty) => ty.to_doc(ctx),
             TraitItemKind::Const(c) => c.to_doc(ctx),
+            TraitItemKind::Uses(row) => row.to_doc(ctx),
+            TraitItemKind::Space(space) => space.to_doc(ctx),
         }
+    }
+}
+
+impl ToDoc for ast::TraitSpaceItem {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+
+        token_doc_item_like_if_comments!(self, ctx);
+
+        let name = self
+            .name()
+            .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
+        let value = self.value().map_or_else(
+            || alloc.nil(),
+            |value| {
+                let space_path = self
+                    .space_path()
+                    .map_or_else(|| alloc.nil(), |space_path| space_path.to_doc(ctx));
+                alloc
+                    .text(" = ")
+                    .append(value.to_doc(ctx))
+                    .append(space_path)
+            },
+        );
+
+        attrs_doc(self, ctx)
+            .append(alloc.text("space "))
+            .append(name)
+            .append(value)
+    }
+}
+
+impl ToDoc for ast::TraitUsesItem {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+
+        token_doc_item_like_if_comments!(self, ctx);
+
+        let name = self
+            .name()
+            .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
+        let effects = if let Some(params) = self.param_list() {
+            alloc.text(" = ").append(params.to_doc(ctx))
+        } else if let Some(param) = self.param() {
+            alloc.text(" = ").append(param.to_doc(ctx))
+        } else {
+            alloc.nil()
+        };
+
+        attrs_doc(self, ctx)
+            .append(alloc.text("uses "))
+            .append(name)
+            .append(effects)
     }
 }
 
@@ -1383,6 +1462,7 @@ impl ToDoc for ast::ImplTrait {
         );
 
         attrs
+            .append(modifier_doc(self, ctx))
             .append(alloc.text("impl"))
             .append(generics)
             .append(trait_doc)

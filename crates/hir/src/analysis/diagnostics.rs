@@ -10,11 +10,11 @@ use crate::analysis::{
         is_scope_visible_from,
     },
     ty::{
-        ProviderAddressSpace,
+        AddressSpace,
         diagnostics::{
             BodyDiag, CallConstraintDiagInfo, ContractFieldLayoutIssue, DefConflictError,
-            FuncBodyDiag, ImplDiag, MustUseSubject, TraitConstraintDiag, TraitLowerDiag,
-            TyDiagCollection, TyLowerDiag,
+            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix,
+            TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag,
         },
         trait_def::TraitInstId,
         ty_check::{EffectParamOwner, RecordLike},
@@ -66,49 +66,15 @@ fn pretty_print_ty_for_mismatch<'db>(db: &'db dyn SpannedHirAnalysisDb, ty: TyId
                     .scope()
                     .pretty_path(db)
                     .unwrap_or_else(|| ty.pretty_print(db).to_string()),
-                TyBase::Prim(_) | TyBase::Func(_) => ty.pretty_print(db).to_string(),
+                TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) => {
+                    ty.pretty_print(db).to_string()
+                }
             }
         }
         TyData::ConstTy(_) => ty.pretty_print(db).to_string(),
         TyData::Never => "!".to_string(),
         TyData::Invalid(cause) => format!("invalid({})", cause.pretty_print(db)),
     }
-}
-
-/// Label and notes for a bound that is unsatisfied because a type in it is
-/// borrowed (the capability type `cap_ty`) and that would be satisfied if the
-/// type were owned. The borrowed type need not come from a passed value (it
-/// can be written in the bound or inferred from an expected type), so the
-/// label describes the type.
-///
-/// Default parameters (`x: T` without `own`) are borrowed read-only. That
-/// capability has no source syntax, so it is described in words rather than
-/// printed as a type. No impl is named, since the impl that applies to the
-/// owned value may differ from the one whose bound failed, and no edit is
-/// suggested, since the borrow may come from a projection or destructuring
-/// rather than from a binding the user can change to `own`.
-fn capability_bound_notes<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cap_ty: TyId<'db>,
-) -> Option<(String, Vec<String>)> {
-    use crate::analysis::ty::ty_def::CapabilityKind;
-
-    let (kind, inner) = cap_ty.as_capability(db)?;
-    let inner_str = inner.pretty_print(db);
-    let held = match kind {
-        CapabilityKind::View => "is only borrowed here".to_string(),
-        CapabilityKind::Ref => format!("is borrowed here as `ref {inner_str}`"),
-        CapabilityKind::Mut => format!("is borrowed here as `mut {inner_str}`"),
-    };
-    let label = format!("`{inner_str}` {held}; the bound would be satisfied if it were owned");
-    let mut notes = Vec::new();
-    if kind == CapabilityKind::View {
-        notes.push(
-            "note: values reached through a parameter declared without `own` are borrowed, and a borrowed value cannot be used as an owned one unless its type is `Copy`"
-                .to_string(),
-        );
-    }
-    Some((label, notes))
 }
 
 fn pretty_print_ty_app_for_mismatch<'db>(
@@ -319,15 +285,13 @@ fn format_method_param_ty<'db>(
         return ty;
     };
 
-    let mut rendered = String::new();
-    if param.is_mut(db) {
-        rendered.push_str("mut ");
-    }
-    if param.mode(db) == FuncParamMode::Own && !ty.starts_with("own ") {
-        rendered.push_str("own ");
-    }
-    rendered.push_str(&ty);
-    rendered
+    let mode = match param.mode(db) {
+        FuncParamMode::View => "",
+        FuncParamMode::Mut => "mut ",
+        FuncParamMode::Own if param.is_mut(db) => "mut own ",
+        FuncParamMode::Own => "own ",
+    };
+    format!("{mode}{ty}")
 }
 
 fn format_call_constraint_source<'db>(
@@ -1383,17 +1347,6 @@ impl DiagnosticVoucher for PathResDiag<'_> {
                 )
             }
 
-            Self::TraitConstHoleArg { span, ident } => primary_diag(
-                Severity::Error,
-                format!(
-                    "layout hole `_` is not allowed in trait generic arguments for `{}`",
-                    ident.data(db)
-                ),
-                "replace `_` with an explicit const argument",
-                span.resolve(db),
-                error_code,
-            ),
-
             Self::TypeMustBeKnown(span) => primary_diag(
                 Severity::Error,
                 "type must be known here",
@@ -1675,6 +1628,75 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code());
         match self {
+            Self::ViewTypeMode { span, ty, mode } => primary_diag(
+                Severity::Error,
+                format!("`{}` is a `#[view]` type", ty.pretty_print(db)),
+                format!("a `#[view]` type cannot be {mode}"),
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::StateOnlyValue {
+                span,
+                ty,
+                collection,
+                position,
+            } => {
+                let ty_name = ty.pretty_print(db);
+                let collection_name = collection.pretty_print(db);
+                let mut diag = primary_diag(
+                    Severity::Error,
+                    format!("`{ty_name}` is state-only"),
+                    format!("a state-only type cannot be {position}"),
+                    span.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(match (collection.pin(db), ty == collection) {
+                    (Some(space), true) => format!(
+                        "`{ty_name}` is pinned to {} by its `Pinned` implementation",
+                        space.pretty()
+                    ),
+                    (Some(space), false) => format!(
+                        "`{ty_name}` holds `{collection_name}`, which is pinned to {}",
+                        space.pretty()
+                    ),
+                    (None, true) => {
+                        format!("`{ty_name}` is pinned to a state space for some of its parameters")
+                    }
+                    (None, false) => format!(
+                        "`{ty_name}` holds `{collection_name}`, which is pinned to a state space for some of its parameters"
+                    ),
+                });
+                diag.notes.push(
+                    "a state-only type lives at its place in storage or transient storage; name it with an access, such as `let m = mut store.balances`, or pass it as a `mut` or view parameter".into(),
+                );
+                diag
+            }
+
+            Self::UnknownResultSpace(span) => primary_diag(
+                Severity::Error,
+                "unknown result space",
+                "expected `memory`, `storage`, `transient`, `calldata`, `code`, a parameter, an effect, `target(p)`, or an associated space",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::InvalidResultSpacePath(span) => primary_diag(
+                Severity::Error,
+                "invalid result-space path",
+                "the steps after a parameter, an effect or `self` must name its fields, tuple components and `[_]` elements",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::ModeNotType(span) => primary_diag(
+                Severity::Error,
+                "`ref` and `mut` are not types",
+                "modes are only allowed on parameters and in projection returns",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ExpectedStarKind(span) => {
                 // find expected ty name, num of generic args, etc
                 primary_diag(
@@ -2051,293 +2073,159 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::StaticSlotSpaceUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message:
-                        "this field embeds a `StaticSlot` type whose `SPACE` does not evaluate to a concrete address space"
-                            .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot determine the address space of a static-slot field".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "`StaticSlot::SPACE` must evaluate to a concrete `core::effect_ref::AddressSpace` variant; it cannot depend on an unresolved generic parameter".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
-            Self::ContractFieldNonSlotConstHole { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message:
-                        "this contract field has an inferred const (`_`) that is not a storage slot"
-                            .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "contract field has an unresolved non-slot const generic".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "only storage-slot (`u256` or `usize`) const generics may be left inferred (`_`) in a contract field; provide an explicit value".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
-            Self::ContractFieldHandleSpaceUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message:
-                        "the address space of this contract field's handle could not be determined"
-                            .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot determine the address space of a contract field".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "the `EffectHandle` implementation's `const SPACE: AddressSpace` must resolve to a concrete address space; it cannot be left inferred (`_`) or depend on an unresolved generic parameter".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
-            Self::ContractFieldExplicitConstHole { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this contract field uses an explicit inferred const (`_`)"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "explicit `_` const argument is not allowed in a contract field"
-                        .to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "a storage-slot layout hole must come from the type's `= _` parameter default; provide an explicit value here instead".to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
-            Self::ContractFieldLayoutRootArray { span, element } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "the elements of this array carry storage layout roots".to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = element.name_span(db) {
-                    let type_name = element.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` carries storage layout roots"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "arrays of layout-root values are not supported".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "every element of an array has the same type, so the elements cannot have distinct layout roots".to_string(),
-                        "use separate fields, or one map whose key includes the index".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::ContractFieldConcreteLayoutRootUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this explicit storage-slot root does not evaluate to a concrete integer"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot reserve an unresolved explicit layout root".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "explicit `u256` and `usize` layout roots must evaluate before contract allocation so inferred roots can avoid every reserved slot".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::ContractFieldProviderLayoutAmbiguous { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "more than one `EffectHandle` implementation matches this field"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "contract-field provider layout is ambiguous".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "layout requires one concrete implementation so `Target` and `SPACE` come from the same selected impl instance".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::ContractFieldProviderTargetUnresolved { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "the selected provider's `Target` type is still unresolved"
-                        .to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "cannot determine the provider target layout".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "the selected `EffectHandle` implementation must produce a concrete target shape before contract allocation".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::ContractFieldProviderRawInvalid { span, ty, failure } => {
-                let reason = match failure {
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedRaw => {
-                        "the selected provider's `Raw` type is unresolved"
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UnsupportedRaw => {
-                        "the selected provider's `Raw` type is not a pointer or `u256`"
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UntrustedRaw => {
-                        "user-defined handles may only use `*Target` in memory"
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::Ambiguous
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedTarget
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedSpace => {
-                        unreachable!("non-raw provider failure reached raw diagnostic")
-                    }
+            Self::ContractFieldCallPointer { span, ty, pointer } => {
+                let space = match pointer.as_ptr(db) {
+                    Some((_, AddressSpace::Calldata)) => "calldata",
+                    _ => "memory",
+                };
+                let label = if ty == pointer {
+                    format!("`{}` is a {space} pointer", ty.pretty_print(db))
+                } else {
+                    format!(
+                        "`{}` holds the {space} pointer `{}`",
+                        ty.pretty_print(db),
+                        pointer.pretty_print(db)
+                    )
                 };
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: "contract field has an invalid effect-handle transport".to_string(),
+                    message: format!("contract state cannot hold a {space} pointer"),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: reason.to_string(),
+                        message: label,
                         span: span.resolve(db),
                     }],
                     notes: vec![format!(
-                        "`{}` cannot carry address-space authority through this `EffectHandle` implementation",
-                        ty.pretty_print(db)
+                        "{space} lasts for one call, so a later one could not follow the pointer"
                     )],
                     error_code,
                 }
             }
 
-            Self::ContractFieldProviderCycle { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
+            Self::ContractFieldPersistentUnderTransient {
+                span,
+                ty,
+                collection,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a persistent collection cannot lie in transient storage".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: "this provider target cycle changes its layout arguments"
-                        .to_string(),
+                    message: format!(
+                        "`{}` keeps `{}` in transient storage",
+                        ty.pretty_print(db),
+                        collection.pretty_print(db)
+                    ),
                     span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
+                }],
+                notes: vec![
+                    "its entries would persist after the transient value holding it is gone"
+                        .to_string(),
+                ],
+                error_code,
+            },
 
+            Self::ContractFieldEntryLayout {
+                span,
+                ty,
+                entry,
+                reason,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "the entries of `{}` cannot be laid out in storage",
+                    ty.pretty_print(db)
+                ),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("an entry `{}`: {reason}", entry.pretty_print(db)),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "a collection lays each entry out like a field, at the slots it locates"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::ContractFieldZeroInvalid { span, ty, invalid } => {
+                let label = if ty == invalid {
+                    format!("`{}` has `unsafe` fields", ty.pretty_print(db))
+                } else {
+                    format!(
+                        "`{}` holds `{}`, which has `unsafe` fields",
+                        ty.pretty_print(db),
+                        invalid.pretty_print(db)
+                    )
+                };
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: "provider target layout is not finitely recursive".to_string(),
-                    sub_diagnostics,
+                    message: format!(
+                        "contract state cannot hold `{}`",
+                        invalid.pretty_print(db)
+                    ),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: label,
+                        span: span.resolve(db),
+                    }],
                     notes: vec![
-                        "recursive `EffectHandle::Target` views must return to the same layout arguments or a finite permutation of them".to_string(),
+                        "state starts zeroed, and the all-zero representation is no value of a type whose `unsafe` fields carry an invariant".to_string(),
                     ],
                     error_code,
                 }
             }
 
+
+            Self::ContractFieldSlotNotConst { span } => CompleteDiagnostic::new(
+                Severity::Error,
+                "the slot is not a constant `u256`".to_string(),
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "this must evaluate to a `u256` at compile time".to_string(),
+                    span.resolve(db),
+                )],
+                vec!["write the slot as a literal, a `const`, or a `const fn` call".to_string()],
+                error_code,
+            ),
+
+            Self::ContractFieldSlotInCode { span } => primary_diag(
+                Severity::Error,
+                "a field that lives in code has no slot",
+                "`#[slot]` places a storage or transient field",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::ContractFieldSlotOverlap { span, field, other } => CompleteDiagnostic::new(
+                Severity::Error,
+                format!(
+                    "`{}` overlaps the slots of `{}`",
+                    field.data(db),
+                    other.data(db)
+                ),
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("the slots from here overlap `{}`'s", other.data(db)),
+                    span.resolve(db),
+                )],
+                vec![
+                    "fields placed with `#[slot]` cannot share slots in one address space"
+                        .to_string(),
+                ],
+                error_code,
+            ),
+
             Self::ContractFieldLayoutInvariant { span, ty, issue } => {
                 let (message, label, note) = match issue {
-                    ContractFieldLayoutIssue::ConflictingRootSpaces => (
-                        "one layout root was routed to conflicting address spaces",
-                        "this field gives one semantic root incompatible storage spaces",
-                        "a layout root has exactly one address space",
-                    ),
                     ContractFieldLayoutIssue::ExtentOverflow => (
                         "contract-field layout extent overflowed",
                         "this field's inline span is too large",
@@ -2352,26 +2240,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                         "contract-field array length is inconsistent",
                         "this field's source expression and canonical type disagree on an array length",
                         "a concrete array length must agree across source evaluation and canonical layout",
-                    ),
-                    ContractFieldLayoutIssue::AmbiguousBindingSelector => (
-                        "layout-root selector is ambiguous",
-                        "one source root maps this selector to more than one allocation",
-                        "source-to-landing bindings never choose an arbitrary descendant",
-                    ),
-                    ContractFieldLayoutIssue::InconsistentRootType => (
-                        "layout-root const type is inconsistent",
-                        "one semantic root is used with incompatible const types",
-                        "all occurrences of one root must agree on its accepted slot-index type",
-                    ),
-                    ContractFieldLayoutIssue::RootNeedsLanding => (
-                        "layout root requires a concrete landing",
-                        "this field observes a source root with more than one structural landing",
-                        "select a concrete field or target place before requesting a scalar root value",
-                    ),
-                    ContractFieldLayoutIssue::InternalGraph => (
-                        "contract layout graph failed validation",
-                        "the compiler could not validate this field's root graph",
-                        "this is a compiler invariant failure; no provisional allocation was published",
                     ),
                 };
                 let mut sub_diagnostics = vec![SubDiagnostic {
@@ -2396,60 +2264,26 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 }
             }
 
-            Self::ConstHoleInValuePosition { span, ty } => {
-                let mut sub_diagnostics = vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this type contains an inferred const (`_`)".to_string(),
-                    span: span.resolve(db),
-                }];
-                if let Some(name_span) = ty.name_span(db) {
-                    let type_name = ty.base_ty(db).pretty_print(db);
-                    sub_diagnostics.push(SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!("`{type_name}` is defined here"),
-                        span: name_span.resolve(db),
-                    });
-                }
 
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "type with inferred const generic parameter `_` can not be used here".to_string(),
-                    sub_diagnostics,
-                    notes: vec![
-                        "specify an explicit const generic argument".to_string(),
-                    ],
-                    error_code,
-                }
-            }
-
-            Self::OwnParamCannotBeBorrow { span, ty } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "invalid `own` parameter".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!(
-                        "`own` parameters must have owned types (found `{}`)",
-                        ty.pretty_print(db)
-                    ),
-                    span: span.resolve(db),
-                }],
-                notes: vec![
-                    "remove `own`, or change the parameter type to an owned type".to_string(),
-                ],
+            Self::RefSelfType { span } => primary_diag(
+                Severity::Error,
+                "`self: ref Self` is not a receiver",
+                "write `self` for a view receiver",
+                span.resolve(db),
                 error_code,
-            },
+            ),
 
-            Self::InvalidMutParamPrefixWithoutOwnType { span } => CompleteDiagnostic {
+            Self::VarParamNotOwned { span } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "invalid `mut` parameter syntax".to_string(),
+                message: "`var` makes an owned parameter mutable".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: "`mut x: T` is only allowed when `T` is `own ...`".to_string(),
+                    message: "`var x: T` is only allowed when `T` is `own ...`".to_string(),
                     span: span.resolve(db),
                 }],
                 notes: vec![
-                    "use `x: mut T` for mutable borrow parameters".to_string(),
-                    "or use `mut x: own T` for mutable owned parameters".to_string(),
+                    "use `x: mut T` for a mutable borrow, or `var x: own T` for a mutable owned parameter"
+                        .to_string(),
                 ],
                 error_code,
             },
@@ -2488,15 +2322,32 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
-            Self::InvalidMutSelfPrefixWithExplicitType { span } => CompleteDiagnostic {
+            Self::MixedMutSelfPrefixWithExplicitType { span } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "invalid mixed receiver syntax".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: "`mut self: ...` is only allowed as `mut self: own X` where `X` is not bare `Self`".to_string(),
+                    message: "`mut self: ...` cannot be used with an explicit `self` type"
+                        .to_string(),
                     span: span.resolve(db),
                 }],
-                notes: vec!["for a mutable owned receiver, use shorthand receiver syntax: `mut own self`".to_string()],
+                notes: vec![
+                    "use shorthand receiver syntax instead: `mut self`".to_string(),
+                    "or move the mode into the type and remove the prefix: `self: mut ...`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::InvalidVarSelfWithExplicitType { span } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "invalid mixed receiver syntax".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "`var self: own Self` is written with the shorthand".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec!["use shorthand receiver syntax instead: `var own self`".to_string()],
                 error_code,
             },
 
@@ -3025,6 +2876,23 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
+            Self::ContractFieldNotInUses { primary, field } => {
+                let field = field.data(db);
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("contract field `{field}` is not in this handler's `uses`"),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{field}` is not reachable here"),
+                        span: primary.resolve(db),
+                    }],
+                    notes: vec![format!(
+                        "name it in the handler's `uses` clause: `uses ({field})` to read it, `uses (mut {field})` to write it"
+                    )],
+                    error_code,
+                }
+            }
+
             Self::InvalidEffectKey { owner, key, idx } => {
                 let idx = *idx;
                 let key_str = key.pretty_print(db);
@@ -3147,9 +3015,39 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         ),
                         span: primary.resolve(db),
                     }],
+                    notes: vec![
+                        format!(
+                            "require it in this function's signature with `uses {}`, so that its callers provide it",
+                            effect_clause(db, *func, *key)
+                        ),
+                        format!(
+                            "or provide it to a block of this function with `with ({key_str} = value) {{ .. }}`"
+                        ),
+                    ],
+                    error_code,
+                }
+            }
+
+            Self::MissingRow { primary, func, row } => {
+                let func_name = func
+                    .name(db)
+                    .to_opt()
+                    .map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string());
+                let row = format!(
+                    "{}::{}",
+                    row.inst.self_ty(db).pretty_print(db),
+                    row.name(db).map_or("<row>", |name| name.data(db))
+                );
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("missing effect row `{row}` required by `{func_name}`"),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{func_name}` requires the row `{row}`"),
+                        span: primary.resolve(db),
+                    }],
                     notes: vec![format!(
-                        "provide it with `with ({} = value)` or require it via `uses {}`",
-                        key_str, key_str
+                        "a row whose implementation is not known here is forwarded: require it via `uses {row}`"
                     )],
                     error_code,
                 }
@@ -3417,37 +3315,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     error_code,
                 }
             }
-            Self::IncompatibleBorrowProviders {
-                primary,
-                previous,
-                previous_provider,
-                current_provider,
-            } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "incompatible borrow providers".to_string(),
-                sub_diagnostics: vec![
-                    SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!(
-                            "this borrow is {}-backed",
-                            current_provider.pretty()
-                        ),
-                        span: primary.resolve(db),
-                    },
-                    SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!(
-                            "the previous value here is {}-backed",
-                            previous_provider.pretty()
-                        ),
-                        span: previous.resolve(db),
-                    },
-                ],
-                notes: vec![
-                    "Fe cannot assign or join `mut`/`ref` values backed by different providers into one value".to_string(),
-                ],
-                error_code,
-            },
             Self::TypeMustBeKnown(span) => primary_diag(
                 Severity::Error,
                 "type must be known",
@@ -3463,6 +3330,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     "`{}` exceeds the supported 64-bit raw-memory layout size",
                     ty.pretty_print(db)
                 ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::NoStorageLayout { primary, ty, reason } => primary_diag(
+                severity,
+                "type has no storage layout",
+                format!("`{}` cannot be laid out in storage: {reason}", ty.pretty_print(db)),
                 primary.resolve(db),
                 error_code,
             ),
@@ -3828,70 +3703,337 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
-            Self::OwnParamCannotBeBorrow { primary, ty } => CompleteDiagnostic {
+            Self::AccessNotValue { primary } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "invalid `own` parameter".to_string(),
+                message: "an access is not a value".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this access is used as a value".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "bind an access with `let`, pass it to a `mut` or view parameter, or yield it from a projection"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::AccessChoiceNeedsProjection { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a runtime choice between accesses needs a projection".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this chooses between accesses at runtime".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "move the choice into a projection, whose branches are yield sites: `fn pick(mut self, _ c: bool) -> mut T { if c { mut self.a } else { mut self.b } }`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::UnsafeSplitOperand { primary, callee } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "an unsafe split component is a place or a `#[raw_place]` call"
+                    .to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{}` is not declared `#[raw_place]`", callee.data(db)),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "an ordinary projection may keep accesses for code after its yield, which one split session cannot merge; bind its result with its own `let`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::RefBindingRequired { primary, ty } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a read access needs a `ref` binding".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!(
-                        "`own` parameters must have owned types (found `{}`)",
+                        "this binds a read access of `{}`, which is not `Copy`",
                         ty.pretty_print(db)
                     ),
                     span: primary.resolve(db),
                 }],
                 notes: vec![
-                    "remove `own`, or change the parameter type to an owned type".to_string(),
+                    "mark the binding `ref` to hold the access, as `let x = ref …`, `(i, ref x)` or `for ref x in …`"
+                        .to_string(),
                 ],
                 error_code,
             },
 
-            Self::MutableBindingCannotBeCapability { primary, ty } => CompleteDiagnostic {
+            Self::MutBindingRequired { primary, ty } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "invalid mutable local binding".to_string(),
+                message: "a `mut` result needs a `mut` binding".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!(
-                        "`let mut` local bindings must be owned values (found `{}`)",
+                        "this binds a mutable access of `{}` under a plain name",
                         ty.pretty_print(db)
                     ),
                     span: primary.resolve(db),
                 }],
                 notes: vec![
-                    "remove `mut` from the local binding to keep a handle".to_string(),
-                    "or bind an owned value instead (for non-`Copy` values, use an explicit `.clone()`)".to_string(),
+                    "a plain `let` binds a value; write `let x = mut …`, or `unsafe { mut … }` for a block's result, to hold the access"
+                        .to_string(),
                 ],
                 error_code,
             },
 
-            Self::OwnArgMustBeOwnedMove {
-                primary,
-                kind,
-                given,
-            } => {
-                let kind = match kind {
-                    crate::analysis::ty::ty_def::CapabilityKind::Mut => "mut",
-                    crate::analysis::ty::ty_def::CapabilityKind::Ref => "ref",
-                    crate::analysis::ty::ty_def::CapabilityKind::View => "view",
+            Self::MarkedBindingWithoutAccess { primary, marker } => {
+                let (marker, fix) = if *marker {
+                    ("mut", "write `var` for a mutable value")
+                } else {
+                    ("ref", "remove `ref`: an owned value is bound by value")
                 };
-
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: "`own` argument requires an owned movable value".to_string(),
+                    message: format!("a `{marker}` binding needs a place or an access"),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!(
-                            "this expression has `{kind} {}` capability and cannot be moved as owned here",
-                            given.pretty_print(db)
-                        ),
+                        message: "this binds an owned value".to_string(),
                         span: primary.resolve(db),
                     }],
-                    notes: vec![
-                        "pass an owned place value, or change the callee parameter mode to borrow/view"
-                            .to_string(),
-                    ],
+                    notes: vec![fix.to_string()],
                     error_code,
                 }
             }
+
+            Self::VarOfAccess { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "`var` binds a value, not an access".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this binds a value, but its initializer names an access".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "remove `ref` or `mut` from the initializer to copy its value, or bind the access with `let`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::MutBindingOfRead { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut` binding needs a mutable place or access".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this binds part of a read access".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "write `var` for a mutable copy, or use the `mut` projection to write through"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::UnsafeFieldRequiresUnsafe {
+                primary,
+                name,
+                write,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!(
+                    "{} an `unsafe` field requires an `unsafe` block",
+                    if *write { "writing" } else { "initializing" }
+                ),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{}` is an `unsafe` field", name.data(db)),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "its type's safe methods trust its value; in an `unsafe` block, the code vouches that the new value keeps that promise"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::VarOfNoValue { primary, ty } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!("`{}` has no value for `var` to hold", ty.pretty_print(db)),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "`var` binds a value, and a `#[view]` or state-only type has none"
+                        .to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "bind it with `let` for its access, or `let x = mut …` to write through it"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::InitializerMarker {
+                primary,
+                marker,
+                position,
+                names,
+            } => {
+                let marker = if *marker { "mut" } else { "ref" };
+                let (message, note) = match position {
+                    MarkerPosition::Scrutinee | MarkerPosition::Initializer => {
+                        let whole = if *position == MarkerPosition::Scrutinee {
+                            "the scrutinee"
+                        } else {
+                            "a destructured initializer"
+                        };
+                        (
+                            format!("`{marker}` goes on the bound names, not on {whole}"),
+                            if marker == "mut" {
+                                "a `mut` there would make plain names write through; a plain name binds a value"
+                            } else {
+                                "a `ref` there would hold all of it, not just the components the names bind"
+                            },
+                        )
+                    }
+                    MarkerPosition::LoopBase => (
+                        format!("`{marker}` goes on the loop's item, not on its base"),
+                        if marker == "mut" {
+                            "the item pattern chooses the traversal: `for mut x in xs` writes each element"
+                        } else {
+                            "the item pattern chooses the traversal: `for ref x in xs` reads each element in place"
+                        },
+                    ),
+                };
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("remove `{marker}` here"),
+                    span: primary.resolve(db),
+                }];
+                sub_diagnostics.extend(names.iter().map(|(name, span)| SubDiagnostic {
+                    style: LabelStyle::Secondary,
+                    message: format!("write `{marker} {}`", name.data(db)),
+                    span: span.resolve(db),
+                }));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics,
+                    notes: vec![note.to_string()],
+                    error_code,
+                }
+            }
+
+            Self::MutAccessCopied { primary, ty } => CompleteDiagnostic {
+                severity: Severity::Warning,
+                message: "`var` copies a `mut` access".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "this binds a copy of the `{}`, so writes to it do not reach its place",
+                        ty.pretty_print(db)
+                    ),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "bind it with `let` to write through the access, or call the read projection to copy"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::TupleOfAccesses { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a tuple does not hold accesses".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this tuple's elements are accesses".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "bind each access with its own `let`; accesses that are disjoint by a promise the checker cannot see form an unsafe split, `unsafe { (a, b) }`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::InvalidYield { primary, shape } => primary_diag(
+                Severity::Error,
+                "invalid yield",
+                format!("this does not yield `{shape}`"),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::RefutableLetPattern { primary } => primary_diag(
+                Severity::Error,
+                "refutable pattern in `let`",
+                "this pattern may not match; handle the other cases with `let … else`",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::LetElseMustDiverge { primary } => primary_diag(
+                Severity::Error,
+                "`let … else` block must diverge",
+                "this block must return, break, continue or revert",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::TryOnNonSum { primary, ty } => primary_diag(
+                Severity::Error,
+                "`?` needs an `Option` or a `Result`",
+                format!("this has type `{}`", ty.pretty_print(db)),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::TryReturnMismatch {
+                primary,
+                operand,
+                ret,
+            } => primary_diag(
+                Severity::Error,
+                "`?` cannot return from this function",
+                format!(
+                    "`?` on `{}` may exit early, but `{}` cannot carry its `None` or `Err`",
+                    operand.pretty_print(db),
+                    ret.pretty_print(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ViewInstantiation {
+                primary,
+                ty,
+                position,
+            } => primary_diag(
+                Severity::Error,
+                format!(
+                    "this call instantiates its callee at the `#[view]` type `{}`",
+                    ty.pretty_print(db)
+                ),
+                format!("a `#[view]` type cannot be {position}"),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::YieldOutsideProjection { primary } => primary_diag(
+                Severity::Error,
+                "`yield` outside a projection",
+                "only a function returning `ref`, `mut` or a yield shape can yield",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ShapeNotDestructured { primary } => primary_diag(
+                Severity::Error,
+                "a projection's yield shape must be destructured",
+                "bind the shape's components with a tuple or variant pattern",
+                primary.resolve(db),
+                error_code,
+            ),
 
             Self::ArrayRepeatRequiresCopy { primary, ty } => CompleteDiagnostic {
                 severity: Severity::Error,
@@ -3926,10 +4068,38 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }];
 
-                if let Some((name, span)) = binding {
+                if let Some((name, span, fix)) = binding {
+                    let name = name.data(db);
+                    let message = match fix {
+                        MutabilityFix::Var => format!("write `var {name}` for a mutable value"),
+                        MutabilityFix::MutComponent => {
+                            format!("write `mut {name}` to write through to its place")
+                        }
+                        MutabilityFix::ReadAccess => {
+                            format!("`{name}` is a read access; bind it with `mut` to write through it")
+                        }
+                        MutabilityFix::OwnParam => {
+                            format!("write `var {name}` to make this owned parameter mutable")
+                        }
+                        MutabilityFix::ViewParam => format!(
+                            "a view parameter is read-only; write `{name}: mut …` for a mutable borrow"
+                        ),
+                        MutabilityFix::ViewSelf => {
+                            "write `mut self` for a mutable borrow".to_string()
+                        }
+                        MutabilityFix::OwnSelf => {
+                            "write `var own self` for a mutable owned receiver".to_string()
+                        }
+                        MutabilityFix::Effect => {
+                            format!("write `mut {name}` in `uses` to write it")
+                        }
+                        MutabilityFix::Calldata => {
+                            format!("`{name}` points into calldata, which is read-only")
+                        }
+                    };
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("try changing to `mut {}`", name.data(db)),
+                        message,
                         span: span.resolve(db),
                     });
                 }
@@ -3998,11 +4168,11 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }],
                 notes: vec![match space {
-                    ProviderAddressSpace::Memory => "memory handles cannot be persisted as contract fields; use a plain immutable field for code-backed data or a plain `mut` field for storage-backed state".to_string(),
-                    ProviderAddressSpace::Calldata => "calldata belongs to one call and has no stable contract-field location; access receive arguments or calldata handles locally instead".to_string(),
-                    ProviderAddressSpace::Storage
-                    | ProviderAddressSpace::Transient
-                    | ProviderAddressSpace::Code => unreachable!("supported contract field address space"),
+                    AddressSpace::Memory => "memory handles cannot be persisted as contract fields; use a plain immutable field for code-backed data or a plain `mut` field for storage-backed state".to_string(),
+                    AddressSpace::Calldata => "calldata belongs to one call and has no stable contract-field location; access receive arguments or calldata handles locally instead".to_string(),
+                    AddressSpace::Storage
+                    | AddressSpace::Transient
+                    | AddressSpace::Code => unreachable!("supported contract field address space"),
                 }],
                 error_code,
             },
@@ -4077,6 +4247,32 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary_diag(Severity::Error, format!("expected function, found `{ty}`"), format!(
                             "call expression requires function; `{ty}` is not callable"
                         ), primary.resolve(db), error_code)
+            }
+
+            Self::CallableFieldCalledAsMethod {
+                primary,
+                field,
+                receiver_ty,
+                receiver,
+            } => {
+                let field = field.data(db);
+                let receiver = receiver.map_or("…".to_string(), |name| name.data(db).to_string());
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!(
+                        "no method named `{field}` found for `{}`",
+                        receiver_ty.pretty_print(db)
+                    ),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{field}` is a field holding a callable value"),
+                        span: primary.resolve(db),
+                    }],
+                    notes: vec![format!(
+                        "to call the field's value, parenthesize the field: `({receiver}.{field})(..)`"
+                    )],
+                    error_code,
+                }
             }
 
             Self::CallGenericArgNumMismatch {
@@ -4886,6 +5082,140 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     error_code,
                 )
             }
+
+            BodyDiag::UnsafeDerefRequiresUnsafe { primary } => primary_diag(
+                severity,
+                "dereference of raw pointer requires an `unsafe` block or function",
+                "dereference of raw pointer",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            BodyDiag::UncoveredStateAccess {
+                primary,
+                is_mut,
+                in_closure,
+            } => CompleteDiagnostic {
+                severity,
+                message: if *in_closure {
+                    "an access through a state pointer in a closure needs the closure's own authority"
+                } else {
+                    "an access through a state pointer needs the function's own authority"
+                }
+                .to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "this {} state the {} does not cover",
+                        if *is_mut { "writes" } else { "reads" },
+                        if *in_closure {
+                            "closure's row"
+                        } else {
+                            "function's `uses`"
+                        }
+                    ),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![if *in_closure {
+                    format!(
+                        "a closure takes none of the enclosing function's authority; use `storage_at{}`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
+                        if *is_mut { "_mut" } else { "" },
+                        if *is_mut { "mut " } else { "" }
+                    )
+                } else {
+                    format!(
+                        "require it via `uses (storage: {}RawStorage)`; `unsafe` does not grant authority",
+                        if *is_mut { "mut " } else { "" }
+                    )
+                }],
+                error_code,
+            },
+
+            BodyDiag::ClosureInConstContext { primary } => primary_diag(
+                severity,
+                "closures cannot be used in constant contexts",
+                "constant evaluation cannot evaluate a closure",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            BodyDiag::ClosureArityMismatch {
+                primary,
+                expected,
+                given,
+            } => primary_diag(
+                severity,
+                "closure has the wrong number of parameters",
+                format!(
+                    "expected a closure taking {expected} parameter{}, found {given}",
+                    if *expected == 1 { "" } else { "s" }
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            BodyDiag::WriteToCapture { primary, name } => CompleteDiagnostic {
+                severity,
+                message: format!("cannot write to `{}`, which a closure captures", name.data(db)),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "the closure only reads its copy".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "closures capture by copy or move; thread state through parameters and results instead"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            BodyDiag::AccessCapture { primary, name } => CompleteDiagnostic {
+                severity,
+                message: format!("a closure cannot capture the access `{}`", name.data(db)),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "an access of a non-`Copy` value is neither copied nor moved"
+                        .to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec!["pass the value to the closure as a parameter instead".to_string()],
+                error_code,
+            },
+
+            BodyDiag::MixedLoopBases { primary } => primary_diag(
+                severity,
+                "a two-base loop binds both items `mut` or neither",
+                "one item is `mut` and the other is not",
+                primary.resolve(db),
+                error_code,
+            ),
+
+
+            BodyDiag::UnsafeCallRequiresUnsafe { primary, callee } => {
+                let name = callee
+                    .name(db)
+                    .map_or("<unknown>", |n| n.data(db).as_str());
+                CompleteDiagnostic::new(
+                    severity,
+                    format!(
+                        "call to unsafe function `{name}` requires an `unsafe` block or function"
+                    ),
+                    vec![
+                        SubDiagnostic::new(
+                            LabelStyle::Primary,
+                            "call to unsafe function".to_string(),
+                            primary.resolve(db),
+                        ),
+                        SubDiagnostic::new(
+                            LabelStyle::Secondary,
+                            "callee defined here".to_string(),
+                            callee.name_span().resolve(db),
+                        ),
+                    ],
+                    vec![],
+                    error_code,
+                )
+            }
         }
     }
 }
@@ -4900,6 +5230,21 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 "external trait cannot be implemented for external type",
                 "external trait cannot be implemented for external type",
                 impl_trait.span().resolve(db),
+                error_code,
+            ),
+
+            Self::AccessItemDefault {
+                primary,
+                kind,
+                name,
+            } => primary_diag(
+                Severity::Error,
+                format!("a trait's {kind} has no default"),
+                format!(
+                    "{kind} `{}` is given by each implementation, not the trait",
+                    name.data(db)
+                ),
+                primary.resolve(db),
                 error_code,
             ),
 
@@ -5027,7 +5372,6 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                 primary_goal,
                 unsat_subgoal,
                 required_by,
-                capability_hint,
             } => {
                 let msg = format!(
                     "`{}` doesn't implement `{}`",
@@ -5047,14 +5391,6 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     is_scope_visible_from(db, unsat.def(db).scope(), from_scope)
                 });
 
-                // A bound that fails only because the value is borrowed gets
-                // an explanation instead of the generic sub-goal line, which
-                // would print the borrowed value's type as if it were owned
-                // (e.g. "`T: AsBytes` is not satisfied" although it is). It
-                // names no trait, so it needs no visibility filter.
-                let capability =
-                    capability_hint.and_then(|cap_ty| capability_bound_notes(db, cap_ty));
-
                 let unsat_subgoal = visible_unsat.map(|unsat| {
                     format!(
                         "trait bound `{}` is not satisfied",
@@ -5068,11 +5404,7 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     span: span.resolve(db),
                 }];
 
-                let subgoal_label = match &capability {
-                    Some((label, _)) => Some(label.clone()),
-                    None => unsat_subgoal,
-                };
-                if let Some(subgoal) = subgoal_label {
+                if let Some(subgoal) = unsat_subgoal {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: subgoal,
@@ -5088,13 +5420,11 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     });
                 }
 
-                let notes = capability.map(|(_, notes)| notes).unwrap_or_default();
-
                 CompleteDiagnostic {
                     severity,
                     message: "trait bound is not satisfied".to_string(),
                     sub_diagnostics,
-                    notes,
+                    notes: Vec::new(),
                     error_code,
                 }
             }
@@ -5328,6 +5658,13 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 impl_ty,
             } => {
                 let method_name = impl_m.name(db).expect("methods have names").data(db);
+                // A projection's return is its shape.
+                let render = |callable: &CallableDef, ty: &TyId| {
+                    callable.ret_shape(db).map_or_else(
+                        || ty.pretty_print(db).to_string(),
+                        |shape| shape.skip_binder().pretty_print(db),
+                    )
+                };
 
                 CompleteDiagnostic {
                     severity,
@@ -5337,8 +5674,8 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                             style: LabelStyle::Primary,
                             message: format!(
                                 "expected `{}`, found `{}`",
-                                trait_ty.pretty_print(db),
-                                impl_ty.pretty_print(db),
+                                render(trait_m, trait_ty),
+                                render(impl_m, impl_ty),
                             ),
                             span: impl_m.name_span().resolve(db),
                         },
@@ -5382,6 +5719,36 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: "trait requires these effects".to_string(),
+                            span: trait_m.name_span().resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::MethodUnsafeMismatch { trait_m, impl_m } => {
+                let (impl_label, trait_label) = if matches!(trait_m, CallableDef::Func(func) if func.is_unsafe(db))
+                {
+                    ("this method is not `unsafe`", "trait method is `unsafe`")
+                } else {
+                    ("this method is `unsafe`", "trait method is not `unsafe`")
+                };
+                CompleteDiagnostic {
+                    severity,
+                    message: format!(
+                        "method `{}` must match the unsafety of the trait method",
+                        impl_m.name(db).expect("methods have names").data(db),
+                    ),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: impl_label.to_string(),
+                            span: impl_m.name_span().resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: trait_label.to_string(),
                             span: trait_m.name_span().resolve(db),
                         },
                     ],
@@ -5475,6 +5842,158 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 primary.resolve(db),
                 error_code,
             ),
+
+            Self::AccessItemNotDefinedInTrait {
+                primary,
+                trait_,
+                kind,
+                name,
+            } => primary_diag(
+                severity,
+                format!("associated {kind} not defined in trait"),
+                format!(
+                    "associated {kind} `{}` is not defined in trait `{}`",
+                    name.data(db),
+                    trait_.name(db).unwrap().data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::MissingAssociatedSpace {
+                primary,
+                trait_,
+                name,
+            } => primary_diag(
+                severity,
+                "missing associated space in trait implementation",
+                format!(
+                    "missing associated space `{}` from trait `{}`",
+                    name.data(db),
+                    trait_.name(db).unwrap().data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::CompilerImplementedTrait { primary, trait_ } => primary_diag(
+                severity,
+                "trait implemented by the compiler",
+                format!(
+                    "`{}` is implemented by the compiler and cannot be implemented",
+                    trait_.name(db).unwrap().data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::CopyFieldNotCopy {
+                primary,
+                ty,
+                field_ty,
+            } => {
+                let ty = ty.pretty_print(db);
+                let field_ty = field_ty.pretty_print(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("`{ty}` cannot be `Copy`"),
+                    format!("`{ty}` has a field of type `{field_ty}`, which is not `Copy`"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "a copy copies every field, so two copies of a field that owns memory would be two owners of it; a generic field needs a `Copy` bound on the implementation"
+                        .to_string(),
+                );
+                diag
+            }
+
+            Self::CyclicEffectRow { primary, name } => {
+                let name = name.data(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("the effect row `{name}` names itself"),
+                    format!("expanding `{name}` through the rows it names comes back to it"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "an effect row must end in effects, or in other rows that do".to_string(),
+                );
+                diag
+            }
+
+            Self::CyclicAssociatedSpace { primary, name } => {
+                let name = name.data(db);
+                let mut diag = primary_diag(
+                    severity,
+                    format!("the associated space `{name}` names itself"),
+                    format!("following `{name}` through the spaces it names comes back to it"),
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "an associated space must end in a space such as `storage`, `self`, or another type's space that does"
+                        .to_string(),
+                );
+                diag
+            }
+
+            Self::BlanketCopy { primary } => {
+                let mut diag = primary_diag(
+                    severity,
+                    "`Copy` cannot be implemented for a type parameter",
+                    "this would make every type the bounds admit `Copy`",
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "a `Copy` type's fields must be `Copy`, and a `#[view]` or state-only type has no copies; implement `Copy` for each type, where those are checked"
+                        .to_string(),
+                );
+                diag
+            }
+
+            Self::UnsafeImplMismatch { primary, trait_ } => {
+                let name = trait_.name(db).unwrap().data(db);
+                if trait_.is_unsafe(db) {
+                    let mut diag = primary_diag(
+                        severity,
+                        format!("implementing `{name}` requires `unsafe impl`"),
+                        format!("`{name}` is an `unsafe trait`"),
+                        primary.resolve(db),
+                        error_code,
+                    );
+                    diag.notes.push(
+                        "an `unsafe impl` asserts the contract the trait documents, which the compiler relies on without checking it"
+                            .to_string(),
+                    );
+                    diag
+                } else {
+                    primary_diag(
+                        severity,
+                        format!("`{name}` is not an `unsafe trait`"),
+                        "remove `unsafe` from this `impl`",
+                        primary.resolve(db),
+                        error_code,
+                    )
+                }
+            }
+
+            Self::PinNotStateSpace { primary } => {
+                let mut diag = primary_diag(
+                    severity,
+                    "a type is pinned to a state space",
+                    "this space is not `storage` or `transient`",
+                    primary.resolve(db),
+                    error_code,
+                );
+                diag.notes.push(
+                    "give `space S = storage`, `space S = transient`, or another pinned type's space, `P::S`"
+                        .to_string(),
+                );
+                diag
+            }
 
             Self::MissingAssociatedType {
                 primary,
@@ -5678,45 +6197,31 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 notes: vec![],
                 error_code,
             },
-
-            Self::InvalidEffectHandleRaw {
-                primary,
-                raw_ty,
-                failure,
-            } => {
-                let message = match failure {
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UnsupportedRaw => {
-                        format!(
-                            "`{}` cannot represent an effect-handle address",
-                            raw_ty.pretty_print(db)
-                        )
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::UntrustedRaw => {
-                        "integer-backed handles are reserved for compiler-provided libraries"
-                            .to_string()
-                    }
-                    crate::analysis::ty::provider::ProviderLayoutFailure::Ambiguous
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedTarget
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedRaw
-                    | crate::analysis::ty::provider::ProviderLayoutFailure::UnresolvedSpace => {
-                        unreachable!("non-concrete raw failure reached impl diagnostic")
-                    }
-                };
-                CompleteDiagnostic {
-                    severity,
-                    message: "invalid `EffectHandle::Raw` type".to_string(),
-                    sub_diagnostics: vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message,
-                        span: primary.resolve(db),
-                    }],
-                    notes: vec![
-                        "user-defined effect handles must use `*Target` and can only provide memory effects"
-                            .to_string(),
-                    ],
-                    error_code,
-                }
-            }
         }
     }
+}
+
+/// The `uses` entry of `func` whose key is `key`, as a clause naming it with
+/// its mode: `(storage: mut RawStorage)`.
+fn effect_clause<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: crate::hir_def::Func<'db>,
+    key: crate::hir_def::TypeId<'db>,
+) -> String {
+    let key_str = key.pretty_print(db);
+    func.effects(db)
+        .data(db)
+        .iter()
+        .find(|param| param.key_ty.to_opt() == Some(key))
+        .map_or_else(
+            || key_str.clone(),
+            |param| {
+                let name = param
+                    .name
+                    .map(|name| format!("{}: ", name.data(db)))
+                    .unwrap_or_default();
+                let mode = if param.is_mut { "mut " } else { "" };
+                format!("({name}{mode}{key_str})")
+            },
+        )
 }

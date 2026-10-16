@@ -11,17 +11,13 @@ use common::indexmap::IndexMap;
 use rustc_hash::FxHashMap;
 
 use super::{
-    binder::Binder,
     canonical::Canonical,
     canonical::Canonicalized,
+    closure::callable_out_ty,
     fold::{TyFoldable, TyFolder},
-    layout_holes::LayoutRootUse,
-    trait_def::{
-        ImplementorOrigin, TraitInstId, TraitRefId,
-        impls_for_trait_and_ty_with_possible_constraints, resolve_trait_impl_instance,
-    },
+    trait_def::{TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints},
     trait_lower::complete_impl_assoc_ty,
-    trait_resolution::{PredicateListId, Selection, TraitSolveCx},
+    trait_resolution::{PredicateListId, TraitSolveCx},
     ty_def::{AssocTy, InvalidCause, TyData, TyId, TyParam, collect_variables},
     unify::UnificationTable,
     visitor::{TyVisitor, walk_ty},
@@ -38,12 +34,15 @@ use crate::analysis::{
 /// - Simple associated types (e.g., `T::Output`)
 /// - Nested associated types (e.g., `T::Encoder::Output`)
 /// - Associated types with generic parameters
-pub fn normalize_ty<'db>(
+pub fn normalize_ty<'db, T>(
     db: &'db dyn HirAnalysisDb,
-    ty: TyId<'db>,
+    ty: T,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-) -> TyId<'db> {
+) -> T
+where
+    T: TyFoldable<'db>,
+{
     let mut normalizer = TypeNormalizer::new(db, scope, assumptions);
     ty.fold_with(db, &mut normalizer)
 }
@@ -79,82 +78,14 @@ where
     normalize_from_assumptions(db, value, scope, PredicateListId::new(db, vec![evidence]))
 }
 
-pub(crate) fn normalize_layout_root_uses<'db>(
-    db: &'db dyn HirAnalysisDb,
-    ty: TyId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Vec<LayoutRootUse<'db>> {
-    fn collect<'db>(
-        db: &'db dyn HirAnalysisDb,
-        ty: TyId<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-        visiting: &mut rustc_hash::FxHashSet<TyId<'db>>,
-        uses: &mut Vec<LayoutRootUse<'db>>,
-    ) {
-        if !visiting.insert(ty) {
-            return;
-        }
-        if let TyData::AssocTy(assoc) = ty.data(db) {
-            let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-            if let Selection::Unique(resolved) =
-                resolve_trait_impl_instance(db, solve_cx, assoc.trait_.as_predicate(db))
-                && let ImplementorOrigin::Hir(impl_trait) = resolved.selected().origin(db)
-            {
-                for root_use in resolved.assoc_ty_layout_root_uses(db, assoc.name) {
-                    let root_use = LayoutRootUse {
-                        value: Binder::bind(impl_trait.into(), root_use.value)
-                            .instantiate(db, resolved.impl_args(db)),
-                        owner: root_use.owner.map(|owner| {
-                            normalize_ty(
-                                db,
-                                Binder::bind(impl_trait.into(), owner)
-                                    .instantiate(db, resolved.impl_args(db)),
-                                scope,
-                                assumptions,
-                            )
-                        }),
-                        selector: root_use.selector,
-                    };
-                    if !uses.contains(&root_use) {
-                        uses.push(root_use);
-                    }
-                }
-                if let Some(instantiated) = resolved.instantiated_assoc_ty(db, assoc.name) {
-                    collect(db, instantiated, scope, assumptions, visiting, uses);
-                }
-            }
-        } else {
-            let (base, args) = ty.decompose_ty_app(db);
-            if base != ty {
-                collect(db, base, scope, assumptions, visiting, uses);
-            }
-            for arg in args {
-                collect(db, *arg, scope, assumptions, visiting, uses);
-            }
-        }
-        visiting.remove(&ty);
-    }
-
-    let mut uses = Vec::new();
-    collect(
-        db,
-        ty,
-        scope,
-        assumptions,
-        &mut rustc_hash::FxHashSet::default(),
-        &mut uses,
-    );
-    uses
-}
-
-/// How many projections may be in the middle of being resolved at once.
-const PROJECTION_DEPTH_LIMIT: usize = 64;
+/// How many projections may be in the middle of being resolved at once, and
+/// how deeply the generic arguments of one instance may nest.
+pub(crate) const PROJECTION_DEPTH_LIMIT: usize = 64;
 
 /// How many type nodes, counted as a tree, the projections resolved by one
-/// normalization may have in total.
-const PROJECTION_WORK_LIMIT: usize = 65536;
+/// normalization may have in total, as may the generic arguments of one
+/// instance.
+pub(crate) const PROJECTION_WORK_LIMIT: usize = 65536;
 
 pub struct TypeNormalizer<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -210,8 +141,8 @@ impl<'db> TypeNormalizer<'db> {
     }
 }
 
-/// The number of nodes in `ty` counted as a tree, if it is at most `limit`.
-fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize) -> Option<usize> {
+/// The types `ty` is made of, one level down.
+fn children<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'db>> {
     struct Children<'db> {
         db: &'db dyn HirAnalysisDb,
         children: Vec<TyId<'db>>,
@@ -223,7 +154,27 @@ fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize
         fn visit_ty(&mut self, ty: TyId<'db>) {
             self.children.push(ty);
         }
+        // An application is one type with its constructor: `(A, B)` is made
+        // of `A` and `B`, not of `(A,)` applied to `B`.
+        fn visit_app(&mut self, abs: TyId<'db>, arg: TyId<'db>) {
+            walk_ty(self, abs);
+            self.children.push(arg);
+        }
     }
+    let mut children = Children {
+        db,
+        children: Vec::new(),
+    };
+    walk_ty(&mut children, ty);
+    children.children
+}
+
+/// The number of nodes in `ty` counted as a tree, if it is at most `limit`.
+pub(crate) fn tree_size_within<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    limit: usize,
+) -> Option<usize> {
     fn size<'db>(
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
@@ -233,13 +184,8 @@ fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize
         if let Some(&known) = memo.get(&ty) {
             return Some(known);
         }
-        let mut children = Children {
-            db,
-            children: Vec::new(),
-        };
-        walk_ty(&mut children, ty);
         let mut total = 1usize;
-        for child in children.children {
+        for child in children(db, ty) {
             total = total.checked_add(size(db, child, limit, memo)?)?;
             if total > limit {
                 return None;
@@ -252,6 +198,32 @@ fn tree_size_within<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, limit: usize
         return None;
     }
     size(db, ty, limit, &mut FxHashMap::default())
+}
+
+/// Whether `ty`, as a tree, nests at most `limit` levels of types.
+pub(crate) fn tree_depth_within<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    limit: usize,
+) -> bool {
+    fn depth<'db>(
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+        limit: usize,
+        memo: &mut FxHashMap<TyId<'db>, usize>,
+    ) -> Option<usize> {
+        if let Some(&known) = memo.get(&ty) {
+            return (known <= limit).then_some(known);
+        }
+        let below = limit.checked_sub(1)?;
+        let mut deepest = 0;
+        for child in children(db, ty) {
+            deepest = deepest.max(depth(db, child, below, memo)?);
+        }
+        memo.insert(ty, deepest + 1);
+        Some(deepest + 1)
+    }
+    depth(db, ty, limit, &mut FxHashMap::default()).is_some()
 }
 
 impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
@@ -337,6 +309,15 @@ impl<'db> TypeNormalizer<'db> {
             return None;
         }
 
+        if let Some(out) = callable_out_ty(
+            self.db,
+            self.fold_ty(self.db, assoc.trait_.self_ty(self.db)),
+            assoc.trait_.def(self.db),
+            assoc.name,
+        ) {
+            return Some(out);
+        }
+
         // 3) Fall back to the general associated type search used by path resolution,
         //    but restrict results to the same trait as `assoc` and deduplicate by
         //    the resulting type. If all viable candidates agree on a single type,
@@ -408,8 +389,7 @@ impl<'db> TypeNormalizer<'db> {
 
     fn try_resolve_assoc_ty_from_impls(&mut self, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
         let trait_inst = assoc.trait_.fold_with(self.db, self).as_predicate(self.db);
-        let trait_def = trait_inst.def(self.db);
-        let canonical_self_ty = Canonical::new(self.db, trait_inst.self_ty(self.db));
+        let canonical_inst = Canonical::new(self.db, trait_inst);
 
         let mut dedup: IndexMap<TyId<'db>, ()> = IndexMap::new();
 
@@ -424,11 +404,10 @@ impl<'db> TypeNormalizer<'db> {
             let target_inst = cx.query();
             let original_target = cx.try_extract::<TraitInstId<'db>>(target_inst);
             for ingot in search_ingots.into_iter().flatten() {
-                for implementor in impls_for_trait_and_ty_with_possible_constraints(
+                for implementor in impls_for_trait_inst_with_possible_constraints(
                     self.db,
                     ingot,
-                    trait_def,
-                    canonical_self_ty,
+                    canonical_inst,
                     self.assumptions,
                 ) {
                     let Some(implementor) =

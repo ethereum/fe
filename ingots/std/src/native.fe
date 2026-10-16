@@ -1,6 +1,7 @@
 /// Interfaces to the native host runtime.
 use core::ptr
 pub use bytes::ByteBuffer
+pub use stack::FixedStack
 
 extern {
     // Trusted by the compiler: reads process accounting without accessing Fe memory.
@@ -21,13 +22,15 @@ pub fn cpu_clock_ticks() -> i64 {
 /// Read-only view of the process argument vector supplied to native main.
 /// The entry bridge translates C pointer slots into ordinary Fe pointer slots.
 /// Construct this only from that argc/argv pair, or equivalent valid raw parts.
-pub struct Args { argc: i32, argv: **u8 }
+pub struct Args { unsafe argc: i32, unsafe argv: **u8 }
 
 /// A process argument, including empty strings and arbitrary nonzero bytes.
-pub struct Arg { ptr: *u8, len: usize }
+pub struct Arg { unsafe ptr: *u8, unsafe len: usize }
 
 impl Args {
-    pub fn new(_ argc: i32, _ argv: **u8) -> Self {
+    /// The caller must ensure that `argv` points to `argc` pointers to
+    /// NUL-terminated strings that stay live while the arguments are read.
+    pub unsafe fn new(_ argc: i32, _ argv: **u8) -> Self {
         core::assert(argc >= 0)
         Self { argc, argv }
     }
@@ -36,12 +39,13 @@ impl Args {
     }
     pub fn get(self, _ index: usize) -> Arg {
         core::assert(index < self.len())
-        let bytes = *ptr::offset(self.argv, index as u256)
-        let mut len: usize = 0
-        while *ptr::offset(bytes, len as u256) != 0 {
+        let bytes = unsafe { *ptr::offset(self.argv, index as u256) }
+        var len: usize = 0
+        while unsafe { *ptr::offset(bytes, len as u256) } != 0 {
             len += 1
         }
-        Arg { ptr: bytes, len }
+        // `bytes` is a live argument string of `len` bytes before its NUL.
+        unsafe { Arg { ptr: bytes, len } }
     }
 }
 
@@ -51,6 +55,6 @@ impl Arg {
     }
     pub fn byte_at(self, _ index: usize) -> u8 {
         core::assert(index < self.len)
-        *ptr::offset(self.ptr, index as u256)
+        unsafe { *ptr::offset(self.ptr, index as u256) }
     }
 }

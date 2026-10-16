@@ -68,7 +68,7 @@ pub contract C {
 
     recv Msg {
         MutateA { by } -> u256 uses (mut ledger) {
-            let target = ledger.a_mut()
+            let target = mut ledger.a_mut()
             with (target) {
                 add(by: by)
             }
@@ -76,7 +76,7 @@ pub contract C {
         }
 
         MutateBForward { by } -> u256 uses (mut ledger) {
-            let target = ledger.b_mut()
+            let target = mut ledger.b_mut()
             with (target) {
                 add_forward(by: by)
             }
@@ -84,7 +84,7 @@ pub contract C {
         }
 
         SelectAndMutate { pick_c, base, mul } -> u256 uses (mut ledger) {
-            let target = ledger.pick_ac_mut(pick_c: pick_c)
+            let target = mut ledger.pick_ac_mut(pick_c: pick_c)
             with (target) {
                 set_scaled(base: base, mul: mul)
             }
@@ -96,12 +96,12 @@ pub contract C {
         }
 
         DoubleMutate -> u256 uses (mut ledger) {
-            let target_a = ledger.a_mut()
+            let target_a = mut ledger.a_mut()
             with (target_a) {
                 bump_twice()
             }
 
-            let target_b = ledger.b_mut()
+            let target_b = mut ledger.b_mut()
             with (target_b) {
                 add(by: 3)
             }

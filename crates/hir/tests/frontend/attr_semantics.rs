@@ -71,7 +71,7 @@ fn expr_valued_loop_unroll_attr_does_not_apply_hint() {
     let body = func.body(&db).expect("expected function body");
 
     let unroll_hint = body.stmts(&db).iter().find_map(|(_, stmt)| match stmt {
-        Partial::Present(Stmt::For(_, _, _, hint)) => Some(*hint),
+        Partial::Present(Stmt::For(.., hint)) => Some(*hint),
         Partial::Present(_) | Partial::Absent => None,
     });
 
@@ -96,7 +96,7 @@ fn empty_loop_unroll_attr_parens_do_not_apply_hint() {
     let body = func.body(&db).expect("expected function body");
 
     let unroll_hint = body.stmts(&db).iter().find_map(|(_, stmt)| match stmt {
-        Partial::Present(Stmt::For(_, _, _, hint)) => Some(*hint),
+        Partial::Present(Stmt::For(.., hint)) => Some(*hint),
         Partial::Present(_) | Partial::Absent => None,
     });
 
@@ -121,7 +121,7 @@ fn unroll_never_attr_prevents_unrolling() {
     let body = func.body(&db).expect("expected function body");
 
     let unroll_hint = body.stmts(&db).iter().find_map(|(_, stmt)| match stmt {
-        Partial::Present(Stmt::For(_, _, _, hint)) => Some(*hint),
+        Partial::Present(Stmt::For(.., hint)) => Some(*hint),
         Partial::Present(_) | Partial::Absent => None,
     });
 
@@ -332,7 +332,7 @@ fn runtime() uses (evm: mut Evm) {}"#,
         .flat_map(|block| block.stmts.iter())
         .filter_map(|stmt| match &stmt.kind {
             SStmtKind::Assign { expr, .. } => Some(expr),
-            SStmtKind::Store { .. } => None,
+            SStmtKind::Store { .. } | SStmtKind::End { .. } => None,
         })
         .collect::<Vec<_>>();
     assert!(exprs.iter().any(|expr| matches!(
@@ -477,7 +477,7 @@ fn runtime() uses (evm: mut Evm) {}"#,
             .flat_map(|block| block.stmts.iter())
             .filter_map(|stmt| match &stmt.kind {
                 SStmtKind::Assign { expr, .. } => Some(expr),
-                SStmtKind::Store { .. } => None,
+                SStmtKind::Store { .. } | SStmtKind::End { .. } => None,
             })
         {
             saw_len |= matches!(
@@ -538,7 +538,7 @@ fn array_repeat_lowering_preserves_repeat_expr_through_normalization() {
                 expr: SExpr::ArrayRepeat { ty, .. },
                 ..
             } if ty.is_array(&db) => Some(()),
-            SStmtKind::Assign { .. } | SStmtKind::Store { .. } => None,
+            SStmtKind::Assign { .. } | SStmtKind::Store { .. } | SStmtKind::End { .. } => None,
         })
         .expect("expected array repeat in raw semantic lowering");
 
@@ -553,7 +553,9 @@ fn array_repeat_lowering_preserves_repeat_expr_through_normalization() {
                 expr: NExpr::ArrayRepeat { ty, .. },
                 ..
             } if ty.is_array(&db) => ty.array_len(&db),
-            NStatementKind::Define { .. } | NStatementKind::Store { .. } => None,
+            NStatementKind::Define { .. }
+            | NStatementKind::Store { .. }
+            | NStatementKind::End { .. } => None,
         })
         .expect("expected concrete array repeat to remain structural after normalization");
     assert_eq!(normalized_array_len, 4);
@@ -587,7 +589,7 @@ fn generic_array_repeat_with_symbolic_len_normalizes_as_repeat() {
                 expr: SExpr::ArrayRepeat { ty, .. },
                 ..
             } if ty.is_array(&db) && ty.array_len(&db).is_none() => Some(()),
-            SStmtKind::Assign { .. } | SStmtKind::Store { .. } => None,
+            SStmtKind::Assign { .. } | SStmtKind::Store { .. } | SStmtKind::End { .. } => None,
         })
         .expect("expected symbolic array repeat in raw semantic lowering");
 
@@ -602,7 +604,9 @@ fn generic_array_repeat_with_symbolic_len_normalizes_as_repeat() {
                 expr: NExpr::ArrayRepeat { ty, .. },
                 ..
             } if ty.is_array(&db) && ty.array_len(&db).is_none() => Some(()),
-            NStatementKind::Define { .. } | NStatementKind::Store { .. } => None,
+            NStatementKind::Define { .. }
+            | NStatementKind::Store { .. }
+            | NStatementKind::End { .. } => None,
         })
         .expect("expected symbolic array repeat to stay unexpanded after normalization");
 }
@@ -619,7 +623,7 @@ pub struct Tower {
 
 impl Tower {
     pub fn add(mut self) -> u256 {
-        let mut scan: usize = 24
+        var scan: usize = 24
         while scan != 0 {
             scan -= 1
             if self.counts[scan] != 0 {
@@ -659,7 +663,7 @@ impl Tower {
                         ..
                     },
             } => Some(*dst),
-            SStmtKind::Assign { .. } | SStmtKind::Store { .. } => None,
+            SStmtKind::Assign { .. } | SStmtKind::Store { .. } | SStmtKind::End { .. } => None,
         })
         .collect::<std::collections::HashSet<_>>();
 

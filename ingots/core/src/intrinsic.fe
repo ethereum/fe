@@ -3,6 +3,11 @@ extern {
     /// Return the byte size of a type at compile time.
     pub const fn size_of<T>() -> u256
 
+    /// The storage slots a value of `T` takes, as the contract layout places
+    /// a field of its type: what a collection steps by between elements it
+    /// keeps whole.
+    pub const fn storage_slots<T>() -> u256
+
     /// Converts a value into its byte representation.
     ///
     /// This is intended for compiler-generated code. Prefer using `core::AsBytes`.
@@ -12,6 +17,22 @@ extern {
     ///
     /// This is intended for compiler-generated code. Prefer using `core::keccak`.
     pub const fn __keccak256<const N: usize>(_: [u8; N]) -> u256
+
+    /// Computes `keccak256` over `words`, each as 32 big-endian bytes, in
+    /// order. The digest is a value of the words alone, so the compiler can
+    /// fold it and reuse it for equal words.
+    ///
+    /// This is intended for library code. Prefer using `std::evm::keccak_words`.
+    pub const fn __keccak_words<const N: usize>(_: [u256; N]) -> u256
+
+    /// Sets the representation of `place` to zeros: its bytes in memory, its
+    /// words in storage or transient storage. A place packed into part of a
+    /// word, a lane, has only its own bits cleared.
+    ///
+    /// The caller must ensure that nothing reads `place` before it is
+    /// written again, or that the all-zero representation is a valid `T`, as
+    /// it is for a `Clearable` `T` (`core::ops::clear_storage`).
+    pub unsafe fn clear<T>(_ place: mut T)
 
     /// Returns the fixed storage slot offset (in 32-byte slots) for the given contract field
     /// index within the current contract.

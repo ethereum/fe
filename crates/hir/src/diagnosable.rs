@@ -11,18 +11,23 @@ use smallvec1::SmallVec;
 use crate::analysis::HirAnalysisDb;
 use crate::analysis::name_resolution;
 use crate::analysis::ty;
-use crate::analysis::ty::diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag};
+use crate::analysis::ty::diagnostics::{
+    TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag,
+};
 use crate::analysis::ty::generic_defaults::{default_dependencies, type_default_diags};
 use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
+use crate::analysis::ty::provider::AddressSpace;
+use crate::analysis::ty::result_space::SpaceValue;
+use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::ty_def::{InvalidCause, TyId};
 use crate::analysis::ty::ty_error::{collect_ty_lower_errors, emit_invalid_ty_error};
 use crate::analysis::ty::ty_lower::generic_param_owner_assumptions;
 use crate::hir_def::{
-    Contract, Enum, EnumVariant, FieldParent, Func, GenericParam, GenericParamOwner,
-    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, Partial, PathId, Struct, Trait,
-    TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
+    Contract, Enum, EnumVariant, FieldParent, Func, FuncParamMode, GenericParam, GenericParamOwner,
+    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, Partial, PathId, SpaceAnnotation, Struct,
+    Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
 };
 use crate::span::DynLazySpan;
 
@@ -166,7 +171,6 @@ impl<'db> SuperTraitRefView<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             ),
@@ -303,7 +307,6 @@ impl<'db> WherePredicateBoundView<'db> {
                                     primary_goal: goal,
                                     unsat_subgoal: None,
                                     required_by: None,
-                                    capability_hint: None,
                                 }
                                 .into(),
                             );
@@ -393,8 +396,6 @@ impl<'db> Func<'db> {
                 diags.push(TyLowerDiag::ExpectedStarKind(span).into());
             } else if ret.is_const_ty(db) {
                 diags.push(TyLowerDiag::NormalTypeExpected { span, given: ret }.into());
-            } else if ty::ty_contains_const_hole(db, ret) {
-                diags.push(TyLowerDiag::ConstHoleInValuePosition { span, ty: ret }.into());
             } else if let ty::trait_resolution::WellFormedness::IllFormed { goal, subgoal } =
                 ty::trait_resolution::check_ty_wf(db, solve_cx, ret)
             {
@@ -408,7 +409,6 @@ impl<'db> Func<'db> {
                             primary_goal: goal,
                             unsat_subgoal: subgoal,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -418,6 +418,84 @@ impl<'db> Func<'db> {
             }
         }
         diags
+    }
+
+    /// A `#[view]` type is taken only by view and `mut` parameters and
+    /// access results. A `mut` view points into an owner its session holds
+    /// mutably, so a projection yielding one holds a mutable input or
+    /// effect; an `unsafe` one leaves that to its caller.
+    pub fn diags_view_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        let normalize =
+            |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
+        let params = self.params(db).filter_map(|param| {
+            let (ty, position) =
+                ty::shape::view_param_misuse(db, param.mode(db), normalize(param.ty(db)))?;
+            Some((param.span().into(), ty, position))
+        });
+        let shape = self
+            .return_shape(db)
+            .cloned()
+            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))));
+        let ret = shape
+            .view_misuse(db)
+            .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
+        let holds_mutably = self
+            .params(db)
+            .any(|param| param.mode(db) == FuncParamMode::Mut)
+            || self.effects(db).data(db).iter().any(|effect| effect.is_mut);
+        let unheld_mut_view = shape
+            .mut_view(db)
+            .filter(|_| !holds_mutably && !self.is_unsafe(db))
+            .map(|ty| {
+                (
+                    self.span().ret_ty().into(),
+                    ty,
+                    "yielded by `mut` from a projection that holds nothing mutably",
+                )
+            });
+        params
+            .chain(ret)
+            .chain(unheld_mut_view)
+            .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
+            .collect()
+    }
+
+    /// A state-only type is never a value: no `own` parameter takes one
+    /// and no function returns one by value.
+    pub fn diags_state_only_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        let normalize =
+            |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
+        let params = self.params(db).filter_map(|param| {
+            let ty = normalize(param.ty(db));
+            let collection =
+                (param.mode(db) == FuncParamMode::Own).then(|| ty.pinned_part(db))??;
+            Some((param.span().into(), ty, collection, "an `own` parameter"))
+        });
+        let ret = self
+            .return_shape(db)
+            .cloned()
+            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))))
+            .state_only_value(db)
+            .map(|(ty, collection)| {
+                (
+                    self.span().ret_ty().into(),
+                    ty,
+                    collection,
+                    "returned by value",
+                )
+            });
+        params
+            .chain(ret)
+            .map(|(span, ty, collection, position)| {
+                TyLowerDiag::StateOnlyValue {
+                    span,
+                    ty,
+                    collection,
+                    position,
+                }
+                .into()
+            })
+            .collect()
     }
 
     /// Diagnostics for function parameter types:
@@ -472,7 +550,6 @@ impl<'db> Trait<'db> {
                                 primary_goal: trait_inst,
                                 unsat_subgoal: None,
                                 required_by: None,
-                                capability_hint: None,
                             }
                             .into(),
                         );
@@ -528,6 +605,31 @@ impl<'db> Trait<'db> {
         diags
     }
 
+    /// Diagnostics for effect rows and result spaces given values in the
+    /// trait itself.
+    pub fn diags_access_defaults(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        let rows = self
+            .rows(db)
+            .iter()
+            .filter(|row| row.effects.is_some())
+            .filter_map(|row| Some(("effect row", row.name.to_opt()?)));
+        let spaces = self
+            .spaces(db)
+            .iter()
+            .filter(|space| space.value.is_some())
+            .filter_map(|space| Some(("space", space.name.to_opt()?)));
+        rows.chain(spaces)
+            .map(|(kind, name)| {
+                TraitLowerDiag::AccessItemDefault {
+                    primary: self.span().name().into(),
+                    kind,
+                    name,
+                }
+                .into()
+            })
+            .collect()
+    }
+
     /// Diagnostics for generic parameter issues (duplicates, defined in parent).
     pub fn diags_generic_params(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let owner = GenericParamOwner::Trait(self);
@@ -569,7 +671,6 @@ impl<'db> Trait<'db> {
                                 primary_goal: goal,
                                 unsat_subgoal: None,
                                 required_by: None,
-                                capability_hint: None,
                             }
                             .into(),
                         );
@@ -618,7 +719,6 @@ impl<'db> Impl<'db> {
                         primary_goal: goal,
                         unsat_subgoal: subgoal,
                         required_by: None,
-                        capability_hint: None,
                     }
                     .into(),
                 );
@@ -736,6 +836,12 @@ impl<'db> Impl<'db> {
                 );
                 if !ty_diags.is_empty() {
                     diags.extend(ty_diags);
+                } else if let Some(ty) = impl_const.ty(db) {
+                    diags.extend(ty::ty_check::const_type_diag(
+                        db,
+                        impl_const.span().ty().into(),
+                        ty,
+                    ));
                 }
             }
 
@@ -748,26 +854,126 @@ impl<'db> Impl<'db> {
 }
 
 impl<'db> ImplTrait<'db> {
-    fn diags_effect_handle_raw(
+    /// A `#[view]` type has no copies.
+    fn diags_view_copy(
         self,
         db: &'db dyn HirAnalysisDb,
         implementor: ImplementorId<'db>,
-    ) -> Vec<TyDiagCollection<'db>> {
-        let Some((raw_ty, failure)) = ty::provider::effect_handle_impl_raw_failure(db, implementor)
-        else {
-            return Vec::new();
-        };
-        let raw = IdentId::new(db, "Raw".to_string());
-        vec![
-            ty::diagnostics::ImplDiag::InvalidEffectHandleRaw {
-                primary: self
-                    .associated_type_span(db, raw)
-                    .map_or_else(|| self.span().ty().into(), |span| span.ty().into()),
-                raw_ty,
-                failure,
+    ) -> Option<TyDiagCollection<'db>> {
+        let ty = implementor.self_ty(db);
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        (ty.is_view(db) && implementor.trait_def(db) == copy).then(|| {
+            TyLowerDiag::ViewTypeMode {
+                span: self.span().ty().into(),
+                ty,
+                mode: "`Copy`",
+            }
+            .into()
+        })
+    }
+
+    /// A copy copies every field, so a `Copy` type's fields are `Copy` under
+    /// the implementation's bounds.
+    fn diags_copy_fields(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        if implementor.trait_def(db) != copy {
+            return None;
+        }
+        let ty = implementor.self_ty(db);
+        // A view or state-only type has no copies at all.
+        if ty.is_view(db) || ty.pinned_part(db).is_some() {
+            return None;
+        }
+        let args = ty.generic_args(db);
+        let assumptions = constraints_for(db, self.into());
+        let field_ty = ty
+            .adt_def(db)?
+            .fields(db)
+            .iter()
+            .flat_map(|variant| variant.iter_types(db))
+            .map(|field| field.instantiate(db, args))
+            .find(|&field| !ty::ty_is_copy(db, self.scope(), field, assumptions))?;
+        Some(
+            ty::diagnostics::ImplDiag::CopyFieldNotCopy {
+                primary: self.span().ty().into(),
+                ty,
+                field_ty,
             }
             .into(),
-        ]
+        )
+    }
+
+    /// `Copy` for a bare type parameter would cover types the other `Copy`
+    /// checks never see, which inspect the implementation's own self type.
+    fn diags_blanket_copy(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        (implementor.trait_def(db) == copy && implementor.self_ty(db).is_param(db)).then(|| {
+            ty::diagnostics::ImplDiag::BlanketCopy {
+                primary: self.span().ty().into(),
+            }
+            .into()
+        })
+    }
+
+    /// A state-only type has no copies.
+    fn diags_state_only_copy(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let ty = implementor.self_ty(db);
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        let collection = ty.pinned_part(db)?;
+        (implementor.trait_def(db) == copy).then(|| {
+            TyLowerDiag::StateOnlyValue {
+                span: self.span().ty().into(),
+                ty,
+                collection,
+                position: "`Copy`",
+            }
+            .into()
+        })
+    }
+
+    /// An implementation of an `unsafe trait` is an `unsafe impl`, and only
+    /// one is.
+    fn diags_unsafe_impl(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let trait_ = implementor.trait_def(db);
+        (trait_.is_unsafe(db) != self.is_unsafe(db)).then(|| {
+            ty::diagnostics::ImplDiag::UnsafeImplMismatch {
+                primary: self.span().trait_ref().into(),
+                trait_,
+            }
+            .into()
+        })
+    }
+
+    fn diags_compiler_implemented_trait(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let clearable =
+            ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Clearable"])?;
+        (implementor.trait_def(db) == clearable).then(|| {
+            ty::diagnostics::ImplDiag::CompilerImplementedTrait {
+                primary: self.span().trait_ref().into(),
+                trait_: clearable,
+            }
+            .into()
+        })
     }
 
     /// Lower the implementor view and report validity diagnostics (WF, conflicts, kind mismatch).
@@ -820,6 +1026,142 @@ impl<'db> ImplTrait<'db> {
                     }
                     .into(),
                 );
+            }
+        }
+        diags
+    }
+
+    /// Diagnostics for effect rows and result spaces: each one the trait
+    /// declares, and every space given, naming a space.
+    pub fn diags_access_items(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        use ty::diagnostics::ImplDiag;
+        use ty::trait_lower::lower_impl_trait;
+
+        let Some(implementor) = lower_impl_trait(db, self) else {
+            return Vec::new();
+        };
+        let trait_ = implementor.trait_def(db);
+        let primary = || DynLazySpan::from(self.span().ty());
+        let rows = self.rows(db).iter().filter_map(|row| {
+            let name = row.name.to_opt()?;
+            (!trait_
+                .rows(db)
+                .iter()
+                .any(|row| row.name.to_opt() == Some(name)))
+            .then_some(("effect row", name))
+        });
+        let spaces = self.spaces(db).iter().filter_map(|space| {
+            let name = space.name.to_opt()?;
+            (!trait_
+                .spaces(db)
+                .iter()
+                .any(|space| space.name.to_opt() == Some(name)))
+            .then_some(("space", name))
+        });
+        let mut diags: Vec<TyDiagCollection<'db>> = rows
+            .chain(spaces)
+            .map(|(kind, name)| {
+                ImplDiag::AccessItemNotDefinedInTrait {
+                    primary: primary(),
+                    trait_,
+                    kind,
+                    name,
+                }
+                .into()
+            })
+            .collect();
+        let pinned = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Pinned"]);
+        let is_pin = pinned == Some(trait_);
+        for name in trait_
+            .spaces(db)
+            .iter()
+            .filter_map(|space| space.name.to_opt())
+        {
+            let Some((value, steps)) = self
+                .spaces(db)
+                .iter()
+                .find(|given| given.name.to_opt() == Some(name))
+                .and_then(|given| given.value)
+            else {
+                diags.push(
+                    ImplDiag::MissingAssociatedSpace {
+                        primary: primary(),
+                        trait_,
+                        name,
+                    }
+                    .into(),
+                );
+                continue;
+            };
+            let resolved = value
+                .to_opt()
+                .and_then(|value| ty::result_space::impl_space_value(db, self, value, steps));
+            // A space that names another implementation's space must end in
+            // one: `space S = Self::S` names only itself.
+            if let Some(SpaceValue::Assoc(_)) = resolved
+                && let Ok(inst) = self.trait_inst_result(db)
+                && let Some(space) = ty::result_space::space_index(db, trait_, name)
+                && ty::result_space::space_key_cycles(
+                    db,
+                    ty::result_space::SpaceKey {
+                        inst,
+                        space: space as u16,
+                    },
+                    self.scope(),
+                    constraints_for(db, self.into()),
+                )
+            {
+                diags.push(
+                    ImplDiag::CyclicAssociatedSpace {
+                        primary: primary(),
+                        name,
+                    }
+                    .into(),
+                );
+                continue;
+            }
+            match resolved {
+                None => diags.push(if steps.steps(db).is_empty() {
+                    TyLowerDiag::UnknownResultSpace(primary()).into()
+                } else {
+                    TyLowerDiag::InvalidResultSpacePath(primary()).into()
+                }),
+                // A pin is a state space, or another pinned type's.
+                Some(SpaceValue::Space(AddressSpace::Storage | AddressSpace::Transient))
+                    if is_pin => {}
+                Some(SpaceValue::Assoc(key)) if is_pin && Some(key.inst.def(db)) == pinned => {}
+                Some(_) if is_pin => {
+                    diags.push(ImplDiag::PinNotStateSpace { primary: primary() }.into())
+                }
+                Some(_) => {}
+            }
+        }
+        // A row whose components name rows must end in effects:
+        // `uses E = Self::E` names only itself.
+        if let Ok(inst) = self.trait_inst_result(db) {
+            for (row, name) in trait_
+                .rows(db)
+                .iter()
+                .enumerate()
+                .filter_map(|(row, decl)| Some((row, decl.name.to_opt()?)))
+            {
+                if ty::effects::rows::row_key_cycles(
+                    db,
+                    ty::effects::rows::RowKey {
+                        inst,
+                        row: row as u16,
+                    },
+                    self.scope(),
+                    constraints_for(db, self.into()),
+                ) {
+                    diags.push(
+                        ImplDiag::CyclicEffectRow {
+                            primary: primary(),
+                            name,
+                        }
+                        .into(),
+                    );
+                }
             }
         }
         diags
@@ -929,6 +1271,11 @@ impl<'db> ImplTrait<'db> {
                 }
                 continue;
             }
+            diags.extend(ty::ty_check::const_type_diag(
+                db,
+                impl_const.span().ty().into(),
+                impl_header_ty,
+            ));
 
             let Some(trait_const) = trait_hir.const_(db, name) else {
                 continue;
@@ -1094,7 +1441,6 @@ impl<'db> ImplTrait<'db> {
                             primary_goal: bound_inst,
                             unsat_subgoal: None,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -1128,7 +1474,6 @@ impl<'db> ImplTrait<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             );
@@ -1146,7 +1491,6 @@ impl<'db> ImplTrait<'db> {
                             primary_goal: goal,
                             unsat_subgoal: None,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -1276,6 +1620,17 @@ impl<'db> VariantView<'db> {
                 );
                 continue;
             }
+            if ty.is_view(db) {
+                out.push(
+                    TyLowerDiag::ViewTypeMode {
+                        span: span.clone().into(),
+                        ty,
+                        mode: "a field",
+                    }
+                    .into(),
+                );
+                continue;
+            }
 
             // Trait-bound well-formedness for element type.
             match check_ty_wf(
@@ -1291,7 +1646,6 @@ impl<'db> VariantView<'db> {
                             primary_goal: goal,
                             unsat_subgoal: subgoal,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -1607,7 +1961,6 @@ impl<'db> GenericParamOwner<'db> {
                                     primary_goal: goal,
                                     unsat_subgoal: None,
                                     required_by: None,
-                                    capability_hint: None,
                                 }
                                 .into(),
                             ),
@@ -1688,6 +2041,28 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_parameters(db));
         out.extend(self.diags_param_types(db));
         out.extend(self.diags_return(db));
+        out.extend(self.diags_view_types(db));
+        out.extend(self.diags_state_only_types(db));
+        // A result-space annotation names a space, or a sub-place of a root.
+        if let Some(annotation) = self
+            .ret_spaces(db)
+            .iter()
+            .zip(ty::result_space::declared_result_spaces(db, self))
+            .find_map(|(annotation, contract)| annotation.filter(|_| contract.is_none()))
+        {
+            let span = self.span().ret_ty().into();
+            out.push(
+                match annotation {
+                    SpaceAnnotation::Path(_, steps) if !steps.steps(db).is_empty() => {
+                        TyLowerDiag::InvalidResultSpacePath(span)
+                    }
+                    SpaceAnnotation::Path(..) | SpaceAnnotation::Target(_) => {
+                        TyLowerDiag::UnknownResultSpace(span)
+                    }
+                }
+                .into(),
+            );
+        }
 
         for pred in WhereClauseOwner::Func(self).clause(db).predicates(db) {
             out.extend(pred.diags(db));
@@ -1746,6 +2121,7 @@ impl<'db> Diagnosable<'db> for Trait<'db> {
             }
         }
         out.extend(self.diags_assoc_defaults(db));
+        out.extend(self.diags_access_defaults(db));
         out.extend(self.diags_assoc_type_bounds(db));
         out.extend(self.diags_super_traits(db));
 
@@ -1781,10 +2157,16 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
 
         let mut out = validity_diags;
         out.extend(implementor.diags_method_conformance(db));
-        out.extend(self.diags_effect_handle_raw(db, implementor));
+        out.extend(self.diags_blanket_copy(db, implementor));
+        out.extend(self.diags_view_copy(db, implementor));
+        out.extend(self.diags_state_only_copy(db, implementor));
+        out.extend(self.diags_copy_fields(db, implementor));
+        out.extend(self.diags_compiler_implemented_trait(db, implementor));
+        out.extend(self.diags_unsafe_impl(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));
+        out.extend(self.diags_access_items(db));
         out.extend(self.diags_assoc_types_bounds(db));
         out.extend(self.diags_missing_assoc_consts(db));
         out.extend(self.diags_assoc_consts(db));

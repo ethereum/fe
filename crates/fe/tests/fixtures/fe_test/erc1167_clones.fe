@@ -1,4 +1,4 @@
-use std::evm::{clones, Create, RawMem}
+use std::evm::{clones, Create}
 
 msg ProxyMsg {
     #[selector = sol("set(uint256)")]
@@ -32,7 +32,7 @@ pub contract Implementation {
 
 #[test]
 fn deterministic_address_and_isolated_storage()
-uses (evm: mut Evm, ctx: Ctx, create: mut Create, mem: mut RawMem)
+uses (evm: mut Evm, ctx: Ctx, create: mut Create)
 {
     let implementation = evm.create2<Implementation>(value: 0, args: (), salt: 0)
     let predicted = clones::predict_deterministic_address(
@@ -132,7 +132,7 @@ fn rejects_dirty_implementation() {
 
 // Independent CREATE2 vectors computed with cast from the standard byte sequence.
 #[test]
-fn initcode_and_prediction_vectors() uses (mem: mut RawMem) {
+fn initcode_and_prediction_vectors() {
     let code = clones::clone_initcode(Address { inner: 0x0 })
     assert!(code.len() == 55)
     assert!(

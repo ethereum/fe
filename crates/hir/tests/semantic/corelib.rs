@@ -3,13 +3,15 @@ use common::indexmap::IndexMap;
 use common::stdlib::{HasBuiltinCore, HasBuiltinStd};
 use driver::{DriverDataBase, db::DiagnosticsCollection};
 use fe_hir::Ingot;
-use fe_hir::analysis::ty::ty_check::ReturnProvenance;
 use fe_hir::analysis::ty::{
     corelib::{resolve_core_trait, resolve_lib_func_path, resolve_lib_type_path},
     trait_resolution::{GoalSatisfiability, TraitSolveCx, is_goal_satisfiable},
     ty_check::check_func_body,
 };
-use fe_hir::hir_def::{Expr, HirIngot, ItemKind, LitKind, Partial, Pat, attr::Attr};
+use fe_hir::hir_def::{
+    Expr, HirIngot, ItemKind, LitKind, Partial, Pat,
+    attr::{Attr, AttrArgValue},
+};
 use fe_hir::test_db::HirAnalysisTestDb;
 use salsa::Setter;
 use url::Url;
@@ -119,16 +121,10 @@ fn builtin_core_calls_have_semantic_lowerings() {
 }
 
 #[test]
-fn mem_slice_by_value_access_requires_copy_elements() {
+fn mem_slice_get_requires_copy_elements() {
     let mut db = DriverDataBase::default();
-    let url = Url::parse("file:///mem_slice_by_value_access_requires_copy_elements.fe").unwrap();
+    let url = Url::parse("file:///mem_slice_get_requires_copy_elements.fe").unwrap();
     let src = r#"
-fn index_noncopy(
-    slice: core::ptr::MemSlice<core::ptr::MemBuffer>,
-) -> core::ptr::MemBuffer {
-    slice[0]
-}
-
 fn get_noncopy(
     slice: core::ptr::MemSlice<core::ptr::MemBuffer>,
 ) -> core::option::Option<core::ptr::MemBuffer> {
@@ -142,10 +138,6 @@ fn get_noncopy(
     let rendered = diags.format_diags(&db);
 
     assert!(
-        rendered.contains("trait bound `MemBuffer: Copy` is not satisfied"),
-        "{rendered}"
-    );
-    assert!(
         rendered.contains("`MemBuffer` doesn't implement `Copy`"),
         "{rendered}"
     );
@@ -156,11 +148,11 @@ fn solver_proves_encode_for_fixed_bool_arrays() {
     let mut db = DriverDataBase::default();
     let url = Url::parse("file:///encode_fixed_bool_array_goal.fe").unwrap();
     let src = r#"
-use core::{abi::Encode, ptr}
+use core::abi::{AbiFrame, Encode}
 use std::abi::Sol
 
-pub fn root(values: [bool; 5]) {
-    values.encode(ptr::alloc_bytes(160))
+pub fn root(values: [bool; 5], out: AbiFrame) {
+    values.encode(out)
 }
 "#;
 
@@ -466,9 +458,14 @@ Good
                 );
             }
             for attr in ItemKind::Func(*func).attrs(&db).unwrap().data(&db) {
+                // An expression value keeps its source; only a literal is
+                // decoded into a string.
+                let is_string = |value: &Option<AttrArgValue>| {
+                    matches!(value, Some(AttrArgValue::Lit(LitKind::String(_))))
+                };
                 if let Attr::Normal(attr) = attr {
-                    assert!(attr.value.is_none(), "{src}");
-                    assert!(attr.args.iter().all(|arg| arg.value.is_none()), "{src}");
+                    assert!(!is_string(&attr.value), "{src}");
+                    assert!(!attr.args.iter().any(|arg| is_string(&arg.value)), "{src}");
                 }
             }
         }
@@ -492,7 +489,7 @@ fn string_literals_can_pick_up_dynstring_api_from_later_use() {
     let src = r#"
 pub fn root() -> u8 {
     let text = "hello-dynamic-api"
-    text.view().byte_at(0)
+    text.payload_span().byte_at(0)
 }
 "#;
 
@@ -532,7 +529,7 @@ fn long_string_literals_can_pick_up_dynstring_api_from_later_use() {
     let src = r#"
 pub fn root() -> u8 {
     let text = "hello-dynamic-api-abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789"
-    text.view().byte_at(0)
+    text.payload_span().byte_at(0)
 }
 "#;
 
@@ -744,23 +741,4 @@ pub fn selector() -> u32 {
     );
     let (top_mod, _) = db.top_mod(file);
     db.assert_no_diags(top_mod);
-}
-
-#[test]
-fn implicit_ref_load_returns_are_not_treated_as_forwarded_params() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        "implicit_ref_load_returns_are_not_treated_as_forwarded_params.fe".into(),
-        r#"fn read_balance(x: ref u256) -> u256 {
-    x
-}"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    let funcs = top_mod.all_funcs(&db);
-    let [func] = funcs.as_slice() else {
-        panic!("expected exactly one function");
-    };
-
-    let typed_body = check_func_body(&db, *func).1.clone();
-    assert_eq!(typed_body.return_provenance(&db), ReturnProvenance::Fresh);
 }

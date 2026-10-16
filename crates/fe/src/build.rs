@@ -576,13 +576,13 @@ fn build_file(
     let mut has_errors = false;
     if !diagnostics.hir.is_empty() {
         diagnostics.hir.emit(db);
-        has_errors = true;
+        has_errors = diagnostics.hir.has_errors(db);
     }
     let dependency_has_errors = emit_dependency_diagnostics(db, &diagnostics.dependencies);
     has_errors |= dependency_has_errors;
     if !diagnostics.mir.is_empty() {
         db.emit_complete_diagnostics(&diagnostics.mir);
-        has_errors = true;
+        has_errors |= diagnostics.mir_has_errors();
     }
     if has_errors {
         return true;
@@ -960,13 +960,13 @@ fn analyze_ingot_build_artifacts(
     let mut has_errors = false;
     if !diagnostics.hir.is_empty() {
         diagnostics.hir.emit(db);
-        has_errors = true;
+        has_errors = diagnostics.hir.has_errors(db);
     }
     let dependency_has_errors = emit_dependency_diagnostics(db, &diagnostics.dependencies);
     has_errors |= dependency_has_errors;
     if !diagnostics.mir.is_empty() {
         db.emit_complete_diagnostics(&diagnostics.mir);
-        has_errors = true;
+        has_errors |= diagnostics.mir_has_errors();
     }
     if has_errors {
         return Err(());
@@ -1149,13 +1149,13 @@ fn build_ingot_url(
     let mut has_errors = false;
     if !diagnostics.hir.is_empty() {
         diagnostics.hir.emit(db);
-        has_errors = true;
+        has_errors = diagnostics.hir.has_errors(db);
     }
     let dependency_has_errors = emit_dependency_diagnostics(db, &diagnostics.dependencies);
     has_errors |= dependency_has_errors;
     if !diagnostics.mir.is_empty() {
         db.emit_complete_diagnostics(&diagnostics.mir);
-        has_errors = true;
+        has_errors |= diagnostics.mir_has_errors();
     }
     if has_errors {
         return BuildSummary { had_errors: true };

@@ -1,0 +1,32 @@
+use core::marker::Pinned
+
+// A result space follows the pin that applies to the instance.
+trait X {}
+
+struct A {}
+
+impl X for A {}
+
+struct B {}
+
+struct Cell<P> {
+    pub v: u256,
+}
+
+impl<P: X> Pinned for Cell<P> {
+    space S = transient
+}
+
+impl Cell<A> {
+    // Accepted: `Cell<A>` is pinned to transient storage.
+    fn get_mut(mut self) -> mut u256 @transient {
+        mut self.v
+    }
+}
+
+impl Cell<B> {
+    // Rejected: the implementation does not apply to `Cell<B>`.
+    fn get_mut(mut self) -> mut u256 @transient {
+        mut self.v
+    }
+}

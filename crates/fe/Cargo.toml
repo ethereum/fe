@@ -4,7 +4,6 @@ version = "26.4.0"
 edition.workspace = true
 
 [features]
-borrowck-profile = ["hir/borrowck-profile"]
 default = ["doc-server", "lsp"]
 doc-server = ["dep:tokio", "dep:axum"]
 lsp = ["dep:language-server", "dep:tokio"]

@@ -11,17 +11,17 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::instance::{
-            GenericSubst, ImplEnv, SemanticInstance, SemanticInstanceKey,
-            get_or_build_semantic_instance,
+            GenericSubst, ImplEnv, SemanticBodyAdmissionError, SemanticInstance,
+            SemanticInstanceKey, get_or_build_semantic_instance,
         },
         semantic::{
             BlockedInfo, ConstDemandKind, ConstDependency, EvalFailure, EvalOutcome, FieldIndex,
             PrimitiveFault, RuntimeSizeError, SConst, SEffectArgValue, SExpr, SLocalId, SOperand,
-            SPlace, SStmt, SStmtKind, STerminatorKind, SemConstId, SemConstScalar, SemConstValue,
-            SemOrigin, SemanticBody, SemanticConstRef, VariantIndex, array_const, bool_const,
-            bytes_const, consts::instantiate_const_template, enum_const, execute_scalar_cast,
-            execute_source_int_binary, execute_source_int_unary, int_const, int_in_range,
-            int_ty_shape, normalize_int_to_shape, runtime_size_bytes, sem_const_eq,
+            SPlace, SStmt, SStmtId, SStmtKind, STerminatorKind, SemConstId, SemConstScalar,
+            SemConstValue, SemOrigin, SemanticBody, SemanticConstRef, VariantIndex, array_const,
+            bool_const, bytes_const, consts::instantiate_const_template, enum_const,
+            execute_scalar_cast, execute_source_int_binary, execute_source_int_unary, int_const,
+            int_in_range, int_ty_shape, normalize_int_to_shape, runtime_size_bytes, sem_const_eq,
             sem_const_from_ty, sem_const_ty, struct_const, tuple_const, unit_const,
         },
         ty::{
@@ -32,15 +32,16 @@ use crate::{
                 SaturatingArithmetic, core_primitive_wrapper_call_kind, ctfe_extern_intrinsic_kind,
             },
             normalize::normalize_ty,
-            provider::ProviderAddressSpace,
+            provider::AddressSpace,
             ty_check::{
-                BodyOwner, EffectArgLayoutView, EffectParamSite, EffectPassMode, LocalBinding,
-                ParamSite, infer_body, inference_met_lowering_cycle,
+                BodyOwner, EffectParamSite, EffectPassMode, LocalBinding, ParamSite, infer_body,
+                inference_met_lowering_cycle,
             },
             ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
         },
     },
     core::hir_def::expr::LogicalBinOp,
+    core::semantic::storage_slot_span,
     hir_def::{ArithBinOp, BinOp, CompBinOp, UnOp, attr::ArithmeticMode},
     projection::{IndexSource, Projection},
 };
@@ -375,12 +376,36 @@ struct CtfeMachine<'db, 'body> {
     /// a const already on this stack is a recursive definition; the machine
     /// owns this check so const recursion never becomes a salsa query cycle.
     const_stack: Vec<SemanticInstanceKey<'db>>,
+    /// The projection frame the last call suspended, for its caller to
+    /// register as a session.
+    opened_session: Option<usize>,
 }
 
 struct CtfeFrame<'db, 'body> {
     body: &'body SemanticBody<'db>,
     locals: Vec<CtfeSlot<'db>>,
     current: usize,
+    /// A projection frame that yielded and waits for its caller to end the
+    /// session; `current` is the slide's first block.
+    suspended: bool,
+    /// A finished projection frame that later sessions still sit above.
+    finished: bool,
+    /// The suspended projection frames this frame's calls opened, by call
+    /// statement.
+    sessions: FxHashMap<SStmtId, usize>,
+}
+
+impl<'db, 'body> CtfeFrame<'db, 'body> {
+    fn new(body: &'body SemanticBody<'db>, locals: Vec<CtfeSlot<'db>>) -> Self {
+        Self {
+            body,
+            locals,
+            current: 0,
+            suspended: false,
+            finished: false,
+            sessions: FxHashMap::default(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -1001,6 +1026,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             steps: 0,
             instance_cache: FxHashMap::default(),
             frames: Vec::new(),
+            opened_session: None,
             const_results: FxHashMap::default(),
             const_stack: Vec::new(),
         }
@@ -1051,11 +1077,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             let body = instance
                 .admitted_body(self.db)
                 .map_err(|_| CtfeError::InvalidBody { origin })?;
-            self.frames.push(CtfeFrame {
-                body,
-                locals: Vec::new(),
-                current: 0,
-            });
+            self.frames.push(CtfeFrame::new(body, Vec::new()));
             let result = (|| {
                 let args = self.value_args(args, origin)?;
                 self.eval_extern_const_fn(
@@ -1145,11 +1167,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             }
         }
         let frame_idx = self.frames.len();
-        self.frames.push(CtfeFrame {
-            body,
-            locals: frame_locals,
-            current: 0,
-        });
+        self.frames.push(CtfeFrame::new(body, frame_locals));
         let result = match self.eval_expr(frame_idx, result_ty, expr, origin) {
             Ok(CtfeValue::Value(value)) => Ok(value.materialize(self.db)),
             Ok(CtfeValue::Ref(_)) => Err(CtfeError::InvalidBorrow { origin }.into()),
@@ -1240,7 +1258,8 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             BodyOwner::Const(_)
             | BodyOwner::AnonConstBody { .. }
             | BodyOwner::ContractInit { .. }
-            | BodyOwner::ContractRecvArm { .. } => Vec::new(),
+            | BodyOwner::ContractRecvArm { .. }
+            | BodyOwner::Closure { .. } => Vec::new(),
         };
         arg_locals.sort_unstable_by_key(|(idx, _)| *idx);
         if args.len() != arg_locals.len()
@@ -1306,12 +1325,20 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             locals[local.index()] = CtfeSlot::Init(value);
         }
         let frame_idx = self.frames.len();
-        self.frames.push(CtfeFrame {
-            body,
-            locals,
-            current: 0,
-        });
+        self.frames.push(CtfeFrame::new(body, locals));
         let result = self.run_frame(frame_idx).and_then(|value| {
+            // A projection's frame outlives the call: its caller's `end`
+            // runs the slide, and the yield may name the frame's locals.
+            if self.frames[frame_idx].suspended {
+                self.opened_session = Some(frame_idx);
+                return Ok(value);
+            }
+            if !self.frames[frame_idx].sessions.is_empty() {
+                return Err(EvalStop::Failed(EvalFailure::Invariant {
+                    origin,
+                    message: "CTFE frame returned with an open projection session".into(),
+                }));
+            }
             // Returning an ordinary value reads the referent before its frame
             // disappears. Returning a capability preserves the ref.
             if let CtfeValue::Ref(r#ref) = &value
@@ -1333,8 +1360,28 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 Ok(value)
             }
         });
-        self.frames.pop();
+        if !(result.is_ok() && self.frames[frame_idx].suspended) {
+            self.frames.truncate(frame_idx);
+        }
         result
+    }
+
+    /// Finishes the session `frame_idx` suspended: runs its slide, then
+    /// drops every finished frame on top of the stack.
+    fn finish_session(&mut self, frame_idx: usize) -> EvalResult<'db, ()> {
+        self.frames[frame_idx].suspended = false;
+        self.run_frame(frame_idx)?;
+        if self.frames[frame_idx].suspended || !self.frames[frame_idx].sessions.is_empty() {
+            return Err(EvalStop::Failed(EvalFailure::Invariant {
+                origin: SemOrigin::Synthetic,
+                message: "CTFE projection slide left a session open".into(),
+            }));
+        }
+        self.frames[frame_idx].finished = true;
+        while self.frames.last().is_some_and(|frame| frame.finished) {
+            self.frames.pop();
+        }
+        Ok(())
     }
 
     fn const_evaluable_body(
@@ -1349,17 +1396,24 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             BodyOwner::Func(func) if !const_effects_supported(self.db, func) => {
                 Err(CtfeError::NotConstEvaluable { origin })
             }
-            BodyOwner::ContractInit { .. } | BodyOwner::ContractRecvArm { .. } => {
-                Err(CtfeError::NotConstEvaluable { origin })
-            }
+            BodyOwner::ContractInit { .. }
+            | BodyOwner::ContractRecvArm { .. }
+            | BodyOwner::Closure { .. } => Err(CtfeError::NotConstEvaluable { origin }),
             owner
             @ (BodyOwner::Func(_) | BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. }) => {
                 if inference_met_lowering_cycle(self.db, infer_body(self.db, owner)) {
                     return Err(CtfeError::InvalidBody { origin });
                 }
+                // An instance that reaches the instance limits recurses
+                // without end, as evaluation past its own limit does.
                 instance
                     .admitted_body(self.db)
-                    .map_err(|_| CtfeError::InvalidBody { origin })
+                    .map_err(|error| match error {
+                        SemanticBodyAdmissionError::InstanceLimit(_) => {
+                            CtfeError::RecursionLimitExceeded { origin }
+                        }
+                        _ => CtfeError::InvalidBody { origin },
+                    })
             }
         }
     }
@@ -1414,6 +1468,13 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 STerminatorKind::Return(None) => {
                     return Ok(CtfeValue::Value(CtfeConstValue::unit()));
                 }
+                STerminatorKind::Yield { value, resume } => {
+                    let value = self.read_operand(frame_idx, value, term_origin)?;
+                    let frame = &mut self.frames[frame_idx];
+                    frame.current = resume.index();
+                    frame.suspended = true;
+                    return Ok(value);
+                }
             }
         }
     }
@@ -1424,6 +1485,9 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             SStmtKind::Assign { dst, expr } => {
                 let ty = self.frames[frame_idx].body.locals[dst.index()].ty;
                 let value = self.eval_expr(frame_idx, ty, expr, origin)?;
+                if let Some(session) = self.opened_session.take() {
+                    self.frames[frame_idx].sessions.insert(stmt.id, session);
+                }
                 self.frames[frame_idx].locals[dst.index()] = CtfeSlot::Init(value);
             }
             SStmtKind::Store { dst, src } => {
@@ -1432,6 +1496,11 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     return Err(CtfeError::InvalidBorrow { origin }.into());
                 };
                 self.store_place(place, value, origin)?;
+            }
+            SStmtKind::End { access } => {
+                if let Some(session) = self.frames[frame_idx].sessions.remove(&access) {
+                    self.finish_session(session)?;
+                }
             }
         }
         Ok(())
@@ -1467,10 +1536,9 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                             arg.pass_mode,
                             EffectPassMode::ByValue | EffectPassMode::ByPlace
                         )
-                        || arg.layout_view != EffectArgLayoutView::Direct
                         || arg
                             .provider
-                            .is_some_and(|space| space != ProviderAddressSpace::Memory)
+                            .is_some_and(|space| space != AddressSpace::Memory)
                         || arg.provider_target_ty.is_some()
                     {
                         return Err(CtfeError::NotConstEvaluable { origin }.into());
@@ -1687,7 +1755,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     result_ty, variant, fields,
                 )))
             }
-            SExpr::ReadPlace { place } => {
+            SExpr::ReadPlace { place } | SExpr::InspectPlace { place } => {
                 let place = self.resolve_place(frame_idx, &place, origin)?;
                 let r#ref = CtfeRef {
                     frame: place.frame,
@@ -1718,7 +1786,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 // memory outside its frames. Admitted providers are frame
                 // locals too, since each effect slot owns a copy of its value.
                 if let Some(provider) = provider
-                    && (provider != ProviderAddressSpace::Memory
+                    && (provider != AddressSpace::Memory
                         || place
                             .path
                             .iter()
@@ -1889,6 +1957,9 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             }
             Some(CtfeExternIntrinsic::SizeOf) => {
                 self.eval_intrinsic_size_of(instance, result_ty, args, origin)
+            }
+            Some(CtfeExternIntrinsic::StorageSlots) => {
+                self.eval_intrinsic_storage_slots(instance, result_ty, args, origin)
             }
             Some(CtfeExternIntrinsic::AsBytes) => {
                 self.eval_intrinsic_as_bytes(result_ty, args, origin)
@@ -2308,6 +2379,35 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
         Ok(CtfeConstValue::int(self.db, result_ty, BigInt::from(size)))
     }
 
+    fn eval_intrinsic_storage_slots(
+        &self,
+        instance: SemanticInstance<'db>,
+        result_ty: TyId<'db>,
+        args: &[CtfeConstValue<'db>],
+        origin: SemOrigin<'db>,
+    ) -> Result<CtfeConstValue<'db>, CtfeError<'db>> {
+        if !args.is_empty() {
+            return Err(CtfeError::NotConstEvaluable { origin });
+        }
+        let key = instance.key(self.db);
+        let ty = *key
+            .subst(self.db)
+            .generic_args(self.db)
+            .first()
+            .ok_or(CtfeError::NotConstEvaluable { origin })?;
+        let ty = normalize_ty(
+            self.db,
+            ty,
+            key.owner(self.db).scope(),
+            key.instantiate_typed_body(self.db).assumptions(),
+        );
+        let slots = storage_slot_span(self.db, ty).map_err(|_| CtfeError::InvalidOperation {
+            origin,
+            message: format!("`{}` has no storage layout", ty.pretty_print(self.db)),
+        })?;
+        Ok(CtfeConstValue::int(self.db, result_ty, BigInt::from(slots)))
+    }
+
     fn eval_intrinsic_as_bytes(
         &self,
         result_ty: TyId<'db>,
@@ -2488,6 +2588,12 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     return Err(CtfeError::InvalidOperation {
                         origin,
                         message: "analysis wildcard index is not valid in CTFE".into(),
+                    });
+                }
+                Projection::Entry(_) => {
+                    return Err(CtfeError::InvalidOperation {
+                        origin,
+                        message: "an entry of a storage collection is not available in CTFE".into(),
                     });
                 }
                 Projection::Deref | Projection::Discriminant => {
@@ -3358,16 +3464,10 @@ mod tests {
             path: Box::new([]),
         }));
         let mut machine = CtfeMachine::new(&db, CtfeConfig::default());
-        machine.frames.push(CtfeFrame {
-            body: anchor_body,
-            locals: anchor_locals,
-            current: 0,
-        });
-        machine.frames.push(CtfeFrame {
-            body: read_body,
-            locals: read_locals,
-            current: 0,
-        });
+        machine
+            .frames
+            .push(CtfeFrame::new(anchor_body, anchor_locals));
+        machine.frames.push(CtfeFrame::new(read_body, read_locals));
         assert!(matches!(
             machine.eval_expr(1, u256_ty, SExpr::Forward(src), origin),
             Ok(CtfeValue::Ref(_))
@@ -3464,16 +3564,12 @@ mod tests {
         }));
 
         let mut attempt = CtfeMachine::new(&db, CtfeConfig::default());
-        attempt.frames.push(CtfeFrame {
-            body: anchor_body,
-            locals: anchor_locals.clone(),
-            current: 0,
-        });
-        attempt.frames.push(CtfeFrame {
-            body: read_body,
-            locals: read_locals.clone(),
-            current: 0,
-        });
+        attempt
+            .frames
+            .push(CtfeFrame::new(anchor_body, anchor_locals.clone()));
+        attempt
+            .frames
+            .push(CtfeFrame::new(read_body, read_locals.clone()));
         let place = attempt
             .resolve_place(1, &SPlace::new(src.value), origin)
             .expect("nested reference resolves into the caller frame");
@@ -3503,16 +3599,10 @@ mod tests {
         drop(attempt);
 
         let mut retry = CtfeMachine::new(&db, CtfeConfig::default());
-        retry.frames.push(CtfeFrame {
-            body: anchor_body,
-            locals: anchor_locals,
-            current: 0,
-        });
-        retry.frames.push(CtfeFrame {
-            body: read_body,
-            locals: read_locals,
-            current: 0,
-        });
+        retry
+            .frames
+            .push(CtfeFrame::new(anchor_body, anchor_locals));
+        retry.frames.push(CtfeFrame::new(read_body, read_locals));
         let CtfeValue::Value(original) = retry.read_slot(0, root, origin).unwrap() else {
             panic!("retry root must remain a value");
         };
@@ -3533,7 +3623,7 @@ mod tests {
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone(
             "internal_ctfe_pointer_borrow.fe".into(),
-            "const fn external(p: *u8) -> mut u8 { mut *p }",
+            "const fn external(p: *u8) -> mut u8 { unsafe { mut *p } }",
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
@@ -3551,7 +3641,7 @@ mod tests {
                     dst,
                     expr:
                         expr @ SExpr::Borrow {
-                            provider: Some(ProviderAddressSpace::Memory),
+                            provider: Some(AddressSpace::Memory),
                             place,
                             ..
                         },
@@ -3566,11 +3656,10 @@ mod tests {
             })
             .expect("`mut *p` must lower as a memory borrow through a dereference");
         let mut machine = CtfeMachine::new(&db, CtfeConfig::default());
-        machine.frames.push(CtfeFrame {
+        machine.frames.push(CtfeFrame::new(
             body,
-            locals: vec![CtfeSlot::Uninit; body.locals.len()],
-            current: 0,
-        });
+            vec![CtfeSlot::Uninit; body.locals.len()],
+        ));
         assert!(matches!(
             machine.eval_expr(0, body.locals[dst.index()].ty, expr, origin),
             Err(EvalStop::Failed(EvalFailure::Ctfe(

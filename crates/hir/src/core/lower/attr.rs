@@ -33,6 +33,8 @@ pub(super) enum AttrForm {
         allow_bare: bool,
         allowed_args: &'static [&'static str],
     },
+    /// One expression argument: `#[slot(BASE + 1)]`, `#[slot(BASE)]`.
+    SingleExpr,
 }
 
 impl AttrForm {
@@ -55,6 +57,20 @@ impl AttrForm {
                         .key
                         .as_ref()
                         .is_some_and(|key| allowed_args.contains(&key.as_str()))
+            }
+            Self::SingleExpr => {
+                attr.value.is_none()
+                    && attr.has_args
+                    && matches!(
+                        attr.args.as_slice(),
+                        [AstAttrArgSpec {
+                            key: Some(_),
+                            value: None
+                        }] | [AstAttrArgSpec {
+                            key: None,
+                            value: Some(ast::AttrArgValueKind::Expr(_))
+                        }]
+                    )
             }
         }
     }
@@ -408,7 +424,10 @@ impl<'db> AttrArgValue<'db> {
                 Some(Self::Ident(IdentId::lower_token(ctxt, token)))
             }
             Some(ast::AttrArgValueKind::Lit(lit)) => LitKind::lower_ast(ctxt, lit).map(Self::Lit),
-            Some(ast::AttrArgValueKind::Expr(_)) => None,
+            Some(ast::AttrArgValueKind::Expr(expr)) => Some(Self::Expr(StringId::new(
+                ctxt.db(),
+                expr.syntax().text().to_string(),
+            ))),
             None => None,
         }
     }

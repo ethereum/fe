@@ -35,6 +35,11 @@ impl FuncParam {
         support::token(self.syntax(), SK::MutKw)
     }
 
+    /// Returns the `var` keyword of a mutable owned parameter.
+    pub fn var_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::VarKw)
+    }
+
     /// Returns `true` if the parameter uses `_` as an argument label (e.g.
     /// `_ x: u256`), meaning it doesn't have an argument label at the call site.
     pub fn is_label_suppressed(&self) -> bool {
@@ -202,10 +207,6 @@ impl ConstGenericParam {
     pub fn default_expr(&self) -> Option<super::Expr> {
         support::child(self.syntax())
     }
-
-    pub fn default_hole(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::Underscore)
-    }
 }
 
 ast_node! {
@@ -261,10 +262,6 @@ ast_node! {
 impl ConstGenericArg {
     pub fn expr(&self) -> Option<super::Expr> {
         support::child(self.syntax())
-    }
-
-    pub fn hole_token(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::Underscore)
     }
 }
 
@@ -486,9 +483,41 @@ impl TraitRef {
         support::child(self.syntax())
     }
 
+    /// The callable shape the trait ref names instead of a path.
+    pub fn fn_shape(&self) -> Option<FnShape> {
+        support::child(self.syntax())
+    }
+
     /// A generic argument list for the trait.
     pub fn generic_args(&self) -> Option<GenericArgList> {
         support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    /// `Fn(own A, B) -> R`: the callable trait of the shape whose receiver
+    /// mode the name gives (`Fn` views, `FnMut` mutates) and whose parameter
+    /// modes the list gives.
+    pub struct FnShape,
+    SK::FnShape
+}
+impl FnShape {
+    /// `Fn` or `FnMut`.
+    pub fn name(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    /// The parameter types, each with its mode.
+    pub fn params(&self) -> Option<super::TupleType> {
+        support::child(self.syntax())
+    }
+
+    /// The result type after `->`.
+    pub fn ret_ty(&self) -> Option<super::Type> {
+        self.syntax()
+            .children()
+            .filter_map(super::Type::cast)
+            .nth(1)
     }
 }
 

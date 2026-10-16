@@ -377,12 +377,12 @@ fn check_ingot_and_dependencies(
             let formatted = diagnostics.hir.format_diags(db);
             write_report_file(report, "errors/diagnostics.txt", &formatted);
         }
-        has_errors = true;
+        has_errors = diagnostics.hir.has_errors(db);
     }
 
     if !diagnostics.mir.is_empty() {
         db.emit_complete_diagnostics(&diagnostics.mir);
-        has_errors = true;
+        has_errors |= diagnostics.mir_has_errors();
     }
 
     if !diagnostics.dependencies.is_empty() {
@@ -447,23 +447,25 @@ fn check_single_file(
         let mut has_errors = false;
 
         if !diagnostics.hir.is_empty() {
-            eprintln!("errors in {file_url}");
-            eprintln!();
+            has_errors = diagnostics.hir.has_errors(db);
+            if has_errors {
+                eprintln!("errors in {file_url}");
+                eprintln!();
+            }
             diagnostics.hir.emit(db);
             if let Some(report) = report {
                 let formatted = diagnostics.hir.format_diags(db);
                 write_report_file(report, "errors/diagnostics.txt", &formatted);
             }
-            has_errors = true;
         }
 
         if !diagnostics.mir.is_empty() {
-            if !has_errors {
+            if !has_errors && diagnostics.mir_has_errors() {
                 eprintln!("errors in {file_url}");
                 eprintln!();
             }
             db.emit_complete_diagnostics(&diagnostics.mir);
-            has_errors = true;
+            has_errors |= diagnostics.mir_has_errors();
         }
         if !diagnostics.dependencies.is_empty() {
             let formatted = diagnostics.dependencies.format(db);

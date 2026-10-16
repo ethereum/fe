@@ -3,8 +3,8 @@ use parser::ast::{self, prelude::*};
 use super::body::BodyCtxt;
 use crate::{
     hir_def::{
-        Body, GenericArgListId, IdentId, IntegerId, ItemKind, LitKind, Pat, PathId, Stmt, TypeId,
-        expr::*,
+        Body, FuncParamListId, GenericArgListId, IdentId, IntegerId, ItemKind, LitKind, Pat,
+        PathId, Stmt, TypeId, expr::*,
     },
     span::HirOrigin,
 };
@@ -24,21 +24,30 @@ impl<'db> Expr<'db> {
             }
 
             ast::ExprKind::Block(block) => {
-                ctxt.f_ctxt.enter_block_scope();
-                let mut stmts = vec![];
+                return Self::lower_block(ctxt, &ast, block, BlockKind::Normal);
+            }
 
-                for stmt in block.stmts() {
-                    let stmt = Stmt::push_to_body(ctxt, stmt);
-                    stmts.push(stmt);
+            ast::ExprKind::Closure(closure) => {
+                let params = closure
+                    .params()
+                    .map(|params| FuncParamListId::lower_ast(ctxt.f_ctxt, params))
+                    .unwrap_or_else(|| FuncParamListId::new(ctxt.f_ctxt.db(), Vec::new()));
+                let ret_ty = closure
+                    .ret_ty()
+                    .map(|ret_ty| TypeId::lower_ast(ctxt.f_ctxt, ret_ty));
+                let body = Self::push_to_body_opt(ctxt, closure.body());
+                Self::Closure {
+                    params,
+                    ret_ty,
+                    body,
                 }
-                let expr_id = ctxt.push_expr(Self::Block(stmts), HirOrigin::raw(&ast));
+            }
 
-                for item in block.items() {
-                    ItemKind::lower_ast(ctxt.f_ctxt, item);
-                }
-
-                ctxt.f_ctxt.leave_block_scope(expr_id);
-                return expr_id;
+            ast::ExprKind::Unsafe(unsafe_) => {
+                return match unsafe_.block() {
+                    Some(block) => Self::lower_block(ctxt, &ast, block, BlockKind::Unsafe),
+                    None => ctxt.push_invalid_expr(HirOrigin::raw(&ast)),
+                };
             }
 
             ast::ExprKind::Bin(bin) => {
@@ -61,6 +70,8 @@ impl<'db> Expr<'db> {
                 let ty = TypeId::lower_ast_partial(ctxt.f_ctxt, cast.ty());
                 Self::Cast(expr, ty)
             }
+
+            ast::ExprKind::Try(try_) => Self::Try(Self::push_to_body_opt(ctxt, try_.expr())),
 
             ast::ExprKind::Call(call) => {
                 let args = call
@@ -242,6 +253,29 @@ impl<'db> Expr<'db> {
         };
 
         ctxt.push_expr(expr, HirOrigin::raw(&ast))
+    }
+
+    /// Lowers `block` as the expression `ast`, which is the block itself or
+    /// the `unsafe` block wrapping it.
+    fn lower_block(
+        ctxt: &mut BodyCtxt<'_, 'db>,
+        ast: &ast::Expr,
+        block: ast::BlockExpr,
+        kind: BlockKind,
+    ) -> ExprId {
+        ctxt.f_ctxt.enter_block_scope();
+        let stmts = block
+            .stmts()
+            .map(|stmt| Stmt::push_to_body(ctxt, stmt))
+            .collect();
+        let expr_id = ctxt.push_expr(Self::Block(stmts, kind), HirOrigin::raw(ast));
+
+        for item in block.items() {
+            ItemKind::lower_ast(ctxt.f_ctxt, item);
+        }
+
+        ctxt.f_ctxt.leave_block_scope(expr_id);
+        expr_id
     }
 
     pub(super) fn push_to_body_opt(ctxt: &mut BodyCtxt<'_, '_>, ast: Option<ast::Expr>) -> ExprId {

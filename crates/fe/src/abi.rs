@@ -395,12 +395,7 @@ fn collect_typed_body_event_structs<'db>(
                     name,
                 )
                 && let Some(impl_func) = method.body()
-                && let Ok(body_args) = method.complete_body_args(
-                    db,
-                    callable.generic_args(),
-                    callable.checked_input_tys(),
-                    None,
-                )
+                && let Ok(body_args) = method.complete_body_args(db, callable.generic_args())
             {
                 target.func = impl_func;
                 target.generic_args = body_args.into_values();
@@ -815,23 +810,7 @@ fn derive_state_mutability(
         return "payable".to_string();
     }
 
-    // EVM memory is local to the call. Reading or writing RawMem cannot
-    // observe or mutate chain state and must not change ABI mutability.
-    let raw_mem = resolve_lib_trait_path(
-        db,
-        arm_view.contract(db).scope(),
-        "std::evm::effects::RawMem",
-    );
     let effects = arm_view.effective_effect_requirements(db);
-    let effects: Vec<_> = effects
-        .iter()
-        .filter(|effect| {
-            !effect
-                .key
-                .key_trait()
-                .is_some_and(|inst| Some(inst.def(db)) == raw_mem)
-        })
-        .collect();
     if effects.is_empty() {
         "pure".to_string()
     } else if effects.iter().any(|effect| effect.is_mut) {
@@ -1192,17 +1171,17 @@ impl<T> core::abi::AbiSize for GenericMsg<T>
 impl<T> core::abi::Encode<std::abi::Sol> for GenericMsg<T>
     where T: core::abi::Encode<std::abi::Sol>
 {
-    fn encode(own self, _ ptr: *u8) {
+    fn encode(own self, _ out: core::abi::AbiFrame) {
         let Self { value } = self
-        value.encode(ptr)
+        value.encode(out)
     }
 }
 
 impl<T> core::abi::Decode<std::abi::Sol> for GenericMsg<T>
     where T: core::abi::Decode<std::abi::Sol>
 {
-    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-        let value = T::decode_payload(d)
+    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>, I: core::abi::ByteInput>(_ d: mut D, _ input: I) -> Self {
+        let value = T::decode_payload(mut d, input)
         Self { value }
     }
 }
@@ -1258,16 +1237,16 @@ struct Weird {
 }
 
 impl core::abi::Encode<std::abi::Sol> for Weird {
-    fn encode(own self, _ ptr: *u8) {
-        self.flag.encode(ptr)
-        self.amount.encode(core::ptr::offset_bytes(ptr, 32))
+    fn encode(own self, _ out: core::abi::AbiFrame) {
+        self.flag.encode(out.slice(offset: 0, len: 32))
+        self.amount.encode(out.slice(offset: 32, len: 32))
     }
 }
 
 impl core::abi::Decode<std::abi::Sol> for Weird {
-    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-        let flag = bool::decode_payload(d)
-        let amount = u64::decode_payload(d)
+    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>, I: core::abi::ByteInput>(_ d: mut D, _ input: I) -> Self {
+        let flag = bool::decode_payload(mut d, input)
+        let amount = u64::decode_payload(mut d, input)
         Self { amount, flag }
     }
 }
@@ -1318,16 +1297,16 @@ mod TokenMsg {
     }
 
     impl core::abi::Encode<std::abi::Sol> for Transfer {
-        fn encode(own self, _ ptr: *u8) {
-            self.to.encode(ptr)
-            self.amount.encode(core::ptr::offset_bytes(ptr, 32))
+        fn encode(own self, _ out: core::abi::AbiFrame) {
+            self.to.encode(out.slice(offset: 0, len: 32))
+            self.amount.encode(out.slice(offset: 32, len: 32))
         }
     }
 
     impl core::abi::Decode<std::abi::Sol> for Transfer {
-        fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-            let to = u64::decode_payload(d)
-            let amount = u64::decode_payload(d)
+        fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>, I: core::abi::ByteInput>(_ d: mut D, _ input: I) -> Self {
+            let to = u64::decode_payload(mut d, input)
+            let amount = u64::decode_payload(mut d, input)
             Self { to, amount }
         }
     }
@@ -1655,7 +1634,7 @@ pub contract Probe {
     recv ProbeMsg {
         Probe { target } -> bool uses (call: Call) {
             let args = MemBuffer::alloc(0)
-            let mut ret = MemBuffer::with_capacity(64)
+            var ret = MemBuffer::with_capacity(64)
             call.raw_staticcall(addr: target, gas: 30000, args: args.span(), ret: mut ret).success()
         }
     }
@@ -2060,15 +2039,15 @@ pub contract C {
         );
     }
     #[test]
-    fn memory_effects_do_not_change_abi_state_mutability() {
+    fn raw_memory_does_not_change_abi_state_mutability() {
         let code = r#"
+use core::abi::store_word
+use core::ptr
 use std::abi::sol
-use std::evm::{RawMem, RawStorage}
+use std::evm::RawStorage
 msg M {
     #[selector = sol("memoryOnly()")]
     MemoryOnly {},
-    #[selector = sol("readMemory()")]
-    ReadMemory {},
     #[selector = sol("readStorage()")]
     ReadStorage {},
     #[selector = sol("writeStorage()")]
@@ -2076,17 +2055,17 @@ msg M {
 }
 pub contract C {
     recv M {
-        MemoryOnly {} uses (mem: mut RawMem) {}
-        ReadMemory {} uses (mem: RawMem) {}
-        ReadStorage {} uses (mem: mut RawMem, storage: RawStorage) {}
-        WriteStorage {} uses (mem: mut RawMem, storage: mut RawStorage) {}
+        MemoryOnly {} {
+            unsafe { store_word(ptr: ptr::alloc_bytes(32), value: 1) }
+        }
+        ReadStorage {} uses (storage: RawStorage) {}
+        WriteStorage {} uses (storage: mut RawStorage) {}
     }
 }
 "#;
         let entries = abi_entries(code, "C");
         for (name, expected) in [
             ("memoryOnly", "pure"),
-            ("readMemory", "pure"),
             ("readStorage", "view"),
             ("writeStorage", "nonpayable"),
         ] {

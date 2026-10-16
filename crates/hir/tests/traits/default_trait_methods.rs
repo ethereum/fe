@@ -78,7 +78,7 @@ fn run(evm: mut Evm) -> u256 {
     );
     let self_binding = instantiated.param_binding(0).expect("missing self binding");
     let self_ty = instantiated.binding_ty(&db, self_binding);
-    assert_eq!(self_ty.pretty_print(&db).to_string(), "mut Evm");
+    assert_eq!(self_ty.pretty_print(&db).to_string(), "Evm");
 }
 
 #[test]

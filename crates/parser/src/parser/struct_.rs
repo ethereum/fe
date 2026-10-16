@@ -57,12 +57,12 @@ impl super::Parse for RecordFieldDefListScope {
             true,
             SyntaxKind::RecordFieldDefList,
             (SyntaxKind::LBrace, SyntaxKind::RBrace),
-            |parser| parser.parse(RecordFieldDefScope::default()),
+            |parser| parser.parse(RecordFieldDefScope::new(true)),
         )
     }
 }
 
-define_scope! { pub(crate) RecordFieldDefScope, RecordFieldDef }
+define_scope! { pub(crate) RecordFieldDefScope { allow_unsafe: bool }, RecordFieldDef }
 impl super::Parse for RecordFieldDefScope {
     type Error = Recovery<ErrProof>;
 
@@ -95,6 +95,19 @@ impl super::Parse for RecordFieldDefScope {
         }
 
         parser.set_scope_recovery_stack(&[SyntaxKind::Colon]);
+
+        // An `unsafe` field holds a value the type's safe methods trust.
+        if matches!(
+            parser.peek_n_non_trivia(2).as_slice(),
+            [SyntaxKind::UnsafeKw, SyntaxKind::Ident]
+        ) {
+            if !self.allow_unsafe {
+                parser.error_msg_on_current_token(
+                    "only struct and enum variant fields can be `unsafe`",
+                );
+            }
+            parser.bump();
+        }
 
         // Optional `mut` marker for fields (e.g. `mut field: Type`)
         parser.bump_if(SyntaxKind::MutKw);

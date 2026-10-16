@@ -14,7 +14,7 @@ use crate::analysis::{
 };
 
 use super::{
-    const_ty::{ConstBodyLowering, ConstTyData, HoleAnchor, LoweringContext, ty_is_fully_ground},
+    const_ty::{ConstBodyLowering, ConstTyData, LoweringContext, ty_is_fully_ground},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     normalize::normalize_ty,
     trait_resolution::{PredicateListId, TraitSolveCx, WellFormedness, check_ty_wf},
@@ -151,15 +151,8 @@ struct HirTyErrVisitor<'db> {
 }
 
 impl<'db> HirTyErrVisitor<'db> {
-    fn path_context(&self, path: PathId<'db>, scope: ScopeId<'db>) -> LoweringContext<'db> {
-        LoweringContext::for_const_bodies(
-            HoleAnchor::TemplatePath {
-                path,
-                scope,
-                assumptions: self.assumptions,
-            },
-            self.const_bodies,
-        )
+    fn path_context(&self) -> LoweringContext<'db> {
+        LoweringContext::for_const_bodies(self.const_bodies)
     }
 
     fn push_opt_diag(&mut self, diag: Option<TyDiagCollection<'db>>) {
@@ -188,7 +181,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
                 ctxt.scope(),
                 self.assumptions,
                 true,
-                &self.path_context(path, ctxt.scope()),
+                &self.path_context(),
             )
         {
             let is_const_like = match resolved {
@@ -225,7 +218,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
                         self.assumptions,
                         true,
                         &mut check_visibility,
-                        &self.path_context(path, scope),
+                        &self.path_context(),
                     );
                     match resolved {
                         Ok(_) => {
@@ -345,7 +338,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             self.assumptions,
             false,
             &mut check_visibility,
-            &self.path_context(path, scope),
+            &self.path_context(),
         );
         let res = match resolved {
             Ok(res) => res,
@@ -409,7 +402,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             self.assumptions,
             false,
             &mut check_visibility,
-            &self.path_context(path, scope),
+            &self.path_context(),
         );
         match resolved {
             Ok(res) => {
@@ -497,7 +490,6 @@ pub(crate) fn qualified_path_wf_diags<'db>(
                             primary_goal: goal,
                             unsat_subgoal: subgoal,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -652,6 +644,15 @@ pub(crate) fn diag_from_invalid_cause<'db>(
 ) -> Option<TyDiagCollection<'db>> {
     Some(match cause.clone() {
         InvalidCause::NotFullyApplied => TyLowerDiag::ExpectedStarKind(span).into(),
+
+        InvalidCause::ModeNotType => TyLowerDiag::ModeNotType(span).into(),
+
+        InvalidCause::ViewPart { view } => TyLowerDiag::ViewTypeMode {
+            span,
+            ty: view,
+            mode: "part of another type",
+        }
+        .into(),
 
         InvalidCause::KindMismatch { expected, given } => TyLowerDiag::InvalidTypeArgKind {
             span,

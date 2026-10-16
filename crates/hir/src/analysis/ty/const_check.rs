@@ -2,9 +2,7 @@ use crate::analysis::HirAnalysisDb;
 use crate::analysis::ty::diagnostics::{BodyDiag, FuncBodyDiag};
 use crate::analysis::ty::trait_def::resolve_trait_method_instance;
 use crate::analysis::ty::trait_resolution::{Selection, TraitSolveCx};
-use crate::analysis::ty::ty_check::{
-    Callable, EffectArgLayoutView, EffectParamSite, EffectPassMode, TypedBody,
-};
+use crate::analysis::ty::ty_check::{Callable, EffectParamSite, EffectPassMode, TypedBody};
 use crate::hir_def::{
     Body, CallableDef, Cond, CondId, Expr, ExprId, Func, Partial, Pat, Stmt, StmtId,
 };
@@ -131,9 +129,8 @@ impl<'db> ConstFnChecker<'db, '_> {
                 arg.required_mut
                     || arg.key_kind != super::effects::EffectKeyKind::Trait
                     || arg.pass_mode != EffectPassMode::ByValue
-                    || arg.layout_view != EffectArgLayoutView::Direct
                     || arg.provider.is_some_and(|space| {
-                        space != crate::analysis::ty::provider::ProviderAddressSpace::Memory
+                        space != crate::analysis::ty::provider::AddressSpace::Memory
                     })
                     || arg.provider_target_ty.is_some()
             })
@@ -151,19 +148,23 @@ impl<'db> ConstFnChecker<'db, '_> {
         };
 
         match stmt_data {
-            Stmt::Let(pat, _ty, init) => {
+            Stmt::Let(pat, _ty, init, else_) => {
                 self.check_let_pat(*pat);
-                if let Some(init) = init {
-                    self.check_expr(*init);
+                for expr in init.iter().chain(else_) {
+                    self.check_expr(*expr);
                 }
             }
-            Stmt::For(pat, iter, body, _) => {
+            Stmt::For(pat, iter, driver, body, _) => {
                 self.check_let_pat(*pat);
                 self.check_expr(*iter);
-                if let Some(seq) = self.typed_body.for_loop_seq(stmt) {
+                if let Some(driver) = driver {
+                    self.check_expr(*driver);
+                }
+                if let Some(plan) = self.typed_body.for_loop_plan(stmt) {
                     let span: DynLazySpan<'db> = stmt.span(self.body).into();
-                    self.check_callable(span.clone(), &seq.len_callable);
-                    self.check_callable(span, &seq.get_callable);
+                    for call in &plan.calls {
+                        self.check_callable(span.clone(), &call.callable);
+                    }
                 }
                 self.check_expr(*body);
             }
@@ -177,7 +178,7 @@ impl<'db> ConstFnChecker<'db, '_> {
                     self.check_expr(*expr);
                 }
             }
-            Stmt::Expr(expr) => self.check_expr(*expr),
+            Stmt::Yield(expr) | Stmt::Expr(expr) => self.check_expr(*expr),
         }
     }
 
@@ -215,7 +216,11 @@ impl<'db> ConstFnChecker<'db, '_> {
             )
             | Expr::Path(_) => {}
 
-            Expr::Block(stmts) => stmts.iter().for_each(|stmt| self.check_stmt(*stmt)),
+            Expr::Block(stmts, _) => stmts.iter().for_each(|stmt| self.check_stmt(*stmt)),
+
+            Expr::Closure { .. } => self.push(BodyDiag::ClosureInConstContext {
+                primary: expr.span(self.body).into(),
+            }),
 
             Expr::Bin(lhs, rhs, _) => {
                 self.check_expr(*lhs);
@@ -228,7 +233,10 @@ impl<'db> ConstFnChecker<'db, '_> {
                 self.check_call_target(expr);
             }
 
-            Expr::Field(inner, _) | Expr::ArrayRep(inner, _) | Expr::Cast(inner, _) => {
+            Expr::Field(inner, _)
+            | Expr::ArrayRep(inner, _)
+            | Expr::Cast(inner, _)
+            | Expr::Try(inner) => {
                 self.check_expr(*inner);
             }
 
@@ -239,7 +247,11 @@ impl<'db> ConstFnChecker<'db, '_> {
                     self.check_expr(*else_);
                 }
             }
-            Expr::Call(_callee, args) => {
+            Expr::Call(_, args) => {
+                // A callable value's call runs a method on the callee.
+                if let Some(callee) = self.typed_body.call_receiver(self.db, expr) {
+                    self.check_expr(callee);
+                }
                 args.iter().for_each(|arg| self.check_expr(arg.expr));
                 self.check_call_target(expr);
             }

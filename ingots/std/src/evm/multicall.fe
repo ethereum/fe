@@ -50,10 +50,10 @@ uses (ctx: Ctx, call: mut Call)
 {
     let this = ctx.address()
     let count = data.len()
-    let mut results = DynVec<Bytes>::new()
-    let mut i: u256 = 0
+    var results = DynVec<Bytes>::new()
+    var i: u256 = 0
     while i < count {
-        let mut ret = MemBuffer::empty()
+        var ret = MemBuffer::empty()
         let outcome = call.raw_delegatecall(
             addr: this,
             gas: ops::gas(),

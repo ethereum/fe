@@ -222,7 +222,6 @@ fn verify_sem_const_children<'db>(
         if !expected_ty.has_param(db)
             && !expected_ty.has_var(db)
             && !expected_ty.has_projection(db)
-            && !expected_ty.has_hole(db)
             && actual_ty != expected_ty
             && const_identity_ty(db, actual_ty) != const_identity_ty(db, expected_ty)
         {
@@ -308,7 +307,8 @@ fn verify_sem_const_shape_impl<'db>(
             if ty.is_func(db) && fields.is_empty() {
                 return Ok(());
             }
-            if !ty.is_struct(db) {
+            // A closure's value is the record of its captures.
+            if !ty.is_struct(db) && ty.as_closure(db).is_none() {
                 return Err("constant record payload has a non-record type");
             }
             verify_sem_const_children(db, fields, ty.field_types(db).into_iter(), allow_dependent)
@@ -561,24 +561,6 @@ pub(crate) fn instantiate_const_template<'db>(
     *const_ty
 }
 
-/// The synthetic contract entry has no semantic instance to reify against.
-/// Its static layout root is already closed and must become a concrete scalar
-/// before MIR scalar lowering; formal runtime evidence uses a separate path.
-pub fn prepare_static_layout_root_value<'db>(
-    db: &'db dyn HirAnalysisDb,
-    root: TyId<'db>,
-    scalar_ty: TyId<'db>,
-) -> Option<SemConstId<'db>> {
-    let TyData::ConstTy(term) = root.data(db) else {
-        return None;
-    };
-    let evaluated = evaluate_type_level_const_ty(db, *term, Some(scalar_ty));
-    let value = sem_const_from_ty(db, TyId::const_ty(db, evaluated))?;
-    (sem_const_ty(db, value) == scalar_ty
-        && matches!(value.value(db), SemConstValue::Scalar { .. }))
-    .then_some(value)
-}
-
 pub fn sem_const_from_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: TyId<'db>,
@@ -593,7 +575,6 @@ pub fn sem_const_from_ty<'db>(
         ConstTyData::Invalid(_) => None,
         ConstTyData::TyVar(..)
         | ConstTyData::TyParam(..)
-        | ConstTyData::Hole(..)
         | ConstTyData::Abstract(..)
         | ConstTyData::Computation { .. }
         | ConstTyData::UnEvaluated { ty: Some(..), .. } => {
@@ -710,7 +691,7 @@ fn reify_runtime_const_impl<'db>(
             if ty.is_func(db) && fields.is_empty() {
                 return Some(struct_const(db, ty, Box::new([])));
             }
-            if !ty.is_struct(db) {
+            if !ty.is_struct(db) && ty.as_closure(db).is_none() {
                 return None;
             }
             let field_tys = ty.field_types(db);
@@ -938,7 +919,7 @@ pub fn int_ty_shape<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<(u
         | PrimTy::String
         | PrimTy::Array
         | PrimTy::Tuple(_)
-        | PrimTy::Ptr
+        | PrimTy::Ptr(_)
         | PrimTy::View
         | PrimTy::BorrowMut
         | PrimTy::BorrowRef => return None,
@@ -1053,7 +1034,7 @@ pub(crate) fn runtime_size_bytes_with_source<'db>(
             Some(0)
         } else if ty.has_param(db) {
             None
-        } else if ty.is_tuple(db) {
+        } else if ty.is_tuple(db) || ty.as_closure(db).is_some() {
             let canonical_fields = ty.field_types(db);
             let source_fields = source.field_types(db);
             if canonical_fields.len() != source_fields.len() {
@@ -1091,7 +1072,7 @@ pub(crate) fn runtime_size_bytes_with_source<'db>(
             match prim {
                 PrimTy::Bool => Some(1),
                 PrimTy::String
-                | PrimTy::Ptr
+                | PrimTy::Ptr(_)
                 | PrimTy::View
                 | PrimTy::BorrowMut
                 | PrimTy::BorrowRef => Some(WORD_SIZE_BYTES),

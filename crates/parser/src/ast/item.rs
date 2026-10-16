@@ -98,6 +98,12 @@ impl FuncSignature {
         support::child(self.syntax())
     }
 
+    /// The result-space contract of the return's access components that
+    /// declare none: `-> (usize, ref T) @S`.
+    pub fn ret_space(&self) -> Option<super::SpaceAnnotation> {
+        support::child(self.syntax())
+    }
+
     /// Returns the optional `uses` clause of the function.
     pub fn uses_clause(&self) -> Option<super::UsesClause> {
         support::child(self.syntax())
@@ -396,8 +402,65 @@ impl TraitConstItem {
 }
 
 ast_node! {
+    /// `uses E` in a trait definition, optionally with a default row, or
+    /// `uses E = (store: mut Store)` in a trait implementation.
+    pub struct TraitUsesItem,
+    SK::TraitUsesItem,
+}
+impl super::AttrListOwner for TraitUsesItem {}
+impl TraitUsesItem {
+    /// Returns the name of the row
+    pub fn name(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    /// Whether the item gives the row's effects, after `=`.
+    pub fn eq(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Eq)
+    }
+
+    /// `= (a: A, b: mut B)`
+    pub fn param_list(&self) -> Option<super::UsesParamList> {
+        support::child(self.syntax())
+    }
+
+    /// `= A` or `= mut A`
+    pub fn param(&self) -> Option<super::UsesParam> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    /// `space S` in a trait definition, or `space S = memory` in a trait
+    /// implementation: an associated result space.
+    pub struct TraitSpaceItem,
+    SK::TraitSpaceItem,
+}
+impl super::AttrListOwner for TraitSpaceItem {}
+impl TraitSpaceItem {
+    /// Returns the name of the space.
+    pub fn name(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| token.kind() == SK::Ident)
+            .nth(1)
+    }
+
+    /// The space an implementation gives, after `=`.
+    pub fn value(&self) -> Option<super::Path> {
+        support::child(self.syntax())
+    }
+
+    /// `[_]` in `space S = self[_]`.
+    pub fn space_path(&self) -> Option<super::SpacePath> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
     pub struct TraitItem,
-    SK::Func | SK::TraitTypeItem | SK::TraitConstItem
+    SK::Func | SK::TraitTypeItem | SK::TraitConstItem | SK::TraitUsesItem | SK::TraitSpaceItem
 }
 impl TraitItem {
     pub fn kind(&self) -> TraitItemKind {
@@ -409,6 +472,12 @@ impl TraitItem {
             SK::TraitConstItem => {
                 TraitItemKind::Const(TraitConstItem::cast(self.syntax().clone()).unwrap())
             }
+            SK::TraitUsesItem => {
+                TraitItemKind::Uses(TraitUsesItem::cast(self.syntax().clone()).unwrap())
+            }
+            SK::TraitSpaceItem => {
+                TraitItemKind::Space(TraitSpaceItem::cast(self.syntax().clone()).unwrap())
+            }
             _ => unreachable!(),
         }
     }
@@ -418,6 +487,8 @@ pub enum TraitItemKind {
     Func(Func),
     Type(TraitTypeItem),
     Const(TraitConstItem),
+    Uses(TraitUsesItem),
+    Space(TraitSpaceItem),
 }
 
 ast_node! {
@@ -449,6 +520,7 @@ ast_node! {
 impl super::GenericParamsOwner for Impl {}
 impl super::WhereClauseOwner for Impl {}
 impl super::AttrListOwner for Impl {}
+impl super::ItemModifierOwner for Impl {}
 impl Impl {
     /// Returns the type of the impl.
     /// `Foo::Bar<T>` in `impl Foo::Bar<T> where .. { .. }`
@@ -472,6 +544,7 @@ ast_node! {
 impl super::GenericParamsOwner for ImplTrait {}
 impl super::WhereClauseOwner for ImplTrait {}
 impl super::AttrListOwner for ImplTrait {}
+impl super::ItemModifierOwner for ImplTrait {}
 impl ImplTrait {
     /// Returns the trait of the impl.
     /// `Foo` in `impl<T> Foo for Bar<T> { .. }`
@@ -590,6 +663,11 @@ impl RecordFieldDef {
     /// Returns the mut keyword if exists.
     pub fn mut_kw(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::MutKw)
+    }
+
+    /// Returns the `unsafe` keyword of an `unsafe` field, if any.
+    pub fn unsafe_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::UnsafeKw)
     }
 
     /// Returns the name of the field.

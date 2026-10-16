@@ -5,20 +5,16 @@ use super::{
     binder::Binder,
     const_expr::ConstExpr,
     const_ty::{
-        CallableInputLayoutHoleOrigin, ConstCanonEnv, ConstCanonMode, ConstTyData, ConstTyId,
-        canonicalize_ty_for_mode, const_ty_from_assoc_const_use,
-        normalize_const_tys_for_comparison,
+        ConstCanonEnv, ConstCanonMode, ConstTyData, ConstTyId, canonicalize_ty_for_mode,
+        const_ty_from_assoc_const_use, normalize_const_tys_for_comparison,
     },
     diagnostics::{ImplDiag, TyDiagCollection},
     effects::{
         CanonicalEffectIdentity, EffectKeyCanonMode, EffectKeyKind,
         canonical_effect_identity_for_binding, place_effect_provider_param_index_map,
+        rows::row_is_empty,
     },
     fold::{TyFoldable, TyFolder},
-    layout_holes::{
-        callable_input_layout_bindings_by_origin, layout_shape_key, layout_shape_ty,
-        layout_shape_value,
-    },
     normalize::{normalize_from_assumptions, normalize_ty},
     trait_def::TraitInstId,
     trait_resolution::{
@@ -33,19 +29,19 @@ use super::{
 use crate::analysis::HirAnalysisDb;
 use crate::hir_def::{CallableDef, Expr, Partial, PathKind, scope_graph::ScopeId};
 use common::indexmap::IndexMap;
-use rustc_hash::FxHashMap;
 
 /// Compares the implementation method with the trait method to ensure they
 /// match.
 ///
 /// This function performs the following checks:
 ///
-/// 1. Number of generic parameters.
-/// 2. Kinds of generic parameters.
-/// 3. Arity (number of arguments).
-/// 4. Argument labels.
-/// 5. Argument types and return type.
-/// 6. Method constraints.
+/// 1. Unsafety.
+/// 2. Number of generic parameters.
+/// 3. Kinds of generic parameters.
+/// 4. Arity (number of arguments).
+/// 5. Argument labels.
+/// 6. Argument types and return type.
+/// 7. Method constraints.
 ///
 /// If any of these checks fail, the function will record the appropriate
 /// diagnostics.
@@ -66,6 +62,12 @@ pub(super) fn compare_impl_method<'db>(
     trait_inst: TraitInstId<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) {
+    if let (CallableDef::Func(impl_func), CallableDef::Func(trait_func)) = (impl_m, trait_m)
+        && impl_func.is_unsafe(db) != trait_func.is_unsafe(db)
+    {
+        sink.push(ImplDiag::MethodUnsafeMismatch { trait_m, impl_m }.into());
+    }
+
     if !compare_generic_param_num(db, impl_m, trait_m, sink) {
         return;
     }
@@ -82,9 +84,12 @@ pub(super) fn compare_impl_method<'db>(
     // method with the trait method.
     let mut err = !compare_arg_label(db, impl_m, trait_m, sink);
 
-    let (param_subst, effect_pairs) = trait_to_impl_param_subst(db, impl_m, trait_m, trait_inst);
-    if let (CallableDef::Func(_), CallableDef::Func(trait_func)) = (impl_m, trait_m)
-        && effect_pairs.len() != trait_func.effect_requirements(db).len()
+    let (param_subst, _, effects_paired) =
+        trait_to_impl_param_subst(db, impl_m, trait_m, trait_inst);
+    if matches!(
+        (impl_m, trait_m),
+        (CallableDef::Func(_), CallableDef::Func(_))
+    ) && !effects_paired
     {
         sink.push(ImplDiag::MethodEffectMismatch { trait_m, impl_m }.into());
         err = true;
@@ -270,10 +275,10 @@ fn compare_ty<'db>(
             trait_inst,
             false,
         );
-        // 4) Compare for equality
+        // 4) Compare for equality, including the parameter's mode.
         if !impl_m_ty.has_invalid(db)
-            && layout_shape_key(db, trait_m_ty_normalized)
-                != layout_shape_key(db, impl_m_ty_normalized)
+            && (trait_m_ty_normalized != impl_m_ty_normalized
+                || trait_m.param_mode(db, idx) != impl_m.param_mode(db, idx))
         {
             sink.push(
                 ImplDiag::MethodArgTyMismatch {
@@ -319,10 +324,16 @@ fn compare_ty<'db>(
         trait_inst,
         false,
     );
+    // A projection's return modes are part of its signature.
+    let same_modes = match (impl_m.ret_shape(db), trait_m.ret_shape(db)) {
+        (Some(impl_shape), Some(trait_shape)) => impl_shape
+            .skip_binder()
+            .same_modes(trait_shape.skip_binder()),
+        (impl_shape, trait_shape) => impl_shape.is_none() && trait_shape.is_none(),
+    };
     if !impl_m_ret_ty.has_invalid(db)
         && !trait_m_ret_ty.has_invalid(db)
-        && layout_shape_key(db, trait_m_ret_ty_normalized)
-            != layout_shape_key(db, impl_m_ret_ty_normalized)
+        && (trait_m_ret_ty_normalized != impl_m_ret_ty_normalized || !same_modes)
     {
         sink.push(
             ImplDiag::MethodRetTyMismatch {
@@ -353,12 +364,15 @@ fn insert_param_mapping<'db>(
         .expect("method parameter correspondence must agree");
 }
 
+/// The trait method's params as the impl method's, the pairs of their
+/// effects, and whether every effect of the trait method has its pair. An
+/// impl method's extra effects are stricter bounds.
 fn trait_to_impl_param_subst<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_m: CallableDef<'db>,
     trait_m: CallableDef<'db>,
     trait_inst: TraitInstId<'db>,
-) -> (PartialSubst<'db>, Vec<(usize, usize)>) {
+) -> (PartialSubst<'db>, Vec<(usize, usize)>, bool) {
     let schema = ParamSchemaId::callable(db, trait_m);
     let mut out = PartialSubst::new(db, ParamDomainId::full(db, schema));
 
@@ -388,53 +402,10 @@ fn trait_to_impl_param_subst<'db>(
         insert_param_mapping(db, &mut out, trait_param, impl_param);
     }
 
-    let implicit_params_by_origin = |method| {
-        callable_input_layout_bindings_by_origin(db, method)
-            .into_iter()
-            .map(|(origin, bindings)| {
-                (
-                    origin,
-                    bindings
-                        .into_iter()
-                        .map(|(_, implicit_param)| implicit_param)
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect::<FxHashMap<_, _>>()
-    };
-    let trait_layout = implicit_params_by_origin(trait_m);
-    let impl_layout = implicit_params_by_origin(impl_m);
+    let (effect_pairs, effects_paired) =
+        map_effect_provider_params_by_identity(db, &mut out, impl_m, trait_m, trait_inst);
 
-    // Map receiver/value-param layout implicit const params by stable origin.
-    for (&origin, trait_params) in &trait_layout {
-        match origin {
-            CallableInputLayoutHoleOrigin::Receiver
-            | CallableInputLayoutHoleOrigin::ValueParam(_) => {
-                let Some(impl_params) = impl_layout.get(&origin) else {
-                    continue;
-                };
-                if trait_params.len() != impl_params.len() {
-                    continue;
-                }
-                for (&trait_p, &impl_p) in trait_params.iter().zip(impl_params.iter()) {
-                    insert_param_mapping(db, &mut out, trait_p, impl_p);
-                }
-            }
-            CallableInputLayoutHoleOrigin::Effect(_) => {}
-        }
-    }
-
-    let effect_pairs = map_effect_provider_params_by_identity(
-        db,
-        &mut out,
-        impl_m,
-        trait_m,
-        trait_inst,
-        &trait_layout,
-        &impl_layout,
-    );
-
-    (out, effect_pairs)
+    (out, effect_pairs, effects_paired)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, salsa::Update)]
@@ -453,7 +424,7 @@ pub(crate) fn method_param_correspondence<'db>(
     trait_m: CallableDef<'db>,
     trait_inst: TraitInstId<'db>,
 ) -> MethodParamCorrespondence {
-    let (mapping, trait_effect_to_body) =
+    let (mapping, trait_effect_to_body, _) =
         trait_to_impl_param_subst(db, impl_m, trait_m, trait_inst);
     let impl_params = impl_m.params(db);
     let mut body_to_trait = vec![None; impl_params.len()];
@@ -487,22 +458,45 @@ fn map_effect_provider_params_by_identity<'db>(
     impl_m: CallableDef<'db>,
     trait_m: CallableDef<'db>,
     trait_inst: TraitInstId<'db>,
-    trait_layout: &FxHashMap<CallableInputLayoutHoleOrigin, Vec<TyId<'db>>>,
-    impl_layout: &FxHashMap<CallableInputLayoutHoleOrigin, Vec<TyId<'db>>>,
-) -> Vec<(usize, usize)> {
+) -> (Vec<(usize, usize)>, bool) {
     let assumptions = collect_func_def_constraints(db, impl_m, true).instantiate_identity();
-    let trait_entries = collect_effect_provider_entries(
+    // An impl method splices the impl's own rows into its effects: a trait
+    // method's entry naming one pairs with the splice, not by identity. A row
+    // known to be empty needs no entry at all.
+    let impl_func = match impl_m {
+        CallableDef::Func(func) => Some(func),
+        CallableDef::VariantCtor(_) => None,
+    };
+    let trait_entries: Vec<_> = collect_effect_provider_entries(
         db,
         trait_m,
         Some(out),
         trait_inst,
         impl_m.scope(),
         assumptions,
-    );
-    let impl_entries =
-        collect_effect_provider_entries(db, impl_m, None, trait_inst, impl_m.scope(), assumptions);
+    )
+    .into_iter()
+    .filter(|entry| {
+        !entry.identity.key_row.is_some_and(|row| {
+            row_is_empty(db, row, impl_m.scope(), assumptions)
+                || row.inst.def(db) == trait_inst.def(db)
+                    && row
+                        .name(db)
+                        .zip(impl_func)
+                        .is_some_and(|(name, func)| func.row_splice(db, name).is_some())
+        })
+    })
+    .collect();
+    let impl_entries: Vec<_> =
+        collect_effect_provider_entries(db, impl_m, None, trait_inst, impl_m.scope(), assumptions)
+            .into_iter()
+            .filter(|entry| {
+                !impl_func.is_some_and(|func| func.effect_from_row(db, entry.effect_idx))
+            })
+            .collect();
     let mut used_impl_entries = vec![false; impl_entries.len()];
     let mut effect_pairs = Vec::new();
+    let trait_effects = trait_entries.len();
 
     for trait_entry in trait_entries {
         let Some((impl_idx, impl_entry)) =
@@ -520,22 +514,9 @@ fn map_effect_provider_params_by_identity<'db>(
         {
             insert_param_mapping(db, out, trait_param, impl_param);
         }
-
-        let trait_origin = CallableInputLayoutHoleOrigin::Effect(trait_entry.effect_idx);
-        let impl_origin = CallableInputLayoutHoleOrigin::Effect(impl_entry.effect_idx);
-        if let (Some(trait_params), Some(impl_params)) = (
-            trait_layout.get(&trait_origin),
-            impl_layout.get(&impl_origin),
-        ) {
-            if trait_params.len() != impl_params.len() {
-                continue;
-            }
-            for (&trait_p, &impl_p) in trait_params.iter().zip(impl_params.iter()) {
-                insert_param_mapping(db, out, trait_p, impl_p);
-            }
-        }
     }
-    effect_pairs
+    let paired = effect_pairs.len() == trait_effects;
+    (effect_pairs, paired)
 }
 
 fn collect_effect_provider_entries<'db>(
@@ -580,6 +561,15 @@ fn collect_effect_provider_entries<'db>(
                             instantiate_trait_method_template(
                                 db,
                                 Binder::bind(method.generic_owner(), key_trait),
+                                subst,
+                            ),
+                        )
+                    }
+                    crate::core::semantic::EffectRequirementKey::Row(row) => {
+                        crate::core::semantic::EffectRequirementKey::Row(
+                            instantiate_trait_method_template(
+                                db,
+                                Binder::bind(method.generic_owner(), row),
                                 subst,
                             ),
                         )
@@ -638,8 +628,6 @@ pub(crate) fn trait_effect_key_matches_with<'db>(
         return false;
     }
 
-    let expected = layout_shape_value(db, expected);
-    let actual = layout_shape_value(db, actual);
     let expected_assoc = expected.assoc_type_bindings(db);
     let actual_assoc = actual.assoc_type_bindings(db);
     if expected_assoc.len() != actual_assoc.len() {
@@ -695,6 +683,18 @@ fn effect_identity_matches<'db>(
             }
             _ => false,
         },
+        EffectKeyKind::Row => match (trait_identity.key_row, impl_identity.key_row) {
+            (Some(trait_row), Some(impl_row)) => {
+                trait_row.row == impl_row.row
+                    && trait_effect_key_matches_with(
+                        db,
+                        trait_row.inst,
+                        impl_row.inst,
+                        |lhs, rhs| effect_identity_tys_match(db, lhs, rhs),
+                    )
+            }
+            _ => false,
+        },
         EffectKeyKind::Other => trait_identity.key_syntax == impl_identity.key_syntax,
     }
 }
@@ -704,9 +704,7 @@ fn effect_identity_tys_match<'db>(
     expected: TyId<'db>,
     actual: TyId<'db>,
 ) -> bool {
-    UnificationTable::new(db)
-        .unify(layout_shape_ty(db, expected), layout_shape_ty(db, actual))
-        .is_ok()
+    UnificationTable::new(db).unify(expected, actual).is_ok()
 }
 
 fn instantiate_trait_method_template<'db, T>(
@@ -1046,8 +1044,22 @@ fn compare_constraints<'db>(
         trait_inst,
         true,
     );
+    // A row's components bound their providers as the row's implementation
+    // requires; the trait method's row stands for them.
+    let row_providers: Vec<TyId<'db>> = match impl_m {
+        CallableDef::Func(func) => place_effect_provider_param_index_map(db, func)
+            .iter()
+            .enumerate()
+            .filter(|(effect, _)| func.effect_from_row(db, *effect))
+            .filter_map(|(_, param)| impl_m.params(db).get((*param)?).copied())
+            .collect(),
+        CallableDef::VariantCtor(_) => Vec::new(),
+    };
     let mut unsatisfied_goals = ThinVec::new();
     for &goal in impl_m_constraints.list(db) {
+        if row_providers.contains(&goal.self_ty(db)) {
+            continue;
+        }
         // Source-level concrete assumptions are rejected, so the solver does
         // not consult assumptions for concrete goals. Method comparison can
         // legitimately produce a concrete goal after substituting the owning

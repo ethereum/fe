@@ -162,7 +162,7 @@ fn mir_trace_emits_cfg_and_natural_loop_facts() {
         Some(
             r#"
 fn main() -> u32 {
-    let mut i: u32 = 0
+    var i: u32 = 0
     while i < 4 {
         i = i + 1
     }

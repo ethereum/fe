@@ -28,7 +28,7 @@ const fn answer() -> u8 {
     let pair = ref pairs[1]
     let b = ref pairs[0].b[1]
     let byte = ref words[0][1]
-    let mut total = pair.a + b + byte
+    var total = pair.a + b + byte
     match entries[1] {
         Entry::Full(inner) => {
             total += inner.b[1]

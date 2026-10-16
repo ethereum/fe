@@ -558,4 +558,7 @@ impl<'db> AttrArg<'db> {
 pub enum AttrArgValue<'db> {
     Ident(IdentId<'db>),
     Lit(super::LitKind<'db>),
+    /// The source of an expression argument, which the attribute's owner
+    /// lowers itself (`#[slot(BASE + 1)]`).
+    Expr(StringId<'db>),
 }

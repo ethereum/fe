@@ -55,6 +55,8 @@ module.exports = grammar({
     // Self type vs self path segment vs expression
     [$.self_type, $.path_segment],
     [$.self_type, $._expression, $.path_segment],
+    // `Fn(..)` callable shape vs a path in a where-clause bound
+    [$.fn_shape, $.path_segment],
     // recv arm pattern
     [$.recv_arm_pattern],
     // _condition variants use the same terminals as expressions.
@@ -75,6 +77,11 @@ module.exports = grammar({
     [$.path_segment, $.attribute],
     // recv arm pattern name can be identifier or path
     [$.recv_arm_pattern, $.path_segment],
+    // an attribute argument can be a key or an expression
+    [$.attribute_arg, $._expression],
+    // an attribute list after a contract field can start another field, the
+    // `init` block or a `recv` block
+    [$.contract_fields],
   ],
 
   rules: {
@@ -166,7 +173,8 @@ module.exports = grammar({
       optional(field('body', prec.dynamic(1, $.block))),
     )),
 
-    _function_signature: $ => seq(
+    // A `uses` right after a signature is its clause, not a trait row item.
+    _function_signature: $ => prec.right(seq(
       optional($.attribute_list),
       optional($.visibility),
       optional('unsafe'),
@@ -175,10 +183,14 @@ module.exports = grammar({
       field('name', $.identifier),
       optional($.generic_param_list),
       $.parameter_list,
-      optional(seq('->', field('return_type', $._type))),
+      optional(seq(
+        '->',
+        field('return_type', $._type),
+        optional(field('return_space', $.space_annotation)),
+      )),
       optional($.uses_clause),
       optional($.where_clause),
-    ),
+    )),
 
     parameter_list: $ => seq(
       '(',
@@ -187,22 +199,22 @@ module.exports = grammar({
     ),
 
     parameter: $ => choice(
-      // self parameter: [mut] [ref|own] self [: Type]
-      // e.g., `self`, `mut self`, `own self`, `mut own self`, `ref self`
-      seq(optional('mut'), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
-      // labeled parameter: [mut|ref|own] label name : Type
-      // e.g., `from sender: address`, `_ val: u256`, `mut to recipient: address`
+      // self parameter: [mut|var] [ref|own] self [: Type]
+      // e.g., `self`, `mut self`, `own self`, `var own self`, `ref self`
+      seq(optional(choice('mut', 'var')), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
+      // labeled parameter: [var|ref|own] label name : Type
+      // e.g., `from sender: address`, `_ val: u256`, `var _ p: own Packed`
       seq(
-        optional(choice('mut', 'ref', 'own')),
+        optional(choice('mut', 'var', 'ref', 'own')),
         field('label', choice($.identifier, '_')),
         field('name', choice($.identifier, '_')),
         ':',
         field('type', $._type),
       ),
-      // unlabeled parameter: [mut|ref|own] name : Type
-      // e.g., `bar: i32`, `mut baz: u256`
+      // unlabeled parameter: [var|ref|own] name : Type
+      // e.g., `bar: i32`, `var baz: own u256`
       seq(
-        optional(choice('mut', 'ref', 'own')),
+        optional(choice('mut', 'var', 'ref', 'own')),
         field('name', choice($.identifier, '_')),
         ':',
         field('type', $._type),
@@ -233,6 +245,7 @@ module.exports = grammar({
 
     record_field_def: $ => seq(
       optional($.visibility),
+      optional('unsafe'),
       optional('mut'),
       field('name', $.identifier),
       ':',
@@ -282,11 +295,13 @@ module.exports = grammar({
     contract_fields: $ => repeat1($._contract_field_item),
 
     _contract_field_item: $ => seq(
+      optional($.attribute_list),
       $.record_field_def,
       optional(','),
     ),
 
     contract_init: $ => seq(
+      optional($.attribute_list),
       'init',
       $.parameter_list,
       optional($.uses_clause),
@@ -294,6 +309,7 @@ module.exports = grammar({
     ),
 
     contract_recv: $ => seq(
+      optional($.attribute_list),
       'recv',
       optional(field('message_type', $.path)),
       '{',
@@ -302,6 +318,7 @@ module.exports = grammar({
     ),
 
     recv_arm: $ => seq(
+      optional($.attribute_list),
       $.recv_arm_pattern,
       optional(seq('->', field('return_type', $._type))),
       optional($.uses_clause),
@@ -385,6 +402,7 @@ module.exports = grammar({
     trait_definition: $ => seq(
       optional($.attribute_list),
       optional($.visibility),
+      optional('unsafe'),
       'trait',
       field('name', $.identifier),
       optional($.generic_param_list),
@@ -398,10 +416,20 @@ module.exports = grammar({
       sep1($.trait_ref, '+'),
     ),
 
-    trait_ref: $ => seq(
-      $.path,
-      optional($.generic_arg_list),
+    trait_ref: $ => choice(
+      seq(
+        $.path,
+        optional($.generic_arg_list),
+      ),
+      $.fn_shape,
     ),
+
+    // `Fn(own A, B) -> R`: the callable trait of a shape
+    fn_shape: $ => prec.right(seq(
+      field('name', $.identifier),
+      field('params', $.tuple_type),
+      optional(seq('->', field('return_type', $._type))),
+    )),
 
     trait_item_list: $ => seq(
       '{',
@@ -409,8 +437,27 @@ module.exports = grammar({
         $.function_definition,
         $.trait_type_item,
         $.trait_const_item,
+        $.trait_uses_item,
+        $.trait_space_item,
       )),
       '}',
+    ),
+
+    // Associated effect row: `uses E`, or `uses E = (store: mut Store)`
+    trait_uses_item: $ => seq(
+      optional($.attribute_list),
+      'uses',
+      field('name', $.identifier),
+      optional(seq('=', choice($.uses_param_list, $.uses_param))),
+    ),
+
+    // Associated result space: `space S`, `space S = memory` or
+    // `space S = self[_]`
+    trait_space_item: $ => seq(
+      optional($.attribute_list),
+      'space',
+      field('name', $.identifier),
+      optional(seq('=', field('value', $.path), optional($.space_path))),
     ),
 
     trait_type_item: $ => seq(
@@ -454,6 +501,7 @@ module.exports = grammar({
 
     impl_trait: $ => seq(
       optional($.attribute_list),
+      optional('unsafe'),
       'impl',
       optional($.generic_param_list),
       field('trait', $.trait_ref),
@@ -521,7 +569,7 @@ module.exports = grammar({
       field('name', $.identifier),
       ':',
       field('type', $._type),
-      optional(seq('=', field('default', choice('_', $.block, $.literal)))),
+      optional(seq('=', field('default', choice($.block, $.literal)))),
     ),
 
     type_bound_list: $ => choice(
@@ -532,6 +580,8 @@ module.exports = grammar({
     type_bound: $ => choice(
       // Trait bound: Path<Args>
       prec.right(PREC.PATH + 5, seq($.path, optional($.generic_arg_list))),
+      // Callable shape: Fn(own A, B) -> R
+      $.fn_shape,
       // Kind bound: * -> * -> *, (* -> *) -> *, etc.
       $.kind_bound,
     ),
@@ -596,11 +646,25 @@ module.exports = grammar({
       $.qualified_path_type,
     ),
 
-    // Mode-prefixed type: ref Foo, mut Foo, own Foo
-    mode_type: $ => seq(
+    // Mode-prefixed type: ref Foo, mut Foo, own Foo, ref Foo @S
+    mode_type: $ => prec.right(seq(
       field('mode', choice('ref', 'mut', 'own')),
       field('type', $._type),
-    ),
+      optional(field('space', $.space_annotation)),
+    )),
+
+    // Result-space contract: @S, @B::S, @self, @self.f[_], @target(p)
+    space_annotation: $ => prec.right(seq(
+      '@',
+      $.path,
+      optional(choice(seq('(', $.path, ')'), $.space_path)),
+    )),
+
+    // The sub-place a result-space contract names: `.f`, `.0` and `[_]`
+    space_path: $ => prec.right(repeat1(choice(
+      seq('.', choice($.identifier, $.integer_literal)),
+      seq('[', '_', ']'),
+    ))),
 
     // Qualified path: <Type as Trait>::AssocType
     qualified_path_type: $ => prec.right(seq(
@@ -652,6 +716,7 @@ module.exports = grammar({
       $.instantiation_expression,
       $.field_expression,
       $.index_expression,
+      $.try_expression,
       // Path expressions: identifier and scoped paths directly in expression
       prec.left($.identifier),
       $.scoped_path,
@@ -668,6 +733,8 @@ module.exports = grammar({
       $.if_expression,
       $.match_expression,
       $.with_expression,
+      $.unsafe_expression,
+      $.closure_expression,
       $.block,
       $.assignment_expression,
       $.augmented_assignment_expression,
@@ -877,6 +944,11 @@ module.exports = grammar({
       field('field', choice($.identifier, $.integer_literal)),
     )),
 
+    try_expression: $ => prec(PREC.POSTFIX, seq(
+      field('value', $._expression),
+      '?',
+    )),
+
     index_expression: $ => prec(PREC.POSTFIX, seq(
       field('value', $._expression),
       '[',
@@ -964,6 +1036,7 @@ module.exports = grammar({
       $.instantiation_expression,
       $.field_expression,
       $.index_expression,
+      $.try_expression,
       prec.left($.identifier),
       $.scoped_path,
       'self',
@@ -979,6 +1052,7 @@ module.exports = grammar({
       $.if_expression,
       $.match_expression,
       $.with_expression,
+      $.unsafe_expression,
       $.block,
       $.assignment_expression,
       $.augmented_assignment_expression,
@@ -1036,6 +1110,7 @@ module.exports = grammar({
       $.instantiation_expression,
       $.field_expression,
       $.index_expression,
+      $.try_expression,
       prec.left($.identifier),
       $.scoped_path,
       'self',
@@ -1050,6 +1125,7 @@ module.exports = grammar({
       $.if_expression,
       $.match_expression,
       $.with_expression,
+      $.unsafe_expression,
       $.block,
       $.qualified_path_expression,
       $.mode_expression,
@@ -1093,6 +1169,7 @@ module.exports = grammar({
       field('value', choice(
         $._expression,
         $.match_arm_return,
+        $.match_arm_yield,
         $.match_arm_break,
         $.match_arm_continue,
       )),
@@ -1107,6 +1184,8 @@ module.exports = grammar({
       optional(field('value', $._expression)),
     )),
 
+    match_arm_yield: $ => seq('yield', field('value', $._expression)),
+
     match_arm_break: $ => 'break',
 
     match_arm_continue: $ => 'continue',
@@ -1116,6 +1195,29 @@ module.exports = grammar({
       field('params', $.with_param_list),
       field('body', $.block),
     ),
+
+    unsafe_expression: $ => seq(
+      'unsafe',
+      field('body', $.block),
+    ),
+
+    // Closure: |x| x + 1, |acc: own, x: u256| -> u256 { acc + x }, || true
+    // The body extends as far as possible.
+    closure_expression: $ => prec.right(seq(
+      choice('||', seq('|', sepTrailing($.closure_parameter, ','), '|')),
+      optional(seq('->', field('return_type', $._type))),
+      field('body', $._expression),
+    )),
+
+    // A closure parameter's type, or the type after its mode, may be omitted:
+    // `x`, `x: own`, `x: own u256`, `x: u256`.
+    closure_parameter: $ => seq(
+      optional('mut'),
+      field('name', choice($.identifier, '_')),
+      optional(seq(':', field('type', choice($._type, $.closure_mode)))),
+    ),
+
+    closure_mode: $ => choice('own', 'mut', 'ref'),
 
     with_param_list: $ => seq(
       '(',
@@ -1174,6 +1276,7 @@ module.exports = grammar({
       $.for_statement,
       $.while_statement,
       $.return_statement,
+      $.yield_statement,
       $.break_statement,
       $.continue_statement,
       $.expression_statement,
@@ -1186,11 +1289,14 @@ module.exports = grammar({
     ),
 
     let_statement: $ => seq(
-      'let',
-      optional('mut'),
+      choice('let', 'var'),
       field('name', $._pattern),
       optional(seq(':', field('type', $._type))),
-      optional(seq('=', field('value', $._expression))),
+      optional(seq(
+        '=',
+        field('value', $._expression),
+        optional(seq('else', field('alternative', $.block))),
+      )),
       $._terminator,
     ),
 
@@ -1199,6 +1305,7 @@ module.exports = grammar({
       field('pattern', $._pattern),
       'in',
       field('iterable', $._condition_no_let),
+      optional(seq('by', field('driver', $._condition_no_let))),
       prec.dynamic(1, field('body', $.block)),
     ),
 
@@ -1214,6 +1321,12 @@ module.exports = grammar({
       $._terminator,
     )),
 
+    yield_statement: $ => seq(
+      'yield',
+      field('value', $._expression),
+      $._terminator,
+    ),
+
     break_statement: $ => seq('break', $._terminator),
 
     continue_statement: $ => seq('continue', $._terminator),
@@ -1228,6 +1341,8 @@ module.exports = grammar({
       $.literal_pattern,
       $.identifier_pattern,
       $.mut_pattern,
+      $.ref_pattern,
+      $.var_pattern,
       $.tuple_pattern,
       $.path_pattern,
       $.path_tuple_pattern,
@@ -1250,6 +1365,12 @@ module.exports = grammar({
 
     // Mutable binding in pattern: `Some(mut t)`, `Foo { mut x }`
     mut_pattern: $ => prec(1, seq('mut', $._pattern)),
+
+    // Read-access binding in pattern: `Some(ref t)`, `Foo { ref x }`
+    ref_pattern: $ => prec(1, seq('ref', $._pattern)),
+
+    // Mutable value binding in pattern: `Some(var t)`, `Foo { var x }`
+    var_pattern: $ => prec(1, seq('var', $._pattern)),
 
     tuple_pattern: $ => seq(
       '(',
@@ -1285,6 +1406,10 @@ module.exports = grammar({
       // Scoped path in field position: e.g., `Bar::Unit` inside `Foo { x, Bar::Unit }`
       $.scoped_path,
       field('name', $.identifier),
+      // Marked shorthand bindings: `Foo { mut x, ref y, var z }`
+      $.mut_pattern,
+      $.ref_pattern,
+      $.var_pattern,
       $.rest_pattern,
     ),
 
@@ -1351,10 +1476,8 @@ module.exports = grammar({
           field('value', $._attribute_value),
         )),
       ),
-      // Bare literal in attr args: #[selector(0x01)]
-      $.integer_literal,
-      $.string_literal,
-      $.boolean_literal,
+      // An expression argument: #[selector(0x01)], #[slot(BASE + 1)]
+      prec(-1, field('value', $._expression)),
     ),
 
     // Attribute values: literals, identifiers, paths, or call expressions

@@ -12,21 +12,23 @@ pub struct ERC1167FailedCreateClone {}
 
 /// The standard 55-byte creation code for an ERC-1167 proxy.
 /// A noncanonical implementation address is rejected rather than truncated.
-pub fn clone_initcode(_ implementation: Address) -> MemSpan {
+pub fn clone_initcode(_ implementation: Address) -> ref MemSpan {
     if implementation.inner >> 160 != 0 {
         revert(())
     }
     let p = ptr::alloc_bytes(64)
-    store_word(
-        ptr: p,
-        value: (implementation.inner << 96 >> 232)
-            | 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000,
-    )
-    store_word(
-        ptr: ptr::offset_bytes(p, 32),
-        value: (implementation.inner << 120) | 0x5af43d82803e903d91602b57fd5bf3,
-    )
-    MemSpan::from_raw_parts(ptr: ptr::offset_bytes(p, 9), len: 55)
+    unsafe {
+        store_word(
+            ptr: p,
+            value: (implementation.inner << 96 >> 232)
+                | 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000,
+        )
+        store_word(
+            ptr: ptr::offset_bytes(p, 32),
+            value: (implementation.inner << 120) | 0x5af43d82803e903d91602b57fd5bf3,
+        )
+        MemSpan::from_raw_parts(ptr: ptr::offset_bytes(p, 9), len: 55)
+    }
 }
 
 /// Predict a CREATE2 proxy address without deploying it. `deployer` is the
@@ -35,9 +37,7 @@ pub fn predict_deterministic_address(
     _ implementation: Address,
     salt: u256,
     deployer: Address,
-) -> Address
-uses (mem: mut super::effects::RawMem)
-{
+) -> Address {
     let code_hash = keccak256(clone_initcode(implementation))
     let hash = keccak_packed((255 as u8, deployer, salt, code_hash))
     Address { inner: hash & ((1 << 160) - 1) }

@@ -17,13 +17,15 @@ use dataflow::{JoinSemiLattice, try_solve_forward_cfg};
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 
+use num_traits::ToPrimitive;
+
 use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::{
             BlockedSemanticBody, SConst, SemConstScalar, SemConstValue, SemanticDiagnosticId,
-            SemanticInstance, SemanticNormalizationFailure, VariantIndex,
-            get_or_build_semantic_instance, identity_semantic_instance_key,
+            SemanticInstance, SemanticNormalizationFailure, get_or_build_semantic_instance,
+            identity_semantic_instance_key,
             normalized::{
                 NBlockId, NEffectArg, NEffectArgValue, NExpr, NOperand, NPlace, NPlaceBase,
                 NRootKind, NStatementKind, NTerminatorKind, NValueId, NormalizedBody,
@@ -32,7 +34,7 @@ use crate::{
         },
         ty::{
             ty_check::{BodyOwner, EffectParamSite, EffectPassMode, LocalBinding, ParamSite},
-            ty_def::{BorrowKind, CapabilityKind},
+            ty_def::BorrowKind,
         },
     },
     hir_def::{Contract, Func, FuncParamMode},
@@ -280,6 +282,7 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
         let mut state = in_state.clone();
         for statement in &self.body.blocks[block.index()].statements {
             match &statement.kind {
+                NStatementKind::End { .. } => {}
                 NStatementKind::Store { destination, .. } => {
                     if let Some(target) = self.write_target_of_place(destination) {
                         state.assigned.insert(target);
@@ -330,6 +333,7 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
             NPlaceBase::CapabilityTarget { carrier } => self
                 .target_of_param_carrier(carrier)
                 .or_else(|| self.write_target_of_place(self.borrowed_place_of(carrier)?)),
+            NPlaceBase::Deref { .. } => None,
         }
     }
 
@@ -338,18 +342,15 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
         let Some(LocalBinding::Param {
             site: ParamSite::Func(func),
             idx,
-            mode: FuncParamMode::View,
-            ty,
+            mode: FuncParamMode::Mut,
             ..
         }) = self.body.value(value)?.source
         else {
             return None;
         };
-        matches!(ty.as_capability(self.db), Some((CapabilityKind::Mut, _))).then(|| {
-            AssignedTarget::FuncParam {
-                func,
-                param_idx: idx as u32,
-            }
+        Some(AssignedTarget::FuncParam {
+            func,
+            param_idx: idx as u32,
         })
     }
 
@@ -473,6 +474,7 @@ fn block_successors<'db>(
             .map(|(_, target)| target.block)
             .chain(default.iter().map(|target| target.block))
             .collect(),
+        NTerminatorKind::Yield { resume, .. } => vec![resume.block],
         NTerminatorKind::Assert { .. } | NTerminatorKind::Return(_) => Vec::new(),
     }
 }
@@ -503,6 +505,25 @@ fn literal_definition<'a, 'db>(
     None
 }
 
+/// The literal value of an immutable integer SSA definition, as an index.
+pub(crate) fn literal_index<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: &NormalizedBody<'db>,
+    value: NValueId,
+) -> Option<usize> {
+    match literal_definition(body, value)? {
+        NExpr::ScalarCast { value, .. } => literal_index(db, body, value.value),
+        NExpr::Const(SConst::Value(value)) => match value.value().value(db) {
+            SemConstValue::Scalar {
+                value: SemConstScalar::Int { value },
+                ..
+            } => value.to_usize(),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 /// The literal boolean value of an immutable SSA definition.
 pub(crate) fn literal_bool_cond<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -517,22 +538,6 @@ pub(crate) fn literal_bool_cond<'db>(
             value: SemConstScalar::Bool(value),
             ..
         } => Some(*value),
-        _ => None,
-    }
-}
-
-/// The variant of an immutable SSA value constructed as an enum literal.
-pub(crate) fn literal_enum_variant<'db>(
-    db: &'db dyn HirAnalysisDb,
-    body: &NormalizedBody<'db>,
-    value: NValueId,
-) -> Option<VariantIndex> {
-    match literal_definition(body, value)? {
-        NExpr::EnumMake { variant, .. } => Some(*variant),
-        NExpr::Const(SConst::Value(value)) => match value.value().value(db) {
-            SemConstValue::Enum { variant, .. } => Some(*variant),
-            _ => None,
-        },
         _ => None,
     }
 }

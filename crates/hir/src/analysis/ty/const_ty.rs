@@ -4,14 +4,13 @@ use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{One, Zero};
 
 use crate::core::hir_def::{
-    BinOp, Body, Const, Contract, Expr, ExprId, Func, GenericArgListId, GenericParamOwner, IdentId,
-    LitKind, Partial, PatId, PathId, Stmt, TypeAlias as HirTypeAlias, TypeId as HirTypeId, UnOp,
+    BinOp, Body, Const, Expr, ExprId, GenericParamOwner, IdentId, ImplTrait, LitKind, Partial,
+    PathId, Stmt, UnOp,
 };
 use salsa::Update;
 
 use super::const_expr::{ConstExpr, ConstExprId, ConstInvocation, pretty_print_un_op};
 use super::{
-    adt_def::AdtDef,
     assoc_const::{AssocConstUse, InherentConstUse},
     diagnostics::{BodyDiag, FuncBodyDiag},
     fold::{TyFoldable, TyFolder},
@@ -19,7 +18,7 @@ use super::{
     normalize::{normalize_ty, normalize_with_trait_evidence},
     subst::substitute_complete,
     trait_def::{
-        ImplementorId, ResolvedImplInstance, TraitInstId, resolve_trait_impl_instance,
+        ResolvedImplInstance, TraitInstId, resolve_trait_impl_instance,
         selected_assoc_const_body_template,
     },
     trait_resolution::{Selection, TraitSolveCx, constraint::collect_constraints},
@@ -51,54 +50,6 @@ use crate::analysis::{
 use crate::hir_def::{CallableDef, ItemKind, attr::ArithmeticMode, scope_graph::ScopeId};
 use common::indexmap::IndexMap;
 use rustc_hash::{FxHashMap, FxHashSet};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum LayoutHoleArgSite<'db> {
-    Path(PathId<'db>),
-    GenericArgList(GenericArgListId<'db>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
-pub struct LayoutIntroSite<'db> {
-    pub root: LayoutIntroRoot<'db>,
-    pub path: Vec<LayoutIntroStep>,
-}
-
-impl<'db> LayoutIntroSite<'db> {
-    /// `param_idx` is a zero-based position in the owner's source parameter list.
-    pub(crate) fn definition(owner: GenericParamOwner<'db>, param_idx: usize) -> Self {
-        Self {
-            root: LayoutIntroRoot::Definition { owner },
-            path: vec![LayoutIntroStep::ConstParam(param_idx as u32)],
-        }
-    }
-
-    pub(crate) fn lowering(site: LayoutHoleArgSite<'db>, arg_idx: usize) -> Self {
-        Self {
-            root: LayoutIntroRoot::Lowering { site },
-            path: vec![LayoutIntroStep::ExplicitArg(arg_idx as u32)],
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
-pub enum LayoutIntroRoot<'db> {
-    Definition { owner: GenericParamOwner<'db> },
-    Lowering { site: LayoutHoleArgSite<'db> },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum LayoutIntroStep {
-    ExplicitArg(u32),
-    /// Zero-based position in the owning declaration's source parameter list.
-    ConstParam(u32),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
-pub struct LayoutHoleTrace<'db> {
-    pub introduced_at: LayoutIntroSite<'db>,
-    pub landings: Vec<LayoutInstantiationId<'db>>,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConstCanonMode {
@@ -152,320 +103,29 @@ impl<'db> ConstCanonEnv<'db> {
     }
 }
 
+/// A callable's input: its receiver, a value parameter or an effect.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
-pub enum CallableInputLayoutHoleOrigin {
+pub enum CallableInputOrigin {
     Receiver,
     ValueParam(usize),
     Effect(usize),
 }
 
-/// The declaration that owns a callable layout boundary.
-///
-/// Unlike [`Body`], this identity is available without inspecting or lowering
-/// an implementation body, so declaration ABI queries remain body-independent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum CallableLayoutOwner<'db> {
-    Func(Func<'db>),
-    ContractInit {
-        contract: Contract<'db>,
-    },
-    ContractRecvArm {
-        contract: Contract<'db>,
-        recv_idx: u32,
-        arm_idx: u32,
-    },
-}
-
-impl<'db> CallableLayoutOwner<'db> {
-    pub fn func(self) -> Option<Func<'db>> {
-        match self {
-            Self::Func(func) => Some(func),
-            Self::ContractInit { .. } | Self::ContractRecvArm { .. } => None,
-        }
-    }
-
-    pub fn scope(self) -> ScopeId<'db> {
-        match self {
-            Self::Func(func) => func.scope(),
-            Self::ContractInit { contract } | Self::ContractRecvArm { contract, .. } => {
-                contract.scope()
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum HoleId<'db> {
-    Structural(StructuralHoleId<'db>),
-    Bound(BoundHoleId<'db>),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BoundHoleId<'db> {
-    Opaque,
-    LayoutShape {
-        ordinal: u32,
-        kind: LayoutShapeHoleKind,
-    },
-    CallableInput {
-        owner: CallableLayoutOwner<'db>,
-        origin: CallableInputLayoutHoleOrigin,
-        ordinal: usize,
-    },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum LayoutShapeHoleKind {
-    ExplicitWildcard,
-    DefaultHoleParam,
-    EffectKeyExistential,
-}
-
-impl StructuralHoleOrigin<'_> {
-    pub(crate) fn shape_kind(self) -> LayoutShapeHoleKind {
-        match self {
-            Self::ExplicitWildcard { .. } => LayoutShapeHoleKind::ExplicitWildcard,
-            Self::DefaultHoleParam { .. } => LayoutShapeHoleKind::DefaultHoleParam,
-            Self::EffectKeyExistential { .. } => LayoutShapeHoleKind::EffectKeyExistential,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum StructuralHoleOrigin<'db> {
-    ExplicitWildcard {
-        site: LayoutHoleArgSite<'db>,
-        arg_idx: usize,
-    },
-    DefaultHoleParam {
-        owner: GenericParamOwner<'db>,
-        /// Zero-based position in `owner`'s source parameter list, excluding implicit prefixes.
-        param_idx: usize,
-    },
-    EffectKeyExistential {
-        path: PathId<'db>,
-        arg_idx: usize,
-        owner: GenericParamOwner<'db>,
-        param_idx: usize,
-    },
-}
-
-/// A unique syntax position within a body that can introduce layout holes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum BodyHoleSite {
-    Expr(ExprId),
-    Pat(PatId),
-}
-
-/// Where a structural hole's identity is anchored.
-///
-/// During the shared, content-keyed lowering a hole is anchored at the memo
-/// key of the execution that minted it (`Template*`), including its active
-/// assumptions; since distinct memo entries have distinct keys, ordinals from
-/// different executions can never collide. Anchored entry points re-anchor
-/// template holes at a genuinely unique item position (added in later phases).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum HoleAnchor<'db> {
-    /// A default template is owned by a declaration position, not by a caller.
-    GenericDefault {
-        owner: GenericParamOwner<'db>,
-        param_idx: usize,
-    },
-    /// Minted while lowering a HIR type (the `lower_hir_ty` memo key).
-    TemplateTy {
-        ty: HirTypeId<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-    },
-    /// Minted while resolving a path outside any enclosing HIR-type lowering
-    /// (e.g. path expressions in bodies).
-    TemplatePath {
-        path: PathId<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-    },
-    /// Minted at a unique expression or pattern occurrence in a body. Unlike
-    /// content-interned HIR types, paths, and argument lists, this is already a
-    /// stable semantic source position and must not be re-anchored.
-    BodySyntax { body: Body<'db>, site: BodyHoleSite },
-    /// A hole owned by a type alias's right-hand side. Instantiating the
-    /// alias at a use site replaces these with fresh holes minted from the
-    /// use site's minter.
-    AliasTemplate(HirTypeAlias<'db>),
-    /// A unique associated-type definition in a trait impl. Besides giving
-    /// holes a position-stable owner, this tells path lowering that
-    /// `Self::Assoc` denotes an impl-local binding rather than a signature
-    /// projection.
-    ImplAssocType {
-        impl_trait: crate::hir_def::ImplTrait<'db>,
-        index: u32,
-    },
-    /// A unique callable input position used as the parent of structural
-    /// projection landings discovered for that input.
-    CallableInput {
-        owner: CallableLayoutOwner<'db>,
-        origin: CallableInputLayoutHoleOrigin,
-    },
-    /// The declared result position of one callable. Output evidence is a
-    /// signature property and must never be keyed by a lowered body.
-    CallableOutput { owner: CallableLayoutOwner<'db> },
-    /// A canonical parent for nested evidence landings in one semantic value.
-    /// This identity is local to schema derivation and is never an allocation
-    /// identity in a contract root graph.
-    SemanticValue { body: Body<'db>, local: u32 },
-}
-
-impl<'db> HoleAnchor<'db> {
-    /// Whether this anchor is a content-keyed lowering template (as opposed
-    /// to an alias template or, in later phases, a unique item position).
-    pub(crate) fn is_lowering_template(self) -> bool {
-        matches!(self, Self::TemplateTy { .. } | Self::TemplatePath { .. })
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum LayoutBoundaryIdentity<'db> {
-    ContractField {
-        contract: Contract<'db>,
-        field_index: u32,
-    },
-    AdtApplication(AdtDef<'db>),
-    AliasUse(HirTypeAlias<'db>),
-    ProviderTarget(ImplementorId<'db>),
-    ArrayElement,
-    CallableInput {
-        owner: CallableLayoutOwner<'db>,
-        origin: CallableInputLayoutHoleOrigin,
-    },
-    CallableOutput(CallableLayoutOwner<'db>),
-    SemanticValue {
-        body: Body<'db>,
-        local: u32,
-    },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum LayoutOccurrenceStep {
-    Instantiation(u32),
-    TypeParam(u32),
-    ConstParam(u32),
-    GenericArg(u32),
-    StructField(u32),
-    EnumVariant(u32),
-    EnumPayloadField(u32),
-    TupleElem(u32),
-    ArrayDimension(u32),
-    Normalization,
-    TemplateBody,
-}
-
-pub type LayoutOccurrencePath = Vec<LayoutOccurrenceStep>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum LayoutInstantiationContext<'db> {
-    Lowering(HoleAnchor<'db>),
-    Nested(LayoutInstantiationId<'db>),
-}
-
-#[salsa::interned]
-#[derive(Debug)]
-pub struct LayoutInstantiationId<'db> {
-    pub context: LayoutInstantiationContext<'db>,
-    pub boundary: LayoutBoundaryIdentity<'db>,
-    pub occurrence: LayoutOccurrencePath,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub enum LayoutRootIdentity<'db> {
-    Source {
-        anchor: HoleAnchor<'db>,
-        ordinal: u32,
-    },
-    Landing {
-        source: LayoutRootId<'db>,
-        instance: LayoutInstantiationId<'db>,
-    },
-}
-
-#[salsa::interned]
-#[derive(Debug)]
-pub struct LayoutRootId<'db> {
-    pub identity: LayoutRootIdentity<'db>,
-}
-
-impl<'db> LayoutRootId<'db> {
-    pub fn source(db: &'db dyn HirAnalysisDb, anchor: HoleAnchor<'db>, ordinal: u32) -> Self {
-        Self::new(db, LayoutRootIdentity::Source { anchor, ordinal })
-    }
-
-    pub fn landing(
-        db: &'db dyn HirAnalysisDb,
-        source: Self,
-        instance: LayoutInstantiationId<'db>,
-    ) -> Self {
-        Self::new(db, LayoutRootIdentity::Landing { source, instance })
-    }
-
-    pub(crate) fn source_anchor(self, db: &'db dyn HirAnalysisDb) -> HoleAnchor<'db> {
-        match self.identity(db) {
-            LayoutRootIdentity::Source { anchor, .. } => anchor,
-            LayoutRootIdentity::Landing { source, .. } => source.source_anchor(db),
-        }
-    }
-}
-
-/// Mints source layout-root identities for one lowering execution.
-///
-/// Threaded by reference through the lowering descent so that every mint
-/// event within one execution receives a distinct ordinal; a hole cannot be
-/// minted without one, which makes "forgot to re-key after a memoized call"
-/// impossible by construction.
+/// Whether lowering evaluates anonymous const bodies now or keeps them as
+/// typed-later metadata.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ConstBodyLowering {
     Eager,
     Deferred,
 }
 
-#[derive(Debug)]
-pub(crate) struct HoleMinter<'db> {
-    anchor: HoleAnchor<'db>,
-    counter: std::cell::Cell<u32>,
-    instantiation_counter: std::cell::Cell<u32>,
-}
-
-impl<'db> HoleMinter<'db> {
-    pub(crate) fn new(anchor: HoleAnchor<'db>) -> Self {
-        Self {
-            anchor,
-            counter: std::cell::Cell::new(0),
-            instantiation_counter: std::cell::Cell::new(0),
-        }
-    }
-
-    pub(crate) fn anchor(&self) -> HoleAnchor<'db> {
-        self.anchor
-    }
-
-    pub(crate) fn mint(&self, db: &'db dyn HirAnalysisDb) -> LayoutRootId<'db> {
-        let ordinal = self.counter.get();
-        self.counter.set(ordinal + 1);
-        LayoutRootId::source(db, self.anchor, ordinal)
-    }
-
-    pub(crate) fn next_instantiation_ordinal(&self) -> u32 {
-        let ordinal = self.instantiation_counter.get();
-        self.instantiation_counter.set(ordinal + 1);
-        ordinal
-    }
-}
-
-/// Policy for lowering types and paths. Hole identity is allocated separately
-/// so capture coordinates and const-body timing cannot be inferred from it.
+/// Policy for lowering types and paths.
 #[derive(Debug)]
 pub(crate) struct LoweringContext<'db> {
-    holes: HoleMinter<'db>,
     const_bodies: ConstBodyLowering,
-    source_params: Option<GenericParamOwner<'db>>,
+    /// The impl whose associated type this lowering lowers: there `Self::A`
+    /// is the impl's own binding of `A`.
+    impl_assoc_type: Option<ImplTrait<'db>>,
     default_capture: Option<(GenericParamOwner<'db>, SourceParamIndex)>,
     /// Every path segment this lowering resolved, in resolution order, when
     /// the caller asked for them (`recording_resolutions`).
@@ -476,29 +136,35 @@ pub(crate) struct LoweringContext<'db> {
 }
 
 impl<'db> LoweringContext<'db> {
-    pub(crate) fn new(anchor: HoleAnchor<'db>) -> Self {
-        Self::for_const_bodies(anchor, ConstBodyLowering::Eager)
+    pub(crate) fn new() -> Self {
+        Self::for_const_bodies(ConstBodyLowering::Eager)
     }
 
     /// Creates lowering state for an item signature. Const bodies stay as
     /// typed-later metadata so candidate discovery never depends on body type
     /// checking or trait selection.
-    pub(crate) fn deferred(anchor: HoleAnchor<'db>) -> Self {
-        Self::for_const_bodies(anchor, ConstBodyLowering::Deferred)
+    pub(crate) fn deferred() -> Self {
+        Self::for_const_bodies(ConstBodyLowering::Deferred)
     }
 
-    pub(crate) fn for_const_bodies(
-        anchor: HoleAnchor<'db>,
-        const_bodies: ConstBodyLowering,
-    ) -> Self {
+    pub(crate) fn for_const_bodies(const_bodies: ConstBodyLowering) -> Self {
         Self {
-            holes: HoleMinter::new(anchor),
             const_bodies,
-            source_params: None,
+            impl_assoc_type: None,
             default_capture: None,
             resolutions: None,
             recording_paused: std::cell::Cell::new(false),
         }
+    }
+
+    /// Makes this lowering lower an associated type of `impl_trait`.
+    pub(crate) fn for_impl_assoc_type(mut self, impl_trait: ImplTrait<'db>) -> Self {
+        self.impl_assoc_type = Some(impl_trait);
+        self
+    }
+
+    pub(crate) fn impl_assoc_type(&self) -> Option<ImplTrait<'db>> {
+        self.impl_assoc_type
     }
 
     /// Makes this lowering keep every path segment it resolves, with the
@@ -533,19 +199,8 @@ impl<'db> LoweringContext<'db> {
             .unwrap_or_default()
     }
 
-    pub(crate) fn holes(&self) -> &HoleMinter<'db> {
-        &self.holes
-    }
-
     pub(crate) fn const_bodies(&self) -> ConstBodyLowering {
         self.const_bodies
-    }
-
-    /// Slot discovery uses declaration indices, before hidden callable slots
-    /// exist. The same basis must be used for both paths and their predicates.
-    pub(crate) fn with_source_params(mut self, owner: Option<GenericParamOwner<'db>>) -> Self {
-        self.source_params = owner;
-        self
     }
 
     pub(crate) fn with_default_capture(
@@ -557,96 +212,8 @@ impl<'db> LoweringContext<'db> {
         self
     }
 
-    pub(crate) fn source_params(&self) -> Option<GenericParamOwner<'db>> {
-        self.source_params
-    }
-
     pub(crate) fn default_capture(&self) -> Option<(GenericParamOwner<'db>, SourceParamIndex)> {
         self.default_capture
-    }
-}
-
-/// Identity of a structural layout hole.
-///
-/// HIR ids (`TypeId`, `PathId`, `GenericArgListId`) are content-interned, so
-/// a hole's creation site alone cannot identify a syntactic occurrence:
-/// `(Slot<_>, Slot<_>)` shares one child HIR type and `(M, M)` one alias
-/// path. Source identity is therefore assigned at mint time: the `anchor`
-/// names the lowering execution (or alias template) that minted the hole and
-/// the `ordinal` distinguishes mint events within it. Structural landing
-/// identity is derived separately from the source root and an explicit
-/// instantiation instance. Diagnostic trace changes never change either
-/// identity. Two holes silently merging means aliased storage slots, so
-/// minting errs on the side of distinctness.
-#[salsa::interned]
-#[derive(Debug)]
-pub struct StructuralHoleId<'db> {
-    pub expected_ty: TyId<'db>,
-    pub root: LayoutRootId<'db>,
-    pub origin: StructuralHoleOrigin<'db>,
-    pub trace: LayoutHoleTrace<'db>,
-}
-
-impl<'db> StructuralHoleId<'db> {
-    pub(crate) fn with_intro(
-        db: &'db dyn HirAnalysisDb,
-        expected_ty: TyId<'db>,
-        root: LayoutRootId<'db>,
-        origin: StructuralHoleOrigin<'db>,
-        introduced_at: LayoutIntroSite<'db>,
-    ) -> Self {
-        Self::new(
-            db,
-            expected_ty,
-            root,
-            origin,
-            LayoutHoleTrace {
-                introduced_at,
-                landings: Vec::new(),
-            },
-        )
-    }
-
-    pub(crate) fn anchor(self, db: &'db dyn HirAnalysisDb) -> HoleAnchor<'db> {
-        self.root(db).source_anchor(db)
-    }
-
-    pub(crate) fn introduced_at(self, db: &'db dyn HirAnalysisDb) -> LayoutIntroSite<'db> {
-        self.trace(db).introduced_at
-    }
-}
-
-impl<'db> HoleId<'db> {
-    pub(crate) fn bound_callable(
-        owner: CallableLayoutOwner<'db>,
-        origin: CallableInputLayoutHoleOrigin,
-        ordinal: usize,
-    ) -> Self {
-        Self::Bound(BoundHoleId::CallableInput {
-            owner,
-            origin,
-            ordinal,
-        })
-    }
-
-    pub(crate) fn bound_opaque() -> Self {
-        Self::Bound(BoundHoleId::Opaque)
-    }
-
-    pub(crate) fn structural(
-        db: &'db dyn HirAnalysisDb,
-        expected_ty: TyId<'db>,
-        origin: StructuralHoleOrigin<'db>,
-        introduced_at: LayoutIntroSite<'db>,
-        root: LayoutRootId<'db>,
-    ) -> Self {
-        Self::Structural(StructuralHoleId::with_intro(
-            db,
-            expected_ty,
-            root,
-            origin,
-            introduced_at,
-        ))
     }
 }
 
@@ -746,7 +313,7 @@ impl<'a, 'db> ConstBodyExprPrinter<'a, 'db> {
                 self.pretty_print(*expr)?,
                 to.to_opt()?.pretty_print(self.db)
             )),
-            Expr::Block(stmts) if stmts.len() == 1 => match stmts[0].data(self.db, self.body) {
+            Expr::Block(stmts, _) if stmts.len() == 1 => match stmts[0].data(self.db, self.body) {
                 Partial::Present(Stmt::Expr(tail_expr)) => self.pretty_print(*tail_expr),
                 Partial::Present(_) | Partial::Absent => None,
             },
@@ -831,7 +398,7 @@ pub fn demand_concrete_array_length<'db>(
         };
         if matches!(
             const_ty.data(db),
-            ConstTyData::Hole(..) | ConstTyData::TyParam(..) | ConstTyData::TyVar(..)
+            ConstTyData::TyParam(..) | ConstTyData::TyVar(..)
         ) {
             return Ok(None);
         }
@@ -1094,7 +661,7 @@ pub(crate) fn evaluate_type_level_const_ty<'db>(
 
 fn const_ty_is_fully_ground<'db>(db: &'db dyn HirAnalysisDb, const_ty: ConstTyId<'db>) -> bool {
     match const_ty.data(db) {
-        ConstTyData::TyVar(..) | ConstTyData::TyParam(..) | ConstTyData::Hole(..) => false,
+        ConstTyData::TyVar(..) | ConstTyData::TyParam(..) => false,
         ConstTyData::Value(value) => sem_const_is_fully_ground(db, value.value()),
         ConstTyData::Description(value) => sem_const_is_fully_ground(db, *value),
         ConstTyData::Invalid(..) => false,
@@ -1151,10 +718,7 @@ pub fn concretize_const_ty_if_ground<'db>(
             evaluate_type_level_const_expr(db, *expr, *expected_ty, env)
                 .filter(|value| const_ty_is_fully_ground(db, *value))
         }
-        ConstTyData::TyVar(..)
-        | ConstTyData::TyParam(..)
-        | ConstTyData::Hole(..)
-        | ConstTyData::Invalid(..) => None,
+        ConstTyData::TyVar(..) | ConstTyData::TyParam(..) | ConstTyData::Invalid(..) => None,
     }
 }
 
@@ -1242,10 +806,6 @@ pub fn canonicalize_const_ty_for_mode<'db>(
         ConstTyData::TyParam(param, ty) => ConstTyId::new(
             db,
             ConstTyData::TyParam(param.clone(), canonicalize_ty_for_mode(db, *ty, env, mode)),
-        ),
-        ConstTyData::Hole(ty, hole_id) => ConstTyId::new(
-            db,
-            ConstTyData::Hole(canonicalize_ty_for_mode(db, *ty, env, mode), *hole_id),
         ),
         ConstTyData::Value(value) => const_ty_from_sem_const(
             db,
@@ -1390,20 +950,23 @@ pub fn canonicalize_ty_for_mode<'db>(
     env: ConstCanonEnv<'db>,
     mode: ConstCanonMode,
 ) -> TyId<'db> {
+    // A type is a DAG: `memo` canonicalizes each shared subtree once, where a
+    // tree walk is exponential in the depth of a type like `(x, x)`.
     fn canonicalize_ty_impl<'db>(
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
         env: ConstCanonEnv<'db>,
         mode: ConstCanonMode,
         finalize_self: bool,
+        memo: &mut FxHashMap<(TyId<'db>, bool), TyId<'db>>,
     ) -> TyId<'db> {
-        let ty = env.apply_assoc_evidence(db, ty);
-        let env = env.without_assoc_evidence();
-
-        let mut ty = match ty.data(db) {
+        if let Some(&canonical) = memo.get(&(ty, finalize_self)) {
+            return canonical;
+        }
+        let mut canonical = match ty.data(db) {
             TyData::TyApp(abs, arg) => {
-                let abs = canonicalize_ty_impl(db, *abs, env, mode, false);
-                let arg = canonicalize_ty_impl(db, *arg, env, mode, true);
+                let abs = canonicalize_ty_impl(db, *abs, env, mode, false, memo);
+                let arg = canonicalize_ty_impl(db, *arg, env, mode, true, memo);
                 match mode {
                     ConstCanonMode::Stored => TyId::app_structural(db, abs, arg),
                     ConstCanonMode::Identity | ConstCanonMode::Display => TyId::app(db, abs, arg),
@@ -1430,14 +993,23 @@ pub fn canonicalize_ty_for_mode<'db>(
         };
 
         if finalize_self && !matches!(mode, ConstCanonMode::Stored) {
-            ty = complete_default_const_args_for_identity(db, ty);
-            ty = normalize_ty(db, ty, env.scope, env.assumptions);
+            canonical = complete_default_const_args_for_identity(db, canonical);
+            canonical = normalize_ty(db, canonical, env.scope, env.assumptions);
         }
-
-        ty
+        memo.insert((ty, finalize_self), canonical);
+        canonical
     }
 
-    canonicalize_ty_impl(db, ty, env, mode, true)
+    // Associated-type evidence applies to the whole type, once.
+    let ty = env.apply_assoc_evidence(db, ty);
+    canonicalize_ty_impl(
+        db,
+        ty,
+        env.without_assoc_evidence(),
+        mode,
+        true,
+        &mut FxHashMap::default(),
+    )
 }
 
 pub fn canonicalize_trait_inst_for_mode<'db>(
@@ -1554,14 +1126,6 @@ pub(crate) struct ValidatedUnEvaluatedConst<'db> {
     pub const_ty: ConstTyId<'db>,
     pub expected_ty: TyId<'db>,
     pub body_expected_ty: TyId<'db>,
-}
-
-pub(crate) fn retype_hole_const_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    const_ty: ConstTyId<'db>,
-    expected_ty: TyId<'db>,
-) -> Option<ConstTyId<'db>> {
-    matches!(const_ty.data(db), ConstTyData::Hole(..)).then(|| const_ty.with_ty(db, expected_ty))
 }
 
 /// How type lowering reports a constant whose body failed inference.
@@ -1780,7 +1344,7 @@ fn eval_int_expr<'db>(
     has_captures: &dyn Fn() -> bool,
 ) -> Result<BigInt, ConstIntError> {
     match expr {
-        Expr::Block(stmts) => {
+        Expr::Block(stmts, _) => {
             let [stmt] = stmts.as_slice() else {
                 return Err(ConstIntError::NotIntExpr);
             };
@@ -1922,15 +1486,6 @@ pub(crate) fn evaluate_const_ty<'db>(
     const_ty: ConstTyId<'db>,
     expected_ty: Option<TyId<'db>>,
 ) -> ConstTyId<'db> {
-    if let Some(expected_ty) = expected_ty
-        && let Some(retyped) = retype_hole_const_ty(db, const_ty, expected_ty)
-    {
-        return retyped;
-    }
-    if matches!(const_ty.data(db), ConstTyData::Hole(..)) {
-        return const_ty;
-    }
-
     if let ConstTyData::Computation {
         description,
         source,
@@ -2401,7 +1956,7 @@ pub(crate) fn origin_expr_for_const_eval_diag<'db>(
         SemOrigin::Stmt(stmt) => {
             stmt_primary_expr_for_const_eval_diag(db, body, stmt).unwrap_or_else(|| body.expr(db))
         }
-        SemOrigin::Body(_) | SemOrigin::Synthetic => body.expr(db),
+        SemOrigin::Pat(_) | SemOrigin::Body(_) | SemOrigin::Synthetic => body.expr(db),
     }
 }
 
@@ -2411,9 +1966,9 @@ fn stmt_primary_expr_for_const_eval_diag<'db>(
     stmt: crate::hir_def::StmtId,
 ) -> Option<crate::hir_def::ExprId> {
     match stmt.data(db, body).clone().to_opt()? {
-        Stmt::Let(_, _, expr) | Stmt::Return(expr) => expr,
-        Stmt::Expr(expr) => Some(expr),
-        Stmt::For(_, expr, _, _) => Some(expr),
+        Stmt::Let(_, _, expr, _) | Stmt::Return(expr) => expr,
+        Stmt::Yield(expr) | Stmt::Expr(expr) => Some(expr),
+        Stmt::For(_, expr, ..) => Some(expr),
         Stmt::While(_, _) | Stmt::Continue | Stmt::Break => None,
     }
 }
@@ -2688,6 +2243,11 @@ pub(super) fn const_ty_from_resolved_trait_const<'db>(
     resolved: ResolvedImplInstance<'db>,
     name: IdentId<'db>,
 ) -> Option<ConstTyId<'db>> {
+    if name.data(db) == "BITS"
+        && let Some(bits) = super::sol_codec::sol_codec_bits(db, resolved)
+    {
+        return Some(bits);
+    }
     let inst = resolved.trait_inst();
     let trait_ = inst.def(db);
     let (body, template_ty, subst) = selected_assoc_const_body_template(db, resolved, name)?;
@@ -2887,7 +2447,6 @@ impl<'db> ConstTyId<'db> {
         match self.data(db) {
             ConstTyData::TyVar(_, ty) => *ty,
             ConstTyData::TyParam(_, ty) => *ty,
-            ConstTyData::Hole(ty, _) => *ty,
             ConstTyData::Value(value) => crate::analysis::semantic::sem_const_ty(db, value.value()),
             ConstTyData::Description(value) => crate::analysis::semantic::sem_const_ty(db, *value),
             ConstTyData::Invalid(ty) => *ty,
@@ -2922,7 +2481,6 @@ impl<'db> ConstTyId<'db> {
             ConstTyData::TyParam(param, ty) => {
                 format!("const {}: {}", param.pretty_print(db), ty.pretty_print(db))
             }
-            ConstTyData::Hole(..) => "_".to_string(),
             ConstTyData::Value(value) => value.value().pretty_print(db),
             ConstTyData::Description(value) => value.pretty_print(db),
             ConstTyData::Invalid(_) => "<invalid>".to_string(),
@@ -3034,59 +2592,10 @@ impl<'db> ConstTyId<'db> {
         Self::new(db, data)
     }
 
-    pub fn hole(db: &'db dyn HirAnalysisDb) -> Self {
-        Self::hole_with_ty(db, TyId::invalid(db, InvalidCause::Other))
-    }
-
-    pub fn hole_with_ty(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Self {
-        Self::hole_with_id(db, ty, HoleId::bound_opaque())
-    }
-
-    pub fn hole_with_id(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, hole_id: HoleId<'db>) -> Self {
-        Self::new(db, ConstTyData::Hole(ty, hole_id))
-    }
-
-    pub fn structural_hole(
-        db: &'db dyn HirAnalysisDb,
-        ty: TyId<'db>,
-        origin: StructuralHoleOrigin<'db>,
-        introduced_at: LayoutIntroSite<'db>,
-        root: LayoutRootId<'db>,
-    ) -> Self {
-        Self::hole_with_id(
-            db,
-            ty,
-            HoleId::structural(db, ty, origin, introduced_at, root),
-        )
-    }
-
-    pub fn bound_callable_hole(
-        db: &'db dyn HirAnalysisDb,
-        ty: TyId<'db>,
-        owner: CallableLayoutOwner<'db>,
-        origin: CallableInputLayoutHoleOrigin,
-        ordinal: usize,
-    ) -> Self {
-        Self::hole_with_id(db, ty, HoleId::bound_callable(owner, origin, ordinal))
-    }
-
     pub(crate) fn swap_ty(self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Self {
         let data = match self.data(db) {
             ConstTyData::TyVar(var, _) => ConstTyData::TyVar(var.clone(), ty),
             ConstTyData::TyParam(param, _) => ConstTyData::TyParam(param.clone(), ty),
-            ConstTyData::Hole(_, hole_id) => ConstTyData::Hole(
-                ty,
-                match hole_id {
-                    HoleId::Structural(hole_id) => HoleId::Structural(StructuralHoleId::new(
-                        db,
-                        ty,
-                        hole_id.root(db),
-                        hole_id.origin(db),
-                        hole_id.trace(db).clone(),
-                    )),
-                    HoleId::Bound(hole_id) => HoleId::Bound(*hole_id),
-                },
-            ),
             ConstTyData::Value(value) => {
                 if ty.invalid_cause(db).is_some() {
                     return Self::new(db, ConstTyData::Invalid(ty));
@@ -3277,12 +2786,7 @@ impl<'db> ConstCaptureEnv<'db> {
         let Some(owner) = lexical_const_body_owner(db, body) else {
             return Self::Empty;
         };
-        let basis = if context.is_some_and(|context| context.source_params() == Some(owner)) {
-            ParamBasis::Source
-        } else {
-            ParamBasis::Full
-        };
-        Self::Identity(ConstCaptureDomain::full(owner, basis))
+        Self::Identity(ConstCaptureDomain::full(owner, ParamBasis::Full))
     }
 
     pub(crate) fn bound(
@@ -3384,7 +2888,6 @@ impl UnevaluatedConstPolicy {
 pub enum ConstTyData<'db> {
     TyVar(TyVar<'db>, TyId<'db>),
     TyParam(TyParam<'db>, TyId<'db>),
-    Hole(TyId<'db>, HoleId<'db>),
     Value(VerifiedConstValueId<'db>),
     Description(SemConstId<'db>),
     Invalid(TyId<'db>),
@@ -3409,16 +2912,15 @@ pub enum ConstTyData<'db> {
 #[cfg(test)]
 mod tests {
     use camino::Utf8PathBuf;
+    use common::file::File;
 
     use super::*;
     use crate::{
         analysis::semantic::{bool_const, int_const, sem_const_from_ty, tuple_const},
         analysis::ty::{
             generic_defaults::{GenericDefault, generic_default},
-            layout_holes::{LayoutTemplateSubst, instantiate_layout_template},
             ty_def::PrimTy,
         },
-        hir_def::ConstGenericArgValue,
         test_db::{HirAnalysisTestDb, find_func},
     };
 
@@ -3437,6 +2939,15 @@ mod tests {
         }
     }
 
+    /// A `ty` const parameter of a stand-alone module: a constant only
+    /// specialization knows.
+    fn const_param<'db>(db: &'db HirAnalysisTestDb, file: File, ty: TyId<'db>) -> ConstTyId<'db> {
+        let (module, _) = db.top_mod(file);
+        let name = IdentId::new(db, "N".to_string());
+        let param = TyParam::normal_param(name, 0, Kind::Star, module.scope(), Some(0));
+        ConstTyId::new(db, ConstTyData::TyParam(param, ty))
+    }
+
     #[test]
     fn signed_constant_type_round_trip_preserves_value() {
         let db = HirAnalysisTestDb::default();
@@ -3449,14 +2960,12 @@ mod tests {
 
     #[test]
     fn dependent_constant_type_round_trip_preserves_term_and_nested_description() {
-        let db = HirAnalysisTestDb::default();
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(Utf8PathBuf::from("dependent_round_trip.fe"), "");
         let ty = TyId::u8(&db);
-        let hole = ConstTyId::new(
-            &db,
-            ConstTyData::Hole(ty, HoleId::Bound(BoundHoleId::Opaque)),
-        );
-        let dependent = sem_const_from_ty(&db, TyId::const_ty(&db, hole)).unwrap();
-        assert_eq!(const_ty_from_sem_const(&db, dependent), hole);
+        let param = const_param(&db, file, ty);
+        let dependent = sem_const_from_ty(&db, TyId::const_ty(&db, param)).unwrap();
+        assert_eq!(const_ty_from_sem_const(&db, dependent), param);
 
         let tuple_ty = TyId::tuple_with_elems(&db, &[ty, ty]);
         let description = tuple_const(
@@ -3492,11 +3001,11 @@ mod tests {
 
     #[test]
     fn specializing_nested_description_produces_verified_value() {
-        let db = HirAnalysisTestDb::default();
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(Utf8PathBuf::from("nested_description.fe"), "");
         let ty = TyId::u8(&db);
-        let hole = ConstTyId::hole_with_ty(&db, ty);
-        let hole_ty = TyId::const_ty(&db, hole);
-        let dependent = sem_const_from_ty(&db, hole_ty).unwrap();
+        let param_ty = TyId::const_ty(&db, const_param(&db, file, ty));
+        let dependent = sem_const_from_ty(&db, param_ty).unwrap();
         let first = int_const(&db, ty, BigInt::from(7));
         let tuple_ty = TyId::tuple_with_elems(&db, &[ty, ty]);
         let symbolic = const_ty_from_sem_const(
@@ -3507,7 +3016,7 @@ mod tests {
         let folded = TyId::const_ty(&db, symbolic).fold_with(
             &db,
             &mut ReplaceConst {
-                from: hole_ty,
+                from: param_ty,
                 to: TyId::const_ty(&db, replacement),
             },
         );
@@ -3526,56 +3035,6 @@ mod tests {
     }
 
     #[test]
-    fn retyping_structural_hole_preserves_landing_trace() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("retyped_layout_hole.fe"),
-            "fn f<const N: u256 = _>() {}",
-        );
-        let (module, _) = db.top_mod(file);
-        db.assert_no_diags(module);
-        let func = find_func(&db, module, "f");
-        let owner = func.into();
-        let anchor = HoleAnchor::GenericDefault {
-            owner,
-            param_idx: 0,
-        };
-        let root = LayoutRootId::source(&db, anchor, 0);
-        let landing = LayoutInstantiationId::new(
-            &db,
-            LayoutInstantiationContext::Lowering(anchor),
-            LayoutBoundaryIdentity::ArrayElement,
-            vec![LayoutOccurrenceStep::Instantiation(0)],
-        );
-        let trace = LayoutHoleTrace {
-            introduced_at: LayoutIntroSite::definition(owner, 0),
-            landings: vec![landing],
-        };
-        let original = ConstTyId::hole_with_id(
-            &db,
-            TyId::u256(&db),
-            HoleId::Structural(StructuralHoleId::new(
-                &db,
-                TyId::u256(&db),
-                root,
-                StructuralHoleOrigin::DefaultHoleParam {
-                    owner,
-                    param_idx: 0,
-                },
-                trace.clone(),
-            )),
-        );
-        assert_eq!(original.with_ty(&db, TyId::u256(&db)), original);
-        let retyped = original.with_ty(&db, TyId::u8(&db));
-        let ConstTyData::Hole(_, HoleId::Structural(hole)) = retyped.data(&db) else {
-            panic!("expected structural hole")
-        };
-        assert_eq!(hole.root(&db), root);
-        assert_eq!(hole.expected_ty(&db), TyId::u8(&db));
-        assert_eq!(hole.trace(&db), trace);
-    }
-
-    #[test]
     fn stored_canonicalization_preserves_unevaluated_application() {
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone(
@@ -3585,10 +3044,7 @@ mod tests {
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
         let func = find_func(&db, module, "one");
-        let GenericDefault::Const {
-            value: ConstGenericArgValue::Expr(Partial::Present(body)),
-            ..
-        } = generic_default(&db, func.into(), 0)
+        let GenericDefault::Const { value: body, .. } = generic_default(&db, func.into(), 0)
             .as_ref()
             .unwrap()
             .as_ref()
@@ -3627,7 +3083,7 @@ mod tests {
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone(
             Utf8PathBuf::from("source_capture_full_slots.fe"),
-            "struct Slot<const ROOT: u256 = _> {}\ntrait T<X> { fn f<Y>(_ value: Slot, _ extra: Y) {} }",
+            "struct K {}\ntrait T<X> { fn f<Y>(_ extra: Y) uses (k: K) {} }",
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
@@ -3664,18 +3120,6 @@ mod tests {
             .formal_at(&db, full.slot_for(&db, own_key).unwrap())
             .unwrap();
         assert_ne!(source_formal, full_formal);
-        let layout_owner = CallableLayoutOwner::Func(func);
-        let instantiated = instantiate_layout_template(
-            &db,
-            source_formal,
-            Some(LayoutTemplateSubst::new(ParamBasis::Source, subst.clone())),
-            LayoutInstantiationContext::Lowering(HoleAnchor::CallableOutput {
-                owner: layout_owner,
-            }),
-            LayoutBoundaryIdentity::CallableOutput(layout_owner),
-            Vec::new(),
-        );
-        assert_eq!(instantiated.ty, TyId::bool(&db));
         let capture =
             ConstCaptureEnv::Identity(ConstCaptureDomain::full(func.into(), ParamBasis::Source));
         let bound = capture.bind_identity_with(&db, &subst).unwrap().unwrap();

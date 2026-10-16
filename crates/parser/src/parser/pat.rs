@@ -14,28 +14,7 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<
     use SyntaxKind::*;
     parser.bump_trivias();
     let checkpoint = parser.checkpoint();
-    let has_mut = parser.bump_if(SyntaxKind::MutKw);
-
-    let token = parser.current_token();
-    if has_mut {
-        match token.as_ref().map(|t| t.syntax_kind()) {
-            Some(Underscore | Dot2 | LParen) => {
-                parser.error_msg_on_current_token(&format!(
-                    "`mut` is not allowed on `{}`",
-                    token.unwrap().text()
-                ));
-            }
-
-            Some(kind) if is_lit(kind) => {
-                parser.error_msg_on_current_token(&format!(
-                    "`mut` is not allowed on `{}`",
-                    token.unwrap().text()
-                ));
-            }
-
-            _ => {}
-        }
-    }
+    bump_binding_marker(parser);
 
     match parser.current_kind() {
         Some(Underscore) => parser
@@ -55,6 +34,39 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<
         parser.parse_cp(OrPatScope::default(), Some(checkpoint))?;
     }
     Ok(())
+}
+
+/// Bumps a binding's `mut`, `ref` or `var` marker, reporting one in front of
+/// a pattern that binds nothing or a second marker.
+fn bump_binding_marker<S: TokenStream>(parser: &mut Parser<S>) {
+    use SyntaxKind::*;
+    let Some(marker) = [MutKw, RefKw, VarKw]
+        .into_iter()
+        .find(|kind| parser.bump_if(*kind))
+    else {
+        return;
+    };
+    let Some(token) = parser.current_token() else {
+        return;
+    };
+    match token.syntax_kind() {
+        Underscore | Dot2 | LParen => {}
+        kind if is_lit(kind) => {}
+        MutKw | RefKw | VarKw => {
+            parser.error_msg_on_current_token(&format!(
+                "a binding takes one marker, not {} and {}",
+                marker.describe(),
+                token.syntax_kind().describe()
+            ));
+            return;
+        }
+        _ => return,
+    }
+    parser.error_msg_on_current_token(&format!(
+        "{} is not allowed on `{}`",
+        marker.describe(),
+        token.text()
+    ));
 }
 
 define_scope! { WildCardPatScope, WildCardPat, (Pipe) }
@@ -283,28 +295,7 @@ fn parse_recv_arm_field_pat<S: TokenStream>(
     use SyntaxKind::*;
     parser.bump_trivias();
     let checkpoint = parser.checkpoint();
-    let has_mut = parser.bump_if(SyntaxKind::MutKw);
-
-    let token = parser.current_token();
-    if has_mut {
-        match token.as_ref().map(|t| t.syntax_kind()) {
-            Some(Underscore | Dot2 | LParen) => {
-                parser.error_msg_on_current_token(&format!(
-                    "`mut` is not allowed on `{}`",
-                    token.unwrap().text()
-                ));
-            }
-
-            Some(kind) if is_lit(kind) => {
-                parser.error_msg_on_current_token(&format!(
-                    "`mut` is not allowed on `{}`",
-                    token.unwrap().text()
-                ));
-            }
-
-            _ => {}
-        }
-    }
+    bump_binding_marker(parser);
 
     match parser.current_kind() {
         Some(Underscore) => parser

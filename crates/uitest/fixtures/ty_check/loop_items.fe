@@ -1,0 +1,39 @@
+// A loop's item pattern chooses its traversal: `mut` on the item selects
+// `at_mut` and opens the base mutably, as a `mut` component opens a matched
+// place, so the base needs no marker.
+use core::iter::zip
+
+// S-70. Accepted: each element, and each item of a chain, is written in
+// place.
+fn written(_ xs: mut [u256; 4]) {
+    for mut x in xs {
+        x *= 2
+    }
+    for (i, mut x) in xs.enumerate().take(3) {
+        x += i as u256
+    }
+}
+
+// S-70. Rejected: a `mut` item over a view base.
+fn view_base(_ xs: [u256; 2]) {
+    for mut x in xs {
+        x += 1
+    }
+}
+
+// S-70. Rejected: `mut` on the owned index beside the item.
+fn mut_extra(_ xs: mut [u256; 2]) {
+    for (mut i, x) in xs.enumerate() {
+        i += x as usize
+    }
+}
+
+// S-70. Accepted: both items `mut`; rejected: only one of them.
+fn zipped(_ a: mut [u256; 2], _ b: mut [u256; 2]) {
+    for (mut x, mut y) in (a, b) by zip() {
+        x += y
+    }
+    for (mut x, y) in (a, b) by zip() {
+        x += y
+    }
+}

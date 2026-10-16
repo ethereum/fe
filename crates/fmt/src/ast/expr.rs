@@ -441,6 +441,15 @@ impl ToDoc for ast::UnExpr {
     }
 }
 
+impl ToDoc for ast::TryExpr {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        match self.expr() {
+            Some(expr) => expr.to_doc(ctx).append(ctx.alloc.text("?")),
+            None => ctx.alloc.nil(),
+        }
+    }
+}
+
 impl ToDoc for ast::CastExpr {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         let alloc = &ctx.alloc;
@@ -471,6 +480,56 @@ impl ToDoc for ast::CastExpr {
             },
             |token| match token.kind() {
                 SyntaxKind::AsKw => Some(TokenPiece::new(alloc.text("as")).spaces()),
+                _ => None,
+            },
+        )
+    }
+}
+
+impl ToDoc for ast::ClosureExpr {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+        let indent = ctx.config.indent_width as isize;
+        let params = |params: ast::FuncParamList| {
+            block_list_auto(
+                ctx,
+                params.syntax(),
+                "|",
+                "|",
+                ast::FuncParam::cast,
+                indent,
+                false,
+            )
+        };
+
+        if !has_comment_tokens(self.syntax()) {
+            let doc = self.params().map_or_else(|| alloc.text("||"), params);
+            let doc = match self.ret_ty() {
+                Some(ty) => doc.append(alloc.text(" -> ")).append(ty.to_doc(ctx)),
+                None => doc,
+            };
+            return match self.body() {
+                Some(body) => doc.append(alloc.text(" ")).append(body.to_doc(ctx)),
+                None => doc,
+            };
+        }
+
+        token_doc(
+            ctx,
+            self.syntax(),
+            indent,
+            |node| {
+                if let Some(list) = ast::FuncParamList::cast(node.clone()) {
+                    return Some(TokenPiece::new(params(list)));
+                }
+                if let Some(expr) = ast::Expr::cast(node.clone()) {
+                    return Some(TokenPiece::new(expr.to_doc(ctx)).space_before());
+                }
+                ast::Type::cast(node).map(|ty| TokenPiece::new(ty.to_doc(ctx)))
+            },
+            |token| match token.kind() {
+                SyntaxKind::Pipe2 => Some(TokenPiece::new(alloc.text("||"))),
+                SyntaxKind::Arrow => Some(TokenPiece::new(alloc.text("->")).spaces()),
                 _ => None,
             },
         )
@@ -1289,6 +1348,30 @@ impl ToDoc for ast::WithExpr {
                     Some(TokenPiece::new(alloc.text("with")).space_after())
                 }
                 _ => None,
+            },
+        )
+    }
+}
+
+impl ToDoc for ast::UnsafeExpr {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+
+        if !has_comment_tokens(self.syntax()) {
+            return match self.block() {
+                Some(block) => alloc.text("unsafe ").append(block.to_doc(ctx)),
+                None => alloc.text("unsafe"),
+            };
+        }
+
+        token_doc(
+            ctx,
+            self.syntax(),
+            ctx.config.indent_width as isize,
+            |node| ast::BlockExpr::cast(node).map(|block| TokenPiece::new(block.to_doc(ctx))),
+            |token| {
+                (token.kind() == SyntaxKind::UnsafeKw)
+                    .then(|| TokenPiece::new(alloc.text("unsafe")).space_after())
             },
         )
     }

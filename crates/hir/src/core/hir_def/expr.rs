@@ -1,19 +1,31 @@
 use cranelift_entity::entity_impl;
 
 use super::{
-    Body, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId, TypeId,
+    Body, FuncParamListId, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId, PathId,
+    StmtId, TypeId,
 };
 use crate::{HirDb, span::expr::LazyExprSpan};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum Expr<'db> {
     Lit(LitKind<'db>),
-    Block(Vec<StmtId>),
+    Block(Vec<StmtId>, BlockKind),
+    /// `|params| -> ret_ty body`. An omitted parameter type lowers to an absent
+    /// `FuncParam::ty`, and an omitted mode payload (`|x: own|`) lowers to
+    /// `TypeKind::Mode(mode, Partial::Absent)`; both are inferred later.
+    Closure {
+        params: FuncParamListId<'db>,
+        ret_ty: Option<TypeId<'db>>,
+        body: ExprId,
+    },
     /// The first `ExprId` is the lhs, the second is the rhs.
     Bin(ExprId, ExprId, BinOp),
     Un(ExprId, UnOp),
     /// `expr as Type`
     Cast(ExprId, Partial<TypeId<'db>>),
+    /// `expr?`: the payload of a `Some` or `Ok`; a `None` or `Err` ends the
+    /// enclosing function with that variant.
+    Try(ExprId),
     /// (callee, call args)
     Call(ExprId, Vec<CallArg<'db>>),
     /// Compiler-owned `assert!(cond[, "message"])` builtin.
@@ -57,6 +69,13 @@ pub enum Expr<'db> {
     With(Vec<WithBinding<'db>>, ExprId),
 }
 
+/// Whether a block is a plain `{ .. }` or an `unsafe { .. }` block.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum BlockKind {
+    Normal,
+    Unsafe,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
 pub struct ExprId(u32);
 entity_impl!(ExprId);
@@ -69,6 +88,13 @@ impl ExprId {
     pub fn data<'db>(self, db: &'db dyn HirDb, body: Body<'db>) -> &'db Partial<Expr<'db>> {
         &body.exprs(db)[self]
     }
+}
+
+/// A closure expression within the body that contains it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub struct ClosureDef<'db> {
+    pub body: Body<'db>,
+    pub expr: ExprId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
@@ -215,7 +241,12 @@ impl<'db> CallArg<'db> {
             return Some(label);
         };
 
-        let Partial::Present(Expr::Path(Partial::Present(path))) = self.expr.data(db, body) else {
+        // `f(x)`, `f(ref x)` and `f(mut x)` are labeled `x`.
+        let mut expr = self.expr;
+        if let Partial::Present(Expr::Un(inner, UnOp::Ref | UnOp::Mut)) = expr.data(db, body) {
+            expr = *inner;
+        }
+        let Partial::Present(Expr::Path(Partial::Present(path))) = expr.data(db, body) else {
             return None;
         };
 

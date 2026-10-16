@@ -1,7 +1,7 @@
 //! Const `where` requirements through the driver.
 //!
 //! Rejected programs are rendered uitest fixtures (`ty_check/const_where`,
-//! `semantic_borrowck/const_where`). This file covers accepted programs,
+//! `semantic_access/const_where`). This file covers accepted programs,
 //! whose `answer*` functions are evaluated and snapshotted, and relational
 //! checks that compare one program across edits, query orders or printing.
 

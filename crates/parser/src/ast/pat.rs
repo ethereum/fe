@@ -91,6 +91,16 @@ impl PathPat {
     pub fn mut_token(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::MutKw)
     }
+
+    /// Returns the `ref` keyword if the pattern binds a read access.
+    pub fn ref_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::RefKw)
+    }
+
+    /// Returns the `var` keyword if the pattern binds a mutable value.
+    pub fn var_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::VarKw)
+    }
 }
 
 ast_node! {

@@ -110,13 +110,9 @@ impl<'db> ConstGenericParam<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::ConstGenericParam) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let default = if ast.default_hole().is_some() {
-            Some(ConstGenericArgValue::Hole)
-        } else {
-            ast.default_expr().map(|expr| {
-                ConstGenericArgValue::Expr(Partial::Present(Body::lower_ast_nameless(ctxt, expr)))
-            })
-        };
+        let default = ast
+            .default_expr()
+            .map(|expr| Body::lower_ast_nameless(ctxt, expr));
         Self { name, ty, default }
     }
 }
@@ -146,15 +142,10 @@ impl<'db> TypeGenericArg<'db> {
 
 impl<'db> ConstGenericArg<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::ConstGenericArg) -> Self {
-        let value = if ast.hole_token().is_some() {
-            ConstGenericArgValue::Hole
-        } else {
-            let body = ast
-                .expr()
-                .map(|expr| Body::lower_ast_nameless(ctxt, expr))
-                .into();
-            ConstGenericArgValue::Expr(body)
-        };
+        let value = ast
+            .expr()
+            .map(|expr| Body::lower_ast_nameless(ctxt, expr))
+            .into();
 
         Self { value }
     }
@@ -184,7 +175,7 @@ impl<'db> GenericParam<'db> {
 impl<'db> FuncParam<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParam) -> Self {
         let has_mut_token = ast.mut_token().is_some();
-        let mut is_mut = has_mut_token;
+        let mut is_mut = has_mut_token || ast.var_token().is_some();
         let is_ref = ast.ref_token().is_some();
         let is_own = ast.own_token().is_some();
         let is_label_suppressed = ast.is_label_suppressed();
@@ -203,6 +194,7 @@ impl<'db> FuncParam<'db> {
         let ty = if self_ty_fallback {
             let fallback_self = TypeId::fallback_self_ty(ctxt.db());
             if is_ref {
+                is_mut = false;
                 Partial::Present(TypeId::new(
                     ctxt.db(),
                     TypeKind::Mode(TypeMode::Ref, Partial::Present(fallback_self)),
@@ -236,20 +228,23 @@ impl<'db> FuncParam<'db> {
             }
         };
 
-        let mode = if ty
-            .to_opt()
-            .is_some_and(|ty| matches!(ty.data(ctxt.db()), TypeKind::Mode(TypeMode::Own, _)))
-        {
-            FuncParamMode::Own
-        } else {
-            FuncParamMode::View
+        let mode = match ty.to_opt().map(|ty| ty.data(ctxt.db())) {
+            Some(TypeKind::Mode(TypeMode::Own, _)) => FuncParamMode::Own,
+            Some(TypeKind::Mode(TypeMode::Mut, _)) => FuncParamMode::Mut,
+            _ => FuncParamMode::View,
         };
+        // `mut` before a name, which the parser reports, is taken as `var`
+        // only where `var` is valid, so it is reported once.
+        if has_mut_token && !name_is_self && mode != FuncParamMode::Own {
+            is_mut = false;
+        }
 
         Self {
             mode,
             is_mut,
             has_ref_prefix: is_ref,
             has_own_prefix: is_own,
+            has_mut_prefix: has_mut_token,
             is_label_suppressed,
             name: name.into(),
             ty,

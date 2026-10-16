@@ -161,7 +161,7 @@ impl PackedUserOperation {
 
     /// `paymaster_and_data` from byte 52 on, the paymaster's own data. Empty
     /// when it is shorter than 52 bytes.
-    pub fn paymaster_data(self) -> MemSpan {
+    pub fn paymaster_data(self) -> ref MemSpan {
         let len = self.paymaster_and_data.len()
         if len < PAYMASTER_DATA_OFFSET {
             return MemSpan::empty()
@@ -255,7 +255,7 @@ impl ValidationData {
     /// `2^48 - 1`, so `pack` after `unpack` keeps the meaning but not the
     /// word.
     pub fn unpack(_ data: u256) -> Self {
-        let mut valid_until = (data >> 160) & MAX_U48
+        var valid_until = (data >> 160) & MAX_U48
         if valid_until == 0 {
             valid_until = MAX_U48
         }

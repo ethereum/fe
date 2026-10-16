@@ -1,5 +1,6 @@
 ---
-source: crates/hir/tests/ty_check.rs
+source: crates/hir/tests/frontend/ty_check.rs
+assertion_line: 46
 expression: res
 input_file: test_files/ty_check/contract_effects.fe
 ---
@@ -112,13 +113,13 @@ note:
    ┌─ contract_effects.fe:30:5
    │
 30 │     Deposit { amount: u256 } -> u256,
-   │     ^^^^^^^ () | *<u8> | Deposit | __fe_I | fn decode_field<Sol, u256, __fe_D> | fn decode_msg_field_from<Sol, u256, __fe_I> | fn dynamic_payload_size<u256> | fn encode_field_at<Sol, u256> | mut __fe_D | u256
+   │     ^^^^^^^ () | AbiFrame | Deposit | __fe_D | __fe_I | fn decode_field<Sol, u256, __fe_D, __fe_I> | fn decode_msg_field_from<Sol, u256, __fe_I> | fn dynamic_payload_size<u256> | fn encode_field<Sol, u256> | u256
 
 note:
    ┌─ contract_effects.fe:33:5
    │
 33 │     Withdraw { amount: u256 } -> bool,
-   │     ^^^^^^^^ () | *<u8> | Withdraw | __fe_I | fn decode_field<Sol, u256, __fe_D> | fn decode_msg_field_from<Sol, u256, __fe_I> | fn dynamic_payload_size<u256> | fn encode_field_at<Sol, u256> | mut __fe_D | u256
+   │     ^^^^^^^^ () | AbiFrame | Withdraw | __fe_D | __fe_I | fn decode_field<Sol, u256, __fe_D, __fe_I> | fn decode_msg_field_from<Sol, u256, __fe_I> | fn dynamic_payload_size<u256> | fn encode_field<Sol, u256> | u256
 
 note:
    ┌─ contract_effects.fe:36:5
@@ -268,7 +269,7 @@ note:
    │ ╭────────────────────^
 64 │ │     let ctx = MockCtx { caller: Address { inner: 0xbeef } }
 65 │ │     let owner = Address { inner: 0xfe }
-66 │ │     let mut balance = 100
+66 │ │     var balance = 100
    · │
 69 │ │     }
 70 │ │ }
@@ -319,14 +320,14 @@ note:
 note:
    ┌─ contract_effects.fe:66:9
    │
-66 │     let mut balance = 100
-   │         ^^^^^^^^^^^ u256
+66 │     var balance = 100
+   │         ^^^^^^^ u256
 
 note:
-   ┌─ contract_effects.fe:66:23
+   ┌─ contract_effects.fe:66:19
    │
-66 │     let mut balance = 100
-   │                       ^^^ u256
+66 │     var balance = 100
+   │                   ^^^ u256
 
 note:
    ┌─ contract_effects.fe:67:5

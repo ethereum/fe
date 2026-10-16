@@ -1,14 +1,16 @@
+use cranelift_entity::EntityRef;
 use salsa::Update;
 
 use crate::analysis::{
     HirAnalysisDb,
     semantic::{
-        BlockedSemanticBody, SemanticBody, SemanticDiagnostic, SemanticDiagnosticId,
-        SemanticInstance, SemanticNormalizationFailure,
+        BlockedSemanticBody, SStmtKind, SemOrigin, SemanticBody, SemanticDiagnostic,
+        SemanticDiagnosticId, SemanticInstance, SemanticLocalRole, SemanticNormalizationFailure,
         ctfe::{canonicalize_semantic_const_refs, canonicalize_semantic_consts_for_runtime},
         diagnostics::{
-            normalized_body_error_to_diag, normalized_body_verify_error_to_diag,
-            normalized_layout_plan_verify_error_to_diag, smir_lowering_admission_diag,
+            SemanticDiagnosticKind, SemanticDiagnosticSpan, normalized_body_error_to_diag,
+            normalized_body_verify_error_to_diag, normalized_layout_plan_verify_error_to_diag,
+            smir_lowering_admission_diag,
         },
         instance::SemanticBodyAdmissionError,
         semantic_instance_base_assumptions_for_key,
@@ -55,8 +57,8 @@ pub fn normalize_semantic_body<'db>(
     artifacts_from_admission(db, semantic_body_admission(db, instance))
 }
 
-/// The verified body with constant-evaluable operations folded. Layout evidence
-/// and runtime lowering share it; ownership is checked on
+/// The verified body with constant-evaluable operations folded, which runtime
+/// lowering uses; ownership is checked on
 /// [`normalize_semantic_body`] instead.
 pub fn normalize_runtime_semantic_body<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -146,6 +148,9 @@ fn normalize_and_verify<'db>(
     raw: &SemanticBody<'db>,
     assumptions: PredicateListId<'db>,
 ) -> SemanticBodyAdmission<'db> {
+    if let Some(diag) = state_only_memory_value(db, instance, raw) {
+        return SemanticBodyAdmission::Rejected(diag);
+    }
     match normalize_raw_body(db, instance, raw, assumptions) {
         Ok(artifacts) => {
             if let Err(error) = verify_normalized_body(db, &artifacts.body) {
@@ -172,6 +177,53 @@ fn normalize_and_verify<'db>(
     }
 }
 
+/// A memory value in `raw` whose type is state-only in `instance`. A state-only
+/// type lives only at places in storage or transient storage: a template may
+/// hold its type parameters as memory values, and an instance whose arguments
+/// make one of those state-only would hold it in memory. The locals the
+/// boundary initializes, parameters and effects, name the caller's values,
+/// which the caller made and is checked for.
+fn state_only_memory_value<'db>(
+    db: &'db dyn HirAnalysisDb,
+    instance: SemanticInstance<'db>,
+    raw: &SemanticBody<'db>,
+) -> Option<SemanticDiagnosticId<'db>> {
+    let (idx, ty, part) = raw.locals.iter().enumerate().find_map(|(idx, local)| {
+        if !matches!(local.role, SemanticLocalRole::DirectValue { .. })
+            || raw.entry_locals.iter().any(|entry| entry.index() == idx)
+        {
+            return None;
+        }
+        let ty = instance.normalized_ty(db, local.ty);
+        Some((idx, ty, ty.pinned_part(db)?))
+    })?;
+    let origin = raw
+        .blocks
+        .iter()
+        .flat_map(|block| &block.stmts)
+        .find_map(|stmt| match stmt.kind {
+            SStmtKind::Assign { dst, .. } if dst.index() == idx => Some(stmt.origin),
+            _ => None,
+        })
+        .unwrap_or(SemOrigin::Body(raw.template_owner));
+    Some(SemanticDiagnosticId::new(
+        db,
+        SemanticDiagnostic::new(
+            instance,
+            SemanticDiagnosticKind::InvalidConcreteType,
+            format!(
+                "here `{}` is a value in memory, but it holds `{}`, which is pinned to a state space",
+                ty.pretty_print(db),
+                part.pretty_print(db)
+            ),
+            SemanticDiagnosticSpan::Origin {
+                owner: instance.key(db).owner(db),
+                origin,
+            },
+        ),
+    ))
+}
+
 fn admission_failure<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -187,9 +239,8 @@ fn admission_failure<'db>(
         SemanticBodyAdmissionError::CallSiteFinalization(diag) => {
             SemanticBodyAdmission::InternalFailure(diag)
         }
-        SemanticBodyAdmissionError::InvalidConcreteType(diag) => {
-            SemanticBodyAdmission::Rejected(diag)
-        }
+        SemanticBodyAdmissionError::InvalidConcreteType(diag)
+        | SemanticBodyAdmissionError::InstanceLimit(diag) => SemanticBodyAdmission::Rejected(diag),
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::hir_def::{
-    Enum, GenericParamOwner, IdentId, ItemKind, Partial, Struct, TypeId as HirTyId, VariantKind,
-    scope_graph::ScopeId,
+    Enum, EnumVariant, FieldParent, GenericParamOwner, IdentId, ItemKind, Partial, Struct,
+    TypeId as HirTyId, VariantKind, scope_graph::ScopeId,
 };
 use crate::span::DynLazySpan;
 use common::ingot::Ingot;
@@ -8,19 +8,22 @@ use salsa::Update;
 
 use super::{
     binder::Binder,
-    const_ty::{
-        ConstBodyLowering, HoleAnchor, LayoutBoundaryIdentity, LayoutInstantiationContext,
-        LayoutInstantiationId, LayoutOccurrencePath, LoweringContext,
+    const_ty::ConstBodyLowering,
+    corelib::resolve_core_trait,
+    fold::TyFoldable,
+    normalize::normalize_ty,
+    provider::{AddressSpace, pinned_space},
+    result_space::{SpaceValue, impl_space_value},
+    trait_def::{ImplementorOrigin, impls_for_trait_def},
+    trait_resolution::{
+        GoalSatisfiability, PredicateListId, TraitSolveCx, constraint::collect_constraints,
+        is_goal_satisfiable,
     },
-    layout_holes::{
-        LayoutInstantiation, LayoutRootUse, LayoutTemplateSubst, instantiate_layout_template,
-    },
-    trait_resolution::{PredicateListId, constraint::collect_constraints},
-    ty_def::{InvalidCause, TyId},
+    ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
     ty_lower::{
-        CompleteSubst, GenericParamTypeSet, ParamBasis, ParamDomainId, ParamSchemaId,
-        lower_hir_ty_in_mode, lower_layout_root_uses_in_hir_ty,
+        CompleteSubst, GenericParamTypeSet, ParamDomainId, ParamSchemaId, lower_hir_ty_in_mode,
     },
+    unify::UnificationTable,
 };
 use crate::analysis::HirAnalysisDb;
 
@@ -40,6 +43,144 @@ pub struct AdtDef<'db> {
     pub fields: Vec<AdtField<'db>>,
 }
 
+/// Where a type is pinned: to the state space its `core::marker::Pinned`
+/// implementation names as `S`. Implementing the trait is the pinning
+/// declaration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+pub enum Pin {
+    /// No implementation pins the type, or any instance of it.
+    Unpinned,
+    Pinned(AddressSpace),
+    /// Whether the type is pinned depends on its parameters: separate
+    /// implementations, or a space forwarded from them, pin some instances.
+    Undecided,
+}
+
+/// The pin of `ty`: the space of the `Pinned` implementation that trait
+/// selection picks for it, bounds checked, as lowering resolves it. A type
+/// no implementation is selected for is undecided while one could still
+/// apply to an instance of it (its parameters, or bounds they leave open),
+/// and unpinned otherwise.
+#[salsa::tracked(cycle_fn = ty_pin_cycle_recover, cycle_initial = ty_pin_cycle_initial)]
+pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
+    let Some(adt) = ty.adt_def(db) else {
+        return Pin::Unpinned;
+    };
+    // A type still being inferred stands for any instance of its ADT.
+    let ty = if ty.has_var(db) {
+        TyId::foldl(db, TyId::adt(db, adt), adt.params(db))
+    } else {
+        ty
+    };
+    let scope = adt.scope(db);
+    let Some(pinned) = resolve_core_trait(db, scope, &["marker", "Pinned"]) else {
+        return Pin::Unpinned;
+    };
+    if let Some(space) = pinned_space(db, scope, PredicateListId::empty_list(db), ty) {
+        return Pin::Pinned(space);
+    }
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(PredicateListId::empty_list(db));
+    let may_apply = impls_for_trait_def(db, adt.ingot(db), pinned)
+        .iter()
+        .any(|implementor| {
+            // A pin to another space is an error at the implementation.
+            if let ImplementorOrigin::Hir(impl_trait) = implementor.origin(db)
+                && let Some(SpaceValue::Space(space)) = impl_trait
+                    .spaces(db)
+                    .first()
+                    .and_then(|space| space.value)
+                    .and_then(|(value, steps)| {
+                        impl_space_value(db, impl_trait, value.to_opt()?, steps)
+                    })
+                && !matches!(space, AddressSpace::Storage | AddressSpace::Transient)
+            {
+                return false;
+            }
+            let mut table = UnificationTable::new(db);
+            let instance = table.instantiate_with_fresh_vars(*implementor);
+            let ty = table.instantiate_with_fresh_vars(ty);
+            table.unify(instance.self_ty(db), ty).is_ok()
+                && instance.constraints(db).list(db).iter().all(|constraint| {
+                    !matches!(
+                        is_goal_satisfiable(db, solve_cx, constraint.fold_with(db, &mut table)),
+                        GoalSatisfiability::UnSat(_) | GoalSatisfiability::ContainsInvalid
+                    )
+                })
+        });
+    if may_apply {
+        Pin::Undecided
+    } else {
+        Pin::Unpinned
+    }
+}
+
+fn ty_pin_cycle_initial<'db>(_: &'db dyn HirAnalysisDb, _: TyId<'db>) -> Pin {
+    Pin::Unpinned
+}
+
+fn ty_pin_cycle_recover<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: &Pin,
+    _: u32,
+    _: TyId<'db>,
+) -> salsa::CycleRecoveryAction<Pin> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
+/// The type that is or may be pinned that `ty` is or holds in a field, or
+/// in a tuple or array element; see `TyId::pinned_part`.
+#[salsa::tracked(cycle_fn = ty_pinned_part_cycle_recover, cycle_initial = ty_pinned_part_cycle_initial)]
+pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
+    match ty.base_ty(db).data(db) {
+        TyData::TyBase(TyBase::Adt(adt)) => {
+            if ty.may_be_pinned(db) {
+                return Some(ty);
+            }
+            // A type not applied to all its arguments has no values.
+            let args = ty.generic_args(db);
+            if args.len() != adt.params(db).len() {
+                return None;
+            }
+            // A field of an associated type holds the type it names.
+            adt.fields(db)
+                .iter()
+                .flat_map(|variant| variant.iter_types(db))
+                .find_map(|field| {
+                    normalize_ty(
+                        db,
+                        field.instantiate(db, args),
+                        adt.scope(db),
+                        PredicateListId::empty_list(db),
+                    )
+                    .pinned_part(db)
+                })
+        }
+        TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_) | PrimTy::Array)) => ty
+            .generic_args(db)
+            .iter()
+            .find_map(|elem| elem.pinned_part(db)),
+        // A memory pointer's target lies in memory, where a pinned type never
+        // does; a state pointer is a handle to a place in state.
+        TyData::TyBase(TyBase::Prim(PrimTy::Ptr(
+            AddressSpace::Memory | AddressSpace::Calldata | AddressSpace::Code,
+        ))) => ty.as_ptr(db)?.0.pinned_part(db),
+        _ => None,
+    }
+}
+
+fn ty_pinned_part_cycle_initial<'db>(_: &'db dyn HirAnalysisDb, _: TyId<'db>) -> Option<TyId<'db>> {
+    None
+}
+
+fn ty_pinned_part_cycle_recover<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: &Option<TyId<'db>>,
+    _: u32,
+    _: TyId<'db>,
+) -> salsa::CycleRecoveryAction<Option<TyId<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
 impl<'db> AdtDef<'db> {
     pub(crate) fn name(self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
         self.adt_ref(db).name(db)
@@ -55,6 +196,24 @@ impl<'db> AdtDef<'db> {
 
     pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.adt_ref(db), AdtRef::Struct(_))
+    }
+
+    /// Whether some field of some variant is an `unsafe` field, whose value
+    /// carries an invariant of the type: the all-zero representation need
+    /// not satisfy it, so zero is no value of the type.
+    pub(crate) fn has_unsafe_field(self, db: &'db dyn HirAnalysisDb) -> bool {
+        let parents: Vec<_> = match self.adt_ref(db) {
+            AdtRef::Struct(struct_) => vec![FieldParent::Struct(struct_)],
+            // Only a record variant names its fields, and so marks them.
+            AdtRef::Enum(enum_) => (0..self.fields(db).len())
+                .map(|idx| EnumVariant::new(enum_, idx))
+                .filter(|variant| matches!(variant.kind(db), VariantKind::Record(_)))
+                .map(FieldParent::Variant)
+                .collect(),
+        };
+        parents
+            .into_iter()
+            .any(|parent| parent.fields(db).any(|field| field.is_unsafe(db)))
     }
 
     pub fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
@@ -149,19 +308,6 @@ impl<'db> AdtField<'db> {
         }
     }
 
-    fn layout_root_uses(&self, db: &'db dyn HirAnalysisDb, i: usize) -> Vec<LayoutRootUse<'db>> {
-        let Some(hir_ty) = self.tys[i].to_opt() else {
-            return Vec::new();
-        };
-        let assumptions = self.assumptions(db);
-        let minter = LoweringContext::new(HoleAnchor::TemplateTy {
-            ty: hir_ty,
-            scope: self.scope,
-            assumptions,
-        });
-        lower_layout_root_uses_in_hir_ty(db, hir_ty, self.scope, assumptions, &minter)
-    }
-
     /// Iterates all field types of this variant.
     pub fn iter_types<'a>(
         &'a self,
@@ -233,6 +379,13 @@ impl<'db> AdtRef<'db> {
         }
     }
 
+    pub fn is_view(self, db: &'db dyn HirAnalysisDb) -> bool {
+        match self {
+            AdtRef::Enum(enum_) => enum_.is_view(db),
+            AdtRef::Struct(struct_) => struct_.is_view(db),
+        }
+    }
+
     /// Returns the semantic ADT definition for this reference.
     /// Thin wrapper over the tracked `lower_adt` query for ergonomic use at call sites.
     pub fn as_adt(self, db: &'db dyn HirAnalysisDb) -> AdtDef<'db> {
@@ -255,9 +408,8 @@ pub struct AdtCycleMember<'db> {
     pub ty_idx: usize,
 }
 
-/// Instantiates an ADT field as a source-level type shape. This deliberately
-/// does not mint layout landings; storage walking must use
-/// [`instantiate_adt_field_layout`] instead.
+/// Instantiates an ADT field's type with `explicit_args`; omitted trailing
+/// arguments keep their declaration formals.
 pub fn instantiate_adt_field_shape<'db>(
     db: &'db dyn HirAnalysisDb,
     adt: AdtDef<'db>,
@@ -360,76 +512,4 @@ fn instantiate_adt_field_shape_in_mode<'db>(
                     .expect("ADT field uses its declaration domain")
             },
         )
-}
-
-pub(crate) fn instantiate_adt_field_layout<'db>(
-    db: &'db dyn HirAnalysisDb,
-    adt: AdtDef<'db>,
-    variant_idx: usize,
-    field_idx: usize,
-    args: &[TyId<'db>],
-    parent: LayoutInstantiationId<'db>,
-    occurrence: LayoutOccurrencePath,
-) -> LayoutInstantiation<'db> {
-    let owner = adt.as_generic_param_owner(db);
-    let schema = ParamSchemaId::full(db, owner);
-    let field = adt
-        .fields(db)
-        .get(variant_idx)
-        .filter(|variant| field_idx < variant.num_types());
-    let template = field.map_or_else(
-        || TyId::invalid(db, InvalidCause::Other),
-        |field| field.ty(db, field_idx).instantiate_identity(),
-    );
-    let template_root_uses =
-        field.map_or_else(Vec::new, |field| field.layout_root_uses(db, field_idx));
-    let domain = ParamDomainId::full(db, schema);
-    if args.len() > domain.len(db) {
-        return instantiate_layout_template(
-            db,
-            TyId::invalid(
-                db,
-                InvalidCause::TooManyGenericArgs {
-                    expected: domain.len(db),
-                    given: args.len(),
-                },
-            ),
-            None,
-            LayoutInstantiationContext::Nested(parent),
-            LayoutBoundaryIdentity::AdtApplication(adt),
-            occurrence,
-        );
-    }
-    // Layout discovery also visits incomplete applications while diagnosing
-    // invalid source. Preserve absent formals as explicit residual parameters.
-    let subst = CompleteSubst::with_prefix(db, domain, args);
-    let mut instantiated = instantiate_layout_template(
-        db,
-        template,
-        Some(LayoutTemplateSubst::new(ParamBasis::Full, subst.clone())),
-        LayoutInstantiationContext::Nested(parent),
-        LayoutBoundaryIdentity::AdtApplication(adt),
-        occurrence.clone(),
-    );
-    for root_use in template_root_uses {
-        let value = Binder::bind(owner, root_use.value).instantiate(db, subst.values());
-        if super::layout_holes::layout_root_id(db, value).is_some() {
-            continue;
-        }
-        let owner = root_use
-            .owner
-            .map(|root_owner| Binder::bind(owner, root_owner).instantiate(db, subst.values()))
-            .or(Some(instantiated.ty));
-        let mut selector = occurrence.clone();
-        selector.extend(root_use.selector);
-        let root_use = LayoutRootUse {
-            value,
-            owner,
-            selector,
-        };
-        if !instantiated.root_uses.contains(&root_use) {
-            instantiated.root_uses.push(root_use);
-        }
-    }
-    instantiated
 }

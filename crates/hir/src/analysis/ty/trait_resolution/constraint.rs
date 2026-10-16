@@ -1,33 +1,27 @@
 use crate::core::hir_def::{
-    GenericParam, GenericParamOwner, GenericParamView, ItemKind, Trait, TraitRefId, TypeBound,
-    WhereClauseOwner, scope_graph::ScopeId, types::TypeId as HirTypeId,
+    GenericParam, GenericParamOwner, GenericParamView, IdentId, ItemKind, PathId, Trait,
+    TraitRefId, TypeBound, WhereClauseOwner, scope_graph::ScopeId, types::TypeId as HirTypeId,
 };
-use crate::{
-    hir_def::{CallableDef, Func},
-    semantic::trait_self_predicate,
-};
+use crate::hir_def::CallableDef;
 use common::indexmap::{IndexMap, IndexSet};
 use either::Either;
 
 use crate::analysis::{
     HirAnalysisDb,
+    name_resolution::{PathRes, resolve_path},
     ty::{
         binder::Binder,
-        const_ty::{ConstBodyLowering, HoleAnchor, LoweringContext},
+        const_ty::{ConstBodyLowering, LoweringContext},
         corelib::resolve_core_trait,
         effects::{
             EffectKeyCanonMode, EffectKeyKind, canonical_effect_identity_for_binding,
             place_effect_provider_param_index_map,
         },
-        layout_holes::{collect_layout_hole_tys_in_order, ty_contains_const_hole},
         trait_def::TraitInstId,
         trait_lower::{lower_impl_trait, lower_trait_ref, lower_trait_ref_with_minter},
         trait_resolution::PredicateListId,
         ty_def::{TyBase, TyData, TyId, TyVarSort},
-        ty_lower::{
-            collect_generic_params, collect_source_generic_params, lower_hir_ty,
-            lower_hir_ty_with_minter,
-        },
+        ty_lower::{collect_generic_params, lower_hir_ty, lower_hir_ty_with_minter},
         unify::InferenceKey,
     },
 };
@@ -80,10 +74,6 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
 
         match (identity.key_ty, identity.key_trait) {
             (_, Some(inst)) => {
-                debug_assert!(
-                    collect_layout_hole_tys_in_order(db, inst).is_empty(),
-                    "effect constraint trait key still contains unresolved layout holes"
-                );
                 let mut args = inst.args(db).to_vec();
                 if args.is_empty() {
                     args.push(provider_ty);
@@ -101,10 +91,6 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
                 if !target_ty.is_star_kind(db) {
                     continue;
                 }
-                debug_assert!(
-                    !ty_contains_const_hole(db, target_ty) || target_ty.has_invalid(db),
-                    "effect constraint type key still contains unresolved layout holes"
-                );
                 let (effect_ref_trait, effect_ref_mut_trait) =
                     effect_ref_traits.unwrap_or_else(|| {
                         let Some(effect_ref_trait) =
@@ -278,13 +264,7 @@ pub(crate) fn collect_func_decl_constraint_pairs<'db>(
         _ => return decl_constraint_pairs(db, hir_func.into()).clone(),
     };
 
-    collect_decl_constraint_pairs_impl(
-        db,
-        hir_func.into(),
-        parent_pairs,
-        ConstBodyLowering::Eager,
-        None,
-    )
+    collect_decl_constraint_pairs_impl(db, hir_func.into(), parent_pairs, ConstBodyLowering::Eager)
 }
 
 #[salsa::tracked(
@@ -384,7 +364,7 @@ pub(crate) fn decl_constraint_pairs<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
 ) -> Vec<(TraitInstId<'db>, PredicateSource<'db>)> {
-    collect_decl_constraint_pairs_impl(db, owner, &[], ConstBodyLowering::Eager, None)
+    collect_decl_constraint_pairs_impl(db, owner, &[], ConstBodyLowering::Eager)
 }
 
 #[salsa::tracked(
@@ -403,34 +383,7 @@ fn candidate_decl_constraint_pairs<'db>(
     let initial = parent
         .map(|parent| candidate_decl_constraint_pairs(db, parent).as_slice())
         .unwrap_or_default();
-    collect_decl_constraint_pairs_impl(db, owner, initial, ConstBodyLowering::Deferred, None)
-}
-
-/// Layout discovery must use the same declaration-only parameter numbering in
-/// its bounds and input types. Neither may depend on the slots being discovered.
-#[salsa::tracked]
-pub(crate) fn collect_callable_shape_constraints<'db>(
-    db: &'db dyn HirAnalysisDb,
-    func: Func<'db>,
-) -> PredicateListId<'db> {
-    let owner = GenericParamOwner::Func(func);
-    let initial = owner
-        .parent(db)
-        .filter(|_| func.is_associated_func(db))
-        .map(|parent| candidate_decl_constraint_pairs(db, parent).as_slice())
-        .unwrap_or_default();
-    let pairs = collect_decl_constraint_pairs_impl(
-        db,
-        owner,
-        initial,
-        ConstBodyLowering::Deferred,
-        Some(owner),
-    );
-    let mut predicates = pairs.into_iter().map(|(inst, _)| inst).collect::<Vec<_>>();
-    if let Some(ItemKind::Trait(trait_)) = func.scope().parent_item(db) {
-        predicates.push(trait_self_predicate(db, trait_));
-    }
-    PredicateListId::new(db, predicates)
+    collect_decl_constraint_pairs_impl(db, owner, initial, ConstBodyLowering::Deferred)
 }
 
 fn decl_constraint_pairs_cycle_initial<'db>(
@@ -454,17 +407,12 @@ fn collect_decl_constraint_pairs_impl<'db>(
     owner: GenericParamOwner<'db>,
     initial: &[(TraitInstId<'db>, PredicateSource<'db>)],
     const_bodies: ConstBodyLowering,
-    source_params: Option<GenericParamOwner<'db>>,
 ) -> Vec<(TraitInstId<'db>, PredicateSource<'db>)> {
     let mut deferred: Vec<Deferred<'db>> = Vec::new();
     let owner_scope = owner.scope();
 
     // Generic parameter bounds
-    let param_set = if source_params == Some(owner) {
-        collect_source_generic_params(db, owner)
-    } else {
-        collect_generic_params(db, owner)
-    };
+    let param_set = collect_generic_params(db, owner);
     let params = owner.params(db);
     for (idx, GenericParamView { param, .. }) in params.enumerate() {
         let GenericParam::Type(hir_param) = param else {
@@ -535,15 +483,15 @@ fn collect_decl_constraint_pairs_impl<'db>(
             PredicateListId::new(db, all_predicates.keys().copied().collect::<Vec<_>>());
 
         let before = deferred.len();
-        deferred.retain(|p| {
-            match try_resolve_type_bound(db, p, assumptions, const_bodies, source_params) {
+        deferred.retain(
+            |p| match try_resolve_type_bound(db, p, assumptions, const_bodies) {
                 Some(inst) => {
                     all_predicates.entry(inst).or_insert(p.source);
                     false
                 }
                 None => true,
-            }
-        });
+            },
+        );
         if deferred.len() == before {
             break;
         }
@@ -615,12 +563,80 @@ pub(crate) fn enclosing_trait_self_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
 ) -> Option<TyId<'db>> {
+    collect_generic_params(db, enclosing_trait(db, scope)?.into()).trait_self(db)
+}
+
+/// The trait instance and item a path names, among the items `item` finds
+/// in a trait by name: `I` or `Self::I` in a trait or an implementation of
+/// one (or one of its supertraits), and `X::I` for a type `X` the scope
+/// bounds by a trait with item `I`.
+pub(crate) fn resolve_assoc_item_path<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    item: impl Fn(Trait<'db>, IdentId<'db>) -> Option<usize>,
+) -> Option<(TraitInstId<'db>, usize)> {
+    if !path.generic_args(db).is_empty(db) {
+        return None;
+    }
+    let name = path.ident(db).to_opt()?;
+    // A trait's own items are its methods' whether or not their declarations
+    // assume `Self: Trait`, and an implementation's are its trait's.
+    let own = enclosing_trait_inst(db, scope);
+    let self_ty = match path.parent(db) {
+        None => own?.self_ty(db),
+        Some(parent) => match resolve_path(db, parent, scope, assumptions, false).ok()? {
+            PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => ty,
+            _ => return None,
+        },
+    };
+    own.filter(|inst| inst.self_ty(db) == self_ty)
+        .map(|inst| PredicateListId::new(db, vec![inst]).extend_all_bounds(db))
+        .into_iter()
+        .chain([assumptions.extend_all_bounds(db)])
+        .flat_map(|list| list.list(db).iter().copied())
+        .filter(|inst| inst.self_ty(db) == self_ty)
+        .find_map(|inst| Some((inst, item(inst.def(db), name)?)))
+}
+
+/// The trait instance whose items `scope` names unqualified: that of the
+/// trait whose definition it is in, or the one the implementation it is in
+/// implements.
+fn enclosing_trait_inst<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> Option<TraitInstId<'db>> {
     let mut item = Some(scope.item());
     while let Some(current) = item {
         match current {
-            ItemKind::Trait(trait_) => {
-                return collect_generic_params(db, trait_.into()).trait_self(db);
+            ItemKind::Trait(trait_def) => {
+                return Some(TraitInstId::new_simple(
+                    db,
+                    trait_def,
+                    trait_def.params(db).to_vec(),
+                ));
             }
+            ItemKind::ImplTrait(impl_trait) => {
+                return impl_trait.candidate_trait_inst_result(db).ok();
+            }
+            ItemKind::Impl(_) => return None,
+            _ => {}
+        }
+        item = current.scope().parent_item(db);
+    }
+    None
+}
+
+/// The trait whose definition `scope` is in, outside any impl.
+pub(crate) fn enclosing_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> Option<crate::hir_def::Trait<'db>> {
+    let mut item = Some(scope.item());
+    while let Some(current) = item {
+        match current {
+            ItemKind::Trait(trait_) => return Some(trait_),
             // `Self` inside impls resolves to the implementor type directly.
             ItemKind::Impl(_) | ItemKind::ImplTrait(_) => return None,
             _ => {}
@@ -635,20 +651,14 @@ fn try_resolve_type_bound<'db>(
     deferred: &Deferred<'db>,
     assumptions: PredicateListId<'db>,
     const_bodies: ConstBodyLowering,
-    source_params: Option<GenericParamOwner<'db>>,
 ) -> Option<TraitInstId<'db>> {
     let ty = match deferred.bound_ty {
         Either::Left(hir_ty) => {
             let ty = match const_bodies {
                 ConstBodyLowering::Eager => lower_hir_ty(db, hir_ty, deferred.scope, assumptions),
                 ConstBodyLowering::Deferred => {
-                    let minter = LoweringContext::deferred(HoleAnchor::TemplateTy {
-                        ty: hir_ty,
-                        scope: deferred.scope,
-                        assumptions,
-                    })
-                    .with_source_params(source_params);
-                    lower_hir_ty_with_minter(db, hir_ty, deferred.scope, assumptions, &minter)
+                    let lowering_cx = LoweringContext::deferred();
+                    lower_hir_ty_with_minter(db, hir_ty, deferred.scope, assumptions, &lowering_cx)
                 }
             };
             if ty.has_invalid(db) {
@@ -669,12 +679,7 @@ fn try_resolve_type_bound<'db>(
             enclosing_trait_self_ty(db, deferred.scope),
         ),
         ConstBodyLowering::Deferred => {
-            let minter = LoweringContext::deferred(HoleAnchor::TemplatePath {
-                path: deferred.trait_ref.path(db).to_opt()?,
-                scope: deferred.scope,
-                assumptions,
-            })
-            .with_source_params(source_params);
+            let lowering_cx = LoweringContext::deferred();
             lower_trait_ref_with_minter(
                 db,
                 ty,
@@ -682,7 +687,7 @@ fn try_resolve_type_bound<'db>(
                 deferred.scope,
                 assumptions,
                 enclosing_trait_self_ty(db, deferred.scope),
-                &minter,
+                &lowering_cx,
             )
         }
     }
@@ -696,7 +701,6 @@ mod tests {
     use super::*;
     use crate::analysis::ty::{
         GoalSatisfiability, TraitSolveCx, corelib::resolve_lib_type_path, is_goal_satisfiable,
-        layout_holes::ty_contains_const_hole,
     };
     use crate::test_db::HirAnalysisTestDb;
 
@@ -847,65 +851,6 @@ fn f() uses (evm: mut Evm) {}
     }
 
     #[test]
-    fn effect_constraints_elaborate_distinct_callable_type_key_holes() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("effect_constraints_elaborate_distinct_callable_type_key_holes.fe"),
-            r#"
-struct Distinct<const LEFT: u256 = _, const RIGHT: u256 = _> {}
-
-fn f() uses (slots: Distinct) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        let func = find_func(&db, top_mod, "f");
-        let effect_ref_trait = resolve_core_trait(&db, func.scope(), &["EffectRef"]).unwrap();
-        let constraints = collect_func_effect_provider_constraints(&db, func);
-        let effect_ref = constraints
-            .into_iter()
-            .find(|inst| inst.def(&db) == effect_ref_trait)
-            .expect("missing EffectRef constraint");
-        let target_ty = effect_ref.args(&db)[1];
-        assert!(!ty_contains_const_hole(&db, target_ty));
-        let args = target_ty.generic_args(&db);
-        assert_eq!(args.len(), 2);
-        let left = args[0];
-        let right = args[1];
-        assert_ne!(left, right);
-    }
-
-    #[test]
-    fn effect_constraints_preserve_repeated_callable_type_key_identity() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("effect_constraints_preserve_repeated_callable_type_key_identity.fe"),
-            r#"
-struct Slot<const ROOT: u256 = _> {}
-type Repeated<const ROOT: u256 = _> = (Slot<ROOT>, Slot<ROOT>)
-
-fn f() uses (slots: Repeated) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        let func = find_func(&db, top_mod, "f");
-        let effect_ref_trait = resolve_core_trait(&db, func.scope(), &["EffectRef"]).unwrap();
-        let constraints = collect_func_effect_provider_constraints(&db, func);
-        let effect_ref = constraints
-            .into_iter()
-            .find(|inst| inst.def(&db) == effect_ref_trait)
-            .expect("missing EffectRef constraint");
-        let target_ty = effect_ref.args(&db)[1];
-        assert!(!ty_contains_const_hole(&db, target_ty));
-        let fields = target_ty.field_types(&db);
-        assert_eq!(fields.len(), 2);
-        let left = fields[0].generic_args(&db)[0];
-        let right = fields[1].generic_args(&db)[0];
-        assert_eq!(left, right);
-    }
-
-    #[test]
     fn effect_constraints_canonicalize_omitted_const_expr_defaults() {
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone(
@@ -936,35 +881,6 @@ fn f() uses (cap: Cap<Slot<4>>) {}
     }
 
     #[test]
-    fn effect_constraints_elaborate_callable_trait_key_holes() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("effect_constraints_elaborate_callable_trait_key_holes.fe"),
-            r#"
-trait Cap<const LEFT: u256 = _, const RIGHT: u256 = _> {}
-
-fn f() uses (cap: Cap) {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        let func = find_func(&db, top_mod, "f");
-        let cap_trait = find_trait(&db, top_mod, "Cap");
-        let constraints = collect_func_effect_provider_constraints(&db, func);
-        let cap_inst = constraints
-            .into_iter()
-            .find(|inst| inst.def(&db) == cap_trait)
-            .expect("missing Cap constraint");
-        assert!(collect_layout_hole_tys_in_order(&db, cap_inst).is_empty());
-        let args = cap_inst.args(&db);
-        assert!(
-            args.len() >= 3,
-            "expected provider self plus two const args"
-        );
-        assert_ne!(args[1], args[2]);
-    }
-
-    #[test]
     fn effect_constraints_resolve_assoc_type_keys_and_provider_slots() {
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone(
@@ -975,11 +891,11 @@ trait HasSlot {
 }
 
 trait Cap {}
-struct Slot<T, const ROOT: u256 = _> {}
+struct Slot<T, const ROOT: u256> {}
 
 fn f<T>() uses (cap: Cap, slot: T::Assoc)
 where
-    T: HasSlot<Assoc = Slot<u256>>
+    T: HasSlot<Assoc = Slot<u256, 3>>
 {}
 "#,
         );
@@ -998,7 +914,6 @@ where
             .find(|binding| binding.binding_name.data(&db) == "slot")
             .expect("missing slot binding");
         let key_ty = slot_binding.key.key_ty().expect("missing type effect key");
-        assert!(!ty_contains_const_hole(&db, key_ty));
         let args = key_ty.generic_args(&db);
         assert_eq!(args.len(), 2);
         assert_eq!(args[0], TyId::u256(&db));
@@ -1012,7 +927,7 @@ where
             .copied()
             .find(|inst| inst.def(&db) == effect_ref_trait && inst.args(&db)[1] == key_ty)
             .expect("missing EffectRef constraint for slot effect");
-        assert!(!ty_contains_const_hole(&db, effect_ref.args(&db)[1]));
+        assert_eq!(effect_ref.args(&db)[1], key_ty);
 
         let provider_names: Vec<_> = CallableDef::Func(func)
             .params(&db)

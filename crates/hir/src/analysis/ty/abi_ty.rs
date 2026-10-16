@@ -226,7 +226,7 @@ pub(crate) fn semantic_ty_to_abi_desc_with_source<'db>(
             PrimTy::I128 => Ok(AbiTypeDesc::simple("int128")),
             PrimTy::I256 | PrimTy::Isize => Ok(AbiTypeDesc::simple("int256")),
             PrimTy::String | PrimTy::Array | PrimTy::Tuple(_) => unreachable!(),
-            PrimTy::Ptr | PrimTy::View | PrimTy::BorrowMut | PrimTy::BorrowRef => {
+            PrimTy::Ptr(_) | PrimTy::View | PrimTy::BorrowMut | PrimTy::BorrowRef => {
                 Err(AbiTypeError::unsupported(format!(
                     "unsupported ABI type `{}`",
                     ty.pretty_print(db)

@@ -107,7 +107,7 @@ uses (ctx: Ctx)
 pub fn try_transfer(token: Address, receiver: Address, amount: u256) -> TokenCall
 uses (ctx: Ctx, call: mut Call)
 {
-    let mut ret = MemBuffer::with_capacity(32)
+    var ret = MemBuffer::with_capacity(32)
     let outcome = call.try_call_into(
         addr: token,
         gas: ops::gas(),
@@ -143,7 +143,7 @@ pub fn try_transfer_from(
 ) -> TokenCall
 uses (ctx: Ctx, call: mut Call)
 {
-    let mut ret = MemBuffer::with_capacity(32)
+    var ret = MemBuffer::with_capacity(32)
     let outcome = call.try_call_into(
         addr: token,
         gas: ops::gas(),
@@ -159,7 +159,7 @@ uses (ctx: Ctx, call: mut Call)
 pub fn try_approve(token: Address, spender: Address, amount: u256) -> TokenCall
 uses (ctx: Ctx, call: mut Call)
 {
-    let mut ret = MemBuffer::with_capacity(32)
+    var ret = MemBuffer::with_capacity(32)
     let outcome = call.try_call_into(
         addr: token,
         gas: ops::gas(),

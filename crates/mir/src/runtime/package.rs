@@ -1,15 +1,15 @@
 use common::indexmap::IndexMap;
+use hir::analysis::ty::AddressSpace;
 use hir::semantic::{RecvArmAbiInfo, RecvArmView};
 use hir::{
     analysis::{
         semantic::{
-            LayoutEvidenceBase, ManualContractSection, RootSemanticInstanceError, SemanticInstance,
-            generated_callee_key, get_or_build_semantic_instance, owner_effect_bindings,
-            root_semantic_instance_key, same_owner_effect_binding,
+            ManualContractSection, RootSemanticInstanceError, SemanticInstance,
+            generated_callee_key, get_or_build_semantic_instance, root_semantic_instance_key,
+            same_owner_effect_binding,
         },
         ty::{
-            CallableLayoutParamPort, LayoutEvidencePathStep,
-            const_ty::{CallableInputLayoutHoleOrigin, ConstTyData},
+            const_ty::ConstTyData,
             corelib::{resolve_core_trait, resolve_lib_func_path, resolve_lib_type_path},
             trait_def::{MethodArgMapError, TraitInstId},
             trait_resolution::PredicateListId,
@@ -42,18 +42,18 @@ use crate::{
         EntryEffectContext, entry_semantic_args_plan, target_root_provider_materialization,
     },
     runtime::stable_key::{
-        IdentityMode, item_identity, semantic_instance_identity_in_mode,
+        IdentityMode, closure_symbol_component, item_identity, semantic_instance_identity_in_mode,
         stable_identity_fingerprint, type_identity,
     },
     runtime::{
-        AddressSpaceKind, ConstRegionId, ContractInitAbiPlan, ContractRecvAbiPlan, DispatchArm,
-        DispatchDefault, EntryEffectArgPlan, EntrySemanticArgsPlan, InitArgsPlan, LayoutId,
-        LayoutKey, RawPointeeId, RawPointeeKey, RefKind, RefView, ResolvedCodeRegion, RuntimeClass,
-        RuntimeCodeRegion, RuntimeCodeRegionKey, RuntimeFunction, RuntimeFunctionOwner,
-        RuntimeInlineHint, RuntimeInputPlan, RuntimeLinkage, RuntimeObject, RuntimePackage,
-        RuntimePackagePlan, RuntimeReturnPlan, RuntimeSection, RuntimeSectionName,
-        RuntimeSectionRef, RuntimeSyntheticSpec, ScalarClass, ScalarRepr, ScalarRole,
-        TargetRootProviderBinding, TargetRootProviderMaterialization,
+        ConstRegionId, ContractInitAbiPlan, ContractRecvAbiPlan, DispatchArm, DispatchDefault,
+        EntryEffectArgPlan, EntrySemanticArgsPlan, InitArgsPlan, LayoutId, LayoutKey, RawPointeeId,
+        RefKind, RefView, ResolvedCodeRegion, RuntimeClass, RuntimeCodeRegion,
+        RuntimeCodeRegionKey, RuntimeFunction, RuntimeFunctionOwner, RuntimeInlineHint,
+        RuntimeInputPlan, RuntimeLinkage, RuntimeObject, RuntimePackage, RuntimePackagePlan,
+        RuntimeReturnPlan, RuntimeSection, RuntimeSectionName, RuntimeSectionRef,
+        RuntimeSyntheticSpec, ScalarClass, ScalarRepr, ScalarRole, TargetRootProviderBinding,
+        TargetRootProviderMaterialization,
     },
     verify::verify_runtime_package,
 };
@@ -826,7 +826,6 @@ fn contract_init_abi_plan<'db>(
             user_init: None,
             entry_args: EntrySemanticArgsPlan {
                 effects: Box::new([]),
-                layout_evidence: Box::new([]),
             },
             init_args: InitArgsPlan::None,
         });
@@ -996,7 +995,7 @@ fn contract_recv_host_binding<'db>(
         db,
         env,
         Some(registration.provider_ty),
-        AddressSpaceKind::Memory,
+        AddressSpace::Memory,
     );
     let materialization = target_root_provider_materialization(db, &class).ok_or_else(|| {
         LowerError::Unsupported(format!(
@@ -1509,7 +1508,7 @@ pub(crate) fn runtime_instance_for_semantic_with_visible_param_overrides<'db>(
         .iter()
         .map(|entry| {
             override_class(entry).unwrap_or_else(|| {
-                runtime_class_for_visible_binding_entry(db, semantic, typed_body, owner, env, entry)
+                runtime_class_for_visible_binding_entry(db, semantic, typed_body, env, entry)
             })
         })
         .collect();
@@ -1521,11 +1520,11 @@ fn runtime_class_for_visible_binding_entry<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
     typed_body: &hir::analysis::ty::ty_check::TypedBody<'db>,
-    owner: BodyOwner<'db>,
     env: RuntimeTypeEnv<'db>,
     entry: &RuntimeVisibleBindingPlan<'db>,
 ) -> RuntimeClass<'db> {
-    if owner_effect_bindings(db, owner)
+    if semantic
+        .effect_bindings(db)
         .into_iter()
         .any(|binding| same_owner_effect_binding(binding, entry.binding))
     {
@@ -1534,7 +1533,7 @@ fn runtime_class_for_visible_binding_entry<'db>(
         });
     }
     if matches!(entry.binding, LocalBinding::Local { .. }) {
-        return top_level_class_for_ty_in_env(db, env, entry.semantic_ty, AddressSpaceKind::Memory)
+        return top_level_class_for_ty_in_env(db, env, entry.semantic_ty, AddressSpace::Memory)
             .unwrap_or_else(|| {
                 panic!("runtime-visible recv arg binding has no top-level runtime class: {entry:?}")
             });
@@ -1569,11 +1568,18 @@ fn resolve_decode_instance<'db>(
     input_ty: TyId<'db>,
 ) -> Result<RuntimeInstance<'db>, LowerError> {
     let abi_ty = sol_abi_ty(db, scope)?;
-    let decoder_ty = sol_decoder_ty(db, scope, input_ty)?;
+    let decoder_ty = resolve_lib_type_path(db, scope, "std::abi::sol::SolDecoder")
+        .ok_or_else(|| LowerError::Unsupported("missing std::abi::sol::SolDecoder".to_string()))?;
     let decode_trait = resolve_core_trait(db, scope, &["abi", "Decode"])
         .ok_or_else(|| LowerError::Unsupported("missing required core::abi::Decode".to_string()))?;
     let inst = TraitInstId::new_simple(db, decode_trait, vec![ty, abi_ty]);
-    resolve_trait_runtime_instance(db, scope, inst, "decode_payload", vec![decoder_ty])
+    resolve_trait_runtime_instance(
+        db,
+        scope,
+        inst,
+        "decode_payload",
+        vec![decoder_ty, input_ty],
+    )
 }
 
 fn resolve_decode_runtime_args_instance<'db>(
@@ -1704,16 +1710,6 @@ fn memory_span_ty<'db>(
 ) -> Result<TyId<'db>, LowerError> {
     resolve_lib_type_path(db, scope, "core::ptr::MemSpan")
         .ok_or_else(|| LowerError::Unsupported("missing core::ptr::MemSpan".to_string()))
-}
-
-fn sol_decoder_ty<'db>(
-    db: &'db dyn MirDb,
-    scope: hir::hir_def::scope_graph::ScopeId<'db>,
-    input_ty: TyId<'db>,
-) -> Result<TyId<'db>, LowerError> {
-    let ctor = resolve_lib_type_path(db, scope, "std::abi::sol::SolDecoder")
-        .ok_or_else(|| LowerError::Unsupported("missing std::abi::sol::SolDecoder".to_string()))?;
-    Ok(TyId::app(db, ctor, input_ty))
 }
 
 fn make_runtime_function<'db>(
@@ -2038,50 +2034,7 @@ fn entry_semantic_args_sort_key<'db>(
     db: &'db dyn MirDb,
     args: &EntrySemanticArgsPlan<'db>,
 ) -> String {
-    let effects = entry_effect_args_sort_key(db, &args.effects);
-    let evidence = args
-        .layout_evidence
-        .iter()
-        .map(|arg| {
-            let target = callable_layout_param_port_sort_key(&arg.target);
-            let base = match arg.value.base {
-                LayoutEvidenceBase::Root(root) => format!("root:{}", type_identity(db, root)),
-                LayoutEvidenceBase::Slot(slot) => format!("slot:{slot}"),
-            };
-            format!("{target}:{}:{base}", type_identity(db, arg.value.ty))
-        })
-        .collect::<Vec<_>>()
-        .join(",");
-    format!("effects[{effects}]:evidence[{evidence}]")
-}
-
-fn callable_layout_param_port_sort_key(port: &CallableLayoutParamPort) -> String {
-    let (prefix, port) = match port {
-        CallableLayoutParamPort::Input(port) => (
-            match port.origin {
-                CallableInputLayoutHoleOrigin::Receiver => "input:receiver".to_string(),
-                CallableInputLayoutHoleOrigin::ValueParam(index) => {
-                    format!("input:value:{index}")
-                }
-                CallableInputLayoutHoleOrigin::Effect(index) => {
-                    format!("input:effect:{index}")
-                }
-            },
-            &port.component,
-        ),
-        CallableLayoutParamPort::OutputWitness(port) => ("output".to_string(), port),
-    };
-    let path = port
-        .value_path
-        .iter()
-        .map(|step| match step {
-            LayoutEvidencePathStep::Field(field) => format!("f{field}"),
-            LayoutEvidencePathStep::Variant(variant) => format!("v{variant}"),
-            LayoutEvidencePathStep::EffectTarget => "t".to_string(),
-        })
-        .collect::<Vec<_>>()
-        .join(".");
-    format!("{prefix}:{path}:p{}r{}", port.root.param, port.root.ordinal,)
+    format!("effects[{}]", entry_effect_args_sort_key(db, &args.effects))
 }
 
 fn entry_effect_args_sort_key<'db>(db: &'db dyn MirDb, args: &[EntryEffectArgPlan<'db>]) -> String {
@@ -2243,15 +2196,10 @@ fn runtime_class_sort_key<'db>(db: &'db dyn MirDb, class: &RuntimeClass<'db>) ->
     }
 }
 
-/// Names a raw target without resolving it. Exact targets keep the class
-/// rendering; stored targets name their source type. The result is a naming
-/// and ordering string, not an identity: `type_identity` renders every const
-/// hole as `_`, so distinct pointees can share a name.
+/// Names a raw target by its class rendering. The result is a naming and
+/// ordering string, not an identity.
 pub(crate) fn raw_pointee_sort_key<'db>(db: &'db dyn MirDb, pointee: RawPointeeId<'db>) -> String {
-    match pointee.key(db) {
-        RawPointeeKey::Stored(ty) => format!("stored({})", type_identity(db, *ty)),
-        RawPointeeKey::Exact(class) => runtime_class_sort_key(db, class),
-    }
+    runtime_class_sort_key(db, pointee.target(db))
 }
 
 fn scalar_class_sort_key<'db>(db: &'db dyn MirDb, class: &ScalarClass<'db>) -> String {
@@ -2362,13 +2310,13 @@ fn layout_sort_key_query<'db>(db: &'db dyn MirDb, layout: LayoutId<'db>) -> Stri
     }
 }
 
-fn address_space_sort_key(space: AddressSpaceKind) -> &'static str {
+fn address_space_sort_key(space: AddressSpace) -> &'static str {
     match space {
-        AddressSpaceKind::Memory => "memory",
-        AddressSpaceKind::Storage => "storage",
-        AddressSpaceKind::Transient => "transient",
-        AddressSpaceKind::Calldata => "calldata",
-        AddressSpaceKind::Code => "code",
+        AddressSpace::Memory => "memory",
+        AddressSpace::Storage => "storage",
+        AddressSpace::Transient => "transient",
+        AddressSpace::Calldata => "calldata",
+        AddressSpace::Code => "code",
     }
 }
 
@@ -2432,6 +2380,7 @@ fn symbol_base_for_semantic_instance<'db>(
             recv_idx,
             arm_idx
         ),
+        BodyOwner::Closure { ty, receiver, .. } => closure_symbol_component(db, ty, receiver),
         BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => "__const".to_string(),
     }
 }
@@ -2498,7 +2447,8 @@ fn inline_hint_for_semantic<'db>(
         BodyOwner::Const(_)
         | BodyOwner::AnonConstBody { .. }
         | BodyOwner::ContractInit { .. }
-        | BodyOwner::ContractRecvArm { .. } => RuntimeInlineHint::Auto,
+        | BodyOwner::ContractRecvArm { .. }
+        | BodyOwner::Closure { .. } => RuntimeInlineHint::Auto,
     }
 }
 
@@ -2663,52 +2613,6 @@ pub fn main() -> i32 {
     }
 
     #[test]
-    fn invalid_layout_evidence_returns_a_lowering_error_instead_of_panicking() {
-        let mut db = DriverDataBase::default();
-        let file_url = Url::parse("file:///invalid_layout_evidence.fe").unwrap();
-        let file = db.workspace().touch(
-            &mut db,
-            file_url,
-            Some(
-                r#"
-struct Rooted<const ROOT: u256 = _> {}
-
-fn ambiguous<const ROOT: u256>(left: Rooted<ROOT>, right: Rooted<ROOT>) -> u256 {
-    ROOT
-}
-"#
-                .to_string(),
-            ),
-        );
-        let top_mod = db.top_mod(file);
-        let func = top_mod
-            .all_funcs(&db)
-            .iter()
-            .copied()
-            .find(|func| {
-                func.name(&db)
-                    .to_opt()
-                    .is_some_and(|name| name.data(&db) == "ambiguous")
-            })
-            .expect("ambiguous function");
-        let semantic = get_or_build_semantic_instance(
-            &db,
-            hir::analysis::semantic::identity_semantic_instance_key(&db, BodyOwner::Func(func)),
-        );
-        let runtime = runtime_instance_for_semantic(&db, semantic);
-        let signature = runtime.interface_signature(&db);
-        assert_eq!(signature.params.len(), 2);
-        let error = runtime_instance_lowered_body(&db, runtime)
-            .expect_err("layout evidence lowering must fail");
-        assert!(
-            error
-                .to_string()
-                .contains("layout evidence lowering failed")
-        );
-        assert!(error.to_string().contains("AmbiguousConstBinding"));
-    }
-
-    #[test]
     fn blocked_body_keeps_a_declaration_abi_but_cannot_be_lowered() {
         let mut db = DriverDataBase::default();
         let file_url = Url::parse("file:///blocked_semantic_body.fe").unwrap();
@@ -2717,7 +2621,7 @@ fn ambiguous<const ROOT: u256>(left: Rooted<ROOT>, right: Rooted<ROOT>) -> u256 
             file_url,
             Some(
                 r#"
-fn invalid(result: mut u256) -> mut u256 {
+fn invalid(result: mut u256) -> u256 {
     missing = 1
     result
 }
@@ -2752,36 +2656,6 @@ fn invalid(result: mut u256) -> mut u256 {
         assert!(
             error.to_string().contains("semantic body is blocked by"),
             "{error}"
-        );
-    }
-
-    #[test]
-    fn usize_layout_evidence_uses_usize_scalar_constants() {
-        with_test_runtime_package(
-            "usize_layout_evidence_uses_usize_scalar_constants.fe",
-            r#"
-struct Rooted<const ROOT: usize = _> {}
-
-impl<const ROOT: usize> Copy for Rooted<ROOT> {}
-
-impl<const ROOT: usize> Rooted<ROOT> {
-    fn root(self) -> usize {
-        ROOT
-    }
-}
-
-fn select(value: Rooted) -> usize {
-    value.root()
-}
-
-#[test]
-fn usize_layout_roots_lower() {
-    let value: Rooted<7> = Rooted {}
-    assert!(select(value) == 7)
-}
-"#,
-            Some("usize_layout_roots_lower"),
-            |_, _| {},
         );
     }
 
@@ -2996,7 +2870,7 @@ pub contract NoInitBox {}
             "implicit constructor wrapper should not call a user init"
         );
         assert!(
-            plan.entry_args.effects.is_empty() && plan.entry_args.layout_evidence.is_empty(),
+            plan.entry_args.effects.is_empty(),
             "implicit constructor wrapper should not synthesize owner effect args"
         );
         assert!(

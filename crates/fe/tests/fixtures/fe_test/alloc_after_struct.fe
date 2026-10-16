@@ -22,8 +22,8 @@ fn test_alloc_after_struct() uses (evm: Evm) {
 
     // Sanity: the allocation should be usable, not a wild pointer derived from
     // the address value above.
-    *ptr = 7
-    assert!(*ptr == 7)
+    unsafe { *ptr = 7 }
+    unsafe { assert!(*ptr == 7) }
 
     // Verify original struct is intact.
     assert!(p.a.inner == 0x1111111111111111111111111111111111111111)

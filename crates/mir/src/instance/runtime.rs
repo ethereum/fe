@@ -1,5 +1,5 @@
 use hir::analysis::{
-    semantic::{SemanticInstance, check_semantic_borrows, check_semantic_boundaries},
+    semantic::{SemanticInstance, check_semantic_accesses},
     ty::ty_check::BodyOwner,
 };
 use salsa::Update;
@@ -10,12 +10,13 @@ use crate::{
         LowerError, LoweredRuntimeBody, RuntimeBody, RuntimeCallEdge, RuntimeClass,
         RuntimeExitBehavior, RuntimeInterfaceSignature, RuntimeSyntheticSpec,
         lower::{
-            abi::runtime_declaration_abi_plan,
+            abi::runtime_declaration_signature,
             body::lower_to_rmir,
             call::{
                 collect_referenced_code_regions, collect_referenced_const_regions,
                 collect_runtime_calls as collect_runtime_calls_lowered,
             },
+            inline::inline_projections,
             returns::runtime_exit_behavior,
         },
         synthetic::lower_synthetic_runtime_body,
@@ -61,7 +62,7 @@ pub struct RuntimeInstance<'db> {
 impl<'db> RuntimeInstance<'db> {
     #[salsa::tracked]
     pub fn interface_signature(self, db: &'db dyn MirDb) -> RuntimeInterfaceSignature<'db> {
-        runtime_interface_signature_for_key(db, self.key(db))
+        runtime_declaration_signature(db, self.key(db))
     }
 
     #[salsa::tracked]
@@ -113,13 +114,6 @@ impl<'db> RuntimeInstance<'db> {
     }
 }
 
-pub(crate) fn runtime_interface_signature_for_key<'db>(
-    db: &'db dyn MirDb,
-    key: RuntimeInstanceKey<'db>,
-) -> RuntimeInterfaceSignature<'db> {
-    runtime_declaration_abi_plan(db, key).signature()
-}
-
 #[salsa::tracked]
 pub fn get_or_build_runtime_instance<'db>(
     db: &'db dyn MirDb,
@@ -135,21 +129,17 @@ fn lower_runtime_body<'db>(
 ) -> Result<LoweredRuntimeBody<'db>, LowerError> {
     let body = match instance.key(db).source(db) {
         RuntimeInstanceSource::Semantic(semantic) => {
-            if let Err(diag) = check_semantic_borrows(db, semantic) {
+            if let Err(diag) = check_semantic_accesses(db, semantic) {
                 return Err(LowerError::Unsupported(format!(
                     "semantic borrow checking failed for {:?}: {}",
                     semantic.key(db),
                     diag
                 )));
             }
-            if let Err(diag) = check_semantic_boundaries(db, semantic) {
-                return Err(LowerError::Unsupported(format!(
-                    "semantic boundary checking failed for {:?}: {}",
-                    semantic.key(db),
-                    diag
-                )));
-            }
-            lower_to_rmir(db, instance)?
+            let mut body = lower_to_rmir(db, instance)?;
+            inline_projections(db, &mut body)?;
+            body.elide_proven_variant_asserts();
+            body
         }
         RuntimeInstanceSource::Synthetic(synthetic) => {
             lower_synthetic_runtime_body(db, instance, synthetic.spec(db).clone())?
@@ -197,57 +187,4 @@ fn expect_lowered_runtime_body<'db>(
             instance.key(db).source(db)
         )
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use common::InputDb;
-    use driver::DriverDataBase;
-    use hir::analysis::{
-        semantic::{get_or_build_semantic_instance, identity_semantic_instance_key},
-        ty::ty_check::BodyOwner,
-    };
-    use url::Url;
-
-    #[test]
-    fn runtime_lowering_cannot_discharge_pending_semantic_validation() {
-        for source in [
-            "extern { fn opaque() }\nfn entry() { opaque() }",
-            "extern { fn opaque() -> ! }\nfn entry() -> u256 { opaque() }",
-            "trait Operation { fn apply() }\nfn entry<T: Operation>() { T::apply() }",
-        ] {
-            let mut db = DriverDataBase::default();
-            let file = db.workspace().touch(
-                &mut db,
-                Url::parse("file:///pending_runtime_validation.fe").unwrap(),
-                Some(source.into()),
-            );
-            let module = db.top_mod(file);
-            let func = module
-                .all_funcs(&db)
-                .iter()
-                .copied()
-                .find(|func| {
-                    func.name(&db)
-                        .to_opt()
-                        .is_some_and(|name| name.data(&db) == "entry")
-                })
-                .unwrap();
-            let semantic = get_or_build_semantic_instance(
-                &db,
-                identity_semantic_instance_key(&db, BodyOwner::Func(func)),
-            );
-            let key =
-                RuntimeInstanceKey::new(&db, RuntimeInstanceSource::Semantic(semantic), Vec::new());
-            let instance = get_or_build_runtime_instance(&db, key);
-            let Err(LowerError::Unsupported(message)) = lower_runtime_body(&db, instance) else {
-                panic!("pending validation reached runtime lowering");
-            };
-            assert!(
-                message.contains("requires concrete implementations"),
-                "{message}"
-            );
-        }
-    }
 }

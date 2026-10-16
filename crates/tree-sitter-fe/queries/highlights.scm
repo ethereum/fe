@@ -58,9 +58,12 @@
 ; === Parameters and Local Variables ===
 
 (parameter name: (identifier) @variable.parameter)
+(closure_parameter name: (identifier) @variable.parameter)
 (uses_param name: (identifier) @variable.parameter)
 (let_statement name: (path_pattern (path (path_segment (identifier) @variable))))
 (let_statement name: (mut_pattern (path_pattern (path (path_segment (identifier) @variable)))))
+(let_statement name: (ref_pattern (path_pattern (path (path_segment (identifier) @variable)))))
+(let_statement name: (var_pattern (path_pattern (path (path_segment (identifier) @variable)))))
 
 ; === Attributes ===
 
@@ -73,6 +76,7 @@
 
 [
   "as"
+  "by"
   "const"
   "contract"
   "else"
@@ -99,6 +103,7 @@
   "unsafe"
   "use"
   "uses"
+  "var"
   "where"
   "while"
   "with"
@@ -107,7 +112,10 @@
 (break_statement) @keyword
 (continue_statement) @keyword
 (return_statement "return" @keyword)
+(yield_statement "yield" @keyword)
+(match_arm_yield "yield" @keyword)
 (let_statement "let" @keyword)
+(let_statement "var" @keyword)
 (visibility) @keyword
 
 ; === Literals ===

@@ -1,0 +1,74 @@
+use core::marker::Pinned
+
+// A `Pinned` implementation pins only the instances its bounds admit.
+trait Ready {}
+
+struct Yes {}
+
+impl Ready for Yes {}
+
+struct No {}
+
+struct Gated<P> {
+    base: u256,
+}
+
+impl<P: Ready> Pinned for Gated<P> {
+    space S = transient
+}
+
+// Accepted: the implementation does not apply to `Gated<No>`.
+fn make_gated_no() -> Gated<No> {
+    Gated { base: 0 }
+}
+
+// Rejected: it pins `Gated<Yes>`.
+fn make_gated_yes() {
+    let _gated: Gated<Yes> = Gated { base: 0 }
+}
+
+// Rejected: some `Gated<P>` is pinned.
+fn make_any_gated<P>() {
+    let _gated: Gated<P> = Gated { base: 0 }
+}
+
+struct Forwarding<P> {
+    base: u256,
+}
+
+impl<P: Pinned> Pinned for Forwarding<P> {
+    space S = P::S
+}
+
+// Accepted: `u256` is not pinned, so no implementation applies to
+// `Forwarding<u256>`.
+fn make_forwarding() -> Forwarding<u256> {
+    Forwarding { base: 0 }
+}
+
+// A blanket implementation pins only the types its bound admits.
+trait Mark {}
+
+struct Marked {
+    v: u256,
+}
+
+impl Mark for Marked {}
+
+impl<T: Mark> Pinned for T {
+    space S = transient
+}
+
+struct Plain {
+    v: u256,
+}
+
+// Accepted: `Plain` is not `Mark`.
+fn make_plain() -> Plain {
+    Plain { v: 1 }
+}
+
+// Rejected: `Marked` is pinned.
+fn make_marked() {
+    let _marked = Marked { v: 1 }
+}

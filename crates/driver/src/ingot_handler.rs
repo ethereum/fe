@@ -704,6 +704,7 @@ impl<'a> IngotHandler<'a> {
             let arguments = DependencyArguments {
                 name: member.name.clone(),
                 version: member.version.clone(),
+                allow_unsafe: false,
             };
             let alias = member
                 .name

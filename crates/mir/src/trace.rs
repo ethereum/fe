@@ -343,6 +343,7 @@ fn runtime_stmt_display(stmt: &RStmt<'_>) -> String {
             variant,
             fields,
         } => format!("write_variant {root:?}, {variant:?}, {fields:?}"),
+        RStmt::End { session } => format!("end {session:?}"),
     }
 }
 
@@ -432,6 +433,9 @@ fn runtime_terminator_display(terminator: &RTerminator<'_>) -> String {
         RTerminator::SelfDestruct { beneficiary } => format!("selfdestruct {beneficiary:?}"),
         RTerminator::Trap => "trap".to_string(),
         RTerminator::Return(value) => format!("return {value:?}"),
+        RTerminator::Yield { value, resume } => {
+            format!("yield {value:?}, resume bb{}", resume.index())
+        }
         RTerminator::Stop => "stop".to_string(),
     }
 }
@@ -548,6 +552,12 @@ fn terminator_edges(from: RBlockId, terminator: &RTerminator<'_>) -> Vec<Runtime
             }
             edges
         }
+        RTerminator::Yield { resume, .. } => vec![RuntimeCfgEdge {
+            from,
+            to: *resume,
+            kind: CfgEdgeKind::Jump,
+            condition: None,
+        }],
         RTerminator::TerminalCall { .. }
         | RTerminator::ReturnData { .. }
         | RTerminator::Revert { .. }
@@ -562,7 +572,8 @@ fn terminator_edges(from: RBlockId, terminator: &RTerminator<'_>) -> Vec<Runtime
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runtime::{AddressSpaceKind, RValueId};
+    use crate::runtime::RValueId;
+    use hir::analysis::ty::AddressSpace;
 
     #[test]
     fn raw_pointer_operations_have_explicit_trace_displays() {
@@ -574,7 +585,7 @@ mod tests {
         assert_eq!(
             runtime_expr_display(&RExpr::WordToRawAddr {
                 value,
-                space: AddressSpaceKind::Memory,
+                space: AddressSpace::Memory,
             }),
             format!("word_to_raw_addr {value:?}, Memory")
         );
@@ -1025,6 +1036,6 @@ fn sem_origin_hir_key(
             )
             .expect("HIR stmt origin key must be valid"),
         ),
-        SemOrigin::Body(_) | SemOrigin::Synthetic => None,
+        SemOrigin::Pat(_) | SemOrigin::Body(_) | SemOrigin::Synthetic => None,
     }
 }

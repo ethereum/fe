@@ -93,7 +93,7 @@ fn test_address_static_bubbles_revert_data() uses (evm: mut Evm, call: mut Call,
     let relay = evm.create2<Relay>(value: 0, args: (), salt: 0)
 
     let data = encode_msg_calldata(RelayMsg::RelayBoom { target: viewer })
-    let mut ret = ptr::MemBuffer::empty()
+    var ret = ptr::MemBuffer::empty()
     let outcome = call.raw_call(addr: relay, gas: ctx.gas(), value: 0, args: data.span(), ret: mut ret)
     assert!(!outcome.success())
 

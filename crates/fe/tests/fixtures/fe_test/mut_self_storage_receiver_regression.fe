@@ -21,7 +21,7 @@ pub contract C {
 
     recv Msg {
         Inc -> u256 uses (mut counter) {
-            let value = counter.value_mut()
+            let value = mut counter.value_mut()
             value += 1
             counter.value
         }

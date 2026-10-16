@@ -10,15 +10,15 @@ use crate::{
         transition::ChainRoot,
     },
     hir_def::{
-        Body, CallArg, Cond, CondId, Const, ConstGenericArgValue, Contract, ContractRecv,
-        ContractRecvArm, ContractRecvArmListId, EffectParam, EffectParamListId, Enum, EnumVariant,
-        Expr, ExprId, Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam,
-        FuncParamListId, FuncParamName, GenericArg, GenericArgListId, GenericParam,
-        GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind, MatchArm, Mod,
-        Partial, Pat, PatId, PathId, PathKind, StaticAssert, Stmt, StmtId, Struct, TopLevelMod,
-        Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias,
-        UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId,
-        WhereClausePredicate, WherePredicate,
+        Body, CallArg, Cond, CondId, Const, Contract, ContractRecv, ContractRecvArm,
+        ContractRecvArmListId, EffectParam, EffectParamListId, Enum, EnumVariant, Expr, ExprId,
+        Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam, FuncParamListId,
+        FuncParamName, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
+        Impl, ImplTrait, ItemKind, KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId,
+        PathKind, StaticAssert, Stmt, StmtId, Struct, TopLevelMod, Trait, TraitRefId, TupleTypeId,
+        TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId, UsePathSegment,
+        VariantDef, VariantDefListId, VariantKind, WhereClauseId, WhereClausePredicate,
+        WherePredicate,
         attr::{self, AttrArgValue},
         scope_graph::ScopeId,
     },
@@ -558,7 +558,7 @@ pub fn walk_func<'db, V>(
     // Effects (uses clause)
     ctxt.with_new_ctxt(
         |span| span.sig().effects(),
-        |ctxt| visitor.visit_effect_param_list(ctxt, func.effects(ctxt.db)),
+        |ctxt| visitor.visit_effect_param_list(ctxt, func.declared_effects(ctxt.db)),
     );
 }
 
@@ -1132,7 +1132,7 @@ pub fn walk_stmt<'db, V>(
     };
 
     match stmt {
-        Stmt::Let(pat_id, ty, expr_id) => {
+        Stmt::Let(pat_id, ty, expr_id, else_id) => {
             visit_node_in_body!(visitor, ctxt, pat_id, pat);
 
             if let Some(ty) = ty {
@@ -1142,14 +1142,17 @@ pub fn walk_stmt<'db, V>(
                 );
             };
 
-            if let Some(expr_id) = expr_id {
+            for expr_id in expr_id.iter().chain(else_id) {
                 visit_node_in_body!(visitor, ctxt, expr_id, expr);
             }
         }
 
-        Stmt::For(pat_id, cond_id, for_body_id, _unroll) => {
+        Stmt::For(pat_id, cond_id, driver_id, for_body_id, _unroll) => {
             visit_node_in_body!(visitor, ctxt, pat_id, pat);
             visit_node_in_body!(visitor, ctxt, cond_id, expr);
+            if let Some(driver_id) = driver_id {
+                visit_node_in_body!(visitor, ctxt, driver_id, expr);
+            }
             visit_node_in_body!(visitor, ctxt, for_body_id, expr);
         }
 
@@ -1158,7 +1161,7 @@ pub fn walk_stmt<'db, V>(
             visit_node_in_body!(visitor, ctxt, while_body_id, expr);
         }
 
-        Stmt::Return(Some(expr_id)) | Stmt::Expr(expr_id) => {
+        Stmt::Return(Some(expr_id)) | Stmt::Yield(expr_id) | Stmt::Expr(expr_id) => {
             visit_node_in_body!(visitor, ctxt, expr_id, expr);
         }
 
@@ -1185,7 +1188,7 @@ pub fn walk_expr<'db, V>(
             },
         ),
 
-        Expr::Block(stmts) => {
+        Expr::Block(stmts, _) => {
             let scope = ctxt.scope();
             let graph = scope.scope_graph(ctxt.db);
             if graph.scopes.contains_key(&scope) {
@@ -1198,6 +1201,34 @@ pub fn walk_expr<'db, V>(
             for stmt_id in stmts {
                 visit_node_in_body!(visitor, ctxt, stmt_id, stmt);
             }
+        }
+
+        Expr::Closure {
+            params,
+            ret_ty,
+            body,
+        } => {
+            // Closure parameters have no `ScopeId::FuncParam` in the scope graph,
+            // so they are visited in the enclosing scope (like `let` type
+            // annotations) instead of through `visit_func_param_list`.
+            ctxt.with_new_ctxt(
+                |span| span.into_closure_expr().params(),
+                |ctxt| {
+                    for (idx, param) in params.data(ctxt.db).iter().enumerate() {
+                        ctxt.with_new_ctxt(
+                            |span| span.param(idx),
+                            |ctxt| visitor.visit_func_param(ctxt, param),
+                        );
+                    }
+                },
+            );
+            if let Some(ret_ty) = ret_ty {
+                ctxt.with_new_ctxt(
+                    |span| span.into_closure_expr().ret_ty(),
+                    |ctxt| visitor.visit_ty(ctxt, *ret_ty),
+                );
+            }
+            visit_node_in_body!(visitor, ctxt, body, expr);
         }
 
         Expr::Bin(lhs_id, rhs_id, _) => {
@@ -1218,6 +1249,10 @@ pub fn walk_expr<'db, V>(
                     |ctxt| visitor.visit_ty(ctxt, ty),
                 );
             }
+        }
+
+        Expr::Try(expr_id) => {
+            visit_node_in_body!(visitor, ctxt, expr_id, expr);
         }
 
         Expr::Call(callee_id, call_args) => {
@@ -1566,7 +1601,9 @@ pub fn walk_attribute<'db, V>(
                                                     |ctxt| visitor.visit_lit(ctxt, l),
                                                 );
                                             }
-                                            None => {}
+                                            // The attribute's owner lowers an
+                                            // expression into its own body.
+                                            Some(AttrArgValue::Expr(_)) | None => {}
                                         }
                                     },
                                 );
@@ -1682,9 +1719,7 @@ pub fn walk_generic_arg<'db, V>(
         }
 
         GenericArg::Const(const_arg) => {
-            if let ConstGenericArgValue::Expr(body) = const_arg.value
-                && let Some(body) = body.to_opt()
-            {
+            if let Some(body) = const_arg.value.to_opt() {
                 visitor.visit_body(&mut VisitorCtxt::with_body(ctxt.db, body), body);
             }
         }
@@ -2266,7 +2301,7 @@ where
         expr: ExprId,
     ) -> Self {
         let scope_id = match expr.data(db, body) {
-            Partial::Present(Expr::Block(_)) => ScopeId::Block(body, expr),
+            Partial::Present(Expr::Block(..)) => ScopeId::Block(body, expr),
             _ => scope,
         };
 

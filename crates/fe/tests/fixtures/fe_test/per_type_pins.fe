@@ -1,0 +1,58 @@
+// A pin belongs to the implementation that applies to each instance: here
+// the space is a type parameter's pin, so `Cell<InStorage>` is pinned to
+// storage and takes a slot of its own in the contract layout.
+use core::marker::Pinned
+use core::ops::{Location, StateIndex}
+use std::evm::{Evm, RawStorage, SolSlot, keccak_words}
+
+struct InStorage {}
+
+impl Pinned for InStorage {
+    space S = storage
+}
+
+struct Cell<P> {}
+
+impl<P: Pinned> Pinned for Cell<P> {
+    space S = P::S
+}
+
+unsafe impl<P: Pinned> StateIndex for Cell<P> {
+    type Key = u256
+    type Entry = u256
+
+    fn locate(self, _ root: u256, _ key: u256) -> Location {
+        Location { slot: keccak_words([key, root]), offset: 0 }
+    }
+}
+
+msg M {
+    #[selector = 1]
+    Go -> (u256, u256, u256),
+}
+
+fn read_slot(_ slot: u256) -> u256 uses (storage: mut RawStorage) {
+    unsafe { SolSlot::at(slot) }.read<u256>(offset: 0)
+}
+
+pub contract C uses (storage: mut RawStorage) {
+    mut first: Cell<InStorage>,
+    mut second: Cell<InStorage>,
+
+    recv M {
+        Go -> (u256, u256, u256) uses (mut first, mut second, mut storage) {
+            first[3] = 5
+            second[3] = 6
+            (first[3], read_slot(keccak_words([3, 0])), read_slot(keccak_words([3, 1])))
+        }
+    }
+}
+
+#[test]
+fn generic_space_pins_its_instance() uses (evm: mut Evm) {
+    let c = evm.create2<C>(value: 0, args: (), salt: 0)
+    let r: (u256, u256, u256) = evm.call(addr: c, gas: 300000, value: 0, message: M::Go {})
+    assert!(r.0 == 5)
+    assert!(r.1 == 5)
+    assert!(r.2 == 6)
+}

@@ -178,6 +178,12 @@ impl super::Parse for AttrArgScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        // An argument that is not `key` or `key = value` is an expression, as
+        // in `#[slot(BASE + 1)]`.
+        if !starts_attr_arg_key(parser) {
+            return parser.parse(AttrValueExprScope::default());
+        }
+
         // Parse the key as a path
         parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Eq]);
 
@@ -189,6 +195,30 @@ impl super::Parse for AttrArgScope {
             parser.parse(AttrArgValueScope::default())?;
         }
         Ok(())
+    }
+}
+
+/// Whether the next tokens are a simple path (`a` or `a::b`) that ends at `=`,
+/// `,` or `)`, or a `=` missing its key: an argument's key rather than an
+/// expression.
+fn starts_attr_arg_key<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    const MAX_KEY_TOKENS: usize = 32;
+    let tokens = parser.peek_n_non_trivia(MAX_KEY_TOKENS);
+    // `= value` is a key-value argument missing its key.
+    if tokens.first() == Some(&SyntaxKind::Eq) {
+        return true;
+    }
+    let mut idx = 0;
+    loop {
+        if tokens.get(idx) != Some(&SyntaxKind::Ident) {
+            return false;
+        }
+        idx += 1;
+        match tokens.get(idx) {
+            Some(SyntaxKind::Colon2) => idx += 1,
+            Some(SyntaxKind::Eq | SyntaxKind::Comma | SyntaxKind::RParen) => return true,
+            _ => return false,
+        }
     }
 }
 

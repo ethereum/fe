@@ -192,7 +192,10 @@ impl<'a> TokenDocBuilder<'a> {
     }
 
     fn bump_newlines(&mut self, token: &parser::SyntaxToken) {
-        self.pending_newlines += newline_count(self.ctx.snippet(token.text_range()));
+        // The parent document owns the separator before this node.
+        if !self.is_start {
+            self.pending_newlines += newline_count(self.ctx.snippet(token.text_range()));
+        }
     }
 
     fn push_piece(&mut self, piece: TokenPiece<'a>) {
@@ -566,9 +569,7 @@ impl ToDoc for ast::ConstGenericParam {
         let ty = self
             .ty()
             .map_or_else(|| alloc.nil(), |ty| alloc.text(": ").append(ty.to_doc(ctx)));
-        let default = if let Some(hole) = self.default_hole() {
-            alloc.text(" = ").append(alloc.text(ctx.token(&hole)))
-        } else if let Some(expr) = self.default_expr() {
+        let default = if let Some(expr) = self.default_expr() {
             alloc.text(" = ").append(expr.to_doc(ctx))
         } else {
             alloc.nil()
@@ -821,9 +822,28 @@ impl ToDoc for ast::TypeBound {
 
 impl ToDoc for ast::TraitRef {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+        if let Some(shape) = self.fn_shape() {
+            let name = shape
+                .name()
+                .map_or_else(|| alloc.nil(), |name| alloc.text(name.text().to_string()));
+            // A parameter list, not a tuple: one parameter has no comma.
+            let params = shape.params().map_or_else(Vec::new, |params| {
+                params.elem_tys().map(|ty| ty.to_doc(ctx)).collect()
+            });
+            let params = alloc
+                .text("(")
+                .append(intersperse(alloc, params, alloc.text(", ")))
+                .append(alloc.text(")"));
+            let ret = shape.ret_ty().map_or_else(
+                || alloc.nil(),
+                |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
+            );
+            return name.append(params).append(ret);
+        }
         match self.path() {
             Some(p) => p.to_doc(ctx),
-            None => ctx.alloc.nil(),
+            None => alloc.nil(),
         }
     }
 }
@@ -870,7 +890,14 @@ impl ToDoc for ast::ModeType {
                 ctx,
                 self.syntax(),
                 indent,
-                |node| ast::Type::cast(node).map(|ty| TokenPiece::new(ty.to_doc(ctx))),
+                |node| {
+                    ast::Type::cast(node.clone())
+                        .map(|ty| TokenPiece::new(ty.to_doc(ctx)))
+                        .or_else(|| {
+                            ast::SpaceAnnotation::cast(node)
+                                .map(|space| TokenPiece::new(space.to_doc(ctx)).space_before())
+                        })
+                },
                 |token| match token.kind() {
                     SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw => {
                         Some(TokenPiece::new(alloc.text(ctx.token(&token))).space_after())
@@ -886,11 +913,56 @@ impl ToDoc for ast::ModeType {
                 .map_or_else(|| alloc.nil(), |inner| inner.to_doc(ctx));
         };
         let mode = alloc.text(ctx.token(&mode));
-        if let Some(inner) = self.inner() {
+        let mode = if let Some(inner) = self.inner() {
             mode.append(alloc.text(" ")).append(inner.to_doc(ctx))
         } else {
             mode
+        };
+        match self.space() {
+            Some(space) => mode.append(alloc.text(" ")).append(space.to_doc(ctx)),
+            None => mode,
         }
+    }
+}
+
+impl ToDoc for ast::SpaceAnnotation {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+        let path = self
+            .path()
+            .map_or_else(|| alloc.nil(), |path| path.to_doc(ctx));
+        let target = self.target().map_or_else(
+            || alloc.nil(),
+            |target| {
+                alloc
+                    .text("(")
+                    .append(target.to_doc(ctx))
+                    .append(alloc.text(")"))
+            },
+        );
+        let space_path = self
+            .space_path()
+            .map_or_else(|| alloc.nil(), |space_path| space_path.to_doc(ctx));
+        alloc
+            .text("@")
+            .append(path)
+            .append(target)
+            .append(space_path)
+    }
+}
+
+impl ToDoc for ast::SpacePath {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+        alloc.concat(self.steps().map(|step| match step {
+            ast::SpacePathStep::Field(token) => {
+                alloc.text(".").append(alloc.text(ctx.token(&token)))
+            }
+            ast::SpacePathStep::Index(index) => {
+                alloc.text(".").append(alloc.text(ctx.token(index.token())))
+            }
+            ast::SpacePathStep::Element => alloc.text("[_]"),
+        }))
     }
 }
 
@@ -1119,10 +1191,6 @@ impl ToDoc for ast::TypeGenericArg {
 
 impl ToDoc for ast::ConstGenericArg {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
-        if let Some(hole) = self.hole_token() {
-            return ctx.alloc.text(ctx.token(&hole));
-        }
-
         self.expr()
             .map_or_else(|| ctx.alloc.nil(), |e| e.to_doc(ctx))
     }
@@ -1216,9 +1284,11 @@ impl ToDoc for ast::Expr {
         match self.kind() {
             ExprKind::Lit(lit) => lit.to_doc(ctx),
             ExprKind::Block(block) => block.to_doc(ctx),
+            ExprKind::Closure(closure) => closure.to_doc(ctx),
             ExprKind::Bin(bin) => bin.to_doc(ctx),
             ExprKind::Un(un) => un.to_doc(ctx),
             ExprKind::Cast(cast) => cast.to_doc(ctx),
+            ExprKind::Try(try_) => try_.to_doc(ctx),
             ExprKind::Call(call) => call.to_doc(ctx),
             ExprKind::MacroCall(call) => call.to_doc(ctx),
             ExprKind::MethodCall(method) => method.to_doc(ctx),
@@ -1233,6 +1303,7 @@ impl ToDoc for ast::Expr {
             ExprKind::If(if_expr) => if_expr.to_doc(ctx),
             ExprKind::Match(match_expr) => match_expr.to_doc(ctx),
             ExprKind::With(with_expr) => with_expr.to_doc(ctx),
+            ExprKind::Unsafe(unsafe_expr) => unsafe_expr.to_doc(ctx),
             ExprKind::Paren(paren) => paren.to_doc(ctx),
             ExprKind::Assign(assign) => assign.to_doc(ctx),
             ExprKind::AugAssign(aug_assign) => aug_assign.to_doc(ctx),

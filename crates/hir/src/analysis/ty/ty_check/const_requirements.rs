@@ -1,5 +1,7 @@
 //! Const declaration requirements are discharged after inference, for every body
-//! owner. Concrete discharge uses ordinary CTFE. Symbolic forwarding compares
+//! owner. Concrete discharge uses ordinary CTFE. A use whose arguments mention
+//! the caller's parameters is evaluated under the caller's assumptions first;
+//! when that is blocked on the parameters, symbolic forwarding compares
 //! resolved, typed expressions after substitution, without evaluating
 //! unknown parameters or assuming the obligation being checked.
 use super::*;
@@ -14,6 +16,7 @@ use crate::analysis::ty::{
     ty_lower::{CompleteSubst, SubstError, lower_hir_ty_with_resolutions, lower_type_alias},
 };
 use crate::hir_def::{GenericArg, GenericArgListId, ItemKind, UnOp, scope_graph::ScopeId};
+use crate::semantic::constraints_for;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PredicateKey<'db> {
@@ -750,9 +753,11 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
         // A function value enters the body where it is written, at a path
         // that names the function. A call through anything else, such as a
         // binding, block, branch or field, calls such a value, whose
-        // requirements were checked there.
+        // requirements were checked there. A call of a callable value runs
+        // its shape trait's method, whose requirements are checked here.
         if let Some(Expr::Call(callee, _)) = data.borrowed().to_opt()
             && !self.names_function_value(*callee)
+            && self.typed.call_receiver(self.db, expr).is_none()
         {
             return;
         }
@@ -887,9 +892,8 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
     /// expression type holds. An application reported before is not reported
     /// again, and any other is reported once, at the first expression that
     /// carries it. Patterns, binding uses, blocks and branches are left out:
-    /// their types come from an expression here or from the signature, and a
-    /// signature type reaches the body with its layout holes instantiated, so
-    /// it would not match the written type that reported it.
+    /// their types come from an expression here or from the signature, whose
+    /// written types report their own failures.
     ///
     /// An expression type that `check_expr` found no failure in has none here
     /// either, since `reported` only adds to `written`, so only a function
@@ -990,10 +994,7 @@ fn generic_arg_const_bodies<'db>(
     args: GenericArgListId<'db>,
 ) -> impl Iterator<Item = Body<'db>> + 'db {
     args.data(db).iter().filter_map(|arg| match arg {
-        GenericArg::Const(arg) => match arg.value {
-            ConstGenericArgValue::Expr(Partial::Present(body)) => Some(body),
-            _ => None,
-        },
+        GenericArg::Const(arg) => arg.value.to_opt(),
         _ => None,
     })
 }
@@ -1052,7 +1053,7 @@ fn segment_const_args<'db>(
             PathRes::TyAlias(alias, _) => {
                 for (arg, param) in args.data(db).iter().zip(alias.params(db)) {
                     if let GenericArg::Const(arg) = arg
-                        && let ConstGenericArgValue::Expr(Partial::Present(body)) = arg.value
+                        && let Partial::Present(body) = arg.value
                         && let Some(expected) = param.const_ty_ty(db)
                     {
                         found.push((body, expected));
@@ -1179,18 +1180,14 @@ fn expression_const_bodies<'db>(
         };
         let definition = match expr.data(db, body).borrowed().to_opt()? {
             Expr::Path(Partial::Present(path)) => {
-                let minter = LoweringContext::deferred(HoleAnchor::TemplatePath {
-                    path: *path,
-                    scope: body.scope(),
-                    assumptions: typed.assumptions(),
-                });
+                let lowering_cx = LoweringContext::deferred();
                 match resolve_path_with_minter(
                     db,
                     *path,
                     body.scope(),
                     typed.assumptions(),
                     true,
-                    &minter,
+                    &lowering_cx,
                 )
                 .ok()?
                 {
@@ -1254,7 +1251,7 @@ fn expression_const_bodies<'db>(
                 let GenericArg::Const(arg) = arg else {
                     return None;
                 };
-                let ConstGenericArgValue::Expr(Partial::Present(body)) = arg.value else {
+                let Partial::Present(body) = arg.value else {
                     return None;
                 };
                 Some((body, expected(offset + idx)?))
@@ -1267,20 +1264,22 @@ fn expression_const_bodies<'db>(
         if path_const_bodies(db, path).is_empty() {
             return Vec::new();
         }
-        let minter = LoweringContext::deferred(HoleAnchor::TemplatePath {
-            path,
-            scope: body.scope(),
-            assumptions: typed.assumptions(),
-        })
-        .recording_resolutions();
+        let lowering_cx = LoweringContext::deferred().recording_resolutions();
         let resolve = |value| {
-            resolve_path_with_minter(db, path, body.scope(), typed.assumptions(), value, &minter)
+            resolve_path_with_minter(
+                db,
+                path,
+                body.scope(),
+                typed.assumptions(),
+                value,
+                &lowering_cx,
+            )
         };
         // A tail that is not a value can still be a type, as a record's is.
         if resolve(value).is_err() {
             let _ = resolve(!value);
         }
-        segment_const_args(db, path, &minter.into_resolutions())
+        segment_const_args(db, path, &lowering_cx.into_resolutions())
     };
 
     let mut found: Vec<(Body<'db>, TyId<'db>)> = Vec::new();
@@ -1517,6 +1516,10 @@ fn discharge_requirement<'db>(
         FormationStatus::Recursive => return Discharge::Fails(RequirementFailure::Recursive),
     };
     let not_instantiable = Discharge::Fails(RequirementFailure::NotInstantiable);
+    // The use's arguments name the caller's parameters as its body and
+    // assumptions do; premises are stated over the caller's full parameter
+    // list instead.
+    let use_args = args.clone();
     let args = match caller {
         Some(caller) => match caller_args(db, caller, args) {
             Ok(args) => args,
@@ -1537,6 +1540,27 @@ fn discharge_requirement<'db>(
         symbolic |= arg.has_param(db);
     }
     if symbolic {
+        // Arguments that mention the caller's parameters may still decide
+        // the predicate, when its value does not depend on them: evaluated
+        // under the caller's assumptions, a value decides it, and only a
+        // blocked evaluation needs a premise.
+        if let Some(caller) = caller {
+            let owner = BodyOwner::const_predicate(db, predicate);
+            let impl_env = ImplEnv::new(
+                db,
+                caller.scope(),
+                constraints_for(db, ItemKind::from(caller)),
+                Vec::new(),
+            );
+            let subst = GenericSubst::for_body_owner(db, owner, use_args);
+            match condition_outcome_in(db, owner, subst, impl_env) {
+                ConditionOutcome::True => return Discharge::Holds,
+                ConditionOutcome::False => return Discharge::Fails(RequirementFailure::False),
+                ConditionOutcome::NotBool
+                | ConditionOutcome::Blocked(_)
+                | ConditionOutcome::Failed(_) => {}
+            }
+        }
         let Ok(key) = predicate_key(db, predicate, typed, &subst) else {
             return not_instantiable;
         };
@@ -1629,7 +1653,7 @@ fn assumptions_at<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> Predi
         };
         enclosing = parent;
     }
-    crate::semantic::constraints_for(db, enclosing.item())
+    constraints_for(db, enclosing.item())
 }
 
 /// The applications that the types written in `owner`'s signature and body
@@ -2045,14 +2069,9 @@ fn trait_ref_const_args<'db>(
     if path_const_bodies(db, path).is_empty() {
         return Vec::new();
     }
-    let minter = LoweringContext::deferred(HoleAnchor::TemplatePath {
-        path,
-        scope,
-        assumptions,
-    })
-    .recording_resolutions();
-    let _ = resolve_path_with_minter(db, path, scope, assumptions, false, &minter);
-    segment_const_args(db, path, &minter.into_resolutions())
+    let lowering_cx = LoweringContext::deferred().recording_resolutions();
+    let _ = resolve_path_with_minter(db, path, scope, assumptions, false, &lowering_cx);
+    segment_const_args(db, path, &lowering_cx.into_resolutions())
 }
 
 /// The anonymous constants written directly in `hir_ty`, each with the type
