@@ -491,6 +491,13 @@ fn func_sig_to_doc<'a>(
 
     let has_uses = sig.uses_clause().is_some();
     let has_where = sig.where_clause().is_some();
+    // A bare `uses E` on its own line in a trait declares an associated row.
+    // Keep method effects attached to the signature when its group breaks.
+    let is_trait_method = sig
+        .syntax()
+        .parent()
+        .and_then(|func| func.parent())
+        .is_some_and(|parent| ast::TraitItemList::can_cast(parent.kind()));
 
     // Build the core signature (before uses/where) to measure its length
     let core_sig = alloc
@@ -511,14 +518,17 @@ fn func_sig_to_doc<'a>(
     // Force clauses to new lines if:
     // - uses_new_line/where_new_line config is set, OR
     // - the core signature is already long (> 60 chars)
-    let force_uses_break = has_uses && (ctx.config.uses_new_line || core_flat_len > 60);
+    let force_uses_break =
+        has_uses && !is_trait_method && (ctx.config.uses_new_line || core_flat_len > 60);
     let force_where_break = has_where && (ctx.config.where_new_line || core_flat_len > 60);
     let force_clause_break = force_uses_break || force_where_break;
 
     let uses_doc = sig.uses_clause().map_or_else(
         || alloc.nil(),
         |u| {
-            if force_uses_break {
+            if is_trait_method {
+                alloc.text(" ").append(u.to_doc(ctx))
+            } else if force_uses_break {
                 alloc.hardline().append(u.to_doc(ctx))
             } else {
                 alloc.line().append(u.to_doc(ctx))
