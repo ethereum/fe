@@ -1,5 +1,6 @@
 use dir_test::{Fixture, dir_test};
 use fe_fmt::{Config, format_str};
+use parser::ast::{PathSegment, prelude::AstNode};
 use parser::{RecoveryMode, SyntaxKind, SyntaxNode, parse_source_file};
 use test_utils::snap_test;
 
@@ -15,6 +16,35 @@ fn format_snap(fixture: Fixture<&str>) {
     };
 
     snap_test!(output, fixture.path());
+}
+
+#[test]
+fn comments_before_paths_preserve_syntax() {
+    let path_names = |source: &str| {
+        let (green, errors) = parse_source_file(source, RecoveryMode::NoRecover);
+        assert!(errors.is_empty(), "{errors:?}\n{source}");
+        SyntaxNode::new_root(green)
+            .descendants()
+            .filter_map(PathSegment::cast)
+            .map(|segment| segment.ident().unwrap().text().to_string())
+            .collect::<Vec<_>>()
+    };
+    for source in [
+        "struct Record { value: // field type\n u256 }",
+        "struct Record { pub(super) unsafe value: // field type\n u256 }",
+        "fn helper(value: // parameter type\n u256) {}",
+        "type Word = // alias type\n u256",
+        "fn helper() { let value = ( // initializer\n other::value) }",
+    ] {
+        let expected = path_names(source);
+        let formatted = format_str(source, &Config::default())
+            .unwrap_or_else(|error| panic!("format failed for {source}: {error:?}"));
+        assert_eq!(expected, path_names(&formatted), "{formatted}");
+        assert_eq!(
+            formatted,
+            format_str(&formatted, &Config::default()).expect("reformat should succeed"),
+        );
+    }
 }
 
 #[test]

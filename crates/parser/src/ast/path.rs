@@ -29,7 +29,11 @@ ast_node! {
 impl GenericArgsOwner for PathSegment {}
 impl PathSegment {
     pub fn kind(&self) -> Option<PathSegmentKind> {
-        match self.syntax().first_child_or_token() {
+        match self
+            .syntax()
+            .children_with_tokens()
+            .find(|child| !child.kind().is_trivia() && child.kind() != SK::Newline)
+        {
             Some(node) => match node.kind() {
                 SK::IngotKw => Some(PathSegmentKind::Ingot(node.into_token().unwrap())),
                 SK::SuperKw => Some(PathSegmentKind::Super(node.into_token().unwrap())),
@@ -110,7 +114,9 @@ impl QualifiedType {
 mod tests {
     use super::*;
     use crate::{
+        SyntaxNode,
         lexer::Lexer,
+        parse_source_file,
         parser::{Parser, RecoveryMode, path::PathScope},
     };
 
@@ -121,6 +127,17 @@ mod tests {
         let mut parser = Parser::new(lexer, RecoveryMode::Recover);
         parser.parse(PathScope::default()).unwrap();
         Path::cast(parser.finish_to_node().0).unwrap()
+    }
+
+    #[test]
+    #[wasm_bindgen_test]
+    fn path_segment_after_line_comment_has_a_name() {
+        let source = "struct Record { value: // field type\n u256 }";
+        let (green, errors) = parse_source_file(source, RecoveryMode::NoRecover);
+        assert!(errors.is_empty(), "{errors:?}");
+        let syntax = SyntaxNode::new_root(green);
+        let segment = syntax.descendants().find_map(PathSegment::cast).unwrap();
+        assert_eq!(segment.ident().unwrap().text(), "u256");
     }
 
     #[test]
