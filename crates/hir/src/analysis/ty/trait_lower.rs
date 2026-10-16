@@ -28,8 +28,8 @@ use super::{
 use crate::analysis::{
     HirAnalysisDb,
     name_resolution::{
-        NameResKind, PathRes, PathResError, resolve_trait_path_with_observer_and_minter,
-        resolve_type_path_definition,
+        NameResKind, PathRes, PathResError, PathResErrorKind,
+        resolve_trait_path_with_observer_and_minter, resolve_type_path_definition,
     },
     ty::ty_def::{Kind, TyData},
 };
@@ -371,12 +371,14 @@ fn lower_impl_trait_header_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
-/// Lower a trait reference to a trait instance.
+/// Lower a trait reference to a trait instance implemented by `self_ty`.
 ///
-/// When `owner_self` is provided, it is used for substituting `Self` references in generic
-/// arguments and associated type bindings, while `self_ty` is used as the implementor (args[0]).
-/// This is needed for associated type bounds like `type Assoc: Encode<Self>` where `Self`
-/// refers to the owner trait's Self, not the associated type.
+/// `Self` in the written generic arguments and associated type bindings is the
+/// use site's `Self`. Inside a trait, that is the trait's own `Self`; when
+/// `owner_self` is provided, it is instantiated as `owner_self`, as when the
+/// bounds of `type Assoc: Encode<Self>` are read for an implementation.
+/// Defaults omitted from the reference, such as `Rhs = Self`, are completed
+/// against `self_ty`.
 #[salsa::tracked(
     cycle_fn=lower_trait_ref_cycle_recover,
     cycle_initial=lower_trait_ref_cycle_initial
@@ -457,7 +459,6 @@ pub(crate) fn lower_trait_ref_with_minter<'db>(
     let Partial::Present(path) = trait_ref.path(db) else {
         return Err(TraitRefLowerError::Ignored);
     };
-    let self_subst = owner_self.unwrap_or(self_ty);
     match resolve_trait_path_with_observer_and_minter(
         db,
         path,
@@ -467,36 +468,44 @@ pub(crate) fn lower_trait_ref_with_minter<'db>(
         lowering_cx,
     ) {
         Ok(PathRes::Trait(t)) => {
-            let mut args = t.args(db).clone();
-
-            // Substitute all occurrences of `Self` with `self_subst`
-            // TODO: this shouldn't be necessary; Self should resolve to self_ty in a later stage,
-            //  but something seems to be broken.
-            struct SelfSubst<'db> {
-                db: &'db dyn HirAnalysisDb,
-                self_subst: TyId<'db>,
-            }
-            impl<'db> TyFolder<'db> for SelfSubst<'db> {
+            // Instantiates the use site's trait `Self` as `owner_self`.
+            struct OwnerSelf<'db>(TyId<'db>);
+            impl<'db> TyFolder<'db> for OwnerSelf<'db> {
                 fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
-                    match ty.data(self.db) {
-                        TyData::TyParam(p) if p.is_trait_self() => self.self_subst,
+                    match ty.data(db) {
+                        TyData::TyParam(p) if p.is_trait_self() => self.0,
                         _ => ty.super_fold_with(db, self),
                     }
                 }
             }
+            let written_self = |ty: TyId<'db>| {
+                owner_self.map_or(ty, |owner| ty.fold_with(db, &mut OwnerSelf(owner)))
+            };
 
-            let mut folder = SelfSubst { db, self_subst };
-            args[0] = self_ty;
-            args.iter_mut()
-                .skip(1)
-                .for_each(|a| *a = a.fold_with(db, &mut folder));
+            // The resolved instance completes its defaults against the trait's
+            // own `Self`. Keep only the written arguments and complete the
+            // defaults again against the implementor.
+            let written = path
+                .generic_args(db)
+                .data(db)
+                .iter()
+                .filter(|arg| !matches!(arg, GenericArg::AssocType(_)))
+                .count();
+            let explicit: Vec<_> = t.args(db)[1..=written]
+                .iter()
+                .map(|&ty| written_self(ty))
+                .collect();
+            let args = complete_trait_args(db, t.def(db), self_ty, &explicit, lowering_cx)
+                .map_err(|err| {
+                    TraitRefLowerError::PathResError(PathResError::new(err.into(), path))
+                })?;
+            let assoc_bindings: IndexMap<_, _> = t
+                .assoc_type_bindings(db)
+                .iter()
+                .map(|(&name, &ty)| (name, written_self(ty)))
+                .collect();
 
-            let mut assoc_bindings = t.assoc_type_bindings(db).clone();
-            assoc_bindings
-                .iter_mut()
-                .for_each(|(_, ty)| *ty = (*ty).fold_with(db, &mut folder));
-
-            Ok(TraitInstId::new(db, t.key(db), args, assoc_bindings))
+            Ok(TraitInstId::new(db, t.def(db), args, assoc_bindings))
         }
         Ok(res) => Err(TraitRefLowerError::InvalidDomain(res)),
         Err(e) => Err(TraitRefLowerError::PathResError(e)),
@@ -545,6 +554,23 @@ pub(crate) enum TraitArgError<'db> {
     Ignored,
 }
 
+impl<'db> From<TraitArgError<'db>> for PathResErrorKind<'db> {
+    fn from(err: TraitArgError<'db>) -> Self {
+        match err {
+            TraitArgError::ArgNumMismatch { expected, given } => {
+                PathResErrorKind::ArgNumMismatch { expected, given }
+            }
+            TraitArgError::ArgKindMisMatch { expected, given } => {
+                PathResErrorKind::ArgKindMisMatch { expected, given }
+            }
+            TraitArgError::ArgTypeMismatch { expected, given } => {
+                PathResErrorKind::ArgTypeMismatch { expected, given }
+            }
+            TraitArgError::Ignored => PathResErrorKind::ParseError,
+        }
+    }
+}
+
 pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     db: &'db (dyn HirAnalysisDb + 'static),
     path: PathId<'db>,
@@ -553,7 +579,6 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     t: Trait<'db>,
     lowering_cx: &LoweringContext<'db>,
 ) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
-    let trait_params: &[TyId<'db>] = t.params(db);
     let args = path.generic_args(db).data(db);
     // Lower provided explicit args (excluding Self)
     let mut provided_explicit = Vec::new();
@@ -591,13 +616,26 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
         }
     }
 
-    // Fill trailing defaults using the trait's param set. Bind Self (idx 0).
-    let non_self_completed = t
+    let args = complete_trait_args(db, t, t.self_param(db), &provided_explicit, lowering_cx)?;
+    Ok(TraitInstId::new(db, t, args, assoc_bindings))
+}
+
+/// Completes the arguments of `trait_` implemented by `self_ty` from the
+/// `explicit` ones, filling omitted trailing parameters with their defaults.
+fn complete_trait_args<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: Trait<'db>,
+    self_ty: TyId<'db>,
+    explicit: &[TyId<'db>],
+    lowering_cx: &LoweringContext<'db>,
+) -> Result<Vec<TyId<'db>>, TraitArgError<'db>> {
+    let trait_params: &[TyId<'db>] = trait_.params(db);
+    let non_self_completed = trait_
         .param_set(db)
         .complete_args(
             db,
-            &[t.self_param(db)],
-            &provided_explicit,
+            &[self_ty],
+            explicit,
             match lowering_cx.const_bodies() {
                 ConstBodyLowering::Eager => DefaultApplication::Evaluate(lowering_cx),
                 ConstBodyLowering::Deferred => DefaultApplication::StructuralMetadata(lowering_cx),
@@ -633,11 +671,10 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
         });
     }
 
-    let mut final_args: Vec<TyId<'db>> = Vec::with_capacity(trait_params.len());
-    final_args.push(t.self_param(db));
-    final_args.extend(non_self_completed);
-
-    Ok(TraitInstId::new(db, t, final_args, assoc_bindings))
+    let mut args = Vec::with_capacity(trait_params.len());
+    args.push(self_ty);
+    args.extend(non_self_completed);
+    Ok(args)
 }
 
 #[salsa::tracked(return_ref)]

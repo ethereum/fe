@@ -37,9 +37,9 @@ use crate::analysis::{
         normalize::normalize_ty,
         trait_def::{TraitInstId, impls_for_ty_with_satisfied_constraints},
         trait_lower::{
-            TraitArgError, TraitRefLowerError, complete_candidate_impl_assoc_ty,
-            complete_impl_assoc_ty, lower_candidate_impl_assoc_ty, lower_checked_impl_assoc_ty,
-            lower_trait_ref, lower_trait_ref_impl_with_minter, lower_trait_ref_with_minter,
+            TraitRefLowerError, complete_candidate_impl_assoc_ty, complete_impl_assoc_ty,
+            lower_candidate_impl_assoc_ty, lower_checked_impl_assoc_ty, lower_trait_ref,
+            lower_trait_ref_impl_with_minter, lower_trait_ref_with_minter,
         },
         trait_resolution::{
             GoalSatisfiability, PredicateListId, TraitSolveCx, constraint::collect_constraints,
@@ -2290,24 +2290,7 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                         );
                         match lowered {
                             Ok(t) => PathRes::Trait(t),
-                            Err(err) => {
-                                let kind = match err {
-                                    TraitArgError::ArgNumMismatch { expected, given } => {
-                                        PathResErrorKind::ArgNumMismatch { expected, given }
-                                    }
-                                    TraitArgError::ArgKindMisMatch { expected, given } => {
-                                        PathResErrorKind::ArgKindMisMatch { expected, given }
-                                    }
-                                    TraitArgError::ArgTypeMismatch { expected, given } => {
-                                        PathResErrorKind::ArgTypeMismatch { expected, given }
-                                    }
-                                    TraitArgError::Ignored => PathResErrorKind::ParseError,
-                                };
-                                return Err(PathResError {
-                                    kind,
-                                    failed_at: path,
-                                });
-                            }
+                            Err(err) => return Err(PathResError::new(err.into(), path)),
                         }
                     }
                 }

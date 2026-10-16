@@ -3304,15 +3304,7 @@ impl<'db> WherePredicateBoundView<'db> {
         let owner_item = ItemKind::from(self.pred.clause.owner);
         let assumptions = header_constraints_for(db, owner_item);
         let scope = owner_item.scope();
-        lower_trait_ref(
-            db,
-            subject,
-            self.trait_ref(db),
-            scope,
-            assumptions,
-            crate::analysis::ty::trait_resolution::constraint::enclosing_trait_self_ty(db, scope),
-        )
-        .ok()
+        lower_trait_ref(db, subject, self.trait_ref(db), scope, assumptions, None).ok()
     }
 }
 

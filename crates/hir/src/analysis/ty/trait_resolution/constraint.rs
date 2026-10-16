@@ -551,21 +551,6 @@ struct Deferred<'db> {
     source: PredicateSource<'db>,
 }
 
-/// What `Self` denotes in bounds written at `scope`: the nearest enclosing
-/// trait's `Self` parameter, if any.
-///
-/// Bound lowering substitutes `Self` occurrences in trait-ref args with the
-/// bound's subject by default, which is only correct when the subject *is*
-/// `Self` (super-traits, impl headers). For bounds on other subjects inside a
-/// trait (`trait Tr<T: A<Self::Item>>`), `Self` must keep referring to the
-/// enclosing trait's `Self`.
-pub(crate) fn enclosing_trait_self_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-) -> Option<TyId<'db>> {
-    collect_generic_params(db, enclosing_trait(db, scope)?.into()).trait_self(db)
-}
-
 /// The trait instance and item a path names, among the items `item` finds
 /// in a trait by name: `I` or `Self::I` in a trait or an implementation of
 /// one (or one of its supertraits), and `X::I` for a type `X` the scope
@@ -628,24 +613,6 @@ fn enclosing_trait_inst<'db>(
     None
 }
 
-/// The trait whose definition `scope` is in, outside any impl.
-pub(crate) fn enclosing_trait<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-) -> Option<crate::hir_def::Trait<'db>> {
-    let mut item = Some(scope.item());
-    while let Some(current) = item {
-        match current {
-            ItemKind::Trait(trait_) => return Some(trait_),
-            // `Self` inside impls resolves to the implementor type directly.
-            ItemKind::Impl(_) | ItemKind::ImplTrait(_) => return None,
-            _ => {}
-        }
-        item = current.scope().parent_item(db);
-    }
-    None
-}
-
 fn try_resolve_type_bound<'db>(
     db: &'db dyn HirAnalysisDb,
     deferred: &Deferred<'db>,
@@ -676,7 +643,7 @@ fn try_resolve_type_bound<'db>(
             deferred.trait_ref,
             deferred.scope,
             assumptions,
-            enclosing_trait_self_ty(db, deferred.scope),
+            None,
         ),
         ConstBodyLowering::Deferred => {
             let lowering_cx = LoweringContext::deferred();
@@ -686,7 +653,7 @@ fn try_resolve_type_bound<'db>(
                 deferred.trait_ref,
                 deferred.scope,
                 assumptions,
-                enclosing_trait_self_ty(db, deferred.scope),
+                None,
                 &lowering_cx,
             )
         }
