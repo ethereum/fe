@@ -1413,13 +1413,9 @@ impl ToDoc for ast::WithParamList {
 impl ToDoc for ast::TupleExpr {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         if !has_comment_tokens(self.syntax()) {
-            let mut items: Vec<_> = self
-                .elems()
-                .flatten()
-                .map(|elem| elem.to_doc(ctx))
-                .collect();
-            if items.len() == 1 {
-                return singleton_tuple(ctx, "(", ")", items.pop().unwrap());
+            let mut elems = self.elems().flatten();
+            if let (Some(elem), None) = (elems.next(), elems.next()) {
+                return singleton_tuple(ctx, "(", ")", elem.to_doc(ctx));
             }
         }
 

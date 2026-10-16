@@ -18,6 +18,32 @@ fn format_snap(fixture: Fixture<&str>) {
 }
 
 #[test]
+fn deeply_nested_tuples_format_in_linear_time() {
+    // Each tuple level used to format its elements twice, so 40 levels took
+    // about 2^40 steps.
+    let depth = 40;
+    let nested = |inner: &str, rest: &str| {
+        format!(
+            "{}{inner}{}",
+            "(".repeat(depth),
+            format!(", {rest})").repeat(depth)
+        )
+    };
+    let source = format!(
+        "fn f() {{\n    let {}: {} = {}\n}}\n",
+        nested("x", "_"),
+        nested("u256", "u8"),
+        nested("1", "0"),
+    );
+    let config = Config::default();
+    let formatted = format_str(&source, &config).expect("format should succeed");
+    assert_eq!(
+        formatted,
+        format_str(&formatted, &config).expect("reformat should succeed")
+    );
+}
+
+#[test]
 fn comments_between_methods_format_in_one_pass() {
     let config = Config::default();
     for modifier in ["pub ", "unsafe ", "pub unsafe "] {

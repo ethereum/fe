@@ -1284,9 +1284,9 @@ impl ToDoc for ast::AssocTypeGenericArg {
 impl ToDoc for ast::TupleType {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         if !has_comment_tokens(self.syntax()) {
-            let mut items: Vec<_> = self.elem_tys().map(|ty| ty.to_doc(ctx)).collect();
-            if items.len() == 1 {
-                return singleton_tuple(ctx, "(", ")", items.pop().unwrap());
+            let mut elems = self.elem_tys();
+            if let (Some(ty), None) = (elems.next(), elems.next()) {
+                return singleton_tuple(ctx, "(", ")", ty.to_doc(ctx));
             }
         }
 

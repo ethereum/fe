@@ -57,14 +57,9 @@ impl ToDoc for ast::TuplePat {
 impl ToDoc for ast::TuplePatElemList {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         if !has_comment_tokens(self.syntax()) {
-            let mut items: Vec<_> = self
-                .syntax()
-                .children()
-                .filter_map(ast::Pat::cast)
-                .map(|pat| pat.to_doc(ctx))
-                .collect();
-            if items.len() == 1 {
-                return singleton_tuple(ctx, "(", ")", items.pop().unwrap());
+            let mut elems = self.syntax().children().filter_map(ast::Pat::cast);
+            if let (Some(pat), None) = (elems.next(), elems.next()) {
+                return singleton_tuple(ctx, "(", ")", pat.to_doc(ctx));
             }
         }
 
