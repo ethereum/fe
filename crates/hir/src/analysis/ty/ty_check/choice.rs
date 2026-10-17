@@ -612,6 +612,10 @@ impl<'db> TyChecker<'db> {
                 // Refused at the parameter (`refuse_evidence_params`).
                 LocalBinding::Param { is_mut: true, .. }
                 | LocalBinding::Param {
+                    mode: crate::hir_def::params::FuncParamMode::Mut,
+                    ..
+                }
+                | LocalBinding::Param {
                     site: ParamSite::ContractInit(_),
                     ..
                 } => Err(SourceError::Reported),
@@ -659,6 +663,10 @@ impl<'db> TyChecker<'db> {
                     "this block does not end in evidence",
                 )),
             },
+            // A read access of an evidence place means what the place means.
+            Partial::Present(Expr::Un(inner, crate::hir_def::UnOp::Ref)) => {
+                self.denote_tail(*inner)
+            }
             // A branch chooses evidence by a value (RD121).
             Partial::Present(Expr::If(..) | Expr::Match(..)) => Err(SourceError::Runtime),
             Partial::Present(Expr::Field(base, _)) => {
