@@ -653,6 +653,27 @@ fn d13_is_checked_from_every_route() {
 }
 
 #[test]
+fn premises_compare_calls_as_written() {
+    // D6: a callee's condition and the caller's identical premise are one
+    // predicate. A recorded decision that forwards a bound names its owner's
+    // own bound, which substitution does not rename, so the predicate key
+    // compares a call as written (`Callable::as_written`).
+    let owed = code(&text_of("src/analysis/ty/ty_check/const_requirements.rs"));
+    let key = functions(&owed)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn key(&self")
+        })
+        .expect("predicates have keys");
+    assert!(key.contains(".as_written()"));
+    assert!(!key.contains("callable.clone()"));
+}
+
+#[test]
 fn choice_walks_end_at_one_limit() {
     // D18: a walk that follows choices through implementations ends where the
     // base's instance limits end, through one check; no walk keeps a limit of

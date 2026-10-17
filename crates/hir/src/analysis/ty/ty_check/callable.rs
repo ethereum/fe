@@ -27,7 +27,7 @@ use crate::analysis::{
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
-        trait_choice::{Choice, Delivery},
+        trait_choice::{Choice, Delivery, SlotRef},
         trait_def::TraitInstId,
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
@@ -320,6 +320,22 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
 impl<'db> Callable<'db> {
     pub fn callable_def(&self) -> CallableDef<'db> {
         self.callable_def
+    }
+
+    /// The call as written, for comparing two predicates: a decision that
+    /// only forwards an enclosing bound (`Slot(Bound)`) names that owner's
+    /// own bound, which substitution does not rename, and follows from the
+    /// generic arguments, so it is left out. Any other decision stays, so a
+    /// predicate that reads a fixed choice matches only one that reads the
+    /// same.
+    pub(crate) fn as_written(&self) -> Self {
+        let forwards = |choice: &Choice<'db>| matches!(choice, Choice::Slot(SlotRef::Bound(_)));
+        let mut written = self.clone();
+        if written.choice.as_ref().is_some_and(forwards) {
+            written.choice = None;
+        }
+        written.delivered.retain(|(_, choice)| !forwards(choice));
+        written
     }
 
     pub fn new(

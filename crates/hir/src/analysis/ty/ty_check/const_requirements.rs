@@ -178,7 +178,7 @@ impl<'db> PredicateKeyBuilder<'_, 'db> {
             ty: self.instantiate(typed.expr_ty(db, expr))?,
             arithmetic: self.arithmetic,
             operation: callable
-                .map(|callable| self.instantiate(callable.clone()))
+                .map(|callable| self.instantiate(callable.as_written()))
                 .transpose()?,
             term,
         }))
