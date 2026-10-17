@@ -568,6 +568,12 @@ where
                         .unify_var_value(root_var.key, InferenceValue::Bound(value));
                 }
 
+                // A generic length may be instantiated shorter than the literal,
+                // unless the literal is empty.
+                if min_len > 0 && matches!(const_ty.data(self.db), ConstTyData::TyParam(..)) {
+                    return Err(UnificationError::TypeMismatch);
+                }
+
                 let Some(n_value) = const_ty.integer_value(self.db) else {
                     return Ok(());
                 };
@@ -581,11 +587,17 @@ where
             }
 
             TyVarSort::StringLen { min_len } => {
-                if let TyData::ConstTy(const_ty) = value.data(self.db)
-                    && let Some(n_value) = const_ty.integer_value(self.db)
-                    && n_value < BigInt::from(min_len)
-                {
-                    return Err(UnificationError::TypeMismatch);
+                if let TyData::ConstTy(const_ty) = value.data(self.db) {
+                    // A generic length may be instantiated shorter than the
+                    // literal, unless the literal is empty.
+                    if min_len > 0 && matches!(const_ty.data(self.db), ConstTyData::TyParam(..)) {
+                        return Err(UnificationError::TypeMismatch);
+                    }
+                    if let Some(n_value) = const_ty.integer_value(self.db)
+                        && n_value < BigInt::from(min_len)
+                    {
+                        return Err(UnificationError::TypeMismatch);
+                    }
                 }
                 self.table
                     .unify_var_value(root_var.key, InferenceValue::Bound(value))
