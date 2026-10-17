@@ -719,11 +719,14 @@ pub(crate) enum NamedOutputMismatch<'db> {
     },
 }
 
-/// RD108, and its extension D16: the associated types and effect rows of a
-/// slot do not depend on which implementation answers it. A named
-/// declaration gives the same ones as the slot's ordinary implementation,
-/// or, when the slot has none, as each other named implementation of it.
-/// This is definition admission, independent of any opening.
+/// RD108, and its extension D16: a slot's associated types, effect rows and
+/// result spaces do not depend on which implementation answers it. A named
+/// declaration is compared with every other implementation of the trait,
+/// ordinary or named, whose header overlaps its own, at their overlap and
+/// whatever their conditions: a condition that does not hold here can hold
+/// where a `with` adds a premise, and two named implementations that both
+/// answer a slot would otherwise give it outputs that depend on which is
+/// found first. This is definition admission, independent of any opening.
 pub(crate) fn named_output_mismatch<'db>(
     db: &'db dyn HirAnalysisDb,
     implementation: ImplTrait<'db>,
@@ -733,44 +736,28 @@ pub(crate) fn named_output_mismatch<'db>(
         .with_assumptions(crate::semantic::param_env(db, implementation.into()));
     let header = candidate.trait_inst(db);
     let goal = TraitInstId::new_simple(db, header.def(db), header.args(db).clone());
-    // Every ordinary implementation whose header covers the slot, whatever
-    // its conditions: a condition that does not hold here can hold where a
-    // `with` adds a premise, and that implementation then answers the slot.
     let (primary, secondary) = context.search_ingots_for_trait_inst(db, goal);
-    let instantiated = |candidates: Vec<ImplementorId<'db>>| {
-        candidates
-            .into_iter()
-            .filter(|other| matches!(other.origin(db), ImplementorOrigin::Hir(_)))
-            .filter_map(|other| {
-                super::trait_lower::complete_selected_impl(db, other)
-                    .and_then(|completed| instantiate_selected_impl(db, completed, goal))
-            })
-            .collect::<Vec<_>>()
-    };
-    let ordinary_impls = instantiated(
-        [Some(primary), secondary]
-            .into_iter()
-            .flatten()
-            .flat_map(|ingot| impls_for_trait_def(db, ingot, goal.def(db)).to_vec())
-            .collect(),
-    );
-    let (others, ordinary) = if ordinary_impls.is_empty() {
-        let ingot = implementation.top_mod(db).ingot(db);
-        let others = instantiated(
-            named_impls_for_trait(db, ingot, goal.def(db))
-                .into_iter()
-                .filter(|other| *other != implementation)
-                .filter_map(|other| super::trait_lower::lower_impl_trait(db, other))
-                .collect(),
-        );
-        (others, false)
-    } else {
-        (ordinary_impls, true)
-    };
-    let own = super::trait_lower::complete_selected_impl(db, candidate)
-        .and_then(|completed| instantiate_selected_impl(db, completed, goal));
-    for other in others {
-        let ImplementorOrigin::Hir(with) = other.selected().origin(db) else {
+    let ingots = [Some(primary), secondary]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    let ordinary = ingots
+        .iter()
+        .flat_map(|ingot| impls_for_trait_def(db, *ingot, goal.def(db)).to_vec())
+        .filter(|other| matches!(other.origin(db), ImplementorOrigin::Hir(_)))
+        .map(|other| (other, true));
+    let named = ingots
+        .iter()
+        .flat_map(|ingot| named_impls_for_trait(db, *ingot, goal.def(db)))
+        .filter(|other| *other != implementation)
+        .filter_map(|other| super::trait_lower::lower_impl_trait(db, other))
+        .map(|other| (other, false));
+    let others = ordinary.chain(named).collect::<Vec<_>>();
+    for (other, ordinary) in others {
+        let ImplementorOrigin::Hir(with) = other.origin(db) else {
+            continue;
+        };
+        let Some((own, other)) = at_overlap(db, candidate, other) else {
             continue;
         };
         for assoc in goal.def(db).assoc_types(db) {
@@ -779,7 +766,7 @@ pub(crate) fn named_output_mismatch<'db>(
             };
             let (Some(expected), Some(given)) = (
                 other.instantiated_assoc_ty(db, name),
-                candidate.assoc_ty(db, name),
+                own.instantiated_assoc_ty(db, name),
             ) else {
                 continue;
             };
@@ -789,7 +776,9 @@ pub(crate) fn named_output_mismatch<'db>(
             if expected.has_invalid(db) || given.has_invalid(db) {
                 continue;
             }
-            if UnificationTable::new(db).unify(expected, given).is_err() {
+            // Equal at the overlap, for every value of what the overlap
+            // leaves open: the two are compared as they are, not unified.
+            if expected != given {
                 return Some(NamedOutputMismatch::AssocType {
                     with,
                     ordinary,
@@ -799,9 +788,6 @@ pub(crate) fn named_output_mismatch<'db>(
                 });
             }
         }
-        let Some(own) = own else {
-            continue;
-        };
         for row in goal.def(db).rows(db) {
             let Some(name) = row.name.to_opt() else {
                 continue;
@@ -839,6 +825,38 @@ pub(crate) fn named_output_mismatch<'db>(
         }
     }
     None
+}
+
+/// Two implementations instantiated at their overlap: each header with fresh
+/// variables, unified with the other. `None` when the headers cannot both
+/// match one goal.
+fn at_overlap<'db>(
+    db: &'db dyn HirAnalysisDb,
+    own: ImplementorId<'db>,
+    other: ImplementorId<'db>,
+) -> Option<(ResolvedImplInstance<'db>, ResolvedImplInstance<'db>)> {
+    let mut table = UnificationTable::new(db);
+    let own_fresh = table.instantiate_with_fresh_vars(own);
+    let other_fresh = table.instantiate_with_fresh_vars(other);
+    for (&a, &b) in own_fresh
+        .trait_inst(db)
+        .args(db)
+        .iter()
+        .zip(other_fresh.trait_inst(db).args(db))
+    {
+        table.unify(a, b).ok()?;
+    }
+    let resolved = |selected, fresh: ImplementorId<'db>, table: &mut UnificationTable<'db>| {
+        let instantiated = fresh.fold_with(db, table);
+        ResolvedImplInstance {
+            selected,
+            instantiated,
+            trait_inst: instantiated.trait_inst(db),
+        }
+    };
+    let own = resolved(own, own_fresh, &mut table);
+    let other = resolved(other, other_fresh, &mut table);
+    Some((own, other))
 }
 
 /// A selected method retains the proof origin and the nominal trait reference.
