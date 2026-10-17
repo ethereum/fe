@@ -6,14 +6,16 @@
 use crate::{
     HirDb,
     hir_def::{
-        Body, Contract, Enum, Expr, ExprId, Func, Impl, ImplTrait, Pat, PatId, Struct, Trait,
-        TraitRefId, TypeAlias, Use, UsePathId,
+        Body, Const, Contract, Enum, Expr, ExprId, Func, Impl, ImplTrait, ItemKind, Pat, PatId,
+        StaticAssert, Struct, Trait, TraitRefId, TypeAlias, Use, UsePathId,
     },
     span::lazy_spans::{
-        LazyBodySpan, LazyExprSpan, LazyPatSpan, LazyPathSpan, LazyTraitRefSpan, LazyUsePathSpan,
+        LazyBodySpan, LazyExprSpan, LazyItemSpan, LazyPatSpan, LazyPathSpan, LazyTraitRefSpan,
+        LazyUsePathSpan,
     },
     visitor::{
-        Visitor, VisitorCtxt, walk_expr, walk_pat, walk_path, walk_trait_ref, walk_use_path,
+        Visitor, VisitorCtxt, walk_body, walk_expr, walk_pat, walk_path, walk_trait_ref,
+        walk_use_path,
     },
 };
 
@@ -33,10 +35,18 @@ enum PathContext {
 }
 
 /// Single unified collector for all reference types.
+///
+/// A collector records the references of one item, not of the items nested
+/// in it: a trait's or impl's methods, an item in a block, and every body,
+/// including a field type's array length, a `where` condition and an array
+/// length in another body. Each of those is an item of its own in the scope
+/// graph, with a collector of its own, so visiting it from the enclosing item
+/// would record each of its references twice.
 pub(super) struct ReferenceCollector<'db> {
     db: &'db dyn HirDb,
     pub refs: Vec<ReferenceView<'db>>,
-    current_body: Option<Body<'db>>,
+    /// The body whose references are collected, for a body's collector.
+    body: Option<Body<'db>>,
     current_use: Option<Use<'db>>,
     /// Tracks the current context when visiting paths inside a body.
     /// Set before walking expressions/patterns that contain paths.
@@ -44,36 +54,24 @@ pub(super) struct ReferenceCollector<'db> {
     /// Set while visiting a trait reference, until its own path is visited.
     /// Paths in that path's generic arguments are not trait references.
     trait_ref: bool,
-    /// Whether nested bodies are skipped. An item's collector skips them:
-    /// every body, including a field type's array length and a `where`
-    /// condition, is an item of its own, whose references `body_references`
-    /// collects, so visiting it from the enclosing item would record each of
-    /// its references twice.
-    skip_body: bool,
 }
 
 impl<'db> ReferenceCollector<'db> {
-    pub fn new(db: &'db dyn HirDb, skip_body: bool) -> Self {
+    pub fn new(db: &'db dyn HirDb) -> Self {
         Self {
             db,
             refs: Vec::new(),
-            current_body: None,
+            body: None,
             current_use: None,
             path_context: PathContext::None,
             trait_ref: false,
-            skip_body,
         }
     }
 
     pub fn for_body(db: &'db dyn HirDb, body: Body<'db>) -> Self {
         Self {
-            db,
-            refs: Vec::new(),
-            current_body: Some(body),
-            current_use: None,
-            path_context: PathContext::None,
-            trait_ref: false,
-            skip_body: false,
+            body: Some(body),
+            ..Self::new(db)
         }
     }
 }
@@ -112,13 +110,12 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
         self.trait_ref = false;
     }
 
+    fn visit_item(&mut self, _: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, _: ItemKind<'db>) {}
+
     fn visit_body(&mut self, ctxt: &mut VisitorCtxt<'db, LazyBodySpan<'db>>, body: Body<'db>) {
-        if self.skip_body {
-            return;
+        if self.body == Some(body) {
+            walk_body(self, ctxt, body);
         }
-        let old = self.current_body.replace(body);
-        crate::visitor::walk_body(self, ctxt, body);
-        self.current_body = old;
     }
 
     fn visit_expr(
@@ -127,7 +124,7 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
         expr: ExprId,
         expr_data: &Expr<'db>,
     ) {
-        if let Some(body) = self.current_body {
+        if let Some(body) = self.body {
             match expr_data {
                 Expr::Path(_) => {
                     // Set context for path expressions before walking
@@ -220,7 +217,7 @@ pub fn func_signature_references<'db>(
     db: &'db dyn HirDb,
     func: Func<'db>,
 ) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_func(db, func);
     collector.visit_func(&mut ctxt, func);
     collector.refs
@@ -228,7 +225,7 @@ pub fn func_signature_references<'db>(
 
 #[salsa::tracked(return_ref)]
 pub fn struct_references<'db>(db: &'db dyn HirDb, struct_: Struct<'db>) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_struct(db, struct_);
     collector.visit_struct(&mut ctxt, struct_);
     collector.refs
@@ -236,7 +233,7 @@ pub fn struct_references<'db>(db: &'db dyn HirDb, struct_: Struct<'db>) -> Vec<R
 
 #[salsa::tracked(return_ref)]
 pub fn enum_references<'db>(db: &'db dyn HirDb, enum_: Enum<'db>) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_enum(db, enum_);
     collector.visit_enum(&mut ctxt, enum_);
     collector.refs
@@ -247,7 +244,7 @@ pub fn type_alias_references<'db>(
     db: &'db dyn HirDb,
     type_alias: TypeAlias<'db>,
 ) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_type_alias(db, type_alias);
     collector.visit_type_alias(&mut ctxt, type_alias);
     collector.refs
@@ -255,7 +252,7 @@ pub fn type_alias_references<'db>(
 
 #[salsa::tracked(return_ref)]
 pub fn impl_references<'db>(db: &'db dyn HirDb, impl_: Impl<'db>) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_impl(db, impl_);
     collector.visit_impl(&mut ctxt, impl_);
     collector.refs
@@ -263,7 +260,7 @@ pub fn impl_references<'db>(db: &'db dyn HirDb, impl_: Impl<'db>) -> Vec<Referen
 
 #[salsa::tracked(return_ref)]
 pub fn trait_references<'db>(db: &'db dyn HirDb, trait_: Trait<'db>) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_trait(db, trait_);
     collector.visit_trait(&mut ctxt, trait_);
     collector.refs
@@ -274,15 +271,34 @@ pub fn impl_trait_references<'db>(
     db: &'db dyn HirDb,
     impl_trait: ImplTrait<'db>,
 ) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_impl_trait(db, impl_trait);
     collector.visit_impl_trait(&mut ctxt, impl_trait);
     collector.refs
 }
 
 #[salsa::tracked(return_ref)]
+pub fn const_references<'db>(db: &'db dyn HirDb, const_: Const<'db>) -> Vec<ReferenceView<'db>> {
+    let mut collector = ReferenceCollector::new(db);
+    let mut ctxt = VisitorCtxt::with_const(db, const_);
+    collector.visit_const(&mut ctxt, const_);
+    collector.refs
+}
+
+#[salsa::tracked(return_ref)]
+pub fn static_assert_references<'db>(
+    db: &'db dyn HirDb,
+    assert_: StaticAssert<'db>,
+) -> Vec<ReferenceView<'db>> {
+    let mut collector = ReferenceCollector::new(db);
+    let mut ctxt = VisitorCtxt::with_static_assert(db, assert_);
+    collector.visit_static_assert(&mut ctxt, assert_);
+    collector.refs
+}
+
+#[salsa::tracked(return_ref)]
 pub fn use_references<'db>(db: &'db dyn HirDb, use_item: Use<'db>) -> Vec<ReferenceView<'db>> {
-    let mut collector = ReferenceCollector::new(db, false);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_use(db, use_item);
     collector.visit_use(&mut ctxt, use_item);
     collector.refs
@@ -293,8 +309,7 @@ pub fn contract_references<'db>(
     db: &'db dyn HirDb,
     contract: Contract<'db>,
 ) -> Vec<ReferenceView<'db>> {
-    // skip_body: true — body references are handled separately via body_references
-    let mut collector = ReferenceCollector::new(db, true);
+    let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_contract(db, contract);
     collector.visit_contract(&mut ctxt, contract);
     collector.refs

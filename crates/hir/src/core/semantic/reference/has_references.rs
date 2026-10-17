@@ -16,9 +16,9 @@ use super::typed_body_for_body;
 use super::{ReferenceView, Target};
 
 use super::collector::{
-    body_references, contract_references, enum_references, func_signature_references,
-    impl_references, impl_trait_references, struct_references, trait_references,
-    type_alias_references, use_references,
+    body_references, const_references, contract_references, enum_references,
+    func_signature_references, impl_references, impl_trait_references, static_assert_references,
+    struct_references, trait_references, type_alias_references, use_references,
 };
 
 /// Empty reference slice for types that don't contain references.
@@ -94,8 +94,8 @@ impl<'db> HasReferences<'db> for ItemKind<'db> {
             ItemKind::Trait(trait_) => trait_references(db, *trait_),
             ItemKind::ImplTrait(impl_trait) => impl_trait_references(db, *impl_trait),
             ItemKind::Use(use_item) => use_references(db, *use_item),
-            ItemKind::Const(c) => c.body(db).to_opt().map_or(EMPTY_REFS, |b| b.references(db)),
-            ItemKind::StaticAssert(assert_) => assert_.condition(db).references(db),
+            ItemKind::Const(c) => const_references(db, *c),
+            ItemKind::StaticAssert(assert_) => static_assert_references(db, *assert_),
             // Modules don't contain references themselves
             ItemKind::TopMod(_) | ItemKind::Mod(_) => EMPTY_REFS,
             ItemKind::Contract(contract) => contract_references(db, *contract),
