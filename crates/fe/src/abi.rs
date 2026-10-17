@@ -312,17 +312,42 @@ fn collect_contract_event_structs<'db>(
         "std::evm::effects::revert_error",
     );
 
+    let mut visited_instances = HashSet::new();
+    // A root follows the instances code generation builds, so each call
+    // reaches the body that runs, whatever choice it receives. A root whose
+    // instance cannot be built has no code; its checked body is walked.
+    let mut collect_root =
+        |owner: hir::analysis::ty::ty_check::BodyOwner<'db>,
+         typed_body: &hir::analysis::ty::ty_check::TypedBody<'db>| {
+            match hir::analysis::semantic::root_semantic_instance_key(db, owner) {
+                Ok(key) => collect_instance_event_structs(
+                    db,
+                    hir::analysis::semantic::get_or_build_semantic_instance(db, key),
+                    &emit_traits,
+                    errors,
+                    error_func,
+                    &mut events,
+                    &mut seen,
+                    &mut visited_instances,
+                ),
+                Err(_) => collect_typed_body_event_structs(
+                    db,
+                    typed_body,
+                    &emit_traits,
+                    errors,
+                    error_func,
+                    &mut events,
+                    &mut seen,
+                    &mut visited_funcs,
+                ),
+            }
+        };
+
     if contract.init(db).is_some() {
         let (_, typed_body) = hir::analysis::ty::ty_check::check_contract_init_body(db, contract);
-        collect_typed_body_event_structs(
-            db,
+        collect_root(
+            hir::analysis::ty::ty_check::BodyOwner::ContractInit { contract },
             typed_body,
-            &emit_traits,
-            errors,
-            error_func,
-            &mut events,
-            &mut seen,
-            &mut visited_funcs,
         );
     }
 
@@ -334,20 +359,89 @@ fn collect_contract_event_structs<'db>(
                 recv.index(db),
                 arm.index(db),
             );
-            collect_typed_body_event_structs(
-                db,
+            collect_root(
+                hir::analysis::ty::ty_check::BodyOwner::ContractRecvArm {
+                    contract,
+                    recv_idx: recv.index(db),
+                    arm_idx: arm.index(db),
+                },
                 typed_body,
-                &emit_traits,
-                errors,
-                error_func,
-                &mut events,
-                &mut seen,
-                &mut visited_funcs,
             );
         }
     }
 
     events
+}
+
+/// The events or errors an instance and every instance it calls emit, over
+/// the call graph code generation builds (`SemanticInstance::callees`).
+#[allow(clippy::too_many_arguments)]
+fn collect_instance_event_structs<'db>(
+    db: &'db DriverDataBase,
+    instance: hir::analysis::semantic::SemanticInstance<'db>,
+    emit_traits: &EventEmitTraits<'db>,
+    errors: bool,
+    error_func: Option<Func<'db>>,
+    out: &mut Vec<Struct<'db>>,
+    seen: &mut HashSet<Struct<'db>>,
+    visited: &mut HashSet<hir::analysis::semantic::SemanticInstanceKey<'db>>,
+) {
+    let key = instance.key(db);
+    if !visited.insert(key) {
+        return;
+    }
+    collect_own_event_structs(
+        db,
+        key.typed_body(db),
+        emit_traits,
+        errors,
+        error_func,
+        out,
+        seen,
+    );
+    for callee in instance.callees(db) {
+        collect_instance_event_structs(
+            db,
+            hir::analysis::semantic::get_or_build_semantic_instance(db, callee.key),
+            emit_traits,
+            errors,
+            error_func,
+            out,
+            seen,
+            visited,
+        );
+    }
+}
+
+/// The events or errors one checked body emits itself.
+fn collect_own_event_structs<'db>(
+    db: &'db DriverDataBase,
+    typed_body: &hir::analysis::ty::ty_check::TypedBody<'db>,
+    emit_traits: &EventEmitTraits<'db>,
+    errors: bool,
+    error_func: Option<Func<'db>>,
+    out: &mut Vec<Struct<'db>>,
+    seen: &mut HashSet<Struct<'db>>,
+) {
+    let Some(body) = typed_body.body() else {
+        return;
+    };
+    for (expr_id, partial_expr) in body.exprs(db).iter() {
+        let hir::hir_def::Partial::Present(_) = partial_expr else {
+            continue;
+        };
+        if errors {
+            if let Some(struct_) = reverted_error_struct(db, typed_body, body, expr_id, error_func)
+                && seen.insert(struct_)
+            {
+                out.push(struct_);
+            }
+        } else if let Some(struct_) =
+            emitted_event_struct(db, typed_body, body, expr_id, emit_traits)
+        {
+            push_event_struct(db, out, seen, struct_);
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -364,23 +458,12 @@ fn collect_typed_body_event_structs<'db>(
     let Some(body) = typed_body.body() else {
         return;
     };
+    collect_own_event_structs(db, typed_body, emit_traits, errors, error_func, out, seen);
 
     for (expr_id, partial_expr) in body.exprs(db).iter() {
         let hir::hir_def::Partial::Present(_) = partial_expr else {
             continue;
         };
-        if errors {
-            if let Some(struct_) = reverted_error_struct(db, typed_body, body, expr_id, error_func)
-                && seen.insert(struct_)
-            {
-                out.push(struct_);
-            }
-        } else if let Some(struct_) =
-            emitted_event_struct(db, typed_body, body, expr_id, emit_traits)
-        {
-            push_event_struct(db, out, seen, struct_);
-        }
-
         // Operators also have semantic callees, even without call syntax.
         if let Some(callable) = typed_body.callable_expr(expr_id)
             && let hir::hir_def::CallableDef::Func(func) = callable.callable_def
@@ -1797,6 +1880,62 @@ pub contract Foo uses (log: mut Log) {
                 .any(|entry| entry["type"] == "event" && entry["name"] == "Approval"),
             "generic helper should preserve Approval event: {entries:?}"
         );
+    }
+
+    #[test]
+    fn events_follow_the_chosen_implementation() {
+        // The body that runs under `with (Wholesale)`, directly and through
+        // a generic helper's bound, is Wholesale's, so its event is the one
+        // the ABI lists.
+        let code = r#"
+use std::abi::sol
+use std::evm::effects::Log
+
+#[event]
+struct OrdinaryFired {}
+
+#[event]
+struct WholesaleFired {}
+
+trait Fire {
+    fn fire(self) uses (log: mut Log)
+}
+struct Item {}
+impl Fire for Item {
+    fn fire(self) uses (log: mut Log) { log.emit(OrdinaryFired {}) }
+}
+impl Fire for Item as Wholesale {
+    fn fire(self) uses (log: mut Log) { log.emit(WholesaleFired {}) }
+}
+
+fn go<T: Fire>(_ x: T) uses (log: mut Log) { x.fire() }
+
+msg FooMsg {
+    #[selector = sol("direct()")]
+    Direct,
+    #[selector = sol("helper()")]
+    Helper,
+}
+
+pub contract Foo uses (log: mut Log) {
+    recv FooMsg {
+        Direct uses (mut log) {
+            with (Wholesale) { Item {}.fire() }
+        }
+        Helper uses (mut log) {
+            with (Wholesale) { go(Item {}) }
+        }
+    }
+}
+"#;
+
+        let entries = abi_entries(code, "Foo");
+        let events = entries
+            .iter()
+            .filter(|entry| entry["type"] == "event")
+            .map(|entry| entry["name"].clone())
+            .collect::<Vec<_>>();
+        assert_eq!(events, vec!["WholesaleFired"], "{entries:?}");
     }
 
     #[test]
