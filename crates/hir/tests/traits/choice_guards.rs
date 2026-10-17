@@ -241,6 +241,45 @@ fn associated_outputs_are_read_through_one_selection() {
 }
 
 #[test]
+fn choice_walks_end_at_one_limit() {
+    // D18: a walk that follows choices through implementations ends where the
+    // base's instance limits end, through one check; no walk keeps a limit of
+    // its own (a fixed 256 refused lawful programs twice).
+    let owed = "src/analysis/ty/ty_check/const_requirements.rs";
+    assert_eq!(
+        occurrences_outside("choice_walk_step_within_limits(", &[CHECKER, owed]),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        code(&text_of(CHECKER))
+            .matches("instance_args_within_limits(")
+            .count(),
+        1
+    );
+    for path in [CHECKER, owed] {
+        let code = code(&text_of(path));
+        for (at, _) in code.match_indices(".len() >") {
+            let rest = code[at + ".len() >".len()..]
+                .trim_start_matches('=')
+                .trim_start();
+            assert!(
+                !rest.starts_with(|c: char| c.is_ascii_digit()),
+                "{path}: a walk keeps a numeric limit of its own"
+            );
+        }
+        let limits = code
+            .lines()
+            .filter(|line| line.trim_start().starts_with("const ") && line.contains(": usize ="))
+            .count();
+        assert_eq!(
+            limits,
+            usize::from(path == CHECKER),
+            "{path}: a walk keeps a limit of its own"
+        );
+    }
+}
+
+#[test]
 fn deliveries_reach_a_body_through_one_mapping() {
     // A call's deliveries are read only where the body that runs is mapped
     // (`trait_choice::body_deliveries`): the checker, the condition and

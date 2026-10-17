@@ -52,6 +52,27 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct FrameId(u32);
 
+/// How many steps a walk that follows trait choices through implementations
+/// takes before it stops, a backstop for the walk itself. The bound that
+/// matters is the instance limits: without growing arguments a walk comes
+/// back to a step it has already taken.
+const CHOICE_WALK_BACKSTOP: usize = 4096;
+
+/// Whether a walk that follows trait choices through implementations (the
+/// conditions of a proof under a `with`, the checks a call owes through
+/// bodies chosen later) may take a step whose arguments are `args` after
+/// `steps` steps. Every such walk ends here: where the base's instance
+/// limits end the instances it follows (`instance_args_within_limits`, the
+/// 16-0016 test), or at the backstop.
+pub(super) fn choice_walk_step_within_limits<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: &[TyId<'db>],
+    steps: usize,
+) -> bool {
+    steps < CHOICE_WALK_BACKSTOP
+        && crate::analysis::ty::normalize::instance_args_within_limits(db, args)
+}
+
 /// A body node whose own written paths `refuse_written_const_args` scans.
 #[derive(Clone, Copy)]
 pub(super) enum WrittenNode {
@@ -1574,9 +1595,10 @@ impl<'db> TyCheckEnv<'db> {
             if seen.contains(&goal) {
                 continue;
             }
-            // A proof whose conditions do not end is not known to avoid the
-            // frame; it is treated as reading it (unknown is never "holds").
-            if seen.len() > 256 {
+            // A proof whose conditions leave the walk limits is not known to
+            // avoid the frame; it is treated as reading it (unknown is never
+            // "holds").
+            if !choice_walk_step_within_limits(db, goal.args(db), seen.len()) {
                 return true;
             }
             seen.push(goal);

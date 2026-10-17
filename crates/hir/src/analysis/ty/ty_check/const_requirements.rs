@@ -2278,13 +2278,6 @@ impl<'db> Walk<'db> {
     }
 }
 
-/// How many bodies chosen later one call edge follows before refusing, a
-/// backstop for the walk's own stack. The bound that matters is the instance
-/// limits (`instance_args_within_limits`), the same ones the base applies to
-/// the instances these bodies become: without growing arguments a path comes
-/// back to a body already on it.
-const OWED_DEPTH: usize = 4096;
-
 fn classify_reads<'db>(reads: &[(SlotRef<'db>, Choice<'db>)]) -> ConditionAtCall<'db> {
     if reads
         .iter()
@@ -2415,9 +2408,9 @@ fn owed_at_call<'db>(
         walk.low = walk.low.min(position);
         return Vec::new();
     }
-    if !crate::analysis::ty::normalize::instance_args_within_limits(db, body_args)
-        || walk.path.len() >= OWED_DEPTH
-    {
+    // The walk ends where every walk over choices ends: the base's instance
+    // limits on the bodies these become, or the backstop.
+    if !super::choice::choice_walk_step_within_limits(db, body_args, walk.path.len()) {
         // A limit met on the path depends on the path: nothing above it is
         // kept.
         walk.low = 0;
