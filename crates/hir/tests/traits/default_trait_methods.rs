@@ -63,6 +63,7 @@ fn run(evm: mut Evm) -> u256 {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method_name,
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved method");
     };

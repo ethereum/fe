@@ -37,8 +37,13 @@ fn request(_ subject: Subject) {}
         ImplSelectionClass::Ordinary
     );
     let method_name = IdentId::new(&db, "value");
-    let Selection::Unique(ordinary) = resolve_trait_method_instance(&db, cx, goal, method_name)
-    else {
+    let Selection::Unique(ordinary) = resolve_trait_method_instance(
+        &db,
+        cx,
+        goal,
+        method_name,
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
+    ) else {
         panic!("named alternatives must not alter ordinary selection")
     };
     assert_eq!(ordinary.body(), items[0].methods(&db).next());

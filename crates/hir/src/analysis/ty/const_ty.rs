@@ -2247,7 +2247,12 @@ pub(super) fn const_ty_from_trait_const<'db>(
     inst: TraitInstId<'db>,
     name: IdentId<'db>,
 ) -> Option<ConstTyId<'db>> {
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst) else {
+    let Selection::Unique(resolved) = resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        inst,
+        crate::analysis::ty::trait_choice::OrdinarySelection::type_level_read(),
+    ) else {
         return None;
     };
     const_ty_from_resolved_trait_const(db, resolved, name)

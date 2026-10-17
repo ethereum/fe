@@ -430,6 +430,54 @@ pub fn role_map<'db>(
         .collect()
 }
 
+/// Why a site may select an implementation by ordinary selection alone,
+/// without reading a recorded choice. The ordinary selection
+/// (`resolve_trait_impl_instance`) and method lookup
+/// (`resolve_trait_method_instance`) take one. Only this module makes them,
+/// one constructor per argument from the closure list, so every caller names
+/// its argument and a guard checks where each is used.
+#[derive(Clone, Copy, Debug)]
+pub struct OrdinarySelection(());
+
+impl OrdinarySelection {
+    /// A use for which the checker recorded no decision that names an
+    /// implementation: it means the ordinary implementation (a pending
+    /// choice is a recorded decision and never comes here).
+    pub fn no_recorded_choice() -> Self {
+        Self(())
+    }
+
+    /// A slot's associated types, effect rows and result spaces, equal for
+    /// every implementation whose header overlaps (D16).
+    pub fn outputs_by_d16() -> Self {
+        Self(())
+    }
+
+    /// A site no frame reaches: declarations, storage and encoding, the ABI,
+    /// generated code.
+    pub fn no_frame_reaches() -> Self {
+        Self(())
+    }
+
+    /// A check that decides no choice: it may only refuse, or compare with a
+    /// body already selected.
+    pub fn decides_nothing() -> Self {
+        Self(())
+    }
+
+    /// A trait constant read in a type. D5 refuses every type that would
+    /// read a slot a frame opened, so the ordinary value is the only one a
+    /// type can mean.
+    pub fn type_level_read() -> Self {
+        Self(())
+    }
+
+    /// Tests that inspect ordinary selection directly.
+    pub fn for_tests() -> Self {
+        Self(())
+    }
+}
+
 /// Why the checker refuses a trait use after inference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum ChoiceRefusal {

@@ -783,7 +783,9 @@ fn semantic_callee_key_with_assumptions<'db>(
                     .map_or(Selection::NotFound, |resolved| {
                         method_instance_from_resolved(db, resolved, name)
                     }),
-                Resolved::Ordinary => resolve_trait_method_instance(db, cx, inst, name),
+                Resolved::Ordinary => {
+                    resolve_trait_method_instance(db, cx, inst, name, crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice())
+                }
                 Resolved::Pending => Selection::NotFound,
             }
         }
@@ -980,6 +982,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                     TraitSolveCx::new(db, owner.scope()),
                     resolved.trait_inst(),
                     name,
+                    crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
                 ),
                 Selection::Unique(method) if method.resolved() == resolved
             );

@@ -907,7 +907,12 @@ impl<'db> TyChecker<'db> {
         let generic = goal.args(self.db).iter().any(|ty| ty.has_param(self.db));
         if generic
             || !matches!(
-                resolve_trait_impl_instance(self.db, self.env.proof_context(), goal),
+                resolve_trait_impl_instance(
+                    self.db,
+                    self.env.proof_context(),
+                    goal,
+                    crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
+                ),
                 Selection::Unique(_)
             )
         {
@@ -1459,7 +1464,12 @@ impl<'db> TyChecker<'db> {
 
     fn ordinary_choice(&self, goal: TraitInstId<'db>) -> Result<KnownChoice<'db>, &'static str> {
         let cx = self.env.proof_context();
-        let Selection::Unique(resolved) = resolve_trait_impl_instance(self.db, cx, goal) else {
+        let Selection::Unique(resolved) = resolve_trait_impl_instance(
+            self.db,
+            cx,
+            goal,
+            crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
+        ) else {
             return Err("the requested trait goal was not proved");
         };
         let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(self.db) else {
@@ -1792,9 +1802,12 @@ impl<'db> TyCheckEnv<'db> {
             if !choice_walk_step_within_limits(db, goal.args(db), depth) {
                 return true;
             }
-            let Selection::Unique(resolved) =
-                resolve_trait_impl_instance(db, self.proof_context(), goal)
-            else {
+            let Selection::Unique(resolved) = resolve_trait_impl_instance(
+                db,
+                self.proof_context(),
+                goal,
+                crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
+            ) else {
                 continue;
             };
             let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(db) else {

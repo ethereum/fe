@@ -112,9 +112,12 @@ impl<'db> AssocConstUse<'db> {
                     ),
                 )
                 .map_or(Selection::NotFound, Selection::Unique),
-            Some(Choice::Slot(SlotRef::Bound(_))) | None => {
-                resolve_trait_impl_instance(db, self.solve_cx(db), self.inst)
-            }
+            Some(Choice::Slot(SlotRef::Bound(_))) | None => resolve_trait_impl_instance(
+                db,
+                self.solve_cx(db),
+                self.inst,
+                crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
+            ),
             Some(Choice::Slot(_)) => Selection::NotFound,
         }
     }

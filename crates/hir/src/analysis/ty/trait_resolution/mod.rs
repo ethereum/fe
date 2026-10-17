@@ -1967,7 +1967,12 @@ fn unsupported<T>() {}
                     .collect::<Vec<_>>(),
             );
             let solve = TraitSolveCx::new(&db, func.scope()).with_assumptions(assumptions);
-            let Selection::Unique(resolved) = resolve_trait_impl_instance(&db, solve, goal) else {
+            let Selection::Unique(resolved) = resolve_trait_impl_instance(
+                &db,
+                solve,
+                goal,
+                crate::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
+            ) else {
                 panic!("{name}: expected unique evidence");
             };
             assert_eq!(

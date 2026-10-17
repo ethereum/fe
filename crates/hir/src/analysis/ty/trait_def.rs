@@ -444,10 +444,14 @@ pub(crate) fn instantiate_selected_impl<'db>(
     })
 }
 
+/// Ordinary selection: the implementation that answers `inst` when no choice
+/// is read. Every caller names why that is right where it calls
+/// (`OrdinarySelection`).
 pub(crate) fn resolve_trait_impl_instance<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
+    _why: super::trait_choice::OrdinarySelection,
 ) -> Selection<ResolvedImplInstance<'db>> {
     match resolve_trait_impl_instance_query(db, solve_cx, inst) {
         ImplSelection::Unique(resolved) => Selection::Unique(resolved),
@@ -466,7 +470,12 @@ pub(crate) fn output_implementation<'db>(
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
 ) -> Selection<ResolvedImplInstance<'db>> {
-    match resolve_trait_impl_instance(db, solve_cx, inst) {
+    match resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        inst,
+        super::trait_choice::OrdinarySelection::outputs_by_d16(),
+    ) {
         Selection::NotFound => named_output_implementation(db, solve_cx, inst),
         ordinary => ordinary,
     }
@@ -990,8 +999,9 @@ pub fn resolve_trait_method_instance<'db>(
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
     method: IdentId<'db>,
+    why: super::trait_choice::OrdinarySelection,
 ) -> Selection<ResolvedMethodInstance<'db>> {
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
+    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst, why) {
         Selection::Unique(resolved) => resolved,
         Selection::Ambiguous(_) => return Selection::Ambiguous(IndexSet::new()),
         Selection::NotFound => return Selection::NotFound,
@@ -1222,7 +1232,12 @@ pub fn assoc_const_body_template_for_trait_inst<'db>(
     inst: TraitInstId<'db>,
     const_name: IdentId<'db>,
 ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>)> {
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
+    let resolved = match resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        inst,
+        super::trait_choice::OrdinarySelection::no_frame_reaches(),
+    ) {
         Selection::Unique(resolved) => resolved,
         Selection::Ambiguous(_ambiguous) => return None,
         Selection::NotFound => return None,
@@ -1282,7 +1297,12 @@ pub fn trait_inst_selects_concrete_impl<'db>(
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
 ) -> bool {
-    match resolve_trait_impl_instance(db, solve_cx, inst) {
+    match resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        inst,
+        super::trait_choice::OrdinarySelection::no_frame_reaches(),
+    ) {
         Selection::Unique(resolved) => !matches!(
             resolved.selected().origin(db),
             ImplementorOrigin::Assumption
@@ -1915,9 +1935,12 @@ fn probe(value: own Wrapper<u16>) {}
             .ty(&db);
         let projected_arg = self_ty.generic_args(&db)[0];
         let inst = TraitInstId::new(&db, trait_, vec![self_ty, projected_arg], IndexMap::new());
-        let Selection::Unique(resolved) =
-            resolve_trait_impl_instance(&db, TraitSolveCx::new(&db, func.scope()), inst)
-        else {
+        let Selection::Unique(resolved) = resolve_trait_impl_instance(
+            &db,
+            TraitSolveCx::new(&db, func.scope()),
+            inst,
+            crate::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
+        ) else {
             panic!("expected one concrete Projects implementation");
         };
         let output = IdentId::new(&db, "Output");
@@ -2118,7 +2141,7 @@ fn probe<T: Marker + Unused>(_ value: T) {}
             CheckedApplicationError::NotProven
         );
         assert!(
-            matches!(resolve_trait_impl_instance(&db,empty,g),Selection::Unique(other) if other.selected().origin(&db)!=candidate.origin(&db)),
+            matches!(resolve_trait_impl_instance(&db,empty,g,crate::analysis::ty::trait_choice::OrdinarySelection::for_tests()),Selection::Unique(other) if other.selected().origin(&db)!=candidate.origin(&db)),
             "ordinary discovery can find the fallback, but retained choice cannot switch"
         );
         assert_eq!(checked.origin_context().scope(), probe.scope());

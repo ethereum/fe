@@ -386,13 +386,26 @@ fn collect_typed_body_event_structs<'db>(
             && let hir::hir_def::CallableDef::Func(func) = callable.callable_def
         {
             let mut target = VisitedFuncBody::from_callable(func, callable);
-            if let Some(inst) = callable.trait_inst()
+            // A call whose checker recorded a known choice runs that choice's
+            // body; one with no recorded choice runs the ordinary one.
+            if matches!(
+                callable.choice(),
+                Some(hir::analysis::ty::trait_choice::Choice::Known(_))
+            ) {
+                if let Some((impl_func, body_args)) =
+                    callable.called_body(db, body.scope(), typed_body.assumptions())
+                {
+                    target.func = impl_func;
+                    target.generic_args = body_args;
+                }
+            } else if let Some(inst) = callable.trait_inst()
                 && let Some(name) = func.name(db).to_opt()
                 && let Selection::Unique(method) = resolve_trait_method_instance(
                     db,
                     TraitSolveCx::new(db, body.scope()).with_assumptions(typed_body.assumptions()),
                     inst,
                     name,
+                    hir::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
                 )
                 && let Some(impl_func) = method.body()
                 && let Ok(body_args) = method.complete_body_args(db, callable.generic_args())

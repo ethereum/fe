@@ -338,6 +338,100 @@ fn associated_outputs_are_read_through_one_selection() {
 }
 
 #[test]
+fn ordinary_selection_names_its_reason() {
+    // Row 1: the ordinary selection and method lookup take a reason that
+    // only `trait_choice` makes (`OrdinarySelection`), and each reason is
+    // used only by the sites the closure list argues it for (`CLOSURE.md`).
+    let const_ref = "src/analysis/semantic/instance/const_ref.rs";
+    let trait_def = "src/analysis/ty/trait_def.rs";
+    let allowed: &[(&str, &[(&str, &str)])] = &[
+        (
+            "no_recorded_choice",
+            &[
+                ("src/analysis/ty/assoc_const.rs", "fn selected_impl"),
+                ("src/analysis/ty/ty_check/callable.rs", "fn called_body"),
+                (CHECKER, "fn ordinary_choice"),
+                (const_ref, "fn semantic_callee_key_with_assumptions"),
+            ],
+        ),
+        ("outputs_by_d16", &[(trait_def, "fn output_implementation")]),
+        (
+            "no_frame_reaches",
+            &[
+                ("src/analysis/ty/provider.rs", "fn state_index_lanes"),
+                (trait_def, "fn assoc_const_body_template_for_trait_inst"),
+                (trait_def, "fn trait_inst_selects_concrete_impl"),
+            ],
+        ),
+        (
+            "decides_nothing",
+            &[
+                (CHECKER, "fn add_premise_if_needed"),
+                (CHECKER, "fn walk_conditions"),
+                (const_ref, "fn semantic_callee_key_with_assumptions"),
+            ],
+        ),
+        (
+            "type_level_read",
+            &[(
+                "src/analysis/ty/const_ty.rs",
+                "fn const_ty_from_trait_const",
+            )],
+        ),
+        (
+            "for_tests",
+            &[
+                (trait_def, "fn probe"),
+                ("src/analysis/ty/trait_resolution/mod.rs", "fn unsupported"),
+            ],
+        ),
+    ];
+    for (path, text) in sources() {
+        if path == REPRESENTATION {
+            continue;
+        }
+        let text = code(&text);
+        for (at, _) in text.match_indices("OrdinarySelection::") {
+            let rest = &text[at + "OrdinarySelection::".len()..];
+            let name = &rest[..rest.find('(').unwrap_or(0)];
+            assert!(
+                allowed.iter().any(|(reason, _)| *reason == name),
+                "{path}: an unknown reason `{name}`"
+            );
+        }
+        for function in functions(&text) {
+            let head = function.lines().next().unwrap_or_default();
+            for (reason, sites) in allowed {
+                if function.contains(&format!("OrdinarySelection::{reason}(")) {
+                    assert!(
+                        sites
+                            .iter()
+                            .any(|(file, name)| path == *file && head.contains(name)),
+                        "{path}: `{reason}` is used in {head}"
+                    );
+                }
+            }
+        }
+    }
+    // The two entry points take a reason; there is no way around it.
+    let trait_def_text = code(&text_of(trait_def));
+    for entry in [
+        "fn resolve_trait_impl_instance<",
+        "fn resolve_trait_method_instance<",
+    ] {
+        let function = functions(&trait_def_text)
+            .into_iter()
+            .find(|function| function.contains(entry))
+            .unwrap_or_else(|| panic!("{entry} exists"));
+        let signature = &function[..function.find('{').unwrap_or(function.len())];
+        assert!(
+            signature.contains("OrdinarySelection"),
+            "{entry} does not take a reason"
+        );
+    }
+}
+
+#[test]
 fn signatures_are_read_through_one_list() {
     // D5: the types a callee declares (arguments, result, effect keys) are
     // listed once (`declared_tys`); the call refusal, the read of every

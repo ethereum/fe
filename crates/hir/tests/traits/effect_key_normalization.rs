@@ -2815,6 +2815,7 @@ fn impl_trait_method_typed_body_instantiation_substitutes_self() {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method.name(&db).to_opt().expect("missing method name"),
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved impl method");
     };
@@ -2857,6 +2858,7 @@ fn impl_trait_method_self_paths_preserve_binding_ty_after_instantiation() {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method.name(&db).to_opt().expect("missing method name"),
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved impl method");
     };
@@ -3063,6 +3065,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method.name(&db).to_opt().expect("missing method name"),
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved impl method");
     };

@@ -400,7 +400,7 @@ impl<'db> Callable<'db> {
     /// the recorded choice's implementation, or the ordinary implementation of
     /// an undecided concrete goal. `None` while the body is supplied by a
     /// slot. Every check that needs the body that runs reads it here.
-    pub(crate) fn called_body(
+    pub fn called_body(
         &self,
         db: &'db dyn HirAnalysisDb,
         scope: crate::hir_def::scope_graph::ScopeId<'db>,
@@ -440,7 +440,13 @@ impl<'db> Callable<'db> {
                 )
             }
             None => {
-                crate::analysis::ty::trait_def::resolve_trait_method_instance(db, cx, inst, name)
+                crate::analysis::ty::trait_def::resolve_trait_method_instance(
+                    db,
+                    cx,
+                    inst,
+                    name,
+                    crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
+                )
             }
             Some(Choice::Slot(_)) => return None,
         };

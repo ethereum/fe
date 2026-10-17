@@ -271,6 +271,7 @@ pub fn state_index_lanes<'db>(
         db,
         solve_cx,
         TraitInstId::new_simple(db, lane_codec, vec![codec, entry]),
+        crate::analysis::ty::trait_choice::OrdinarySelection::no_frame_reaches(),
     ) else {
         return None;
     };
