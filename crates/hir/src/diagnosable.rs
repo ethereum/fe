@@ -1360,6 +1360,49 @@ impl<'db> ImplTrait<'db> {
             let declared_ty = trait_const
                 .ty_binder(db)
                 .map(|binder| binder.instantiate(db, inst.args(db)));
+            // A named implementation's constant is evaluated as code
+            // generation evaluates it: under its own choice, and through the
+            // choices each call it makes delivers, so recursion through a
+            // generic helper is found where it would run. A generic named
+            // implementation's constant does not evaluate here; it is
+            // followed by its resolution chain below, as an ordinary generic
+            // implementation's is.
+            if own.is_some() {
+                use crate::analysis::semantic::{
+                    EvalFailure, EvalOutcome, SemOrigin, eval_const_ref,
+                    instance::resolve_semantic_const_ref,
+                };
+                let recursive = declared_ty
+                    .and_then(|ty| {
+                        resolve_semantic_const_ref(
+                            db,
+                            ty::ty_check::ConstRef::TraitConst(assoc),
+                            ty,
+                            SemOrigin::Synthetic,
+                        )
+                    })
+                    .is_some_and(|cref| {
+                        matches!(
+                            eval_const_ref(db, cref),
+                            EvalOutcome::Failed(EvalFailure::Ctfe(error))
+                                if error.root_is_recursive_const()
+                        )
+                    });
+                if recursive {
+                    let primary = match self.const_(db, name) {
+                        Some(impl_const) => impl_const.span().name().into(),
+                        None => self.span().ty().into(),
+                    };
+                    diags.push(
+                        ImplDiag::RecursiveAssocConst {
+                            primary,
+                            const_name: name,
+                        }
+                        .into(),
+                    );
+                    continue;
+                }
+            }
             // Evaluation in a type reads the constants a body uses the
             // ordinary way, so a named implementation's are followed as its
             // body records them (the walk below) and not evaluated here.
