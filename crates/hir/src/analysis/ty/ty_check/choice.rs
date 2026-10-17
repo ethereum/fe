@@ -103,19 +103,34 @@ const AGGREGATE: &str = "evidence stored in an aggregate is not supported";
 /// back to a step it has already taken.
 const CHOICE_WALK_BACKSTOP: usize = 4096;
 
+/// A step of a walk that follows trait choices through implementations.
+pub(super) enum WalkStep<'a, 'db> {
+    /// Into a body the call runs, with these arguments: it becomes an
+    /// instance, so the base's instance limits apply (the 16-0016 test).
+    Instance(&'a [TyId<'db>]),
+    /// To a condition of a proof the base has already found: the proof is
+    /// finite, and only the walk itself needs a backstop. The base sets no
+    /// limit on constants read through implementations.
+    Proof,
+}
+
 /// Whether a walk that follows trait choices through implementations (the
 /// conditions of a proof under a `with`, the checks a call owes through
-/// bodies chosen later) may take a step whose arguments are `args` after
-/// `steps` steps. Every such walk ends here: where the base's instance
-/// limits end the instances it follows (`instance_args_within_limits`, the
-/// 16-0016 test), or at the backstop.
+/// bodies chosen later) may take `step` after `steps` steps. Every such walk
+/// ends here: where the base's limits end what it follows, or at the
+/// backstop (D18).
 pub(super) fn choice_walk_step_within_limits<'db>(
     db: &'db dyn HirAnalysisDb,
-    args: &[TyId<'db>],
+    step: WalkStep<'_, 'db>,
     steps: usize,
 ) -> bool {
     steps < CHOICE_WALK_BACKSTOP
-        && crate::analysis::ty::normalize::instance_args_within_limits(db, args)
+        && match step {
+            WalkStep::Instance(args) => {
+                crate::analysis::ty::normalize::instance_args_within_limits(db, args)
+            }
+            WalkStep::Proof => true,
+        }
 }
 
 /// A body node whose own written paths `refuse_written_const_args` scans.
@@ -501,7 +516,7 @@ fn ordinary_proof_reads<'db>(
         // A goal still holding an inference variable cannot be selected
         // outside its body's table: it is not known to avoid the frame.
         if goal.args(db).iter().any(|ty| ty.has_var(db))
-            || !choice_walk_step_within_limits(db, goal.args(db), depth)
+            || !choice_walk_step_within_limits(db, WalkStep::Proof, depth)
         {
             return true;
         }

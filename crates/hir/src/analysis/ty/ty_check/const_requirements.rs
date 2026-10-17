@@ -2432,11 +2432,23 @@ fn owed_at_call<'db>(
     }
     // The walk ends where every walk over choices ends: the base's instance
     // limits on the bodies these become, or the backstop.
-    if !super::choice::choice_walk_step_within_limits(db, body_args, walk.path.len()) {
+    if !super::choice::choice_walk_step_within_limits(
+        db,
+        super::choice::WalkStep::Instance(body_args),
+        walk.path.len(),
+    ) {
         // A limit met on the path depends on the path: nothing above it is
-        // kept.
+        // kept. With no choice but forwarded bounds on it, the instance is
+        // the base's to limit (16-0016), not a refusal of the choice code.
         walk.low = 0;
-        return vec![EdgeFact::TooDeep];
+        let carries_choice = slots
+            .iter()
+            .any(|(_, choice)| !matches!(choice, Choice::Slot(SlotRef::Bound(_))));
+        return if carries_choice {
+            vec![EdgeFact::TooDeep]
+        } else {
+            Vec::new()
+        };
     }
     let depth = walk.path.len();
     let outer_low = std::mem::replace(&mut walk.low, usize::MAX);

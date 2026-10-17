@@ -818,15 +818,17 @@ fn choice_walks_end_at_one_limit() {
         );
     }
     // Both walks measure a step the same way: its depth below where the walk
-    // began (a body's below its call, a condition's below its goal).
+    // began (a body's below its call, a condition's below its goal). A body
+    // becomes an instance and meets the base's instance limits; a condition
+    // of a proof the base has found meets only the backstop.
     for (path, measure) in [
         (
             CHECKER,
-            "choice_walk_step_within_limits(db, goal.args(db), depth)",
+            "choice_walk_step_within_limits(db, WalkStep::Proof, depth)",
         ),
         (
             owed,
-            "choice_walk_step_within_limits(db, body_args, walk.path.len())",
+            "choice_walk_step_within_limits(db, super::choice::WalkStep::Instance(body_args), walk.path.len(),)",
         ),
     ] {
         let code = code(&text_of(path)).split_whitespace().collect::<String>();
