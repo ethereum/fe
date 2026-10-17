@@ -732,6 +732,37 @@ fn deferred_calls_resolve_where_written() {
 }
 
 #[test]
+fn constant_reads_include_their_body() {
+    // D5: a constant read depends on the slots its body reads, not only its
+    // own; the one list (`const_use_reads`) falls back to the trait's default
+    // body when the body that runs is chosen later, and the read-time
+    // refusal and the written-syntax scan take their slots from it.
+    let checker = code(&text_of(CHECKER));
+    let reads = functions(&checker)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn const_use_reads")
+        })
+        .expect("constant uses have reads");
+    assert!(reads.contains("trait_default_body(db)"));
+    let lower = code(&text_of("src/analysis/ty/ty_lower.rs"));
+    let lowered = functions(&lower);
+    let find = |name: &str| {
+        lowered
+            .iter()
+            .find(|function| function.lines().next().unwrap_or_default().contains(name))
+            .unwrap_or_else(|| panic!("{name} exists"))
+            .clone()
+    };
+    assert!(find("fn lower_const_body_path").contains("opens_constant_read("));
+    assert!(find("fn const_body_reads").contains("constant_read_slots("));
+}
+
+#[test]
 fn choice_walks_end_at_one_limit() {
     // D18: a walk that follows choices through implementations ends where the
     // base's instance limits end, through one check; no walk keeps a limit of
