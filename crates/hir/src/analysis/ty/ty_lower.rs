@@ -209,7 +209,14 @@ pub(crate) fn hir_ty_const_slot_reads<'db>(
     assumptions: PredicateListId<'db>,
 ) -> Vec<TraitInstId<'db>> {
     let mut reads = Vec::new();
-    const_ty_reads(db, Partial::Present(ty), scope, assumptions, &mut reads);
+    const_ty_reads(
+        db,
+        Partial::Present(ty),
+        TypePosition::Type,
+        scope,
+        assumptions,
+        &mut reads,
+    );
     reads
 }
 
@@ -242,6 +249,7 @@ pub(crate) fn hir_generic_args_const_slot_reads<'db>(
 fn const_ty_reads<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: Partial<HirTyId<'db>>,
+    position: TypePosition,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     reads: &mut Vec<TraitInstId<'db>>,
@@ -251,15 +259,15 @@ fn const_ty_reads<'db>(
     };
     match ty.data(db) {
         HirTyKind::Ptr(inner) | HirTyKind::Mode(_, inner) => {
-            const_ty_reads(db, *inner, scope, assumptions, reads)
+            const_ty_reads(db, *inner, TypePosition::Type, scope, assumptions, reads)
         }
         HirTyKind::Tuple(tuple) => {
             for elem in tuple.data(db) {
-                const_ty_reads(db, *elem, scope, assumptions, reads);
+                const_ty_reads(db, *elem, TypePosition::Type, scope, assumptions, reads);
             }
         }
         HirTyKind::Array(elem, len) => {
-            const_ty_reads(db, *elem, scope, assumptions, reads);
+            const_ty_reads(db, *elem, TypePosition::Type, scope, assumptions, reads);
             if let Partial::Present(body) = len {
                 const_body_reads(db, *body, scope, assumptions, reads);
             }
@@ -267,9 +275,56 @@ fn const_ty_reads<'db>(
         HirTyKind::Path(path) => {
             if let Partial::Present(path) = path {
                 const_path_reads(db, *path, scope, assumptions, reads);
+                named_const_reads(db, *path, position, scope, assumptions, reads);
             }
         }
         HirTyKind::Never => {}
+    }
+}
+/// The reads of the constant a path written in a type `position` names
+/// itself, unbraced, as `g<<Item as Price>::P>` or `Arr<Holder<Item>::C>`:
+/// lowering evaluates it as the braced form's lone path is read
+/// (`lower_type_position_path`), so the scan reads the same slots.
+fn named_const_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    position: TypePosition,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    use super::ty_check::{ConstRef, written_frames::constant_read_slots};
+    let lowering_cx = LoweringContext::new();
+    let Ok(res) = lowering_cx.without_recording(|| {
+        resolve_type_position_path_with_minter(db, path, scope, assumptions, position, &lowering_cx)
+    }) else {
+        return;
+    };
+    match res {
+        PathRes::TraitConst(recv_ty, inst, name) => {
+            let mut args = inst.args(db).clone();
+            if let Some(self_arg) = args.first_mut() {
+                *self_arg = recv_ty;
+            }
+            let inst = TraitInstId::new(db, inst.def(db), args, common::indexmap::IndexMap::new());
+            reads.extend(constant_read_slots(
+                db,
+                ConstRef::TraitConst(AssocConstUse::new(scope, assumptions, inst, name)),
+            ));
+        }
+        PathRes::InherentConst(recv_ty, impl_, name) => {
+            reads.extend(constant_read_slots(
+                db,
+                ConstRef::InherentConst(InherentConstUse::new(
+                    scope,
+                    assumptions,
+                    impl_,
+                    recv_ty,
+                    name,
+                )),
+            ));
+        }
+        _ => {}
     }
 }
 fn const_path_reads<'db>(
@@ -282,7 +337,14 @@ fn const_path_reads<'db>(
     let mut segment = Some(path);
     while let Some(path) = segment {
         if let crate::core::hir_def::PathKind::QualifiedType { type_, trait_ } = path.kind(db) {
-            const_ty_reads(db, Partial::Present(type_), scope, assumptions, reads);
+            const_ty_reads(
+                db,
+                Partial::Present(type_),
+                TypePosition::Type,
+                scope,
+                assumptions,
+                reads,
+            );
             if let Partial::Present(trait_path) = trait_.path(db) {
                 const_path_reads(db, trait_path, scope, assumptions, reads);
             }
@@ -310,7 +372,12 @@ fn const_body_reads<'db>(
         // The constant's own slot and the slots its body reads.
         reads.extend(super::ty_check::written_frames::constant_read_slots(
             db,
-            AssocConstUse::new(scope, assumptions, inst, name),
+            super::ty_check::ConstRef::TraitConst(AssocConstUse::new(
+                scope,
+                assumptions,
+                inst,
+                name,
+            )),
         ));
         return;
     }
@@ -337,7 +404,14 @@ fn const_arg_reads<'db>(
 ) {
     for arg in args.data(db) {
         match arg {
-            GenericArg::Type(arg) => const_ty_reads(db, arg.ty, scope, assumptions, reads),
+            GenericArg::Type(arg) => const_ty_reads(
+                db,
+                arg.ty,
+                TypePosition::GenericArg,
+                scope,
+                assumptions,
+                reads,
+            ),
             GenericArg::Const(arg) => {
                 if let Partial::Present(body) = arg.value {
                     const_body_reads(db, body, scope, assumptions, reads);
@@ -345,7 +419,9 @@ fn const_arg_reads<'db>(
             }
             // An associated-type equality is part of what the path means,
             // such as `Make<W, Out = Arr<{ Item::P }>>`.
-            GenericArg::AssocType(arg) => const_ty_reads(db, arg.ty, scope, assumptions, reads),
+            GenericArg::AssocType(arg) => {
+                const_ty_reads(db, arg.ty, TypePosition::Type, scope, assumptions, reads)
+            }
         }
     }
 }

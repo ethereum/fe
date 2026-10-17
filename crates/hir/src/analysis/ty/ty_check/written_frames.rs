@@ -489,14 +489,14 @@ pub(crate) fn opens_constant_read<'db>(
             .any(|(goal, _)| frames.opens(db, goal))
 }
 
-/// The slots a read of the trait constant `use_` reads, for the
-/// written-syntax scan: its own and its constant body's.
+/// The slots a read of the constant `cref` reads, for the written-syntax
+/// scan: a trait constant's own, and its constant body's.
 pub(crate) fn constant_read_slots<'db>(
     db: &'db dyn HirAnalysisDb,
-    use_: crate::analysis::ty::assoc_const::AssocConstUse<'db>,
+    cref: super::ConstRef<'db>,
 ) -> Vec<crate::analysis::ty::trait_def::TraitInstId<'db>> {
-    let mut slots = vec![use_.inst()];
-    for (goal, _) in super::choice::const_use_reads(db, super::ConstRef::TraitConst(use_)) {
+    let mut slots = Vec::new();
+    for (goal, _) in super::choice::const_use_reads(db, cref) {
         if !slots.contains(&goal) {
             slots.push(goal);
         }
