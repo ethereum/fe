@@ -39,7 +39,8 @@ use crate::{
             },
             trait_lower::lower_impl_trait,
             trait_resolution::{
-                GoalSatisfiability, Selection, constraint::collect_constraints, is_goal_satisfiable,
+                GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
+                constraint::collect_constraints, is_goal_satisfiable,
             },
             ty_def::{TyData, TyId},
             visitor::{TyVisitable, TyVisitor, walk_const_ty},
@@ -209,6 +210,19 @@ mod frames {
             Ok(())
         }
 
+        /// The slots `frame` and the frames around it open: the premises in
+        /// force there.
+        pub(super) fn opened(&self, frame: Option<FrameId>) -> Vec<super::TraitInstId<'db>> {
+            let mut opened = Vec::new();
+            let mut at = frame;
+            while let Some(id) = at {
+                let node = &self.nodes[id.0 as usize];
+                opened.push(node.slot.inst());
+                at = node.parent;
+            }
+            opened
+        }
+
         /// Whether `frame` or a frame around it opens a slot of `trait_`.
         pub(super) fn opens_trait(
             &self,
@@ -316,10 +330,18 @@ pub(crate) fn body_slot_uses<'db>(
     let Some(body) = typed.body() else {
         return uses;
     };
-    for expr in body.exprs(db).keys() {
-        let Some(callable) = typed.callable_expr(expr) else {
-            continue;
-        };
+    // Expression calls and a `for` loop's protocol calls.
+    let loops = body
+        .stmts(db)
+        .keys()
+        .filter_map(|stmt| typed.for_loop_plan(stmt))
+        .flat_map(|plan| plan.calls.iter().map(|call| &call.callable));
+    let calls = body
+        .exprs(db)
+        .keys()
+        .filter_map(|expr| typed.callable_expr(expr))
+        .chain(loops);
+    for callable in calls {
         if let Some(inst) = callable.trait_inst {
             note(inst, callable.choice());
         }
@@ -340,6 +362,56 @@ pub(crate) fn body_slot_uses<'db>(
         }
     }
     uses
+}
+
+/// Whether the ordinary proof of `goal` uses, at any depth, an implementation
+/// condition `reads` accepts, or cannot be followed: a selection that is not
+/// unique, or a walk past the limits (unknown is never "reads nothing", L4).
+/// Its step is a condition's depth below `goal`, as the owed walk's is a
+/// body's depth below its call, so a proof with many conditions side by side
+/// is not cut short. The one walk of ordinary proofs for D13.
+fn ordinary_proof_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    cx: TraitSolveCx<'db>,
+    goal: TraitInstId<'db>,
+    mut reads: impl FnMut(TraitInstId<'db>) -> bool,
+) -> bool {
+    let mut seen = rustc_hash::FxHashSet::default();
+    let mut pending = vec![(goal, 0)];
+    while let Some((goal, depth)) = pending.pop() {
+        if !seen.insert(goal) {
+            continue;
+        }
+        if !choice_walk_step_within_limits(db, goal.args(db), depth) {
+            return true;
+        }
+        let resolved = match resolve_trait_impl_instance(
+            db,
+            cx,
+            goal,
+            crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
+        ) {
+            Selection::Unique(resolved) => resolved,
+            _ => return true,
+        };
+        let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(db) else {
+            continue;
+        };
+        for condition in collect_constraints(
+            db,
+            crate::hir_def::GenericParamOwner::ImplTrait(implementation),
+        )
+        .instantiate(db, resolved.impl_args(db))
+        .list(db)
+        .iter()
+        {
+            if reads(*condition) {
+                return true;
+            }
+            pending.push((*condition, depth + 1));
+        }
+    }
+    false
 }
 
 /// The slots a constant use reads, each with its recorded decision: a trait
@@ -1498,6 +1570,17 @@ impl<'db> TyChecker<'db> {
                     None if slot.args(self.db).iter().any(|ty| ty.has_param(self.db)) => {
                         Err("a generic goal can be proved only under a `with` that opens it")
                     }
+                    // D13, as for the call form of the same goal.
+                    None if self.env.reads_opened_condition(
+                        self.env.choice_frames.current(),
+                        [goal],
+                        None,
+                    ) =>
+                    {
+                        Err(
+                            "the goal is proved through an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet",
+                        )
+                    }
                     None => self.ordinary_choice(goal).map(Choice::Known),
                 }
             }
@@ -1884,49 +1967,22 @@ impl<'db> TyCheckEnv<'db> {
         reads
     }
 
-    /// The walk behind `conditions_read_frame`. Its step is a condition's
-    /// depth below `goal`, as the owed walk's is a body's depth below its
-    /// call, so a proof with many conditions side by side is not cut short.
+    /// The walk behind `conditions_read_frame`: the ordinary proof as it
+    /// runs in `frame`, whose opened goals are premises there as they were
+    /// while the block was checked (`add_premise_if_needed`).
     fn walk_conditions(&self, frame: FrameId, goal: TraitInstId<'db>) -> bool {
         let db = self.db();
-        let mut seen = rustc_hash::FxHashSet::default();
-        let mut pending = vec![(goal, 0)];
-        while let Some((goal, depth)) = pending.pop() {
-            if !seen.insert(goal) {
-                continue;
-            }
-            // A proof whose conditions leave the walk limits is not known to
-            // avoid the frame; it is treated as reading it (unknown is never
-            // "holds").
-            if !choice_walk_step_within_limits(db, goal.args(db), depth) {
-                return true;
-            }
-            let Selection::Unique(resolved) = resolve_trait_impl_instance(
-                db,
-                self.proof_context(),
-                goal,
-                crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
-            ) else {
-                continue;
-            };
-            let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(db) else {
-                continue;
-            };
-            for condition in collect_constraints(
-                db,
-                crate::hir_def::GenericParamOwner::ImplTrait(implementation),
-            )
-            .instantiate(db, resolved.impl_args(db))
-            .list(db)
-            .iter()
-            {
-                if self.frame_choice(Some(frame), *condition).is_some() {
-                    return true;
-                }
-                pending.push((*condition, depth + 1));
+        let mut premises = self.assumptions().list(db).to_vec();
+        for opened in self.choice_frames.opened(Some(frame)) {
+            if !premises.contains(&opened) {
+                premises.push(opened);
             }
         }
-        false
+        let cx = TraitSolveCx::new(db, self.scope())
+            .with_assumptions(PredicateListId::new(db, premises).extend_all_bounds(db));
+        ordinary_proof_reads(db, cx, goal, |condition| {
+            self.frame_choice(Some(frame), condition).is_some()
+        })
     }
 
     /// The slots a use of `callable` reads where it is written: its trait

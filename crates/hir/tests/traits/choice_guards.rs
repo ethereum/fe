@@ -370,7 +370,7 @@ fn ordinary_selection_names_its_reason() {
             "decides_nothing",
             &[
                 (CHECKER, "fn add_premise_if_needed"),
-                (CHECKER, "fn walk_conditions"),
+                (CHECKER, "fn ordinary_proof_reads"),
                 (const_ref, "fn semantic_callee_key_with_assumptions"),
             ],
         ),
@@ -628,6 +628,28 @@ fn type_reach_reads_one_list() {
         })
         .expect("the scan reads compound constants");
     assert!(scan.contains("written_bodies(") && scan.contains("written_body_uses("));
+}
+
+#[test]
+fn d13_is_checked_from_every_route() {
+    // D13: a goal left to ordinary selection under an opening is followed
+    // through one walk of the ordinary proof (`ordinary_proof_reads`), from
+    // a call, a constant, a function value and `prove`, in the frame's
+    // premises.
+    let checker = code(&text_of(CHECKER));
+    let checked = functions(&checker);
+    let function = |name: &str| {
+        checked
+            .iter()
+            .find(|function| function.lines().next().unwrap_or_default().contains(name))
+            .unwrap_or_else(|| panic!("{name} exists"))
+    };
+    assert!(function("fn decide_prove").contains(".reads_opened_condition("));
+    let walk = function("fn walk_conditions");
+    assert!(walk.contains("ordinary_proof_reads(") && walk.contains(".opened("));
+    // The walk does not count a proof it cannot follow as reading nothing.
+    let proof = function("fn ordinary_proof_reads");
+    assert!(proof.contains("_ => return true"));
 }
 
 #[test]
