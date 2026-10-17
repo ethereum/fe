@@ -355,7 +355,10 @@ index and the element type, and `locate(root, key)` returns the entry's
 access to `c[k]` opens and does the loads, stores and masking itself. It
 must keep every entry inside the collection's own region, hashing per entry
 or bounding the key, and distinct keys apart, which the `unsafe impl`
-asserts.
+asserts. `std::evm::layout` has Solidity's derivations for it:
+`mapping_slot(root, key)`, `array_data_slot(root)` and `element_location`,
+so a mapping-like `locate` is
+`Location { slot: mapping_slot(root, key), offset: 0 }`.
 
 A collection may pack small elements into lanes of shared slots, as a
 `SolArray` does for Solidity's packed array elements. Its `Lanes` codec
