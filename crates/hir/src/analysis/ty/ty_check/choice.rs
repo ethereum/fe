@@ -1905,6 +1905,20 @@ impl<'db> TyCheckEnv<'db> {
                 delivered.extend(decided);
                 callable.set_delivered(delivered);
             }
+            // The body read here for a concrete goal is what the instance
+            // must run (checked where the instance is built, `const_ref`).
+            let concrete = callable.trait_inst().is_none_or(|inst| {
+                !inst
+                    .args(db)
+                    .iter()
+                    .any(|ty| ty.has_param(db) || ty.has_var(db))
+            });
+            if concrete && !matches!(callable.choice(), Some(Choice::Slot(_))) {
+                let body = callable
+                    .called_body(db, self.scope(), self.assumptions())
+                    .map(|(body, _)| body);
+                callable.set_checked_body(body);
+            }
             self.semantic_expr_lowering[expr] = Some(SemanticExprLowering::Call { callable });
         }
         // A function value is a path naming a function that no call takes as

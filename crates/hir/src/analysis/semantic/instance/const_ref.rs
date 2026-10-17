@@ -907,24 +907,18 @@ fn semantic_callee_key_with_assumptions<'db>(
             .collect(),
     );
     let owner = BodyOwner::Func(body_func);
-    // One meaning for the call: for a known or ordinary choice, the checker
-    // reads the body the instance runs, and finds one exactly when the
-    // instance selects one.
+    // One meaning for the call: the body the checker read where the call is
+    // written, recorded for a concrete goal, is the body the instance runs.
     #[cfg(debug_assertions)]
-    if !matches!(
-        callable.choice(),
-        Some(crate::analysis::ty::trait_choice::Choice::Slot(_))
-    ) {
-        let checked = callable
-            .called_body(db, impl_env.normalization_scope(db), assumptions)
-            .map(|(body, _)| body);
+    if let Some(checked) = callable.checked_body() {
         let selected = selected_trait_method
             .is_some()
             .then_some(body_func)
             .or(callable.trait_inst().is_none().then_some(body_func));
         debug_assert_eq!(
-            checked, selected,
-            "the instance selects a different body than the checker read for this call"
+            Some(checked),
+            selected,
+            "the instance runs a different body than the checker read for this call"
         );
     }
     // An implementation selected without relying on a caller assumption.

@@ -262,6 +262,9 @@ pub struct Callable<'db> {
     /// and to the goals it declares, instantiated here. A body reads them
     /// through `trait_choice::body_deliveries`.
     delivered: Vec<(Delivery<'db>, Choice<'db>)>,
+    /// The body the checker read for this call when its goal is concrete:
+    /// the instance that runs it must select the same one.
+    checked_body: Option<crate::hir_def::Func<'db>>,
 }
 
 impl<'db> TyVisitable<'db> for Callable<'db> {
@@ -309,6 +312,7 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
                     (delivery.fold_with(db, folder), choice.fold_with(db, folder))
                 })
                 .collect(),
+            checked_body: self.checked_body,
         }
     }
 }
@@ -367,6 +371,7 @@ impl<'db> Callable<'db> {
             trait_inst,
             choice: None,
             delivered: Vec::new(),
+            checked_body: None,
         })
     }
 
@@ -386,6 +391,7 @@ impl<'db> Callable<'db> {
             trait_inst,
             choice: None,
             delivered: Vec::new(),
+            checked_body: None,
         }
     }
 
@@ -465,6 +471,16 @@ impl<'db> Callable<'db> {
 
     pub(crate) fn set_delivered(&mut self, delivered: Vec<(Delivery<'db>, Choice<'db>)>) {
         self.delivered = delivered;
+    }
+
+    /// The body the checker read for this call, recorded when its goal is
+    /// concrete (`record_choice_decisions`).
+    pub fn checked_body(&self) -> Option<crate::hir_def::Func<'db>> {
+        self.checked_body
+    }
+
+    pub(crate) fn set_checked_body(&mut self, body: Option<crate::hir_def::Func<'db>>) {
+        self.checked_body = body;
     }
 
     pub fn generic_args(&self) -> &[TyId<'db>] {
