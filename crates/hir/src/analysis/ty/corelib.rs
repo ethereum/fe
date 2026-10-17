@@ -202,6 +202,7 @@ define_runtime_intrinsics! {
     AddMod => (Core, ["num", "addmod"]),
     MulMod => (Core, ["num", "mulmod"]),
     LeadingZeros => (Core, ["num", "leading_zeros"]),
+    BlackBox => (Core, ["hint", "black_box"]),
     Byte => (Std, ["evm", "ops", "byte"]),
     SignExtend => (Std, ["evm", "ops", "signextend"]),
     Address => (Std, ["evm", "ops", "address"]),

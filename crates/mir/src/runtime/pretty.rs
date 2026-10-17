@@ -739,6 +739,9 @@ fn format_builtin<'db>(db: &'db dyn MirDb, builtin: &RuntimeBuiltin<'db>) -> Str
         RuntimeBuiltin::LeadingZeros { value } => {
             format!("leading_zeros {}", format_local_id(*value))
         }
+        RuntimeBuiltin::BlackBox { value } => {
+            format!("black_box {}", format_local_id(*value))
+        }
         RuntimeBuiltin::Byte { pos, value } => format!(
             "byte {}, {}",
             format_local_id(*pos),

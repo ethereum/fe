@@ -49,9 +49,10 @@ use crate::{
     runtime::{
         ConstRegionId, ConstScalar, IntrinsicArithBinOp, Layout, LayoutId, PlaceElem, PlaceRoot,
         RBlock, RBlockId, RExpr, RLocal, RLocalId, RStmt, RTerminator, RefKind, RefView,
-        RuntimeBody, RuntimeCarrier, RuntimeClass, RuntimeCodeRegion, RuntimeExitBehavior,
-        RuntimeInterfaceSignature, RuntimeLocalRoot, RuntimePlace, RuntimeProviderBinding,
-        RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole, VariantId,
+        RuntimeBody, RuntimeBuiltin, RuntimeCarrier, RuntimeClass, RuntimeCodeRegion,
+        RuntimeExitBehavior, RuntimeInterfaceSignature, RuntimeLocalRoot, RuntimePlace,
+        RuntimeProviderBinding, RuntimeProviderBindingId, ScalarClass, ScalarRepr, ScalarRole,
+        VariantId,
         code_region::runtime_code_region_for_semantic_ref,
         layout_utils::RuntimeMemoryLayout,
         package::{LowerError, generated_call_error, runtime_instance_for_semantic},
@@ -99,8 +100,8 @@ use super::{
     tuple::RuntimeTupleFieldEmitter,
     type_info::{
         RuntimeTypeEnv, deref_transport_class_in_env, provider_class_for_target_in_env,
-        runtime_array_len, stored_class_for_ty_in_env, top_level_class_for_ty_in_env,
-        validate_runtime_array_extents_in_env,
+        runtime_array_len, runtime_interface_ty_in_env, stored_class_for_ty_in_env,
+        top_level_class_for_ty_in_env, validate_runtime_array_extents_in_env,
     },
 };
 
@@ -247,7 +248,13 @@ pub(super) fn check_runtime_body_supported<'db>(
                 expr: NExpr::Call { callee, args, .. },
                 ..
             } = &stmt.kind
-                && let Some(value_ty) = panic_payload_ty(db, body, *callee, args)
+                && let Some(value_ty) = builtin_arg_ty(
+                    db,
+                    body,
+                    *callee,
+                    args,
+                    RuntimeBuiltinFuncKind::PanicWithValue,
+                )
             {
                 let impl_env = key.impl_env(db);
                 ensure_panic_payload_encodable(
@@ -256,6 +263,34 @@ pub(super) fn check_runtime_body_supported<'db>(
                     impl_env.assumptions(db),
                     value_ty,
                 )?;
+            }
+            if let NStatementKind::Define {
+                expr: NExpr::Call { callee, args, .. },
+                ..
+            } = &stmt.kind
+                && let Some(value_ty) =
+                    builtin_arg_ty(db, body, *callee, args, RuntimeBuiltinFuncKind::BlackBox)
+            {
+                let impl_env = key.impl_env(db);
+                let env = RuntimeTypeEnv::new(
+                    Some(impl_env.normalization_scope(db)),
+                    impl_env.assumptions(db),
+                );
+                let value_ty = runtime_interface_ty_in_env(db, env, value_ty);
+                // Pointer types become integer words in the runtime model.
+                // Reject them while their source-level distinction is available.
+                if value_ty.as_ptr(db).is_some()
+                    || !matches!(
+                        top_level_class_for_ty_in_env(db, env, value_ty, AddressSpace::Memory),
+                        Some(RuntimeClass::Scalar(_))
+                    )
+                {
+                    return Err(LowerError::Unsupported(format!(
+                        "`core::hint::black_box` requires a scalar argument, such as an integer \
+                         or `bool`, but found `{}`",
+                        value_ty.pretty_print(db)
+                    )));
+                }
             }
         }
     }
@@ -306,16 +341,18 @@ fn semantic_const_ref_name<'db>(
     "<associated const>".to_string()
 }
 
-fn panic_payload_ty<'db>(
+/// Returns the argument type of a call to the single-argument builtin `kind`.
+fn builtin_arg_ty<'db>(
     db: &'db dyn MirDb,
     body: &RuntimeSemanticBody<'db>,
     callee: SemanticCalleeRef<'db>,
     args: &[NOperand],
+    kind: RuntimeBuiltinFuncKind,
 ) -> Option<TyId<'db>> {
     let BodyOwner::Func(func) = callee.key.owner(db) else {
         return None;
     };
-    if runtime_builtin_func_kind(db, func) != Some(RuntimeBuiltinFuncKind::PanicWithValue) {
+    if runtime_builtin_func_kind(db, func) != Some(kind) {
         return None;
     }
     let [value] = args else {
@@ -4033,6 +4070,16 @@ impl<'db> RmirEmitter<'db> {
                 builtin(
                     crate::runtime::RuntimeBuiltin::LeadingZeros { value: *value },
                     Some(word.clone()),
+                )
+            }
+            RuntimeBuiltinFuncKind::BlackBox => {
+                let [value] = args else { return None };
+                let class @ RuntimeClass::Scalar(_) = self.value_class(*value)? else {
+                    return None;
+                };
+                builtin(
+                    RuntimeBuiltin::BlackBox { value: *value },
+                    Some(class.clone()),
                 )
             }
             RuntimeBuiltinFuncKind::Byte => {

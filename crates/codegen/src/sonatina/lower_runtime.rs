@@ -44,7 +44,7 @@ use sonatina_ir::{
         cmp::{Eq, Gt, IsZero, Lt, Ne, Slt},
         control_flow::{Br, BrTable, Call, Jump, Phi, PhiArgs, Return, Unreachable},
         data::{
-            Alloca, ConstIndex, ConstLoad, ConstProj, ConstRef, EnumAssertVariant,
+            Alloca, BlackBox, ConstIndex, ConstLoad, ConstProj, ConstRef, EnumAssertVariant,
             EnumAssertVariantRef, EnumExtract, EnumGetTag, EnumIsVariant, EnumMake, EnumProj,
             EnumSetTag, EnumTag, EnumWriteVariant, ExtractValue, InsertValue, MemAllocDynamic,
             Memzero, Mload, Mstore, ObjAlloc, ObjIndex, ObjInitConst, ObjLoad, ObjMaterializeHeap,
@@ -2304,6 +2304,14 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                         Type::I256,
                     )
                 }
+            }
+            RuntimeBuiltin::BlackBox { value } => {
+                let value = self.local_value(*value)?;
+                let ty = self.fb.type_of(value);
+                self.fb.insert_inst(
+                    BlackBox::new(self.module.required_inst::<BlackBox>()?, value),
+                    ty,
+                )
             }
             RuntimeBuiltin::Byte { pos, value } => {
                 let pos = self.local_value(*pos)?;
