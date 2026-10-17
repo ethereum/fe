@@ -483,10 +483,26 @@ fn ordinary_proof_reads<'db>(
     let mut seen = rustc_hash::FxHashSet::default();
     let mut pending = vec![(goal, 0)];
     while let Some((goal, depth)) = pending.pop() {
+        // Selection reads the slot; an associated-type equality left
+        // unresolved by inference is not part of it.
+        let goal = slot_goal(db, goal);
         if !seen.insert(goal) {
             continue;
         }
-        if !choice_walk_step_within_limits(db, goal.args(db), depth) {
+        // A callable shape of a function item or closure is built in: it has
+        // no conditions to read.
+        if goal
+            .args(db)
+            .first()
+            .is_some_and(|ty| is_function_value(db, *ty))
+        {
+            continue;
+        }
+        // A goal still holding an inference variable cannot be selected
+        // outside its body's table: it is not known to avoid the frame.
+        if goal.args(db).iter().any(|ty| ty.has_var(db))
+            || !choice_walk_step_within_limits(db, goal.args(db), depth)
+        {
             return true;
         }
         let resolved = match resolve_trait_impl_instance(
