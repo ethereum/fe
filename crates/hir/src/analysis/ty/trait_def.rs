@@ -610,10 +610,18 @@ pub(crate) fn prove_selected_application<'db>(
         normalize_trait_inst_preserving_validity(db, goal, scope, origin.assumptions());
     let resolved =
         instantiate_selected_impl(db, completed, normalized).ok_or(UnresolvedApplication)?;
+    // An associated type written as a projection is checked as what it
+    // normalizes to (`type Out = <Item as Has>::Out` is `u8`).
+    let assoc_types = resolved
+        .instantiated
+        .types(db)
+        .values()
+        .map(|ty| normalize_ty(db, *ty, scope, origin.assumptions()))
+        .collect::<Vec<_>>();
     if resolved
         .impl_args(db)
         .iter()
-        .chain(resolved.instantiated.types(db).values())
+        .chain(assoc_types.iter())
         .chain(resolved.trait_inst().args(db))
         .chain(resolved.trait_inst().assoc_type_bindings(db).values())
         .any(|ty| !checked_type(db, *ty))
