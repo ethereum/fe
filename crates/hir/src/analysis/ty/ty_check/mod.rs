@@ -6758,11 +6758,27 @@ fn is_pending_const<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
     ) && ty.has_var(db)
 }
 
+/// Whether `ty` contains a const that `PendingConstFolder` would replace,
+/// found by the same traversal, so closures, associated types and qualified
+/// types are searched too.
 fn has_pending_const<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
-    match ty.data(db) {
-        TyData::TyApp(abs, arg) => has_pending_const(db, *abs) || has_pending_const(db, *arg),
-        _ => is_pending_const(db, ty),
+    struct Finder {
+        found: bool,
     }
+
+    impl<'db> TyFolder<'db> for Finder {
+        fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+            if self.found || is_pending_const(db, ty) {
+                self.found = true;
+                return ty;
+            }
+            ty.super_fold_with(db, self)
+        }
+    }
+
+    let mut finder = Finder { found: false };
+    ty.fold_with(db, &mut finder);
+    finder.found
 }
 
 #[cfg(test)]
