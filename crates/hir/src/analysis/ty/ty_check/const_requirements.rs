@@ -2215,6 +2215,12 @@ pub(crate) enum OwedCheck<'db> {
         slot: TraitInstId<'db>,
         signature: bool,
     },
+    /// A value of the type parameter `param` is opened with `with`, or
+    /// passed to a body chosen later or a callable value: it must not be
+    /// evidence, which would arrive there with no choice (D2, D14).
+    NoEvidence {
+        param: TyId<'db>,
+    },
     Call(PendingCall<'db>),
 }
 
@@ -2243,6 +2249,11 @@ enum EdgeFact<'db> {
     Reaches {
         choice: Choice<'db>,
         signature: bool,
+    },
+    /// The type a call gives a callee's type parameter that must not be
+    /// evidence (`OwedCheck::NoEvidence`), in the caller's context.
+    NoEvidence {
+        ty: TyId<'db>,
     },
     Pending(PendingCall<'db>),
     /// Following the debts of bodies chosen later reached a body whose
@@ -2467,6 +2478,9 @@ fn owed_facts_at_call<'db>(
                     });
                 }
             }
+            OwedCheck::NoEvidence { param } => facts.push(EdgeFact::NoEvidence {
+                ty: at_call(db, body, body_args, *param),
+            }),
             OwedCheck::Call(pending) => {
                 let Ok(choice) = map_choice(slots, pending.choice) else {
                     continue;
@@ -2626,7 +2640,10 @@ fn conditions_at_call_expr<'db>(
         .into_iter()
         .filter_map(|fact| match fact {
             EdgeFact::Condition(condition) => Some(condition),
-            EdgeFact::Reaches { .. } | EdgeFact::Pending(_) | EdgeFact::TooDeep => None,
+            EdgeFact::Reaches { .. }
+            | EdgeFact::NoEvidence { .. }
+            | EdgeFact::Pending(_)
+            | EdgeFact::TooDeep => None,
         })
         .collect()
 }
@@ -2637,6 +2654,9 @@ pub(super) enum EdgeRefusal {
     /// type of a body it runs, beyond the callee's own signature (which is
     /// refused while the call is checked).
     TypeReach,
+    /// It gives evidence to a type parameter whose values a body it runs
+    /// opens or passes on where no choice arrives with it.
+    EvidenceThroughParam,
     /// The debts of the bodies it runs could not be followed to an end.
     TooDeep,
 }
@@ -2652,23 +2672,33 @@ pub(super) fn call_refusal<'db>(
     if facts.iter().any(|fact| matches!(fact, EdgeFact::TooDeep)) {
         return Some(EdgeRefusal::TooDeep);
     }
+    let refused = |choice: &Choice<'db>| !matches!(choice, Choice::Slot(SlotRef::Bound(_)));
+    if facts.iter().any(
+        |fact| matches!(fact, EdgeFact::Reaches { choice, signature: false } if refused(choice)),
+    ) {
+        return Some(EdgeRefusal::TypeReach);
+    }
     facts
         .iter()
         .any(|fact| {
-            matches!(
-                fact,
-                EdgeFact::Reaches { choice, signature: false }
-                    if !matches!(choice, Choice::Slot(SlotRef::Bound(_)))
-            )
+            matches!(fact, EdgeFact::NoEvidence { ty }
+                if super::choice::holds_evidence(db, scope, *ty))
         })
-        .then_some(EdgeRefusal::TypeReach)
+        .then_some(EdgeRefusal::EvidenceThroughParam)
 }
 
-/// Whether `func` has a slot a caller could fill: a bound on its generic
-/// parameters or an evidence parameter. A function without one owes nothing.
+/// Whether `func` has something a caller fills: a bound on its generic
+/// parameters, an evidence parameter, or a type parameter. A function
+/// without one owes nothing.
 fn has_slots<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
     !own_slots(db, func).is_empty()
         || !crate::analysis::ty::corelib::evidence_params(db, func).is_empty()
+        || !crate::analysis::ty::ty_lower::collect_generic_params(
+            db,
+            crate::hir_def::GenericParamOwner::Func(func),
+        )
+        .params(db)
+        .is_empty()
 }
 
 /// The checks `func` owes its callers (see [`OwedCheck`]).
@@ -2716,6 +2746,11 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
                 ),
                 // Refused where `func` itself is checked.
                 EdgeFact::Reaches { .. } => {}
+                EdgeFact::NoEvidence { ty } => {
+                    for param in type_params_in(db, ty) {
+                        push(OwedCheck::NoEvidence { param }, &mut owed);
+                    }
+                }
                 EdgeFact::Pending(pending) => push(OwedCheck::Call(pending), &mut owed),
                 // Refused where `func` itself is checked.
                 EdgeFact::TooDeep => {}
@@ -2725,7 +2760,66 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
     for (slot, signature) in super::choice::own_type_reads(db, func, typed) {
         push(OwedCheck::Reaches { slot, signature }, &mut owed);
     }
+    // A value of a type parameter opened with `with`, or passed to a call
+    // whose body is not known here (a callable value, a method chosen later):
+    // evidence would arrive with no choice. A call whose body is known passes
+    // its own debts on (`EdgeFact::NoEvidence`).
+    let param_of = |expr: ExprId| super::choice::as_type_param(db, typed.expr_ty(db, expr));
+    for param in typed
+        .effect_with_operands()
+        .iter()
+        .filter_map(|expr| param_of(*expr))
+    {
+        push(OwedCheck::NoEvidence { param }, &mut owed);
+    }
+    for expr in body.exprs(db).keys() {
+        let Some(callable) = typed.callable_expr(expr) else {
+            continue;
+        };
+        if calls_directly(db, typed, body, expr)
+            && callable
+                .called_body(db, func.scope(), typed.assumptions())
+                .is_some()
+        {
+            continue;
+        }
+        let args = match expr.data(db, body) {
+            Partial::Present(Expr::Call(_, args) | Expr::MethodCall(_, _, _, args)) => args,
+            _ => continue,
+        };
+        for param in args.iter().filter_map(|arg| param_of(arg.expr)) {
+            push(OwedCheck::NoEvidence { param }, &mut owed);
+        }
+    }
     owed
+}
+
+/// The type parameters in `ty`.
+fn type_params_in<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'db>> {
+    struct Params<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: Vec<TyId<'db>>,
+    }
+    impl<'db> crate::analysis::ty::visitor::TyVisitor<'db> for Params<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+        fn visit_param(&mut self, param: &crate::analysis::ty::ty_def::TyParam<'db>) {
+            let ty = TyId::new(
+                self.db,
+                crate::analysis::ty::ty_def::TyData::TyParam(param.clone()),
+            );
+            if !self.found.contains(&ty) {
+                self.found.push(ty);
+            }
+        }
+    }
+    let mut params = Params {
+        db,
+        found: Vec::new(),
+    };
+    crate::analysis::ty::visitor::TyVisitable::visit_with(&ty, &mut params);
+    params.found
 }
 
 fn owed_checks_initial<'db>(_db: &'db dyn HirAnalysisDb, _func: Func<'db>) -> Vec<OwedCheck<'db>> {

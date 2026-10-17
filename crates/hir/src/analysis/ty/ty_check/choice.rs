@@ -46,12 +46,56 @@ use crate::{
             visitor::{TyVisitable, TyVisitor, walk_const_ty},
         },
     },
-    hir_def::{CallableDef, Expr, ExprId, LitKind, Partial, PatId},
+    hir_def::{BinOp, CallableDef, Expr, ExprId, LitKind, Partial, PatId},
     span::DynLazySpan,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) struct FrameId(u32);
+
+/// Whether a value of type `ty` holds evidence, itself or in a field,
+/// element or borrow, at any depth. A record's fields are read as declared,
+/// with its arguments read too, so a record that contains a growing instance
+/// of itself is read in finitely many steps.
+pub(super) fn holds_evidence<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: crate::hir_def::scope_graph::ScopeId<'db>,
+    ty: TyId<'db>,
+) -> bool {
+    let mut seen = Vec::new();
+    let mut pending = vec![ty];
+    while let Some(ty) = pending.pop() {
+        if seen.contains(&ty) {
+            continue;
+        }
+        seen.push(ty);
+        if evidence_goal(db, scope, ty).is_some() {
+            return true;
+        }
+        if let Some((_, inner)) = ty.as_capability(db) {
+            pending.push(inner);
+            continue;
+        }
+        let (_, args) = ty.decompose_ty_app(db);
+        pending.extend(args.iter().copied());
+        if let Some(adt) = ty.adt_def(db) {
+            for variant in adt.fields(db) {
+                pending.extend(variant.iter_types(db).map(|field| *field.skip_binder()));
+            }
+        }
+    }
+    false
+}
+
+/// The type parameter a value of type `ty` is, behind any capability.
+pub(super) fn as_type_param<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
+    let ty = ty.as_capability(db).map_or(ty, |(_, inner)| inner);
+    matches!(ty.data(db), TyData::TyParam(_)).then_some(ty)
+}
+
+/// D2: evidence in a field, an element or a destructured part of an
+/// aggregate has no admitted source.
+const AGGREGATE: &str = "evidence stored in an aggregate is not supported";
 
 /// How many steps a walk that follows trait choices through implementations
 /// takes before it stops, a backstop for the walk itself. The bound that
@@ -1001,6 +1045,9 @@ impl<'db> TyChecker<'db> {
             // Evidence behind a borrow or inside an aggregate is not an
             // effect value; it is refused, not ignored (L2).
             if !self.holds_evidence(ty) {
+                // An effect value; its type is read again once inference is
+                // done, and a type parameter's is owed to callers.
+                self.env.effect_with_operands.push(value);
                 return None;
             }
             // A mutable place holding evidence was refused where it was bound.
@@ -1102,10 +1149,13 @@ impl<'db> TyChecker<'db> {
                 LocalBinding::Param { idx, .. } => {
                     Ok(Choice::Slot(SlotRef::EvidenceParam(idx as u16)))
                 }
-                LocalBinding::Local { pat, .. } => self
-                    .env
-                    .binding_choice(pat)
-                    .unwrap_or(Err(SourceError::Runtime)),
+                LocalBinding::Local { pat, .. } => match self.env.binding_choice(pat) {
+                    Some(choice) => choice,
+                    // Bound inside a destructuring pattern: taken out of an
+                    // aggregate, as a field access is (D2).
+                    None if self.destructured(pat) => Err(SourceError::Unsupported(AGGREGATE)),
+                    None => Err(SourceError::Runtime),
+                },
                 _ => Err(SourceError::Runtime),
             };
         }
@@ -1149,7 +1199,7 @@ impl<'db> TyChecker<'db> {
             }
             // A branch chooses evidence by a value (RD121).
             Partial::Present(Expr::If(..) | Expr::Match(..)) => Err(SourceError::Runtime),
-            Partial::Present(Expr::Field(base, _)) => {
+            Partial::Present(Expr::Field(base, _) | Expr::Bin(base, _, BinOp::Index)) => {
                 // A field of a refused mutable holder was reported there.
                 if let Some(LocalBinding::Local { pat, .. }) =
                     self.env.typed_expr(*base).and_then(|prop| prop.binding)
@@ -1157,11 +1207,41 @@ impl<'db> TyChecker<'db> {
                 {
                     return Err(SourceError::Reported);
                 }
-                Err(SourceError::Unsupported(
-                    "evidence stored in an aggregate is not supported",
-                ))
+                Err(SourceError::Unsupported(AGGREGATE))
             }
             _ => Err(SourceError::Runtime),
+        }
+    }
+
+    /// Whether the binding `pat` sits inside a tuple, record or variant
+    /// pattern (through `|` alternatives), so its value is taken out of an
+    /// aggregate.
+    fn destructured(&self, pat: PatId) -> bool {
+        use crate::hir_def::Pat;
+        let parent = self
+            .body()
+            .pats(self.db)
+            .iter()
+            .find_map(|(parent, data)| match data {
+                Partial::Present(Pat::Tuple(parts) | Pat::PathTuple(_, parts))
+                    if parts.contains(&pat) =>
+                {
+                    Some((parent, true))
+                }
+                Partial::Present(Pat::Record(_, fields))
+                    if fields.iter().any(|field| field.pat == pat) =>
+                {
+                    Some((parent, true))
+                }
+                Partial::Present(Pat::Or(lhs, rhs)) if *lhs == pat || *rhs == pat => {
+                    Some((parent, false))
+                }
+                _ => None,
+            });
+        match parent {
+            Some((_, true)) => true,
+            Some((alternative, false)) => self.destructured(alternative),
+            None => false,
         }
     }
 
@@ -1456,30 +1536,7 @@ impl<'db> TyChecker<'db> {
     /// declared, with its arguments read too, so a record that contains a
     /// growing instance of itself is read in finitely many steps.
     fn holds_evidence(&self, ty: TyId<'db>) -> bool {
-        let db = self.db;
-        let mut seen = Vec::new();
-        let mut pending = vec![ty];
-        while let Some(ty) = pending.pop() {
-            if seen.contains(&ty) {
-                continue;
-            }
-            seen.push(ty);
-            if evidence_goal(db, self.env.scope(), ty).is_some() {
-                return true;
-            }
-            if let Some((_, inner)) = ty.as_capability(db) {
-                pending.push(inner);
-                continue;
-            }
-            let (_, args) = ty.decompose_ty_app(db);
-            pending.extend(args.iter().copied());
-            if let Some(adt) = ty.adt_def(db) {
-                for variant in adt.fields(db) {
-                    pending.extend(variant.iter_types(db).map(|field| *field.skip_binder()));
-                }
-            }
-        }
-        false
+        holds_evidence(self.db, self.env.scope(), ty)
     }
 
     /// The one rule for mutable evidence places (RD121): a mutable binding
@@ -2205,6 +2262,17 @@ impl<'db> TyCheckEnv<'db> {
                 Err(refusal) => self.choice_refusals.push((expr, refusal)),
             }
         }
+        // A `with` operand taken as an effect value because its type was not
+        // known yet is refused if it is evidence (D2).
+        for expr in self.effect_with_operands.clone() {
+            if self
+                .typed_expr(expr)
+                .is_some_and(|prop| holds_evidence(db, self.scope(), prop.ty))
+            {
+                self.choice_refusals
+                    .push((expr, ChoiceRefusal::UninferredEvidence));
+            }
+        }
         // A closure's body runs as its own instance, which receives none of
         // its enclosing function's slots. The slot choices its uses read are
         // recorded: a bound it reads is treated as reached, so no caller may
@@ -2599,6 +2667,11 @@ pub(super) fn check_choice_uses<'db>(
             }
             .into(),
             ChoiceRefusal::DependentType => BodyDiag::ChoiceDependentType { primary }.into(),
+            ChoiceRefusal::UninferredEvidence => BodyDiag::ObligationOpening {
+                primary,
+                reason: "this `with` operand is evidence whose type is known only after inference; write its type where it is bound",
+            }
+            .into(),
         });
     }
     for (expr, read) in typed.closure_choices() {
@@ -2638,6 +2711,13 @@ pub(super) fn check_choice_uses<'db>(
             Some(EdgeRefusal::TypeReach) => {
                 diags.push(BodyDiag::ChoiceDependentType { primary }.into())
             }
+            Some(EdgeRefusal::EvidenceThroughParam) => diags.push(
+                BodyDiag::ObligationOpening {
+                    primary,
+                    reason: "evidence passed as a value of a type parameter reaches a body that opens it or passes it on where no choice arrives with it; pass it where its `Evidence` type is written",
+                }
+                .into(),
+            ),
             Some(EdgeRefusal::TooDeep) => diags.push(
                 BodyDiag::ObligationOpening {
                     primary,

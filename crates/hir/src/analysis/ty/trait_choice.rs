@@ -487,6 +487,10 @@ pub enum ChoiceRefusal {
     /// A type its callee declares (an argument, the result, an effect's
     /// key) reads a constant of a slot opened here (D5).
     DependentType,
+    /// A `with` operand whose type was not known where it was checked turned
+    /// out to be evidence: it was taken as an effect value and opened
+    /// nothing (D2).
+    UninferredEvidence,
 }
 
 /// What a trait use means: a known implementation, or whatever the enclosing

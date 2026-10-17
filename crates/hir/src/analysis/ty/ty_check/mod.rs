@@ -1384,6 +1384,7 @@ fn typed_body_for_bodyless_func<'db>(
         function_value_choices: Vec::new(),
         closure_choices: Vec::new(),
         const_reaches: Vec::new(),
+        effect_with_operands: Vec::new(),
         choice_refusals: Vec::new(),
     }
     .into()
@@ -3962,6 +3963,8 @@ mod typed_body_tables {
         /// The body's own slots that its constant uses pass on to a constant
         /// body whose types read them (`const_type_reads`).
         pub(super) const_reaches: Vec<crate::analysis::ty::trait_def::TraitInstId<'db>>,
+        /// `with` operands taken as effect values.
+        pub(super) effect_with_operands: Vec<ExprId>,
         /// Trait uses refused once their decisions are known.
         pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
     }
@@ -4399,6 +4402,11 @@ impl<'db> TypedBody<'db> {
     /// body whose types read them.
     pub(crate) fn const_reaches(&self) -> &[crate::analysis::ty::trait_def::TraitInstId<'db>] {
         &self.tables.const_reaches
+    }
+
+    /// `with` operands taken as effect values.
+    pub(crate) fn effect_with_operands(&self) -> &[ExprId] {
+        &self.tables.effect_with_operands
     }
 
     /// Trait uses refused once their decisions are known.
@@ -6066,6 +6074,7 @@ impl<'db> TypedBody<'db> {
             function_value_choices: Vec::new(),
             closure_choices: Vec::new(),
             const_reaches: Vec::new(),
+            effect_with_operands: Vec::new(),
             choice_refusals: Vec::new(),
         }
         .into()

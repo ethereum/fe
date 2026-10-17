@@ -674,6 +674,38 @@ fn premises_compare_calls_as_written() {
 }
 
 #[test]
+fn evidence_is_admitted_after_inference() {
+    // D2: a `with` operand taken as an effect value is read again once its
+    // type is known and refused if it is evidence; a destructured part of an
+    // aggregate is refused as a field is; a value of a type parameter that a
+    // body opens or passes on owes callers that it is not evidence.
+    let checker = code(&text_of(CHECKER));
+    let checked = functions(&checker);
+    let function = |name: &str| {
+        checked
+            .iter()
+            .find(|function| function.lines().next().unwrap_or_default().contains(name))
+            .unwrap_or_else(|| panic!("{name} exists"))
+    };
+    assert!(function("fn open_evidence_binding").contains("effect_with_operands.push("));
+    assert!(function("fn record_choice_decisions").contains("effect_with_operands"));
+    assert!(function("fn denote_evidence").contains("self.destructured("));
+    let owed = code(&text_of("src/analysis/ty/ty_check/const_requirements.rs"));
+    let owed_checks = functions(&owed)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn owed_checks<")
+        })
+        .expect("functions owe checks");
+    assert!(owed_checks.contains("effect_with_operands()"));
+    assert!(owed_checks.contains("OwedCheck::NoEvidence"));
+}
+
+#[test]
 fn choice_walks_end_at_one_limit() {
     // D18: a walk that follows choices through implementations ends where the
     // base's instance limits end, through one check; no walk keeps a limit of
