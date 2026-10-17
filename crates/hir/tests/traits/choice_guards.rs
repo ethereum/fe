@@ -74,10 +74,12 @@ fn only_the_checker_proves_known_choices() {
         occurrences_outside("KnownChoice::prove(", &[CHECKER, REPRESENTATION]),
         Vec::<String>::new()
     );
+    // A named implementation is its own choice in its body (the checker's
+    // seed) and for its constants' recursion check.
     assert_eq!(
         occurrences_outside(
             "KnownChoice::own(",
-            &[REPRESENTATION, "src/analysis/ty/ty_check/env.rs"]
+            &[REPRESENTATION, CHECKER, "src/diagnosable.rs"]
         ),
         Vec::<String>::new()
     );
@@ -138,23 +140,104 @@ fn trait_method_bodies_are_chosen_where_choices_are_read() {
         ),
         Vec::<String>::new()
     );
+    // A body can also be taken from a selected implementation directly; the
+    // checker does so for every candidate of a body chosen later, and the
+    // callee key and the checker's call for a recorded choice.
+    assert_eq!(
+        occurrences_outside(
+            "method_instance_from_resolved(",
+            &[
+                "src/analysis/ty/trait_def.rs",
+                CHECKER,
+                "src/analysis/ty/ty_check/callable.rs",
+                "src/analysis/semantic/instance/const_ref.rs",
+            ]
+        ),
+        Vec::<String>::new()
+    );
 }
 
 #[test]
 fn frames_are_read_through_one_normalized_lookup() {
-    // `TyCheckEnv::frame_choice` normalizes a slot before reading the frames,
-    // so that every spelling of one slot (concrete, through an associated
-    // type, `Self`) reads one entry. Another reader could skip it.
+    // Frames are keyed by `SlotKey`, whose only constructor normalizes the
+    // slot, so that every spelling of one slot (concrete, through an
+    // associated type, `Self`) writes and reads one entry. Its field is
+    // private to its module; this checks the one place that makes keys.
     assert_eq!(
-        occurrences_outside("choice_frames.lookup(", &[CHECKER]),
+        occurrences_outside("SlotKey::new(", &[CHECKER]),
         Vec::<String>::new()
     );
-    let checker = sources()
-        .into_iter()
-        .find(|(path, _)| path == CHECKER)
-        .expect("the checker exists")
-        .1;
-    assert_eq!(checker.matches("choice_frames.lookup(").count(), 1);
+    let checker = text_of(CHECKER);
+    assert_eq!(code(&checker).matches("SlotKey::new(").count(), 1);
+    assert_eq!(code(&checker).matches(".lookup(").count(), 1);
+}
+
+#[test]
+fn written_constant_arguments_are_scanned_in_one_place() {
+    // Lowering evaluates a constant written in a path with the ordinary
+    // implementation, so D5 reads the written syntax: one scan, run for
+    // every expression and every pattern from the dispatch each goes
+    // through, with written types going through `lower_ty`.
+    for reader in [
+        "hir_path_const_slot_reads(",
+        "hir_generic_args_const_slot_reads(",
+    ] {
+        assert_eq!(
+            occurrences_outside(reader, &[CHECKER, "src/analysis/ty/ty_lower.rs"]),
+            Vec::<String>::new()
+        );
+        assert_eq!(code(&text_of(CHECKER)).matches(reader).count(), 1);
+    }
+    for (path, dispatch) in [
+        (
+            "src/analysis/ty/ty_check/expr.rs",
+            "fn check_expr_with_result_context(",
+        ),
+        ("src/analysis/ty/ty_check/pat.rs", "fn check_pat("),
+    ] {
+        let text = text_of(path);
+        let function = functions(&text)
+            .into_iter()
+            .find(|function| function.contains(dispatch))
+            .expect("the dispatch exists");
+        assert!(
+            code(&function).contains("refuse_written_const_args("),
+            "{path}: the dispatch does not scan written arguments"
+        );
+    }
+    assert_eq!(
+        occurrences_outside(
+            "refuse_written_const_args(",
+            &[
+                CHECKER,
+                "src/analysis/ty/ty_check/expr.rs",
+                "src/analysis/ty/ty_check/pat.rs",
+            ]
+        ),
+        Vec::<String>::new()
+    );
+}
+
+#[test]
+fn associated_outputs_are_read_through_one_selection() {
+    // D16: a slot's associated types, rows and spaces are the same whichever
+    // implementation answers it; readers select through
+    // `output_implementation`, which also answers a slot that only named
+    // implementations give, not through ordinary selection alone.
+    for path in [
+        "src/analysis/ty/effects/rows.rs",
+        "src/analysis/ty/result_space.rs",
+    ] {
+        let text = text_of(path);
+        assert!(
+            !code(&text).contains("resolve_trait_impl_instance("),
+            "{path}: an output reader selects the ordinary implementation alone"
+        );
+        assert!(code(&text).contains("output_implementation("));
+    }
+    assert!(
+        code(&text_of("src/analysis/ty/normalize.rs")).contains("named_output_implementation(")
+    );
 }
 
 #[test]
@@ -191,6 +274,7 @@ fn deliveries_reach_a_body_through_one_mapping() {
             continue;
         }
         for function in functions(&text) {
+            let function = code(&function);
             if function.contains(".delivered()") {
                 assert!(
                     function.contains("body_deliveries(") || function.contains(".to_body("),
@@ -200,6 +284,23 @@ fn deliveries_reach_a_body_through_one_mapping() {
             }
         }
     }
+}
+
+/// The source of the file at `path`.
+fn text_of(path: &str) -> String {
+    sources()
+        .into_iter()
+        .find(|(file, _)| file == path)
+        .unwrap_or_else(|| panic!("{path} exists"))
+        .1
+}
+
+/// `text` without its `//` comments, so a name in a comment does not count.
+fn code(text: &str) -> String {
+    text.lines()
+        .map(|line| line.split_once("//").map_or(line, |(code, _)| code))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// `text` cut at each line that starts a function, so a check can hold per

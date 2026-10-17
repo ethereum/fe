@@ -54,6 +54,7 @@ impl<'db> TyChecker<'db> {
                 PatternAnalysisStatus::Invalid,
             );
         };
+        self.refuse_written_const_args(super::choice::WrittenNode::Pat(pat));
 
         match pat_data {
             Pat::WildCard => {

@@ -52,9 +52,64 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct FrameId(u32);
 
+/// A body node whose own written paths `refuse_written_const_args` scans.
+#[derive(Clone, Copy)]
+pub(super) enum WrittenNode {
+    Expr(ExprId),
+    Pat(PatId),
+}
+
+mod slot_key {
+    use crate::analysis::{
+        HirAnalysisDb,
+        ty::{
+            normalize::normalize_ty, trait_choice::slot_goal, trait_def::TraitInstId,
+            trait_resolution::PredicateListId,
+        },
+    };
+    use crate::hir_def::scope_graph::ScopeId;
+
+    /// A slot as frames key it: no associated-type equalities, arguments
+    /// normalized in the body, so a projection that names a concrete type is
+    /// read as that type. Its only constructor normalizes, so every frame
+    /// writer and reader agrees on the key.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub(in super::super) struct SlotKey<'db>(TraitInstId<'db>);
+
+    impl<'db> SlotKey<'db> {
+        pub(in super::super) fn new(
+            db: &'db dyn HirAnalysisDb,
+            inst: TraitInstId<'db>,
+            scope: ScopeId<'db>,
+            assumptions: PredicateListId<'db>,
+        ) -> Self {
+            let slot = slot_goal(db, inst);
+            let args = slot
+                .args(db)
+                .iter()
+                .map(|ty| normalize_ty(db, *ty, scope, assumptions))
+                .collect::<Vec<_>>();
+            if args == *slot.args(db) {
+                return Self(slot);
+            }
+            Self(TraitInstId::new(
+                db,
+                slot.def(db),
+                args,
+                common::indexmap::IndexMap::new(),
+            ))
+        }
+
+        pub(in super::super) fn inst(self) -> TraitInstId<'db> {
+            self.0
+        }
+    }
+}
+pub(super) use slot_key::SlotKey;
+
 struct FrameNode<'db> {
     parent: Option<FrameId>,
-    slot: TraitInstId<'db>,
+    slot: SlotKey<'db>,
     choice: Choice<'db>,
 }
 
@@ -78,7 +133,7 @@ impl<'db> ChoiceFrames<'db> {
     /// The frame a body starts in: inside `impl T for S as N`, the slot
     /// `T<S>` is N (RD114, provisional reading (a): every use of that slot in
     /// the body, `Self` forms, receiver calls and concrete paths alike).
-    pub(super) fn seed(&mut self, slot: TraitInstId<'db>, choice: Choice<'db>) {
+    fn seed(&mut self, slot: SlotKey<'db>, choice: Choice<'db>) {
         debug_assert!(
             self.current.is_none(),
             "a body is seeded before it is checked"
@@ -96,7 +151,7 @@ impl<'db> ChoiceFrames<'db> {
     fn push(
         &mut self,
         header: Option<FrameId>,
-        slot: TraitInstId<'db>,
+        slot: SlotKey<'db>,
         choice: Choice<'db>,
     ) -> Result<(), ()> {
         let mut at = self.current;
@@ -119,7 +174,7 @@ impl<'db> ChoiceFrames<'db> {
     /// The frame entry a use of `slot` reads: the innermost entry for exactly
     /// that slot, as written. A slot that would equal an opened one only for
     /// some generic arguments is a different slot (RD71's written reading).
-    fn lookup(&self, frame: Option<FrameId>, slot: TraitInstId<'db>) -> Option<Choice<'db>> {
+    fn lookup(&self, frame: Option<FrameId>, slot: SlotKey<'db>) -> Option<Choice<'db>> {
         let mut at = frame;
         while let Some(id) = at {
             let node = &self.nodes[id.0 as usize];
@@ -413,18 +468,96 @@ impl<'db> TyChecker<'db> {
         dependent
     }
 
-    /// The same refusal for the constant arguments written in a call's callee
-    /// path or explicit generic arguments (`g<{ Item::P }>()`): lowering
-    /// evaluates them with the ordinary implementation.
-    pub(super) fn refuse_choice_dependent_written_args(
+    /// The same refusal for the constant arguments written in one
+    /// expression's or pattern's own path or generic argument list, such as
+    /// `Arr<{ Item::P }> {}`, `E<{ Item::P }>::A` or `g<{ Item::P }>`.
+    /// Lowering evaluates them with the ordinary implementation before any
+    /// later check sees the node, so the written syntax is the only place
+    /// their reads show. This is the one scan of written arguments in a body:
+    /// every expression and pattern passes through it once
+    /// (`check_expr_with_result_context`, `check_pat`), and written types go
+    /// through `lower_ty`. A refused expression is remembered so the check of
+    /// its call or literal adds no second diagnostic.
+    pub(super) fn refuse_written_const_args(&mut self, node: WrittenNode) -> bool {
+        use crate::analysis::ty::ty_lower::{
+            hir_generic_args_const_slot_reads, hir_path_const_slot_reads,
+        };
+        use crate::hir_def::Pat;
+        if self.env.choice_frames.current().is_none() {
+            return false;
+        }
+        let (db, scope, assumptions) = (self.db, self.env.scope(), self.env.assumptions());
+        let path_reads = |path: &Partial<crate::hir_def::PathId<'db>>| match path {
+            Partial::Present(path) => hir_path_const_slot_reads(db, *path, scope, assumptions),
+            Partial::Absent => Vec::new(),
+        };
+        let (reads, primary) = match node {
+            WrittenNode::Expr(expr) => {
+                let Partial::Present(data) = expr.data(db, self.body()) else {
+                    return false;
+                };
+                let reads = match data {
+                    Expr::Path(path) | Expr::RecordInit(path, _) => path_reads(path),
+                    Expr::MethodCall(_, _, args, _) => {
+                        hir_generic_args_const_slot_reads(db, *args, scope, assumptions)
+                    }
+                    Expr::With(bindings, _) => bindings
+                        .iter()
+                        .filter_map(|binding| binding.key_path.as_ref())
+                        .flat_map(path_reads)
+                        .collect(),
+                    // Types written in these go through `lower_ty`; an array
+                    // repeat's length is checked unevaluated in
+                    // `check_array_rep`.
+                    Expr::Lit(_)
+                    | Expr::Block(..)
+                    | Expr::Closure { .. }
+                    | Expr::Bin(..)
+                    | Expr::Un(..)
+                    | Expr::Cast(..)
+                    | Expr::Try(_)
+                    | Expr::Call(..)
+                    | Expr::Assert(_)
+                    | Expr::UnsupportedMacroCall
+                    | Expr::Field(..)
+                    | Expr::Tuple(_)
+                    | Expr::Array(_)
+                    | Expr::ArrayRep(..)
+                    | Expr::If(..)
+                    | Expr::Match(..)
+                    | Expr::Assign(..)
+                    | Expr::AugAssign(..) => Vec::new(),
+                };
+                (reads, expr.span(self.body()).into())
+            }
+            WrittenNode::Pat(pat) => {
+                let Partial::Present(data) = pat.data(db, self.body()) else {
+                    return false;
+                };
+                let reads = match data {
+                    Pat::Path(path, _) | Pat::PathTuple(path, _) | Pat::Record(path, _) => {
+                        path_reads(path)
+                    }
+                    Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Tuple(_) | Pat::Or(..) => {
+                        Vec::new()
+                    }
+                };
+                (reads, pat.span(self.body()).into())
+            }
+        };
+        let refused = self.refuse_choice_dependent_written_args(reads, primary);
+        if refused && let WrittenNode::Expr(expr) = node {
+            self.env.written_refusals[expr] = true;
+        }
+        refused
+    }
+
+    fn refuse_choice_dependent_written_args(
         &mut self,
         reads: Vec<TraitInstId<'db>>,
         primary: DynLazySpan<'db>,
     ) -> bool {
         let frame = self.env.choice_frames.current();
-        if frame.is_none() {
-            return false;
-        }
         let dependent = reads
             .into_iter()
             .any(|slot| self.env.frame_choice(frame, slot).is_some());
@@ -1091,7 +1224,7 @@ impl<'db> TyChecker<'db> {
         let result = match goal {
             None => Err("expected one trait goal"),
             Some(goal) => {
-                let slot = self.env.normalized_slot(goal);
+                let slot = self.env.normalized_slot(goal).inst();
                 match self
                     .env
                     .frame_choice(self.env.choice_frames.current(), goal)
@@ -1212,7 +1345,7 @@ impl<'db> TyCheckEnv<'db> {
         inst: TraitInstId<'db>,
     ) -> Option<Choice<'db>> {
         let db = self.db();
-        let slot = self.normalized_slot(inst);
+        let slot = self.normalized_slot(inst).inst();
         if let Some(found) = self.frame_choice(frame, inst) {
             return Some(found);
         }
@@ -1231,27 +1364,25 @@ impl<'db> TyCheckEnv<'db> {
         None
     }
 
-    /// `inst`'s slot with its arguments normalized in this body, so that a
-    /// projection that names a concrete type is read as that type.
-    fn normalized_slot(&self, inst: TraitInstId<'db>) -> TraitInstId<'db> {
+    /// `inst`'s slot as frames key it in this body (`SlotKey`).
+    fn normalized_slot(&self, inst: TraitInstId<'db>) -> SlotKey<'db> {
+        SlotKey::new(self.db(), inst, self.scope(), self.assumptions())
+    }
+
+    /// A named implementation's own body sees itself for its own slot
+    /// (RD114, provisional reading (a): every use of that slot in the body,
+    /// `Self` forms, receiver calls and concrete paths alike).
+    pub(super) fn seed_own_choice(&mut self, implementation: crate::hir_def::ImplTrait<'db>) {
         let db = self.db();
-        let slot = slot_goal(db, inst);
-        let args = slot
-            .args(db)
-            .iter()
-            .map(|ty| {
-                crate::analysis::ty::normalize::normalize_ty(
-                    db,
-                    *ty,
-                    self.scope(),
-                    self.assumptions(),
-                )
-            })
-            .collect::<Vec<_>>();
-        if args == *slot.args(db) {
-            return slot;
-        }
-        TraitInstId::new(db, slot.def(db), args, common::indexmap::IndexMap::new())
+        let Some(implementor) = lower_impl_trait(db, implementation) else {
+            return;
+        };
+        let goal = implementor.trait_inst(db);
+        let slot = self.normalized_slot(goal);
+        self.choice_frames.seed(
+            slot,
+            Choice::Known(KnownChoice::own(db, implementation, goal)),
+        );
     }
 
     /// The decisions a direct call checked in `frame` records: its trait
@@ -1365,7 +1496,7 @@ impl<'db> TyCheckEnv<'db> {
             trait_lower::complete_selected_impl,
         };
         let db = self.db();
-        let inst = self.normalized_slot(inst);
+        let inst = self.normalized_slot(inst).inst();
         if inst.args(db).iter().any(|ty| ty.has_var(db)) {
             return Vec::new();
         }

@@ -2245,8 +2245,9 @@ enum EdgeFact<'db> {
         signature: bool,
     },
     Pending(PendingCall<'db>),
-    /// Following the debts of bodies chosen later did not end within the
-    /// depth bound (polymorphic recursion); the call is refused, not assumed.
+    /// Following the debts of bodies chosen later reached a body whose
+    /// arguments leave the instance limits (recursion growing its arguments),
+    /// or the depth backstop; the call is refused, not assumed.
     TooDeep,
 }
 
@@ -2277,8 +2278,12 @@ impl<'db> Walk<'db> {
     }
 }
 
-/// How many bodies chosen later one call edge follows before refusing.
-const OWED_DEPTH: usize = 256;
+/// How many bodies chosen later one call edge follows before refusing, a
+/// backstop for the walk's own stack. The bound that matters is the instance
+/// limits (`instance_args_within_limits`), the same ones the base applies to
+/// the instances these bodies become: without growing arguments a path comes
+/// back to a body already on it.
+const OWED_DEPTH: usize = 4096;
 
 fn classify_reads<'db>(reads: &[(SlotRef<'db>, Choice<'db>)]) -> ConditionAtCall<'db> {
     if reads
@@ -2410,8 +2415,11 @@ fn owed_at_call<'db>(
         walk.low = walk.low.min(position);
         return Vec::new();
     }
-    if walk.path.len() >= OWED_DEPTH {
-        // A depth limit depends on the path: nothing above it is kept.
+    if !crate::analysis::ty::normalize::instance_args_within_limits(db, body_args)
+        || walk.path.len() >= OWED_DEPTH
+    {
+        // A limit met on the path depends on the path: nothing above it is
+        // kept.
         walk.low = 0;
         return vec![EdgeFact::TooDeep];
     }

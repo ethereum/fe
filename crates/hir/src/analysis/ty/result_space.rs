@@ -30,7 +30,7 @@ use crate::{
             normalize::normalize_ty,
             provider::AddressSpace,
             state_index_tys,
-            trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
+            trait_def::{ImplementorOrigin, TraitInstId, output_implementation},
             trait_resolution::{
                 PredicateListId, Selection, TraitSolveCx, constraint::resolve_assoc_item_path,
             },
@@ -311,7 +311,7 @@ fn follow_space_key<'db>(
             return Err(());
         }
         followed.push(key);
-        let Selection::Unique(resolved) = resolve_trait_impl_instance(
+        let Selection::Unique(resolved) = output_implementation(
             db,
             TraitSolveCx::new(db, scope).with_assumptions(assumptions),
             key.inst,

@@ -18,7 +18,7 @@ use crate::{
             closure::{CallableShape, CallableValue},
             effects::resolve_effect_key,
             fold::{TyFoldable, TyFolder},
-            trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
+            trait_def::{ImplementorOrigin, TraitInstId, output_implementation},
             trait_resolution::{PredicateListId, Selection, TraitSolveCx},
             visitor::{TyVisitable, TyVisitor},
         },
@@ -335,7 +335,7 @@ fn direct_row_components<'db>(
         };
         return row_effects(impl_trait).is_none().then(Vec::new);
     }
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, key.inst) else {
+    let Selection::Unique(resolved) = output_implementation(db, solve_cx, key.inst) else {
         return None;
     };
     implementation_row_components(db, resolved, name)

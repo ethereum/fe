@@ -456,6 +456,51 @@ pub(crate) fn resolve_trait_impl_instance<'db>(
     }
 }
 
+/// D16: the implementation that gives `inst`'s slot its associated types,
+/// effect rows and result spaces: the ordinary one, or, for a slot with only
+/// named implementations, any named one whose header matches
+/// (`named_output_implementation`). Readers of associated outputs select
+/// through this, not through ordinary selection alone.
+pub(crate) fn output_implementation<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+) -> Selection<ResolvedImplInstance<'db>> {
+    match resolve_trait_impl_instance(db, solve_cx, inst) {
+        Selection::NotFound => named_output_implementation(db, solve_cx, inst),
+        ordinary => ordinary,
+    }
+}
+
+/// The outputs of a slot that ordinary selection does not answer, from its
+/// named implementations. D16 admits a named declaration only when its
+/// outputs equal the ordinary implementation's or, without one, every other
+/// named implementation's, so whichever named implementation answers the slot
+/// gives these outputs; its conditions do not matter for them.
+pub(crate) fn named_output_implementation<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+) -> Selection<ResolvedImplInstance<'db>> {
+    if inst.args(db).iter().any(|ty| ty.has_var(db)) {
+        return Selection::NotFound;
+    }
+    let norm_scope = solve_cx.normalization_scope_for_trait_inst(db, inst);
+    let inst =
+        normalize_trait_inst_preserving_validity(db, inst, norm_scope, solve_cx.assumptions());
+    let (primary, secondary) = solve_cx.search_ingots_for_trait_inst(db, inst);
+    [Some(primary), secondary]
+        .into_iter()
+        .flatten()
+        .flat_map(|ingot| named_impls_for_trait(db, ingot, inst.def(db)))
+        .filter_map(|item| super::trait_lower::lower_impl_trait(db, item))
+        .find_map(|candidate| {
+            complete_selected_impl(db, candidate)
+                .and_then(|completed| instantiate_selected_impl(db, completed, inst))
+        })
+        .map_or(Selection::NotFound, Selection::Unique)
+}
+
 /// An implementation selection, without candidates for an ambiguous one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 enum ImplSelection<'db> {
@@ -688,26 +733,39 @@ pub(crate) fn named_output_mismatch<'db>(
         .with_assumptions(crate::semantic::param_env(db, implementation.into()));
     let header = candidate.trait_inst(db);
     let goal = TraitInstId::new_simple(db, header.def(db), header.args(db).clone());
-    let (others, ordinary) = match resolve_trait_impl_instance(db, context, goal) {
-        Selection::Unique(ordinary)
-            if matches!(ordinary.selected().origin(db), ImplementorOrigin::Hir(_)) =>
-        {
-            (vec![ordinary], true)
-        }
-        Selection::Unique(_) => return None,
-        _ => {
-            let ingot = implementation.top_mod(db).ingot(db);
-            let others = named_impls_for_trait(db, ingot, goal.def(db))
+    // Every ordinary implementation whose header covers the slot, whatever
+    // its conditions: a condition that does not hold here can hold where a
+    // `with` adds a premise, and that implementation then answers the slot.
+    let (primary, secondary) = context.search_ingots_for_trait_inst(db, goal);
+    let instantiated = |candidates: Vec<ImplementorId<'db>>| {
+        candidates
+            .into_iter()
+            .filter(|other| matches!(other.origin(db), ImplementorOrigin::Hir(_)))
+            .filter_map(|other| {
+                super::trait_lower::complete_selected_impl(db, other)
+                    .and_then(|completed| instantiate_selected_impl(db, completed, goal))
+            })
+            .collect::<Vec<_>>()
+    };
+    let ordinary_impls = instantiated(
+        [Some(primary), secondary]
+            .into_iter()
+            .flatten()
+            .flat_map(|ingot| impls_for_trait_def(db, ingot, goal.def(db)).to_vec())
+            .collect(),
+    );
+    let (others, ordinary) = if ordinary_impls.is_empty() {
+        let ingot = implementation.top_mod(db).ingot(db);
+        let others = instantiated(
+            named_impls_for_trait(db, ingot, goal.def(db))
                 .into_iter()
                 .filter(|other| *other != implementation)
                 .filter_map(|other| super::trait_lower::lower_impl_trait(db, other))
-                .filter_map(|other| {
-                    super::trait_lower::complete_selected_impl(db, other)
-                        .and_then(|completed| instantiate_selected_impl(db, completed, goal))
-                })
-                .collect::<Vec<_>>();
-            (others, false)
-        }
+                .collect(),
+        );
+        (others, false)
+    } else {
+        (ordinary_impls, true)
     };
     let own = super::trait_lower::complete_selected_impl(db, candidate)
         .and_then(|completed| instantiate_selected_impl(db, completed, goal));

@@ -1342,27 +1342,37 @@ impl<'db> ImplTrait<'db> {
         let inst = implementor.trait_inst(db);
         let scope = self.scope();
         let assumptions = constraints_for(db, self.into());
+        // A named implementation's constants are its own, as its body reads
+        // them (RD114), not the ordinary implementation's.
+        let own = self.selection_name(db).is_some().then(|| {
+            ty::trait_choice::Choice::Known(ty::trait_choice::KnownChoice::own(db, self, inst))
+        });
 
         let mut diags = Vec::new();
         for trait_const in trait_hir.assoc_consts(db) {
             let Some(name) = trait_const.name(db) else {
                 continue;
             };
-            let assoc = AssocConstUse::new(scope, assumptions, inst, name);
+            let assoc = AssocConstUse::new(scope, assumptions, inst, name).with_choice(own);
             let Some(const_ty) = const_ty_from_assoc_const_use(db, assoc) else {
                 continue;
             };
             let declared_ty = trait_const
                 .ty_binder(db)
                 .map(|binder| binder.instantiate(db, inst.args(db)));
+            // Evaluation in a type reads the constants a body uses the
+            // ordinary way, so a named implementation's are followed as its
+            // body records them (the walk below) and not evaluated here.
             let evaluated = const_ty.evaluate(db, declared_ty);
-            if matches!(
-                evaluated.data(db),
-                ConstTyData::Value(..) | ConstTyData::Description(..)
-            ) {
+            if own.is_none()
+                && matches!(
+                    evaluated.data(db),
+                    ConstTyData::Value(..) | ConstTyData::Description(..)
+                )
+            {
                 continue;
             }
-            if evaluated.ty(db).has_invalid(db) {
+            if own.is_none() && evaluated.ty(db).has_invalid(db) {
                 // Other invalid causes are reported by the body/header
                 // checks; recursion surfacing as an eval error is this
                 // diagnostic's job.

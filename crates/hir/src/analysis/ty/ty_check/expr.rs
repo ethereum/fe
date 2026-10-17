@@ -367,6 +367,7 @@ impl<'db> TyChecker<'db> {
         let expected = normalize_ty(self.db, expected, self.env.scope(), self.env.assumptions());
 
         self.env.enter_expr(expr);
+        self.refuse_written_const_args(super::choice::WrittenNode::Expr(expr));
         let mut actual = match expr_data {
             Expr::Lit(LitKind::String(string_id)) => {
                 ExprProp::new(self.string_literal_ty(*string_id, expected), true)
@@ -1765,18 +1766,7 @@ impl<'db> TyChecker<'db> {
 
         callable.check_args(self, args, call_span.clone().args(), None, false);
         self.deliver_evidence_args(&mut callable, args, 0);
-        let written = match callee.data(self.db, self.body()) {
-            Partial::Present(Expr::Path(Partial::Present(path))) => {
-                crate::analysis::ty::ty_lower::hir_path_const_slot_reads(
-                    self.db,
-                    *path,
-                    self.env.scope(),
-                    self.env.assumptions(),
-                )
-            }
-            _ => Vec::new(),
-        };
-        if self.refuse_choice_dependent_written_args(written, expr.span(self.body()).into())
+        if self.env.written_refusals[*callee]
             || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
         {
             // Keep the result's shape so the refusal is the only diagnostic
@@ -3811,13 +3801,7 @@ impl<'db> TyChecker<'db> {
         );
         // The receiver is parameter 0.
         self.deliver_evidence_args(&mut callable, args, 1);
-        let written = crate::analysis::ty::ty_lower::hir_generic_args_const_slot_reads(
-            self.db,
-            *generic_args,
-            self.env.scope(),
-            self.env.assumptions(),
-        );
-        if self.refuse_choice_dependent_written_args(written, expr.span(self.body()).into())
+        if self.env.written_refusals[expr]
             || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
         {
             // Keep the result's shape so the refusal is the only diagnostic
@@ -4358,7 +4342,9 @@ impl<'db> TyChecker<'db> {
 
                 // A record whose field types read an opened slot is a
                 // choice-dependent type (RD120's own example).
-                if self.refuse_choice_dependent_ty(ty, span.clone().path().into()) {
+                if self.env.written_refusals[expr]
+                    || self.refuse_choice_dependent_ty(ty, span.clone().path().into())
+                {
                     return ExprProp::invalid(self.db);
                 }
                 let record_like = RecordLike::from_ty(ty);
@@ -4404,7 +4390,9 @@ impl<'db> TyChecker<'db> {
                     resolved_ty.fold_with(self.db, &mut self.table)
                 };
                 let variant = crate::analysis::name_resolution::ResolvedVariant { ty, ..variant };
-                if self.refuse_choice_dependent_ty(ty, span.clone().path().into()) {
+                if self.env.written_refusals[expr]
+                    || self.refuse_choice_dependent_ty(ty, span.clone().path().into())
+                {
                     return ExprProp::invalid(self.db);
                 }
 

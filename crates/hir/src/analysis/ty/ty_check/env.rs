@@ -150,6 +150,9 @@ pub(crate) struct TyCheckEnv<'db> {
     pub(super) function_value_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
     /// Expressions checked inside a closure's body.
     pub(super) closure_exprs: SecondaryMap<ExprId, bool>,
+    /// Expressions whose written constant arguments were refused
+    /// (`refuse_written_const_args`).
+    pub(super) written_refusals: SecondaryMap<ExprId, bool>,
     /// Uses inside closure bodies and the slot choices they read.
     pub(super) closure_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
     /// Trait uses refused once their decisions are known.
@@ -273,26 +276,12 @@ impl<'db> TyCheckEnv<'db> {
             with_choice_bindings: Vec::new(),
             function_value_choices: Vec::new(),
             closure_exprs: SecondaryMap::new(),
+            written_refusals: SecondaryMap::new(),
             closure_choices: Vec::new(),
             choice_refusals: Vec::new(),
         };
 
         env.enter_scope(body.expr(db));
-
-        // A named implementation's own body sees itself for its own slot.
-        if let Some(ItemKind::ImplTrait(implementation)) = owner_scope.parent_item(db)
-            && implementation.selection_name(db).is_some()
-            && let Some(implementor) =
-                crate::analysis::ty::trait_lower::lower_impl_trait(db, implementation)
-        {
-            let goal = implementor.trait_inst(db);
-            let choice =
-                crate::analysis::ty::trait_choice::KnownChoice::own(db, implementation, goal);
-            env.choice_frames.seed(
-                crate::analysis::ty::trait_choice::slot_goal(db, goal),
-                Choice::Known(choice),
-            );
-        }
 
         match owner {
             BodyOwner::Func(func) => {
@@ -363,6 +352,14 @@ impl<'db> TyCheckEnv<'db> {
         let mut preds = base_preds.list(db).to_vec();
         preds.extend(env.effect_bounds.iter().copied());
         env.assumptions = PredicateListId::new(db, preds).extend_all_bounds(db);
+
+        // A named implementation's own body sees itself for its own slot,
+        // keyed in the assumptions its uses are read in.
+        if let Some(ItemKind::ImplTrait(implementation)) = owner_scope.parent_item(db)
+            && implementation.selection_name(db).is_some()
+        {
+            env.seed_own_choice(implementation);
+        }
 
         Ok(env)
     }
