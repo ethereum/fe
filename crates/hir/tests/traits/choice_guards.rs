@@ -75,11 +75,17 @@ fn only_the_checker_proves_known_choices() {
         Vec::<String>::new()
     );
     // A named implementation is its own choice in its body (the checker's
-    // seed) and for its constants' recursion check.
+    // seed), for its constants' recursion check, and for a trait signature
+    // compared under it (decision (e)).
     assert_eq!(
         occurrences_outside(
             "KnownChoice::own(",
-            &[REPRESENTATION, CHECKER, "src/diagnosable.rs"]
+            &[
+                REPRESENTATION,
+                CHECKER,
+                "src/diagnosable.rs",
+                "src/analysis/ty/method_cmp.rs",
+            ]
         ),
         Vec::<String>::new()
     );
