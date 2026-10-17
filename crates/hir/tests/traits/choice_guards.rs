@@ -635,7 +635,8 @@ fn d13_is_checked_from_every_route() {
     // D13: a goal left to ordinary selection under an opening is followed
     // through one walk of the ordinary proof (`ordinary_proof_reads`), from
     // a call, a constant, a function value and `prove`, in the frame's
-    // premises.
+    // premises, and owed to callers when the slot it reads is the
+    // function's own.
     let checker = code(&text_of(CHECKER));
     let checked = functions(&checker);
     let function = |name: &str| {
@@ -647,6 +648,19 @@ fn d13_is_checked_from_every_route() {
     assert!(function("fn decide_prove").contains(".reads_opened_condition("));
     let walk = function("fn walk_conditions");
     assert!(walk.contains("ordinary_proof_reads(") && walk.contains(".opened("));
+    assert!(function("fn owed_opened_conditions").contains("ordinary_proof_reads("));
+    let owed = code(&text_of("src/analysis/ty/ty_check/const_requirements.rs"));
+    let owed_checks = functions(&owed)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn owed_checks<")
+        })
+        .expect("functions owe checks");
+    assert!(owed_checks.contains("owed_opened_conditions("));
     // The walk does not count a proof it cannot follow as reading nothing.
     let proof = function("fn ordinary_proof_reads");
     assert!(proof.contains("_ => return true"));

@@ -2215,6 +2215,12 @@ pub(crate) enum OwedCheck<'db> {
         slot: TraitInstId<'db>,
         signature: bool,
     },
+    /// A goal the function leaves to ordinary selection is proved through a
+    /// condition on one of its bound slots (D13): that slot may not receive
+    /// an opened or evidence choice.
+    OpenedCondition {
+        slot: TraitInstId<'db>,
+    },
     /// A value of the type parameter `param` is opened with `with`, or
     /// passed to a body chosen later or a callable value: it must not be
     /// evidence, which would arrive there with no choice (D2, D14).
@@ -2249,6 +2255,11 @@ enum EdgeFact<'db> {
     Reaches {
         choice: Choice<'db>,
         signature: bool,
+    },
+    /// A choice delivered into a slot a body the call runs reads through a
+    /// condition of an implementation it selects ordinarily (D13).
+    OpenedCondition {
+        choice: Choice<'db>,
     },
     /// The type a call gives a callee's type parameter that must not be
     /// evidence (`OwedCheck::NoEvidence`), in the caller's context.
@@ -2478,6 +2489,11 @@ fn owed_facts_at_call<'db>(
                     });
                 }
             }
+            OwedCheck::OpenedCondition { slot } => {
+                if let Some(choice) = delivered_for(slots, SlotRef::Bound(*slot)) {
+                    facts.push(EdgeFact::OpenedCondition { choice });
+                }
+            }
             OwedCheck::NoEvidence { param } => facts.push(EdgeFact::NoEvidence {
                 ty: at_call(db, body, body_args, *param),
             }),
@@ -2641,6 +2657,7 @@ fn conditions_at_call_expr<'db>(
         .filter_map(|fact| match fact {
             EdgeFact::Condition(condition) => Some(condition),
             EdgeFact::Reaches { .. }
+            | EdgeFact::OpenedCondition { .. }
             | EdgeFact::NoEvidence { .. }
             | EdgeFact::Pending(_)
             | EdgeFact::TooDeep => None,
@@ -2654,6 +2671,10 @@ pub(super) enum EdgeRefusal {
     /// type of a body it runs, beyond the callee's own signature (which is
     /// refused while the call is checked).
     TypeReach,
+    /// It delivers an opened or evidence choice into a slot that a body it
+    /// runs reads through a condition of an implementation selected
+    /// ordinarily (D13).
+    OpenedCondition,
     /// It gives evidence to a type parameter whose values a body it runs
     /// opens or passes on where no choice arrives with it.
     EvidenceThroughParam,
@@ -2677,6 +2698,12 @@ pub(super) fn call_refusal<'db>(
         |fact| matches!(fact, EdgeFact::Reaches { choice, signature: false } if refused(choice)),
     ) {
         return Some(EdgeRefusal::TypeReach);
+    }
+    if facts
+        .iter()
+        .any(|fact| matches!(fact, EdgeFact::OpenedCondition { choice } if refused(choice)))
+    {
+        return Some(EdgeRefusal::OpenedCondition);
     }
     facts
         .iter()
@@ -2746,6 +2773,11 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
                 ),
                 // Refused where `func` itself is checked.
                 EdgeFact::Reaches { .. } => {}
+                EdgeFact::OpenedCondition {
+                    choice: Choice::Slot(SlotRef::Bound(slot)),
+                } => push(OwedCheck::OpenedCondition { slot }, &mut owed),
+                // Refused where `func` itself is checked.
+                EdgeFact::OpenedCondition { .. } => {}
                 EdgeFact::NoEvidence { ty } => {
                     for param in type_params_in(db, ty) {
                         push(OwedCheck::NoEvidence { param }, &mut owed);
@@ -2759,6 +2791,9 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
     }
     for (slot, signature) in super::choice::own_type_reads(db, func, typed) {
         push(OwedCheck::Reaches { slot, signature }, &mut owed);
+    }
+    for slot in super::choice::owed_opened_conditions(db, func, typed) {
+        push(OwedCheck::OpenedCondition { slot }, &mut owed);
     }
     // A value of a type parameter opened with `with`, or passed to a call
     // whose body is not known here (a callable value, a method chosen later):

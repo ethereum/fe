@@ -360,21 +360,39 @@ pub(crate) fn body_slot_uses<'db>(
     typed: &super::TypedBody<'db>,
 ) -> Vec<(TraitInstId<'db>, Option<Choice<'db>>)> {
     let mut uses = Vec::new();
-    let mut note = |goal: TraitInstId<'db>, choice: Option<Choice<'db>>| {
-        let goal = slot_goal(db, goal);
+    for (goal, choice, _) in body_trait_uses(db, typed) {
         if !uses.contains(&(goal, choice)) {
             uses.push((goal, choice));
         }
-    };
+    }
+    uses
+}
+
+/// One trait use a checked body records: the goal it reads, the decision
+/// recorded for it, and whether it is a use's own slot (a trait constant's,
+/// a trait call's) rather than a goal its callee or constant body declares.
+type TraitUse<'db> = (TraitInstId<'db>, Option<Choice<'db>>, bool);
+
+/// The trait uses behind `body_slot_uses`, each marked as a use's own slot or
+/// a declared goal: each trait constant, each call (expression calls and a
+/// `for` loop's protocol calls).
+fn body_trait_uses<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &super::TypedBody<'db>,
+) -> Vec<TraitUse<'db>> {
+    let mut uses = Vec::new();
     for cref in typed.const_refs() {
-        for (goal, choice) in const_use_reads(db, cref) {
-            note(goal, choice);
+        let own = match cref {
+            ConstRef::TraitConst(assoc) => Some(assoc.inst()),
+            _ => None,
+        };
+        for (index, (goal, choice)) in const_use_reads(db, cref).into_iter().enumerate() {
+            uses.push((slot_goal(db, goal), choice, own.is_some() && index == 0));
         }
     }
     let Some(body) = typed.body() else {
         return uses;
     };
-    // Expression calls and a `for` loop's protocol calls.
     let loops = body
         .stmts(db)
         .keys()
@@ -387,7 +405,7 @@ pub(crate) fn body_slot_uses<'db>(
         .chain(loops);
     for callable in calls {
         if let Some(inst) = callable.trait_inst {
-            note(inst, callable.choice());
+            uses.push((slot_goal(db, inst), callable.choice(), true));
         }
         let CallableDef::Func(func) = callable.callable_def() else {
             continue;
@@ -402,10 +420,52 @@ pub(crate) fn body_slot_uses<'db>(
             let delivered = slots
                 .iter()
                 .find_map(|(slot, choice)| (*slot == SlotRef::Bound(bound)).then_some(*choice));
-            note(goal, delivered);
+            uses.push((slot_goal(db, goal), delivered, false));
         }
     }
     uses
+}
+
+/// The bound slots of `func` through which a goal its body leaves to
+/// ordinary selection is proved: an implementation condition, at any depth,
+/// on one of them (the uses' own slots are exempt, as in `call_decisions`).
+/// A caller that delivers an opened or evidence choice into one is refused
+/// (D13, `OwedCheck::OpenedCondition`), as the call written under the `with`
+/// is (`reads_opened_condition`).
+pub(super) fn owed_opened_conditions<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: crate::hir_def::Func<'db>,
+    typed: &super::TypedBody<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let own = own_slots(db, func);
+    if own.is_empty() {
+        return Vec::new();
+    }
+    let cx = TraitSolveCx::new(db, func.scope()).with_assumptions(typed.assumptions());
+    let mut owed = Vec::new();
+    let mut seen = Vec::new();
+    for (goal, choice, own_slot) in body_trait_uses(db, typed) {
+        if own_slot || choice.is_some() || own.contains(&goal) || seen.contains(&goal) {
+            continue;
+        }
+        seen.push(goal);
+        let mut reads = Vec::new();
+        let unknown = ordinary_proof_reads(db, cx, goal, |condition| {
+            let condition = slot_goal(db, condition);
+            if own.contains(&condition) && !reads.contains(&condition) {
+                reads.push(condition);
+            }
+            false
+        });
+        // A proof that cannot be followed is not known to avoid any slot.
+        let reads = if unknown { own.clone() } else { reads };
+        for slot in reads {
+            if !owed.contains(&slot) {
+                owed.push(slot);
+            }
+        }
+    }
+    owed
 }
 
 /// Whether the ordinary proof of `goal` uses, at any depth, an implementation
@@ -1259,7 +1319,18 @@ impl<'db> TyChecker<'db> {
         args: &[crate::hir_def::CallArg<'db>],
     ) -> Result<Choice<'db>, SourceError> {
         let (key, values) = self.closed_call(call, callable, args)?;
-        evidence_choice(self.db, Some(eval_instance_with_args(self.db, key, values)))
+        let value = eval_instance_with_args(self.db, key, values);
+        // A factory whose own body was refused fails here too; its refusal
+        // was reported there.
+        if !matches!(value, EvalOutcome::Ready(_))
+            && let CallableDef::Func(func) = callable.callable_def()
+            && !super::infer_body(self.db, super::BodyOwner::Func(func))
+                .0
+                .is_empty()
+        {
+            return Err(SourceError::Reported);
+        }
+        evidence_choice(self.db, Some(value))
     }
 
     /// A closed const call evaluated while checking: the instance the same
@@ -2717,6 +2788,13 @@ pub(super) fn check_choice_uses<'db>(
                 BodyDiag::ObligationOpening {
                     primary,
                     reason: "evidence passed as a value of a type parameter reaches a body that opens it or passes it on where no choice arrives with it; pass it where its `Evidence` type is written",
+                }
+                .into(),
+            ),
+            Some(EdgeRefusal::OpenedCondition) => diags.push(
+                BodyDiag::ObligationOpening {
+                    primary,
+                    reason: "a body this call runs leaves a bound to an implementation with a condition on a slot this call delivers an opened choice to; conditional implementations under `with` are not supported yet",
                 }
                 .into(),
             ),
