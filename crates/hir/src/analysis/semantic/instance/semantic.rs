@@ -525,15 +525,11 @@ fn expand_row_args<'db>(
             });
         }
     }
-    // The call's providers for the components it resolved, renumbered.
+    // Renumber the callee's slots, not their origins: a provider's source can
+    // name a caller effect whose index happens to overlap a callee row slot.
     for specialization in callable.effect_providers_mut() {
         let provider = &mut specialization.provider;
-        if let ProviderSource::UsesParam {
-            requirement_idx, ..
-        } = &mut provider.source
-            && let Some(&slot) = slots.get(requirement_idx)
-        {
-            *requirement_idx = slot;
+        if let Some(&slot) = slots.get(&provider.provider_idx) {
             provider.provider_idx = slot;
         }
     }
