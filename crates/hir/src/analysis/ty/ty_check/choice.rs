@@ -1342,18 +1342,7 @@ impl<'db> TyChecker<'db> {
         args: &[crate::hir_def::CallArg<'db>],
     ) -> Result<Choice<'db>, SourceError> {
         let (key, values) = self.closed_call(call, callable, args)?;
-        let value = eval_instance_with_args(self.db, key, values);
-        // A factory whose own body was refused fails here too; its refusal
-        // was reported there.
-        if !matches!(value, EvalOutcome::Ready(_))
-            && let CallableDef::Func(func) = callable.callable_def()
-            && !super::infer_body(self.db, super::BodyOwner::Func(func))
-                .0
-                .is_empty()
-        {
-            return Err(SourceError::Reported);
-        }
-        evidence_choice(self.db, Some(value))
+        evidence_choice(self.db, Some(eval_instance_with_args(self.db, key, values)))
     }
 
     /// A closed const call evaluated while checking: the instance the same
