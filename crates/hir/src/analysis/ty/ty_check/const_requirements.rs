@@ -2564,9 +2564,13 @@ fn calls_directly<'db>(
     body: Body<'db>,
     expr: ExprId,
 ) -> bool {
-    super::choice::calls_directly(db, body, expr, |callee| {
-        typed.expr_binding(callee).is_some()
-    })
+    super::choice::calls_directly(
+        db,
+        body,
+        expr,
+        |callee| typed.expr_binding(callee).is_some(),
+        |callee| Some(typed.expr_ty(db, callee)),
+    )
 }
 
 fn facts_at_call_expr<'db>(

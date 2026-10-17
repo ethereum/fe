@@ -2477,6 +2477,9 @@ impl<'db> TyChecker<'db> {
                                     Some((receiver, receiver_prop)),
                                     true,
                                 );
+                                if self.env.is_value_call(pending.expr) {
+                                    self.refuse_evidence_value_call_args(call_args);
+                                }
 
                                 callable.process_constraints(
                                     self,

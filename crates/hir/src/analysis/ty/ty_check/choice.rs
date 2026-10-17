@@ -260,23 +260,36 @@ pub(super) enum SourceError {
     Reported,
 }
 
-/// Whether `expr` calls through a path naming the function, rather than
-/// through a value; `is_binding` says whether an expression names a local or
-/// a parameter. Any other expression than a call counts as direct (a method
-/// call, an operator). The one classification of call edges.
+/// Whether `expr`'s callee body receives the call's decisions: a call through
+/// a path naming the function, or a call of a value whose type implements a
+/// callable shape (`f(x)` means `f.call(x)`). A call of a function value (a
+/// closure or a function item, reached through a binding, block or field)
+/// runs a body made elsewhere, which receives none (D14). `is_binding` says
+/// whether an expression names a local or a parameter, `callee_ty` gives its
+/// type. Any other expression than a call counts as direct (a method call,
+/// an operator). The one classification of call edges.
 pub(super) fn calls_directly<'db>(
     db: &'db dyn HirAnalysisDb,
     body: crate::hir_def::Body<'db>,
     expr: ExprId,
     is_binding: impl Fn(ExprId) -> bool,
+    callee_ty: impl Fn(ExprId) -> Option<TyId<'db>>,
 ) -> bool {
     match expr.data(db, body) {
         Partial::Present(Expr::Call(callee, _)) => {
             matches!(callee.data(db, body), Partial::Present(Expr::Path(..)))
                 && !is_binding(*callee)
+                || callee_ty(*callee).is_some_and(|ty| !is_function_value(db, ty))
         }
         _ => true,
     }
+}
+
+/// A value whose call runs a function value's body: a closure or a function
+/// item, behind any capability.
+pub(super) fn is_function_value<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    let ty = ty.as_capability(db).map_or(ty, |(_, inner)| inner);
+    ty.is_func(db) || ty.as_closure(db).is_some()
 }
 
 /// Every trait use a checked body records, as the goal it reads at the use
@@ -1041,7 +1054,7 @@ impl<'db> TyChecker<'db> {
                 let Some(callable) = self.env.semantic_call(expr).cloned() else {
                     return Err(SourceError::Runtime);
                 };
-                self.factory_choice(&callable, args)
+                self.factory_choice(expr, &callable, args)
             }
             // A block means its tail; a `with` block means its tail under
             // the block's frame, which the tail's own decision already read.
@@ -1086,18 +1099,21 @@ impl<'db> TyChecker<'db> {
     /// values is evaluated now; its result names the choice.
     fn factory_choice(
         &mut self,
+        call: ExprId,
         callable: &Callable<'db>,
         args: &[crate::hir_def::CallArg<'db>],
     ) -> Result<Choice<'db>, SourceError> {
-        let (key, values) = self.closed_call(callable, args)?;
+        let (key, values) = self.closed_call(call, callable, args)?;
         evidence_choice(self.db, Some(eval_instance_with_args(self.db, key, values)))
     }
 
     /// A closed const call evaluated while checking: the instance the same
-    /// call gets anywhere (`checked_call_key`), with the decisions it records
-    /// here, and its closed argument values. One meaning for one call.
+    /// call gets anywhere (`checked_call_key`), with the decisions recorded
+    /// where it is written (`decided_call`, wherever its value is used), and
+    /// its closed argument values. One meaning for one call.
     fn closed_call(
         &mut self,
+        call: ExprId,
         callable: &Callable<'db>,
         args: &[crate::hir_def::CallArg<'db>],
     ) -> Result<(SemanticInstanceKey<'db>, Vec<SemConstId<'db>>), SourceError> {
@@ -1124,15 +1140,16 @@ impl<'db> TyChecker<'db> {
         let unknown = SourceError::Unsupported(
             "a compile-time call that reads a choice not known here is not supported",
         );
-        let frame = self.env.choice_frames.current();
-        let (own, decided) = self
+        // Delivered here: the closed evidence arguments' values, then the
+        // recorder's decisions.
+        callable.set_delivered(Vec::new());
+        let (decided, refusals) = self
             .env
-            .call_decisions(frame, &callable)
-            .map_err(|_| unknown)?;
-        if matches!(own, Some(Choice::Slot(_))) {
+            .decided_call(self.env.use_frames[call], callable, true);
+        if !refusals.is_empty() || matches!(decided.choice(), Some(Choice::Slot(_))) {
             return Err(unknown);
         }
-        callable.set_choice(own);
+        callable = decided;
         let mut delivered = values
             .iter()
             .enumerate()
@@ -1143,7 +1160,7 @@ impl<'db> TyChecker<'db> {
                 _ => None,
             })
             .collect::<Vec<_>>();
-        delivered.extend(decided);
+        delivered.extend(callable.delivered().iter().copied());
         callable.set_delivered(delivered);
         let (scope, assumptions) = (self.env.scope(), self.env.assumptions());
         let Some((body, _)) = callable.called_body(self.db, scope, assumptions) else {
@@ -1198,7 +1215,7 @@ impl<'db> TyChecker<'db> {
                     // A trait constant is read through its decisions here,
                     // as anywhere; one that waits for a choice is not closed.
                     Some(ConstRef::TraitConst(assoc)) => {
-                        let frame = self.env.choice_frames.current();
+                        let frame = self.env.use_frames[expr];
                         let Ok(decided) = self.env.trait_const_decisions(frame, assoc) else {
                             return Err(SourceError::Unsupported(
                                 "a factory argument that reads a choice not known here is not supported",
@@ -1231,7 +1248,7 @@ impl<'db> TyChecker<'db> {
                     && let CallableDef::Func(func) = callable.callable_def()
                     && func.is_const(self.db)
                 {
-                    let (key, values) = self.closed_call(&callable, args)?;
+                    let (key, values) = self.closed_call(expr, &callable, args)?;
                     return eval_instance_with_args(self.db, key, values)
                         .into_ready()
                         .ok_or(SourceError::Unsupported(
@@ -1926,6 +1943,59 @@ impl<'db> TyCheckEnv<'db> {
         uses
     }
 
+    /// One call's decisions, recorded where it is written (`frame`), whatever
+    /// its form: an expression call, a value call, a `for` loop's protocol
+    /// call, or a factory call denoted later (`closed_call`). A call whose
+    /// callee body receives decisions (`calls_directly`) gets its own slot's
+    /// and its body's bounds' (D8); a call of a function value gets none
+    /// (D14). Also refused: a declared type that reads an opened slot (D5).
+    pub(super) fn decided_call(
+        &self,
+        frame: Option<FrameId>,
+        mut callable: Callable<'db>,
+        direct: bool,
+    ) -> (Callable<'db>, Vec<ChoiceRefusal>) {
+        let db = self.db();
+        let mut refusals = Vec::new();
+        if frame.is_some()
+            && call_slot_reads(db, &callable)
+                .into_iter()
+                .any(|slot| self.frame_choice(frame, slot).is_some())
+        {
+            refusals.push(ChoiceRefusal::DependentType);
+        }
+        if direct {
+            let (own, decided) = match self.call_decisions(frame, &callable) {
+                Ok(decisions) => decisions,
+                Err(refusal) => {
+                    refusals.push(refusal);
+                    (None, Vec::new())
+                }
+            };
+            if callable.choice().is_none() {
+                callable.set_choice(own);
+            }
+            let mut delivered = callable.delivered().to_vec();
+            delivered.extend(decided);
+            callable.set_delivered(delivered);
+        }
+        // The body read here for a concrete goal is what the instance
+        // must run (checked where the instance is built, `const_ref`).
+        let concrete = callable.trait_inst().is_none_or(|inst| {
+            !inst
+                .args(db)
+                .iter()
+                .any(|ty| ty.has_param(db) || ty.has_var(db))
+        });
+        if concrete && !matches!(callable.choice(), Some(Choice::Slot(_))) {
+            let body = callable
+                .called_body(db, self.scope(), self.assumptions())
+                .map(|(body, _)| body);
+            callable.set_checked_body(body);
+        }
+        (callable, refusals)
+    }
+
     /// Record each trait use's decision, each direct call's deliveries, and
     /// the choices each function value would carry. A use whose slot could
     /// coincide with an opened slot without being it is recorded as
@@ -1934,75 +2004,58 @@ impl<'db> TyCheckEnv<'db> {
         let db = self.db();
         // A call through a function value made elsewhere receives nothing from
         // the frame where it is called; only a path naming the function does.
+        let is_binding = |callee| {
+            self.typed_expr(callee)
+                .is_some_and(|prop| prop.binding.is_some())
+        };
         let mut path_callees = Vec::new();
-        for (expr, data) in self.body().exprs(db).iter() {
+        for (_, data) in self.body().exprs(db).iter() {
             if let Partial::Present(Expr::Call(callee, _)) = data
-                && calls_directly(db, self.body(), expr, |callee| {
-                    self.typed_expr(callee)
-                        .is_some_and(|prop| prop.binding.is_some())
-                })
+                && matches!(
+                    callee.data(db, self.body()),
+                    Partial::Present(Expr::Path(..))
+                )
+                && !is_binding(*callee)
             {
                 path_callees.push(*callee);
             }
         }
-        let exprs = self
+        let calls = self
             .semantic_expr_lowering
             .iter()
-            .filter_map(|(expr, lowering)| lowering.is_some().then_some(expr))
+            .filter_map(|(expr, lowering)| match lowering {
+                Some(SemanticExprLowering::Call { callable }) => Some((
+                    expr,
+                    callable.clone(),
+                    calls_directly(db, self.body(), expr, is_binding, |callee| {
+                        self.typed_expr(callee).map(|prop| prop.ty)
+                    }),
+                )),
+                _ => None,
+            })
             .collect::<Vec<_>>();
-        for expr in exprs {
-            let frame = self.use_frames[expr];
-            let Some(SemanticExprLowering::Call { callable }) =
-                self.semantic_expr_lowering[expr].as_ref()
-            else {
-                continue;
-            };
-            let mut callable = callable.clone();
-            // Every call, whatever its kind, is read against the frame where
-            // it is written: a declared type that reads an opened slot has no
-            // one meaning (D5).
-            if frame.is_some()
-                && call_slot_reads(db, &callable)
-                    .into_iter()
-                    .any(|slot| self.frame_choice(frame, slot).is_some())
-            {
-                self.choice_refusals
-                    .push((expr, ChoiceRefusal::DependentType));
-            }
-            let direct = match expr.data(db, self.body()) {
-                Partial::Present(Expr::Call(callee, _)) => path_callees.contains(callee),
-                _ => true,
-            };
-            if direct {
-                let (own, decided) = match self.call_decisions(frame, &callable) {
-                    Ok(decisions) => decisions,
-                    Err(refusal) => {
-                        self.choice_refusals.push((expr, refusal));
-                        (None, Vec::new())
-                    }
-                };
-                if callable.choice().is_none() {
-                    callable.set_choice(own);
-                }
-                let mut delivered = callable.delivered().to_vec();
-                delivered.extend(decided);
-                callable.set_delivered(delivered);
-            }
-            // The body read here for a concrete goal is what the instance
-            // must run (checked where the instance is built, `const_ref`).
-            let concrete = callable.trait_inst().is_none_or(|inst| {
-                !inst
-                    .args(db)
-                    .iter()
-                    .any(|ty| ty.has_param(db) || ty.has_var(db))
-            });
-            if concrete && !matches!(callable.choice(), Some(Choice::Slot(_))) {
-                let body = callable
-                    .called_body(db, self.scope(), self.assumptions())
-                    .map(|(body, _)| body);
-                callable.set_checked_body(body);
-            }
+        for (expr, callable, direct) in calls {
+            let (callable, refusals) = self.decided_call(self.use_frames[expr], callable, direct);
+            self.choice_refusals
+                .extend(refusals.into_iter().map(|refusal| (expr, refusal)));
             self.semantic_expr_lowering[expr] = Some(SemanticExprLowering::Call { callable });
+        }
+        // A `for` loop's protocol calls are calls written at the loop.
+        let loops = self
+            .for_loop_plans
+            .iter()
+            .filter_map(|(stmt, plan)| Some((stmt, plan.as_ref()?.bases.first().copied()?)))
+            .collect::<Vec<_>>();
+        for (stmt, written) in loops {
+            let mut plan = self.for_loop_plans[stmt].clone().unwrap();
+            for call in &mut plan.calls {
+                let (callable, refusals) =
+                    self.decided_call(self.use_frames[written], call.callable.clone(), true);
+                self.choice_refusals
+                    .extend(refusals.into_iter().map(|refusal| (written, refusal)));
+                call.callable = callable;
+            }
+            self.for_loop_plans[stmt] = Some(plan);
         }
         // A function value is a path naming a function that no call takes as
         // its callee. It would carry the decisions for the slots it reads.

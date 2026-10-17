@@ -131,7 +131,7 @@ pub(crate) struct TyCheckEnv<'db> {
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
 
     /// The Collection protocol plan of each for loop, keyed by its statement.
-    for_loop_plans: SecondaryMap<StmtId, Option<ForLoopPlan<'db>>>,
+    pub(super) for_loop_plans: SecondaryMap<StmtId, Option<ForLoopPlan<'db>>>,
 
     /// The constrained type applications that resolving the body's paths
     /// passed through, each with the span of the expression or pattern whose
@@ -1500,6 +1500,10 @@ impl<'db> TyCheckEnv<'db> {
             .values_mut()
             .flatten()
             .for_each(|callable| *callable = callable.clone().fold_with(self.db, &mut prober));
+        self.for_loop_plans
+            .values_mut()
+            .flatten()
+            .for_each(|plan| *plan = plan.clone().fold_with(self.db, &mut prober));
         self.record_choice_decisions();
         let assumptions = self.assumptions.fold_with(self.db, &mut prober);
         let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
@@ -1509,10 +1513,6 @@ impl<'db> TyCheckEnv<'db> {
             .flatten()
             .for_each(|lowering| *lowering = (*lowering).fold_with(self.db, &mut prober));
 
-        self.for_loop_plans
-            .values_mut()
-            .flatten()
-            .for_each(|plan| *plan = plan.clone().fold_with(self.db, &mut prober));
         self.closure_infos
             .values_mut()
             .flatten()

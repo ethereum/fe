@@ -516,7 +516,7 @@ fn signatures_are_read_through_one_list() {
     }
     for (reader, through) in [
         ("fn refuse_choice_dependent_signature", "call_slot_reads("),
-        ("fn record_choice_decisions", "call_slot_reads("),
+        ("fn decided_call", "call_slot_reads("),
         ("fn own_type_reads", "declared_slot_reads("),
     ] {
         let function = functions
@@ -528,6 +528,55 @@ fn signatures_are_read_through_one_list() {
             "{reader} does not read {through}"
         );
     }
+}
+
+#[test]
+fn calls_are_decided_where_they_are_written() {
+    // L1: every call form (an expression call, a value call, a `for` loop's
+    // protocol calls, a factory call denoted where its value is used) is
+    // decided by one recorder, under the frame recorded where it is written.
+    let checker = code(&text_of(CHECKER));
+    let checked = functions(&checker);
+    for function in &checked {
+        let head = function.lines().next().unwrap_or_default();
+        if function.contains(".call_decisions(") {
+            assert!(
+                head.contains("fn decided_call"),
+                "a call is decided outside the recorder: {head}"
+            );
+        }
+    }
+    let function = |name: &str| {
+        checked
+            .iter()
+            .find(|function| function.lines().next().unwrap_or_default().contains(name))
+            .unwrap_or_else(|| panic!("{name} exists"))
+    };
+    let recorder = function("fn record_choice_decisions");
+    assert_eq!(recorder.matches(".decided_call(").count(), 2);
+    assert!(recorder.contains("for_loop_plans"));
+    let factory = function("fn closed_call");
+    assert!(factory.contains(".decided_call(self.env.use_frames["));
+    assert!(!factory.contains("choice_frames.current()"));
+    // One classification of the calls whose callee body receives decisions:
+    // the owed checks' `calls_directly` delegates to the recorder's.
+    assert_eq!(
+        occurrences_outside("fn is_function_value", &[CHECKER]),
+        Vec::<String>::new()
+    );
+    let owed = code(&text_of("src/analysis/ty/ty_check/const_requirements.rs"));
+    let owed_functions = functions(&owed);
+    let wrapper = owed_functions
+        .iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn calls_directly")
+        })
+        .expect("the owed checks classify calls");
+    assert!(wrapper.contains("super::choice::calls_directly("));
 }
 
 #[test]
