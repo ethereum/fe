@@ -870,6 +870,21 @@ pub(super) fn checked_body<'db>(
     owner: BodyOwner<'db>,
 ) -> CheckedBody<'db> {
     let (mut diags, typed) = infer_body(db, owner).clone();
+    // A `const` item written inside `with` that reads a slot a frame around
+    // it answers is refused for now (decision (c)); later, items read the
+    // frames around them.
+    if let BodyOwner::Const(constant) = owner
+        && let Some(body) = constant.body(db).to_opt()
+        && written_frames::refuses_read(db, body, None)
+    {
+        diags.push(
+            BodyDiag::ObligationOpening {
+                primary: body.expr(db).span(body).into(),
+                reason: "a `const` item written inside `with` cannot read a slot the `with` answers yet",
+            }
+            .into(),
+        );
+    }
     let mut recursive = false;
     if diags_allow_evaluation(db, &diags) {
         let requirements = const_requirements::check_body_requirements(db, owner, &typed);

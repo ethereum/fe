@@ -186,6 +186,11 @@ fn enclosing_func_body<'db>(
                 outermost = enclosing;
                 at = scope.parent(db);
             }
+            // A `const` item written in a block: its body is placed where the
+            // item is (`body_layout`).
+            ScopeId::Item(ItemKind::Const(_)) => {
+                at = scope.parent(db);
+            }
             _ => return None,
         }
     }
@@ -266,8 +271,17 @@ fn body_layout<'db>(db: &'db dyn HirAnalysisDb, func_body: Body<'db>) -> BodyLay
         fn visit_item(
             &mut self,
             _: &mut VisitorCtxt<'db, crate::visitor::prelude::LazyItemSpan<'db>>,
-            _: ItemKind<'db>,
+            item: ItemKind<'db>,
         ) {
+            // A `const` item written inside the body reads the frames written
+            // around it (refused where it reads a slot one answers, decision
+            // (c)); other items are not walked.
+            if let ItemKind::Const(constant) = item
+                && let Some(at) = self.exprs.last()
+                && let Some(body) = constant.body(self.db).to_opt()
+            {
+                self.layout.places.push((body, Place::Expr(*at)));
+            }
         }
     }
     let mut collect = Collect {
