@@ -1627,16 +1627,18 @@ impl<'db> TyChecker<'db> {
                     None if slot.args(self.db).iter().any(|ty| ty.has_param(self.db)) => {
                         Err("a generic goal can be proved only under a `with` that opens it")
                     }
-                    // D13, as for the call form of the same goal.
+                    // D13, refused as the call form of the same goal is.
                     None if self.env.reads_opened_condition(
                         self.env.choice_frames.current(),
                         [goal],
                         None,
                     ) =>
                     {
-                        Err(
-                            "the goal is proved through an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet",
-                        )
+                        self.push_diag(BodyDiag::ObligationOpening {
+                            primary: expr.span(self.body()).into(),
+                            reason: "the goal is proved through an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet",
+                        });
+                        return false;
                     }
                     None => self.ordinary_choice(goal).map(Choice::Known),
                 }
