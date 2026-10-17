@@ -2277,21 +2277,23 @@ impl<'db> RmirEmitter<'db> {
             let value = self.lower_zst_value_placeholder(bb, field_ty, stored.clone());
             return (value, stored);
         }
-        let value = if let Some(boundary) =
-            boundary_spec_for_ty_in_env(self.db, self.env, field_ty, AddressSpace::Memory)
-        {
-            self.lower_semantic_operand_for_boundary(bb, field, &boundary)
-        } else {
-            let class = self
-                .top_level_class_for_ty(field_ty, AddressSpace::Memory)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "non-zst constructor field should have a runtime class: owner={:?} field_ty={} stored={stored:#?}",
-                        self.semantic_body.owner().key(self.db).owner(self.db),
-                        field_ty.pretty_print(self.db),
-                    )
-                });
-            self.lower_semantic_operand_for_class(bb, field, &class)
+        let boundary =
+            boundary_spec_for_ty_in_env(self.db, self.env, field_ty, AddressSpace::Memory);
+        let runtime_field = self.runtime_operand(field);
+        let roots = self.runtime_roots();
+        let value_classes = self.normalized_value_classes();
+        // The selection inference classified the field by.
+        let selected = self.with_current_body_cx(|cx| {
+            let mut class_cache = InferClassCache::new(self.semantic_body.locals.len());
+            RuntimeArgSelector::new(cx.env, cx.carriers, Some(&mut class_cache))
+                .with_concrete_roots(&roots)
+                .with_concrete_value_classes(&value_classes)
+                .selected_ctor_field(runtime_field, boundary.as_ref())
+        });
+        // With no source selected, inference gave the field its stored class.
+        let value = match selected {
+            Some(selected) => self.lower_selected_runtime_arg(bb, field, &selected),
+            None => self.lower_semantic_operand_for_class(bb, field, &stored),
         };
         let class = self.value_class(value).cloned().unwrap_or(stored);
         (value, class)
@@ -5967,24 +5969,6 @@ impl<'db> RmirEmitter<'db> {
             RuntimeClass::Scalar(_) | RuntimeClass::AggregateValue { .. } => None,
             RuntimeClass::RawAddr { pointee: None, .. } => None,
         }
-    }
-
-    fn lower_semantic_operand_for_boundary(
-        &mut self,
-        bb: RBlockId,
-        operand: NOperand,
-        boundary: &crate::runtime::RuntimeBoundarySpec<'db>,
-    ) -> RLocalId {
-        let runtime_operand = self.runtime_operand(operand);
-        let roots = self.runtime_roots();
-        let value_classes = self.normalized_value_classes();
-        let selected = self.with_current_body_cx(|cx| {
-            RuntimeArgSelector::new(cx.env, cx.carriers, None)
-                .with_concrete_roots(&roots)
-                .with_concrete_value_classes(&value_classes)
-                .selected_semantic_operand_for_boundary(runtime_operand, boundary)
-        });
-        self.lower_selected_runtime_arg(bb, operand, &selected)
     }
 
     fn lower_selected_runtime_arg(
