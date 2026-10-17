@@ -206,6 +206,10 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
 
 #[salsa::tracked(return_ref)]
 pub fn body_references<'db>(db: &'db dyn HirDb, body: Body<'db>) -> Vec<ReferenceView<'db>> {
+    // The condition's body records the references of a comparison's sides.
+    if body.is_static_assert_comparison_side(db) {
+        return Vec::new();
+    }
     let mut collector = ReferenceCollector::for_body(db, body);
     let mut ctxt = VisitorCtxt::with_body(db, body);
     collector.visit_body(&mut ctxt, body);
