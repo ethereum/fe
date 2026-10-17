@@ -178,6 +178,20 @@ fn enclosing_func_body<'db>(
     None
 }
 
+/// Every constant body written directly in `func_body`, in any position:
+/// the constant arguments and array lengths of its paths, types, patterns
+/// and `with` keys.
+pub(crate) fn written_bodies<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func_body: Body<'db>,
+) -> Vec<Body<'db>> {
+    body_layout(db, func_body)
+        .places
+        .iter()
+        .map(|(body, _)| *body)
+        .collect()
+}
+
 /// For one function body: where each constant body directly in it is
 /// written, and each expression's parent.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, salsa::Update)]

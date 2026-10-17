@@ -2292,6 +2292,24 @@ pub(super) fn own_type_reads<'db>(
             note(goal, false);
         }
     }
+    // Every constant written in the body, in any position: lowering reads it
+    // with the ordinary implementation in the instance, so a bound it reads
+    // cannot receive an opened choice (`Arr<{ T::P }>::K` has type `usize`,
+    // so no expression type shows the read).
+    for written in super::written_frames::written_bodies(db, body) {
+        let owner = super::BodyOwner::AnonConstBody {
+            body: written,
+            expected: TyId::new(
+                db,
+                TyData::TyBase(crate::analysis::ty::ty_def::TyBase::Prim(
+                    crate::analysis::ty::ty_def::PrimTy::Usize,
+                )),
+            ),
+        };
+        for (goal, _) in body_slot_uses(db, &super::infer_body(db, owner).1) {
+            note(goal, false);
+        }
+    }
     for (_, captured) in typed
         .function_value_choices()
         .iter()
