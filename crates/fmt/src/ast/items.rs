@@ -492,6 +492,22 @@ fn func_sig_to_doc<'a>(
 
     let has_uses = sig.uses_clause().is_some();
     let has_where = sig.where_clause().is_some();
+    // A bare `uses E` on its own line in a trait declares an associated row.
+    // Keep only that ambiguous form attached to a trait declaration's signature.
+    let keep_uses_inline = sig
+        .syntax()
+        .parent()
+        .and_then(|func| func.parent())
+        .and_then(|items| items.parent())
+        .is_some_and(|parent| ast::Trait::can_cast(parent.kind()))
+        && sig.uses_clause().is_some_and(|uses| {
+            uses.syntax()
+                .descendants_with_tokens()
+                .filter_map(|element| element.into_token())
+                .map(|token| token.kind())
+                .filter(|kind| !kind.is_trivia() && *kind != SyntaxKind::Newline)
+                .eq([SyntaxKind::UsesKw, SyntaxKind::Ident])
+        });
 
     // Build the core signature (before uses/where) to measure its length
     let core_sig = alloc
@@ -512,14 +528,17 @@ fn func_sig_to_doc<'a>(
     // Force clauses to new lines if:
     // - uses_new_line/where_new_line config is set, OR
     // - the core signature is already long (> 60 chars)
-    let force_uses_break = has_uses && (ctx.config.uses_new_line || core_flat_len > 60);
+    let force_uses_break =
+        has_uses && !keep_uses_inline && (ctx.config.uses_new_line || core_flat_len > 60);
     let force_where_break = has_where && (ctx.config.where_new_line || core_flat_len > 60);
     let force_clause_break = force_uses_break || force_where_break;
 
     let uses_doc = sig.uses_clause().map_or_else(
         || alloc.nil(),
         |u| {
-            if force_uses_break {
+            if keep_uses_inline {
+                alloc.text(" ").append(u.to_doc(ctx))
+            } else if force_uses_break {
                 alloc.hardline().append(u.to_doc(ctx))
             } else {
                 alloc.line().append(u.to_doc(ctx))
