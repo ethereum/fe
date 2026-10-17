@@ -647,6 +647,14 @@ pub fn invalidate_consts<'db>(
             ty: super::ty_def::TyId<'db>,
         ) -> super::ty_def::TyId<'db> {
             match ty.data(db) {
+                // A constant refused where it is read already stands for the
+                // refusal, and unifies with any constant (`unify`), so the
+                // code around it still infers.
+                super::ty_def::TyData::ConstTy(const_ty)
+                    if super::ty_check::written_frames::refused_at_read(db, *const_ty) =>
+                {
+                    ty
+                }
                 super::ty_def::TyData::ConstTy(_) => super::ty_def::TyId::const_ty(
                     db,
                     super::const_ty::ConstTyId::invalid(db, super::ty_def::InvalidCause::Other),

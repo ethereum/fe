@@ -357,7 +357,7 @@ pub(crate) fn const_use_reads<'db>(
             if assoc.inst().args(db).iter().any(|ty| ty.has_var(db)) {
                 return own.into_iter().collect();
             }
-            let Some((body, subst)) = assoc.body_that_runs(db) else {
+            let Some((body, _, subst)) = assoc.body_that_runs(db) else {
                 return own.into_iter().collect();
             };
             (own, body, subst, assoc.delivered())
@@ -638,9 +638,12 @@ fn type_slot_reads_into<'db>(
 
 impl<'db> TyChecker<'db> {
     /// Refuse a type that reads a constant of a slot the enclosing `with`
-    /// opened: no stage could give it one meaning (review section 5).
+    /// opened: no stage could give it one meaning (review section 5). `ty`
+    /// is the type as inferred here, `written` the part written here (the
+    /// same type, or a literal's path before its expected type fills it).
     pub(super) fn refuse_choice_dependent_ty(
         &mut self,
+        written: TyId<'db>,
         ty: TyId<'db>,
         primary: DynLazySpan<'db>,
     ) -> bool {
@@ -649,9 +652,9 @@ impl<'db> TyChecker<'db> {
             return false;
         }
         // A type written here that holds a constant refused where it is read
-        // is this refusal; one read elsewhere is not counted again
-        // (`type_slot_reads`).
-        let dependent = holds_refused_read(self.db, ty)
+        // is this refusal; one read elsewhere, such as an annotation's that a
+        // literal's type takes, is not counted again (`type_slot_reads`).
+        let dependent = holds_refused_read(self.db, written)
             || type_slot_reads(self.db, ty)
                 .into_iter()
                 .any(|slot| self.env.frame_choice(frame, slot).is_some());
@@ -1216,7 +1219,10 @@ impl<'db> TyChecker<'db> {
                     // as anywhere; one that waits for a choice is not closed.
                     Some(ConstRef::TraitConst(assoc)) => {
                         let frame = self.env.use_frames[expr];
-                        let Ok(decided) = self.env.trait_const_decisions(frame, assoc) else {
+                        let Ok(decided) =
+                            self.env
+                                .trait_const_decisions(frame, assoc, &mut Vec::new())
+                        else {
                             return Err(SourceError::Unsupported(
                                 "a factory argument that reads a choice not known here is not supported",
                             ));
@@ -1283,7 +1289,10 @@ impl<'db> TyChecker<'db> {
         let frame = self.env.choice_frames.current();
         let (decided, own, delivered) = match cref {
             ConstRef::TraitConst(use_) => {
-                let decided = self.env.trait_const_decisions(frame, use_).ok()?;
+                let decided = self
+                    .env
+                    .trait_const_decisions(frame, use_, &mut Vec::new())
+                    .ok()?;
                 (
                     ConstRef::TraitConst(decided),
                     decided.choice(),
@@ -1291,7 +1300,10 @@ impl<'db> TyChecker<'db> {
                 )
             }
             ConstRef::InherentConst(use_) => {
-                let decided = self.env.inherent_const_decisions(frame, use_).ok()?;
+                let decided = self
+                    .env
+                    .inherent_const_decisions(frame, use_, &mut Vec::new())
+                    .ok()?;
                 (ConstRef::InherentConst(decided), None, decided.delivered())
             }
             ConstRef::Const(_) => return Some(cref),
@@ -2117,15 +2129,21 @@ impl<'db> TyCheckEnv<'db> {
             .collect::<Vec<_>>();
         for expr in exprs {
             let frame = self.use_frames[expr];
+            let mut reached = Vec::new();
             let decided = match self.const_refs[expr] {
                 Some(ConstRef::TraitConst(use_)) => self
-                    .trait_const_decisions(frame, use_)
+                    .trait_const_decisions(frame, use_, &mut reached)
                     .map(ConstRef::TraitConst),
                 Some(ConstRef::InherentConst(use_)) => self
-                    .inherent_const_decisions(frame, use_)
+                    .inherent_const_decisions(frame, use_, &mut reached)
                     .map(ConstRef::InherentConst),
                 _ => continue,
             };
+            for goal in reached {
+                if !self.const_reaches.contains(&goal) {
+                    self.const_reaches.push(goal);
+                }
+            }
             match decided {
                 Ok(decided) => self.const_refs[expr] = Some(decided),
                 Err(refusal) => self.choice_refusals.push((expr, refusal)),
@@ -2180,18 +2198,14 @@ impl<'db> TyCheckEnv<'db> {
         &self,
         frame: Option<FrameId>,
         use_: crate::analysis::ty::assoc_const::AssocConstUse<'db>,
+        reached: &mut Vec<TraitInstId<'db>>,
     ) -> Result<crate::analysis::ty::assoc_const::AssocConstUse<'db>, ChoiceRefusal> {
         let db = self.db();
         let own = self.decide(frame, use_.inst());
         let use_ = use_.with_choice(own);
         let mut undecided = Vec::new();
         let items = match use_.body_that_runs(db) {
-            Some((body, subst)) => self.body_decisions(
-                frame,
-                const_declared_goals(db, body, &subst),
-                false,
-                &mut undecided,
-            ),
+            Some(runs) => self.body_decisions(frame, runs, false, &mut undecided, reached)?,
             // A body chosen later: the trait's default body declares the
             // slots a constant's declaration has (its `Self` and supertraits),
             // reached by name (`DeliveryList::to_body`), and each
@@ -2199,28 +2213,22 @@ impl<'db> TyCheckEnv<'db> {
             // constant's bounds decided here, as a call's candidates are.
             None => {
                 let mut items = match use_.trait_default_body(db) {
-                    Some((body, subst)) => self.body_decisions(
-                        frame,
-                        const_declared_goals(db, body, &subst),
-                        true,
-                        &mut undecided,
-                    ),
+                    Some(default) => {
+                        self.body_decisions(frame, default, true, &mut undecided, reached)?
+                    }
                     None => Vec::new(),
                 };
                 for resolved in self.applicable_impls(use_.inst()) {
-                    if let Some((body, _, subst)) =
+                    if let Some(candidate) =
                         crate::analysis::ty::trait_def::selected_assoc_const_body_template(
                             db,
                             resolved,
                             use_.name(),
                         )
                     {
-                        for item in self.body_decisions(
-                            frame,
-                            const_declared_goals(db, body, &subst),
-                            false,
-                            &mut undecided,
-                        ) {
+                        for item in
+                            self.body_decisions(frame, candidate, false, &mut undecided, reached)?
+                        {
                             if !items.contains(&item) {
                                 items.push(item);
                             }
@@ -2242,6 +2250,7 @@ impl<'db> TyCheckEnv<'db> {
         &self,
         frame: Option<FrameId>,
         use_: crate::analysis::ty::assoc_const::InherentConstUse<'db>,
+        reached: &mut Vec<TraitInstId<'db>>,
     ) -> Result<crate::analysis::ty::assoc_const::InherentConstUse<'db>, ChoiceRefusal> {
         let db = self.db();
         let Some((body, impl_args)) =
@@ -2261,13 +2270,14 @@ impl<'db> TyCheckEnv<'db> {
         ) else {
             return Ok(use_);
         };
+        let Some(ty) =
+            crate::analysis::ty::const_ty::inherent_const_decl_ty(db, use_.impl_(), use_.name())
+        else {
+            return Ok(use_);
+        };
         let mut undecided = Vec::new();
-        let items = self.body_decisions(
-            frame,
-            const_declared_goals(db, body, &subst),
-            false,
-            &mut undecided,
-        );
+        let items =
+            self.body_decisions(frame, (body, ty, subst), false, &mut undecided, reached)?;
         if self.reads_opened_condition(frame, undecided, None) {
             return Err(ChoiceRefusal::OpenedCondition);
         }
@@ -2275,14 +2285,23 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     /// The decisions for a constant body's bounds, by its own names; the
-    /// goals left ordinary are added to `undecided`.
+    /// goals left ordinary are added to `undecided`. A bound whose choice
+    /// reaches a type the body reads (`const_type_reads`) receives no opened
+    /// or evidence choice (D5, refused as a call into a function's is); one
+    /// that passes the user's own bound on is added to `reached`, which the
+    /// user owes its callers (`own_type_reads`).
     fn body_decisions(
         &self,
         frame: Option<FrameId>,
-        goals: Vec<(TraitInstId<'db>, TraitInstId<'db>)>,
+        (body, ty, subst): (
+            crate::hir_def::Body<'db>,
+            TyId<'db>,
+            crate::analysis::ty::ty_lower::CompleteSubst<'db>,
+        ),
         nominal: bool,
         undecided: &mut Vec<TraitInstId<'db>>,
-    ) -> Vec<(Delivery<'db>, Choice<'db>)> {
+        reached: &mut Vec<TraitInstId<'db>>,
+    ) -> Result<Vec<(Delivery<'db>, Choice<'db>)>, ChoiceRefusal> {
         let db = self.db();
         let generic = self
             .base_assumptions()
@@ -2290,14 +2309,26 @@ impl<'db> TyCheckEnv<'db> {
             .iter()
             .any(|bound| bound.args(db).iter().any(|ty| ty.has_param(db)));
         if frame.is_none() && !generic {
-            return Vec::new();
+            return Ok(Vec::new());
         }
         let mut items = Vec::new();
-        for (bound, at_use) in goals {
+        for (bound, at_use) in const_declared_goals(db, body, &subst) {
             let Some(choice) = self.decide(frame, at_use) else {
                 undecided.push(at_use);
                 continue;
             };
+            if const_type_reads(db, body, ty).contains(&bound) {
+                match choice {
+                    Choice::Slot(SlotRef::Bound(goal)) => {
+                        if !reached.contains(&goal) {
+                            reached.push(goal);
+                        }
+                    }
+                    // Refused where it is read (`written_frames`).
+                    Choice::Slot(SlotRef::Unsupplied) => {}
+                    _ => return Err(ChoiceRefusal::DependentType),
+                }
+            }
             let delivery = if nominal {
                 Delivery::Nominal(bound)
             } else {
@@ -2305,15 +2336,121 @@ impl<'db> TyCheckEnv<'db> {
             };
             items.push((delivery, choice));
         }
-        items
+        Ok(items)
     }
 }
 
+/// Every slot whose choice reaches a type a checked body writes or names:
+/// its expressions' and patterns' types, the constants written in it, each
+/// recorded call's declared types and generic arguments (`call_slot_reads`,
+/// the list the call refusal reads, so a caller and the body read one list),
+/// and the slots its constant uses pass on to a constant body whose types
+/// read them. Type reach of function bodies (`own_type_reads`) and constant
+/// bodies (`const_type_reads`) reads only this list (D5).
+fn body_type_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &super::TypedBody<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let mut reads = typed.const_reaches().to_vec();
+    let Some(body) = typed.body() else {
+        return reads;
+    };
+    for expr in body.exprs(db).keys() {
+        reads.extend(type_slot_reads(db, typed.expr_ty(db, expr)));
+        if let Some(callable) = typed.callable_expr(expr) {
+            reads.extend(call_slot_reads(db, callable));
+        }
+    }
+    for stmt in body.stmts(db).keys() {
+        if let Some(plan) = typed.for_loop_plan(stmt) {
+            for call in &plan.calls {
+                reads.extend(call_slot_reads(db, &call.callable));
+            }
+        }
+    }
+    for pat in body.pats(db).keys() {
+        reads.extend(type_slot_reads(db, typed.pat_ty(db, pat)));
+    }
+    // Every constant written in the body, in any position: lowering reads it
+    // with the ordinary implementation in the instance (`Arr<{ T::P }>::K`
+    // has type `usize`, so no expression type shows the read).
+    for written in super::written_frames::written_bodies(db, body) {
+        reads.extend(
+            super::written_frames::written_body_uses(db, written, None)
+                .into_iter()
+                .map(|(goal, _)| goal),
+        );
+    }
+    let mut unique = Vec::new();
+    for goal in reads {
+        let goal = slot_goal(db, goal);
+        if !unique.contains(&goal) {
+            unique.push(goal);
+        }
+    }
+    unique
+}
+
+/// The bounds of a constant body, by its own names, whose choices reach a
+/// type the body writes or names (`body_type_reads`), directly or through a
+/// function it calls. A use may not deliver an opened choice into them
+/// (`body_decisions`), as a caller may not into a function's
+/// (`own_type_reads`, D5).
+#[salsa::tracked(return_ref, cycle_initial = const_type_reads_initial, cycle_fn = const_type_reads_recover)]
+pub(crate) fn const_type_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: crate::hir_def::Body<'db>,
+    expected: TyId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let own = crate::analysis::ty::trait_choice::const_body_slots(db, body);
+    if own.is_empty() {
+        return Vec::new();
+    }
+    let typed = &super::infer_body(db, super::BodyOwner::AnonConstBody { body, expected }).1;
+    let mut reads = body_type_reads(db, typed);
+    if let Some(checked) = typed.body() {
+        for expr in checked.exprs(db).keys() {
+            reads.extend(super::const_requirements::reached_bounds_at_call(
+                db,
+                typed,
+                checked,
+                checked.scope(),
+                expr,
+            ));
+        }
+    }
+    let mut reached = Vec::new();
+    for goal in reads {
+        if own.contains(&goal) && !reached.contains(&goal) {
+            reached.push(goal);
+        }
+    }
+    reached
+}
+
+fn const_type_reads_initial<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _body: crate::hir_def::Body<'db>,
+    _expected: TyId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    Vec::new()
+}
+
+fn const_type_reads_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &Vec<TraitInstId<'db>>,
+    _count: u32,
+    _body: crate::hir_def::Body<'db>,
+    _expected: TyId<'db>,
+) -> salsa::CycleRecoveryAction<Vec<TraitInstId<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
 /// The bound slots of `func` whose choices reach a type `func` itself
-/// writes or names: in its body, in its signature (marked), and in a function
-/// value that would carry the slot's choice. A caller may not deliver an
-/// opened choice into them (`OwedCheck::Reaches`); slots reached through
-/// callees are added by `owed_checks`.
+/// writes or names: in its body (`body_type_reads`), in its signature
+/// (marked), and in a function value that would carry the slot's choice. A
+/// caller may not deliver an opened choice into them (`OwedCheck::Reaches`);
+/// slots reached through callees are added by `owed_checks`.
 pub(super) fn own_type_reads<'db>(
     db: &'db dyn HirAnalysisDb,
     func: crate::hir_def::Func<'db>,
@@ -2332,36 +2469,8 @@ pub(super) fn own_type_reads<'db>(
     for goal in declared_slot_reads(db, CallableDef::Func(func)) {
         note(goal, true);
     }
-    let Some(body) = typed.body() else {
-        return reached;
-    };
-    for expr in body.exprs(db).keys() {
-        for goal in type_slot_reads(db, typed.expr_ty(db, expr)) {
-            note(goal, false);
-        }
-    }
-    for pat in body.pats(db).keys() {
-        for goal in type_slot_reads(db, typed.pat_ty(db, pat)) {
-            note(goal, false);
-        }
-    }
-    // Every constant written in the body, in any position: lowering reads it
-    // with the ordinary implementation in the instance, so a bound it reads
-    // cannot receive an opened choice (`Arr<{ T::P }>::K` has type `usize`,
-    // so no expression type shows the read).
-    for written in super::written_frames::written_bodies(db, body) {
-        let owner = super::BodyOwner::AnonConstBody {
-            body: written,
-            expected: TyId::new(
-                db,
-                TyData::TyBase(crate::analysis::ty::ty_def::TyBase::Prim(
-                    crate::analysis::ty::ty_def::PrimTy::Usize,
-                )),
-            ),
-        };
-        for (goal, _) in body_slot_uses(db, &super::infer_body(db, owner).1) {
-            note(goal, false);
-        }
+    for goal in body_type_reads(db, typed) {
+        note(goal, false);
     }
     for (_, captured) in typed
         .function_value_choices()

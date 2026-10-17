@@ -447,6 +447,24 @@ fn arg_bodies<'db>(
     }
 }
 
+/// The slot uses of `body`, a constant written in a function's body, checked
+/// as the anonymous constant it is, of type `expected` (`usize` where the
+/// position gives none): what the read-time refusal and type reach read.
+pub(crate) fn written_body_uses<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+    expected: Option<crate::analysis::ty::ty_def::TyId<'db>>,
+) -> Vec<(
+    crate::analysis::ty::trait_def::TraitInstId<'db>,
+    Option<crate::analysis::ty::trait_choice::Choice<'db>>,
+)> {
+    use crate::analysis::ty::ty_def::{PrimTy, TyBase, TyData, TyId};
+    let expected =
+        expected.unwrap_or_else(|| TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))));
+    let typed = &super::infer_body(db, super::BodyOwner::AnonConstBody { body, expected }).1;
+    super::choice::body_slot_uses(db, typed)
+}
+
 /// Whether evaluating `body`, a constant written in a function's body, would
 /// read a slot a frame around it opened. Evaluation refuses it (D5): the
 /// constant would read the ordinary implementation while the code around it
@@ -456,17 +474,22 @@ pub(crate) fn refuses_read<'db>(
     body: Body<'db>,
     expected: Option<crate::analysis::ty::ty_def::TyId<'db>>,
 ) -> bool {
-    use crate::analysis::ty::ty_def::{PrimTy, TyBase, TyData, TyId};
     let frames = written_frames(db, body);
     if frames.slots.is_empty() && !frames.unknown {
         return false;
     }
-    let expected =
-        expected.unwrap_or_else(|| TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))));
-    let typed = &super::infer_body(db, super::BodyOwner::AnonConstBody { body, expected }).1;
+    // A constant written inside this one that is refused makes this one
+    // refused (`{ idn<{ T::P }>() }`): its value would be computed from a
+    // read with no one meaning.
+    if written_bodies(db, body)
+        .into_iter()
+        .any(|inner| refuses_read(db, inner, None))
+    {
+        return true;
+    }
     // The body is checked with those slots unsupplied (`seed_written_frames`):
     // a use it decided that way, or one of an opened slot, is refused.
-    super::choice::body_slot_uses(db, typed)
+    written_body_uses(db, body, expected)
         .into_iter()
         .any(|(goal, choice)| {
             choice

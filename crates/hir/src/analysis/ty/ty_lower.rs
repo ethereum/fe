@@ -23,7 +23,7 @@ use super::{
             collect_candidate_constraints, collect_constraints, collect_func_decl_constraints,
         },
     },
-    ty_def::{InvalidCause, Kind, PrimTy, TyBase, TyData, TyId, TyParam},
+    ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
 use crate::analysis::name_resolution::{
     NameDomain, NameResKind, PathRes, TypePosition, path_resolver::PathResolutionResult,
@@ -314,18 +314,19 @@ fn const_body_reads<'db>(
         ));
         return;
     }
-    // A compound body: the trait uses its own check recorded. Lengths and
-    // constant arguments in the core are `usize`.
-    let owner = super::ty_check::BodyOwner::AnonConstBody {
-        body,
-        expected: TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))),
-    };
-    let typed = &super::ty_check::infer_body(db, owner).1;
+    // A compound body: the trait uses its own check recorded, and those of
+    // the constants written inside it (`{ idn<{ T::P }>() }`), through the
+    // layout the read-time refusal reads. Lengths and constant arguments in
+    // the core are `usize`.
+    use super::ty_check::written_frames::{written_bodies, written_body_uses};
     reads.extend(
-        super::ty_check::body_slot_uses(db, typed)
+        written_body_uses(db, body, None)
             .into_iter()
             .map(|(goal, _)| goal),
     );
+    for inner in written_bodies(db, body) {
+        const_body_reads(db, inner, scope, assumptions, reads);
+    }
 }
 fn const_arg_reads<'db>(
     db: &'db dyn HirAnalysisDb,

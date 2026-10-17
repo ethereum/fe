@@ -580,6 +580,57 @@ fn calls_are_decided_where_they_are_written() {
 }
 
 #[test]
+fn type_reach_reads_one_list() {
+    // D5: the types a body writes or names are listed once
+    // (`body_type_reads`), with each call's declared types as the call
+    // refusal reads them; function and constant bodies take type reach only
+    // from it, and a constant use checks the body it delivers into.
+    let checker = code(&text_of(CHECKER));
+    let checked = functions(&checker);
+    let function = |name: &str| {
+        checked
+            .iter()
+            .find(|function| function.lines().next().unwrap_or_default().contains(name))
+            .unwrap_or_else(|| panic!("{name} exists"))
+    };
+    // Each expression call and each `for` loop protocol call.
+    assert_eq!(
+        function("fn body_type_reads")
+            .matches("call_slot_reads(")
+            .count(),
+        2
+    );
+    assert!(function("fn body_type_reads").contains("written_body_uses("));
+    assert!(function("fn own_type_reads").contains("body_type_reads("));
+    assert!(function("fn const_type_reads").contains("body_type_reads("));
+    assert!(function("fn body_decisions").contains("const_type_reads("));
+    for function in &checked {
+        let head = function.lines().next().unwrap_or_default();
+        if function.contains("type_slot_reads(db, typed.expr_ty(") {
+            assert!(
+                head.contains("fn body_type_reads"),
+                "a body's types are read outside the one list: {head}"
+            );
+        }
+    }
+    // The written-syntax scan reads the constants written inside a compound
+    // constant through the same layout.
+    let lower = code(&text_of("src/analysis/ty/ty_lower.rs"));
+    let lowered = functions(&lower);
+    let scan = lowered
+        .iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn const_body_reads")
+        })
+        .expect("the scan reads compound constants");
+    assert!(scan.contains("written_bodies(") && scan.contains("written_body_uses("));
+}
+
+#[test]
 fn choice_walks_end_at_one_limit() {
     // D18: a walk that follows choices through implementations ends where the
     // base's instance limits end, through one check; no walk keeps a limit of

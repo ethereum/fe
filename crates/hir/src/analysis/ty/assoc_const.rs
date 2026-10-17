@@ -137,42 +137,43 @@ impl<'db> AssocConstUse<'db> {
         }
     }
 
-    /// The trait's default body for this constant, with arguments for this
-    /// use: the declaration a body chosen later is reached through.
+    /// The trait's default body for this constant, with its declared type and
+    /// arguments for this use: the declaration a body chosen later is reached
+    /// through.
     pub(crate) fn trait_default_body(
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> Option<(
         crate::hir_def::Body<'db>,
+        TyId<'db>,
         super::ty_lower::CompleteSubst<'db>,
     )> {
         let trait_ = self.inst.def(db);
-        let body = trait_.const_(db, self.name)?.default_body(db)?;
+        let constant = trait_.const_(db, self.name)?;
         let subst = super::ty_lower::CompleteSubst::for_owner(
             db,
             trait_.into(),
             self.inst.args(db).to_vec(),
         )
         .ok()?;
-        Some((body, subst))
+        Some((constant.default_body(db)?, constant.ty(db)?, subst))
     }
 
     /// The constant body this use reads, when its implementation is known:
     /// the selected implementation's constant or the trait's default, with
-    /// that body's arguments.
+    /// its declared type and that body's arguments.
     pub(crate) fn body_that_runs(
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> Option<(
         crate::hir_def::Body<'db>,
+        TyId<'db>,
         super::ty_lower::CompleteSubst<'db>,
     )> {
         let Selection::Unique(resolved) = self.selected_impl(db) else {
             return None;
         };
-        let (body, _, subst) =
-            super::trait_def::selected_assoc_const_body_template(db, resolved, self.name)?;
-        Some((body, subst))
+        super::trait_def::selected_assoc_const_body_template(db, resolved, self.name)
     }
 }
 

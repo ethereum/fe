@@ -2573,6 +2573,27 @@ fn calls_directly<'db>(
     )
 }
 
+/// The caller's own bounds a call passes on to a body whose types read them
+/// (`EdgeFact::Reaches`): type reach of a constant body through its calls.
+pub(super) fn reached_bounds_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &TypedBody<'db>,
+    body: Body<'db>,
+    scope: ScopeId<'db>,
+    expr: ExprId,
+) -> Vec<TraitInstId<'db>> {
+    facts_at_call_expr(db, typed, body, scope, expr)
+        .into_iter()
+        .filter_map(|fact| match fact {
+            EdgeFact::Reaches {
+                choice: Choice::Slot(SlotRef::Bound(slot)),
+                ..
+            } => Some(slot),
+            _ => None,
+        })
+        .collect()
+}
+
 fn facts_at_call_expr<'db>(
     db: &'db dyn HirAnalysisDb,
     typed: &TypedBody<'db>,

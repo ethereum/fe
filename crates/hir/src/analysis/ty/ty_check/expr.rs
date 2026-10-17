@@ -4337,6 +4337,7 @@ impl<'db> TyChecker<'db> {
 
         match reso {
             PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => {
+                let written = ty;
                 // Use the expected type to constrain the record's generic args
                 // before checking fields.
                 let snapshot = self.snapshot_state();
@@ -4351,7 +4352,7 @@ impl<'db> TyChecker<'db> {
                 // A record whose field types read an opened slot is a
                 // choice-dependent type (RD120's own example).
                 if self.env.written_refusals[expr]
-                    || self.refuse_choice_dependent_ty(ty, span.clone().path().into())
+                    || self.refuse_choice_dependent_ty(written, ty, span.clone().path().into())
                 {
                     return ExprProp::invalid(self.db);
                 }
@@ -4399,7 +4400,7 @@ impl<'db> TyChecker<'db> {
                 };
                 let variant = crate::analysis::name_resolution::ResolvedVariant { ty, ..variant };
                 if self.env.written_refusals[expr]
-                    || self.refuse_choice_dependent_ty(ty, span.clone().path().into())
+                    || self.refuse_choice_dependent_ty(resolved_ty, ty, span.clone().path().into())
                 {
                     return ExprProp::invalid(self.db);
                 }
@@ -4618,7 +4619,7 @@ impl<'db> TyChecker<'db> {
 
             let len_ty = ConstTyId::from_body(self.db, len_body, expected_len_ty, None);
             let len_ty = TyId::const_ty(self.db, len_ty);
-            self.refuse_choice_dependent_ty(len_ty, len_body.span().into());
+            self.refuse_choice_dependent_ty(len_ty, len_ty, len_body.span().into());
             let array_ty = TyId::app(self.db, array, len_ty);
 
             if let Some(diag) = array_ty.emit_diag(self.db, len_body.span().into()) {

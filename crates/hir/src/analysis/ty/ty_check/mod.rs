@@ -1,6 +1,5 @@
 mod callable;
 mod choice;
-pub(crate) use choice::body_slot_uses;
 mod const_requirements;
 pub use const_requirements::{EvaluationStop, RequirementFailure};
 pub(crate) use const_requirements::{
@@ -1384,6 +1383,7 @@ fn typed_body_for_bodyless_func<'db>(
         with_choice_bindings: Vec::new(),
         function_value_choices: Vec::new(),
         closure_choices: Vec::new(),
+        const_reaches: Vec::new(),
         choice_refusals: Vec::new(),
     }
     .into()
@@ -2885,7 +2885,7 @@ impl<'db> TyChecker<'db> {
             self.push_diag(diag)
         }
 
-        if self.refuse_choice_dependent_ty(ty, span.clone().into())
+        if self.refuse_choice_dependent_ty(ty, ty, span.clone().into())
             || self.refuse_choice_dependent_hir_ty(hir_ty, span.clone().into())
         {
             // Keep the type's shape so the refusal is the only diagnostic.
@@ -3959,6 +3959,9 @@ mod typed_body_tables {
         /// Uses inside closure bodies and the slot choices they read.
         pub(super) closure_choices:
             Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
+        /// The body's own slots that its constant uses pass on to a constant
+        /// body whose types read them (`const_type_reads`).
+        pub(super) const_reaches: Vec<crate::analysis::ty::trait_def::TraitInstId<'db>>,
         /// Trait uses refused once their decisions are known.
         pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
     }
@@ -4390,6 +4393,12 @@ impl<'db> TypedBody<'db> {
         &self,
     ) -> &[(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)] {
         &self.tables.closure_choices
+    }
+
+    /// The body's own slots that its constant uses pass on to a constant
+    /// body whose types read them.
+    pub(crate) fn const_reaches(&self) -> &[crate::analysis::ty::trait_def::TraitInstId<'db>] {
+        &self.tables.const_reaches
     }
 
     /// Trait uses refused once their decisions are known.
@@ -6056,6 +6065,7 @@ impl<'db> TypedBody<'db> {
             with_choice_bindings: Vec::new(),
             function_value_choices: Vec::new(),
             closure_choices: Vec::new(),
+            const_reaches: Vec::new(),
             choice_refusals: Vec::new(),
         }
         .into()

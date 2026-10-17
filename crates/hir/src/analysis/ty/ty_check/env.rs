@@ -155,6 +155,7 @@ pub(crate) struct TyCheckEnv<'db> {
     pub(super) written_refusals: SecondaryMap<ExprId, bool>,
     /// Uses inside closure bodies and the slot choices they read.
     pub(super) closure_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
+    pub(super) const_reaches: Vec<TraitInstId<'db>>,
     /// Trait uses refused once their decisions are known.
     pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
     /// Whether a goal's ordinary proof reads a slot a frame opened (D13), as
@@ -284,6 +285,7 @@ impl<'db> TyCheckEnv<'db> {
             closure_exprs: SecondaryMap::new(),
             written_refusals: SecondaryMap::new(),
             closure_choices: Vec::new(),
+            const_reaches: Vec::new(),
             choice_refusals: Vec::new(),
             conditions_read: Default::default(),
             written_unknown: false,
@@ -1578,6 +1580,7 @@ impl<'db> TyCheckEnv<'db> {
             with_choice_bindings: self.with_choice_bindings,
             function_value_choices: self.function_value_choices,
             closure_choices: self.closure_choices,
+            const_reaches: self.const_reaches,
             choice_refusals: self.choice_refusals,
         }
         .into()
