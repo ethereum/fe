@@ -161,6 +161,16 @@ pub fn generate_contract_abi(
         for input in entry.inputs.iter_mut().flatten() {
             input.indexed = None;
         }
+        // Solidity's built-in errors are implicit. Declaring them as custom
+        // errors makes consumers such as ethers reject the entire ABI.
+        if let Some([input]) = entry.inputs.as_deref()
+            && matches!(
+                (entry.name.as_deref(), input.ty.as_str()),
+                (Some("Panic"), "uint256") | (Some("Error"), "string")
+            )
+        {
+            continue;
+        }
         entries.push(entry);
     }
 
