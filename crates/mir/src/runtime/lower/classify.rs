@@ -42,11 +42,10 @@ use crate::{
 use super::{
     arg_selector::RuntimeArgSelector,
     boundary::{
-        BoundaryRef, BoundarySiteAllocator, BoundarySpecializationCache, RuntimeClassShape,
-        StagedBoundary, aggregate_transport_depends_on_runtime_source,
+        BoundarySiteAllocator, BoundarySpecializationCache, RuntimeClassShape, StagedBoundary,
+        aggregate_transport_depends_on_runtime_source,
         boundary_source_uses_transport_sensitive_aggregate, boundary_spec_for_ty_in_env,
         default_borrow_transport_set, specialize_boundary_for_aggregate_layout,
-        specialize_boundary_for_runtime_source_in_context,
     },
     call_input::{
         CompiledCallInputPlan, CompiledMaterializationPlan, compile_call_input_plan_for_semantic,
@@ -1062,23 +1061,6 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
             parent = target;
         }
         Some(storage_field_lane(self.db, &parent, *field, root_space).is_some())
-    }
-
-    pub(crate) fn specialize_boundary_for_source(
-        self,
-        carriers: &[RuntimeCarrier<'db>],
-        local: SLocalId,
-        boundary: &RuntimeBoundarySpec<'db>,
-    ) -> RuntimeBoundarySpec<'db> {
-        specialize_boundary_for_runtime_source_in_context(
-            self,
-            local,
-            BoundaryRef::unstaged(boundary),
-            carriers,
-            None,
-        )
-        .boundary
-        .into_owned()
     }
 
     pub(crate) fn actual_aggregate_class_for_source(
@@ -2138,19 +2120,14 @@ fn aggregate_make_class_from_facts<'db>(
     let mut evaluator = RuntimeArgSelector::new(env, carriers, class_cache);
     for (field, field_facts) in fields.iter().copied().zip(facts.fields.iter()) {
         let field = env.body.runtime_operand(field)?;
-        let selected = if let Some(boundary) = field_facts.boundary.as_ref() {
-            let mut boundary_sites = BoundarySiteAllocator::default();
-            evaluator.selected_value_pass_plan(
+        let class = evaluator
+            .selected_ctor_field(
                 field,
-                &compile_value_pass_plan(
-                    RuntimeParamPlan::Boundary(boundary.boundary.clone()),
-                    &mut boundary_sites,
-                ),
+                field_facts
+                    .boundary
+                    .as_ref()
+                    .map(|boundary| &boundary.boundary),
             )
-        } else {
-            evaluator.selected_materialized_operand(field)
-        };
-        let class = selected
             .map(|arg| arg.class)
             .unwrap_or_else(|| field_facts.stored_class.clone());
         field_classes.push(class);
