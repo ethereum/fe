@@ -1980,6 +1980,8 @@ impl<'db> TyChecker<'db> {
             method_name,
             candidates,
             span,
+            frame: self.env.choice_frames.current(),
+            premises: self.env.assumptions(),
         });
         typed
     }

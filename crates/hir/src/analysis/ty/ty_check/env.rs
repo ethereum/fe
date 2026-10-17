@@ -2290,6 +2290,10 @@ pub(super) struct PendingMethod<'db> {
     pub method_name: crate::core::hir_def::IdentId<'db>,
     pub candidates: Vec<PendingMethodCandidate<'db>>,
     pub span: DynLazySpan<'db>,
+    /// The frame and premises where the call is written: it is resolved
+    /// under them, however late (L3).
+    pub frame: Option<FrameId>,
+    pub premises: PredicateListId<'db>,
 }
 
 #[derive(Debug, Clone, Copy)]

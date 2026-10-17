@@ -720,6 +720,18 @@ fn evidence_is_admitted_after_inference() {
 }
 
 #[test]
+fn deferred_calls_resolve_where_written() {
+    // L3: a method call picked after the body is checked is resolved under
+    // the frame and premises recorded where it is written.
+    let checker_mod = code(&text_of("src/analysis/ty/ty_check/mod.rs"));
+    assert!(checker_mod.contains("self.env.choice_frames.restore(pending.frame);"));
+    assert!(checker_mod.contains("self.env.restore_assumptions(pending.premises);"));
+    let expr = code(&text_of("src/analysis/ty/ty_check/expr.rs"));
+    assert!(expr.contains("frame: self.env.choice_frames.current(),\n            premises: self.env.assumptions(),\n        });")
+        || expr.contains("premises: self.env.assumptions(),"));
+}
+
+#[test]
 fn choice_walks_end_at_one_limit() {
     // D18: a walk that follows choices through implementations ends where the
     // base's instance limits end, through one check; no walk keeps a limit of

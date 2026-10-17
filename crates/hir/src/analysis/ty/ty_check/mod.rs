@@ -2347,12 +2347,17 @@ impl<'db> TyChecker<'db> {
                 viability
             };
 
-        // Fixed-point pass over deferred tasks.
+        // Fixed-point pass over deferred tasks. A deferred method call is
+        // resolved under the frame and premises where it is written.
+        let (outer_frame, outer_premises) =
+            (self.env.choice_frames.current(), self.env.assumptions());
         let mut progressed = true;
         while progressed {
             progressed = false;
             let tasks = self.env.take_deferred_tasks();
             for task in tasks {
+                self.env.choice_frames.restore(outer_frame);
+                self.env.restore_assumptions(outer_premises);
                 match task {
                     env::DeferredTask::Obligation(obligation) => {
                         match self.process_trait_obligation(obligation, false) {
@@ -2364,6 +2369,8 @@ impl<'db> TyChecker<'db> {
                         }
                     }
                     env::DeferredTask::Method(pending) => {
+                        self.env.choice_frames.restore(pending.frame);
+                        self.env.restore_assumptions(pending.premises);
                         let Some((receiver, generic_args, call_args)) =
                             pending_call_parts(db, body, &self.env, pending.expr)
                         else {
@@ -2548,6 +2555,9 @@ impl<'db> TyChecker<'db> {
                 }
             }
         }
+
+        self.env.choice_frames.restore(outer_frame);
+        self.env.restore_assumptions(outer_premises);
 
         // Emit diagnostics for remaining tasks.
         for task in self.env.take_deferred_tasks() {
