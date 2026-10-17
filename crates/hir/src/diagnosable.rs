@@ -265,14 +265,7 @@ impl<'db> WherePredicateBoundView<'db> {
         let tr = self.trait_ref(db);
         let span = self.trait_ref_span();
 
-        match trait_lower::lower_trait_ref(
-            db,
-            subject,
-            tr,
-            scope,
-            assumptions,
-            ty::trait_resolution::constraint::enclosing_trait_self_ty(db, scope),
-        ) {
+        match trait_lower::lower_trait_ref(db, subject, tr, scope, assumptions, None) {
             Ok(inst) => {
                 let expected = inst.def(db).self_param(db).kind(db);
                 if !expected.does_match(subject.kind(db)) {
@@ -1923,14 +1916,7 @@ impl<'db> GenericParamOwner<'db> {
                     .bounds()
                     .bound(i)
                     .trait_bound();
-                match trait_lower::lower_trait_ref(
-                    db,
-                    subject,
-                    *tr,
-                    scope,
-                    assumptions,
-                    ty::trait_resolution::constraint::enclosing_trait_self_ty(db, scope),
-                ) {
+                match trait_lower::lower_trait_ref(db, subject, *tr, scope, assumptions, None) {
                     Ok(inst) => {
                         let expected = inst.def(db).self_param(db).kind(db);
                         if !expected.does_match(subject.kind(db)) {

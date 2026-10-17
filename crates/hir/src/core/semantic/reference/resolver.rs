@@ -12,8 +12,8 @@
 use crate::{
     analysis::HirAnalysisDb,
     hir_def::{
-        Body, Contract, Enum, Func, Impl, ImplTrait, ItemKind, Struct, Trait, TypeAlias, Use,
-        scope_graph::ScopeId,
+        Body, Const, Contract, Enum, Func, Impl, ImplTrait, ItemKind, StaticAssert, Struct, Trait,
+        TypeAlias, Use, scope_graph::ScopeId,
     },
     span::DynLazySpan,
 };
@@ -23,11 +23,12 @@ use crate::analysis::ty::ty_check::LocalBinding;
 use super::{
     BodyPathContext, PathView, ReferenceView, Target,
     collector::{
-        body_references, contract_references, enum_references, func_signature_references,
-        impl_references, impl_trait_references, struct_references, trait_references,
-        type_alias_references, use_references,
+        body_references, const_references, contract_references, enum_references,
+        func_signature_references, impl_references, impl_trait_references,
+        static_assert_references, struct_references, trait_references, type_alias_references,
+        use_references,
     },
-    resolve_path_with_recv_fallback, typed_body_for_body,
+    typed_body_for_body,
 };
 
 /// A pre-resolved scope reference: target scope paired with the span
@@ -103,7 +104,7 @@ fn resolve_references<'db>(
                 for idx in 0..=last_idx {
                     if let Some(seg_path) = pv.path.segment(db, idx) {
                         let is_self_ty = seg_path.is_self_ty(db);
-                        for scope in resolve_path_with_recv_fallback(db, seg_path, pv.scope) {
+                        for scope in pv.segment_targets(db, idx) {
                             results.push(ResolvedScopeTarget {
                                 scope,
                                 span: pv.span.clone().segment(idx).ident().into(),
@@ -225,6 +226,22 @@ pub fn resolved_impl_trait_scope_targets<'db>(
 }
 
 #[salsa::tracked(return_ref)]
+pub fn resolved_const_scope_targets<'db>(
+    db: &'db dyn HirAnalysisDb,
+    const_: Const<'db>,
+) -> Vec<ResolvedScopeTarget<'db>> {
+    resolve_references(db, const_references(db, const_))
+}
+
+#[salsa::tracked(return_ref)]
+pub fn resolved_static_assert_scope_targets<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assert_: StaticAssert<'db>,
+) -> Vec<ResolvedScopeTarget<'db>> {
+    resolve_references(db, static_assert_references(db, assert_))
+}
+
+#[salsa::tracked(return_ref)]
 pub fn resolved_use_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     use_item: Use<'db>,
@@ -259,14 +276,8 @@ pub fn resolved_item_scope_targets<'db>(
         ItemKind::ImplTrait(it) => resolved_impl_trait_scope_targets(db, it),
         ItemKind::Use(u) => resolved_use_scope_targets(db, u),
         ItemKind::Contract(c) => resolved_contract_scope_targets(db, c),
-        ItemKind::Const(c) => {
-            if let Some(body) = c.body(db).to_opt() {
-                resolved_body_scope_targets(db, body)
-            } else {
-                EMPTY_RESOLVED
-            }
-        }
-        ItemKind::StaticAssert(assert_) => resolved_body_scope_targets(db, assert_.condition(db)),
+        ItemKind::Const(c) => resolved_const_scope_targets(db, c),
+        ItemKind::StaticAssert(assert_) => resolved_static_assert_scope_targets(db, assert_),
         ItemKind::TopMod(_) | ItemKind::Mod(_) => EMPTY_RESOLVED,
     }
 }

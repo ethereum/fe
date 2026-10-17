@@ -19,9 +19,10 @@ use crate::{
     analysis::HirAnalysisDb,
     analysis::name_resolution::{
         EarlyNameQueryId, PathRes, PathResError, PathResErrorKind, QueryDirective, resolve_path,
-        resolve_query,
+        resolve_query, resolve_trait_path_with_observer_and_minter,
     },
     analysis::ty::{
+        const_ty::LoweringContext,
         trait_resolution::{PredicateListId, constraint::collect_constraints},
         ty_check::{
             LocalBinding, RecordLike, TypedBody, check_contract_init_body,
@@ -129,7 +130,7 @@ fn scopes_from_resolution<'db>(
 ///
 /// For ambiguous paths that can resolve to multiple items (e.g., a module
 /// and a function with the same name), this returns all candidates.
-pub fn resolve_path_to_scopes<'db>(
+fn resolve_path_to_scopes<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
@@ -156,7 +157,7 @@ pub fn resolve_path_to_scopes<'db>(
 /// Standard resolution fails because `Mint` lives inside the desugared
 /// `TokenMsg` module. This helper retries resolution from the msg module
 /// scope when the body belongs to a recv arm.
-pub(super) fn resolve_path_with_recv_fallback<'db>(
+fn resolve_path_with_recv_fallback<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
@@ -299,15 +300,24 @@ pub struct PathView<'db> {
     /// Context when this path is inside a function body.
     /// None for paths in signatures, type annotations, etc.
     pub body_ctx: Option<BodyPathContext>,
+    /// Whether the path is written where a trait is expected: a bound, a
+    /// super-trait, an implemented trait, or a qualified path's trait.
+    pub trait_ref: bool,
 }
 
 impl<'db> PathView<'db> {
-    pub fn new(path: PathId<'db>, scope: ScopeId<'db>, span: LazyPathSpan<'db>) -> Self {
+    pub fn new(
+        path: PathId<'db>,
+        scope: ScopeId<'db>,
+        span: LazyPathSpan<'db>,
+        trait_ref: bool,
+    ) -> Self {
         Self {
             path,
             scope,
             span,
             body_ctx: None,
+            trait_ref,
         }
     }
 
@@ -324,7 +334,28 @@ impl<'db> PathView<'db> {
         if let Some(local) = self.local_target(db) {
             return TargetResolution::Single(local);
         }
-        TargetResolution::from_scopes(resolve_path_with_recv_fallback(db, self.path, self.scope))
+        TargetResolution::from_scopes(self.segment_targets(db, self.path.segment_index(db)))
+    }
+
+    /// Resolve the path up to segment `idx` to all its possible scopes. The
+    /// last segment of a trait reference is resolved as a trait, under the
+    /// enclosing bounds, which its arguments can need (`Sink<T::Item>`).
+    pub fn segment_targets(&self, db: &'db dyn HirAnalysisDb, idx: usize) -> Vec<ScopeId<'db>> {
+        let Some(seg_path) = self.path.segment(db, idx) else {
+            return Vec::new();
+        };
+        if self.trait_ref && seg_path == self.path {
+            let res = resolve_trait_path_with_observer_and_minter(
+                db,
+                seg_path,
+                self.scope,
+                enclosing_assumptions(db, self.scope),
+                &mut |_, _| {},
+                &LoweringContext::new(),
+            );
+            return scopes_from_resolution(db, &res);
+        }
+        resolve_path_with_recv_fallback(db, seg_path, self.scope)
     }
 
     /// Resolve at a specific cursor position (segment-aware: `foo` in `foo::Bar` → foo).
@@ -346,12 +377,7 @@ impl<'db> PathView<'db> {
                     return TargetResolution::Single(local);
                 }
 
-                if let Some(seg_path) = self.path.segment(db, idx) {
-                    return TargetResolution::from_scopes(resolve_path_with_recv_fallback(
-                        db, seg_path, self.scope,
-                    ));
-                }
-                return TargetResolution::None;
+                return TargetResolution::from_scopes(self.segment_targets(db, idx));
             }
         }
 

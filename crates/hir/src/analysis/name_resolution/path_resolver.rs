@@ -2,8 +2,9 @@ use crate::core::hir_def::GenericArg;
 use crate::hir_def::{CallableDef, Func};
 use crate::{
     core::hir_def::{
-        Const, Enum, EnumVariant, GenericParamOwner, HirIngot, IdentId, Impl, ImplTrait, ItemKind,
-        Partial, PathId, PathKind, Trait, TypeBound, TypeKind, VariantKind, scope_graph::ScopeId,
+        Const, Enum, EnumVariant, GenericArgListId, GenericParamOwner, HirIngot, IdentId, Impl,
+        ImplTrait, ItemKind, Partial, PathId, PathKind, Trait, TypeBound, TypeKind, VariantKind,
+        scope_graph::ScopeId,
     },
     core::semantic::trait_self_predicate,
     span::{DynLazySpan, path::LazyPathSpan},
@@ -37,9 +38,9 @@ use crate::analysis::{
         normalize::normalize_ty,
         trait_def::{TraitInstId, impls_for_ty_with_satisfied_constraints},
         trait_lower::{
-            TraitArgError, TraitRefLowerError, complete_candidate_impl_assoc_ty,
-            complete_impl_assoc_ty, lower_candidate_impl_assoc_ty, lower_checked_impl_assoc_ty,
-            lower_trait_ref, lower_trait_ref_impl_with_minter, lower_trait_ref_with_minter,
+            TraitRefLowerError, complete_candidate_impl_assoc_ty, complete_impl_assoc_ty,
+            lower_candidate_impl_assoc_ty, lower_checked_impl_assoc_ty, lower_trait_ref,
+            lower_trait_ref_impl_with_minter, lower_trait_ref_with_minter,
         },
         trait_resolution::{
             GoalSatisfiability, PredicateListId, TraitSolveCx, constraint::collect_constraints,
@@ -810,6 +811,67 @@ where
             lowering_cx.record_resolution(path, res);
             observer(path, res)
         },
+        lowering_cx,
+    )
+}
+
+/// Resolves `path` written where a trait is expected.
+///
+/// What the path names is looked up before any generic args are lowered
+/// against it. A trait path can never name an associated type, but an
+/// associated type of an enclosing trait lexically shadows a same-named trait
+/// (`trait Abi { type Decoder: Decoder<Self> }`). A bare ident naming such an
+/// associated type is looked up from outside the shadowing trait instead,
+/// while its generic args are still lowered in `scope`, so they can reference
+/// the trait's own generic params. A path naming anything else that isn't a
+/// trait is resolved without its generic args, so it's reported as not being
+/// a trait rather than for the args that thing doesn't take.
+pub(crate) fn resolve_trait_path_with_observer_and_minter<'db, F>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    observer: &mut F,
+    lowering_cx: &LoweringContext<'db>,
+) -> PathResolutionResult<'db, PathRes<'db>>
+where
+    F: FnMut(PathId<'db>, &PathRes<'db>),
+{
+    let is_trait = |kind| matches!(kind, NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))));
+    let definition = resolve_type_path_definition(db, path, scope);
+    if let Some(NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _))) = definition
+        && path.parent(db).is_none()
+        // The shadow can only come from a trait that encloses the use site.
+        && scope.is_transitive_child_of(db, shadowing_trait.scope())
+        && let Some(outer_scope) = shadowing_trait.scope().parent(db)
+        && let Ok(outer) = resolve_ident_to_bucket(db, path, outer_scope).pick(NameDomain::TYPE)
+        && is_trait(outer.kind)
+    {
+        let res =
+            resolve_name_res_with_minter(db, outer, None, path, scope, assumptions, lowering_cx)?;
+        lowering_cx.record_resolution(path, &res);
+        observer(path, &res);
+        return Ok(res);
+    }
+
+    let path = match definition {
+        Some(kind) if !is_trait(kind) => PathId::new(
+            db,
+            PathKind::Ident {
+                ident: path.ident(db),
+                generic_args: GenericArgListId::none(db),
+            },
+            path.parent(db),
+        ),
+        _ => path,
+    };
+    resolve_path_with_observer_and_minter(
+        db,
+        path,
+        scope,
+        assumptions,
+        false,
+        observer,
         lowering_cx,
     )
 }
@@ -2226,24 +2288,7 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                         );
                         match lowered {
                             Ok(t) => PathRes::Trait(t),
-                            Err(err) => {
-                                let kind = match err {
-                                    TraitArgError::ArgNumMismatch { expected, given } => {
-                                        PathResErrorKind::ArgNumMismatch { expected, given }
-                                    }
-                                    TraitArgError::ArgKindMisMatch { expected, given } => {
-                                        PathResErrorKind::ArgKindMisMatch { expected, given }
-                                    }
-                                    TraitArgError::ArgTypeMismatch { expected, given } => {
-                                        PathResErrorKind::ArgTypeMismatch { expected, given }
-                                    }
-                                    TraitArgError::Ignored => PathResErrorKind::ParseError,
-                                };
-                                return Err(PathResError {
-                                    kind,
-                                    failed_at: path,
-                                });
-                            }
+                            Err(err) => return Err(PathResError::new(err.into(), path)),
                         }
                     }
                 }

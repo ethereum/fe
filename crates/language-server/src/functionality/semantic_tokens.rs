@@ -6,9 +6,7 @@ use async_lsp::lsp_types::{
 };
 use common::InputDb;
 use hir::{
-    core::semantic::reference::{
-        HasReferences, ReferenceView, Target, TargetResolution, resolve_path_to_scopes,
-    },
+    core::semantic::reference::{HasReferences, ReferenceView, Target, TargetResolution},
     hir_def::ItemKind,
     lower::map_file_to_mod,
     span::LazySpan,
@@ -101,8 +99,8 @@ pub async fn handle_semantic_tokens_full(
                     }
 
                     // Resolve this segment to its target
-                    let token_type = if let Some(seg_path) = view.path.segment(&backend.db, idx) {
-                        let scopes = resolve_path_to_scopes(&backend.db, seg_path, view.scope);
+                    let token_type = if view.path.segment(&backend.db, idx).is_some() {
+                        let scopes = view.segment_targets(&backend.db, idx);
                         match TargetResolution::from_scopes(scopes).first() {
                             Some(Target::Scope(scope)) => item_kind_to_token_type(scope.item()),
                             _ => None,
