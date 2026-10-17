@@ -7,7 +7,7 @@ use super::{
     normalize::normalize_from_assumptions,
     trait_def::{ImplementorId, TraitInstId},
     ty_def::{BorrowKind, TyData, TyFlags, TyId},
-    visitor::{TyVisitable, TyVisitor},
+    visitor::{TyVisitable, TyVisitor, walk_ty},
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -739,13 +739,32 @@ pub(crate) fn check_trait_inst_wf<'db>(
     solve_cx: TraitSolveCx<'db>,
     trait_inst: TraitInstId<'db>,
 ) -> WellFormedness<'db> {
-    for &arg in trait_inst.args(db) {
-        let wf = check_ty_wf(db, solve_cx, arg);
-        if !wf.is_wf() {
-            return wf;
-        }
-    }
-    for &ty in trait_inst.assoc_type_bindings(db).values() {
+    trait_inst_wf(db, solve_cx, trait_inst, true)
+}
+
+/// [`check_trait_inst_wf`] for a trait reference whose `Self` stands for a
+/// type not known where it is written, as an associated type's bound or an
+/// effect key's trait: the trait's requirements that mention that `Self`,
+/// once instantiated, fall to what provides it.
+pub(crate) fn check_trait_inst_wf_without_self<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    trait_inst: TraitInstId<'db>,
+) -> WellFormedness<'db> {
+    trait_inst_wf(db, solve_cx, trait_inst, false)
+}
+
+fn trait_inst_wf<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    trait_inst: TraitInstId<'db>,
+    with_self: bool,
+) -> WellFormedness<'db> {
+    let args = &trait_inst.args(db)[usize::from(!with_self)..];
+    for &ty in args
+        .iter()
+        .chain(trait_inst.assoc_type_bindings(db).values())
+    {
         let wf = check_ty_wf(db, solve_cx, ty);
         if !wf.is_wf() {
             return wf;
@@ -754,6 +773,7 @@ pub(crate) fn check_trait_inst_wf<'db>(
 
     let constraints =
         collect_constraints(db, trait_inst.def(db).into()).instantiate(db, trait_inst.args(db));
+    let self_ty = trait_inst.self_ty(db);
     let assumptions = solve_cx.assumptions();
 
     // Normalize constraints after instantiation to resolve associated types
@@ -762,6 +782,7 @@ pub(crate) fn check_trait_inst_wf<'db>(
         let normalized_list: Vec<_> = constraints
             .list(db)
             .iter()
+            .filter(|&&goal| with_self || !mentions_ty(db, goal, self_ty))
             .map(|&goal| goal.normalize(db, scope, assumptions))
             .collect();
         PredicateListId::new(db, normalized_list)
@@ -778,6 +799,39 @@ pub(crate) fn check_trait_inst_wf<'db>(
     }
 
     WellFormedness::WellFormed
+}
+
+/// Whether `value` mentions `ty`, in a projection or constant as well.
+pub(crate) fn mentions_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    value: impl TyVisitable<'db>,
+    ty: TyId<'db>,
+) -> bool {
+    struct Finder<'db> {
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+        found: bool,
+    }
+    impl<'db> TyVisitor<'db> for Finder<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_ty(&mut self, ty: TyId<'db>) {
+            if ty == self.ty {
+                self.found = true;
+            } else if !self.found {
+                walk_ty(self, ty);
+            }
+        }
+    }
+    let mut finder = Finder {
+        db,
+        ty,
+        found: false,
+    };
+    value.visit_with(&mut finder);
+    finder.found
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]

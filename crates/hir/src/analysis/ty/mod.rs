@@ -11,6 +11,7 @@ use crate::core::hir_def::{
 };
 use adt_def::{AdtDef, AdtRef};
 use diagnostics::{DefConflictError, TraitLowerDiag, TyLowerDiag};
+use fold::{TyFoldable, TyFolder};
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec1::SmallVec;
 use trait_def::impls_for_trait_def;
@@ -785,7 +786,18 @@ impl ModuleAnalysisPass for ContractAnalysisPass {
                     continue;
                 };
 
-                match resolve_effect_key(db, key_ty, contract.scope(), assumptions) {
+                let key = resolve_effect_key(db, key_ty, contract.scope(), assumptions);
+                if let Some(diag) = ty_check::effect_key_wf_diag(
+                    db,
+                    EffectParamOwner::Contract(contract),
+                    idx,
+                    &key,
+                    TraitSolveCx::new(db, contract.scope()).with_assumptions(assumptions),
+                ) {
+                    diags.push(diag.to_voucher());
+                    continue;
+                }
+                match key {
                     ResolvedEffectKey::Trait(schema) => {
                         let Some(root_effect_ty) = root_effect_ty else {
                             continue;
@@ -827,14 +839,26 @@ impl ModuleAnalysisPass for ContractAnalysisPass {
                             }) as _);
                         }
                     }
-                    ResolvedEffectKey::Row(_)
-                    | ResolvedEffectKey::Invalid
-                    | ResolvedEffectKey::Other => {
+                    ResolvedEffectKey::Row(_) => {
                         diags.push(Box::new(BodyDiag::InvalidEffectKey {
                             owner: EffectParamOwner::Contract(contract),
                             key: key_ty,
                             idx,
                         }) as _);
+                    }
+                    ResolvedEffectKey::Invalid | ResolvedEffectKey::Other => {
+                        diags.extend(
+                            ty_check::invalid_effect_key_diags(
+                                db,
+                                EffectParamOwner::Contract(contract),
+                                idx,
+                                key_ty,
+                                contract.scope(),
+                                assumptions,
+                            )
+                            .iter()
+                            .map(|diag| diag.to_voucher()),
+                        );
                     }
                 }
             }
@@ -916,25 +940,36 @@ pub fn resolve_default_root_effect_ty<'db>(
     ))
 }
 
+/// `inst`, an effect key, as the predicate `self_ty` provides. A key leaves
+/// its `Self`, the provider, open, and a default naming `Self` names it as the
+/// trait's own `Self`, which `self_ty` replaces too.
 pub(crate) fn instantiate_trait_self<'db>(
     db: &'db dyn HirAnalysisDb,
     inst: trait_def::TraitInstId<'db>,
     self_ty: TyId<'db>,
 ) -> trait_def::TraitInstId<'db> {
-    let def = inst.def(db);
-    let mut args = inst.args(db).to_vec();
-    if args.is_empty() {
-        args.push(self_ty);
-    } else {
-        args[0] = self_ty;
+    struct TraitSelf<'db> {
+        trait_self: TyId<'db>,
+        self_ty: TyId<'db>,
     }
-    trait_def::TraitInstId::new(
+    impl<'db> TyFolder<'db> for TraitSelf<'db> {
+        fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+            if ty == self.trait_self {
+                self.self_ty
+            } else {
+                ty.super_fold_with(db, self)
+            }
+        }
+    }
+    let trait_self = inst.def(db).self_param(db);
+    inst.fold_with(
         db,
-        def,
-        args,
-        inst.assoc_type_bindings(db).clone(),
-        inst.mode(db),
+        &mut TraitSelf {
+            trait_self,
+            self_ty,
+        },
     )
+    .with_self_ty(db, self_ty)
 }
 
 /// An analysis pass for trait definitions.

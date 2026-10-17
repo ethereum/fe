@@ -8,6 +8,7 @@ use crate::analysis::{
             stored_trait_key_is_rigid, stored_type_key_is_rigid,
         },
         fold::{TyFoldable, TyFolder},
+        instantiate_trait_self,
         method_cmp::trait_effect_key_matches_with,
         trait_def::TraitInstId,
         ty_def::{InvalidCause, Kind, TyBase, TyData, TyId, TyVarSort},
@@ -54,6 +55,7 @@ pub fn query_matches_witness<'db>(
     tc: &mut crate::analysis::ty::ty_check::TyChecker<'db>,
     query: &EffectPatternKey<'db>,
     witness: &StoredEffectKey<'db>,
+    provider_ty: TyId<'db>,
 ) -> Option<KeyMatchCommit<'db>> {
     // Witnesses are rigid authoritative providers. Matching is directional from the
     // query pattern into that stored key and must not persist body-local specialization.
@@ -69,7 +71,44 @@ pub fn query_matches_witness<'db>(
                 .then_some(KeyMatchCommit::WitnessType { query, witness })
         }
         (EffectPatternKey::Trait(query), StoredEffectKey::Trait(witness)) => {
-            query_matches_stored_trait(tc.db, query.clone(), witness.clone())
+            // A key names its provider as the trait's own `Self`, which the
+            // witness's provider is.
+            let db = tc.db;
+            let provided =
+                |args_no_self: &[TyId<'db>], assoc_bindings: &[(IdentId<'db>, TyId<'db>)]| {
+                    let inst = instantiate_trait_self(
+                        db,
+                        trait_inst_from_parts(
+                            db,
+                            witness.def,
+                            args_no_self.iter().copied(),
+                            assoc_bindings.iter().copied(),
+                        ),
+                        provider_ty,
+                    );
+                    (
+                        inst.args(db)[1..].iter().copied().collect(),
+                        inst.assoc_type_bindings(db)
+                            .iter()
+                            .map(|(name, ty)| (*name, *ty))
+                            .collect(),
+                    )
+                };
+            let (args_no_self, assoc_bindings) =
+                provided(&query.args_no_self, &query.assoc_bindings);
+            let query = TraitPatternKey {
+                args_no_self,
+                assoc_bindings,
+                ..query
+            };
+            let (args_no_self, assoc_bindings) =
+                provided(&witness.args_no_self, &witness.assoc_bindings);
+            let witness = StoredTraitKey {
+                args_no_self,
+                assoc_bindings,
+                ..witness
+            };
+            query_matches_stored_trait(db, query.clone(), witness.clone())
                 .then_some(KeyMatchCommit::WitnessTrait { query, witness })
         }
         _ => None,
