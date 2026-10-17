@@ -4,7 +4,6 @@
 // inner receiver with an inactive placeholder; the inner slide runs once,
 // after the caller's write, and only on the element path.
 use core::iter::{Collection, CollectionMut}
-use core::option::Option
 
 struct Cells {
     items: [u256; 3],
@@ -17,12 +16,16 @@ impl Collection for Cells {
     type Cursor = usize
     type Item = u256
 
-    fn start(self) -> Option<usize> {
-        if self.len > 0 { Option::Some(0) } else { Option::None }
+    fn start(self) -> usize {
+        0
     }
 
-    fn next(self, _ c: usize) -> Option<usize> {
-        if c + 1 < self.len { Option::Some(c + 1) } else { Option::None }
+    fn has(self, _ c: usize) -> bool {
+        c < self.len
+    }
+
+    fn next(self, _ c: usize) -> usize {
+        c + 1
     }
 
     fn at(self, _ c: usize) -> ref u256 {
