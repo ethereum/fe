@@ -435,37 +435,21 @@ impl<'db> Callable<'db> {
             return None;
         }
         let name = func.name(db).to_opt()?;
-        let cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-        let method = match self.choice {
-            // Applied to the goal normalized as the instance key normalizes
-            // it, so a spelling through an associated type selects the same
-            // implementation here and there.
-            Some(Choice::Known(known)) => {
-                crate::analysis::ty::trait_def::method_instance_from_resolved(
-                    db,
-                    known.resolved_instance(
-                        db,
-                        crate::analysis::ty::trait_resolution::normalize_trait_inst_preserving_validity(
-                            db,
-                            inst,
-                            scope,
-                            assumptions,
-                        ),
-                    )?,
-                    name,
-                )
-            }
-            None => {
-                crate::analysis::ty::trait_def::resolve_trait_method_instance(
-                    db,
-                    cx,
-                    inst,
-                    name,
-                    crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
-                )
-            }
+        // Read where the call is checked: a known choice, ordinary selection
+        // with no decision, nothing for a choice a slot supplies later.
+        let chosen = match self.choice {
+            Some(Choice::Known(known)) => crate::analysis::ty::trait_choice::Resolved::Known(known),
+            None => crate::analysis::ty::trait_choice::Resolved::Ordinary,
             Some(Choice::Slot(_)) => return None,
         };
+        let method = crate::analysis::ty::trait_def::chosen_method(
+            db,
+            chosen,
+            inst,
+            name,
+            scope,
+            assumptions,
+        );
         let Selection::Unique(method) = method else {
             return None;
         };

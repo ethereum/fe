@@ -2041,58 +2041,31 @@ impl<'db> TyCheckEnv<'db> {
         Ok((own, delivered))
     }
 
-    /// The implementations, ordinary and named, that apply to `inst` as
-    /// written (normalized here), each applied to it: the bodies a use whose
-    /// implementation is chosen later could run. None for a goal that still
-    /// holds inference variables.
-    fn applicable_impls(
-        &self,
-        inst: TraitInstId<'db>,
-    ) -> Vec<crate::analysis::ty::trait_def::ResolvedImplInstance<'db>> {
-        use crate::analysis::ty::{
-            trait_def::{impls_for_trait_def, instantiate_selected_impl, named_impls_for_trait},
-            trait_lower::complete_selected_impl,
-        };
-        let db = self.db();
+    /// The slot `inst` as written, normalized here, whose implementations a
+    /// use chosen later could run. None for a goal that still holds inference
+    /// variables.
+    fn candidate_slot(&self, inst: TraitInstId<'db>) -> Option<TraitInstId<'db>> {
         let inst = self.normalized_slot(inst).inst();
-        if inst.args(db).iter().any(|ty| ty.has_var(db)) {
-            return Vec::new();
-        }
-        let ingot = self.scope().top_mod(db).ingot(db);
-        let mut candidates = impls_for_trait_def(db, ingot, inst.def(db)).clone();
-        candidates.extend(
-            named_impls_for_trait(db, ingot, inst.def(db))
-                .into_iter()
-                .filter_map(|item| lower_impl_trait(db, item)),
-        );
-        candidates
-            .into_iter()
-            .filter(|candidate| matches!(candidate.origin(db), ImplementorOrigin::Hir(_)))
-            .filter_map(|candidate| {
-                complete_selected_impl(db, candidate)
-                    .and_then(|completed| instantiate_selected_impl(db, completed, inst))
-            })
-            .collect()
+        (!inst.args(self.db()).iter().any(|ty| ty.has_var(self.db()))).then_some(inst)
     }
 
     /// The method bodies a trait call whose implementation is chosen later
-    /// could run, with their arguments (`applicable_impls`).
+    /// could run, with their arguments (`trait_def::candidate_methods`).
     fn candidate_bodies(
         &self,
         callable: &Callable<'db>,
         nominal: crate::hir_def::Func<'db>,
     ) -> Vec<(crate::hir_def::Func<'db>, Vec<TyId<'db>>)> {
-        use crate::analysis::ty::trait_def::method_instance_from_resolved;
         let db = self.db();
         let (Some(inst), Some(name)) = (callable.trait_inst, nominal.name(db).to_opt()) else {
             return Vec::new();
         };
+        let Some(inst) = self.candidate_slot(inst) else {
+            return Vec::new();
+        };
+        let ingot = self.scope().top_mod(db).ingot(db);
         let mut bodies = Vec::new();
-        for resolved in self.applicable_impls(inst) {
-            let Selection::Unique(method) = method_instance_from_resolved(db, resolved, name)
-            else {
-                continue;
-            };
+        for method in crate::analysis::ty::trait_def::candidate_methods(db, ingot, inst, name) {
             let Some(body) = method.body() else {
                 continue;
             };
@@ -2548,20 +2521,22 @@ impl<'db> TyCheckEnv<'db> {
                     }
                     None => Vec::new(),
                 };
-                for resolved in self.applicable_impls(use_.inst()) {
-                    if let Some(candidate) =
-                        crate::analysis::ty::trait_def::selected_assoc_const_body_template(
+                let candidates = self
+                    .candidate_slot(use_.inst())
+                    .map_or_else(Vec::new, |inst| {
+                        crate::analysis::ty::trait_def::candidate_constants(
                             db,
-                            resolved,
+                            self.scope().top_mod(db).ingot(db),
+                            inst,
                             use_.name(),
                         )
+                    });
+                for candidate in candidates {
+                    for item in
+                        self.body_decisions(frame, candidate, false, &mut undecided, reached)?
                     {
-                        for item in
-                            self.body_decisions(frame, candidate, false, &mut undecided, reached)?
-                        {
-                            if !items.contains(&item) {
-                                items.push(item);
-                            }
+                        if !items.contains(&item) {
+                            items.push(item);
                         }
                     }
                 }

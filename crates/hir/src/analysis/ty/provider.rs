@@ -6,8 +6,8 @@ use crate::{
         ty::{
             normalize::normalize_ty,
             result_space::{ResolvedSpace, SpaceKey, resolve_space_key},
-            trait_def::{TraitInstId, resolve_trait_impl_instance},
-            trait_resolution::{PredicateListId, Selection, TraitSolveCx},
+            trait_def::TraitInstId,
+            trait_resolution::{PredicateListId, TraitSolveCx},
             ty_check::EffectParamSite,
             ty_def::TyId,
         },
@@ -267,18 +267,12 @@ pub fn state_index_lanes<'db>(
     }
     let lane_codec = super::corelib::resolve_core_trait(db, scope, &["ops", "LaneCodec"])?;
     let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(
+    let bits = super::const_ty::ordinary_const_ty(
         db,
         solve_cx,
         TraitInstId::new_simple(db, lane_codec, vec![codec, entry]),
-        crate::analysis::ty::trait_choice::OrdinarySelection::no_frame_reaches(),
-    ) else {
-        return None;
-    };
-    let bits = super::const_ty::const_ty_from_resolved_trait_const(
-        db,
-        resolved,
         IdentId::new(db, "BITS".to_string()),
+        crate::analysis::ty::trait_choice::OrdinarySelection::no_frame_reaches(),
     )?
     .evaluate(db, Some(TyId::u256(db)))
     .integer_value(db)?;

@@ -1064,9 +1064,208 @@ pub fn resolve_trait_method_instance<'db>(
     method_instance_from_resolved(db, resolved, method)
 }
 
+/// The method body that runs for a trait call whose decision, read in the
+/// instance that makes the call, is `chosen`: the known choice's
+/// implementation applied to `inst` (normalized as the instance key
+/// normalizes it), ordinary selection when there is no decision, and nothing
+/// for a pending choice. With `chosen_constant` and `candidate_methods`, the
+/// one way from a choice to a body: the template functions they read are
+/// private here, so a body chosen by a choice is reached only through them.
+/// The choices the body receives are mapped by `trait_choice::body_deliveries`
+/// from the same call.
+pub(crate) fn chosen_method<'db>(
+    db: &'db dyn HirAnalysisDb,
+    chosen: super::trait_choice::Resolved<'db>,
+    inst: TraitInstId<'db>,
+    method: IdentId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Selection<ResolvedMethodInstance<'db>> {
+    use super::trait_choice::{OrdinarySelection, Resolved};
+    match chosen {
+        Resolved::Known(known) => {
+            let inst = normalize_trait_inst_preserving_validity(db, inst, scope, assumptions);
+            known_instance(db, known, inst).map_or(Selection::NotFound, |resolved| {
+                method_instance_from_resolved(db, resolved, method)
+            })
+        }
+        Resolved::Ordinary => resolve_trait_method_instance(
+            db,
+            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+            inst,
+            method,
+            OrdinarySelection::no_recorded_choice(),
+        ),
+        Resolved::Pending => Selection::NotFound,
+    }
+}
+
+/// The implementation a constant use reads, and its constant body with the
+/// choices that body receives: the use's recorded choice (known), ordinary
+/// selection when there is no decision or the decision is the reading body's
+/// own bound, and nothing for a pending choice, which is never answered the
+/// ordinary way (L1). The body is the selected implementation's constant or
+/// the trait's default, absent for a built-in constant; its choices are the
+/// use's deliveries mapped to it (`DeliveryList::to_body`).
+pub(crate) fn chosen_constant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    use_: super::assoc_const::AssocConstUse<'db>,
+) -> Option<ChosenConstant<'db>> {
+    use super::trait_choice::{Choice, SlotChoices, SlotRef};
+    let resolved = match use_.choice() {
+        Some(Choice::Known(known)) => known_instance(
+            db,
+            known,
+            normalize_trait_inst_preserving_validity(
+                db,
+                use_.inst(),
+                use_.origin_scope(),
+                use_.assumptions(),
+            ),
+        )?,
+        Some(Choice::Slot(SlotRef::Bound(_))) | None => match resolve_trait_impl_instance(
+            db,
+            use_.solve_cx(db),
+            use_.inst(),
+            super::trait_choice::OrdinarySelection::no_recorded_choice(),
+        ) {
+            Selection::Unique(resolved) => resolved,
+            Selection::Ambiguous(_) | Selection::NotFound => return None,
+        },
+        Some(Choice::Slot(_)) => return None,
+    };
+    let body =
+        selected_assoc_const_body_template(db, resolved, use_.name()).map(|(body, ty, subst)| {
+            ConstantBody {
+                body,
+                ty,
+                subst,
+                choices: use_
+                    .delivered()
+                    .map_or_else(SlotChoices::default, |list| list.to_body(db, body)),
+            }
+        });
+    Some(ChosenConstant { resolved, body })
+}
+
+/// The ordinary implementation of `inst` and its constant `name`'s body, for
+/// a read that no choice can reach, named by `why`. Its body receives
+/// nothing.
+pub(crate) fn ordinary_constant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+    name: IdentId<'db>,
+    why: super::trait_choice::OrdinarySelection,
+) -> Option<ChosenConstant<'db>> {
+    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst, why) else {
+        return None;
+    };
+    let body = selected_assoc_const_body_template(db, resolved, name).map(|(body, ty, subst)| {
+        ConstantBody {
+            body,
+            ty,
+            subst,
+            choices: super::trait_choice::SlotChoices::default(),
+        }
+    });
+    Some(ChosenConstant { resolved, body })
+}
+
+/// The implementation a constant read selects, and the body it runs
+/// (`chosen_constant`, `ordinary_constant`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ChosenConstant<'db> {
+    /// The implementation applied to the read's goal.
+    pub resolved: ResolvedImplInstance<'db>,
+    /// Absent for a constant the compiler provides.
+    pub body: Option<ConstantBody<'db>>,
+}
+
+/// A constant body with its declared type, the arguments of its owner, and
+/// what its bounds receive from the read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConstantBody<'db> {
+    pub body: Body<'db>,
+    pub ty: TyId<'db>,
+    pub subst: CompleteSubst<'db>,
+    pub choices: super::trait_choice::SlotChoices<'db>,
+}
+
+/// The method bodies a trait call whose implementation is chosen later could
+/// run: `method` of every implementation that applies to `inst` as written
+/// (`applicable_impls`), read for the checks such a call owes. No choice is
+/// read, so none is received.
+pub(crate) fn candidate_methods<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    inst: TraitInstId<'db>,
+    method: IdentId<'db>,
+) -> Vec<ResolvedMethodInstance<'db>> {
+    applicable_impls(db, ingot, inst)
+        .into_iter()
+        .filter_map(
+            |resolved| match method_instance_from_resolved(db, resolved, method) {
+                Selection::Unique(method) => Some(method),
+                _ => None,
+            },
+        )
+        .collect()
+}
+
+/// The constant bodies a constant read whose implementation is chosen later
+/// could run, as `candidate_methods` for a call.
+pub(crate) fn candidate_constants<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    inst: TraitInstId<'db>,
+    name: IdentId<'db>,
+) -> Vec<(Body<'db>, TyId<'db>, CompleteSubst<'db>)> {
+    applicable_impls(db, ingot, inst)
+        .into_iter()
+        .filter_map(|resolved| selected_assoc_const_body_template(db, resolved, name))
+        .collect()
+}
+
+/// The implementations, ordinary and named, that apply to `inst` as written,
+/// each applied to it.
+fn applicable_impls<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    inst: TraitInstId<'db>,
+) -> Vec<ResolvedImplInstance<'db>> {
+    let mut candidates = impls_for_trait_def(db, ingot, inst.def(db)).clone();
+    candidates.extend(
+        named_impls_for_trait(db, ingot, inst.def(db))
+            .into_iter()
+            .filter_map(|item| super::trait_lower::lower_impl_trait(db, item)),
+    );
+    candidates
+        .into_iter()
+        .filter(|candidate| matches!(candidate.origin(db), ImplementorOrigin::Hir(_)))
+        .filter_map(|candidate| {
+            complete_selected_impl(db, candidate)
+                .and_then(|completed| instantiate_selected_impl(db, completed, inst))
+        })
+        .collect()
+}
+
+/// A known choice's implementation applied to `inst`, a goal in its slot.
+fn known_instance<'db>(
+    db: &'db dyn HirAnalysisDb,
+    known: super::trait_choice::KnownChoice<'db>,
+    inst: TraitInstId<'db>,
+) -> Option<ResolvedImplInstance<'db>> {
+    let candidate = complete_selected_impl(
+        db,
+        super::trait_lower::lower_impl_trait(db, known.implementation())?,
+    )?;
+    instantiate_selected_impl(db, candidate, inst)
+}
+
 /// Assemble method metadata from one reconstructed application. Retained
 /// consumers use this path without running implementation discovery again.
-pub(crate) fn method_instance_from_resolved<'db>(
+fn method_instance_from_resolved<'db>(
     db: &'db dyn HirAnalysisDb,
     resolved: ResolvedImplInstance<'db>,
     method: IdentId<'db>,
@@ -1300,7 +1499,7 @@ pub fn assoc_const_body_template_for_trait_inst<'db>(
     selected_assoc_const_body_template(db, resolved, const_name)
 }
 
-pub(crate) fn selected_assoc_const_body_template<'db>(
+fn selected_assoc_const_body_template<'db>(
     db: &'db dyn HirAnalysisDb,
     resolved: ResolvedImplInstance<'db>,
     const_name: IdentId<'db>,

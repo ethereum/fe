@@ -26,8 +26,7 @@ use crate::{
             trait_choice::{Resolved, SlotChoices, body_deliveries},
             trait_def::{
                 ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId,
-                method_instance_from_resolved, resolve_trait_method_instance,
-                selected_assoc_const_body_template,
+                resolve_trait_method_instance,
             },
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
@@ -785,27 +784,14 @@ fn semantic_callee_key_with_assumptions<'db>(
                 premises.extend(delivered_goals);
                 crate::analysis::ty::trait_resolution::PredicateListId::new(db, premises)
             };
-            let cx = TraitSolveCx::new(db, impl_env.normalization_scope(db))
-                .with_assumptions(assumptions);
-            match chosen {
-                Resolved::Known(known) => known
-                    .resolved_instance(
-                        db,
-                        crate::analysis::ty::trait_resolution::normalize_trait_inst_preserving_validity(
-                            db,
-                            inst,
-                            impl_env.normalization_scope(db),
-                            assumptions,
-                        ),
-                    )
-                    .map_or(Selection::NotFound, |resolved| {
-                        method_instance_from_resolved(db, resolved, name)
-                    }),
-                Resolved::Ordinary => {
-                    resolve_trait_method_instance(db, cx, inst, name, crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice())
-                }
-                Resolved::Pending => Selection::NotFound,
-            }
+            crate::analysis::ty::trait_def::chosen_method(
+                db,
+                chosen,
+                inst,
+                name,
+                impl_env.normalization_scope(db),
+                assumptions,
+            )
         }
         && let Some(impl_func) = method.body()
     {
@@ -1374,16 +1360,15 @@ fn semantic_const_key_for_assoc_const<'db>(
     db: &'db dyn HirAnalysisDb,
     assoc: AssocConstUse<'db>,
 ) -> Option<SemanticInstanceKey<'db>> {
-    let Selection::Unique(resolved) = assoc.selected_impl(db) else {
-        return None;
-    };
-    let (body, ty, subst) = selected_assoc_const_body_template(db, resolved, assoc.name())?;
-    // What the constant body receives: the decisions the use recorded for its
+    // The body and what it receives: the decisions the use recorded for its
     // bounds, a default body's `Self` among them (RD114: default equals
     // explicit), read through the same body mapping as a call's.
-    let choices = assoc
-        .delivered()
-        .map_or_else(SlotChoices::default, |list| list.to_body(db, body));
+    let crate::analysis::ty::trait_def::ConstantBody {
+        body,
+        ty,
+        subst,
+        choices,
+    } = crate::analysis::ty::trait_def::chosen_constant(db, assoc)?.body?;
     Some(SemanticInstanceKey::new(
         db,
         BodyOwner::AnonConstBody { body, expected: ty },

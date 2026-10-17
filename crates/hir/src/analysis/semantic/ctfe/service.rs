@@ -1409,6 +1409,11 @@ fn force_const_computation_in_context<'db>(
                     }))
                 };
             };
+            // The body receives the decisions the use delivers to its bounds,
+            // as the constant's instance key gives them (`chosen_constant`).
+            let choices = crate::analysis::ty::trait_def::chosen_constant(db, use_)
+                .and_then(|chosen| chosen.body)
+                .map_or_else(SlotChoices::default, |body| body.choices);
             force_selected_const_ty(
                 db,
                 const_ty,
@@ -1418,7 +1423,7 @@ fn force_const_computation_in_context<'db>(
                     use_.origin_scope(),
                     use_.assumptions(),
                     vec![use_.inst()],
-                    SlotChoices::default(),
+                    choices,
                 ),
                 cx,
                 origin,

@@ -79,8 +79,10 @@ impl<'db> KnownChoice<'db> {
         }
     }
 
-    /// The chosen implementation applied to `inst`, a goal in this slot.
-    pub fn resolved_instance(
+    /// The chosen implementation applied to `inst`, a goal in this slot, for
+    /// its outputs (`answers`). A body is reached through
+    /// `trait_def::chosen_method` and `chosen_constant`, with its choices.
+    fn resolved_instance(
         self,
         db: &'db dyn HirAnalysisDb,
         inst: TraitInstId<'db>,

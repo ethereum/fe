@@ -17,11 +17,8 @@ use super::{
     generic_defaults::DefaultApplication,
     normalize::{normalize_ty, normalize_with_trait_evidence},
     subst::substitute_complete,
-    trait_def::{
-        ResolvedImplInstance, TraitInstId, resolve_trait_impl_instance,
-        selected_assoc_const_body_template,
-    },
-    trait_resolution::{Selection, TraitSolveCx, constraint::collect_constraints},
+    trait_def::TraitInstId,
+    trait_resolution::{TraitSolveCx, constraint::collect_constraints},
     ty_check::{BodyOwner, infer_body},
     ty_def::{InvalidCause, TyId, TyParam, TyVar},
     ty_error::first_invalid_ty_cause,
@@ -2078,10 +2075,11 @@ pub(crate) fn const_ty_from_assoc_const_use<'db>(
     db: &'db dyn HirAnalysisDb,
     assoc: AssocConstUse<'db>,
 ) -> Option<ConstTyId<'db>> {
-    let Selection::Unique(resolved) = assoc.selected_impl(db) else {
-        return None;
-    };
-    const_ty_from_resolved_trait_const(db, resolved, assoc.name())
+    const_ty_from_chosen_constant(
+        db,
+        super::trait_def::chosen_constant(db, assoc)?,
+        assoc.name(),
+    )
 }
 
 /// Whether `start_body`'s value definition can re-enter `start_body` when
@@ -2262,22 +2260,41 @@ pub(super) fn const_ty_from_trait_const<'db>(
     inst: TraitInstId<'db>,
     name: IdentId<'db>,
 ) -> Option<ConstTyId<'db>> {
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(
+    ordinary_const_ty(
         db,
         solve_cx,
         inst,
+        name,
         crate::analysis::ty::trait_choice::OrdinarySelection::type_level_read(),
-    ) else {
-        return None;
-    };
-    const_ty_from_resolved_trait_const(db, resolved, name)
+    )
 }
 
-pub(super) fn const_ty_from_resolved_trait_const<'db>(
+/// The ordinary implementation's constant `name` for `inst`, as a constant
+/// term, for a read no choice reaches (`why`).
+pub(super) fn ordinary_const_ty<'db>(
     db: &'db dyn HirAnalysisDb,
-    resolved: ResolvedImplInstance<'db>,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+    name: IdentId<'db>,
+    why: crate::analysis::ty::trait_choice::OrdinarySelection,
+) -> Option<ConstTyId<'db>> {
+    const_ty_from_chosen_constant(
+        db,
+        super::trait_def::ordinary_constant(db, solve_cx, inst, name, why)?,
+        name,
+    )
+}
+
+/// The constant a read of `name` selects, as a constant term to evaluate. Its
+/// body's choices are not carried by the term: evaluation reads them from the
+/// read again (the CTFE `Associated` entry), and a read in a type receives
+/// none, since D5 refuses a type whose constant reads a choice.
+fn const_ty_from_chosen_constant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    chosen: super::trait_def::ChosenConstant<'db>,
     name: IdentId<'db>,
 ) -> Option<ConstTyId<'db>> {
+    let resolved = chosen.resolved;
     if name.data(db) == "BITS"
         && let Some(bits) = super::sol_codec::sol_codec_bits(db, resolved)
     {
@@ -2285,7 +2302,12 @@ pub(super) fn const_ty_from_resolved_trait_const<'db>(
     }
     let inst = resolved.trait_inst();
     let trait_ = inst.def(db);
-    let (body, template_ty, subst) = selected_assoc_const_body_template(db, resolved, name)?;
+    let super::trait_def::ConstantBody {
+        body,
+        ty: template_ty,
+        subst,
+        ..
+    } = chosen.body?;
     let template_ty = Some(template_ty);
     let capture = ConstCaptureEnv::Bound(subst);
 

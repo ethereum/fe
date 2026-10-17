@@ -135,35 +135,24 @@ fn choices_resolve_through_one_function() {
 }
 
 #[test]
-fn trait_method_bodies_are_chosen_where_choices_are_read() {
-    // Guard G2: ordinary method lookup is reached only after a use's recorded
-    // choice was read, so it cannot answer a slot that a choice opened.
-    assert_eq!(
-        occurrences_outside(
-            "resolve_trait_method_instance(",
-            &[
-                "src/analysis/ty/trait_def.rs",
-                "src/analysis/ty/ty_check/callable.rs",
-                "src/analysis/semantic/instance/const_ref.rs",
-            ]
-        ),
-        Vec::<String>::new()
-    );
-    // A body can also be taken from a selected implementation directly; the
-    // checker does so for every candidate of a body chosen later, and the
-    // callee key and the checker's call for a recorded choice.
-    assert_eq!(
-        occurrences_outside(
-            "method_instance_from_resolved(",
-            &[
-                "src/analysis/ty/trait_def.rs",
-                CHECKER,
-                "src/analysis/ty/ty_check/callable.rs",
-                "src/analysis/semantic/instance/const_ref.rs",
-            ]
-        ),
-        Vec::<String>::new()
-    );
+fn bodies_are_chosen_through_one_accessor() {
+    // A method or constant body is reached from a choice only through
+    // `trait_def::chosen_method`, `chosen_constant` and the candidate lists,
+    // which give a body with the choices it receives: the template functions
+    // are private to `trait_def`, and `KnownChoice` applies its
+    // implementation only for its outputs. Building an implementation
+    // instance by hand stays in the two modules that own them.
+    for raw in [
+        "complete_selected_impl(",
+        "instantiate_selected_impl(",
+        ".method_instance(",
+    ] {
+        assert_eq!(
+            occurrences_outside(raw, &["src/analysis/ty/trait_def.rs", REPRESENTATION]),
+            Vec::<String>::new(),
+            "{raw}"
+        );
+    }
 }
 
 #[test]
@@ -357,10 +346,9 @@ fn ordinary_selection_names_its_reason() {
         (
             "no_recorded_choice",
             &[
-                ("src/analysis/ty/assoc_const.rs", "fn selected_impl"),
-                ("src/analysis/ty/ty_check/callable.rs", "fn called_body"),
+                (trait_def, "fn chosen_method"),
+                (trait_def, "fn chosen_constant"),
                 (CHECKER, "fn ordinary_choice"),
-                (const_ref, "fn semantic_callee_key_with_assumptions"),
             ],
         ),
         ("outputs_by_d16", &[(trait_def, "fn output_implementation")]),
@@ -872,7 +860,8 @@ fn choice_walks_end_at_one_limit() {
 fn deliveries_reach_a_body_through_one_mapping() {
     // A call's deliveries are read only where the body that runs is mapped
     // (`trait_choice::body_deliveries`): the checker, the condition and
-    // type-reach checks, and the callee key. Another reader would be a
+    // type-reach checks, and the callee key; a constant use's in the
+    // accessor (`trait_def::chosen_constant`). Another reader would be a
     // second answer to "what does this body receive".
     assert_eq!(
         occurrences_outside(
@@ -881,6 +870,7 @@ fn deliveries_reach_a_body_through_one_mapping() {
                 CHECKER,
                 "src/analysis/ty/ty_check/const_requirements.rs",
                 "src/analysis/semantic/instance/const_ref.rs",
+                "src/analysis/ty/trait_def.rs",
             ]
         ),
         Vec::<String>::new()

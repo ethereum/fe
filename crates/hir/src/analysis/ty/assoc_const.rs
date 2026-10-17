@@ -5,8 +5,7 @@ use super::{
     fold::{TyFoldable, TyFolder},
     trait_choice::{Choice, DeliveryList, Resolved, SlotChoices, SlotRef},
     trait_def::TraitInstId,
-    trait_def::{ResolvedImplInstance, resolve_trait_impl_instance},
-    trait_resolution::{PredicateListId, Selection, TraitSolveCx},
+    trait_resolution::{PredicateListId, TraitSolveCx},
     visitor::{TyVisitable, TyVisitor},
 };
 use crate::{
@@ -92,36 +91,6 @@ impl<'db> AssocConstUse<'db> {
         TraitSolveCx::new(db, self.origin_scope).with_assumptions(self.assumptions)
     }
 
-    /// The implementation this use reads: its recorded choice when that is
-    /// known, ordinary selection when there is no decision or the decision is
-    /// the body's own bound, and nothing for a pending choice, which is never
-    /// answered the ordinary way (L1). The only resolver for value uses.
-    pub(crate) fn selected_impl(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Selection<ResolvedImplInstance<'db>> {
-        match self.choice {
-            Some(Choice::Known(known)) => known
-                .resolved_instance(
-                    db,
-                    super::trait_resolution::normalize_trait_inst_preserving_validity(
-                        db,
-                        self.inst,
-                        self.origin_scope,
-                        self.assumptions,
-                    ),
-                )
-                .map_or(Selection::NotFound, Selection::Unique),
-            Some(Choice::Slot(SlotRef::Bound(_))) | None => resolve_trait_impl_instance(
-                db,
-                self.solve_cx(db),
-                self.inst,
-                crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
-            ),
-            Some(Choice::Slot(_)) => Selection::NotFound,
-        }
-    }
-
     /// This use read inside an instance that carries `choices`: its own
     /// decision and the decisions it delivers to the constant body.
     pub(crate) fn specialize(self, db: &'db dyn HirAnalysisDb, choices: &SlotChoices<'db>) -> Self {
@@ -161,7 +130,7 @@ impl<'db> AssocConstUse<'db> {
 
     /// The constant body this use reads, when its implementation is known:
     /// the selected implementation's constant or the trait's default, with
-    /// its declared type and that body's arguments.
+    /// its declared type and that body's arguments (`chosen_constant`).
     pub(crate) fn body_that_runs(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -170,10 +139,8 @@ impl<'db> AssocConstUse<'db> {
         TyId<'db>,
         super::ty_lower::CompleteSubst<'db>,
     )> {
-        let Selection::Unique(resolved) = self.selected_impl(db) else {
-            return None;
-        };
-        super::trait_def::selected_assoc_const_body_template(db, resolved, self.name)
+        let body = super::trait_def::chosen_constant(db, self)?.body?;
+        Some((body.body, body.ty, body.subst))
     }
 }
 
