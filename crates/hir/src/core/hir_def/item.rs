@@ -1287,6 +1287,12 @@ impl<'db> Trait<'db> {
     pub fn assoc_ty_by_index(self, db: &'db dyn HirDb, idx: usize) -> &'db AssocTyDecl<'db> {
         &self.types(db)[idx]
     }
+
+    /// Whether an implementation of this trait gives outputs a proof alone
+    /// does not: associated types, effect rows or result spaces.
+    pub fn has_assoc_outputs(self, db: &'db dyn HirDb) -> bool {
+        !self.types(db).is_empty() || !self.rows(db).is_empty() || !self.spaces(db).is_empty()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]

@@ -767,6 +767,24 @@ fn semantic_callee_key_with_assumptions<'db>(
     let body_func = if let Some(inst) = callable.trait_inst()
         && let Some(name) = nominal_func.name(db).to_opt()
         && let Selection::Unique(method) = {
+            // The implementation's conditions hold through what this call
+            // delivers to its bounds: a slot only named implementations
+            // answer is a premise here, as it was where the call was checked.
+            let delivered_goals = callable
+                .delivered()
+                .iter()
+                .filter_map(|(_, choice)| match caller_choices.resolve(Some(*choice)) {
+                    Resolved::Known(known) => Some(known.goal()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            let assumptions = if delivered_goals.is_empty() {
+                assumptions
+            } else {
+                let mut premises = assumptions.list(db).to_vec();
+                premises.extend(delivered_goals);
+                crate::analysis::ty::trait_resolution::PredicateListId::new(db, premises)
+            };
             let cx = TraitSolveCx::new(db, impl_env.normalization_scope(db))
                 .with_assumptions(assumptions);
             match chosen {

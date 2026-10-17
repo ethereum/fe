@@ -443,13 +443,36 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 clauses.push(Clause::SolCodec);
             }
         }
-        if !prepared.query.require_impl
-            && prepared.query.selected_candidate.is_none()
-            && self.goal_can_use_assumptions(prepared.normalized_goal)
-        {
-            clauses.extend(
-                (0..prepared.query.assumptions.list(self.db).len()).map(Clause::Assumption),
-            );
+        if !prepared.query.require_impl && prepared.query.selected_candidate.is_none() {
+            let assumptions = prepared.query.assumptions.list(self.db);
+            if self.goal_can_use_assumptions(prepared.normalized_goal) {
+                clauses.extend((0..assumptions.len()).map(Clause::Assumption));
+            } else if clauses.is_empty()
+                && !prepared
+                    .normalized_goal
+                    .def(self.db)
+                    .has_assoc_outputs(self.db)
+            {
+                // A concrete goal no implementation answers is answered by a
+                // premise equal to it: a slot only named implementations
+                // answer, opened by a frame (`add_opened_premise`) or
+                // delivered to the instance that runs. A base program cannot
+                // state such a premise (a bound on a concrete type is
+                // refused), so no base program changes. A trait with
+                // associated outputs is left to their one selection (D16):
+                // a premise has no outputs to read.
+                let goal =
+                    crate::analysis::ty::trait_choice::slot_goal(self.db, prepared.normalized_goal);
+                clauses.extend(
+                    assumptions
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, premise)| {
+                            crate::analysis::ty::trait_choice::slot_goal(self.db, **premise) == goal
+                        })
+                        .map(|(index, _)| Clause::Assumption(index)),
+                );
+            }
         }
         Ok(CallbackOutcome::Continue(clauses))
     }
