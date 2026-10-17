@@ -77,6 +77,9 @@ fn take(_ x: mut Option<MemBuffer>) -> Option<MemBuffer> {
 }
 ```
 
+`core::mem::replace(mut x, v)` and `core::mem::take(mut x)` do this in one
+call, as does `x.take()` on an `Option`.
+
 A value reached through a view or a `ref` access, through an effect, or in
 storage, cannot move; bind it `ref` to read it in place. An effect lends its
 place: a non-`Copy` value under it is read in place or passed on to a callee's
