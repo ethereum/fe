@@ -503,7 +503,27 @@ pub(crate) fn lower_const_body_path<'db>(
                     // Defer evaluation: the use position's expected type may
                     // differ in integer shape from the const's declared type
                     // (e.g. a `u256` trait const used as an array length).
-                    let assoc = AssocConstUse::new(scope, assumptions, inst, name);
+                    // D5 at the read: a trait constant written where a frame
+                    // around it opens its slot reads that slot unsupplied, so
+                    // it never evaluates to the ordinary implementation.
+                    let frames = super::ty_check::written_frames::written_frames(db, body);
+                    let opened = frames.opens(db, inst);
+                    if opened && frames.in_declaration() {
+                        // A named implementation's declaration has no body
+                        // check to report it: the read is the refusal.
+                        return Some(ConstTyId::invalid(
+                            db,
+                            InvalidCause::ChoiceDependentConst {
+                                body,
+                                expr: body.expr(db),
+                            },
+                        ));
+                    }
+                    let unsupplied = opened.then_some(super::trait_choice::Choice::Slot(
+                        super::trait_choice::SlotRef::Unsupplied,
+                    ));
+                    let assoc =
+                        AssocConstUse::new(scope, assumptions, inst, name).with_choice(unsupplied);
                     super::const_ty::abstract_const_ty_from_assoc_const_use(db, assoc, expected_ty)
                 } else {
                     ConstTyId::invalid(db, InvalidCause::Other)

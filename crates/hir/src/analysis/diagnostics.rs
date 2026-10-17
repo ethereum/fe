@@ -2495,6 +2495,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::ChoiceDependentConst(span) => primary_diag(
+                Severity::Error,
+                "type depends on an opened trait choice",
+                "inside a named implementation this constant reads the implementation's own choice; a type whose constants depend on a choice is not supported yet",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::TypeLoweringCycle(span) => primary_diag(
                 Severity::Error,
                 "cycle detected while resolving this type",

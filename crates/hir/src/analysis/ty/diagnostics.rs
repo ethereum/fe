@@ -205,6 +205,8 @@ pub enum TyLowerDiag<'db> {
     ConstEvalStepLimitExceeded(DynLazySpan<'db>),
     ConstEvalRecursionLimitExceeded(DynLazySpan<'db>),
     ConstEvalRecursiveConst(DynLazySpan<'db>),
+    /// A named implementation's declaration reads its own slot's constant.
+    ChoiceDependentConst(DynLazySpan<'db>),
     TypeLoweringCycle(DynLazySpan<'db>),
     TypeNormalizationLimit(DynLazySpan<'db>),
 
@@ -320,6 +322,7 @@ impl TyLowerDiag<'_> {
             Self::ConstEvalStepLimitExceeded(_) => 26,
             Self::ConstEvalRecursionLimitExceeded(_) => 27,
             Self::ConstEvalRecursiveConst(_) => 37,
+            Self::ChoiceDependentConst(_) => 71,
             Self::TypeLoweringCycle(_) => 38,
             Self::TypeNormalizationLimit(_) => 58,
             Self::MixedRefSelfPrefixWithExplicitType { .. } => 28,

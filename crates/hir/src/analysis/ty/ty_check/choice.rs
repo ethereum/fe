@@ -80,6 +80,18 @@ pub(super) enum WrittenNode {
     Pat(PatId),
 }
 
+/// The key frames give `inst`'s slot, normalized in `scope`: the one way a
+/// key is made, for the checker's frames and for the frames a constant
+/// written in a body reads (`written_frames`).
+pub(super) fn slot_key<'db>(
+    db: &'db dyn HirAnalysisDb,
+    inst: TraitInstId<'db>,
+    scope: crate::hir_def::scope_graph::ScopeId<'db>,
+    assumptions: crate::analysis::ty::trait_resolution::PredicateListId<'db>,
+) -> SlotKey<'db> {
+    SlotKey::new(db, inst, scope, assumptions)
+}
+
 mod slot_key {
     use crate::analysis::{
         HirAnalysisDb,
@@ -484,6 +496,29 @@ fn call_slot_reads<'db>(
     reads
 }
 
+/// Whether `ty` holds a constant refused where it is read
+/// (`written_frames::refused_at_read`).
+fn holds_refused_read<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    struct Holds<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: bool,
+    }
+    impl<'db> TyVisitor<'db> for Holds<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+        fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
+            if super::written_frames::refused_at_read(self.db, *const_ty) {
+                self.found = true;
+            }
+            walk_const_ty(self, const_ty)
+        }
+    }
+    let mut holds = Holds { db, found: false };
+    ty.visit_with(&mut holds);
+    holds.found
+}
+
 /// The slots whose associated constants a type reads: through trait constant
 /// terms, through the anonymous constant bodies it contains (an array length
 /// written as an expression), and through the conditions and field types of
@@ -517,6 +552,11 @@ fn type_slot_reads_into<'db>(
         }
         fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
             let db = self.db;
+            // A constant refused where it is read is already a refusal; its
+            // read is not counted again where the type is used.
+            if super::written_frames::refused_at_read(db, *const_ty) {
+                return;
+            }
             match const_ty.data(db) {
                 ConstTyData::Abstract(expr, _) => {
                     if let ConstExpr::TraitConst(assoc) = expr.data(db) {
@@ -595,9 +635,13 @@ impl<'db> TyChecker<'db> {
         if frame.is_none() {
             return false;
         }
-        let dependent = type_slot_reads(self.db, ty)
-            .into_iter()
-            .any(|slot| self.env.frame_choice(frame, slot).is_some());
+        // A type written here that holds a constant refused where it is read
+        // is this refusal; one read elsewhere is not counted again
+        // (`type_slot_reads`).
+        let dependent = holds_refused_read(self.db, ty)
+            || type_slot_reads(self.db, ty)
+                .into_iter()
+                .any(|slot| self.env.frame_choice(frame, slot).is_some());
         if dependent {
             self.push_diag(BodyDiag::ChoiceDependentType { primary });
         }
@@ -1553,6 +1597,13 @@ impl<'db> TyCheckEnv<'db> {
         if let Some(found) = self.frame_choice(frame, inst) {
             return Some(found);
         }
+        // A constant body written under a `with (e)` whose evidence type is
+        // not written down: any slot that can be opened is unsupplied.
+        if self.written_unknown
+            && super::written_frames::has_named_implementation(db, self.scope(), slot)
+        {
+            return Some(Choice::Slot(SlotRef::Unsupplied));
+        }
         let written = slot_goal(db, inst);
         if let Some(own) = self
             .base_assumptions()
@@ -1570,7 +1621,26 @@ impl<'db> TyCheckEnv<'db> {
 
     /// `inst`'s slot as frames key it in this body (`SlotKey`).
     fn normalized_slot(&self, inst: TraitInstId<'db>) -> SlotKey<'db> {
-        SlotKey::new(self.db(), inst, self.scope(), self.assumptions())
+        slot_key(self.db(), inst, self.scope(), self.assumptions())
+    }
+
+    /// A constant body written inside a function's body (a constant generic
+    /// argument, an array length) receives nothing for the slots the frames
+    /// around it open: they are unsupplied there, never answered the ordinary
+    /// way, so no evaluation of it reads the ordinary implementation where
+    /// the code around it reads the choice (D5 at the read).
+    pub(super) fn seed_written_frames(&mut self, body: crate::hir_def::Body<'db>) {
+        let frames = super::written_frames::written_frames(self.db(), body);
+        for slot in frames.slots() {
+            let key = self.normalized_slot(*slot);
+            let unsupplied = Choice::Slot(SlotRef::Unsupplied);
+            if self.choice_frames.current().is_none() {
+                self.choice_frames.seed(key, unsupplied);
+            } else {
+                let _ = self.choice_frames.push(None, key, unsupplied);
+            }
+        }
+        self.written_unknown = frames.unknown();
     }
 
     /// A named implementation's own body sees itself for its own slot
@@ -2234,6 +2304,40 @@ pub(super) fn own_type_reads<'db>(
         }
     }
     reached
+}
+
+/// A constant refused where it is read (`written_frames`) stays in the types
+/// a body records: a trait constant read unsupplied, or a constant body left
+/// unevaluated. When no other check of the body reported the refusal, it is
+/// reported here, once, so no refused read passes silently.
+pub(super) fn unreported_choice_dependent_consts<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &super::TypedBody<'db>,
+) -> Option<crate::analysis::ty::diagnostics::FuncBodyDiag<'db>> {
+    struct Finds<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: bool,
+    }
+    impl<'db> TyVisitor<'db> for Finds<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+        fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
+            if super::written_frames::refused_at_read(self.db, *const_ty) {
+                self.found = true;
+            }
+            walk_const_ty(self, const_ty)
+        }
+    }
+    let body = typed.body()?;
+    let mut finds = Finds { db, found: false };
+    typed.visit_with(&mut finds);
+    finds.found.then(|| {
+        BodyDiag::ChoiceDependentType {
+            primary: body.expr(db).span(body).into(),
+        }
+        .into()
+    })
 }
 
 /// The refusals a checked body's choice uses need once inference is done:

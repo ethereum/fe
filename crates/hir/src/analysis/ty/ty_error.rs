@@ -826,6 +826,10 @@ pub(crate) fn diag_from_invalid_cause<'db>(
             TyLowerDiag::ConstEvalRecursiveConst(expr.span(body).into()).into()
         }
 
+        InvalidCause::ChoiceDependentConst { body, expr } => {
+            TyLowerDiag::ChoiceDependentConst(expr.span(body).into()).into()
+        }
+
         InvalidCause::TypeLoweringCycle => TyLowerDiag::TypeLoweringCycle(span).into(),
 
         InvalidCause::TypeNormalizationLimit => TyLowerDiag::TypeNormalizationLimit(span).into(),

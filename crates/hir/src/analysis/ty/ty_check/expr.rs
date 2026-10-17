@@ -4656,6 +4656,10 @@ impl<'db> TyChecker<'db> {
     /// two stay symbolic during checking and become concrete once the owning
     /// type parameters are.
     fn array_len_const_is_acceptable(&self, const_ty: ConstTyId<'db>) -> bool {
+        // A length refused where it is read is reported as that refusal.
+        if super::written_frames::refused_at_read(self.db, const_ty) {
+            return true;
+        }
         if const_ty.integer_value(self.db).is_some() {
             return true;
         }

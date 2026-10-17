@@ -1411,6 +1411,13 @@ pub enum InvalidCause<'db> {
     /// dedicated checks (alias cycles, recursive types, cyclic trait
     /// bounds); this cause keeps any uncovered shape loud instead of
     /// silently invalid.
+    /// A constant written in a named implementation's declaration (a method
+    /// signature, an effect clause, an associated type or row) that reads a
+    /// constant of the implementation's own slot (D5, RD129).
+    ChoiceDependentConst {
+        body: Body<'db>,
+        expr: ExprId,
+    },
     TypeLoweringCycle,
 
     /// Normalizing this type needed more nested projections, or larger ones,
@@ -1506,6 +1513,7 @@ impl InvalidCause<'_> {
                 "ConstEvalRecursionLimitExceeded".into()
             }
             InvalidCause::ConstEvalRecursiveConst { .. } => "ConstEvalRecursiveConst".into(),
+            InvalidCause::ChoiceDependentConst { .. } => "ChoiceDependentConst".into(),
             InvalidCause::TypeLoweringCycle => "TypeLoweringCycle".into(),
             InvalidCause::TypeNormalizationLimit => "TypeNormalizationLimit".into(),
         }

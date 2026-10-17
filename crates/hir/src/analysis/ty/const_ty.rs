@@ -1608,6 +1608,21 @@ pub(crate) fn evaluate_const_ty<'db>(
     };
 
     let expected_ty = expected_ty.or(const_ty_ty);
+    // D5 at the read: a constant written where a frame around it opens a
+    // slot it reads is not evaluated; it stays as written, and the check of
+    // the body around it reports it.
+    if super::ty_check::written_frames::refuses_read(db, body, expected_ty) {
+        if super::ty_check::written_frames::written_frames(db, body).in_declaration() {
+            return ConstTyId::invalid(
+                db,
+                InvalidCause::ChoiceDependentConst {
+                    body,
+                    expr: body.expr(db),
+                },
+            );
+        }
+        return expected_ty.map_or(const_ty, |expected_ty| const_ty.with_ty(db, expected_ty));
+    }
     let check_ty = template_ty.or(expected_ty);
     // Materializing an identity capture reads the owner's parameter schema,
     // which can depend on this very body (a const argument in a parameter

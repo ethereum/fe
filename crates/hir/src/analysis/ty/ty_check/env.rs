@@ -160,6 +160,9 @@ pub(crate) struct TyCheckEnv<'db> {
     /// Whether a goal's ordinary proof reads a slot a frame opened (D13), as
     /// computed once per frame and goal (`conditions_read_frame`).
     pub(super) conditions_read: std::cell::RefCell<FxHashMap<(FrameId, TraitInstId<'db>), bool>>,
+    /// A constant body written under a `with` whose opened slot is not
+    /// written down (`seed_written_frames`).
+    pub(super) written_unknown: bool,
 }
 
 /// A closure expression's parameters and captured bindings, in the order of
@@ -283,6 +286,7 @@ impl<'db> TyCheckEnv<'db> {
             closure_choices: Vec::new(),
             choice_refusals: Vec::new(),
             conditions_read: Default::default(),
+            written_unknown: false,
         };
 
         env.enter_scope(body.expr(db));
@@ -363,6 +367,9 @@ impl<'db> TyCheckEnv<'db> {
             && implementation.selection_name(db).is_some()
         {
             env.seed_own_choice(implementation);
+        }
+        if let BodyOwner::AnonConstBody { body, .. } = owner {
+            env.seed_written_frames(body);
         }
 
         Ok(env)

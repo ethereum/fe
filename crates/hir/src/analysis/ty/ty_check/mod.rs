@@ -15,6 +15,7 @@ mod pat;
 mod path;
 mod projection;
 mod stmt;
+pub(crate) mod written_frames;
 
 pub use self::contract::{
     ResolvedRecvVariant, VariantResError, check_contract_field_address_spaces,
@@ -877,6 +878,15 @@ pub(super) fn checked_body<'db>(
         diags.extend(requirements.diags);
         diags.extend(choice::check_choice_uses(db, &typed, owner.scope()));
     }
+    let reported = diags.iter().any(|diag| {
+        matches!(
+            diag,
+            FuncBodyDiag::Body(BodyDiag::ChoiceDependentType { .. })
+        )
+    });
+    if !reported && let Some(diag) = choice::unreported_choice_dependent_consts(db, &typed) {
+        diags.push(diag);
+    }
     CheckedBody {
         diags,
         typed,
@@ -1089,6 +1099,11 @@ fn const_body_ctfe_diags_with_context<'db>(
     context: Option<ConstDiagContext>,
 ) -> Vec<FuncBodyDiag<'db>> {
     if expected.has_invalid(db) {
+        return Vec::new();
+    }
+    // A constant refused where it is read is not evaluated; the body it is
+    // written in reports the refusal (D5).
+    if written_frames::refuses_read(db, body, Some(expected)) {
         return Vec::new();
     }
     let owner = BodyOwner::AnonConstBody { body, expected };

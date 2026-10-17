@@ -88,12 +88,15 @@ fn only_the_checker_proves_known_choices() {
 #[test]
 fn evidence_goals_are_read_only_where_choices_are_decided_or_verified() {
     // Reading `Evidence<G>`'s goal is how a consumer would start re-deriving a
-    // choice from an evidence value's type.
+    // choice from an evidence value's type. `written_frames` reads it only to
+    // know which slot a `with (e)` opens around a written constant, so that
+    // constant reads that slot unsupplied; it decides no choice.
     assert_eq!(
         occurrences_outside(
             "evidence_goal(",
             &[
                 CHECKER,
+                "src/analysis/ty/ty_check/written_frames.rs",
                 "src/analysis/ty/corelib.rs",
                 "src/analysis/semantic/consts.rs",
             ]
@@ -429,6 +432,65 @@ fn ordinary_selection_names_its_reason() {
             "{entry} does not take a reason"
         );
     }
+}
+
+#[test]
+fn written_constants_are_refused_where_they_are_read() {
+    // D5 at the read: a constant written where a frame around it opens a
+    // slot it reads (`written_frames`) never reads the ordinary
+    // implementation. Each place a written constant is read asks the one
+    // query: lowering a lone trait-constant path, evaluating a constant
+    // body, and the check of an anonymous constant body (seeded with those
+    // slots unsupplied). A refused constant is compared like an invalid type
+    // and reported once by the body around it.
+    for (path, function, reads) in [
+        (
+            "src/analysis/ty/ty_lower.rs",
+            "fn lower_const_body_path",
+            "written_frames(",
+        ),
+        (
+            "src/analysis/ty/const_ty.rs",
+            "fn evaluate_const_ty",
+            "refuses_read(",
+        ),
+        (
+            "src/analysis/ty/ty_check/env.rs",
+            "fn new",
+            "seed_written_frames(",
+        ),
+        (
+            "src/analysis/ty/unify.rs",
+            "fn unify_ty",
+            "refused_at_read(",
+        ),
+        (
+            "src/analysis/ty/ty_check/mod.rs",
+            "fn checked_body",
+            "unreported_choice_dependent_consts(",
+        ),
+    ] {
+        let text = code(&text_of(path));
+        let found = functions(&text)
+            .into_iter()
+            .filter(|chunk| {
+                chunk
+                    .lines()
+                    .next()
+                    .is_some_and(|head| head.contains(function))
+            })
+            .any(|chunk| chunk.contains(reads));
+        assert!(found, "{path}: {function} does not read {reads}");
+    }
+    // One predicate decides a refused constant, for the unifier, the
+    // reporter and the reads of a type's slots.
+    assert_eq!(
+        occurrences_outside(
+            "fn refused_at_read",
+            &["src/analysis/ty/ty_check/written_frames.rs"]
+        ),
+        Vec::<String>::new()
+    );
 }
 
 #[test]

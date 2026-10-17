@@ -226,6 +226,18 @@ where
 
                     (_, ConstTyData::TyVar(var, _)) => self.unify_var_value(var, ty1),
 
+                    // A constant refused where it is read stands for a refusal
+                    // the body reports; like an invalid type, it is not a
+                    // second mismatch.
+                    _ if crate::analysis::ty::ty_check::written_frames::refused_at_read(
+                        self.db, const_ty1,
+                    ) || crate::analysis::ty::ty_check::written_frames::refused_at_read(
+                        self.db, const_ty2,
+                    ) =>
+                    {
+                        Ok(())
+                    }
+
                     (ConstTyData::TyParam(..), ConstTyData::TyParam(..))
                     | (ConstTyData::Value(..), ConstTyData::Value(..))
                     | (ConstTyData::Description(..), ConstTyData::Description(..))
