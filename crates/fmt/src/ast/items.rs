@@ -3,8 +3,9 @@
 use pretty::DocAllocator;
 
 use crate::RewriteContext;
-use parser::ast::{
-    self, ImplItemKind, ItemKind, ItemModifierOwner, TraitItemKind, prelude::AstNode,
+use parser::{
+    SyntaxKind,
+    ast::{self, ImplItemKind, ItemKind, ItemModifierOwner, TraitItemKind, prelude::AstNode},
 };
 
 use super::types::{
@@ -734,6 +735,30 @@ impl ToDoc for ast::FuncParamList {
 impl ToDoc for ast::FuncParam {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         let alloc = &ctx.alloc;
+
+        if has_comment_tokens(self.syntax()) {
+            return token_doc(
+                ctx,
+                self.syntax(),
+                0,
+                |node| ast::Type::cast(node).map(|ty| TokenPiece::new(ty.to_doc(ctx))),
+                |token| {
+                    let piece = TokenPiece::new(alloc.text(ctx.token(&token)));
+                    match token.kind() {
+                        SyntaxKind::Ident | SyntaxKind::SelfKw | SyntaxKind::Underscore => {
+                            Some(piece.space_before())
+                        }
+                        SyntaxKind::MutKw
+                        | SyntaxKind::VarKw
+                        | SyntaxKind::RefKw
+                        | SyntaxKind::OwnKw
+                        | SyntaxKind::Colon => Some(piece.space_after()),
+                        _ => None,
+                    }
+                },
+            );
+        }
+
         let mut doc = alloc.nil();
 
         if self.mut_token().is_some() {
