@@ -549,7 +549,14 @@ pub(crate) fn const_use_reads<'db>(
             if assoc.inst().args(db).iter().any(|ty| ty.has_var(db)) {
                 return own.into_iter().collect();
             }
-            let Some((body, _, subst)) = assoc.body_that_runs(db) else {
+            // The body that runs, or when it is chosen later the trait's
+            // default body: the declaration every implementation's constant
+            // is reached through, whose `Self` and supertrait slots are read
+            // whichever body runs (`Self::P` in `const C = Self::P + 1`).
+            let Some((body, _, subst)) = assoc
+                .body_that_runs(db)
+                .or_else(|| assoc.trait_default_body(db))
+            else {
                 return own.into_iter().collect();
             };
             (own, body, subst, assoc.delivered())

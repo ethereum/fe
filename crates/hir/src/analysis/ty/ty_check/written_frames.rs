@@ -447,6 +447,35 @@ fn arg_bodies<'db>(
     }
 }
 
+/// Whether a read of the trait constant `use_` reads a slot `frames` open:
+/// its own slot, or one its constant body reads (`const_use_reads`), such as
+/// a supertrait's constant read through `Self`.
+pub(crate) fn opens_constant_read<'db>(
+    db: &'db dyn HirAnalysisDb,
+    frames: &WrittenFrames<'db>,
+    use_: crate::analysis::ty::assoc_const::AssocConstUse<'db>,
+) -> bool {
+    frames.opens(db, use_.inst())
+        || super::choice::const_use_reads(db, super::ConstRef::TraitConst(use_))
+            .into_iter()
+            .any(|(goal, _)| frames.opens(db, goal))
+}
+
+/// The slots a read of the trait constant `use_` reads, for the
+/// written-syntax scan: its own and its constant body's.
+pub(crate) fn constant_read_slots<'db>(
+    db: &'db dyn HirAnalysisDb,
+    use_: crate::analysis::ty::assoc_const::AssocConstUse<'db>,
+) -> Vec<crate::analysis::ty::trait_def::TraitInstId<'db>> {
+    let mut slots = vec![use_.inst()];
+    for (goal, _) in super::choice::const_use_reads(db, super::ConstRef::TraitConst(use_)) {
+        if !slots.contains(&goal) {
+            slots.push(goal);
+        }
+    }
+    slots
+}
+
 /// The slot uses of `body`, a constant written in a function's body, checked
 /// as the anonymous constant it is, of type `expected` (`usize` where the
 /// position gives none): what the read-time refusal and type reach read.

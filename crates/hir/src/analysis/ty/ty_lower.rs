@@ -299,18 +299,18 @@ fn const_body_reads<'db>(
     reads: &mut Vec<TraitInstId<'db>>,
 ) {
     if let Some(path) = const_body_simple_path(db, body)
-        && let Ok(PathRes::TraitConst(recv_ty, inst, _)) =
+        && let Ok(PathRes::TraitConst(recv_ty, inst, name)) =
             crate::analysis::name_resolution::resolve_path(db, path, scope, assumptions, true)
     {
         let mut args = inst.args(db).clone();
         if let Some(self_arg) = args.first_mut() {
             *self_arg = recv_ty;
         }
-        reads.push(TraitInstId::new(
+        let inst = TraitInstId::new(db, inst.def(db), args, common::indexmap::IndexMap::new());
+        // The constant's own slot and the slots its body reads.
+        reads.extend(super::ty_check::written_frames::constant_read_slots(
             db,
-            inst.def(db),
-            args,
-            common::indexmap::IndexMap::new(),
+            AssocConstUse::new(scope, assumptions, inst, name),
         ));
         return;
     }
@@ -508,7 +508,11 @@ pub(crate) fn lower_const_body_path<'db>(
                     // around it opens its slot reads that slot unsupplied, so
                     // it never evaluates to the ordinary implementation.
                     let frames = super::ty_check::written_frames::written_frames(db, body);
-                    let opened = frames.opens(db, inst);
+                    let opened = super::ty_check::written_frames::opens_constant_read(
+                        db,
+                        &frames,
+                        AssocConstUse::new(scope, assumptions, inst, name),
+                    );
                     if opened && frames.in_declaration() {
                         // A named implementation's declaration has no body
                         // check to report it: the read is the refusal.
