@@ -666,7 +666,7 @@ pub(crate) enum NamedOutputMismatch<'db> {
         expected: TyId<'db>,
         given: TyId<'db>,
     },
-    /// An associated effect row.
+    /// An associated effect row or result space.
     Row {
         with: ImplTrait<'db>,
         ordinary: bool,
@@ -759,6 +759,19 @@ pub(crate) fn named_output_mismatch<'db>(
                 )
             };
             if components(other) != components(own) {
+                return Some(NamedOutputMismatch::Row {
+                    with,
+                    ordinary,
+                    name,
+                });
+            }
+        }
+        for space in goal.def(db).spaces(db) {
+            let Some(name) = space.name.to_opt() else {
+                continue;
+            };
+            let space_of = |resolved| super::result_space::implementation_space(db, resolved, name);
+            if space_of(other) != space_of(own) {
                 return Some(NamedOutputMismatch::Row {
                     with,
                     ordinary,

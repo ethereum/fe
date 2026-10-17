@@ -5313,9 +5313,9 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
             } => {
                 let mut diag = primary_diag(
                     Severity::Error,
-                    "named implementation changes an associated effect row",
+                    "named implementation changes an associated effect row or result space",
                     format!(
-                        "`{}` must give the effects the {} implementation of this slot gives",
+                        "`{}` must be what the {} implementation of this slot gives",
                         name.data(db),
                         if *ordinary { "ordinary" } else { "other named" }
                     ),

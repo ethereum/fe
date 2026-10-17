@@ -347,6 +347,29 @@ fn follow_space_key<'db>(
     }
 }
 
+/// The space an implementation, applied to its arguments, gives its
+/// associated space `name`, if it gives one.
+pub(crate) fn implementation_space<'db>(
+    db: &'db dyn HirAnalysisDb,
+    resolved: crate::analysis::ty::trait_def::ResolvedImplInstance<'db>,
+    name: IdentId<'db>,
+) -> Option<SpaceValue<'db>> {
+    let ImplementorOrigin::Hir(impl_trait) = resolved.selected().origin(db) else {
+        return None;
+    };
+    let (value, steps) = impl_trait
+        .spaces(db)
+        .iter()
+        .find(|space| space.name.to_opt() == Some(name))?
+        .value?;
+    match impl_space_value(db, impl_trait, value.to_opt()?, steps)? {
+        SpaceValue::Assoc(inner) => Some(SpaceValue::Assoc(
+            Binder::bind(impl_trait.into(), inner).instantiate(db, resolved.impl_args(db)),
+        )),
+        other => Some(other),
+    }
+}
+
 /// The space an implementation gives in `space S = value`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpaceValue<'db> {
