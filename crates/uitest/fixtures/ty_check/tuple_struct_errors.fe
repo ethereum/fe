@@ -1,16 +1,22 @@
+use core::marker::Pinned
+
 mod time {
     pub struct Month(pub u8)
     pub struct Secret(u8)
     pub struct Mixed(pub u8, u8)
 
+    #[view]
+    pub struct Span(pub u256)
+
     fn inside_module() -> u8 {
+        let _ = Span(1)
         let s = Secret(1)
         let Secret(raw) = s
         raw + s.0
     }
 }
 
-use time::{Month, Secret, Mixed}
+use time::{Month, Secret, Mixed, Span}
 
 struct Point { x: u8 }
 
@@ -69,4 +75,18 @@ fn non_exhaustive_match(b: BoolWrap) -> u8 {
 
 fn bare_path_pattern(m: Month) {
     let Month = m
+}
+
+fn view_outside_its_module() {
+    let _ = Span(1)
+}
+
+struct Slots(u256)
+
+impl Pinned for Slots {
+    space S = storage
+}
+
+fn state_only_as_value() {
+    let _ = Slots(0)
 }

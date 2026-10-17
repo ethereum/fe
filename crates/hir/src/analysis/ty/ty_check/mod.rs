@@ -6510,7 +6510,7 @@ impl<'db> TyCheckerFinalizer<'db> {
     /// a `#[view]` type in a position a view type cannot take.
     fn check_view_call(&mut self, callable: &Callable<'db>, expr: ExprId, span: DynLazySpan<'db>) {
         let db = self.db;
-        if let CallableDef::VariantCtor(_) = callable.callable_def {
+        if let CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) = callable.callable_def {
             let ty = self.body.expr_prop(db, expr).ty;
             return self.check_view_construction(ty, span);
         }
@@ -6582,6 +6582,10 @@ impl<'db> TyCheckerFinalizer<'db> {
             if matches!(self.body.yield_shape(expr), Some(Shape::Sum { .. })) {
                 return;
             }
+            let ty = self.body.expr_prop(db, expr).ty;
+            return self.check_state_only_value(ty, span, "constructed as a value");
+        }
+        if let CallableDef::StructCtor(_) = callable.callable_def {
             let ty = self.body.expr_prop(db, expr).ty;
             return self.check_state_only_value(ty, span, "constructed as a value");
         }
