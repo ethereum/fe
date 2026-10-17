@@ -241,6 +241,43 @@ fn associated_outputs_are_read_through_one_selection() {
 }
 
 #[test]
+fn signatures_are_read_through_one_list() {
+    // D5: the types a callee declares (arguments, result, effect keys) are
+    // listed once (`declared_tys`); the call refusal, the read of every
+    // registered call when the body is finished, and type reach take them
+    // only from it.
+    let checker = code(&text_of(CHECKER));
+    let functions = functions(&checker);
+    let declaring: Vec<&String> = functions
+        .iter()
+        .filter(|function| {
+            function.contains(".arg_tys(") || function.contains("effective_effect_requirements(")
+        })
+        .collect();
+    for function in &declaring {
+        let head = function.lines().next().unwrap_or_default();
+        assert!(
+            head.contains("fn declared_tys") || head.contains("fn call_slot_reads"),
+            "a signature is read outside the one list: {head}"
+        );
+    }
+    for (reader, through) in [
+        ("fn refuse_choice_dependent_signature", "call_slot_reads("),
+        ("fn record_choice_decisions", "call_slot_reads("),
+        ("fn own_type_reads", "declared_slot_reads("),
+    ] {
+        let function = functions
+            .iter()
+            .find(|function| function.contains(reader))
+            .unwrap_or_else(|| panic!("{reader} exists"));
+        assert!(
+            function.contains(through),
+            "{reader} does not read {through}"
+        );
+    }
+}
+
+#[test]
 fn choice_walks_end_at_one_limit() {
     // D18: a walk that follows choices through implementations ends where the
     // base's instance limits end, through one check; no walk keeps a limit of

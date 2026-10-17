@@ -344,6 +344,117 @@ pub(crate) fn const_use_reads<'db>(
     reads
 }
 
+/// A type a callable's declaration states, with how a call instantiates it:
+/// argument and return types through the callee's generic parameters, the
+/// key of an effect it requires through its effect schema.
+#[derive(Clone, Copy)]
+enum DeclaredTy<'db> {
+    Signature(TyId<'db>),
+    EffectKey(TyId<'db>),
+    EffectTrait(TraitInstId<'db>),
+}
+
+/// Every type a callable's declaration states, in its own generic
+/// parameters: its argument and return types and the key of each effect it
+/// requires (a type, a trait, or the trait of a row it uses). The call
+/// refusal and type reach read a signature only through this list (D5), so
+/// no part of a signature is read by one and missed by the other.
+fn declared_tys<'db>(db: &'db dyn HirAnalysisDb, def: CallableDef<'db>) -> Vec<DeclaredTy<'db>> {
+    use crate::core::semantic::EffectRequirementKey;
+    let mut tys = def
+        .arg_tys(db)
+        .iter()
+        .map(|ty| DeclaredTy::Signature(*ty.skip_binder()))
+        .collect::<Vec<_>>();
+    tys.push(DeclaredTy::Signature(*def.ret_ty(db).skip_binder()));
+    match def {
+        CallableDef::Func(func) => {
+            for requirement in func.effective_effect_requirements(db) {
+                tys.push(match requirement.key {
+                    EffectRequirementKey::Type(carrier) => DeclaredTy::EffectKey(carrier),
+                    EffectRequirementKey::Trait(inst) => DeclaredTy::EffectTrait(inst),
+                    EffectRequirementKey::Row(row) => DeclaredTy::EffectTrait(row.inst),
+                    EffectRequirementKey::Other => continue,
+                });
+            }
+        }
+        CallableDef::VariantCtor(_) => {}
+    }
+    tys
+}
+
+/// The slots a trait instance's arguments and associated-type equalities
+/// read.
+fn inst_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    inst: TraitInstId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    inst.args(db)
+        .iter()
+        .chain(inst.assoc_type_bindings(db).values())
+        .flat_map(|ty| type_slot_reads(db, *ty))
+        .collect()
+}
+
+/// The slots a callable's declared types read, in its own parameters: what
+/// a caller that fills those parameters' slots reaches (type reach).
+fn declared_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    def: CallableDef<'db>,
+) -> Vec<TraitInstId<'db>> {
+    declared_tys(db, def)
+        .into_iter()
+        .flat_map(|declared| match declared {
+            DeclaredTy::Signature(ty) | DeclaredTy::EffectKey(ty) => type_slot_reads(db, ty),
+            DeclaredTy::EffectTrait(inst) => inst_slot_reads(db, inst),
+        })
+        .collect()
+}
+
+/// The slots a call's declared types read, instantiated for the call, and
+/// the slots its generic arguments read.
+fn call_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    callable: &Callable<'db>,
+) -> Vec<TraitInstId<'db>> {
+    use crate::analysis::ty::effects::{instantiate_trait_effect_key, instantiate_type_effect_key};
+    let mut reads = callable
+        .generic_args()
+        .iter()
+        .flat_map(|ty| type_slot_reads(db, *ty))
+        .collect::<Vec<_>>();
+    let def = callable.callable_def();
+    let has_effects = matches!(def, CallableDef::Func(func) if func.has_effects(db));
+    let mut arg = 0;
+    for declared in declared_tys(db, def) {
+        match declared {
+            DeclaredTy::Signature(_) => {
+                let ty = if arg < def.arg_tys(db).len() {
+                    callable.arg_ty(db, arg)
+                } else {
+                    Some(callable.ret_ty(db))
+                };
+                arg += 1;
+                reads.extend(ty.into_iter().flat_map(|ty| type_slot_reads(db, ty)));
+            }
+            DeclaredTy::EffectKey(ty) if has_effects => {
+                reads.extend(type_slot_reads(
+                    db,
+                    instantiate_type_effect_key(db, ty, callable),
+                ));
+            }
+            DeclaredTy::EffectTrait(inst) if has_effects => {
+                reads.extend(inst_slot_reads(
+                    db,
+                    instantiate_trait_effect_key(db, inst, callable),
+                ));
+            }
+            DeclaredTy::EffectKey(_) | DeclaredTy::EffectTrait(_) => {}
+        }
+    }
+    reads
+}
+
 /// The slots whose associated constants a type reads: through trait constant
 /// terms, through the anonymous constant bodies it contains (an array length
 /// written as an expression), and through the conditions and field types of
@@ -588,26 +699,26 @@ impl<'db> TyChecker<'db> {
         dependent
     }
 
-    /// A call whose instantiated signature reads an opened slot.
+    /// A call whose declared types, instantiated here, read an opened slot
+    /// (`call_slot_reads`). Applied early to path and method calls so the
+    /// refusal is their only diagnostic; every registered call is read again
+    /// when the body is finished (`record_choice_decisions`).
     pub(super) fn refuse_choice_dependent_signature(
         &mut self,
         callable: &Callable<'db>,
         primary: DynLazySpan<'db>,
     ) -> bool {
-        if self.env.choice_frames.current().is_none() {
+        let frame = self.env.choice_frames.current();
+        if frame.is_none() {
             return false;
         }
-        let db = self.db;
-        let arity = callable.callable_def().arg_tys(db).len();
-        // The call's generic arguments too: a constant argument such as
-        // `g<{ Item::P }>()` is a type the callee's body reads.
-        let tys = (0..arity)
-            .filter_map(|idx| callable.arg_ty(db, idx))
-            .chain(std::iter::once(callable.ret_ty(db)))
-            .chain(callable.generic_args().iter().copied())
-            .collect::<Vec<_>>();
-        tys.into_iter()
-            .any(|ty| self.refuse_choice_dependent_ty(ty, primary.clone()))
+        let dependent = call_slot_reads(self.db, callable)
+            .into_iter()
+            .any(|slot| self.env.frame_choice(frame, slot).is_some());
+        if dependent {
+            self.push_diag(BodyDiag::ChoiceDependentType { primary });
+        }
+        dependent
     }
 
     /// A type with inference resolved so far, normalized in this body.
@@ -1685,6 +1796,17 @@ impl<'db> TyCheckEnv<'db> {
                 continue;
             };
             let mut callable = callable.clone();
+            // Every call, whatever its kind, is read against the frame where
+            // it is written: a declared type that reads an opened slot has no
+            // one meaning (D5).
+            if frame.is_some()
+                && call_slot_reads(db, &callable)
+                    .into_iter()
+                    .any(|slot| self.frame_choice(frame, slot).is_some())
+            {
+                self.choice_refusals
+                    .push((expr, ChoiceRefusal::DependentType));
+            }
             let direct = match expr.data(db, self.body()) {
                 Partial::Present(Expr::Call(callee, _)) => path_callees.contains(callee),
                 _ => true,
@@ -1978,7 +2100,7 @@ pub(super) fn own_type_reads<'db>(
             reached.push((goal, signature));
         }
     };
-    for goal in signature_slot_reads(db, func) {
+    for goal in declared_slot_reads(db, CallableDef::Func(func)) {
         note(goal, true);
     }
     let Some(body) = typed.body() else {
@@ -2008,20 +2130,6 @@ pub(super) fn own_type_reads<'db>(
     reached
 }
 
-fn signature_slot_reads<'db>(
-    db: &'db dyn HirAnalysisDb,
-    func: crate::hir_def::Func<'db>,
-) -> Vec<TraitInstId<'db>> {
-    let callable = CallableDef::Func(func);
-    callable
-        .arg_tys(db)
-        .iter()
-        .map(|ty| *ty.skip_binder())
-        .chain(std::iter::once(*callable.ret_ty(db).skip_binder()))
-        .flat_map(|ty| type_slot_reads(db, ty))
-        .collect()
-}
-
 /// The refusals a checked body's choice uses need once inference is done:
 /// a function value that would carry an opened choice, a call that delivers
 /// an opened or evidence choice into a slot reaching a type of a body it
@@ -2037,18 +2145,15 @@ pub(super) fn check_choice_uses<'db>(
     };
     let mut diags = Vec::new();
     for (expr, refusal) in typed.choice_refusals() {
-        let reason = match refusal {
-            ChoiceRefusal::OpenedCondition => {
-                "a bound of this call is answered by an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet"
-            }
-        };
-        diags.push(
-            BodyDiag::ObligationOpening {
-                primary: expr.span(body).into(),
-                reason,
+        let primary = expr.span(body).into();
+        diags.push(match refusal {
+            ChoiceRefusal::OpenedCondition => BodyDiag::ObligationOpening {
+                primary,
+                reason: "a bound of this call is answered by an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet",
             }
             .into(),
-        );
+            ChoiceRefusal::DependentType => BodyDiag::ChoiceDependentType { primary }.into(),
+        });
     }
     for (expr, read) in typed.closure_choices() {
         if read

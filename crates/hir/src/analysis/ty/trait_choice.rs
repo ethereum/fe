@@ -436,6 +436,9 @@ pub enum ChoiceRefusal {
     /// It passes ordinary evidence for a bound whose implementation has a
     /// condition on a slot opened here (conditional implementations, F3).
     OpenedCondition,
+    /// A type its callee declares (an argument, the result, an effect's
+    /// key) reads a constant of a slot opened here (D5).
+    DependentType,
 }
 
 /// What a trait use means: a known implementation, or whatever the enclosing
