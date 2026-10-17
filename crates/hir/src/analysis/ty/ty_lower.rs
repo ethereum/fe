@@ -342,7 +342,9 @@ fn const_arg_reads<'db>(
                     const_body_reads(db, body, scope, assumptions, reads);
                 }
             }
-            GenericArg::AssocType(_) => {}
+            // An associated-type equality is part of what the path means,
+            // such as `Make<W, Out = Arr<{ Item::P }>>`.
+            GenericArg::AssocType(arg) => const_ty_reads(db, arg.ty, scope, assumptions, reads),
         }
     }
 }

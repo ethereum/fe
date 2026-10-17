@@ -600,6 +600,32 @@ impl<'db> TyChecker<'db> {
         dependent
     }
 
+    /// The written-argument refusal for a `with` header's key, read where
+    /// the key is lowered: under the openings of the header's earlier
+    /// bindings, as the binding's value is.
+    pub(super) fn refuse_written_with_key(
+        &mut self,
+        key_path: crate::hir_def::PathId<'db>,
+        primary: DynLazySpan<'db>,
+    ) -> bool {
+        let frame = self.env.choice_frames.current();
+        if frame.is_none() {
+            return false;
+        }
+        let dependent = crate::analysis::ty::ty_lower::hir_path_const_slot_reads(
+            self.db,
+            key_path,
+            self.env.scope(),
+            self.env.assumptions(),
+        )
+        .into_iter()
+        .any(|slot| self.env.frame_choice(frame, slot).is_some());
+        if dependent {
+            self.push_diag(BodyDiag::ChoiceDependentType { primary });
+        }
+        dependent
+    }
+
     /// The same refusal for the constant arguments written in one
     /// expression's or pattern's own path or generic argument list, such as
     /// `Arr<{ Item::P }> {}`, `E<{ Item::P }>::A` or `g<{ Item::P }>`.
@@ -633,11 +659,10 @@ impl<'db> TyChecker<'db> {
                     Expr::MethodCall(_, _, args, _) => {
                         hir_generic_args_const_slot_reads(db, *args, scope, assumptions)
                     }
-                    Expr::With(bindings, _) => bindings
-                        .iter()
-                        .filter_map(|binding| binding.key_path.as_ref())
-                        .flat_map(path_reads)
-                        .collect(),
+                    // A header's keys are read where `check_with` lowers
+                    // each, under the header's earlier openings like its
+                    // values (`refuse_written_with_key`).
+                    Expr::With(..) => Vec::new(),
                     // Types written in these go through `lower_ty`; an array
                     // repeat's length is checked unevaluated in
                     // `check_array_rep`.

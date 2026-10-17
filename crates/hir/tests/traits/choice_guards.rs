@@ -177,7 +177,9 @@ fn written_constant_arguments_are_scanned_in_one_place() {
     // Lowering evaluates a constant written in a path with the ordinary
     // implementation, so D5 reads the written syntax: one scan, run for
     // every expression and every pattern from the dispatch each goes
-    // through, with written types going through `lower_ty`.
+    // through, for each `with` key where it is lowered (under the header's
+    // earlier openings), with written types going through `lower_ty`.
+    let checker = code(&text_of(CHECKER));
     for reader in [
         "hir_path_const_slot_reads(",
         "hir_generic_args_const_slot_reads(",
@@ -186,14 +188,59 @@ fn written_constant_arguments_are_scanned_in_one_place() {
             occurrences_outside(reader, &[CHECKER, "src/analysis/ty/ty_lower.rs"]),
             Vec::<String>::new()
         );
-        assert_eq!(code(&text_of(CHECKER)).matches(reader).count(), 1);
+        for function in functions(&checker) {
+            if function.contains(reader) {
+                let head = function.lines().next().unwrap_or_default();
+                assert!(
+                    head.contains("fn refuse_written_const_args")
+                        || head.contains("fn refuse_written_with_key"),
+                    "written arguments are read outside the scan: {head}"
+                );
+            }
+        }
     }
-    for (path, dispatch) in [
+    // The reader skips no written syntax: its matches over types and
+    // generic arguments have no wildcard and no arm that reads nothing,
+    // except a type with no parts (`!`).
+    let lower = code(&text_of("src/analysis/ty/ty_lower.rs"));
+    for function in functions(&lower) {
+        let head = function.lines().next().unwrap_or_default();
+        if [
+            "fn const_ty_reads",
+            "fn const_path_reads",
+            "fn const_arg_reads",
+        ]
+        .iter()
+        .any(|name| head.contains(name))
+        {
+            let empty_arms = function
+                .lines()
+                .filter(|line| line.contains("=> {}") || line.trim_start().starts_with("_ =>"))
+                .collect::<Vec<_>>();
+            assert!(
+                empty_arms
+                    .iter()
+                    .all(|line| line.contains("HirTyKind::Never => {}")),
+                "{head}: an arm reads nothing: {empty_arms:?}"
+            );
+        }
+    }
+    for (path, dispatch, scan) in [
         (
             "src/analysis/ty/ty_check/expr.rs",
             "fn check_expr_with_result_context(",
+            "refuse_written_const_args(",
         ),
-        ("src/analysis/ty/ty_check/pat.rs", "fn check_pat("),
+        (
+            "src/analysis/ty/ty_check/pat.rs",
+            "fn check_pat(",
+            "refuse_written_const_args(",
+        ),
+        (
+            "src/analysis/ty/ty_check/expr.rs",
+            "fn check_with(",
+            "refuse_written_with_key(",
+        ),
     ] {
         let text = text_of(path);
         let function = functions(&text)
@@ -201,8 +248,8 @@ fn written_constant_arguments_are_scanned_in_one_place() {
             .find(|function| function.contains(dispatch))
             .expect("the dispatch exists");
         assert!(
-            code(&function).contains("refuse_written_const_args("),
-            "{path}: the dispatch does not scan written arguments"
+            code(&function).contains(scan),
+            "{path}: {dispatch} does not scan written arguments"
         );
     }
     assert_eq!(

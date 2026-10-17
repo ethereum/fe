@@ -1656,6 +1656,14 @@ impl<'db> TyChecker<'db> {
             match binding.key_path {
                 Some(key_path) => {
                     if let Some(key_path) = key_path.to_opt() {
+                        if self.refuse_written_with_key(
+                            key_path,
+                            binding.value.span(self.body()).into(),
+                        ) {
+                            // The binding still provides its effect, so the
+                            // refusal is the block's only diagnostic.
+                            opening_failed = true;
+                        }
                         let folded_provider_ty = self.table.fold_ty(self.db, provided.ty);
                         match self.validate_keyed_with(
                             key_path,
