@@ -25,16 +25,15 @@ use crate::{
         const_ty::LoweringContext,
         trait_resolution::{PredicateListId, constraint::collect_constraints},
         ty_check::{
-            LocalBinding, ParamSite, RecordLike, TypedBody, check_contract_init_body,
-            check_contract_recv_arm_body, check_func_body,
+            EffectParamSite, LocalBinding, ParamSite, RecordLike, TypedBody,
+            check_contract_init_body, check_contract_recv_arm_body, check_func_body,
         },
         ty_def::TyId,
     },
-    core::semantic::{ProviderSource, provider_bindings_for_site},
+    core::semantic::EffectEnvView,
     hir_def::scope_graph::ScopeId,
     hir_def::{
-        Body, Contract, Expr, ExprId, FieldIndex, FieldParent, ItemKind, Partial, PathId, Use,
-        UsePathSegment,
+        Body, Contract, Expr, ExprId, FieldIndex, ItemKind, Partial, PathId, Use, UsePathSegment,
     },
     hir_def::{GenericParamOwner, HirIngot},
     span::{
@@ -293,6 +292,15 @@ pub enum BodyPathContext {
     PatReference(crate::hir_def::PatId),
 }
 
+/// An unlabeled entry of a contract `init`'s or recv arm's `uses`. Its key
+/// names what the compiler resolves the entry to: a field of the contract, or
+/// an effect of the contract's own `uses`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa::Update)]
+pub struct UsesEntry<'db> {
+    pub site: EffectParamSite<'db>,
+    pub idx: usize,
+}
+
 /// A view of a path reference in the HIR.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
 pub struct PathView<'db> {
@@ -305,6 +313,9 @@ pub struct PathView<'db> {
     /// Whether the path is written where a trait is expected: a bound, a
     /// super-trait, an implemented trait, or a qualified path's trait.
     pub trait_ref: bool,
+    /// The entry whose key the path is, for an unlabeled `uses` entry of a
+    /// contract `init` or recv arm.
+    pub uses_entry: Option<UsesEntry<'db>>,
 }
 
 impl<'db> PathView<'db> {
@@ -320,6 +331,7 @@ impl<'db> PathView<'db> {
             span,
             body_ctx: None,
             trait_ref,
+            uses_entry: None,
         }
     }
 
@@ -356,7 +368,10 @@ impl<'db> PathView<'db> {
     /// so it resolves to the binding's scope if it has one: a function's
     /// parameter, or the contract field a contract's `uses` entry provides.
     /// Resolving it as an item path could find an item of the same name, or
-    /// the module for `self`.
+    /// the module for `self`. Likewise, an unlabeled `uses` entry of a
+    /// contract `init` or recv arm resolves to the field that provides it, or
+    /// to nothing for an effect of the contract's own `uses`, if the compiler
+    /// resolves it.
     ///
     /// The last segment of a trait reference is resolved as a trait, under the
     /// enclosing bounds, which its arguments can need (`Sink<T::Item>`).
@@ -364,6 +379,18 @@ impl<'db> PathView<'db> {
         let Some(seg_path) = self.path.segment(db, idx) else {
             return Vec::new();
         };
+        if seg_path == self.path
+            && let Some(UsesEntry { site, idx: entry }) = self.uses_entry
+            && let Some(binding) = EffectEnvView::new(site).resolved_binding(db, entry)
+        {
+            return binding
+                .provider
+                .source
+                .contract_field()
+                .and_then(|field| field.scope(db))
+                .into_iter()
+                .collect();
+        }
         if seg_path == self.path
             && let Some(binding) = self.binding(db)
         {
@@ -374,20 +401,11 @@ impl<'db> PathView<'db> {
                     ..
                 } => Some(ScopeId::FuncParam(func.into(), param as u16)),
                 LocalBinding::EffectParam {
-                    site, provider_idx, ..
-                } => provider_bindings_for_site(db, site)
-                    .iter()
-                    .find_map(|provider| match provider.source {
-                        ProviderSource::ContractField { field }
-                            if provider.provider_idx == provider_idx =>
-                        {
-                            FieldParent::Contract(field.contract)
-                                .fields(db)
-                                .find(|view| view.contract_field_id(db) == Some(field))
-                        }
-                        _ => None,
-                    })
-                    .map(|view| ScopeId::Field(view.parent, view.idx as u16)),
+                    site, idx: entry, ..
+                } => EffectEnvView::new(site)
+                    .resolved_binding(db, entry)
+                    .and_then(|binding| binding.provider.source.contract_field())
+                    .and_then(|field| field.scope(db)),
                 LocalBinding::Local { .. } | LocalBinding::Param { .. } => None,
             };
             return scope.into_iter().collect();
