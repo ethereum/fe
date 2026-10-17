@@ -342,23 +342,60 @@ fn choice_walks_end_at_one_limit() {
     );
     for path in [CHECKER, owed] {
         let code = code(&text_of(path));
-        for (at, _) in code.match_indices(".len() >") {
-            let rest = code[at + ".len() >".len()..]
-                .trim_start_matches('=')
-                .trim_start();
+        // No comparison with a number of two or more digits, on either side,
+        // and no numeric constant but the backstop.
+        let bytes = code.as_bytes();
+        for (at, op) in code.match_indices(['<', '>']) {
+            let after = code[at + op.len()..].trim_start_matches('=').trim_start();
+            let before = code[..at].trim_end();
+            let digits_after = after.chars().take_while(char::is_ascii_digit).count();
+            let digits_before = before
+                .chars()
+                .rev()
+                .take_while(char::is_ascii_digit)
+                .count();
+            let is_compare = bytes.get(at + 1) != Some(&b'>') && (at == 0 || bytes[at - 1] != b'-');
             assert!(
-                !rest.starts_with(|c: char| c.is_ascii_digit()),
-                "{path}: a walk keeps a numeric limit of its own"
+                !is_compare || (digits_after < 2 && digits_before < 2),
+                "{path}: a walk keeps a numeric limit of its own near {:?}",
+                &code[at.saturating_sub(30)..(at + 30).min(code.len())]
             );
         }
         let limits = code
             .lines()
-            .filter(|line| line.trim_start().starts_with("const ") && line.contains(": usize ="))
+            .filter(|line| {
+                let line = line.trim_start();
+                (line.starts_with("const ") || line.starts_with("static "))
+                    && line.contains(" = ")
+                    && line
+                        .split(" = ")
+                        .nth(1)
+                        .is_some_and(|value| value.starts_with(|c: char| c.is_ascii_digit()))
+            })
             .count();
         assert_eq!(
             limits,
             usize::from(path == CHECKER),
             "{path}: a walk keeps a limit of its own"
+        );
+    }
+    // Both walks measure a step the same way: its depth below where the walk
+    // began (a body's below its call, a condition's below its goal).
+    for (path, measure) in [
+        (
+            CHECKER,
+            "choice_walk_step_within_limits(db, goal.args(db), depth)",
+        ),
+        (
+            owed,
+            "choice_walk_step_within_limits(db, body_args, walk.path.len())",
+        ),
+    ] {
+        let code = code(&text_of(path)).split_whitespace().collect::<String>();
+        let measure = measure.split_whitespace().collect::<String>();
+        assert!(
+            code.contains(&measure),
+            "{path}: the walk does not measure depth"
         );
     }
 }

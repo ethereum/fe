@@ -157,6 +157,9 @@ pub(crate) struct TyCheckEnv<'db> {
     pub(super) closure_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
     /// Trait uses refused once their decisions are known.
     pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
+    /// Whether a goal's ordinary proof reads a slot a frame opened (D13), as
+    /// computed once per frame and goal (`conditions_read_frame`).
+    pub(super) conditions_read: std::cell::RefCell<FxHashMap<(FrameId, TraitInstId<'db>), bool>>,
 }
 
 /// A closure expression's parameters and captured bindings, in the order of
@@ -279,6 +282,7 @@ impl<'db> TyCheckEnv<'db> {
             written_refusals: SecondaryMap::new(),
             closure_choices: Vec::new(),
             choice_refusals: Vec::new(),
+            conditions_read: Default::default(),
         };
 
         env.enter_scope(body.expr(db));

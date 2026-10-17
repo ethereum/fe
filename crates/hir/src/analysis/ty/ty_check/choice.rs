@@ -49,7 +49,7 @@ use crate::{
     span::DynLazySpan,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) struct FrameId(u32);
 
 /// How many steps a walk that follows trait choices through implementations
@@ -190,6 +190,24 @@ impl<'db> ChoiceFrames<'db> {
         });
         self.current = Some(FrameId(self.nodes.len() as u32 - 1));
         Ok(())
+    }
+
+    /// Whether `frame` or a frame around it opens a slot of `trait_`.
+    fn opens_trait(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        frame: Option<FrameId>,
+        trait_: crate::hir_def::Trait<'db>,
+    ) -> bool {
+        let mut at = frame;
+        while let Some(id) = at {
+            let node = &self.nodes[id.0 as usize];
+            if node.slot.inst().def(db) == trait_ {
+                return true;
+            }
+            at = node.parent;
+        }
+        false
     }
 
     /// The frame entry a use of `slot` reads: the innermost entry for exactly
@@ -1474,6 +1492,14 @@ impl<'db> TyCheckEnv<'db> {
         frame: Option<FrameId>,
         inst: TraitInstId<'db>,
     ) -> Option<Choice<'db>> {
+        // Only a slot of a trait some frame opened can be found; any other is
+        // answered without normalizing it.
+        if !self
+            .choice_frames
+            .opens_trait(self.db(), frame, inst.def(self.db()))
+        {
+            return None;
+        }
         self.choice_frames.lookup(frame, self.normalized_slot(inst))
     }
 
@@ -1722,22 +1748,39 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     /// Whether the ordinary proof of `goal` uses, at any depth, an
-    /// implementation condition whose slot `frame` opened.
+    /// implementation condition whose slot `frame` opened. Computed once per
+    /// frame and goal: a body's uses ask about the same proofs again.
     fn conditions_read_frame(&self, frame: Option<FrameId>, goal: TraitInstId<'db>) -> bool {
+        let Some(frame_id) = frame else {
+            return false;
+        };
+        if let Some(known) = self.conditions_read.borrow().get(&(frame_id, goal)) {
+            return *known;
+        }
+        let reads = self.walk_conditions(frame_id, goal);
+        self.conditions_read
+            .borrow_mut()
+            .insert((frame_id, goal), reads);
+        reads
+    }
+
+    /// The walk behind `conditions_read_frame`. Its step is a condition's
+    /// depth below `goal`, as the owed walk's is a body's depth below its
+    /// call, so a proof with many conditions side by side is not cut short.
+    fn walk_conditions(&self, frame: FrameId, goal: TraitInstId<'db>) -> bool {
         let db = self.db();
-        let mut seen = Vec::new();
-        let mut pending = vec![goal];
-        while let Some(goal) = pending.pop() {
-            if seen.contains(&goal) {
+        let mut seen = rustc_hash::FxHashSet::default();
+        let mut pending = vec![(goal, 0)];
+        while let Some((goal, depth)) = pending.pop() {
+            if !seen.insert(goal) {
                 continue;
             }
             // A proof whose conditions leave the walk limits is not known to
             // avoid the frame; it is treated as reading it (unknown is never
             // "holds").
-            if !choice_walk_step_within_limits(db, goal.args(db), seen.len()) {
+            if !choice_walk_step_within_limits(db, goal.args(db), depth) {
                 return true;
             }
-            seen.push(goal);
             let Selection::Unique(resolved) =
                 resolve_trait_impl_instance(db, self.proof_context(), goal)
             else {
@@ -1754,10 +1797,10 @@ impl<'db> TyCheckEnv<'db> {
             .list(db)
             .iter()
             {
-                if self.frame_choice(frame, *condition).is_some() {
+                if self.frame_choice(Some(frame), *condition).is_some() {
                     return true;
                 }
-                pending.push(*condition);
+                pending.push((*condition, depth + 1));
             }
         }
         false
