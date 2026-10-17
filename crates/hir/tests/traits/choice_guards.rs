@@ -167,9 +167,50 @@ fn frames_are_read_through_one_normalized_lookup() {
         occurrences_outside("SlotKey::new(", &[CHECKER]),
         Vec::<String>::new()
     );
-    let checker = text_of(CHECKER);
-    assert_eq!(code(&checker).matches("SlotKey::new(").count(), 1);
-    assert_eq!(code(&checker).matches(".lookup(").count(), 1);
+    let checker = code(&text_of(CHECKER));
+    assert_eq!(checker.matches("SlotKey::new(").count(), 1);
+    // A frame's nodes are private to the `frames` module, so only its
+    // methods read them; of those, only `lookup` gives a choice, and only
+    // `frame_choice` calls it.
+    let frames = checker
+        .split("mod frames {")
+        .nth(1)
+        .expect("frames are kept in their own module");
+    let frames = &frames[..frames
+        .find("\npub(super) use frames::")
+        .unwrap_or(frames.len())];
+    let giving = functions(frames)
+        .into_iter()
+        .filter(|function| {
+            // The signature, up to the body: what the method returns.
+            let signature = &function[..function.find('{').unwrap_or(function.len())];
+            signature.contains("fn ")
+                && signature
+                    .split("->")
+                    .nth(1)
+                    .is_some_and(|returned| returned.contains("Choice"))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        giving.len(),
+        1,
+        "a frame method other than lookup gives a choice"
+    );
+    assert!(
+        giving[0]
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .contains("fn lookup(")
+    );
+    assert_eq!(checker.matches(".lookup(").count(), 1);
+    assert!(
+        !checker
+            .split("mod frames {")
+            .next()
+            .unwrap_or_default()
+            .contains(".nodes")
+    );
 }
 
 #[test]
@@ -275,12 +316,21 @@ fn associated_outputs_are_read_through_one_selection() {
         "src/analysis/ty/effects/rows.rs",
         "src/analysis/ty/result_space.rs",
     ] {
-        let text = text_of(path);
+        let text = code(&text_of(path));
         assert!(
-            !code(&text).contains("resolve_trait_impl_instance("),
+            !text.contains("resolve_trait_impl_instance("),
             "{path}: an output reader selects the ordinary implementation alone"
         );
-        assert!(code(&text).contains("output_implementation("));
+        assert!(text.contains("output_implementation("));
+        // One ordinary selection is allowed in rows: while an instance is
+        // still inferred, it only decides whether an empty row expands, and
+        // D16 makes a named implementation's row the same.
+        let selections = text.matches("select_impl(").count();
+        assert_eq!(
+            selections,
+            usize::from(path.ends_with("rows.rs")),
+            "{path}: an output reader selects the ordinary implementation alone"
+        );
     }
     assert!(
         code(&text_of("src/analysis/ty/normalize.rs")).contains("named_output_implementation(")
@@ -468,10 +518,14 @@ fn code(text: &str) -> String {
 fn functions(text: &str) -> Vec<String> {
     let mut out = vec![String::new()];
     for line in text.lines() {
-        let trimmed = line.trim_start();
-        let starts = trimmed.starts_with("fn ")
-            || trimmed.starts_with("pub fn ")
-            || (trimmed.starts_with("pub(") && trimmed.contains(") fn "));
+        // A function starts at any `fn` item, whatever its visibility and
+        // qualifiers (`const`, `unsafe`, `async`, `extern`).
+        let mut words = line.split_whitespace();
+        let starts = words.by_ref().take_while(|word| *word != "fn").all(|word| {
+            word.starts_with("pub")
+                || ["const", "unsafe", "async", "extern", "\"C\""].contains(&word)
+        }) && line.trim_start().contains("fn ")
+            && !line.trim_start().starts_with("//");
         if starts {
             out.push(String::new());
         }

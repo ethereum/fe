@@ -128,103 +128,114 @@ mod slot_key {
 }
 pub(super) use slot_key::SlotKey;
 
-struct FrameNode<'db> {
-    parent: Option<FrameId>,
-    slot: SlotKey<'db>,
-    choice: Choice<'db>,
-}
+mod frames {
+    //! Frames are read only through `lookup` (and `opens_trait`, which
+    //! reads only the trait of each slot): their nodes are private here.
+    use super::{Choice, FrameId, HirAnalysisDb, SlotKey};
 
-/// The lexical frames of choices, kept as a persistent list so that a use can
-/// remember the frame it was checked in and be decided after inference.
-#[derive(Default)]
-pub(super) struct ChoiceFrames<'db> {
-    nodes: Vec<FrameNode<'db>>,
-    current: Option<FrameId>,
-}
-
-impl<'db> ChoiceFrames<'db> {
-    pub(super) fn current(&self) -> Option<FrameId> {
-        self.current
-    }
-
-    pub(super) fn restore(&mut self, frame: Option<FrameId>) {
-        self.current = frame;
-    }
-
-    /// The frame a body starts in: inside `impl T for S as N`, the slot
-    /// `T<S>` is N (RD114, provisional reading (a): every use of that slot in
-    /// the body, `Self` forms, receiver calls and concrete paths alike).
-    fn seed(&mut self, slot: SlotKey<'db>, choice: Choice<'db>) {
-        debug_assert!(
-            self.current.is_none(),
-            "a body is seeded before it is checked"
-        );
-        self.nodes.push(FrameNode {
-            parent: None,
-            slot,
-            choice,
-        });
-        self.current = Some(FrameId(self.nodes.len() as u32 - 1));
-    }
-
-    /// Map `slot` to `choice` in the header that began at `header`. A slot given
-    /// twice in one header is an error; an outer frame's slot is shadowed.
-    fn push(
-        &mut self,
-        header: Option<FrameId>,
+    struct FrameNode<'db> {
+        parent: Option<FrameId>,
         slot: SlotKey<'db>,
         choice: Choice<'db>,
-    ) -> Result<(), ()> {
-        let mut at = self.current;
-        while at != header {
-            let node = &self.nodes[at.expect("header is an ancestor").0 as usize];
-            if node.slot == slot {
-                return Err(());
-            }
-            at = node.parent;
-        }
-        self.nodes.push(FrameNode {
-            parent: self.current,
-            slot,
-            choice,
-        });
-        self.current = Some(FrameId(self.nodes.len() as u32 - 1));
-        Ok(())
     }
 
-    /// Whether `frame` or a frame around it opens a slot of `trait_`.
-    fn opens_trait(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        frame: Option<FrameId>,
-        trait_: crate::hir_def::Trait<'db>,
-    ) -> bool {
-        let mut at = frame;
-        while let Some(id) = at {
-            let node = &self.nodes[id.0 as usize];
-            if node.slot.inst().def(db) == trait_ {
-                return true;
-            }
-            at = node.parent;
-        }
-        false
+    /// The lexical frames of choices, kept as a persistent list so that a use can
+    /// remember the frame it was checked in and be decided after inference.
+    #[derive(Default)]
+    pub(in super::super) struct ChoiceFrames<'db> {
+        nodes: Vec<FrameNode<'db>>,
+        current: Option<FrameId>,
     }
 
-    /// The frame entry a use of `slot` reads: the innermost entry for exactly
-    /// that slot, as written. A slot that would equal an opened one only for
-    /// some generic arguments is a different slot (RD71's written reading).
-    fn lookup(&self, frame: Option<FrameId>, slot: SlotKey<'db>) -> Option<Choice<'db>> {
-        let mut at = frame;
-        while let Some(id) = at {
-            let node = &self.nodes[id.0 as usize];
-            if node.slot == slot {
-                return Some(node.choice);
-            }
-            at = node.parent;
+    impl<'db> ChoiceFrames<'db> {
+        pub(in super::super) fn current(&self) -> Option<FrameId> {
+            self.current
         }
-        None
+
+        pub(in super::super) fn restore(&mut self, frame: Option<FrameId>) {
+            self.current = frame;
+        }
+
+        /// The frame a body starts in: inside `impl T for S as N`, the slot
+        /// `T<S>` is N (RD114, provisional reading (a): every use of that slot in
+        /// the body, `Self` forms, receiver calls and concrete paths alike).
+        pub(super) fn seed(&mut self, slot: SlotKey<'db>, choice: Choice<'db>) {
+            debug_assert!(
+                self.current.is_none(),
+                "a body is seeded before it is checked"
+            );
+            self.nodes.push(FrameNode {
+                parent: None,
+                slot,
+                choice,
+            });
+            self.current = Some(FrameId(self.nodes.len() as u32 - 1));
+        }
+
+        /// Map `slot` to `choice` in the header that began at `header`. A slot given
+        /// twice in one header is an error; an outer frame's slot is shadowed.
+        pub(super) fn push(
+            &mut self,
+            header: Option<FrameId>,
+            slot: SlotKey<'db>,
+            choice: Choice<'db>,
+        ) -> Result<(), ()> {
+            let mut at = self.current;
+            while at != header {
+                let node = &self.nodes[at.expect("header is an ancestor").0 as usize];
+                if node.slot == slot {
+                    return Err(());
+                }
+                at = node.parent;
+            }
+            self.nodes.push(FrameNode {
+                parent: self.current,
+                slot,
+                choice,
+            });
+            self.current = Some(FrameId(self.nodes.len() as u32 - 1));
+            Ok(())
+        }
+
+        /// Whether `frame` or a frame around it opens a slot of `trait_`.
+        pub(super) fn opens_trait(
+            &self,
+            db: &'db dyn HirAnalysisDb,
+            frame: Option<FrameId>,
+            trait_: crate::hir_def::Trait<'db>,
+        ) -> bool {
+            let mut at = frame;
+            while let Some(id) = at {
+                let node = &self.nodes[id.0 as usize];
+                if node.slot.inst().def(db) == trait_ {
+                    return true;
+                }
+                at = node.parent;
+            }
+            false
+        }
+
+        /// The frame entry a use of `slot` reads: the innermost entry for exactly
+        /// that slot, as written. A slot that would equal an opened one only for
+        /// some generic arguments is a different slot (RD71's written reading).
+        pub(super) fn lookup(
+            &self,
+            frame: Option<FrameId>,
+            slot: SlotKey<'db>,
+        ) -> Option<Choice<'db>> {
+            let mut at = frame;
+            while let Some(id) = at {
+                let node = &self.nodes[id.0 as usize];
+                if node.slot == slot {
+                    return Some(node.choice);
+                }
+                at = node.parent;
+            }
+            None
+        }
     }
 }
+pub(super) use frames::ChoiceFrames;
 
 /// Why an expression does not denote a choice.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
