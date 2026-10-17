@@ -655,40 +655,116 @@ impl<'db> CheckedImplApplication<'db> {
     }
 }
 
-/// RD108: a named declaration cannot redefine an output of the ordinary
-/// application. This is definition admission, independent of any opening.
+/// What a named implementation's declaration gives differently from another
+/// implementation of its slot.
+pub(crate) enum NamedOutputMismatch<'db> {
+    /// An associated type; `with` is the implementation compared with.
+    AssocType {
+        with: ImplTrait<'db>,
+        ordinary: bool,
+        name: IdentId<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
+    },
+    /// An associated effect row.
+    Row {
+        with: ImplTrait<'db>,
+        ordinary: bool,
+        name: IdentId<'db>,
+    },
+}
+
+/// RD108, and its extension D16: the associated types and effect rows of a
+/// slot do not depend on which implementation answers it. A named
+/// declaration gives the same ones as the slot's ordinary implementation,
+/// or, when the slot has none, as each other named implementation of it.
+/// This is definition admission, independent of any opening.
 pub(crate) fn named_output_mismatch<'db>(
     db: &'db dyn HirAnalysisDb,
     implementation: ImplTrait<'db>,
     candidate: ImplementorId<'db>,
-) -> Option<(IdentId<'db>, TyId<'db>, TyId<'db>)> {
+) -> Option<NamedOutputMismatch<'db>> {
     let context = TraitSolveCx::new(db, implementation.scope())
         .with_assumptions(crate::semantic::param_env(db, implementation.into()));
     let header = candidate.trait_inst(db);
     let goal = TraitInstId::new_simple(db, header.def(db), header.args(db).clone());
-    let Selection::Unique(ordinary) = resolve_trait_impl_instance(db, context, goal) else {
-        return None;
-    };
-    if !matches!(ordinary.selected().origin(db), ImplementorOrigin::Hir(_)) {
-        return None;
-    }
-    for assoc in goal.def(db).assoc_types(db) {
-        let Some(name) = assoc.name(db) else {
-            continue;
-        };
-        let (Some(expected), Some(given)) = (
-            ordinary.instantiated_assoc_ty(db, name),
-            candidate.assoc_ty(db, name),
-        ) else {
-            continue;
-        };
-        let expected = normalize_ty(db, expected, implementation.scope(), context.assumptions());
-        let given = normalize_ty(db, given, implementation.scope(), context.assumptions());
-        if expected.has_invalid(db) || given.has_invalid(db) {
-            continue;
+    let (others, ordinary) = match resolve_trait_impl_instance(db, context, goal) {
+        Selection::Unique(ordinary)
+            if matches!(ordinary.selected().origin(db), ImplementorOrigin::Hir(_)) =>
+        {
+            (vec![ordinary], true)
         }
-        if UnificationTable::new(db).unify(expected, given).is_err() {
-            return Some((name, expected, given));
+        Selection::Unique(_) => return None,
+        _ => {
+            let ingot = implementation.top_mod(db).ingot(db);
+            let others = named_impls_for_trait(db, ingot, goal.def(db))
+                .into_iter()
+                .filter(|other| *other != implementation)
+                .filter_map(|other| super::trait_lower::lower_impl_trait(db, other))
+                .filter_map(|other| {
+                    super::trait_lower::complete_selected_impl(db, other)
+                        .and_then(|completed| instantiate_selected_impl(db, completed, goal))
+                })
+                .collect::<Vec<_>>();
+            (others, false)
+        }
+    };
+    let own = super::trait_lower::complete_selected_impl(db, candidate)
+        .and_then(|completed| instantiate_selected_impl(db, completed, goal));
+    for other in others {
+        let ImplementorOrigin::Hir(with) = other.selected().origin(db) else {
+            continue;
+        };
+        for assoc in goal.def(db).assoc_types(db) {
+            let Some(name) = assoc.name(db) else {
+                continue;
+            };
+            let (Some(expected), Some(given)) = (
+                other.instantiated_assoc_ty(db, name),
+                candidate.assoc_ty(db, name),
+            ) else {
+                continue;
+            };
+            let expected =
+                normalize_ty(db, expected, implementation.scope(), context.assumptions());
+            let given = normalize_ty(db, given, implementation.scope(), context.assumptions());
+            if expected.has_invalid(db) || given.has_invalid(db) {
+                continue;
+            }
+            if UnificationTable::new(db).unify(expected, given).is_err() {
+                return Some(NamedOutputMismatch::AssocType {
+                    with,
+                    ordinary,
+                    name,
+                    expected,
+                    given,
+                });
+            }
+        }
+        let Some(own) = own else {
+            continue;
+        };
+        for row in goal.def(db).rows(db) {
+            let Some(name) = row.name.to_opt() else {
+                continue;
+            };
+            let components = |resolved| {
+                super::effects::rows::implementation_row_components(db, resolved, name).map(
+                    |components| {
+                        components
+                            .into_iter()
+                            .map(|component| (component.name, component.key, component.is_mut))
+                            .collect::<Vec<_>>()
+                    },
+                )
+            };
+            if components(other) != components(own) {
+                return Some(NamedOutputMismatch::Row {
+                    with,
+                    ordinary,
+                    name,
+                });
+            }
         }
     }
     None

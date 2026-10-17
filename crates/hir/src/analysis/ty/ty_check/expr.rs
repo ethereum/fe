@@ -1765,7 +1765,20 @@ impl<'db> TyChecker<'db> {
 
         callable.check_args(self, args, call_span.clone().args(), None, false);
         self.deliver_evidence_args(&mut callable, args, 0);
-        if self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into()) {
+        let written = match callee.data(self.db, self.body()) {
+            Partial::Present(Expr::Path(Partial::Present(path))) => {
+                crate::analysis::ty::ty_lower::hir_path_const_slot_reads(
+                    self.db,
+                    *path,
+                    self.env.scope(),
+                    self.env.assumptions(),
+                )
+            }
+            _ => Vec::new(),
+        };
+        if self.refuse_choice_dependent_written_args(written, expr.span(self.body()).into())
+            || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
+        {
             // Keep the result's shape so the refusal is the only diagnostic
             // and inference around the call still resolves.
             let ret_ty = callable.ret_ty(self.db);
@@ -3798,7 +3811,15 @@ impl<'db> TyChecker<'db> {
         );
         // The receiver is parameter 0.
         self.deliver_evidence_args(&mut callable, args, 1);
-        if self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into()) {
+        let written = crate::analysis::ty::ty_lower::hir_generic_args_const_slot_reads(
+            self.db,
+            *generic_args,
+            self.env.scope(),
+            self.env.assumptions(),
+        );
+        if self.refuse_choice_dependent_written_args(written, expr.span(self.body()).into())
+            || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
+        {
             // Keep the result's shape so the refusal is the only diagnostic
             // and inference around the call still resolves.
             let ret_ty = callable.ret_ty(self.db);

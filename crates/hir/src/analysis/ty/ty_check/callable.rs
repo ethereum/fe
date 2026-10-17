@@ -415,10 +415,21 @@ impl<'db> Callable<'db> {
         let name = func.name(db).to_opt()?;
         let cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
         let method = match self.choice {
+            // Applied to the goal normalized as the instance key normalizes
+            // it, so a spelling through an associated type selects the same
+            // implementation here and there.
             Some(Choice::Known(known)) => {
                 crate::analysis::ty::trait_def::method_instance_from_resolved(
                     db,
-                    known.resolved_instance(db, inst)?,
+                    known.resolved_instance(
+                        db,
+                        crate::analysis::ty::trait_resolution::normalize_trait_inst_preserving_validity(
+                            db,
+                            inst,
+                            scope,
+                            assumptions,
+                        ),
+                    )?,
                     name,
                 )
             }

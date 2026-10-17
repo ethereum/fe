@@ -381,7 +381,7 @@ impl<'db> TyChecker<'db> {
         }
         let dependent = type_slot_reads(self.db, ty)
             .into_iter()
-            .any(|slot| self.env.choice_frames.lookup(frame, slot).is_some());
+            .any(|slot| self.env.frame_choice(frame, slot).is_some());
         if dependent {
             self.push_diag(BodyDiag::ChoiceDependentType { primary });
         }
@@ -406,7 +406,28 @@ impl<'db> TyChecker<'db> {
             self.env.assumptions(),
         )
         .into_iter()
-        .any(|slot| self.env.choice_frames.lookup(frame, slot).is_some());
+        .any(|slot| self.env.frame_choice(frame, slot).is_some());
+        if dependent {
+            self.push_diag(BodyDiag::ChoiceDependentType { primary });
+        }
+        dependent
+    }
+
+    /// The same refusal for the constant arguments written in a call's callee
+    /// path or explicit generic arguments (`g<{ Item::P }>()`): lowering
+    /// evaluates them with the ordinary implementation.
+    pub(super) fn refuse_choice_dependent_written_args(
+        &mut self,
+        reads: Vec<TraitInstId<'db>>,
+        primary: DynLazySpan<'db>,
+    ) -> bool {
+        let frame = self.env.choice_frames.current();
+        if frame.is_none() {
+            return false;
+        }
+        let dependent = reads
+            .into_iter()
+            .any(|slot| self.env.frame_choice(frame, slot).is_some());
         if dependent {
             self.push_diag(BodyDiag::ChoiceDependentType { primary });
         }
@@ -424,9 +445,12 @@ impl<'db> TyChecker<'db> {
         }
         let db = self.db;
         let arity = callable.callable_def().arg_tys(db).len();
+        // The call's generic arguments too: a constant argument such as
+        // `g<{ Item::P }>()` is a type the callee's body reads.
         let tys = (0..arity)
             .filter_map(|idx| callable.arg_ty(db, idx))
             .chain(std::iter::once(callable.ret_ty(db)))
+            .chain(callable.generic_args().iter().copied())
             .collect::<Vec<_>>();
         tys.into_iter()
             .any(|ty| self.refuse_choice_dependent_ty(ty, primary.clone()))
@@ -1070,8 +1094,7 @@ impl<'db> TyChecker<'db> {
                 let slot = self.env.normalized_slot(goal);
                 match self
                     .env
-                    .choice_frames
-                    .lookup(self.env.choice_frames.current(), slot)
+                    .frame_choice(self.env.choice_frames.current(), goal)
                 {
                     Some(choice) if self.choice_answers(choice, goal) => Ok(choice),
                     Some(_) => Err("the opened implementation does not prove the requested goal"),
@@ -1153,13 +1176,24 @@ fn evidence_choice<'db>(
 type CallDecisions<'db> = (Option<Choice<'db>>, Vec<(Delivery<'db>, Choice<'db>)>);
 
 impl<'db> TyCheckEnv<'db> {
+    /// The choice `frame` gives the slot of `inst`, its arguments normalized
+    /// in this body, so that every spelling of one slot reads one entry. The
+    /// one reader of choice frames.
+    pub(super) fn frame_choice(
+        &self,
+        frame: Option<FrameId>,
+        inst: TraitInstId<'db>,
+    ) -> Option<Choice<'db>> {
+        self.choice_frames.lookup(frame, self.normalized_slot(inst))
+    }
+
     /// Whether `frame` answers all of `goal`: inside the block that opened
     /// its slot, the goal holds even with no ordinary implementation, by a
     /// known choice (whose conditions were checked when it was opened, and
     /// only with the associated types it has) or by evidence.
     pub(super) fn frame_proves(&self, frame: Option<FrameId>, goal: TraitInstId<'db>) -> bool {
         let db = self.db();
-        match self.choice_frames.lookup(frame, self.normalized_slot(goal)) {
+        match self.frame_choice(frame, goal) {
             Some(Choice::Known(known)) => known.answers(db, goal),
             // Evidence for exactly this slot proves it. Its associated types
             // are not known until it arrives, so a goal that states them is
@@ -1179,7 +1213,7 @@ impl<'db> TyCheckEnv<'db> {
     ) -> Option<Choice<'db>> {
         let db = self.db();
         let slot = self.normalized_slot(inst);
-        if let Some(found) = self.choice_frames.lookup(frame, slot) {
+        if let Some(found) = self.frame_choice(frame, inst) {
             return Some(found);
         }
         let written = slot_goal(db, inst);
@@ -1431,11 +1465,7 @@ impl<'db> TyCheckEnv<'db> {
             .list(db)
             .iter()
             {
-                if self
-                    .choice_frames
-                    .lookup(frame, self.normalized_slot(*condition))
-                    .is_some()
-                {
+                if self.frame_choice(frame, *condition).is_some() {
                     return true;
                 }
                 pending.push(*condition);
@@ -1548,12 +1578,23 @@ impl<'db> TyCheckEnv<'db> {
         for (expr, callable) in values {
             let frame = self.use_frames[expr];
             let mut captured = Vec::new();
+            let mut undecided = Vec::new();
             for goal in self.call_uses(&callable) {
-                if let Some(choice) = self.decide(frame, goal)
-                    && !captured.contains(&choice)
-                {
-                    captured.push(choice);
+                match self.decide(frame, goal) {
+                    Some(choice) => {
+                        if !captured.contains(&choice) {
+                            captured.push(choice);
+                        }
+                    }
+                    None => undecided.push(goal),
                 }
+            }
+            // A function value's bounds are left to ordinary selection as a
+            // call's are (D13).
+            let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
+            if self.reads_opened_condition(frame, undecided, own_slot) {
+                self.choice_refusals
+                    .push((expr, ChoiceRefusal::OpenedCondition));
             }
             if !captured.is_empty() {
                 self.function_value_choices.push((expr, captured));

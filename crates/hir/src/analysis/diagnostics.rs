@@ -5277,6 +5277,60 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 primary.span().resolve(db),
                 error_code,
             ),
+            Self::NamedAssociatedTypeDisagreement {
+                primary,
+                with,
+                name,
+                expected,
+                given,
+            } => {
+                let mut diag = primary_diag(
+                    Severity::Error,
+                    "named implementations of one slot give different associated types",
+                    format!(
+                        "`{}` is `{}` in another implementation of this slot, but this implementation defines `{}`",
+                        name.data(db),
+                        expected.pretty_print(db),
+                        given.pretty_print(db)
+                    ),
+                    primary.span().resolve(db),
+                    error_code,
+                );
+                if let Some(span) = with.span().resolve(db) {
+                    diag.sub_diagnostics.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "the other implementation".to_string(),
+                        Some(span),
+                    ));
+                }
+                diag
+            }
+            Self::NamedAssociatedRowMismatch {
+                primary,
+                with,
+                ordinary,
+                name,
+            } => {
+                let mut diag = primary_diag(
+                    Severity::Error,
+                    "named implementation changes an associated effect row",
+                    format!(
+                        "`{}` must give the effects the {} implementation of this slot gives",
+                        name.data(db),
+                        if *ordinary { "ordinary" } else { "other named" }
+                    ),
+                    primary.span().resolve(db),
+                    error_code,
+                );
+                if let Some(span) = with.span().resolve(db) {
+                    diag.sub_diagnostics.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "the other implementation".to_string(),
+                        Some(span),
+                    ));
+                }
+                diag
+            }
             Self::ExternalTraitForExternalType(impl_trait) => primary_diag(
                 Severity::Error,
                 "external trait cannot be implemented for external type",

@@ -208,107 +208,143 @@ pub(crate) fn hir_ty_const_slot_reads<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> Vec<TraitInstId<'db>> {
-    fn ty_reads<'db>(
-        db: &'db dyn HirAnalysisDb,
-        ty: Partial<HirTyId<'db>>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-        reads: &mut Vec<TraitInstId<'db>>,
-    ) {
-        let Partial::Present(ty) = ty else {
-            return;
-        };
-        match ty.data(db) {
-            HirTyKind::Ptr(inner) | HirTyKind::Mode(_, inner) => {
-                ty_reads(db, *inner, scope, assumptions, reads)
-            }
-            HirTyKind::Tuple(tuple) => {
-                for elem in tuple.data(db) {
-                    ty_reads(db, *elem, scope, assumptions, reads);
-                }
-            }
-            HirTyKind::Array(elem, len) => {
-                ty_reads(db, *elem, scope, assumptions, reads);
-                if let Partial::Present(body) = len {
-                    body_reads(db, *body, scope, assumptions, reads);
-                }
-            }
-            HirTyKind::Path(path) => {
-                if let Partial::Present(path) = path {
-                    path_reads(db, *path, scope, assumptions, reads);
-                }
-            }
-            HirTyKind::Never => {}
-        }
-    }
-    fn path_reads<'db>(
-        db: &'db dyn HirAnalysisDb,
-        path: PathId<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-        reads: &mut Vec<TraitInstId<'db>>,
-    ) {
-        let mut segment = Some(path);
-        while let Some(path) = segment {
-            if let crate::core::hir_def::PathKind::QualifiedType { type_, trait_ } = path.kind(db) {
-                ty_reads(db, Partial::Present(type_), scope, assumptions, reads);
-                if let Partial::Present(trait_path) = trait_.path(db) {
-                    path_reads(db, trait_path, scope, assumptions, reads);
-                }
-            }
-            for arg in path.generic_args(db).data(db) {
-                match arg {
-                    GenericArg::Type(arg) => ty_reads(db, arg.ty, scope, assumptions, reads),
-                    GenericArg::Const(arg) => {
-                        if let Partial::Present(body) = arg.value {
-                            body_reads(db, body, scope, assumptions, reads);
-                        }
-                    }
-                    GenericArg::AssocType(_) => {}
-                }
-            }
-            segment = path.parent(db);
-        }
-    }
-    fn body_reads<'db>(
-        db: &'db dyn HirAnalysisDb,
-        body: Body<'db>,
-        scope: ScopeId<'db>,
-        assumptions: PredicateListId<'db>,
-        reads: &mut Vec<TraitInstId<'db>>,
-    ) {
-        if let Some(path) = const_body_simple_path(db, body)
-            && let Ok(PathRes::TraitConst(recv_ty, inst, _)) =
-                crate::analysis::name_resolution::resolve_path(db, path, scope, assumptions, true)
-        {
-            let mut args = inst.args(db).clone();
-            if let Some(self_arg) = args.first_mut() {
-                *self_arg = recv_ty;
-            }
-            reads.push(TraitInstId::new(
-                db,
-                inst.def(db),
-                args,
-                common::indexmap::IndexMap::new(),
-            ));
-            return;
-        }
-        // A compound body: the trait uses its own check recorded. Lengths and
-        // constant arguments in the core are `usize`.
-        let owner = super::ty_check::BodyOwner::AnonConstBody {
-            body,
-            expected: TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))),
-        };
-        let typed = &super::ty_check::infer_body(db, owner).1;
-        reads.extend(
-            super::ty_check::body_slot_uses(db, typed)
-                .into_iter()
-                .map(|(goal, _)| goal),
-        );
-    }
     let mut reads = Vec::new();
-    ty_reads(db, Partial::Present(ty), scope, assumptions, &mut reads);
+    const_ty_reads(db, Partial::Present(ty), scope, assumptions, &mut reads);
     reads
+}
+
+/// The slots read by the constant arguments written in `path`'s segments,
+/// such as a call's callee `g<{ Item::P }>`.
+pub(crate) fn hir_path_const_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let mut reads = Vec::new();
+    const_path_reads(db, path, scope, assumptions, &mut reads);
+    reads
+}
+
+/// The slots read by the constant arguments in an explicit generic argument
+/// list, such as a method call's `x.m::<{ Item::P }>()`.
+pub(crate) fn hir_generic_args_const_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: crate::core::hir_def::GenericArgListId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let mut reads = Vec::new();
+    const_arg_reads(db, args, scope, assumptions, &mut reads);
+    reads
+}
+
+fn const_ty_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: Partial<HirTyId<'db>>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    let Partial::Present(ty) = ty else {
+        return;
+    };
+    match ty.data(db) {
+        HirTyKind::Ptr(inner) | HirTyKind::Mode(_, inner) => {
+            const_ty_reads(db, *inner, scope, assumptions, reads)
+        }
+        HirTyKind::Tuple(tuple) => {
+            for elem in tuple.data(db) {
+                const_ty_reads(db, *elem, scope, assumptions, reads);
+            }
+        }
+        HirTyKind::Array(elem, len) => {
+            const_ty_reads(db, *elem, scope, assumptions, reads);
+            if let Partial::Present(body) = len {
+                const_body_reads(db, *body, scope, assumptions, reads);
+            }
+        }
+        HirTyKind::Path(path) => {
+            if let Partial::Present(path) = path {
+                const_path_reads(db, *path, scope, assumptions, reads);
+            }
+        }
+        HirTyKind::Never => {}
+    }
+}
+fn const_path_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    let mut segment = Some(path);
+    while let Some(path) = segment {
+        if let crate::core::hir_def::PathKind::QualifiedType { type_, trait_ } = path.kind(db) {
+            const_ty_reads(db, Partial::Present(type_), scope, assumptions, reads);
+            if let Partial::Present(trait_path) = trait_.path(db) {
+                const_path_reads(db, trait_path, scope, assumptions, reads);
+            }
+        }
+        const_arg_reads(db, path.generic_args(db), scope, assumptions, reads);
+        segment = path.parent(db);
+    }
+}
+fn const_body_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    if let Some(path) = const_body_simple_path(db, body)
+        && let Ok(PathRes::TraitConst(recv_ty, inst, _)) =
+            crate::analysis::name_resolution::resolve_path(db, path, scope, assumptions, true)
+    {
+        let mut args = inst.args(db).clone();
+        if let Some(self_arg) = args.first_mut() {
+            *self_arg = recv_ty;
+        }
+        reads.push(TraitInstId::new(
+            db,
+            inst.def(db),
+            args,
+            common::indexmap::IndexMap::new(),
+        ));
+        return;
+    }
+    // A compound body: the trait uses its own check recorded. Lengths and
+    // constant arguments in the core are `usize`.
+    let owner = super::ty_check::BodyOwner::AnonConstBody {
+        body,
+        expected: TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))),
+    };
+    let typed = &super::ty_check::infer_body(db, owner).1;
+    reads.extend(
+        super::ty_check::body_slot_uses(db, typed)
+            .into_iter()
+            .map(|(goal, _)| goal),
+    );
+}
+fn const_arg_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: crate::core::hir_def::GenericArgListId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    for arg in args.data(db) {
+        match arg {
+            GenericArg::Type(arg) => const_ty_reads(db, arg.ty, scope, assumptions, reads),
+            GenericArg::Const(arg) => {
+                if let Partial::Present(body) = arg.value {
+                    const_body_reads(db, body, scope, assumptions, reads);
+                }
+            }
+            GenericArg::AssocType(_) => {}
+        }
+    }
 }
 
 fn const_body_simple_path<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<PathId<'db>> {

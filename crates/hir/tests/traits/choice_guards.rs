@@ -141,6 +141,23 @@ fn trait_method_bodies_are_chosen_where_choices_are_read() {
 }
 
 #[test]
+fn frames_are_read_through_one_normalized_lookup() {
+    // `TyCheckEnv::frame_choice` normalizes a slot before reading the frames,
+    // so that every spelling of one slot (concrete, through an associated
+    // type, `Self`) reads one entry. Another reader could skip it.
+    assert_eq!(
+        occurrences_outside("choice_frames.lookup(", &[CHECKER]),
+        Vec::<String>::new()
+    );
+    let checker = sources()
+        .into_iter()
+        .find(|(path, _)| path == CHECKER)
+        .expect("the checker exists")
+        .1;
+    assert_eq!(checker.matches("choice_frames.lookup(").count(), 1);
+}
+
+#[test]
 fn deliveries_reach_a_body_through_one_mapping() {
     // A call's deliveries are read only where the body that runs is mapped
     // (`trait_choice::body_deliveries`): the checker, the condition and

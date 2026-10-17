@@ -1351,6 +1351,24 @@ pub enum TraitLowerDiag<'db> {
         expected: TyId<'db>,
         given: TyId<'db>,
     },
+    /// D16: named implementations of a slot with no ordinary implementation
+    /// agree on its associated types.
+    NamedAssociatedTypeDisagreement {
+        primary: ImplTrait<'db>,
+        with: ImplTrait<'db>,
+        name: IdentId<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
+    },
+    /// D16: a named implementation gives a slot's associated effect row as
+    /// the slot's ordinary implementation does, or, with none, as each
+    /// other named implementation does.
+    NamedAssociatedRowMismatch {
+        primary: ImplTrait<'db>,
+        with: ImplTrait<'db>,
+        ordinary: bool,
+        name: IdentId<'db>,
+    },
     ConflictTraitImpl {
         primary: ImplTrait<'db>,
         conflict_with: ImplTrait<'db>,
@@ -1371,7 +1389,9 @@ pub enum TraitLowerDiag<'db> {
 impl TraitLowerDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
-            Self::NamedAssociatedTypeMismatch { .. } => 5,
+            Self::NamedAssociatedTypeMismatch { .. }
+            | Self::NamedAssociatedTypeDisagreement { .. }
+            | Self::NamedAssociatedRowMismatch { .. } => 5,
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
             Self::CyclicSuperTraits { .. } => 2,

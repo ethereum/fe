@@ -2218,6 +2218,7 @@ pub(crate) enum OwedCheck<'db> {
     Call(PendingCall<'db>),
 }
 
+#[derive(Clone)]
 enum ConditionAtCall<'db> {
     /// Every slot it reads is known here, or ordinary.
     Evaluate(SlotChoices<'db>),
@@ -2225,6 +2226,7 @@ enum ConditionAtCall<'db> {
     Owed(Vec<(SlotRef<'db>, Choice<'db>)>),
 }
 
+#[derive(Clone)]
 struct CallCondition<'db> {
     predicate: Body<'db>,
     args: Vec<TyId<'db>>,
@@ -2234,6 +2236,7 @@ struct CallCondition<'db> {
 }
 
 /// One check at a call edge, in the caller's context.
+#[derive(Clone)]
 enum EdgeFact<'db> {
     Condition(CallCondition<'db>),
     /// A choice that reaches a type of a body the call runs.
@@ -2247,9 +2250,32 @@ enum EdgeFact<'db> {
     TooDeep,
 }
 
-/// The bodies whose debts are being followed at one call edge, with what
-/// each receives: an instance met again is already being collected.
-type Path<'db> = Vec<(Func<'db>, Vec<TyId<'db>>, Vec<(SlotRef<'db>, Choice<'db>)>)>;
+/// A body whose debts are followed, with its arguments and what it receives.
+type WalkEntry<'db> = (Func<'db>, Vec<TyId<'db>>, Vec<(SlotRef<'db>, Choice<'db>)>);
+
+/// The debts of the bodies one call edge runs, followed through bodies chosen
+/// later. `path` holds the bodies being followed: one met again on it is
+/// already being collected, and the walk cuts there. A body whose walk cut at
+/// no body above it, and met no depth limit, has facts that do not depend on
+/// the path, so they are kept in `done` and not followed again when another
+/// path reaches it.
+struct Walk<'db> {
+    path: Vec<WalkEntry<'db>>,
+    done: rustc_hash::FxHashMap<WalkEntry<'db>, Vec<EdgeFact<'db>>>,
+    /// The shallowest position on `path` that a cut in the current body's
+    /// walk returned to.
+    low: usize,
+}
+
+impl<'db> Walk<'db> {
+    fn new() -> Self {
+        Self {
+            path: Vec::new(),
+            done: rustc_hash::FxHashMap::default(),
+            low: usize::MAX,
+        }
+    }
+}
 
 /// How many bodies chosen later one call edge follows before refusing.
 const OWED_DEPTH: usize = 256;
@@ -2370,22 +2396,37 @@ fn owed_at_call<'db>(
     slots: &[(SlotRef<'db>, Choice<'db>)],
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    path: &mut Path<'db>,
+    walk: &mut Walk<'db>,
 ) -> Vec<EdgeFact<'db>> {
     let owed = owed_checks(db, body);
     if owed.is_empty() {
         return Vec::new();
     }
     let here = (body, body_args.to_vec(), slots.to_vec());
-    if path.contains(&here) {
+    if let Some(facts) = walk.done.get(&here) {
+        return facts.clone();
+    }
+    if let Some(position) = walk.path.iter().position(|entry| *entry == here) {
+        walk.low = walk.low.min(position);
         return Vec::new();
     }
-    if path.len() >= OWED_DEPTH {
+    if walk.path.len() >= OWED_DEPTH {
+        // A depth limit depends on the path: nothing above it is kept.
+        walk.low = 0;
         return vec![EdgeFact::TooDeep];
     }
-    path.push(here);
-    let facts = owed_facts_at_call(db, owed, body, body_args, slots, scope, assumptions, path);
-    path.pop();
+    let depth = walk.path.len();
+    let outer_low = std::mem::replace(&mut walk.low, usize::MAX);
+    walk.path.push(here.clone());
+    let facts = owed_facts_at_call(db, owed, body, body_args, slots, scope, assumptions, walk);
+    walk.path.pop();
+    let low = walk.low;
+    if low >= depth {
+        walk.done.insert(here, facts.clone());
+        walk.low = outer_low;
+    } else {
+        walk.low = outer_low.min(low);
+    }
     facts
 }
 
@@ -2398,7 +2439,7 @@ fn owed_facts_at_call<'db>(
     slots: &[(SlotRef<'db>, Choice<'db>)],
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    path: &mut Path<'db>,
+    walk: &mut Walk<'db>,
 ) -> Vec<EdgeFact<'db>> {
     let mut facts = Vec::new();
     for owed in owed {
@@ -2451,7 +2492,7 @@ fn owed_facts_at_call<'db>(
                     false,
                     scope,
                     assumptions,
-                    path,
+                    walk,
                 ));
             }
         }
@@ -2469,7 +2510,7 @@ fn facts_at_call<'db>(
     direct: bool,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    path: &mut Path<'db>,
+    walk: &mut Walk<'db>,
 ) -> Vec<EdgeFact<'db>> {
     let CallableDef::Func(func) = callable.callable_def() else {
         return Vec::new();
@@ -2495,7 +2536,7 @@ fn facts_at_call<'db>(
                 &slots,
                 scope,
                 assumptions,
-                path,
+                walk,
             ));
         }
         None => {
@@ -2543,7 +2584,7 @@ fn facts_at_call_expr<'db>(
         calls_directly(db, typed, body, expr),
         scope,
         typed.assumptions(),
-        &mut Vec::new(),
+        &mut Walk::new(),
     )
 }
 

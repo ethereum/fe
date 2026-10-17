@@ -4703,15 +4703,47 @@ impl<'db> ImplTrait<'db> {
                 if matches!(
                     crate::analysis::ty::trait_def::impl_selection_class(db, self),
                     crate::analysis::ty::trait_def::ImplSelectionClass::Named(_)
-                ) && let Some((name, expected, given)) =
+                ) && let Some(mismatch) =
                     crate::analysis::ty::trait_def::named_output_mismatch(db, self, implementor)
                 {
+                    use crate::analysis::ty::trait_def::NamedOutputMismatch;
                     diags.push(
-                        TraitLowerDiag::NamedAssociatedTypeMismatch {
-                            primary: self,
-                            name,
-                            expected,
-                            given,
+                        match mismatch {
+                            NamedOutputMismatch::AssocType {
+                                ordinary: true,
+                                name,
+                                expected,
+                                given,
+                                ..
+                            } => TraitLowerDiag::NamedAssociatedTypeMismatch {
+                                primary: self,
+                                name,
+                                expected,
+                                given,
+                            },
+                            NamedOutputMismatch::AssocType {
+                                with,
+                                name,
+                                expected,
+                                given,
+                                ..
+                            } => TraitLowerDiag::NamedAssociatedTypeDisagreement {
+                                primary: self,
+                                with,
+                                name,
+                                expected,
+                                given,
+                            },
+                            NamedOutputMismatch::Row {
+                                with,
+                                ordinary,
+                                name,
+                            } => TraitLowerDiag::NamedAssociatedRowMismatch {
+                                primary: self,
+                                with,
+                                ordinary,
+                                name,
+                            },
                         }
                         .into(),
                     );
