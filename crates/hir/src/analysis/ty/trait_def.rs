@@ -779,9 +779,14 @@ pub(crate) fn named_output_mismatch<'db>(
             ) else {
                 continue;
             };
-            let expected =
-                normalize_ty(db, expected, implementation.scope(), context.assumptions());
-            let given = normalize_ty(db, given, implementation.scope(), context.assumptions());
+            let expected = consts_evaluated(
+                db,
+                normalize_ty(db, expected, implementation.scope(), context.assumptions()),
+            );
+            let given = consts_evaluated(
+                db,
+                normalize_ty(db, given, implementation.scope(), context.assumptions()),
+            );
             if expected.has_invalid(db) || given.has_invalid(db) {
                 continue;
             }
@@ -834,6 +839,20 @@ pub(crate) fn named_output_mismatch<'db>(
         }
     }
     None
+}
+
+/// `ty` with each constant in it evaluated, so two written forms of one type
+/// (`Arr<{ 100 }>` and `Arr<100>`, or one braced constant written twice)
+/// compare equal.
+fn consts_evaluated<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+    struct Evaluate;
+    impl<'db> TyFolder<'db> for Evaluate {
+        fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+            let ty = ty.super_fold_with(db, self);
+            super::const_ty::normalize_const_tys_for_comparison(db, ty)
+        }
+    }
+    ty.fold_with(db, &mut Evaluate)
 }
 
 /// Two implementations instantiated at their overlap: each header with fresh
