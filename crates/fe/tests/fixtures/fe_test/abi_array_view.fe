@@ -678,3 +678,21 @@ fn test_element_tail_offset_of_two_64_rejected_on_long_input() {
     let bytes: ArrayView<SparseInput, Bytes> = decode_array_view(SparseInput { w0: 0x20, w1: 1, w2: TWO_64 })
     let _ = bytes.element_pos(0)
 }
+
+#[test(should_revert)]
+fn test_bytes_at_tail_offset_of_two_64_rejected_on_long_input() {
+    let bytes: ArrayView<SparseInput, Bytes> = decode_array_view(SparseInput { w0: 0x20, w1: 1, w2: TWO_64 })
+    let _ = bytes.bytes_at(0)
+}
+
+#[test(should_revert)]
+fn test_string_at_tail_offset_of_two_64_rejected_on_long_input() {
+    let strings: ArrayView<SparseInput, DynString> = decode_array_view(SparseInput { w0: 0x20, w1: 1, w2: TWO_64 })
+    let _ = strings.string_at(0)
+}
+
+#[test(should_revert)]
+fn test_get_tail_offset_of_two_64_rejected_on_long_input() {
+    let bytes: ArrayView<SparseInput, Bytes> = decode_array_view(SparseInput { w0: 0x20, w1: 1, w2: TWO_64 })
+    let _ = bytes.get(0)
+}

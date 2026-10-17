@@ -205,9 +205,10 @@ impl<I, T> ArrayView<I, T>
     ///
     /// The element is decoded with the regular Solidity ABI decoder, so each
     /// word is validated like a function parameter: an `Address` or narrow
-    /// integer with dirty upper bits, a `bool` other than 0 or 1, or an
-    /// out-of-bounds tail of a dynamic element reverts with empty returndata.
-    /// Only element `index` is read and validated.
+    /// integer with dirty upper bits, a `bool` other than 0 or 1, or a tail
+    /// of a dynamic element that is out of bounds or at an offset of `2**64`
+    /// or more reverts with empty returndata. Only element `index` is read
+    /// and validated.
     ///
     /// Dynamic elements (`Bytes`, nested `DynArray`s, structs with dynamic
     /// fields) are copied into memory; use `bytes_at`, `string_at` or
@@ -220,6 +221,9 @@ impl<I, T> ArrayView<I, T>
     {
         self.check_index(index)
         let head_at = self.elems + index * abi_field_head_size<T>()
+        if T::IS_DYNAMIC {
+            let _ = checked_offset(self.input.word_at(head_at))
+        }
         decode_field_from_prechecked_head<Sol, T, I>(
             self.input,
             base: self.elems,
@@ -240,12 +244,14 @@ impl<I> ArrayView<I, Bytes>
 {
     /// A zero-copy view of the `bytes` element `index`.
     ///
-    /// Validates the element's tail offset, length word and payload bounds
-    /// (reverting with empty returndata), like accessing `bytes[] calldata`
-    /// in Solidity. Reverts with `Panic(0x32)` if `index >= len()`.
+    /// Validates the element's tail offset (below `2**64`), length word and
+    /// payload bounds (reverting with empty returndata), like accessing
+    /// `bytes[] calldata` in Solidity. Reverts with `Panic(0x32)` if
+    /// `index >= len()`.
     #[arithmetic(unchecked)]
     pub fn bytes_at(self, _ index: u256) -> BytesView<I> {
         self.check_index(index)
+        let _ = checked_offset(self.input.word_at(self.elems + index * 32))
         decode_bytes_view_at(self.input, base: self.elems, head_pos: index * 32)
     }
 }
@@ -260,6 +266,7 @@ impl<I> ArrayView<I, DynString>
     #[arithmetic(unchecked)]
     pub fn string_at(self, _ index: u256) -> StringView<I> {
         self.check_index(index)
+        let _ = checked_offset(self.input.word_at(self.elems + index * 32))
         decode_string_view_at(self.input, base: self.elems, head_pos: index * 32)
     }
 }
