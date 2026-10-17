@@ -1091,14 +1091,22 @@ impl<'db> TyChecker<'db> {
                 "a generic named implementation cannot be opened by name",
             ));
         }
+        // Its conditions are proved where it is declared, not under the
+        // frames of the opening (RD130, decision (b)): a condition that only
+        // a named implementation answers is refused until sub-choices carry
+        // the opening's answer into the implementation.
         Some(
             KnownChoice::prove(
                 self.db,
-                self.env.proof_context(),
+                TraitSolveCx::new(self.db, implementation.scope()),
                 *implementation,
-                candidate.trait_inst(self.db),
+                // The slot it answers; its associated types are its own
+                // (D16 compares them with the ordinary ones).
+                slot_goal(self.db, candidate.trait_inst(self.db)),
             )
-            .map_err(|_| "the named implementation's conditions do not hold here"),
+            .map_err(|_| {
+                "the named implementation's conditions do not hold where it is declared; a condition only a named implementation answers is not supported yet"
+            }),
         )
     }
 
