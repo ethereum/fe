@@ -9,9 +9,7 @@ use test_utils::snap_test;
 )]
 fn format_snap(fixture: Fixture<&str>) {
     let config = Config {
-        uses_new_line: fixture
-            .content()
-            .starts_with("// fmt: uses_new_line = true\n"),
+        uses_new_line: fixture.content().lines().next() == Some("// fmt: uses_new_line = true"),
         ..Config::default()
     };
     let output = match format_str(fixture.content(), &config) {
