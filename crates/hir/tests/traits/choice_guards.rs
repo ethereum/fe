@@ -763,6 +763,28 @@ fn constant_reads_include_their_body() {
 }
 
 #[test]
+fn named_conditions_read_the_declaring_environment() {
+    // RD130, decision (b): a named implementation's `where` conditions read
+    // the environment where it is declared, in every spelling: no own-choice
+    // seed and no declaration frame reaches them, or a condition would prove
+    // itself.
+    let env = code(&text_of("src/analysis/ty/ty_check/env.rs"));
+    assert!(env.contains("&& !owner.is_const_predicate(db)"));
+    let frames = code(&text_of("src/analysis/ty/ty_check/written_frames.rs"));
+    let declaration = functions(&frames)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn declaration_frames")
+        })
+        .expect("named declarations have frames");
+    assert!(declaration.contains(".const_predicates(db)"));
+}
+
+#[test]
 fn choice_walks_end_at_one_limit() {
     // D18: a walk that follows choices through implementations ends where the
     // base's instance limits end, through one check; no walk keeps a limit of

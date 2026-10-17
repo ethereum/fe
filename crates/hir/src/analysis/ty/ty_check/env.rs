@@ -367,9 +367,13 @@ impl<'db> TyCheckEnv<'db> {
         env.assumptions = PredicateListId::new(db, preds).extend_all_bounds(db);
 
         // A named implementation's own body sees itself for its own slot,
-        // keyed in the assumptions its uses are read in.
+        // keyed in the assumptions its uses are read in. Its `where`
+        // conditions do not: they read the environment where it is declared,
+        // in every spelling, `Self` included, or the condition would prove
+        // itself (RD130, decision (b)).
         if let Some(ItemKind::ImplTrait(implementation)) = owner_scope.parent_item(db)
             && implementation.selection_name(db).is_some()
+            && !owner.is_const_predicate(db)
         {
             env.seed_own_choice(implementation);
         }

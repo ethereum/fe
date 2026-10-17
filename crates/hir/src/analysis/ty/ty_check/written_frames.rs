@@ -123,11 +123,21 @@ fn declaration_frames<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Body<'db>,
 ) -> Option<WrittenFrames<'db>> {
+    let mut bodies = vec![body];
     let mut at = ScopeId::from_item(ItemKind::Body(body)).parent(db);
     while let Some(scope) = at {
         match scope {
             ScopeId::Item(ItemKind::ImplTrait(implementation)) => {
                 implementation.selection_name(db)?;
+                // A `where` condition reads the environment where the
+                // implementation is declared, not its own slot (RD130,
+                // decision (b)).
+                let conditions = crate::hir_def::WhereClauseOwner::ImplTrait(implementation)
+                    .where_clause(db)
+                    .const_predicates(db);
+                if bodies.iter().any(|body| conditions.contains(body)) {
+                    return None;
+                }
                 let inst = implementation.trait_inst(db)?;
                 let scope = implementation.scope();
                 let assumptions = PredicateListId::empty_list(db);
@@ -139,7 +149,11 @@ fn declaration_frames<'db>(
                     declaration: true,
                 });
             }
-            ScopeId::Item(ItemKind::Func(_) | ItemKind::Body(_)) | ScopeId::Block(..) => {
+            ScopeId::Item(ItemKind::Body(inner)) => {
+                bodies.push(inner);
+                at = scope.parent(db);
+            }
+            ScopeId::Item(ItemKind::Func(_)) | ScopeId::Block(..) => {
                 at = scope.parent(db);
             }
             _ => return None,
