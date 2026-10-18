@@ -515,6 +515,12 @@ pub(crate) fn opens_constant_read<'db>(
     frames: &WrittenFrames<'db>,
     use_: crate::analysis::ty::assoc_const::AssocConstUse<'db>,
 ) -> bool {
+    // With no frame, nothing is opened; the constant's body is not read,
+    // which would select the implementation an ordinary declaration is
+    // still lowering (a cycle).
+    if frames.slots.is_empty() && !frames.unknown {
+        return false;
+    }
     frames.opens(db, use_.inst())
         || super::choice::const_use_reads(db, super::ConstRef::TraitConst(use_))
             .into_iter()

@@ -755,9 +755,14 @@ pub(crate) fn lower_type_position_path<'db>(
         }
         _ => None,
     } && let Some(frames) = super::ty_check::written_frames::declaration_frames_at(db, scope)
-        && super::ty_check::written_frames::constant_read_slots(db, cref)
-            .into_iter()
-            .any(|slot| frames.opens(db, slot))
+        && match cref {
+            super::ty_check::ConstRef::TraitConst(use_) => {
+                super::ty_check::written_frames::opens_constant_read(db, &frames, use_)
+            }
+            _ => super::ty_check::written_frames::constant_read_slots(db, cref)
+                .into_iter()
+                .any(|slot| frames.opens(db, slot)),
+        }
     {
         return Ok(TyId::invalid(db, InvalidCause::ChoiceDependentPath));
     }
