@@ -1265,11 +1265,51 @@ fn applicable_impls<'db>(
     candidates
         .into_iter()
         .filter(|candidate| matches!(candidate.origin(db), ImplementorOrigin::Hir(_)))
+        .filter(|candidate| may_apply(db, *candidate, inst))
         .filter_map(|candidate| {
             complete_selected_impl(db, candidate)
                 .and_then(|completed| instantiate_selected_impl(db, completed, inst))
         })
         .collect()
+}
+
+/// Whether `candidate`, as lowered for lookup, may apply to `inst`. Its
+/// trait arguments are the checked lowering's unless they hold a constant or
+/// a projection, which only the checked lowering settles; a candidate whose
+/// arguments hold neither and do not unify with `inst` does not apply, and
+/// is not lowered again (`complete_selected_impl` is not cached).
+fn may_apply<'db>(
+    db: &'db dyn HirAnalysisDb,
+    candidate: ImplementorId<'db>,
+    inst: TraitInstId<'db>,
+) -> bool {
+    struct Unsettled<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: bool,
+    }
+    impl<'db> TyVisitor<'db> for Unsettled<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_const_ty(&mut self, const_ty: &super::const_ty::ConstTyId<'db>) {
+            if !matches!(
+                const_ty.data(self.db),
+                super::const_ty::ConstTyData::TyParam(..)
+            ) {
+                self.found = true;
+            }
+            super::visitor::walk_const_ty(self, const_ty)
+        }
+    }
+    let mut unsettled = Unsettled { db, found: false };
+    for ty in candidate.trait_inst(db).args(db) {
+        if ty.has_projection(db) {
+            return true;
+        }
+        unsettled.visit_ty(*ty);
+    }
+    unsettled.found || instantiate_selected_impl(db, candidate, inst).is_some()
 }
 
 /// A known choice's implementation applied to `inst`, a goal in its slot.
