@@ -132,12 +132,12 @@ fn collections_clear_their_elements() uses (evm: mut Evm) {
         assert(load(data + 2) == 0 && load(data + 3) == 0)
 
         let owners = unsafe { SolEnumerableSet<Address>::at(9) }
-        assert(owners.add(Address { inner: 10 }))
-        assert(owners.add(Address { inner: 11 }))
+        assert(owners.add(Address::new(10)))
+        assert(owners.add(Address::new(11)))
         owners.clear()
         assert(owners.len() == 0)
-        assert(!owners.contains(Address { inner: 10 }))
-        assert(owners.add(Address { inner: 11 }))
+        assert(!owners.contains(Address::new(10)))
+        assert(owners.add(Address::new(11)))
         assert(owners.len() == 1)
     }
 }

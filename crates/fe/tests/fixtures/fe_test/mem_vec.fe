@@ -78,13 +78,13 @@ fn test_zeroed_set_get()
 fn test_address_elements()
 {
     var v: MemVec<Address> = MemVec::zeroed(2)
-    v.set(index: 1, value: Address { inner: 0xbeef })
-    assert!(v.get(0).inner == 0)
-    assert!(v.get(1).inner == 0xbeef)
+    v.set(index: 1, value: Address::new(0xbeef))
+    assert!(v.get(0).word() == 0)
+    assert!(v.get(1).word() == 0xbeef)
 
     let arr = v.to_dyn_array()
     assert!(arr.len() == 2)
-    assert!(arr.get(1).inner == 0xbeef)
+    assert!(arr.get(1).word() == 0xbeef)
 }
 
 #[test(should_revert, panic = 0x32)]
@@ -120,7 +120,7 @@ fn test_from_dyn_array_copies_across_call()
 uses (evm: mut Evm)
 {
     let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     var v: MemVec<u256> = MemVec::zeroed(2)
     v.set(index: 0, value: 7)
@@ -134,7 +134,7 @@ fn test_round_trip_returndata_matches_solidity_encoding()
 uses (evm: mut Evm, call: mut Call, ctx: Ctx)
 {
     let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let args = encode_msg_calldata(VecMsg::BuildRange { n: 3 })
     var output = MemBuffer::empty()
@@ -158,7 +158,7 @@ fn test_round_trip_typed_decode()
 uses (evm: mut Evm)
 {
     let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let arr: DynArray<u256> = evm.call(addr: c, gas: 1000000, value: 0, message: VecMsg::BuildRange { n: 4 })
     assert!(arr.len() == 4)
@@ -171,7 +171,7 @@ fn test_encode_abi_payload_matches_solidity_encoding()
 uses (evm: mut Evm)
 {
     let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let hash: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: VecMsg::PayloadHash { a: 0xaaaa, b: 0xbbbb })
 

@@ -114,7 +114,7 @@ const GAS: u256 = 300000
 #[test]
 fn test_unsigned_keys() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: 0, args: (), salt: 0)
-    assert(c.inner != 0)
+    assert(c.word() != 0)
 
     let r: u256 = evm.call(addr: c, gas: GAS, value: 0, message: M::U8RT  { k: 7,   v: 100 })
     assert(r == 100)

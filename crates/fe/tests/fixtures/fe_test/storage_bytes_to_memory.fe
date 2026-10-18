@@ -46,7 +46,7 @@ pub contract Blob uses (create: mut Create) {
             let len = data.len()
             let deployed = create.create2_raw(value: 0, init_code: data.span(), salt)
             marker = len + 1
-            deployed.inner
+            deployed.word()
         }
 
         WordAt { index } -> u256 uses (blobs) {
@@ -80,7 +80,7 @@ fn test_to_memory_empty()
 uses (evm: mut Evm)
 {
     let blob = evm.create2<Blob>(value: 0, args: (), salt: 0)
-    assert!(blob.inner != 0)
+    assert!(blob.word() != 0)
 
     let data_ptr = ptr::alloc_bytes(32)
     unsafe { store_word(ptr: data_ptr, value: 0) }
@@ -97,7 +97,7 @@ fn test_to_memory_exact_word_multiple()
 uses (evm: mut Evm)
 {
     let blob = evm.create2<Blob>(value: 0, args: (), salt: 0)
-    assert!(blob.inner != 0)
+    assert!(blob.word() != 0)
 
     let payload_len: u256 = 64
     let data_ptr = ptr::alloc_bytes(payload_len + 32)
@@ -137,7 +137,7 @@ fn test_to_memory_partial_trailing_word()
 uses (evm: mut Evm)
 {
     let blob = evm.create2<Blob>(value: 0, args: (), salt: 0)
-    assert!(blob.inner != 0)
+    assert!(blob.word() != 0)
 
     let payload_len: u256 = 65
     let data_ptr = ptr::alloc_bytes(128)
@@ -191,7 +191,7 @@ fn test_to_memory_deploys_stored_initcode()
 uses (evm: mut Evm)
 {
     let blob = evm.create2<Blob>(value: 0, args: (), salt: 0)
-    assert!(blob.inner != 0)
+    assert!(blob.word() != 0)
 
     // 22-byte initcode that deploys a 10-byte runtime returning 0x2a:
     //   600a600c600039600a6000f3  copy runtime to memory and return it

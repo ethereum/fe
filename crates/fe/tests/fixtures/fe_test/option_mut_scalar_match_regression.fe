@@ -45,7 +45,7 @@ pub contract C {
 #[test]
 fn test_option_mut_scalar_match_regression() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: 0, args: (), salt: 2)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let a = evm.call(addr: c, gas: 100000, value: 0, message: Msg::Inc {})
     assert!(a == 1)

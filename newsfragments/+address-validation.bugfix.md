@@ -1,0 +1,1 @@
+An `Address` can no longer hold bits above the low 160, which the EVM ignores: two addresses naming the same account are now always equal, the same storage map key and the same event topic. The checks for such bits in `checksum_address`, `clone_initcode`, `create2_address`, `rlp::encode_address`, packed encoding and `SolPacked` are removed.

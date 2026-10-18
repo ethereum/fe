@@ -198,13 +198,6 @@ impl Packed {
 
     /// Append an `Address` as 20 bytes.
     pub fn address(mut self, _ value: Address) {
-        // `inner` is a public field, so a caller can hand us a
-        // non-canonical value with bits above the low 160 set. Revert
-        // like `fixed_bytes` does rather than silently truncating
-        // distinct values into colliding encodings.
-        if value.inner >> 160 != 0 {
-            ops::revert_empty()
-        }
         self.append_word(value: value.inner, width: 20)
     }
 
@@ -552,10 +545,6 @@ impl EncodePacked for Address {
     }
     #[inline(always)]
     unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
-        // Non-canonical addresses revert, as in `Packed::address`.
-        if self.inner >> 160 != 0 {
-            ops::revert_empty()
-        }
         write_word_prefix(dest, self.inner, 20, room)
     }
 }

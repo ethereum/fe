@@ -26,7 +26,7 @@ use ingot::abi::Sol
 use ingot::abi::sol::{decode_input_at, decode_output}
 use super::calldata::CallData
 use super::contract_field_slot
-use super::panic::Panic
+use super::panic::{PANIC_OVERFLOW, Panic}
 use ingot::evm::ops
 
 type MemBuffer = ptr::MemBuffer
@@ -38,19 +38,36 @@ type MemSpan = ptr::MemSpan
 
 /// EVM address (20 bytes).
 ///
-/// Represented as a single `u256` ABI word with the address stored in the low
-/// 160 bits.
-pub struct Address { pub inner: u256 }
+/// Represented as a single `u256` ABI word with the address in the low 160
+/// bits and every higher bit zero, as the EVM and Solidity see an address. An
+/// address is built with `new`, which checks the word, or `from_word_truncate`,
+/// so two equal addresses always have the same word: as storage keys, topics
+/// and encodings.
+pub struct Address { pub(ingot) inner: u256 }
 
 impl Address {
+    /// The address `word`, which must have no bits above the low 160. Fails
+    /// with `Panic(0x11)` otherwise, at compile time for a constant.
+    pub const fn new(_ word: u256) -> Self {
+        if word >> 160 != 0 {
+            core::panic_code(PANIC_OVERFLOW)
+        }
+        Address { inner: word }
+    }
+
     pub fn zero() -> Self {
         Address { inner: 0 }
     }
 
     /// The address in the low 160 bits of `word`, like Solidity's
     /// `address(uint160(word))`. Higher bits are discarded.
-    pub fn from_word_truncate(_ word: u256) -> Self {
+    pub const fn from_word_truncate(_ word: u256) -> Self {
         Address { inner: word & 0xffffffffffffffffffffffffffffffffffffffff }
+    }
+
+    /// The address's ABI word: the address in the low 160 bits.
+    pub const fn word(self) -> u256 {
+        self.inner
     }
 }
 
@@ -121,11 +138,6 @@ impl<A: Abi> AbiSpan<A> for Address {
     fn payload_end<I: core::abi::ByteInput>(_: I, base: u256, pos: u256) -> u256 {
         pos + 32
     }
-}
-
-/// Convert an EVM `Address` into its ABI word representation (`u256`).
-pub fn address_to_word(_ addr: Address) -> u256 {
-    addr.inner
 }
 
 // -----------------------------------------------------------------------------

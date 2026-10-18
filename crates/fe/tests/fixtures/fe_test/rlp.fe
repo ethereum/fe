@@ -107,17 +107,12 @@ fn encode_scalars() {
             )
             == "a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     )
-    let address = Address { inner: 0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed }
+    let address = Address::new(0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed)
     assert!(to_hex(rlp::encode_address(address)) == "945aaeb6053f3e94c9b9a09f33669435e7ef1beaed")
-    let zero = Address { inner: 0 }
+    let zero = Address::new(0)
     assert!(to_hex(rlp::encode_address(zero)) == "940000000000000000000000000000000000000000")
     assert!(to_hex(rlp::encode_bool(true)) == "01")
     assert!(to_hex(rlp::encode_bool(false)) == "80")
-}
-
-#[test(should_revert)]
-fn encode_noncanonical_address_reverts() {
-    let _ = rlp::encode_address(Address { inner: 1 << 160 })
 }
 
 #[test]
@@ -163,7 +158,7 @@ fn decode_scalars() {
         rlp::decode(max.payload_span()).unwrap().as_uint(max.payload_span()).unwrap()
             == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
     )
-    let address = Address { inner: 0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed }
+    let address = Address::new(0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed)
     let encoded = rlp::encode_address(address)
     let item = rlp::decode(encoded.payload_span()).unwrap()
     assert!(item.as_address(encoded.payload_span()).unwrap() == address)

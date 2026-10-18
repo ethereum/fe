@@ -19,7 +19,7 @@ fn load(_ slot: u256) -> u256 uses (storage: RawStorage) {
 }
 
 fn addr(_ inner: u256) -> Address {
-    Address { inner }
+    Address::new(inner)
 }
 
 // contract L {
@@ -150,15 +150,15 @@ fn array_reads_and_writes() uses (evm: mut Evm) {
         owners.push(addr(0x11))
         owners.push(addr(0x22))
         assert(owners.len() == 2)
-        assert(owners.get(1).inner == 0x22)
+        assert(owners.get(1).word() == 0x22)
         owners.set(index: 0, value: addr(0x33))
-        assert(owners.get(0).inner == 0x33)
+        assert(owners.get(0).word() == 0x33)
         owners.pop()
         owners.pop()
         assert(owners.len() == 0)
         // Pushing after popping reuses the zeroed slot.
         owners.push(addr(0x44))
-        assert(owners.get(0).inner == 0x44)
+        assert(owners.get(0).word() == 0x44)
 
         // bool[]: 32 per slot; setting one keeps its neighbours.
         let flags = unsafe { SolArray<bool>::at(10) }
@@ -388,7 +388,7 @@ fn word_reads_and_writes_many_fields() uses (evm: mut Evm) {
         let word = unsafe { SolSlot::at(0).load() }
         let operator: Address = word.get(offset: 0)
         let paused: bool = word.get(offset: 20)
-        assert(operator.inner == 0xabc)
+        assert(operator.word() == 0xabc)
         assert(paused)
 
         var word = unsafe { SolSlot::at(0).load() }
@@ -396,12 +396,12 @@ fn word_reads_and_writes_many_fields() uses (evm: mut Evm) {
         word.set(offset: 20, value: false)
         // Nothing is written until `store`.
         let still: Address = unsafe { SolSlot::at(0).read(offset: 0) }
-        assert(still.inner == 0xabc)
+        assert(still.word() == 0xabc)
         unsafe { SolSlot::at(0).store(word) }
         let operator: Address = unsafe { SolSlot::at(0).read(offset: 0) }
         let paused: bool = unsafe { SolSlot::at(0).read(offset: 20) }
         let untouched: u8 = unsafe { SolSlot::at(0).read(offset: 21) }
-        assert(operator.inner == 0xdef)
+        assert(operator.word() == 0xdef)
         assert(!paused)
         assert(untouched == 0x77)
         assert(word.word == load(0))
@@ -503,7 +503,7 @@ fn set_values() uses (evm: mut Evm) {
         assert(abi_word(values, 3) == 0xc)
         var i: u256 = 0
         while i < 3 {
-            assert(values.get(i).inner == s.get(i).inner)
+            assert(values.get(i).word() == s.get(i).word())
             i += 1
         }
 

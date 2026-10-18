@@ -284,15 +284,8 @@ impl SolPacked for bool {
 
 impl SolPacked for Address {
     const BITS: u256 = 160
-    // `inner` is public; reject bits above the low 160 like the ABI and
-    // packed encoders instead of letting the field mask drop them.
-    fn to_packed(own self) -> u256 {
-        if self.inner >> 160 != 0 {
-            revert_empty()
-        }
-        self.inner
-    }
-    fn from_packed(_ bits: u256) -> Self { Address { inner: bits } }
+    fn to_packed(own self) -> u256 { self.inner }
+    fn from_packed(_ bits: u256) -> Self { Address::from_word_truncate(bits) }
 }
 
 impl SolPacked for u8 {

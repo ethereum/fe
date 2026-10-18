@@ -51,7 +51,7 @@ fn delegation_updates_persistent_and_transient_state_with_empty_buffers()
             init_code: MemSpan::from_raw_parts(ptr: ptr::byte_ptr(init_code), len: 20),
         )
     }
-    assert!(implementation.inner != 0)
+    assert!(implementation.word() != 0)
     let caller = evm.create<DelegateCaller>(value: 0, args: ())
     let (persistent, transient) = evm.call(
         addr: caller,

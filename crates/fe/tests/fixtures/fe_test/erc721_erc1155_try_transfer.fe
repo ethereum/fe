@@ -38,7 +38,7 @@ pub contract Nft {
 
     recv Erc721Msg {
         TransferFrom { from, to, tokenId } uses (mut last) {
-            last.value = from.inner * 0x10000 + to.inner * 0x100 + tokenId
+            last.value = from.word() * 0x10000 + to.word() * 0x100 + tokenId
         }
     }
 
@@ -75,7 +75,7 @@ pub contract MultiToken {
 
     recv Erc1155Msg {
         SafeTransferFrom { from, to, id, value, data } uses (mut last) {
-            last.value = from.inner * 0x10000 + to.inner * 0x100 + id * value + data.len()
+            last.value = from.word() * 0x10000 + to.word() * 0x100 + id * value + data.len()
         }
         SafeBatchTransferFrom { from, to, ids, values, data } uses (mut last) {
             var sum: u256 = 0
@@ -84,7 +84,7 @@ pub contract MultiToken {
                 sum += ids.get(i) * values.get(i)
                 i += 1
             }
-            last.value = from.inner * 0x10000 + to.inner * 0x100 + sum + ids.len() * 0x1000000 + values.len() * 0x100000000 + data.len()
+            last.value = from.word() * 0x10000 + to.word() * 0x100 + sum + ids.len() * 0x1000000 + values.len() * 0x100000000 + data.len()
         }
     }
 
@@ -128,7 +128,7 @@ pub contract Receiver {
 
     recv ReceiverMsg {
         OnErc721Received { operator, from, tokenId, data } -> Bytes4 uses (reply, raw: mut RawOps) {
-            let expected = operator.inner == 7 && from.inner == 2 && tokenId == 42 && data.len() == 0
+            let expected = operator.word() == 7 && from.word() == 2 && tokenId == 42 && data.len() == 0
             let alloc = if reply.len < 32 || reply.len == REVERT { 32 } else { reply.len }
             var out = ptr::MemBuffer::alloc(alloc)
             if reply.len == REVERT {
@@ -144,15 +144,15 @@ pub contract Receiver {
 }
 
 fn alice() -> Address {
-    Address { inner: 2 }
+    Address::new(2)
 }
 
 fn bob() -> Address {
-    Address { inner: 3 }
+    Address::new(3)
 }
 
 fn eoa() -> Address {
-    Address { inner: 0xe0a }
+    Address::new(0xe0a)
 }
 
 fn last(_ token: Address) -> u256 uses (evm: mut Evm) {
@@ -328,7 +328,7 @@ fn check(word: u256, len: u256, salt: u256) -> u256 uses (evm: mut Evm, ctx: Ctx
     receiver_code(
         erc721::check_on_received(
             receiver,
-            operator: Address { inner: 7 },
+            operator: Address::new(7),
             from: alice(),
             token_id: 42,
             data: Bytes::empty(),
@@ -350,7 +350,7 @@ fn test_receiver_wrong_magic() uses (evm: mut Evm, ctx: Ctx, call: mut Call) {
     let receiver = evm.create2<Receiver>(value: 0, args: (0x150b7a02 << 224, 32), salt: 1)
     let outcome = erc721::check_on_received(
         receiver,
-        operator: Address { inner: 8 },
+        operator: Address::new(8),
         from: alice(),
         token_id: 42,
         data: Bytes::empty(),
@@ -376,7 +376,7 @@ fn test_receiver_revert_payload_can_be_bubbled() uses (evm: mut Evm, ctx: Ctx, c
     let receiver = evm.create2<Receiver>(value: 0, args: (0, REVERT), salt: 0)
     let outcome = erc721::check_on_received(
         receiver,
-        operator: Address { inner: 7 },
+        operator: Address::new(7),
         from: alice(),
         token_id: 42,
         data: Bytes::empty(),
@@ -391,7 +391,7 @@ fn test_receiver_revert_payload_can_be_bubbled() uses (evm: mut Evm, ctx: Ctx, c
 fn test_codeless_receiver_is_no_code() uses (evm: mut Evm, ctx: Ctx, call: mut Call) {
     let outcome = erc721::check_on_received(
         receiver: eoa(),
-        operator: Address { inner: 7 },
+        operator: Address::new(7),
         from: alice(),
         token_id: 42,
         data: Bytes::empty(),

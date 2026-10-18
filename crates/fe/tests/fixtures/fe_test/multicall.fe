@@ -90,7 +90,7 @@ fn batches_run_in_order_and_return_each_result() uses (evm: mut Evm) {
         assert!(results.get(0).len() == 32 && results.get(0).word_at(0) == 3)
         assert!(results.get(1).word_at(0) == 7)
         // Delegatecalls keep the original caller.
-        assert!(results.get(2).word_at(0) == evm.address().inner)
+        assert!(results.get(2).word_at(0) == evm.address().word())
         // Dynamic returns come back ABI-encoded: offset, length, data.
         let echo = results.get(3)
         assert!(echo.len() == 96)

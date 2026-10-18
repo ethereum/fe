@@ -57,7 +57,7 @@ msg NoInitMsg {
 #[test]
 fn test_non_payable_zero_value() uses (evm: mut Evm) {
     let addr = evm.create2<NonPayableBox>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     let result: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: NonPayableMsg::Ping {})
     assert!(result == 1)
@@ -67,7 +67,7 @@ fn test_non_payable_zero_value() uses (evm: mut Evm) {
 #[test(should_revert, balance = 1000000000)]
 fn test_non_payable_rejects_value() uses (evm: mut Evm) {
     let addr = evm.create2<NonPayableBox>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     // This should revert because Ping is not #[payable]
     evm.call(addr: addr, gas: 100000, value: 1, message: NonPayableMsg::Ping {})
@@ -77,7 +77,7 @@ fn test_non_payable_rejects_value() uses (evm: mut Evm) {
 #[test]
 fn test_payable_zero_value() uses (evm: mut Evm) {
     let addr = evm.create2<PayableBox>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     // Fund is #[payable], should work with zero value too
     evm.call(addr: addr, gas: 100000, value: 0, message: PayableMsg::Fund {})
@@ -87,7 +87,7 @@ fn test_payable_zero_value() uses (evm: mut Evm) {
 #[test]
 fn test_payable_init() uses (evm: mut Evm) {
     let addr = evm.create2<PayableBox>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 }
 
 // Test: non-payable init reverts when ETH is sent during deployment
@@ -101,7 +101,7 @@ fn test_non_payable_init_rejects_value() uses (evm: mut Evm) {
 #[test]
 fn test_no_init_zero_value() uses (evm: mut Evm) {
     let addr = evm.create2<NoInitBox>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     let result: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: NoInitMsg::Ping {})
     assert!(result == 7)
@@ -117,7 +117,7 @@ fn test_no_init_rejects_value() uses (evm: mut Evm) {
 #[test(balance = 1000000000)]
 fn test_payable_accepts_value() uses (evm: mut Evm) {
     let addr = evm.create2<PayableBox>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     // Fund is #[payable], should succeed with non-zero value
     evm.call(addr: addr, gas: 100000, value: 1, message: PayableMsg::Fund {})
@@ -127,7 +127,7 @@ fn test_payable_accepts_value() uses (evm: mut Evm) {
 #[test(balance = 1000000000)]
 fn test_payable_init_accepts_value() uses (evm: mut Evm) {
     let addr = evm.create2<PayableBox>(value: 1, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 }
 
 // Test: selfbalance reflects ETH sent to contract

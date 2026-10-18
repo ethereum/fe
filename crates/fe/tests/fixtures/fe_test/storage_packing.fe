@@ -148,7 +148,7 @@ pub contract Layouts {
 #[test]
 fn test_layout_matches_solidity() uses (evm: mut Evm) {
     let c = evm.create2<Layouts>(value: 0, args: (), salt: 1)
-    assert(c.inner != 0)
+    assert(c.word() != 0)
     evm.call(addr: c, gas: 10000000, value: 0, message: LayoutMsg::Fill {})
 
     // Small: a and b share slot 0, c takes slot 1.
@@ -177,7 +177,7 @@ fn test_layout_matches_solidity() uses (evm: mut Evm) {
 #[test]
 fn test_packed_fields_read_and_write() uses (evm: mut Evm) {
     let c = evm.create2<Layouts>(value: 0, args: (), salt: 2)
-    assert(c.inner != 0)
+    assert(c.word() != 0)
     evm.call(addr: c, gas: 10000000, value: 0, message: LayoutMsg::Fill {})
 
     assert(evm.call(addr: c, gas: 10000000, value: 0, message: LayoutMsg::MixedC {}) == -2)
@@ -295,7 +295,7 @@ fn set_small_b() uses (value: mut Small) {
 #[test]
 fn test_map_entries_arrays_and_transient() uses (evm: mut Evm) {
     let c = evm.create2<Collections>(value: 0, args: (), salt: 3)
-    assert(c.inner != 0)
+    assert(c.word() != 0)
 
     // A map entry packs from its hashed slot like a Solidity mapping value.
     evm.call(addr: c, gas: 10000000, value: 0, message: CollectionMsg::Open { key: 9 })
@@ -423,7 +423,7 @@ pub contract Edges {
 #[test]
 fn test_zero_sized_field_keeps_packed_word() uses (evm: mut Evm) {
     let c = evm.create2<Edges>(value: 0, args: (), salt: 4)
-    assert(c.inner != 0)
+    assert(c.word() != 0)
     evm.call(addr: c, gas: 10000000, value: 0, message: EdgeMsg::WriteGap {})
     assert(evm.call(addr: c, gas: 10000000, value: 0, message: EdgeMsg::Slot { slot: 0 }) == 0x2211)
     assert(evm.call(addr: c, gas: 10000000, value: 0, message: EdgeMsg::GapSum {}) == 0x33)
@@ -432,7 +432,7 @@ fn test_zero_sized_field_keeps_packed_word() uses (evm: mut Evm) {
 #[test]
 fn test_lone_signed_field_keeps_its_byte() uses (evm: mut Evm) {
     let c = evm.create2<Edges>(value: 0, args: (), salt: 5)
-    assert(c.inner != 0)
+    assert(c.word() != 0)
     // Direct, forwarded and `mut self` writes all store -1 as 0xff.
     evm.call(addr: c, gas: 10000000, value: 0, message: EdgeMsg::LoneDirect {})
     assert(evm.call(addr: c, gas: 10000000, value: 0, message: EdgeMsg::Slot { slot: 1 }) == 0xff)
@@ -445,7 +445,7 @@ fn test_lone_signed_field_keeps_its_byte() uses (evm: mut Evm) {
 #[test]
 fn test_narrow_signed_contract_field_keeps_its_bytes() uses (evm: mut Evm) {
     let c = evm.create2<Edges>(value: 0, args: (), salt: 6)
-    assert(c.inner != 0)
+    assert(c.word() != 0)
     // A narrow signed contract field outside any struct is stored as its
     // own bytes too, not sign-extended to the whole slot.
     evm.call(addr: c, gas: 10000000, value: 0, message: EdgeMsg::AssignScalar {})
