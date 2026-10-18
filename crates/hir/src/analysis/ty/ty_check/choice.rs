@@ -2384,26 +2384,8 @@ impl<'db> TyCheckEnv<'db> {
             .filter_map(|(expr, inside)| inside.then_some(expr))
             .collect::<Vec<_>>();
         for expr in closure_uses {
-            let mut read: Vec<Choice<'db>> = Vec::new();
-            if let Some(SemanticExprLowering::Call { callable }) =
-                self.semantic_expr_lowering[expr].as_ref()
-            {
-                read.extend(callable.choice());
-                read.extend(callable.delivered().iter().map(|(_, choice)| *choice));
-            }
-            let delivered = match self.const_refs[expr] {
-                Some(ConstRef::TraitConst(use_)) => {
-                    read.extend(use_.choice());
-                    use_.delivered()
-                }
-                Some(ConstRef::InherentConst(use_)) => use_.delivered(),
-                _ => None,
-            };
-            if let Some(list) = delivered {
-                read.extend(list.items(db).iter().map(|(_, choice)| *choice));
-            }
             let mut slots = Vec::new();
-            for choice in read {
+            for choice in self.choices_read_at(expr) {
                 if matches!(choice, Choice::Slot(_)) && !slots.contains(&choice) {
                     slots.push(choice);
                 }
@@ -2412,6 +2394,32 @@ impl<'db> TyCheckEnv<'db> {
                 self.closure_choices.push((expr, slots));
             }
         }
+        // A closure that reads a choice a frame answers and needs an effect
+        // provider is refused until RD6 settles where it reads the provider
+        // (decision of 2026-10-17): the choice is read where the closure is
+        // written, a provider where it is called.
+        let mut mixed = Vec::new();
+        for (expr, closure) in self.closure_of.iter() {
+            let Some(closure) = *closure else {
+                continue;
+            };
+            let frame = self.use_frames[expr];
+            if frame.is_none() || mixed.contains(&closure) || !self.closure_needs_provider(closure)
+            {
+                continue;
+            }
+            if self.choices_read_at(expr).into_iter().any(|choice| {
+                matches!(choice, Choice::Known(known)
+                    if self.frame_choice(frame, known.goal()) == Some(choice))
+            }) {
+                mixed.push(closure);
+            }
+        }
+        self.choice_refusals.extend(
+            mixed
+                .into_iter()
+                .map(|closure| (closure, ChoiceRefusal::ClosureChoiceAndProvider)),
+        );
     }
 
     /// The paths naming a function that reach only the callees of calls,
@@ -2479,6 +2487,31 @@ impl<'db> TyCheckEnv<'db> {
             }
         }
         only
+    }
+
+    /// The choices the use at `expr` reads: a call's own and those it
+    /// delivers, a constant use's own and those it delivers.
+    fn choices_read_at(&self, expr: ExprId) -> Vec<Choice<'db>> {
+        let db = self.db();
+        let mut read: Vec<Choice<'db>> = Vec::new();
+        if let Some(SemanticExprLowering::Call { callable }) =
+            self.semantic_expr_lowering[expr].as_ref()
+        {
+            read.extend(callable.choice());
+            read.extend(callable.delivered().iter().map(|(_, choice)| *choice));
+        }
+        let delivered = match self.const_refs[expr] {
+            Some(ConstRef::TraitConst(use_)) => {
+                read.extend(use_.choice());
+                use_.delivered()
+            }
+            Some(ConstRef::InherentConst(use_)) => use_.delivered(),
+            _ => None,
+        };
+        if let Some(list) = delivered {
+            read.extend(list.items(db).iter().map(|(_, choice)| *choice));
+        }
+        read
     }
 
     /// A trait constant use with its decisions: its own slot's, and one for
@@ -2837,6 +2870,11 @@ pub(super) fn check_choice_uses<'db>(
             ChoiceRefusal::UninferredEvidence => BodyDiag::ObligationOpening {
                 primary,
                 reason: "this `with` operand is evidence whose type is known only after inference; write its type where it is bound",
+            }
+            .into(),
+            ChoiceRefusal::ClosureChoiceAndProvider => BodyDiag::ObligationOpening {
+                primary,
+                reason: "a closure that reads a `with` choice and needs an effect provider is not supported yet",
             }
             .into(),
         });

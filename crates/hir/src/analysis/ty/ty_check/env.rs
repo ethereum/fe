@@ -150,6 +150,8 @@ pub(crate) struct TyCheckEnv<'db> {
     pub(super) function_value_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
     /// Expressions checked inside a closure's body.
     pub(super) closure_exprs: SecondaryMap<ExprId, bool>,
+    /// The innermost closure each expression checked inside one is in.
+    pub(super) closure_of: SecondaryMap<ExprId, Option<ExprId>>,
     /// Expressions whose written constant arguments were refused
     /// (`refuse_written_const_args`).
     pub(super) written_refusals: SecondaryMap<ExprId, bool>,
@@ -288,6 +290,7 @@ impl<'db> TyCheckEnv<'db> {
             with_choice_bindings: Vec::new(),
             function_value_choices: Vec::new(),
             closure_exprs: SecondaryMap::new(),
+            closure_of: SecondaryMap::new(),
             written_refusals: SecondaryMap::new(),
             closure_choices: Vec::new(),
             callee_only_values: Vec::new(),
@@ -1306,9 +1309,18 @@ impl<'db> TyCheckEnv<'db> {
         if let Some(frame) = self.choice_frames.current() {
             self.use_frames[expr] = Some(frame);
         }
-        if self.in_closure() {
+        if let Some(closure) = self.closure_stack.last() {
             self.closure_exprs[expr] = true;
+            self.closure_of[expr] = Some(closure.def.expr);
         }
+    }
+
+    /// Whether the closure `expr` needs an effect provider where it is
+    /// called: its row has a component.
+    pub(super) fn closure_needs_provider(&self, expr: ExprId) -> bool {
+        self.closure_effects
+            .get(&expr)
+            .is_some_and(|effects| !effects.is_empty())
     }
 
     pub(super) fn db(&self) -> &'db dyn HirAnalysisDb {

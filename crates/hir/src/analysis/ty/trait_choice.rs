@@ -491,6 +491,10 @@ pub enum ChoiceRefusal {
     /// out to be evidence: it was taken as an effect value and opened
     /// nothing (D2).
     UninferredEvidence,
+    /// A closure reads a choice a frame answers and needs an effect provider
+    /// where it is called: refused until RD6 settles where it reads the
+    /// provider (decision of 2026-10-17).
+    ClosureChoiceAndProvider,
 }
 
 /// What a trait use means: a known implementation, or whatever the enclosing
