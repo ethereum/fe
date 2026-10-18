@@ -806,9 +806,17 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
         if let Some(Expr::Call(callee, _)) = data.borrowed().to_opt()
             && !self.names_function_value(*callee)
             && self.typed.call_receiver(self.db, expr).is_none()
-            && !calls_directly(self.db, self.typed, self.body, expr)
         {
-            return;
+            if !calls_directly(self.db, self.typed, self.body, expr) {
+                return;
+            }
+            // A function item called through a binding, block or field whose
+            // value was checked where it is written: the call checks only the
+            // conditions under the choices it delivers.
+            if !self.typed.callee_only_calls().contains(&expr) {
+                self.discharge_conditions_under_choices(expr);
+                return;
+            }
         }
         let (definition, args) = match callable {
             Some(callable) => (callable.callable_def(), callable.generic_args()),

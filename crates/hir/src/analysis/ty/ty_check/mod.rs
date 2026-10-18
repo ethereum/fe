@@ -1401,6 +1401,7 @@ fn typed_body_for_bodyless_func<'db>(
         function_value_choices: Vec::new(),
         closure_choices: Vec::new(),
         callee_only_values: Vec::new(),
+        callee_only_calls: Vec::new(),
         const_reaches: Vec::new(),
         effect_with_operands: Vec::new(),
         choice_refusals: Vec::new(),
@@ -3988,8 +3989,11 @@ mod typed_body_tables {
         /// Uses inside closure bodies and the slot choices they read.
         pub(super) closure_choices:
             Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
-        /// Paths naming a function that reach only the callees of calls.
+        /// Paths naming a function that reach only the callees of calls,
+        /// where a frame is in force at the value or one of its calls.
         pub(super) callee_only_values: Vec<ExprId>,
+        /// The calls those values reach, which check them.
+        pub(super) callee_only_calls: Vec<ExprId>,
         /// The body's own slots that its constant uses pass on to a constant
         /// body whose types read them (`const_type_reads`).
         pub(super) const_reaches: Vec<crate::analysis::ty::trait_def::TraitInstId<'db>>,
@@ -4422,9 +4426,15 @@ impl<'db> TypedBody<'db> {
     }
 
     /// The paths naming a function that reach only the callees of calls,
-    /// which decide for it (D14): such a path is checked at those calls.
+    /// which decide for it (D14), where a frame is in force at the value or
+    /// one of its calls: such a path is checked at those calls.
     pub(crate) fn callee_only_values(&self) -> &[ExprId] {
         &self.tables.callee_only_values
+    }
+
+    /// The calls that check a callee-only value (`callee_only_values`).
+    pub(crate) fn callee_only_calls(&self) -> &[ExprId] {
+        &self.tables.callee_only_calls
     }
 
     /// Uses inside closure bodies and the slot choices they read.
@@ -6110,6 +6120,7 @@ impl<'db> TypedBody<'db> {
             function_value_choices: Vec::new(),
             closure_choices: Vec::new(),
             callee_only_values: Vec::new(),
+            callee_only_calls: Vec::new(),
             const_reaches: Vec::new(),
             effect_with_operands: Vec::new(),
             choice_refusals: Vec::new(),

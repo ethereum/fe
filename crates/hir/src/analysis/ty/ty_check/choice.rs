@@ -2244,8 +2244,22 @@ impl<'db> TyCheckEnv<'db> {
     /// ambiguous and refused. Runs once inference has resolved every goal.
     pub(super) fn record_choice_decisions(&mut self) {
         let db = self.db();
-        let path_callees = self.callee_only_values();
-        self.callee_only_values = path_callees.clone();
+        let callee_only = self.callee_only_values();
+        let path_callees = callee_only
+            .iter()
+            .map(|(value, _)| *value)
+            .collect::<Vec<_>>();
+        // Where no frame is in force at the value or any of its calls, the
+        // value's conditions are checked where it is written, as before
+        // #1797; otherwise its calls check them, under their own frames.
+        for (value, calls) in callee_only {
+            if has_frames(self.use_frames[value])
+                || calls.iter().any(|call| has_frames(self.use_frames[*call]))
+            {
+                self.callee_only_values.push(value);
+                self.callee_only_calls.extend(calls);
+            }
+        }
         // A call through a function value made elsewhere receives nothing from
         // the frame where it is called; only a path naming the function does.
         let is_binding = |callee| {
@@ -2436,8 +2450,8 @@ impl<'db> TyCheckEnv<'db> {
     /// which decide for it where they are written (D14): a path callee, the
     /// value a block callee yields, and a `let` binding's initializer when
     /// every use of the binding is a callee. Such a path carries nothing as
-    /// a value.
-    fn callee_only_values(&self) -> Vec<ExprId> {
+    /// a value. Each comes with the calls it reaches.
+    fn callee_only_values(&self) -> Vec<(ExprId, Vec<ExprId>)> {
         use crate::hir_def::Stmt;
         let db = self.db();
         let body = self.body();
@@ -2460,18 +2474,23 @@ impl<'db> TyCheckEnv<'db> {
         let names_function = |expr: ExprId| {
             matches!(expr.data(db, body), Partial::Present(Expr::Path(..))) && !is_binding(expr)
         };
-        let callees = body
+        let calls = body
             .exprs(db)
             .iter()
-            .filter_map(|(_, data)| match data {
-                Partial::Present(Expr::Call(callee, _)) => Some(*callee),
+            .filter_map(|(call, data)| match data {
+                Partial::Present(Expr::Call(callee, _)) => Some((*callee, call)),
                 _ => None,
             })
             .collect::<Vec<_>>();
-        let mut only = callees
+        let call_of = |callee: ExprId| {
+            calls
+                .iter()
+                .find_map(|(written, call)| (*written == callee).then_some(*call))
+        };
+        let mut only = calls
             .iter()
-            .map(|callee| yielded(*callee))
-            .filter(|expr| names_function(*expr))
+            .map(|(callee, call)| (yielded(*callee), vec![*call]))
+            .filter(|(expr, _)| names_function(*expr))
             .collect::<Vec<_>>();
         for (_, stmt) in body.stmts(db).iter() {
             let Partial::Present(Stmt::Let(pat, _, Some(init), None)) = stmt else {
@@ -2492,8 +2511,14 @@ impl<'db> TyCheckEnv<'db> {
                         .is_some_and(|prop| prop.binding == Some(binding))
                 })
                 .collect::<Vec<_>>();
-            if !uses.is_empty() && uses.iter().all(|use_| callees.contains(use_)) {
-                only.push(value);
+            let reached = uses
+                .iter()
+                .map(|use_| call_of(*use_))
+                .collect::<Option<Vec<_>>>();
+            if let Some(reached) = reached
+                && !reached.is_empty()
+            {
+                only.push((value, reached));
             }
         }
         only

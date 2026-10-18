@@ -160,6 +160,8 @@ pub(crate) struct TyCheckEnv<'db> {
     /// Paths naming a function that reach only the callees of calls
     /// (`callee_only_values`).
     pub(super) callee_only_values: Vec<ExprId>,
+    /// The calls those values reach.
+    pub(super) callee_only_calls: Vec<ExprId>,
     pub(super) const_reaches: Vec<TraitInstId<'db>>,
     /// `with` operands taken as effect values.
     pub(super) effect_with_operands: Vec<ExprId>,
@@ -294,6 +296,7 @@ impl<'db> TyCheckEnv<'db> {
             written_refusals: SecondaryMap::new(),
             closure_choices: Vec::new(),
             callee_only_values: Vec::new(),
+            callee_only_calls: Vec::new(),
             const_reaches: Vec::new(),
             effect_with_operands: Vec::new(),
             choice_refusals: Vec::new(),
@@ -1604,6 +1607,7 @@ impl<'db> TyCheckEnv<'db> {
             function_value_choices: self.function_value_choices,
             closure_choices: self.closure_choices,
             callee_only_values: self.callee_only_values,
+            callee_only_calls: self.callee_only_calls,
             const_reaches: self.const_reaches,
             effect_with_operands: self.effect_with_operands,
             choice_refusals: self.choice_refusals,
