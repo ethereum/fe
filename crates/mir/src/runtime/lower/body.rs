@@ -1744,6 +1744,8 @@ impl<'db> RmirEmitter<'db> {
         );
         let ctor_elems = aggregate_ctor_elems_for_layout(self.db, layout, 3);
         self.lower_aggregate_values(bb, dst, layout, &ctor_elems, &[ptr, len, size]);
+        // The length is stored apart from the bytes, as a word the backend can
+        // forward to later loads of it.
         self.push_ignored_builtin(
             bb,
             crate::runtime::RuntimeBuiltin::Mstore {
@@ -1751,41 +1753,26 @@ impl<'db> RmirEmitter<'db> {
                 value: len,
             },
         );
-        for (idx, chunk) in bytes.chunks(32).enumerate() {
-            let addr = self.alloc_runtime_temp(
-                TyId::u256(self.db),
-                RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-            );
-            let offset = self.alloc_u256_const(bb, 32 * (idx + 1));
+        if !bytes.is_empty() {
+            let thirty_two = self.alloc_u256_const(bb, 32);
+            let data =
+                self.alloc_runtime_temp(TyId::u256(self.db), RuntimeCarrier::Value(word_class()));
             self.push_stmt(
                 bb,
                 RStmt::Assign {
-                    dst: addr,
-                    expr: RExpr::Binary {
-                        op: BinOp::Arith(ArithBinOp::Add),
-                        lhs: ptr,
-                        rhs: offset,
-                    },
-                },
-            );
-            let word = self.alloc_runtime_temp(
-                TyId::u256(self.db),
-                RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-            );
-            self.push_stmt(
-                bb,
-                RStmt::Assign {
-                    dst: word,
-                    expr: RExpr::ConstScalar(ConstScalar::Int {
-                        bits: 256,
-                        signed: false,
-                        words: padded_word_bytes(chunk),
+                    dst: data,
+                    expr: RExpr::Builtin(crate::runtime::RuntimeBuiltin::PtrOffsetBytes {
+                        ptr,
+                        offset: thirty_two,
                     }),
                 },
             );
             self.push_ignored_builtin(
                 bb,
-                crate::runtime::RuntimeBuiltin::Mstore { addr, value: word },
+                crate::runtime::RuntimeBuiltin::StoreConstBytes {
+                    dst: data,
+                    bytes: bytes.into(),
+                },
             );
         }
         dst
@@ -1819,49 +1806,13 @@ impl<'db> RmirEmitter<'db> {
         let payload_len = self.alloc_u256_const(bb, payload.len());
         let allocated_len = self.alloc_u256_const(bb, payload.len().next_multiple_of(32));
         let ptr = self.malloc_bytes(bb, allocated_len);
-
-        for (idx, chunk) in payload.chunks(32).enumerate() {
-            let addr = if idx == 0 {
-                ptr
-            } else {
-                let addr = self.alloc_runtime_temp(
-                    TyId::u256(self.db),
-                    RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-                );
-                let offset = self.alloc_u256_const(bb, idx * 32);
-                self.push_stmt(
-                    bb,
-                    RStmt::Assign {
-                        dst: addr,
-                        expr: RExpr::Binary {
-                            op: BinOp::Arith(ArithBinOp::Add),
-                            lhs: ptr,
-                            rhs: offset,
-                        },
-                    },
-                );
-                addr
-            };
-            let word = self.alloc_runtime_temp(
-                TyId::u256(self.db),
-                RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-            );
-            self.push_stmt(
-                bb,
-                RStmt::Assign {
-                    dst: word,
-                    expr: RExpr::ConstScalar(ConstScalar::Int {
-                        bits: 256,
-                        signed: false,
-                        words: padded_word_bytes(chunk),
-                    }),
-                },
-            );
-            self.push_ignored_builtin(
-                bb,
-                crate::runtime::RuntimeBuiltin::Mstore { addr, value: word },
-            );
-        }
+        self.push_ignored_builtin(
+            bb,
+            crate::runtime::RuntimeBuiltin::StoreConstBytes {
+                dst: ptr,
+                bytes: payload.into(),
+            },
+        );
 
         RTerminator::Revert {
             offset: ptr,
