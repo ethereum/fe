@@ -60,7 +60,7 @@ impl Collection for Keyed {
 fn case19_identity_missing(_ xs: Keyed) -> u256 {
     let d = Identity {}
     var sum = 0
-    for x in xs by d {
+    for x in xs.by(d) {
         sum += x
     }
     sum

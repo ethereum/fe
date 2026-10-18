@@ -36,32 +36,39 @@ pub trait Collection {
 
     /// Each element with its index: `for (i, x) in xs.enumerate()`.
     fn enumerate(self) -> Enumerate<Identity> {
-        enumerate()
+        Identity {}.enumerate()
     }
 
     /// The first `n` elements.
     fn take(self, _ n: usize) -> Take<Identity> {
-        take(n)
+        Identity {}.take(n)
     }
 
     /// The elements after the first `n`.
     fn skip(self, _ n: usize) -> Skip<Identity> {
-        skip(n)
+        Identity {}.skip(n)
     }
 
     /// Every `k`th element.
     fn step_by(self, _ k: usize) -> StepBy<Identity> {
-        step_by(k)
+        Identity {}.step_by(k)
     }
 
     /// The elements `p` holds for.
     fn filter<P: Fn(Self::Item) -> bool>(self, _ p: own P) -> Filter<Identity, P> {
-        filter(p)
+        Identity {}.filter(p)
     }
 
     /// The values `f` makes of the elements, owned.
     fn map<F: FnMut_v<Self::Item>>(self, _ f: own F) -> Map<Identity, F> {
-        map(f)
+        Identity {}.map(f)
+    }
+
+    /// The traversal `d`, a driver or producer, runs over this collection:
+    /// `for x in xs.by(d)`. `d` moves into the loop, so one that is not
+    /// `Copy` runs a single loop.
+    fn by<D>(self, _ d: own D) -> D {
+        d
     }
 
     /// `f` applied to each element in turn, threading an accumulator from
@@ -123,7 +130,7 @@ pub trait Bidirectional: Collection {
 
     /// Each element from the last to the first.
     fn reversed(self) -> Reversed {
-        reversed()
+        Reversed {}
     }
 }
 
@@ -254,7 +261,8 @@ impl<T> Bidirectional for MemSlice<T> {
 
 /// A traversal of a base collection `B` that a loop holds and passes to each
 /// call. A driver stores its state and parameters, never the base, so it is
-/// an ordinary value: built, stored, returned and reused.
+/// an ordinary value: built, stored and returned, and run over a base by
+/// `xs.by(d)`.
 ///
 /// Nothing promises one call per element: `filter` projects each element to
 /// test it and again to yield it, and `take(0)` still starts its inner
@@ -674,34 +682,6 @@ impl<D> Adapt for Take<D> {}
 impl<D> Adapt for Skip<D> {}
 impl<D> Adapt for StepBy<D> {}
 impl<D, P> Adapt for Filter<D, P> {}
-
-pub fn reversed() -> Reversed {
-    Reversed {}
-}
-
-pub fn enumerate() -> Enumerate<Identity> {
-    Identity {}.enumerate()
-}
-
-pub fn take(_ n: usize) -> Take<Identity> {
-    Identity {}.take(n)
-}
-
-pub fn skip(_ n: usize) -> Skip<Identity> {
-    Identity {}.skip(n)
-}
-
-pub fn step_by(_ k: usize) -> StepBy<Identity> {
-    Identity {}.step_by(k)
-}
-
-pub fn filter<P>(_ p: own P) -> Filter<Identity, P> {
-    Identity {}.filter(p)
-}
-
-pub fn map<F>(_ f: own F) -> Map<Identity, F> {
-    Identity {}.map(f)
-}
 
 /// A container a producer's owned values are collected into, of the same
 /// shape whatever their type.

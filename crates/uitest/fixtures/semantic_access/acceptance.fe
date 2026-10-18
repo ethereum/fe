@@ -2,7 +2,7 @@
 // lists it, for the cases the access/session checker decides. Type-level
 // cases are in `ty_check/acceptance.fe` and run-time results in
 // `fe_test/acceptance.fe`.
-use core::iter::{Collection, Identity, reversed}
+use core::iter::{Collection, Identity}
 use core::ptr::{MemBuffer, MemSpan}
 use std::evm::{Address, Call, Evm, RawStorage, StorageMap}
 
@@ -303,7 +303,7 @@ impl Collection for Keyed {
 fn case19_identity(_ xs: Keyed) -> u256 uses (key: Key) {
     let d = Identity {}
     var sum = 0
-    for x in xs by d {
+    for x in xs.by(d) {
         sum += x
     }
     sum
@@ -365,11 +365,11 @@ pub contract Case22OutstandingAccess {
 pub contract Case23StorageBase {
     mut words: [u256; 3],
     init() uses (mut words) {
-        for mut word in words by reversed() {
+        for mut word in words.reversed() {
             word += 1
         }
         let d = Identity {}
-        for mut word in words by d {
+        for mut word in words.by(d) {
             word *= 2
         }
     }

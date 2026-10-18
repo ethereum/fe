@@ -8,8 +8,8 @@ for x in xs { total += x }              // a copy of each `Copy` element
 for ref a in accounts { total += a.n }  // a read access to each element
 for var x in xs { x += 1 }              // a mutable copy of each element
 for mut x in xs { x *= 2 }              // a `mut` access to each element
-for (i, x) in xs by enumerate() { .. }  // a driver
-for y in xs by map(|x: u256| x * 2) { .. }
+for (i, x) in xs.enumerate() { .. }     // a driver
+for y in xs.map(|x| x * 2) { .. }       // a producer
 ```
 
 The loop's pattern binds each element as a `let` pattern binds a
@@ -44,19 +44,22 @@ does a `while let` whose condition opens a session, until the back edge.
 
 ## Drivers and producers
 
-`for x in xs by d` traverses `xs` through the driver `d`, which keeps its own
-state and never holds the collection. The standard drivers are
-`reversed()`, `enumerate()`, `take(n)`, `skip(n)`, `step_by(k)` and
-`filter(p)`. A driver that yields an extra value with each element, such as
-`enumerate`, binds a pair: `for (i, x) in xs by enumerate()`. A producer,
-such as `map(f)`, yields owned values instead of accesses. A driver may call
-its inner traversal more than it yields: `filter(p)` projects each element
-to test it and again to yield it, and `take(0)` still starts its inner
-driver.
+A method chain on a collection traverses it through a driver, which keeps
+its own state and never holds the collection: in `for x in xs.reversed()`,
+the loop holds `xs`, the receiver the chain's driver runs over, and
+evaluates it once. The standard drivers are `reversed()`, `enumerate()`,
+`take(n)`, `skip(n)`, `step_by(k)` and `filter(p)`, and they combine as
+methods: `xs.reversed().enumerate().take(3)`. A driver that yields an extra
+value with each element, such as `enumerate`, binds a pair:
+`for (i, x) in xs.enumerate()`. A producer, such as `map(f)`, yields owned
+values instead of accesses. A driver may call its inner traversal more than
+it yields: `filter(p)` projects each element to test it and again to yield
+it, and `take(0)` still starts its inner driver.
 
-Drivers combine as methods, `xs.reversed().enumerate().take(3)`, and a
-method chain on a collection is sugar for `by`:
-`for x in xs.filter(|x| x > 1)` is `for x in xs by filter(..)`.
+A driver is an ordinary value, built, stored, returned and passed to
+functions, and `xs.by(d)` runs one over `xs`: `for x in xs.by(d)`. `d` moves
+into the loop, as a producer does, so one that is not `Copy` runs a single
+loop, and a driver passed as a view parameter must be `Copy`.
 
 ## Higher-order operations
 
@@ -69,5 +72,6 @@ let totals = accounts.fold(Totals { sum: 0 }, |acc, account| {
 })
 ```
 
-`MemArray::collect(xs, map(f))` collects a producer's values into an array.
+`MemArray::collect(xs, xs.map(f))` collects a producer's values into an
+array.
 See [closures](closures.md) for the callables these take.

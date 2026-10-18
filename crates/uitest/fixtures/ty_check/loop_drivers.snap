@@ -5,47 +5,47 @@ expression: diags
 input_file: fixtures/ty_check/loop_drivers.fe
 ---
 error[6-0003]: trait bound is not satisfied
-   ┌─ loop_drivers.fe:38:24
+   ┌─ loop_drivers.fe:39:18
    │
-38 │     for mut x in xs by d {
-   │                        ^ `Firsts` doesn't implement `mut Driver<[u256; 3]>`
+39 │     for mut x in xs.by(d) {
+   │                  ^^^^^^^^ `Firsts` doesn't implement `mut Driver<[u256; 3]>`
 
 error[8-0000]: type mismatch
-   ┌─ loop_drivers.fe:59:9
+   ┌─ loop_drivers.fe:60:9
    │
-59 │     for (i, x) in xs by reversed() {
+60 │     for (i, x) in xs.reversed() {
    │         ^^^^^^ expected `u256`, but `(_, _)` is given
 
 error[8-0018]: left-hand side of assignment is immutable
-   ┌─ loop_drivers.fe:46:9
+   ┌─ loop_drivers.fe:47:9
    │
-45 │     for x in xs by reversed() {
+46 │     for x in xs.reversed() {
    │         - write `var x` for a mutable value
-46 │         x += 1
+47 │         x += 1
    │         ^ immutable assignment
 
 error[8-0018]: left-hand side of assignment is immutable
-   ┌─ loop_drivers.fe:53:9
+   ┌─ loop_drivers.fe:54:9
    │
-52 │     for (_, ref account) in accounts.enumerate() {
+53 │     for (_, ref account) in accounts.enumerate() {
    │             ----------- `account` is a read access; bind it with `mut` to write through it
-53 │         account.balance = 0
+54 │         account.balance = 0
    │         ^^^^^^^^^^^^^^^ immutable assignment
 
-error[8-0020]: `Driver` needs to be implemented for bool
-  ┌─ loop_drivers.fe:7:20
+error[8-0020]: `Collection` needs to be implemented for bool
+  ┌─ loop_drivers.fe:8:14
   │
-7 │     for x in xs by true {
-  │                    ^^^^
-  │                    │
-  │                    `Driver` needs to be implemented for `bool`
-  │                    consider implementing `Driver` for `bool`
+8 │     for x in xs.by(true) {
+  │              ^^^^^^^^^^^
+  │              │
+  │              `Collection` needs to be implemented for `bool`
+  │              consider implementing `Collection` for `bool`
 
 error[8-0020]: `Collection` needs to be implemented for Take<Reversed>
-   ┌─ loop_drivers.fe:65:14
+   ┌─ loop_drivers.fe:67:14
    │
-65 │     for x in reversed().take(2) {
-   │              ^^^^^^^^^^^^^^^^^^
+67 │     for x in d.take(2) {
+   │              ^^^^^^^^^
    │              │
    │              `Collection` needs to be implemented for `Take<Reversed>`
    │              consider implementing `Collection` for `Take<Reversed>`

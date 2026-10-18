@@ -5599,17 +5599,15 @@ impl<'db> TypedBody<'db> {
                     );
                 }
             }
-            crate::hir_def::Stmt::For(_, iter, driver, loop_body, _) => {
-                for expr in [*iter].into_iter().chain(*driver) {
-                    self.collect_explicit_return_param_sources_in_expr(
-                        db,
-                        body,
-                        expr,
-                        out,
-                        saw_non_param,
-                        seen,
-                    );
-                }
+            crate::hir_def::Stmt::For(_, iter, loop_body, _) => {
+                self.collect_explicit_return_param_sources_in_expr(
+                    db,
+                    body,
+                    *iter,
+                    out,
+                    saw_non_param,
+                    seen,
+                );
                 self.collect_explicit_return_param_sources_in_expr(
                     db,
                     body,

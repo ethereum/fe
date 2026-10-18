@@ -32,9 +32,9 @@ result.
 Unannotated parameters take their modes and types from the shape bound of
 the parameter the closure is passed to, after the arguments before it: in
 `xs.fold(0, |acc, x| acc + x)`, `acc` is `own u256` and `x` is a view of the
-item. A closure passed to a function without such a bound, like the free
-`filter` and `map` adapters used with `for .. by`, annotates its parameters:
-`for x in xs by filter(|x: u256| x % 2 == 0)`. A closure literal, or a
+item. A closure passed to a function without such a bound, like the
+`filter` and `map` adapters on a driver, annotates its parameters:
+`for x in xs.reversed().filter(|x: u256| x % 2 == 0)`. A closure literal, or a
 function named by its path, may be passed to a `mut` parameter directly.
 
 ## Calls
