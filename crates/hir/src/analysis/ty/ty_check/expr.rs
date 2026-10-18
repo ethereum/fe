@@ -1557,7 +1557,8 @@ impl<'db> TyChecker<'db> {
         }
         // Inside a `with`, a trait constant here would be read before its
         // decision is recorded; leave the bound to the checked value.
-        if self.env.choice_frames.current().is_some() && !self.reads_only_literals_and_consts(expr)
+        if super::choice::has_frames(self.env.choice_frames.current())
+            && !self.reads_only_literals_and_consts(expr)
         {
             return None;
         }

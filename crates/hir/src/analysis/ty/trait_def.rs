@@ -1490,7 +1490,7 @@ pub fn assoc_const_body_template_for_trait_inst<'db>(
         db,
         solve_cx,
         inst,
-        super::trait_choice::OrdinarySelection::no_frame_reaches(),
+        super::trait_choice::OrdinarySelection::outermost_tier_only(),
     ) {
         Selection::Unique(resolved) => resolved,
         Selection::Ambiguous(_ambiguous) => return None,
@@ -1555,7 +1555,7 @@ pub fn trait_inst_selects_concrete_impl<'db>(
         db,
         solve_cx,
         inst,
-        super::trait_choice::OrdinarySelection::no_frame_reaches(),
+        super::trait_choice::OrdinarySelection::outermost_tier_only(),
     ) {
         Selection::Unique(resolved) => !matches!(
             resolved.selected().origin(db),

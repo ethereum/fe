@@ -60,6 +60,12 @@ impl<'db> WrittenFrames<'db> {
         self.declaration
     }
 
+    /// Whether no frame opens anything here (`has_frames` for written
+    /// constants).
+    pub(crate) fn is_empty(&self) -> bool {
+        self.slots.is_empty() && !self.unknown
+    }
+
     /// Whether a read of `slot` here could see a choice a frame opened.
     pub(crate) fn opens(&self, db: &'db dyn HirAnalysisDb, slot: TraitInstId<'db>) -> bool {
         let Some((scope, assumptions)) = self.context else {
@@ -518,7 +524,7 @@ pub(crate) fn opens_constant_read<'db>(
     // With no frame, nothing is opened; the constant's body is not read,
     // which would select the implementation an ordinary declaration is
     // still lowering (a cycle).
-    if frames.slots.is_empty() && !frames.unknown {
+    if frames.is_empty() {
         return false;
     }
     frames.opens(db, use_.inst())
@@ -596,7 +602,7 @@ pub(crate) fn refuses_read<'db>(
     expected: Option<crate::analysis::ty::ty_def::TyId<'db>>,
 ) -> bool {
     let frames = written_frames(db, body);
-    if frames.slots.is_empty() && !frames.unknown {
+    if frames.is_empty() {
         return false;
     }
     // A constant written inside this one that is refused makes this one

@@ -156,6 +156,30 @@ fn bodies_are_chosen_through_one_accessor() {
 }
 
 #[test]
+fn no_frame_shortcuts_go_through_has_frames() {
+    // Every shortcut that skips choice work where nothing is opened asks
+    // `has_frames`, so the shortcuts move together when a module-level frame
+    // becomes the base of the frame list (MODULE_WITH_NOTE.md). The one raw
+    // test is in its definition.
+    for raw in [
+        "frame.is_none()",
+        ".current().is_none()",
+        ".current().is_some()",
+    ] {
+        assert_eq!(occurrences_outside(raw, &[]), Vec::<String>::new(), "{raw}");
+    }
+    assert_eq!(
+        occurrences_outside("frame.is_some()", &[CHECKER]),
+        Vec::<String>::new()
+    );
+    let checker = code(&text_of(CHECKER));
+    assert_eq!(checker.matches("frame.is_some()").count(), 1);
+    assert!(
+        checker.contains("fn has_frames(frame: Option<FrameId>) -> bool {\n    frame.is_some()")
+    );
+}
+
+#[test]
 fn frames_are_read_through_one_normalized_lookup() {
     // Frames are keyed by `SlotKey`, whose only constructor normalizes the
     // slot, so that every spelling of one slot (concrete, through an
@@ -353,7 +377,7 @@ fn ordinary_selection_names_its_reason() {
         ),
         ("outputs_by_d16", &[(trait_def, "fn output_implementation")]),
         (
-            "no_frame_reaches",
+            "outermost_tier_only",
             &[
                 ("src/analysis/ty/provider.rs", "fn state_index_lanes"),
                 (trait_def, "fn assoc_const_body_template_for_trait_inst"),
@@ -369,7 +393,7 @@ fn ordinary_selection_names_its_reason() {
             ],
         ),
         (
-            "type_level_read",
+            "outermost_tier_type",
             &[(
                 "src/analysis/ty/const_ty.rs",
                 "fn const_ty_from_trait_const",

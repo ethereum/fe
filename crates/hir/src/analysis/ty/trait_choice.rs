@@ -472,9 +472,11 @@ impl OrdinarySelection {
         Self(())
     }
 
-    /// A site no frame reaches: declarations, storage and encoding, the ABI,
-    /// generated code.
-    pub fn no_frame_reaches() -> Self {
+    /// A site only the outermost tier answers today, because no block frame
+    /// reaches it: declarations, storage and encoding, the ABI, generated
+    /// code. A module-level frame would reach some of them; each use is a
+    /// site to revisit then (CLOSURE.md).
+    pub fn outermost_tier_only() -> Self {
         Self(())
     }
 
@@ -485,9 +487,9 @@ impl OrdinarySelection {
     }
 
     /// A trait constant read in a type. D5 refuses every type that would
-    /// read a slot a frame opened, so the ordinary value is the only one a
-    /// type can mean.
-    pub fn type_level_read() -> Self {
+    /// read a slot a frame answers, so the outermost tier's value is the only
+    /// one a type can mean.
+    pub fn outermost_tier_type() -> Self {
         Self(())
     }
 

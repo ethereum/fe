@@ -2265,7 +2265,7 @@ pub(super) fn const_ty_from_trait_const<'db>(
         solve_cx,
         inst,
         name,
-        crate::analysis::ty::trait_choice::OrdinarySelection::type_level_read(),
+        crate::analysis::ty::trait_choice::OrdinarySelection::outermost_tier_type(),
     )
 }
 

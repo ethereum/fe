@@ -53,6 +53,14 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(super) struct FrameId(u32);
 
+/// Whether any frame is in force at `frame`, the frame a use is checked in.
+/// Every shortcut that skips choice work where nothing is opened reads it,
+/// so the shortcuts move together: with a module-level frame as the base of
+/// the frame list, "no frame" stops meaning "nothing is opened" here only.
+pub(super) fn has_frames(frame: Option<FrameId>) -> bool {
+    frame.is_some()
+}
+
 /// Whether a value of type `ty` holds evidence, itself or in a field,
 /// element or borrow, at any depth. A record's fields are read as declared,
 /// with its arguments read too, so a record that contains a growing instance
@@ -868,7 +876,7 @@ impl<'db> TyChecker<'db> {
         primary: DynLazySpan<'db>,
     ) -> bool {
         let frame = self.env.choice_frames.current();
-        if frame.is_none() {
+        if !has_frames(frame) {
             return false;
         }
         // A type written here that holds a constant refused where it is read
@@ -892,7 +900,7 @@ impl<'db> TyChecker<'db> {
         primary: DynLazySpan<'db>,
     ) -> bool {
         let frame = self.env.choice_frames.current();
-        if frame.is_none() {
+        if !has_frames(frame) {
             return false;
         }
         let dependent = crate::analysis::ty::ty_lower::hir_ty_const_slot_reads(
@@ -918,7 +926,7 @@ impl<'db> TyChecker<'db> {
         primary: DynLazySpan<'db>,
     ) -> bool {
         let frame = self.env.choice_frames.current();
-        if frame.is_none() {
+        if !has_frames(frame) {
             return false;
         }
         let dependent = crate::analysis::ty::ty_lower::hir_path_const_slot_reads(
@@ -950,7 +958,7 @@ impl<'db> TyChecker<'db> {
             hir_generic_args_const_slot_reads, hir_path_const_slot_reads,
         };
         use crate::hir_def::Pat;
-        if self.env.choice_frames.current().is_none() {
+        if !has_frames(self.env.choice_frames.current()) {
             return false;
         }
         let (db, scope, assumptions) = (self.db, self.env.scope(), self.env.assumptions());
@@ -1043,7 +1051,7 @@ impl<'db> TyChecker<'db> {
         primary: DynLazySpan<'db>,
     ) -> bool {
         let frame = self.env.choice_frames.current();
-        if frame.is_none() {
+        if !has_frames(frame) {
             return false;
         }
         let dependent = call_slot_reads(self.db, callable)
@@ -1932,7 +1940,7 @@ impl<'db> TyCheckEnv<'db> {
         for slot in frames.slots() {
             let key = self.normalized_slot(*slot);
             let unsupplied = Choice::Slot(SlotRef::Unsupplied);
-            if self.choice_frames.current().is_none() {
+            if !has_frames(self.choice_frames.current()) {
                 self.choice_frames.seed(key, unsupplied);
             } else {
                 let _ = self.choice_frames.push(None, key, unsupplied);
@@ -1977,7 +1985,7 @@ impl<'db> TyCheckEnv<'db> {
         let CallableDef::Func(func) = callable.callable_def() else {
             return Ok((own, Vec::new()));
         };
-        if frame.is_none() && !generic {
+        if !has_frames(frame) && !generic {
             return Ok((own, Vec::new()));
         }
         let mut called = callable.clone();
@@ -1999,7 +2007,7 @@ impl<'db> TyCheckEnv<'db> {
         // does not reach it (the written reading).
         let mut candidate_deliveries = Vec::new();
         let mut undecided_candidates = Vec::new();
-        if known.is_none() && (frame.is_some() || generic) {
+        if known.is_none() && (has_frames(frame) || generic) {
             let candidates = self.candidate_bodies(callable, func);
             for (candidate, candidate_args) in candidates {
                 for (bound, at_call) in declared_goals(db, candidate, &candidate_args) {
@@ -2099,7 +2107,7 @@ impl<'db> TyCheckEnv<'db> {
         undecided: impl IntoIterator<Item = TraitInstId<'db>>,
         exempt: Option<TraitInstId<'db>>,
     ) -> bool {
-        frame.is_some()
+        has_frames(frame)
             && undecided
                 .into_iter()
                 .any(|goal| Some(goal) != exempt && self.conditions_read_frame(frame, goal))
@@ -2180,7 +2188,7 @@ impl<'db> TyCheckEnv<'db> {
     ) -> (Callable<'db>, Vec<ChoiceRefusal>) {
         let db = self.db();
         let mut refusals = Vec::new();
-        if frame.is_some()
+        if has_frames(frame)
             && call_slot_reads(db, &callable)
                 .into_iter()
                 .any(|slot| self.frame_choice(frame, slot).is_some())
@@ -2393,7 +2401,9 @@ impl<'db> TyCheckEnv<'db> {
                 continue;
             };
             let frame = self.use_frames[expr];
-            if frame.is_none() || mixed.contains(&closure) || !self.closure_needs_provider(closure)
+            if !has_frames(frame)
+                || mixed.contains(&closure)
+                || !self.closure_needs_provider(closure)
             {
                 continue;
             }
@@ -2619,7 +2629,7 @@ impl<'db> TyCheckEnv<'db> {
     ) -> Result<Vec<(Delivery<'db>, Choice<'db>)>, ChoiceRefusal> {
         let db = self.db();
         let generic = !self.own_bounds().is_empty();
-        if frame.is_none() && !generic {
+        if !has_frames(frame) && !generic {
             return Ok(Vec::new());
         }
         let mut items = Vec::new();
