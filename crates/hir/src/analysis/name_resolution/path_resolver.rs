@@ -288,6 +288,22 @@ impl<'db> PathResError<'db> {
                     }
                 } else if expected == ExpectedPathKind::Function {
                     func_not_found_err(span, ident, parent)
+                } else if let Some(PathRes::Ty(ty)) = parent.as_ref()
+                    && let Some(top_mod) = span.top_mod(db)
+                    && let Some(trait_) =
+                        crate::analysis::ty::trait_def::named_only_assoc_type_trait(
+                            db,
+                            top_mod.ingot(db),
+                            *ty,
+                            ident,
+                        )
+                {
+                    PathResDiag::NamedOnlyAssocType {
+                        span,
+                        ident,
+                        ty: *ty,
+                        trait_,
+                    }
                 } else {
                     PathResDiag::NotFound(span, ident)
                 }

@@ -70,6 +70,27 @@ pub fn named_impl_candidates<'db>(
         .unwrap_or_default()
 }
 
+/// The trait of a named implementation for `ty` that declares an associated
+/// type `name`, when path lookup (which reads ordinary implementations) finds
+/// none: the trait the qualified form `<ty as Trait>::name` names.
+pub(crate) fn named_only_assoc_type_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    ty: TyId<'db>,
+    name: IdentId<'db>,
+) -> Option<Trait<'db>> {
+    ingot_trait_env(db, ingot)
+        .named_by_name
+        .values()
+        .flatten()
+        .filter_map(|item| super::trait_lower::lower_impl_trait(db, *item))
+        .find(|candidate| {
+            candidate.self_ty(db).base_ty(db) == ty.base_ty(db)
+                && candidate.trait_def(db).assoc_ty(db, name).is_some()
+        })
+        .map(|candidate| candidate.trait_def(db))
+}
+
 /// The named implementations of `trait_def` in the ingot, kept out of
 /// ordinary lookup.
 pub(crate) fn named_impls_for_trait<'db>(

@@ -1022,6 +1022,29 @@ impl DiagnosticVoucher for PathResDiag<'_> {
                 }
             }
 
+            Self::NamedOnlyAssocType {
+                span,
+                ident,
+                ty,
+                trait_,
+            } => {
+                let ident = ident.data(db);
+                let ty = ty.pretty_print(db);
+                let trait_name = trait_
+                    .name(db)
+                    .to_opt()
+                    .map_or("", |name| name.data(db).as_str());
+                primary_diag(
+                    severity,
+                    format!("`{ident}` is not found"),
+                    format!(
+                        "only named implementations of `{trait_name}` give `{ty}` an `{ident}`; write `<{ty} as {trait_name}>::{ident}`"
+                    ),
+                    span.resolve(db),
+                    error_code,
+                )
+            }
+
             Self::NotFound(prim_span, ident) => {
                 let ident = ident.data(db);
                 let span = prim_span.resolve(db).or_else(|| {
