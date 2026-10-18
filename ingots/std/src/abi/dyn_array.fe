@@ -55,15 +55,27 @@ impl<T> DynArrayAccess<T> for DynArray<T>
 
         // DynArray construction validates the element heads:
         // size >= 32 + len * head, without overflow, so index < len proves
-        // this head position is in bounds. Static elements decode in place;
-        // dynamic ones check their tail offset against the payload. Both keep
-        // the normal decode path to validate the canonical ABI representation.
-        decode_field_from_prechecked_head<Sol, T, MemSpan>(
-            self.encoded_span(),
-            base: 32,
-            head_pos: 32 + index * abi_field_head_size<T>(),
-            input_len: self.encoded_size(),
-        )
+        // this head position is in bounds. Dynamic elements check their tail
+        // offset against the payload. Both keep the normal decode path to
+        // validate the canonical ABI representation.
+        let head_pos = 32 + index * abi_field_head_size<T>()
+        if T::IS_DYNAMIC {
+            return decode_field_from_prechecked_head<Sol, T, MemSpan>(
+                self.encoded_span(),
+                base: 32,
+                head_pos,
+                input_len: self.encoded_size(),
+            )
+        }
+        // A static element decodes from its own head alone. As a span of its
+        // own, the head bounds each of the decoder's reads by constants.
+        let head = unsafe {
+            MemSpan::from_raw_parts(
+                ptr: ptr::offset_bytes(self.encoded_span().ptr(), head_pos),
+                len: abi_field_head_size<T>(),
+            )
+        }
+        T::decode_from(head, 0)
     }
 }
 
@@ -219,8 +231,11 @@ impl<T> MemVec<T>
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
 
-        let input = unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: self.len * T::HEAD_SIZE) }
-        T::decode_from(input, index * T::HEAD_SIZE)
+        // The element alone, as a span of its own, which bounds each of the
+        // decoder's reads by constants.
+        let at = ptr::offset_bytes(self.ptr, index * T::HEAD_SIZE)
+        let input = unsafe { MemSpan::from_raw_parts(ptr: at, len: T::HEAD_SIZE) }
+        T::decode_from(input, 0)
     }
 
     /// Write `value` at `index`. Reverts with Solidity `Panic(0x32)` if
