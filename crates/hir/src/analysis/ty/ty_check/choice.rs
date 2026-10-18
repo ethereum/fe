@@ -2663,6 +2663,22 @@ fn body_type_reads<'db>(
     typed: &super::TypedBody<'db>,
 ) -> Vec<TraitInstId<'db>> {
     let mut reads = typed.const_reaches().to_vec();
+    // The types a constant use is written over, which no expression's type
+    // shows: an inherent constant's receiver (`Arr<<T as Width>::N>::K`), a
+    // trait constant's goal.
+    for cref in typed.const_refs() {
+        match cref {
+            ConstRef::InherentConst(use_) => {
+                reads.extend(type_slot_reads(db, use_.receiver_ty()));
+            }
+            ConstRef::TraitConst(use_) => {
+                for ty in use_.inst().args(db) {
+                    reads.extend(type_slot_reads(db, *ty));
+                }
+            }
+            ConstRef::Const(_) => {}
+        }
+    }
     let Some(body) = typed.body() else {
         return reads;
     };
