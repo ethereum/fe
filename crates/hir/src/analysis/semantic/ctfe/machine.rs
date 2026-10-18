@@ -76,6 +76,11 @@ pub enum CtfeError<'db> {
         origin: SemOrigin<'db>,
         message: Option<String>,
     },
+    /// `core::panic_code(code)` was reached.
+    Panicked {
+        origin: SemOrigin<'db>,
+        code: U256,
+    },
     InvalidOperation {
         origin: SemOrigin<'db>,
         message: String,
@@ -1958,6 +1963,13 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             }
             Some(CtfeExternIntrinsic::LeadingZeros) => {
                 self.eval_leading_zeros(result_ty, args, origin)
+            }
+            Some(CtfeExternIntrinsic::PanicCode) => {
+                let [code] = args else {
+                    return Err(CtfeError::NotConstEvaluable { origin }.into());
+                };
+                let code = self.expect_u256_const(code, origin)?;
+                Err(CtfeError::Panicked { origin, code })
             }
             Some(CtfeExternIntrinsic::SizeOf) => {
                 return self.eval_intrinsic_size_of(instance, result_ty, args, origin);

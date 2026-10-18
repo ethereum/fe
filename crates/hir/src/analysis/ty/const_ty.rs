@@ -2178,6 +2178,11 @@ pub(crate) fn invalid_cause_from_ctfe_error<'db>(
             expr,
             message: message.clone(),
         },
+        CtfeError::Panicked { code, .. } => InvalidCause::ConstEvalPanicked {
+            body,
+            expr,
+            code: *code,
+        },
         CtfeError::DivisionByZero { .. } => InvalidCause::ConstEvalDivisionByZero { body, expr },
         CtfeError::OutOfBounds { .. } => InvalidCause::ConstEvalOutOfBounds { body, expr },
         CtfeError::InvalidOperation { message, .. } => InvalidCause::ConstEvalInvalidOperation {
@@ -2250,6 +2255,7 @@ fn root_ctfe_error<'a, 'db>(
         }
         CtfeError::NotConstEvaluable { origin }
         | CtfeError::AssertionFailed { origin, .. }
+        | CtfeError::Panicked { origin, .. }
         | CtfeError::InvalidOperation { origin, .. }
         | CtfeError::InvalidBorrow { origin }
         | CtfeError::InvalidProviderUse { origin }
