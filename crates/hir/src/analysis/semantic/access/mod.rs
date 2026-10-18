@@ -46,12 +46,19 @@ use crate::{
             },
             root_semantic_instance_key,
         },
-        ty::{provider::AddressSpace, ty_check::BodyOwner},
+        ty::{
+            provider::AddressSpace,
+            ty_check::{BodyOwner, ReturnProjectionStep},
+        },
     },
     hir_def::{Contract, ExprId, ItemKind, StmtId, TopLevelMod},
 };
 
-use self::trust::{UnsafeTrust, UntrustedUnsafeUse};
+use self::{
+    check::access_components,
+    place::Step,
+    trust::{UnsafeTrust, UntrustedUnsafeUse},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, Update)]
 pub enum SemanticAccessCheckResult<'db> {
@@ -105,8 +112,43 @@ pub(crate) fn projection_result_spaces<'db>(
     }
 }
 
-// A projection's check reads its projection callees' contracts, so recursion
-// through projections, which the check rejects, is a cycle.
+/// A projection's result space per access component, with the steps from its
+/// return to the component: `None` where no yield shows the space, as for an
+/// instance whose body is not checked.
+pub fn projection_component_spaces<'db>(
+    db: &'db dyn HirAnalysisDb,
+    instance: SemanticInstance<'db>,
+) -> Vec<(Vec<ReturnProjectionStep>, Option<AddressSpace>)> {
+    let BodyOwner::Func(func, mode) = instance.key(db).owner(db) else {
+        return Vec::new();
+    };
+    let Some(shape) = func.return_shape(db, mode) else {
+        return Vec::new();
+    };
+    let spaces = projection_result_spaces(db, instance);
+    access_components(shape)
+        .into_iter()
+        .enumerate()
+        .map(|(index, (path, _, _))| {
+            let steps = path
+                .iter()
+                .map(|step| match *step {
+                    Step::Field(field) => ReturnProjectionStep::Field(field),
+                    Step::Variant { variant, field } => {
+                        ReturnProjectionStep::VariantField { variant, field }
+                    }
+                    Step::Index(_) => {
+                        unreachable!("an access component lies at fields and variant fields")
+                    }
+                })
+                .collect();
+            (steps, spaces.get(index).copied().flatten())
+        })
+        .collect()
+}
+
+// A projection's check reads its projection callees' result spaces, so
+// recursion through projections, which the check rejects, is a cycle.
 #[salsa::tracked(
     return_ref,
     cycle_fn = body_check_cycle_recover,

@@ -171,6 +171,9 @@ stack; they end at their `end`, in any order. In the projection's body:
   instantiation. That space is the projection's *result space*
   (`projection_result_spaces`), inferred from the body and exported with the
   instance: callers combine grants by their result spaces, never by bodies.
+  Lowering holds the class it returns each component in to that space
+  (`check_projection_result_spaces`); a disagreement, or a component with no
+  inferred space, is an internal error.
   A place's space is its root's, unless a pinned type or an entry along its
   path moves it into the type's pin or the collection's
   (`access::space::PathSpace`): a `TSlot` held in a storage struct, and its

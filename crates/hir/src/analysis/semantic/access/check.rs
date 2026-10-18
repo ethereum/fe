@@ -2436,7 +2436,7 @@ fn reaches_owner<'db>(
 
 /// The access components of a shape, by their path in its carrier, with
 /// their mode and type.
-fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKind, TyId<'db>)> {
+pub(super) fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKind, TyId<'db>)> {
     fn walk<'db>(
         shape: &Shape<'db>,
         path: &mut Path,
