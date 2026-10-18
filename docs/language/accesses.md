@@ -15,8 +15,8 @@ fn consume(_ item: own Item) { .. }         // own: the callee takes the value
 
 A view or `mut` argument is a place of the caller's (`bump(mut counter)`);
 an owned argument is moved, or copied if its type is `Copy`. A projection's
-`mut` result is marked like a place (`bump(mut xs.at_mut(0))`), unless its
-type has no value, as a view's does (`fill(buf.span_mut())`).
+`mut` result is marked like a place (`bump(mut xs.at(0))`), unless its
+type has no value, as a view's does (`fill(buf.span())`).
 
 A view argument that is a scalar or a handle (an integer, `bool`,
 `Address`, a raw pointer, or any `core::marker::Snapshot` type) is a
@@ -109,16 +109,15 @@ A projection's result binds like a place. A plain name takes a value: a
 which keeps the access; `(i, ref x)` and `for ref x in xs` do the same for a
 component and an element. Whether a type is `Copy` is decided by the
 body's declared bounds, never by an instance. A whole `mut` result is bound
-`mut` as well: `let x = mut xs.at_mut(0)` holds the access, and a plain
-`let x = xs.at_mut(0)` is an error, since its value would discard the writes
-the call asks for; `var x = xs.at_mut(0)` copies the element and warns,
+`mut` as well: `let x = mut v.first()` holds the access, and a plain
+`let x = v.first()` is an error, since its value would discard the writes
+the call asks for; `var x = v.first()` copies the element and warns,
 since writes to `x` reach nothing. The components of a `mut` result
 take values as a place's do, so `Some(mut v)` writes through and a plain
 `Some(v)` is an immutable copy. A type with no value reading binds its
 access under a plain name, `mut` for a whole `mut` result and a read access
-otherwise: a `#[view]` result (`let s = buf.span()` or
-`let s = buf.span_mut()`) and a state-only one (`let m = store.balances`);
-`let t = s` reborrows the access the same way.
+otherwise: a `#[view]` result (`let s = buf.span()`) and a state-only one
+(`let m = store.balances`); `let t = s` reborrows the access the same way.
 
 Copying a result ends the projection's session at the binding, so its slide
 runs there rather than at the binding's last use.
@@ -158,7 +157,7 @@ value, while `@self.locked` does. An implementation gives its trait's
 parts, which is memory for packed elements.
 
 ```fe
-fn value_mut(mut self) -> mut T @self.value { mut self.value }
+fn value(mut? self) -> mut? T @self.value { mut? self.value }
 
 impl<T> Collection for Cells<T> {
     space S = self[_]       // where its elements lie: memory for packed ones
@@ -183,6 +182,58 @@ a.push(1)                           // all storage stays reserved until both end
 b.push(2)
 ```
 
+## `mut?` items
+
+A function whose signature writes `mut?` has a *mode*: it is used at `ref`
+or at `mut`, and `mut?` is `ref` or `mut` accordingly, wherever `ref` and
+`mut` may be written.
+
+```fe
+pub fn at(mut? self, _ index: u256) -> mut? T {
+    unsafe { mut? *self.ptr_at(index) }
+}
+
+pub fn split_at(mut? self, _ mid: u256) -> (mut? Self, mut? Self) { .. }
+```
+
+Its body is checked once per mode: the `ref` body cannot write through a
+`mut?` place, and the `mut` body keeps `mut`'s rules, such as the
+disjointness of two `mut?` components. A call is at `ref` unless a use of
+its result asks for `mut`: a `mut` receiver (`xs.at(i).bump()`), a `mut`
+access or binding (`let x = mut xs.at(i)`, `Some(mut x)`), a `mut`
+argument, an assignment (`xs.at(i) = 1`) or a `mut` yield. At `mut`, the
+call's receiver is accessed mutably, and any other argument its `mut?`
+parameters take must be written as a `mut` access, `f(mut p)`.
+
+A trait method may be `mut?`. A bound says which modes a generic body may
+call it at: `T: Collection` grants `at` at `ref`, and `T: mut Collection`
+at both. An implementation grants `mut` when each of the trait's `mut?`
+methods has a `mut` mode there: a `mut?` method, or a second method of the
+same name that takes `mut` where the trait method takes `mut?`, for an
+element its two modes compute differently:
+
+```fe
+impl<T> Index<usize> for MemVec<T> where .. {
+    fn index(self, _ index: usize) -> ref T {
+        self.get(index as u256)
+    }
+
+    fn index(mut self, _ index: usize) -> mut T {
+        var value = self.get(index as u256)
+        yield mut value
+        self.set(index: index as u256, value)
+    }
+}
+```
+
+An implementation with only a `ref` method, such as a range's `at`, is no
+`mut Collection`. A `mut?` bound (`D: mut? Driver<B>`) is `mut` where its
+item is used at `mut`: `impl<D: mut? Driver<B>> Driver<B> for Enumerate<D>`
+makes `Enumerate<D>` a `mut Driver<B>` exactly when `D` is one.
+
+A `mut?` function cannot define a closure, and an effect cannot be `mut?`
+yet.
+
 ## Views
 
 A type marked `#[view]`, such as `MemSlice`, describes memory its owner
@@ -191,14 +242,14 @@ field of that type, and nothing for `var` to hold; a plain binding of one is
 its read access. A span such as `buffer.span()` is a `ref` projection, so it
 keeps the buffer reserved until its last use.
 
-A view may also be accessed mutably. `buffer.span_mut()` holds the buffer
-mutably until the span's last use, and writes through the span reach the
-buffer:
+A view may also be accessed mutably. `span` is `mut?`, and taken at `mut`
+it holds the buffer mutably until the span's last use; writes through the
+span reach the buffer:
 
 ```fe
-let s = buffer.span_mut()
+let s = mut buffer.span()
 s[0] = 10
-let (mut head, mut tail) = s.split_at_mut(4)
+let (mut head, mut tail) = s.split_at(4)
 for mut b in tail { b = 0 }
 ```
 
@@ -267,10 +318,10 @@ unsafe impl<K: StorageKey + Copy, V> StateIndex for StorageMap<K, V> {
 transient storage implements `core::ops::StateIndex` (below): it only says
 where an entry lies, and the compiler opens the entry's place, so its users
 need no raw storage authority. Any other collection implements
-`core::ops::Index` and `IndexMut`, whose `index` and `index_mut` are
-projections: their bodies may check bounds, compute an element or write one
-back, and an element's access reserves the whole collection until its last
-use. A memory owner such as `MemArray` yields an element through its pointer
+`core::ops::Index`, whose `index` is a `mut?` projection: its bodies may
+check bounds, compute an element or write one back, and an element's access
+reserves the whole collection until its last use. `c[k]` calls it at `mut`
+where the context needs a mutable place, which needs `C: mut Index<K>`. A memory owner such as `MemArray` yields an element through its pointer
 in an `unsafe` block; growing it takes `mut self`, so it cannot reallocate
 under an open element access.
 

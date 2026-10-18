@@ -1,9 +1,9 @@
 // A projection forwards the element grant of a `for mut` loop whose
-// `at_mut` has a slide, or yields its own fallback. Only the element path
+// `mut` `at` has a slide, or yields its own fallback. Only the element path
 // opens the inner session, so the shared caller continuation merges the
 // inner receiver with an inactive placeholder; the inner slide runs once,
 // after the caller's write, and only on the element path.
-use core::iter::{Collection, CollectionMut}
+use core::iter::Collection
 
 struct Cells {
     items: [u256; 3],
@@ -32,12 +32,10 @@ impl Collection for Cells {
         let item = self.items[c]
         yield ref item
     }
-}
 
-impl CollectionMut for Cells {
     // The slide reads the element back, so the log shows the caller's write
     // landed before it ran.
-    fn at_mut(mut self, _ c: usize) -> mut u256 {
+    fn at(mut self, _ c: usize) -> mut u256 {
         yield mut self.items[c]
         self.log = self.log * 1000 + self.items[c]
     }

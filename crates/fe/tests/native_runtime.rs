@@ -1474,7 +1474,7 @@ pub fn main() -> i32 {{
         Option::None => core::panic(),
     }}
     stack.try_push(1).unwrap()
-    let top = mut stack.top_mut()
+    let top = mut stack.top()
     {operation}
     0
 }}

@@ -13,10 +13,12 @@ error[8-0018]: left-hand side of assignment is immutable
    │         ^^^^^^^^^^^^^^^^ immutable assignment
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ maybe_mut_errors.fe:40:17
+   ┌─ maybe_mut_errors.fe:40:21
    │
+39 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+   │         ---- `pair` does not provide mutable access
 40 │     let first = mut pair.first()
-   │                 ^^^^^^^^^^^^^^^^ cannot borrow as `mut`
+   │                     ^^^^ cannot borrow as `mut`
 
 error[8-0069]: explicit borrow required
    ┌─ maybe_mut_errors.fe:46:30

@@ -409,15 +409,10 @@ impl<'db> TyChecker<'db> {
                 Some((driver, driver_ty)) => (driver, driver_ty, "Driver"),
                 None => (expr, ty, "Collection"),
             };
-            let name = if mutates {
-                format!("{name}Mut")
-            } else {
-                name.to_string()
-            };
             self.push_diag(BodyDiag::TraitNotImplemented {
                 primary: expr.span(self.body()).into(),
                 ty: ty.pretty_print(self.db).to_string(),
-                trait_name: IdentId::new(self.db, name),
+                trait_name: IdentId::new(self.db, name.to_string()),
             });
         }
         plan
@@ -479,40 +474,42 @@ impl<'db> TyChecker<'db> {
             let driven = driver.map(|_| base_ty);
             this.select_loop_trait(span.clone(), receiver_ty, trait_def, method, driven)
         };
-        let (protocol, inst, at_trait, at_inst, at_name) = match driver {
+        let (protocol, inst, at_name) = match driver {
             None => {
                 let collection = core_trait(self, "Collection")?;
-                let inst = select(self, collection, "start")?;
-                if mutates {
-                    let collection_mut = core_trait(self, "CollectionMut")?;
-                    let at_inst = select(self, collection_mut, "at_mut")?;
-                    (collection, inst, collection_mut, at_inst, "at_mut")
-                } else {
-                    (collection, inst, collection, inst, "at")
-                }
+                (collection, select(self, collection, "start")?, "at")
             }
             Some(_) => {
                 let driver_trait = core_trait(self, "Driver")?;
                 let producer = core_trait(self, "Producer")?;
-                if mutates {
-                    let driver_mut = core_trait(self, "DriverMut")?;
-                    let at_inst = select(self, driver_mut, "at_mut")?;
-                    let inst = select(self, driver_trait, "start")?;
-                    (driver_trait, inst, driver_mut, at_inst, "at_mut")
-                } else if let Some(inst) = select(self, producer, "produce") {
-                    (producer, inst, producer, inst, "produce")
-                } else {
-                    let inst = select(self, driver_trait, "start")?;
-                    (driver_trait, inst, driver_trait, inst, "at")
+                match select(self, producer, "produce").filter(|_| !mutates) {
+                    Some(inst) => (producer, inst, "produce"),
+                    None => (driver_trait, select(self, driver_trait, "start")?, "at"),
                 }
             }
         };
+        // A loop that mutates its elements takes them at `mut`, from a
+        // `mut Collection` or a `mut Driver<B>`.
+        if mutates {
+            let span = driver.map_or_else(
+                || span.clone(),
+                |(driver, _)| driver.span(self.body()).into(),
+            );
+            self.env.register_trait_obligation(TraitObligation {
+                goal: inst.mut_goal(self.db),
+                origin: TraitObligationOrigin::GenericConfirmation,
+                span,
+            });
+        }
         let call = |this: &mut Self, trait_def: Trait<'db>, inst, name: &str, inputs| {
             let method = *trait_def
                 .method_defs(this.db)
                 .get(&IdentId::new(this.db, name.to_string()))?;
             let func_ty = this.instantiate_trait_method_to_term(method, receiver_ty, inst);
             let mut callable = Callable::new(this.db, func_ty, span.clone(), Some(inst)).ok()?;
+            if mutates && method.is_maybe_mut(this.db) {
+                callable.set_mode(Some(BorrowKind::Mut));
+            }
             callable.set_checked_input_tys(inputs);
             let effect_args = this.resolve_callable_effects(span.clone(), &mut callable);
             Some(ForLoopCall {
@@ -525,7 +522,7 @@ impl<'db> TyChecker<'db> {
         let with_state = || inputs.iter().copied().chain([state_ty]).collect::<Vec<_>>();
         let has = call(self, protocol, inst, "has", with_state())?;
         let next = call(self, protocol, inst, "next", with_state())?;
-        let at = call(self, at_trait, at_inst, at_name, with_state())?;
+        let at = call(self, protocol, inst, at_name, with_state())?;
         let shape = match at.callable.ret_shape(self.db) {
             Some(shape) => shape.map_tys(&mut |ty| self.normalize_ty(ty)),
             None => Shape::Owned(self.normalize_ty(at.callable.ret_ty(self.db))),

@@ -1332,6 +1332,19 @@ impl<'db> TraitInstId<'db> {
         }
     }
 
+    /// The goal that the predicate's self type grants the trait's `mut?`
+    /// methods at `mut`: `T: mut Trait`, which the predicate's associated
+    /// equalities, checked with it, need not repeat.
+    pub fn mut_goal(self, db: &'db dyn HirAnalysisDb) -> Self {
+        Self::new(
+            db,
+            self.def(db),
+            self.args(db).clone(),
+            IndexMap::new(),
+            ModeMarker::Mut,
+        )
+    }
+
     /// Whether the predicate grants the `mut` modes of the trait's `mut?`
     /// methods.
     pub fn is_mut(self, db: &'db dyn HirAnalysisDb) -> bool {

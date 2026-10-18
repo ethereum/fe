@@ -1,7 +1,7 @@
 // A loop advances only after the current iteration: `at`'s ramp, the body,
 // `at`'s slide, then `next`. `break` leaves without advancing, and
 // `continue` advances.
-use core::iter::{Collection, CollectionMut}
+use core::iter::Collection
 
 // `next` reverts when it advances past `stop`, or, when `check_written`,
 // before the write-back of the element it advances past has landed.
@@ -35,10 +35,9 @@ impl Collection for Tracked {
         let item = self.items[c]
         yield ref item
     }
-}
 
-impl CollectionMut for Tracked {
-    fn at_mut(mut self, _ c: usize) -> mut u256 {
+    // At `mut`, the element is written back and its position recorded.
+    fn at(mut self, _ c: usize) -> mut u256 {
         var item = self.items[c]
         yield mut item
         self.items[c] = item

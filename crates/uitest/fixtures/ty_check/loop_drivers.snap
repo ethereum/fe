@@ -4,6 +4,12 @@ assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/loop_drivers.fe
 ---
+error[6-0003]: trait bound is not satisfied
+   ┌─ loop_drivers.fe:38:24
+   │
+38 │     for mut x in xs by d {
+   │                        ^ `Firsts` doesn't implement `mut Driver<[u256; 3]>`
+
 error[8-0000]: type mismatch
    ┌─ loop_drivers.fe:59:9
    │
@@ -34,15 +40,6 @@ error[8-0020]: `Driver` needs to be implemented for bool
   │                    │
   │                    `Driver` needs to be implemented for `bool`
   │                    consider implementing `Driver` for `bool`
-
-error[8-0020]: `DriverMut` needs to be implemented for Firsts
-   ┌─ loop_drivers.fe:38:24
-   │
-38 │     for mut x in xs by d {
-   │                        ^
-   │                        │
-   │                        `DriverMut` needs to be implemented for `Firsts`
-   │                        consider implementing `DriverMut` for `Firsts`
 
 error[8-0020]: `Collection` needs to be implemented for Take<Reversed>
    ┌─ loop_drivers.fe:65:14

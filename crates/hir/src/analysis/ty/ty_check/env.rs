@@ -628,13 +628,6 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
-    /// Drops the call `expr` resolved to, so it can resolve to another.
-    pub(super) fn forget_call(&mut self, expr: ExprId) {
-        self.callables[expr] = None;
-        self.call_effect_args[expr] = None;
-        self.semantic_expr_lowering[expr] = None;
-    }
-
     pub(super) fn register_const_ref(&mut self, expr: ExprId, const_ref: ConstRef<'db>) {
         if self.const_refs[expr].replace(const_ref).is_some() {
             panic!("const ref is already registered for the given expr")
@@ -884,10 +877,6 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn is_value_call(&self, call: ExprId) -> bool {
         self.value_calls.contains(&call)
-    }
-
-    pub(super) fn is_place_entry(&self, expr: ExprId) -> bool {
-        self.place_entries.contains(&expr)
     }
 
     /// Records that the function's own authority covers the resources the

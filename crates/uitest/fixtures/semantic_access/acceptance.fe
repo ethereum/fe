@@ -442,7 +442,7 @@ pub contract Case33CopyArraySpace {
 pub contract Case33CopyArrayMutSpace {
     mut cells: [u256; 4],
     init() uses (mut cells, call: mut Call) {
-        let x = mut cells.at_mut(0)
+        let x = mut cells.at(0)
         ping()
         x = 1
     }

@@ -19,7 +19,7 @@
 //! let first = owners[0]
 //! ```
 use core::abi::{AbiFrame, AbiSize, DynArray, Encode, store_word}
-use core::iter::{Bidirectional, Collection, CollectionMut}
+use core::iter::{Bidirectional, Collection}
 use core::marker::{Clearable, Pinned}
 use core::ops::{LaneCodec, Location, StateIndex, WrappingAdd, WrappingSub, clear_storage}
 use core::intrinsic::storage_slots
@@ -215,14 +215,8 @@ impl<T> Collection for SolArray<T> {
         c.wrapping_add(1)
     }
 
-    fn at(self, _ c: u256) -> ref T @S {
-        ref self[c]
-    }
-}
-
-impl<T> CollectionMut for SolArray<T> {
-    fn at_mut(mut self, _ c: u256) -> mut T @S {
-        mut self[c]
+    fn at(mut? self, _ c: u256) -> mut? T @S {
+        mut? self[c]
     }
 }
 

@@ -11,7 +11,7 @@ use core::abi::{
 }
 use ingot::abi::{Sol, StaticAbi}
 use core::ptr::{self, MemBuffer, MemSpan}
-use core::ops::{Index, IndexMut, Len}
+use core::ops::{Index, Len}
 use core::size_of
 use ingot::evm::panic::{PANIC_ASSERT, PANIC_INDEX_OUT_OF_BOUNDS, Panic}
 use ingot::evm::revert_error
@@ -445,15 +445,11 @@ impl<T> Index<usize> for MemVec<T>
     fn index(self, _ index: usize) -> ref T {
         self.get(index as u256)
     }
-}
 
-/// Lets `core::sort` order the copy of an ABI array in place:
-/// `sort(mut MemVec::from_dyn_array(signers))`. The element is a decoded
-/// temporary, encoded back when the access ends.
-impl<T> IndexMut<usize> for MemVec<T>
-    where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
-{
-    fn index_mut(mut self, _ index: usize) -> mut T {
+    /// Lets `core::sort` order the copy of an ABI array in place:
+    /// `sort(mut MemVec::from_dyn_array(signers))`. The element is a decoded
+    /// temporary, encoded back when the access ends.
+    fn index(mut self, _ index: usize) -> mut T {
         var value = self.get(index as u256)
         yield mut value
         self.set(index: index as u256, value)

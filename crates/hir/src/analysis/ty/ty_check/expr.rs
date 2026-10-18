@@ -5652,12 +5652,3 @@ impl TraitOps for AugAssignOp {
         }
     }
 }
-
-#[derive(Clone, Copy, Debug)]
-pub(super) struct IndexMutOp;
-
-impl TraitOps for IndexMutOp {
-    fn triple(&self) -> [&str; 3] {
-        ["IndexMut", "index_mut", "[]="]
-    }
-}

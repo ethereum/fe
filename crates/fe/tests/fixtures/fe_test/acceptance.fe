@@ -2,7 +2,7 @@
 // numbered as the spec lists it. Static results are in
 // `uitest/semantic_access/acceptance.fe` and `uitest/ty_check/acceptance.fe`.
 use core::iter::{Collection, Driver, Identity, reversed}
-use core::ops::{Index, IndexMut}
+use core::ops::Index
 use core::ptr::{MemBuffer, MemSpan}
 use std::evm::{Address, Call, Evm, StorageMap}
 
@@ -315,10 +315,8 @@ impl Index<u256> for Scores {
     fn index(self, _ i: u256) -> ref u32 {
         (self.words[i / 8] >> ((i % 8) * 32)).downcast_truncate()
     }
-}
 
-impl IndexMut<u256> for Scores {
-    fn index_mut(mut self, _ i: u256) -> mut u32 {
+    fn index(mut self, _ i: u256) -> mut u32 {
         let shift = (i % 8) * 32
         var tmp: u32 = (self.words[i / 8] >> shift).downcast_truncate()
         yield mut tmp

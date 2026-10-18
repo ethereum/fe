@@ -661,7 +661,7 @@ impl<'db> Callable<'db> {
                 }
                 // A projection's `mut` result is marked `mut` like a place,
                 // unless its type has no values, so the type says it is an
-                // access (`fill(buf.span_mut())`).
+                // access (`fill(buf.span())`).
                 FuncParamMode::Mut
                     if access == Some(BorrowKind::Mut)
                         && (is_receiver

@@ -857,8 +857,8 @@ pub(super) enum AccessBinding {
     /// binding takes a value or an access by `TyChecker::binding_access_kind`.
     Result,
     /// A projection's result bound whole to the single name of a `let`: a
-    /// `mut` result of a type with no values stays the access, as
-    /// `let s = buf.span_mut()`.
+    /// `mut` result of a type with no values stays the access, as `let s`
+    /// of a call returning `mut MemSpan`.
     LetResult,
 }
 
@@ -3106,8 +3106,8 @@ impl<'db> TyChecker<'db> {
     /// value, or a read access to a component with no value reading. A
     /// non-`Copy` place is matched there even without markers, so a pattern
     /// moves only what its names bind; its tests read the place's value
-    /// (`is_inspected_place`). Index syntax `t[i]` selects `index_mut` for a
-    /// `mut` binding and is destructured as that projection's result.
+    /// (`is_inspected_place`). Index syntax `t[i]` calls `index` at `mut` for
+    /// a `mut` binding and is destructured as that projection's result.
     fn open_matched_place(
         &mut self,
         scrutinee: ExprId,

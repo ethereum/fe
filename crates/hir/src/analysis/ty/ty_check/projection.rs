@@ -8,11 +8,10 @@ use super::{
     ExprProp, TraitObligationOutcome, TyChecker, ValuePathRef,
     callable::place_borrow_suggestion,
     env::{TraitObligation, TraitObligationOrigin},
-    expr::IndexMutOp,
 };
 use crate::{
     analysis::ty::{diagnostics::BodyDiag, shape::Shape, ty_def::BorrowKind},
-    hir_def::{BinOp, CallableDef, Expr, ExprId, ModeMarker, Partial, Stmt, UnOp},
+    hir_def::{BinOp, CallableDef, Expr, ExprId, Partial, Stmt, UnOp},
     span::DynLazySpan,
 };
 
@@ -133,11 +132,11 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// Makes `expr`, a place a `mut` context needs, mutable by selecting
-    /// `index_mut` for the trait-lowered indexes along its place chain:
-    /// `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a `mut self` method,
-    /// and by calling a `mut?` callee at `mut` (`xs.at(i).bump()`).
-    /// Returns whether the place is mutable.
+    /// Makes `expr`, a place a `mut` context needs, mutable by calling the
+    /// `mut?` callees along its place chain at `mut`: the trait-lowered
+    /// indexes in `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a
+    /// `mut self` method, and calls such as `xs.at(i).bump()`. Returns
+    /// whether the place is mutable.
     pub(super) fn select_mut_place(&mut self, expr: ExprId) -> bool {
         let Some(prop) = self.env.typed_expr(expr) else {
             return false;
@@ -154,26 +153,8 @@ impl<'db> TyChecker<'db> {
         }
         let selected = match self.env.expr_data(expr) {
             Partial::Present(Expr::Field(base, _)) => self.select_mut_place(*base),
-            Partial::Present(Expr::Bin(base, index, BinOp::Index)) => {
-                let Some(base_prop) = self.env.typed_expr(*base) else {
-                    return false;
-                };
-                if base_prop.ty.is_array(self.db) || self.env.is_place_entry(expr) {
-                    self.select_mut_place(*base)
-                } else {
-                    // `index_mut` takes `mut self`: a place base must be
-                    // writable, and a base an outer index grants becomes so by
-                    // that index selecting `index_mut` too.
-                    let is_place = self.env.is_place_expr(*base);
-                    if !self.select_mut_place(*base) && is_place {
-                        return false;
-                    }
-                    self.env.forget_call(expr);
-                    let indexed =
-                        self.check_ops_trait(expr, base_prop.ty, &IndexMutOp, Some(*index));
-                    !indexed.ty.has_invalid(self.db)
-                }
-            }
+            // An array element or a place entry is a place of its base.
+            Partial::Present(Expr::Bin(base, _, BinOp::Index)) => self.select_mut_place(*base),
             _ => false,
         };
         if selected {
@@ -196,10 +177,11 @@ impl<'db> TyChecker<'db> {
     /// Calls the `mut?` callee of the call `expr`, typed as `prop`, at `mut`,
     /// as a use of its result that needs `mut` asks. Each argument a `mut?`
     /// parameter takes is then passed `mut`: a receiver is accessed
-    /// implicitly, and any other argument must be a `mut` access. A receiver
-    /// that is an immutable place leaves the call at `ref`, for the use to
-    /// report as it reports any immutable place; any other argument that
-    /// cannot be `mut` is reported, and the call is still `mut`.
+    /// implicitly, and any other argument must be a `mut` access. The base
+    /// of an index that is an immutable place leaves the index at `ref`, for
+    /// the use to report as it reports any immutable place; any other
+    /// argument that cannot be `mut` is reported, and the call is still
+    /// `mut`.
     fn select_mut_call(&mut self, expr: ExprId, prop: ExprProp<'db>) -> bool {
         let mut callable = self
             .env
@@ -238,7 +220,10 @@ impl<'db> TyChecker<'db> {
             let span = arg.span(self.body()).into();
             if Some(arg) == receiver {
                 if !arg_prop.is_mut && !self.select_mut_place(arg) && self.env.is_place_expr(arg) {
-                    return false;
+                    if matches!(self.env.expr_data(expr), Partial::Present(Expr::Bin(..))) {
+                        return false;
+                    }
+                    self.report_cannot_borrow_mut(arg, span);
                 }
             } else if arg_prop.access().is_some() && self.select_mut_place(arg) {
                 // A `mut?` result passed on is asked for `mut` in turn.
@@ -264,7 +249,7 @@ impl<'db> TyChecker<'db> {
             && func.containing_trait(self.db).is_some()
         {
             let obligation = TraitObligation {
-                goal: inst.with_mode(self.db, ModeMarker::Mut),
+                goal: inst.mut_goal(self.db),
                 origin: TraitObligationOrigin::GenericConfirmation,
                 span,
             };

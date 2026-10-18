@@ -10,9 +10,9 @@ error[6-0024]: method `index` has incompatible effects
  79 │     fn index(self, _ i: u256) -> ref u256 @S {
     │        ^^^^^ expected 1 effects, found 0
     │
-    ┌─ src/ops.fe:273:8
+    ┌─ src/ops.fe:275:8
     │
-273 │     fn index(self, _ index: I) -> ref Self::Output @S uses E
+275 │     fn index(mut? self, _ index: I) -> mut? Self::Output @S uses E
     │        ----- trait requires these effects
 
 error[6-0033]: the associated space `S` names itself
