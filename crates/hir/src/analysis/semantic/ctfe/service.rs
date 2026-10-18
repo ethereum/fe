@@ -1394,6 +1394,14 @@ fn force_const_computation_in_context<'db>(
                         ConstDependency::AssociatedSelection(use_),
                         origin,
                     ))
+                } else if use_.choice()
+                    == Some(crate::analysis::ty::trait_choice::Choice::Slot(
+                        crate::analysis::ty::trait_choice::SlotRef::Unsupplied,
+                    ))
+                {
+                    // A read refused where it is written (a frame around it
+                    // opened its slot); that refusal is the diagnostic.
+                    EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::InvalidBody { origin }))
                 } else {
                     EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::InvalidOperation {
                         origin,
