@@ -2905,8 +2905,9 @@ pub(super) fn check_choice_uses<'db>(
             .any(|choice| !matches!(choice, Choice::Slot(SlotRef::Bound(_))))
         {
             diags.push(
-                BodyDiag::ChoiceDependentType {
+                BodyDiag::ChoiceCarried {
                     primary: expr.span(body).into(),
+                    reason: "a function value written here would carry the `with` choice to where it is called, which is not supported yet; call it here",
                 }
                 .into(),
             );
@@ -2919,9 +2920,13 @@ pub(super) fn check_choice_uses<'db>(
         use super::const_requirements::{EdgeRefusal, call_refusal};
         let primary = expr.span(body).into();
         match call_refusal(db, typed, body, scope, expr) {
-            Some(EdgeRefusal::TypeReach) => {
-                diags.push(BodyDiag::ChoiceDependentType { primary }.into())
-            }
+            Some(EdgeRefusal::TypeReach) => diags.push(
+                BodyDiag::ChoiceCarried {
+                    primary,
+                    reason: "this call passes a `with` choice into a body that reads it in a type, a function value or a closure, which is not supported yet",
+                }
+                .into(),
+            ),
             Some(EdgeRefusal::EvidenceThroughParam) => diags.push(
                 BodyDiag::ObligationOpening {
                     primary,

@@ -428,6 +428,14 @@ pub enum BodyDiag<'db> {
     ChoiceDependentType {
         primary: DynLazySpan<'db>,
     },
+    /// An opened choice would be carried to where it is not in force: a
+    /// function value made under the opening, or a body this call reaches
+    /// that reads the choice in a type, a function value or a closure (D5,
+    /// D14). `reason` says which.
+    ChoiceCarried {
+        primary: DynLazySpan<'db>,
+        reason: &'static str,
+    },
     TypeMismatch {
         span: DynLazySpan<'db>,
         expected: TyId<'db>,
@@ -1213,7 +1221,7 @@ impl<'db> BodyDiag<'db> {
             Self::ObligationOpening { .. } => 98,
             Self::EvidenceChoiceNotCompileTime { .. } => 120,
             Self::EvidenceMutableStorage { .. } => 100,
-            Self::ChoiceDependentType { .. } => 122,
+            Self::ChoiceDependentType { .. } | Self::ChoiceCarried { .. } => 122,
             Self::TypeMismatch { .. } => 0,
             Self::InfiniteOccurrence(..) => 1,
             Self::DuplicatedRestPat(..) => 2,

@@ -895,7 +895,9 @@ pub(super) fn checked_body<'db>(
     let reported = diags.iter().any(|diag| {
         matches!(
             diag,
-            FuncBodyDiag::Body(BodyDiag::ChoiceDependentType { .. })
+            FuncBodyDiag::Body(
+                BodyDiag::ChoiceDependentType { .. } | BodyDiag::ChoiceCarried { .. }
+            )
         )
     });
     if !reported && let Some(diag) = choice::unreported_choice_dependent_consts(db, &typed) {

@@ -541,7 +541,9 @@ fn written_body_refuses_a_type<'db>(
         .any(|diag| {
             matches!(
                 diag,
-                FuncBodyDiag::Body(BodyDiag::ChoiceDependentType { .. })
+                FuncBodyDiag::Body(
+                    BodyDiag::ChoiceDependentType { .. } | BodyDiag::ChoiceCarried { .. }
+                )
             )
         })
 }

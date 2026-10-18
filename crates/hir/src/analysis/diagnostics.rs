@@ -2606,6 +2606,13 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary.resolve(db),
                 error_code,
             ),
+            Self::ChoiceCarried { primary, reason } => primary_diag(
+                severity,
+                "an opened trait choice would be carried where it is not in force",
+                *reason,
+                primary.resolve(db),
+                error_code,
+            ),
             Self::EvidenceMutableStorage { primary } => primary_diag(
                 severity,
                 "evidence cannot be stored in a mutable place",
