@@ -124,6 +124,10 @@ not conflict with an operation on the map's entries.
   execution and raw storage authority.
 - `Raw`: memory reached through a raw pointer; never checked.
 
+A place reached through a carrier that holds no access, or by dereferencing
+a value that is not a pointer, has no base: once the flow is solved, an
+operation on it is an internal error, never an access of memory.
+
 Places in different spaces are disjoint. A place's space is its root's
 unless a pinned type or an entry along its path moves it (below), so an
 entry of a map lies in storage whatever holds the map.

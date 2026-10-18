@@ -475,6 +475,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 let base = self.root_domain[root.index()].map_or(Base::Root(root), Base::Domain);
                 (vec![rooted(self, base, path)], TokenSet::new())
             }
+            // A carrier with no access names no known place: none until the
+            // flow gives it one (`check_places_known`).
             NPlaceBase::CapabilityTarget { carrier } => {
                 let direct = self.direct(carrier);
                 let mut regions: Vec<AbsPlace> = direct
@@ -486,9 +488,6 @@ impl<'a, 'db> Analysis<'a, 'db> {
                         region.extended(&path, moved, lane)
                     })
                     .collect();
-                if regions.is_empty() {
-                    regions = vec![rooted(self, Base::Raw, path)];
-                }
                 regions.sort();
                 regions.dedup();
                 (regions, direct)
@@ -496,11 +495,20 @@ impl<'a, 'db> Analysis<'a, 'db> {
             // A pointer holds no access. A memory pointee is raw memory; a
             // state pointee may be any place of its space.
             NPlaceBase::Deref { pointer } => {
-                let base = match self.body.values[pointer.index()].ty.as_ptr(self.db) {
-                    Some((_, AddressSpace::Memory)) | None => Base::Raw,
-                    Some((_, space)) => Base::Domain(self.domains.dynamic(Some(space))),
-                };
-                (vec![rooted(self, base, path)], TokenSet::new())
+                let base =
+                    self.body.values[pointer.index()]
+                        .ty
+                        .as_ptr(self.db)
+                        .map(|(_, space)| match space {
+                            AddressSpace::Memory => Base::Raw,
+                            space => Base::Domain(self.domains.dynamic(Some(space))),
+                        });
+                (
+                    base.map(|base| rooted(self, base, path))
+                        .into_iter()
+                        .collect(),
+                    TokenSet::new(),
+                )
             }
         };
         Resolved {
@@ -1244,6 +1252,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             };
             let statements: Vec<_> = self.statements(block).collect();
             for (_, statement) in statements {
+                self.check_places_known(statement)?;
                 self.transfer(statement, &mut state)?;
             }
             if !self.diverges(block) {
@@ -1254,6 +1263,41 @@ impl<'a, 'db> Analysis<'a, 'db> {
         self.check_raw_place()?;
         self.check_projection_recursion()?;
         self.check_yields()
+    }
+
+    /// Every place a reachable operation names is known once the flow is
+    /// solved: its carrier holds the access it reaches the place through, and
+    /// a dereference is of a pointer. A place nothing traces is an error,
+    /// never memory.
+    fn check_places_known(&self, statement: &NStatement<'db>) -> Result<(), Diag<'db>> {
+        let known = |place: &NPlace<'db>| match place.base {
+            NPlaceBase::Root(_) => true,
+            NPlaceBase::CapabilityTarget { carrier } => !self.direct(carrier).is_empty(),
+            NPlaceBase::Deref { pointer } => self.body.values[pointer.index()]
+                .ty
+                .as_ptr(self.db)
+                .is_some(),
+        };
+        let mut unknown = None;
+        match &statement.kind {
+            NStatementKind::Store { destination, .. } if !known(destination) => {
+                unknown = Some(destination.origin);
+            }
+            NStatementKind::Define { expr, .. } => expr.for_each_place_operand(|place| {
+                if unknown.is_none() && !known(place) {
+                    unknown = Some(place.origin);
+                }
+            }),
+            NStatementKind::Store { .. } | NStatementKind::End { .. } => {}
+        }
+        match unknown {
+            Some(origin) => Err(self.diag(
+                SemanticDiagnosticKind::Internal,
+                specific_origin(origin, statement.origin),
+                "cannot tell which place this access names".into(),
+            )),
+            None => Ok(()),
+        }
     }
 
     /// A `#[raw_place]` projection yields a place computed from its inputs,
