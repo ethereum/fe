@@ -11,7 +11,9 @@ use ingot::functional::FnMut_v
 /// The loop holds the collection while it runs; the cursor is a plain value
 /// that names a position and holds no reference to the collection. A
 /// position may name no element, as the one after the last does; the loop
-/// tests each with `has` before it steps from it or projects its element.
+/// tests each with `has` before it projects its element or steps from it.
+/// A body that copies its items may change the collection before the step,
+/// so by then the position may name no element.
 pub trait Collection {
     /// The effects of reaching an element, retained while an element is open.
     uses E
@@ -26,7 +28,8 @@ pub trait Collection {
     /// Whether `c` names an element.
     fn has(self, _ c: Self::Cursor) -> bool uses E
 
-    /// The position after `c`; `has(c)` must hold.
+    /// The position after `c`, which `has` accepted but which may name no
+    /// element by now; the loop tests the result with `has`.
     fn next(self, _ c: Self::Cursor) -> Self::Cursor uses E
 
     /// The element at `c`; `has(c)` must hold.
@@ -120,8 +123,9 @@ pub trait Bidirectional: Collection {
     /// The last position; one that names no element if there are none.
     fn last(self) -> Self::Cursor uses E
 
-    /// The position before `c`; `has(c)` must hold. The position before the
-    /// first element names none, as the one after the last does.
+    /// The position before `c`, which `has` accepted, as for `next`.
+    /// The position before the first element names none, as the one after
+    /// the last does.
     fn prev(self, _ c: Self::Cursor) -> Self::Cursor uses E
 
     /// Each element from the last to the first.
@@ -132,8 +136,9 @@ pub trait Bidirectional: Collection {
 
 // Index cursors wrap: the position before index 0 and the last position of
 // an empty collection are both the largest index, so `c < len` tests a
-// position in either direction. A position `has` holds for is below the
-// length, so stepping from it cannot overflow.
+// position in either direction. A position `has` accepted was below the
+// length, so stepping from it cannot overflow, even once the collection has
+// shrunk.
 
 impl<T, const N: usize> [T; N] {
     pub fn len(self) -> usize {
@@ -281,6 +286,10 @@ impl<T> Bidirectional for MemSlice<T> {
 /// A traversal of a base collection `B` that a loop holds and passes to each
 /// call. A driver stores its state and parameters, never the base, so it is
 /// an ordinary value: built, stored, returned and reused.
+///
+/// Nothing promises one call per element: `filter` projects each element to
+/// test it and again to yield it, and `take(0)` still starts its inner
+/// traversal.
 pub trait Driver<B: Collection> {
     /// The driver's own effects; each method declares the base's.
     uses E
@@ -295,7 +304,8 @@ pub trait Driver<B: Collection> {
     /// Whether `s` names an element.
     fn has(self, _ base: B, _ s: Self::State) -> bool uses (B::E, E)
 
-    /// The state after `s`; `has(s)` must hold.
+    /// The state after `s`, which `has` accepted but which may name no
+    /// element by now, as for `Collection::next`.
     fn next(self, _ base: B, _ s: Self::State) -> Self::State uses (B::E, E)
 
     /// The element at `s`; `has(s)` must hold.
@@ -320,7 +330,8 @@ pub trait Producer<B: Collection> {
     /// Whether `s` names an element.
     fn has(self, _ base: B, _ s: Self::State) -> bool uses (B::E, E)
 
-    /// The state after `s`; `has(s)` must hold.
+    /// The state after `s`, which `has` accepted but which may name no
+    /// element by now: the base may have changed, or `produce` the producer.
     fn next(self, _ base: B, _ s: Self::State) -> Self::State uses (B::E, E)
 
     /// The value made at `s`; `has(s)` must hold.
@@ -459,7 +470,9 @@ impl<B: Collection, D: Driver<B>> Driver<B> for Take<D> {
     type Extra = D::Extra
 
     // The state counts the elements before its own, and stops advancing the
-    // inner traversal at the limit, where a filter would scan on.
+    // inner traversal at the limit, where a filter would scan on. It holds
+    // an inner state from the start, so even `take(0)` starts the inner
+    // traversal: an empty state would put an `Option` in every take loop.
     #[inline(always)]
     fn start(self, _ base: B) -> (usize, D::State) uses (B::E, E) {
         (0, self.inner.start(base))

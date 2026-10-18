@@ -2199,7 +2199,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// state the body then projects from with `has`, so only the state is
     /// carried around the loop. The next state is taken at the latch, after
     /// the body and its element's cleanup, which is where `continue` goes;
-    /// `break` leaves without advancing.
+    /// `break` leaves without advancing. The latch does not test the state
+    /// again: a body over copied items may change the base, and `produce`
+    /// the producer, so `next` accepts a state that may name no element by
+    /// now, and the header tests what it returns.
     fn lower_for(&mut self, stmt: StmtId, pat: PatId, body_expr: ExprId) {
         let sites = self
             .for_loop_call_sites

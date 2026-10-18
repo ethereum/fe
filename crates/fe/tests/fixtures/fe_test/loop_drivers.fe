@@ -57,6 +57,38 @@ impl<B: Collection<Item = u256, Cursor = usize>> Producer<B> for Open {
     }
 }
 
+// The elements up to the first `stop`, which ends the traversal at its own
+// state, so the loop steps from a state that names no element.
+struct UpTo {
+    stop: u256,
+    end: usize,
+}
+
+impl<B: Collection<Item = u256, Cursor = usize>> Producer<B> for UpTo {
+    type State = usize
+    type Out = u256
+
+    fn start(self, _ base: B) -> usize uses B::E {
+        base.start()
+    }
+
+    fn has(self, _ base: B, _ s: usize) -> bool uses B::E {
+        s < self.end && base.has(s)
+    }
+
+    fn next(self, _ base: B, _ s: usize) -> usize uses B::E {
+        base.next(s)
+    }
+
+    fn produce(mut self, _ base: B, _ s: usize) -> u256 uses B::E {
+        let x = Collection::at(base, s)
+        if x == self.stop {
+            self.end = s
+        }
+        x
+    }
+}
+
 #[test]
 fn drivers_by_name() {
     let xs: [u256; 5] = [1, 2, 3, 4, 5]
@@ -153,4 +185,11 @@ fn producers() {
         owned += account.balance * account.owner
     }
     assert!(owned == 140)
+
+    let up_to = UpTo { stop: 20, end: 10 }
+    var seen = 0
+    for x in xs by up_to {
+        seen += x
+    }
+    assert!(seen == 30)
 }
