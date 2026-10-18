@@ -237,8 +237,9 @@ mod frames {
         }
 
         /// The frame a body starts in: inside `impl T for S as N`, the slot
-        /// `T<S>` is N (RD114, provisional reading (a): every use of that slot in
-        /// the body, `Self` forms, receiver calls and concrete paths alike).
+        /// `T<S>` is N for every use of that slot in the body, `Self` forms,
+        /// receiver calls and concrete paths alike (RD129); an inner `with`
+        /// wins over it.
         pub(super) fn seed(&mut self, slot: SlotKey<'db>, choice: Choice<'db>) {
             debug_assert!(
                 self.current.is_none(),
@@ -1949,9 +1950,10 @@ impl<'db> TyCheckEnv<'db> {
         self.written_unknown = frames.unknown();
     }
 
-    /// A named implementation's own body sees itself for its own slot
-    /// (RD114, provisional reading (a): every use of that slot in the body,
-    /// `Self` forms, receiver calls and concrete paths alike).
+    /// A named implementation's own body sees itself for its own slot, for
+    /// every use of that slot in the body, `Self` forms, receiver calls and
+    /// concrete paths alike (RD129). A trait's default body run for it reads
+    /// it through its `Self` forms (RD131).
     pub(super) fn seed_own_choice(&mut self, implementation: crate::hir_def::ImplTrait<'db>) {
         let db = self.db();
         let Some(implementor) = lower_impl_trait(db, implementation) else {

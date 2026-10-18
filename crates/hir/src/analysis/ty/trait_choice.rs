@@ -37,6 +37,10 @@ pub fn slot_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> Tra
 
 /// One implementation for one slot, with its conditions checked where the
 /// choice was decided. Identity is the implementation and the slot only.
+/// A decision is a proof: an implementation with the choices for its bounds
+/// (D1 as ratified). In #1797 the proof is one level deep: a call delivers
+/// its implementation's bounds (D8); sub-choices carried with the choice are
+/// the first follow-up.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub struct KnownChoice<'db> {
     implementation: ImplTrait<'db>,
@@ -624,7 +628,9 @@ impl<'db> SlotChoices<'db> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Resolved<'db> {
     Known(KnownChoice<'db>),
-    /// Ordinary selection answers the use.
+    /// The outermost tier answers the use (D9 as ratified): today the
+    /// ordinary implementation. Once ambient implementations are gone, an
+    /// unanswered slot is a refusal, never a guess.
     Ordinary,
     /// An evidence parameter this instance was not given: no stage may read
     /// it as the ordinary implementation.

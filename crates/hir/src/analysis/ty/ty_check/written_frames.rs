@@ -1,4 +1,6 @@
 //! The trait slots opened where a constant body is written (D5 at the read).
+//! "Opened" is D5 as ratified: a slot any frame answers there, a `with`
+//! block, a named implementation's own slot, and later a module frame.
 //!
 //! A constant written in a body (a constant generic argument, an array
 //! length) is lowered as its own anonymous body, and lowering evaluates it

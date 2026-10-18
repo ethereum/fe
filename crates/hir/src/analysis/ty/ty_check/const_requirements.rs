@@ -2223,8 +2223,9 @@ pub(crate) enum OwedCheck<'db> {
         signature: bool,
     },
     /// A goal the function leaves to ordinary selection is proved through a
-    /// condition on one of its bound slots (D13): that slot may not receive
-    /// an opened or evidence choice.
+    /// condition on one of its bound slots (D13, the owed form as ratified):
+    /// that slot may not receive an opened or evidence choice, so the check
+    /// is owed to every caller. Sub-choices lift it in the first follow-up.
     OpenedCondition {
         slot: TraitInstId<'db>,
     },
