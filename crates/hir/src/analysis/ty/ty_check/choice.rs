@@ -333,14 +333,15 @@ pub(super) enum SourceError {
     Reported,
 }
 
-/// Whether `expr`'s callee body receives the call's decisions: a call through
-/// a path naming the function, or a call of a value whose type implements a
-/// callable shape (`f(x)` means `f.call(x)`). A call of a function value (a
-/// closure or a function item, reached through a binding, block or field)
-/// runs a body made elsewhere, which receives none (D14). `is_binding` says
-/// whether an expression names a local or a parameter, `callee_ty` gives its
-/// type. Any other expression than a call counts as direct (a method call,
-/// an operator). The one classification of call edges.
+/// Whether `expr`'s callee body receives the call's decisions, by the
+/// callee's type (D14): a function item, however the callee is written (a
+/// path, a binding, a block, a field), or a value whose type implements a
+/// callable shape (`f(x)` means `f.call(x)`). A closure, or a function item
+/// behind a capability, runs a body made elsewhere, which receives none.
+/// `is_binding` says whether an expression names a local or a parameter,
+/// `callee_ty` gives its type. Any other expression than a call counts as
+/// direct (a method call, an operator). The one classification of call
+/// edges.
 pub(super) fn calls_directly<'db>(
     db: &'db dyn HirAnalysisDb,
     body: crate::hir_def::Body<'db>,
@@ -352,7 +353,7 @@ pub(super) fn calls_directly<'db>(
         Partial::Present(Expr::Call(callee, _)) => {
             matches!(callee.data(db, body), Partial::Present(Expr::Path(..)))
                 && !is_binding(*callee)
-                || callee_ty(*callee).is_some_and(|ty| !is_function_value(db, ty))
+                || callee_ty(*callee).is_some_and(|ty| ty.is_func(db) || !is_function_value(db, ty))
         }
         _ => true,
     }
@@ -2235,24 +2236,14 @@ impl<'db> TyCheckEnv<'db> {
     /// ambiguous and refused. Runs once inference has resolved every goal.
     pub(super) fn record_choice_decisions(&mut self) {
         let db = self.db();
+        let path_callees = self.callee_only_values();
+        self.callee_only_values = path_callees.clone();
         // A call through a function value made elsewhere receives nothing from
         // the frame where it is called; only a path naming the function does.
         let is_binding = |callee| {
             self.typed_expr(callee)
                 .is_some_and(|prop| prop.binding.is_some())
         };
-        let mut path_callees = Vec::new();
-        for (_, data) in self.body().exprs(db).iter() {
-            if let Partial::Present(Expr::Call(callee, _)) = data
-                && matches!(
-                    callee.data(db, self.body()),
-                    Partial::Present(Expr::Path(..))
-                )
-                && !is_binding(*callee)
-            {
-                path_callees.push(*callee);
-            }
-        }
         let calls = self
             .semantic_expr_lowering
             .iter()
@@ -2290,8 +2281,9 @@ impl<'db> TyCheckEnv<'db> {
             }
             self.for_loop_plans[stmt] = Some(plan);
         }
-        // A function value is a path naming a function that no call takes as
-        // its callee. It would carry the decisions for the slots it reads.
+        // A function value is a path naming a function that reaches more than
+        // the callees of calls. It would carry the decisions for the slots it
+        // reads.
         let values = self
             .body()
             .exprs(db)
@@ -2420,6 +2412,73 @@ impl<'db> TyCheckEnv<'db> {
                 self.closure_choices.push((expr, slots));
             }
         }
+    }
+
+    /// The paths naming a function that reach only the callees of calls,
+    /// which decide for it where they are written (D14): a path callee, the
+    /// value a block callee yields, and a `let` binding's initializer when
+    /// every use of the binding is a callee. Such a path carries nothing as
+    /// a value.
+    fn callee_only_values(&self) -> Vec<ExprId> {
+        use crate::hir_def::Stmt;
+        let db = self.db();
+        let body = self.body();
+        let is_binding = |expr| {
+            self.typed_expr(expr)
+                .is_some_and(|prop| prop.binding.is_some())
+        };
+        // The expression a block yields, through nested blocks.
+        let yielded = |mut expr: ExprId| loop {
+            let Partial::Present(Expr::Block(stmts, _)) = expr.data(db, body) else {
+                return expr;
+            };
+            let Some(Partial::Present(Stmt::Expr(tail))) =
+                stmts.last().map(|stmt| stmt.data(db, body))
+            else {
+                return expr;
+            };
+            expr = *tail;
+        };
+        let names_function = |expr: ExprId| {
+            matches!(expr.data(db, body), Partial::Present(Expr::Path(..))) && !is_binding(expr)
+        };
+        let callees = body
+            .exprs(db)
+            .iter()
+            .filter_map(|(_, data)| match data {
+                Partial::Present(Expr::Call(callee, _)) => Some(*callee),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let mut only = callees
+            .iter()
+            .map(|callee| yielded(*callee))
+            .filter(|expr| names_function(*expr))
+            .collect::<Vec<_>>();
+        for (_, stmt) in body.stmts(db).iter() {
+            let Partial::Present(Stmt::Let(pat, _, Some(init), None)) = stmt else {
+                continue;
+            };
+            let value = yielded(*init);
+            if !names_function(value) {
+                continue;
+            }
+            let Some(binding) = self.pat_binding(*pat) else {
+                continue;
+            };
+            let uses = body
+                .exprs(db)
+                .keys()
+                .filter(|expr| {
+                    self.typed_expr(*expr)
+                        .is_some_and(|prop| prop.binding == Some(binding))
+                })
+                .collect::<Vec<_>>();
+            if !uses.is_empty() && uses.iter().all(|use_| callees.contains(use_)) {
+                only.push(value);
+            }
+        }
+        only
     }
 
     /// A trait constant use with its decisions: its own slot's, and one for

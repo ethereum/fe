@@ -1157,8 +1157,20 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let from = self.expr_ty(*value);
                 self.lower_cast_expr(origin, *value, from, ty)
             }
-            Expr::Call(_, args) => {
-                self.lower_call(expr, self.typed_body.call_receiver(self.db, expr), args)
+            Expr::Call(callee, args) => {
+                let receiver = self.typed_body.call_receiver(self.db, expr);
+                // A function item called directly through a block or a field
+                // is evaluated first, for what that expression does; the call
+                // then runs the function its type names.
+                if receiver.is_none()
+                    && !matches!(
+                        callee.data(self.db, self.body),
+                        Partial::Present(Expr::Path(..))
+                    )
+                {
+                    let _ = self.lower_expr(*callee);
+                }
+                self.lower_call(expr, receiver, args)
             }
             Expr::Assert(args) => self.lower_assert(expr, args),
             Expr::UnsupportedMacroCall => {

@@ -660,6 +660,8 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
         typed: &'a TypedBody<'db>,
         body: Body<'db>,
     ) -> Self {
+        // A path naming a function that reaches only callees is checked at
+        // those calls, which decide for it (D14), as a path callee is.
         let direct_callees = body
             .exprs(db)
             .values()
@@ -667,6 +669,7 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
                 Expr::Call(callee, _) => Some(*callee),
                 _ => None,
             })
+            .chain(typed.callee_only_values().iter().copied())
             .collect();
         Self {
             db,
@@ -777,8 +780,9 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
     fn check_callee(&mut self, expr: ExprId, data: &Partial<Expr<'db>>, ty: TyId<'db>) {
         // A call through a value, a method or a trait still pays the debts its
         // body owes for the evidence this call passes.
-        // (Direct calls of free functions and inherent methods are handled with
-        // their own conditions in `discharge_callee_conditions`.)
+        // (Direct calls of free functions and inherent methods, through a path
+        // or a function item however written, are handled with their own
+        // conditions in `discharge_callee_conditions`.)
         if matches!(data.borrowed().to_opt(), Some(Expr::Call(..)))
             && !calls_directly(self.db, self.typed, self.body, expr)
             || self
@@ -793,13 +797,16 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
             return;
         }
         // A function value enters the body where it is written, at a path
-        // that names the function. A call through anything else, such as a
-        // binding, block, branch or field, calls such a value, whose
-        // requirements were checked there. A call of a callable value runs
-        // its shape trait's method, whose requirements are checked here.
+        // that names the function, unless it reaches only callees, whose
+        // calls check it. A call of a function item, however written, is
+        // checked here as a path call is (D14); a call of any other value
+        // calls a value whose requirements were checked where it was
+        // written. A call of a callable value runs its shape trait's method,
+        // whose requirements are checked here.
         if let Some(Expr::Call(callee, _)) = data.borrowed().to_opt()
             && !self.names_function_value(*callee)
             && self.typed.call_receiver(self.db, expr).is_none()
+            && !calls_directly(self.db, self.typed, self.body, expr)
         {
             return;
         }

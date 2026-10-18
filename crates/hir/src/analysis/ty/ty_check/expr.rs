@@ -1729,8 +1729,10 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        // Only a path names the function it calls; any other callee, even one
-        // of a function item's type, is a value the call evaluates first.
+        // A callee whose type is a function item is called directly, however
+        // it is written (a path, a binding, a block, a field): the call decides
+        // for the function's bounds and evidence as a path call does (D14).
+        // Any other callee is a value called through its callable shape.
         let is_path = matches!(
             callee.data(self.db, self.body()),
             Partial::Present(Expr::Path(..))
@@ -1738,7 +1740,7 @@ impl<'db> TyChecker<'db> {
         let mut callable = if is_path && let Some(existing) = self.env.callable_expr(*callee) {
             existing.clone()
         } else if !callee_prop.ty.base_ty(self.db).is_ty_var(self.db)
-            && (!is_path || !callee_prop.ty.is_func(self.db))
+            && !callee_prop.ty.is_func(self.db)
         {
             return self.check_value_call(expr, *callee, callee_prop, args);
         } else {

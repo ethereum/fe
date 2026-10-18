@@ -1398,6 +1398,7 @@ fn typed_body_for_bodyless_func<'db>(
         with_choice_bindings: Vec::new(),
         function_value_choices: Vec::new(),
         closure_choices: Vec::new(),
+        callee_only_values: Vec::new(),
         const_reaches: Vec::new(),
         effect_with_operands: Vec::new(),
         choice_refusals: Vec::new(),
@@ -3985,6 +3986,8 @@ mod typed_body_tables {
         /// Uses inside closure bodies and the slot choices they read.
         pub(super) closure_choices:
             Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
+        /// Paths naming a function that reach only the callees of calls.
+        pub(super) callee_only_values: Vec<ExprId>,
         /// The body's own slots that its constant uses pass on to a constant
         /// body whose types read them (`const_type_reads`).
         pub(super) const_reaches: Vec<crate::analysis::ty::trait_def::TraitInstId<'db>>,
@@ -4414,6 +4417,12 @@ impl<'db> TypedBody<'db> {
         &self,
     ) -> &[(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)] {
         &self.tables.function_value_choices
+    }
+
+    /// The paths naming a function that reach only the callees of calls,
+    /// which decide for it (D14): such a path is checked at those calls.
+    pub(crate) fn callee_only_values(&self) -> &[ExprId] {
+        &self.tables.callee_only_values
     }
 
     /// Uses inside closure bodies and the slot choices they read.
@@ -6098,6 +6107,7 @@ impl<'db> TypedBody<'db> {
             with_choice_bindings: Vec::new(),
             function_value_choices: Vec::new(),
             closure_choices: Vec::new(),
+            callee_only_values: Vec::new(),
             const_reaches: Vec::new(),
             effect_with_operands: Vec::new(),
             choice_refusals: Vec::new(),
