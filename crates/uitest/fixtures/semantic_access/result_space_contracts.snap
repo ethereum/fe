@@ -5,13 +5,13 @@ expression: diags
 input_file: fixtures/semantic_access/result_space_contracts.fe
 ---
 error[16-0007]: transport violation in `fn slot`
-   ┌─ result_space_contracts.fe:28:9
+   ┌─ result_space_contracts.fe:22:9
    │
-28 │         mut self.n
+22 │         mut self.n
    │         ^^^^^^^^^^ this yield names storage, but the signature declares memory
 
 error[16-0007]: transport violation in `fn mislabeled`
-   ┌─ result_space_contracts.fe:47:9
+   ┌─ result_space_contracts.fe:41:9
    │
-47 │         mut self.n
+41 │         mut self.n
    │         ^^^^^^^^^^ this yield names storage, but the signature declares memory

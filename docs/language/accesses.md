@@ -142,25 +142,27 @@ structurally disjoint, as in `(mut self.a, mut self.b)`. An optional shape,
 the `yield`.
 
 Each access a projection grants lies in one address space, its *result
-space*. The compiler infers it from the body, and a signature may declare it
-after a component or after the whole return: a space (`@memory`, `@storage`,
-`@transient`, `@calldata`, `@code`), a parameter's or effect's place
-(`@self`, `@total`), a sub-place of one (`@self.value`, `@self.pair.0`,
-`@self.cells[_]`), the resource a handle names (`@target(p)`), or an
-associated space (`@S`). A sub-place lies where its path leads: a step into a
+space*. The compiler infers it from the body, for each instance, and a
+signature may declare it after a component or after the whole return: a
+space (`@memory`, `@storage`, `@transient`, `@calldata`, `@code`), a
+parameter's or effect's place (`@self`, `@total`), a sub-place of one
+(`@self.value`, `@self.pair.0`, `@self.cells[_]`), or the resource a handle
+names (`@target(p)`). A sub-place lies where its path leads: a step into a
 pinned type moves it into the pin's space, an entry into its collection's,
 and a packed field or entry is reached through a memory copy, so
 its grants lie in memory. Every yield must lie in the declared space, so
 `@self` on a struct holding a `TSlot` does not cover a yield of the `TSlot`'s
-value, while `@self.locked` does. An implementation gives its trait's
-`space S` the same way; `space S = self[_]` says its elements are its own
-parts, which is memory for packed elements.
+value, while `@self.locked` does. A trait method's contract holds for each
+implementation, and an implementation's method may declare its own;
+`@self[_]` says a collection's elements are its own parts, which is memory
+for packed elements.
 
 ```fe
 fn value(mut? self) -> mut? T @self.value { mut? self.value }
 
 impl<T> Collection for Cells<T> {
-    space S = self[_]       // where its elements lie: memory for packed ones
+    // where its elements lie: memory for packed ones
+    fn at(mut? self, _ c: usize) -> mut? T @self[_] { mut? self.cells[c] }
     ..
 }
 ```

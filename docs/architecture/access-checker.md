@@ -167,7 +167,7 @@ stack; they end at their `end`, in any order. In the projection's body:
   instantiation. That space is the projection's *result-space contract*
   (`projection_result_spaces`), inferred from the body and exported with the
   instance: callers combine grants by their contracts, never by bodies. A
-  declared contract naming a sub-place (`@self.value`, `space S = self[_]`)
+  declared contract naming a sub-place (`@self.value`, `@self[_]`)
   resolves per instance by the same path walk (`access::space::PathSpace`)
   that classifies yields, so the two agree on pins, entries and lanes. A
   place's space is its root's, unless a pinned type or an entry along its

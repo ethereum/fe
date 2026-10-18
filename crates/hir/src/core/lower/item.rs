@@ -529,7 +529,8 @@ impl<'db> Func<'db> {
             .map(|params| FuncParamListId::lower_ast(ctxt, params))
             .into();
         let ret_ty = sig.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
-        // A trailing `@S` is the contract of components that declare none.
+        // A contract after the whole return is that of the components that
+        // declare none.
         let ret_space = sig.ret_space();
         let ret_spaces = sig
             .ret_ty()
@@ -667,24 +668,6 @@ fn lower_uses_params<'db>(
         })
         .collect();
     EffectParamListId::new(ctxt.db(), data)
-}
-
-impl<'db> AssocSpace<'db> {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitSpaceItem) -> Self {
-        validate_unsupported_item_attrs(
-            ctxt,
-            ast.attr_list(),
-            "space",
-            ast.name().map(|name| name.text().to_string()),
-        );
-        let steps = SpacePathId::lower_ast(ctxt, ast.space_path());
-        AssocSpace {
-            name: IdentId::lower_token_partial(ctxt, ast.name()),
-            value: ast
-                .value()
-                .map(|value| (Partial::Present(PathId::lower_ast(ctxt, value)), steps)),
-        }
-    }
 }
 
 impl<'db> SpaceAnnotation<'db> {
@@ -878,7 +861,6 @@ impl<'db> Trait<'db> {
         let mut types = vec![];
         let mut consts = vec![];
         let mut rows = vec![];
-        let mut spaces = vec![];
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
@@ -912,9 +894,6 @@ impl<'db> Trait<'db> {
                         consts.push(AssocConstDecl::lower_ast(ctxt, c));
                     }
                     ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
-                    ast::TraitItemKind::Space(space) => {
-                        spaces.push(AssocSpace::lower_ast(ctxt, space));
-                    }
                 };
             }
         }
@@ -933,7 +912,7 @@ impl<'db> Trait<'db> {
             where_clause,
             types,
             consts,
-            AccessItems { rows, spaces },
+            rows,
             ctxt.top_mod(),
             origin,
         );
@@ -1017,7 +996,6 @@ impl<'db> ImplTrait<'db> {
         let mut types = vec![];
         let mut consts = vec![];
         let mut rows = vec![];
-        let mut spaces = vec![];
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
                 match impl_item.kind() {
@@ -1050,9 +1028,6 @@ impl<'db> ImplTrait<'db> {
                         consts.push(AssocConstDef::lower_ast(ctxt, c));
                     }
                     ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
-                    ast::TraitItemKind::Space(space) => {
-                        spaces.push(AssocSpace::lower_ast(ctxt, space));
-                    }
                 };
             }
         }
@@ -1071,7 +1046,7 @@ impl<'db> ImplTrait<'db> {
             where_clause,
             types,
             consts,
-            AccessItems { rows, spaces },
+            rows,
             ast.unsafe_kw().is_some(),
             ctxt.top_mod(),
             origin,

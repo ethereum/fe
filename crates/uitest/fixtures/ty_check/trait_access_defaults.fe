@@ -1,7 +1,5 @@
-// A trait declares its effect rows and result spaces; each implementation
-// gives them.
+// A trait declares its effect rows; each implementation gives them.
 trait Collection {
     uses E = (storage: mut Self)
-    space S = memory
-    fn at(self) -> ref u256 @S uses E
+    fn at(self) -> ref u256 uses E
 }

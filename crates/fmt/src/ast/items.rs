@@ -1324,37 +1324,7 @@ impl ToDoc for ast::TraitItem {
             TraitItemKind::Type(ty) => ty.to_doc(ctx),
             TraitItemKind::Const(c) => c.to_doc(ctx),
             TraitItemKind::Uses(row) => row.to_doc(ctx),
-            TraitItemKind::Space(space) => space.to_doc(ctx),
         }
-    }
-}
-
-impl ToDoc for ast::TraitSpaceItem {
-    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
-        let alloc = &ctx.alloc;
-
-        token_doc_item_like_if_comments!(self, ctx);
-
-        let name = self
-            .name()
-            .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
-        let value = self.value().map_or_else(
-            || alloc.nil(),
-            |value| {
-                let space_path = self
-                    .space_path()
-                    .map_or_else(|| alloc.nil(), |space_path| space_path.to_doc(ctx));
-                alloc
-                    .text(" = ")
-                    .append(value.to_doc(ctx))
-                    .append(space_path)
-            },
-        );
-
-        attrs_doc(self, ctx)
-            .append(alloc.text("space "))
-            .append(name)
-            .append(value)
     }
 }
 

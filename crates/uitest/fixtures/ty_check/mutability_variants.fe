@@ -22,7 +22,6 @@ struct Fixed {
 }
 
 impl Collection for Fixed {
-    space S = self.value
     type Cursor = usize
     type Item = u256
 
@@ -38,7 +37,7 @@ impl Collection for Fixed {
         c + 1
     }
 
-    fn at(self, _ c: usize) -> ref u256 {
+    fn at(self, _ c: usize) -> ref u256 @self.value {
         ref self.value
     }
 }

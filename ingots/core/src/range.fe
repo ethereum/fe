@@ -46,7 +46,6 @@ fn range_has(_ c: usize, _ lo: usize, _ hi: usize) -> bool {
 
 /// Fully const range: `Known<LO>..Known<HI>`
 impl<const LO: usize, const HI: usize> Collection for Range<Known<LO>, Known<HI>> {
-    space S = memory
     type Cursor = usize
     type Item = usize
 
@@ -66,7 +65,7 @@ impl<const LO: usize, const HI: usize> Collection for Range<Known<LO>, Known<HI>
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize {
+    fn at(self, _ c: usize) -> ref usize @memory {
         ref c
     }
 }
@@ -85,7 +84,6 @@ impl<const LO: usize, const HI: usize> Bidirectional for Range<Known<LO>, Known<
 
 /// Const start, dynamic end: `Known<LO>..n` (common `0..n` pattern)
 impl<const LO: usize> Collection for Range<Known<LO>, Unknown> {
-    space S = memory
     type Cursor = usize
     type Item = usize
 
@@ -105,7 +103,7 @@ impl<const LO: usize> Collection for Range<Known<LO>, Unknown> {
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize {
+    fn at(self, _ c: usize) -> ref usize @memory {
         ref c
     }
 }
@@ -124,7 +122,6 @@ impl<const LO: usize> Bidirectional for Range<Known<LO>, Unknown> {
 
 /// Dynamic start, const end: `n..Known<HI>`
 impl<const HI: usize> Collection for Range<Unknown, Known<HI>> {
-    space S = memory
     type Cursor = usize
     type Item = usize
 
@@ -144,7 +141,7 @@ impl<const HI: usize> Collection for Range<Unknown, Known<HI>> {
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize {
+    fn at(self, _ c: usize) -> ref usize @memory {
         ref c
     }
 }
@@ -163,7 +160,6 @@ impl<const HI: usize> Bidirectional for Range<Unknown, Known<HI>> {
 
 /// Fully dynamic range: `start..end`
 impl Collection for Range<Unknown, Unknown> {
-    space S = memory
     type Cursor = usize
     type Item = usize
 
@@ -183,7 +179,7 @@ impl Collection for Range<Unknown, Unknown> {
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize {
+    fn at(self, _ c: usize) -> ref usize @memory {
         ref c
     }
 }

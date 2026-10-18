@@ -5,15 +5,15 @@ expression: diags
 input_file: fixtures/ty_check/mutability_variants.fe
 ---
 error[6-0003]: trait bound is not satisfied
-   ┌─ mutability_variants.fe:47:5
+   ┌─ mutability_variants.fe:46:5
    │
-47 │     fixed.at(0) = 1
+46 │     fixed.at(0) = 1
    │     ^^^^^^^^^^^ `Fixed` doesn't implement `mut Collection`
 
 error[6-0003]: trait bound is not satisfied
-   ┌─ mutability_variants.fe:48:18
+   ┌─ mutability_variants.fe:47:18
    │
-48 │     for mut x in fixed {
+47 │     for mut x in fixed {
    │                  ^^^^^ `Fixed` doesn't implement `mut Collection`
 
 error[8-0018]: left-hand side of assignment is immutable

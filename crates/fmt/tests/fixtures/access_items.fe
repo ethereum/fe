@@ -1,20 +1,17 @@
 trait Collection {
     uses   E
-    space    S
-    fn at(self, _ c: u256) -> ref u256   @S uses E
+    fn at(self, _ c: u256) -> ref u256 uses E
 }
 
 impl Collection for Words {
     uses E =(storage:mut   Self)
-    space S =   storage
     fn at(self, _ c: u256) -> (u256, ref u256)@self uses E {
         self.get(c)
     }
 }
 
 impl Collection for Cells {
-    space S =   self [_]
-    fn at(self, _ c: u256) -> ref u256 uses E {
+    fn at(self, _ c: u256) -> ref u256   @self [_] uses E {
         ref self.cells[c]
     }
 }

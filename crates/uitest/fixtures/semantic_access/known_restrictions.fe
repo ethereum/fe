@@ -4,7 +4,6 @@ use core::iter::Collection
 struct Grid { cells: [u256; 4] }
 
 impl Collection for Grid {
-    space S = self
     type Cursor = (usize, usize)
     type Item = u256
 
@@ -20,7 +19,7 @@ impl Collection for Grid {
         (c.0, c.1 + 1)
     }
 
-    fn at(self, _ c: (usize, usize)) -> ref u256 {
+    fn at(self, _ c: (usize, usize)) -> ref u256 @self {
         ref self.cells[c.0 * 2 + c.1]
     }
 }

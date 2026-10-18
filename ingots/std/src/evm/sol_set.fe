@@ -34,7 +34,6 @@ pub struct SolEnumerableSet<T> {
 
 // A loop visits the elements in the set's internal order, like `get`.
 impl<T: SolPacked> Collection for SolEnumerableSet<T> {
-    space S = memory
     type Cursor = u256
     type Item = T
 
@@ -51,7 +50,7 @@ impl<T: SolPacked> Collection for SolEnumerableSet<T> {
         c.wrapping_add(1)
     }
 
-    fn at(self, _ c: u256) -> ref T {
+    fn at(self, _ c: u256) -> ref T @memory {
         let value = self.get(c)
         ref value
     }

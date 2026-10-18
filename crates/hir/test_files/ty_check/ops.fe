@@ -71,9 +71,8 @@ impl Add<i32> for Point {
 }
 
 impl Index<usize> for Point {
-    space S = memory
     type Output = Option<i32>
-    fn index(self, _ i: usize) -> ref Option<i32> {
+    fn index(self, _ i: usize) -> ref Option<i32> @memory {
         let value = match i {
             0 => Some(self.x)
             1 => Some(self.y)

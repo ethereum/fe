@@ -23,7 +23,6 @@ struct InUse {}
 
 impl Collection for InUse {
     uses E = (counts: Counts)
-    space S = memory
     type Cursor = u256
     type Item = u256
 
@@ -39,7 +38,7 @@ impl Collection for InUse {
         c + 1
     }
 
-    fn at(self, _ c: u256) -> ref u256 uses E {
+    fn at(self, _ c: u256) -> ref u256 @memory uses E {
         let v = value(c)
         ref v
     }

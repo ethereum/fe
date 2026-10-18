@@ -10,7 +10,6 @@ struct Account { balance: u256, owner: u256 }
 struct Squares { n: usize }
 
 impl Collection for Squares {
-    space S = memory
     type Cursor = usize
     type Item = usize
 
@@ -26,7 +25,7 @@ impl Collection for Squares {
         c + 1
     }
 
-    fn at(self, _ c: usize) -> ref usize {
+    fn at(self, _ c: usize) -> ref usize @memory {
         let square = c * c
         yield ref square
     }

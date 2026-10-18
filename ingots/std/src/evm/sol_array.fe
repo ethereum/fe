@@ -196,7 +196,6 @@ impl<T> SolArray<T> {
 }
 
 impl<T> Collection for SolArray<T> {
-    space S = self[_]
     type Cursor = u256
     type Item = T
 
@@ -215,7 +214,7 @@ impl<T> Collection for SolArray<T> {
         c.wrapping_add(1)
     }
 
-    fn at(mut? self, _ c: u256) -> mut? T @S {
+    fn at(mut? self, _ c: u256) -> mut? T @self[_] {
         mut? self[c]
     }
 }

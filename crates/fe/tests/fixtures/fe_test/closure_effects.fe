@@ -140,7 +140,6 @@ impl Copy for BelowStore {}
 
 impl Collection for BelowStore {
     uses E = (store: Store)
-    space S = memory
     type Cursor = u256
     type Item = u256
 
@@ -156,7 +155,7 @@ impl Collection for BelowStore {
         c + 1
     }
 
-    fn at(self, _ c: u256) -> ref u256 uses E {
+    fn at(self, _ c: u256) -> ref u256 @memory uses E {
         let value = c
         ref value
     }

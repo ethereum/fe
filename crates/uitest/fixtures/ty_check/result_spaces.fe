@@ -1,25 +1,11 @@
 trait Slot {
-    space S
-    fn slot(mut self) -> mut u256 @S
+    fn slot(mut self) -> mut u256
 }
 
-// An implementation gives each of its trait's spaces.
-struct Missing { n: u256 }
-
-impl Slot for Missing {
-    fn slot(mut self) -> mut u256 {
-        var tmp = self.n
-        yield mut tmp
-        self.n = tmp
-    }
-}
-
-// Its rows and spaces are the trait's, and a space names one.
+// Its rows are the trait's.
 struct Unknown { n: u256 }
 
 impl Slot for Unknown {
-    space S = nowhere
-    space T = memory
     uses E = ()
     fn slot(mut self) -> mut u256 {
         var tmp = self.n
@@ -28,8 +14,7 @@ impl Slot for Unknown {
     }
 }
 
-// An annotation names a space, a parameter, an effect, `target(p)`, or an
-// associated space.
+// An annotation names a space, a parameter, an effect, or `target(p)`.
 struct Holder { n: u256 }
 
 impl Holder {
@@ -88,15 +73,14 @@ impl Pathed {
     }
 }
 
-// An implementation's `self` path names its type's parts too.
+// An implementation's method declares its own contract, whose `self` path
+// names its type's parts too.
 struct Elements {
     n: u256,
 }
 
 impl Slot for Elements {
-    space S = self.nope
-
-    fn slot(mut self) -> mut u256 {
+    fn slot(mut self) -> mut u256 @self.nope {
         mut self.n
     }
 }

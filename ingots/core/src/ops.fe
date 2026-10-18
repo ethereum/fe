@@ -268,11 +268,9 @@ pub trait LaneCodec<T> {
 pub trait Index<I> {
     /// The effects of reaching an element.
     uses E
-    /// The address space of the projected element.
-    space S
     type Output
 
-    fn index(mut? self, _ index: I) -> mut? Self::Output @S uses E
+    fn index(mut? self, _ index: I) -> mut? Self::Output uses E
 }
 
 /// The number of elements of a collection indexed by position: its
@@ -284,11 +282,10 @@ pub trait Len {
 // An array index is built-in place syntax; this impl lets generic code
 // index an array through `Index`.
 impl<T, const N: usize> Index<usize> for [T; N] {
-    space S = self[_]
     type Output = T
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? T {
+    fn index(mut? self, _ index: usize) -> mut? T @self[_] {
         mut? self[index]
     }
 }

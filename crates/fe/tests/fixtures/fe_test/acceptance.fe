@@ -310,13 +310,12 @@ struct Scores {
 }
 
 impl Index<u256> for Scores {
-    space S = memory
     type Output = u32
-    fn index(self, _ i: u256) -> ref u32 {
+    fn index(self, _ i: u256) -> ref u32 @memory {
         (self.words[i / 8] >> ((i % 8) * 32)).downcast_truncate()
     }
 
-    fn index(mut self, _ i: u256) -> mut u32 {
+    fn index(mut self, _ i: u256) -> mut u32 @memory {
         let shift = (i % 8) * 32
         var tmp: u32 = (self.words[i / 8] >> shift).downcast_truncate()
         yield mut tmp

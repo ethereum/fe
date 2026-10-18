@@ -40,10 +40,7 @@ use crate::{
                 RootProviderScope, provider_semantics, provider_semantics_for_specialized_call,
                 registered_root_providers,
             },
-            result_space::{
-                ResolvedSpace, SpaceContract, SpaceKey, declared_result_spaces, resolve_space_key,
-                space_path_steps,
-            },
+            result_space::{SpaceContract, declared_result_spaces, space_path_steps},
             subst::substitute_complete,
             trait_def::{MethodArgMapError, TraitInstId},
             trait_resolution::{
@@ -1244,27 +1241,15 @@ impl<'db> SemanticInstance<'db> {
         let BodyOwner::Func(func, _) = self.key(db).owner(db) else {
             return Vec::new();
         };
-        // The trait method's contracts, as far as they mean the same here:
-        // the trait's own spaces are the implementation's.
+        // The trait method's contracts, but for an effect domain's: the
+        // domains are the trait method's effects.
         let inherited = func
             .trait_method_def(db)
-            .zip(func.containing_impl_trait(db))
-            .map(|(method, impl_trait)| {
-                let trait_def = method.containing_trait(db);
-                let own = trait_def.map(|trait_def| {
-                    TraitInstId::new_simple(db, trait_def, trait_def.params(db).to_vec())
-                });
+            .map(|method| {
                 declared_result_spaces(db, method)
                     .iter()
-                    .map(|contract| match (*contract)? {
-                        SpaceContract::Assoc(key) if Some(key.inst) == own => {
-                            Some(SpaceContract::Assoc(SpaceKey {
-                                inst: impl_trait.trait_inst_result(db).ok()?,
-                                ..key
-                            }))
-                        }
-                        SpaceContract::Assoc(_) | SpaceContract::Domain(..) => None,
-                        contract => Some(contract),
+                    .map(|contract| {
+                        contract.filter(|contract| !matches!(contract, SpaceContract::Domain(..)))
                     })
                     .collect::<Vec<_>>()
             })
@@ -1314,41 +1299,6 @@ impl<'db> SemanticInstance<'db> {
                     steps,
                 )
             }
-            SpaceContract::Assoc(space) => match resolve_space_key(
-                db,
-                SpaceKey {
-                    inst: instantiate_normalized_trait_inst(db, key, space.inst).ok()?,
-                    ..space
-                },
-                key.owner(db).scope(),
-                self.assumptions(db),
-            )? {
-                ResolvedSpace::Space(space) => Some(space),
-                // The parameter holding the owner, if one alone does: its
-                // place, or the sub-place the implementation names.
-                ResolvedSpace::Owner(owner, steps) => {
-                    let owner = self.normalized_ty(db, owner);
-                    let typed_body = key.typed_body(db);
-                    let mut params = (0..)
-                        .map_while(|idx| Some((idx, typed_body.param_binding(idx)?)))
-                        .filter(|(_, binding)| {
-                            let ty = self.binding_ty(db, *binding);
-                            self.normalized_ty(
-                                db,
-                                ty.as_capability(db).map_or(ty, |(_, inner)| inner),
-                            ) == owner
-                        });
-                    match (params.next(), params.next()) {
-                        (Some((param, _)), None) => self.sub_place_space(
-                            db,
-                            self.param_space(db, param as u32),
-                            owner,
-                            steps,
-                        ),
-                        _ => None,
-                    }
-                }
-            },
         }
     }
 

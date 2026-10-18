@@ -1,8 +1,8 @@
 // A contract may name a sub-place of a parameter or effect, `@self.value`,
 // `@self[_]`: its space is the one the path reaches, through pinned types,
-// entries and lanes. An implementation's `space S = self[_]` is where its
-// elements lie, so a packed collection exports memory (S-50) and a plain
-// `@self` on a yield that crosses a pin is a mismatch (S-51).
+// entries and lanes. A collection's `at` that declares `@self[_]` yields
+// where its elements lie, so a packed collection exports memory (S-50), and
+// a plain `@self` on a yield that crosses a pin is a mismatch (S-51).
 use core::marker::{Pinned, Storage}
 use core::iter::Collection
 use core::ops::{LaneCodec, Location, StateIndex}
@@ -41,7 +41,6 @@ unsafe impl StateIndex for Bytes {
 
 // Accepted: its elements are lanes, whose grants lie in memory.
 impl Collection for Bytes {
-    space S = self[_]
     type Cursor = u256
     type Item = u8
 
@@ -57,7 +56,7 @@ impl Collection for Bytes {
         c + 1
     }
 
-    fn at(self, _ c: u256) -> ref u8 {
+    fn at(self, _ c: u256) -> ref u8 @self[_] {
         ref self[c]
     }
 }
@@ -81,7 +80,6 @@ unsafe impl StateIndex for PromisedBytes {
 
 // Rejected: storage is promised, but a lane's grant is a memory copy.
 impl Collection for PromisedBytes {
-    space S = self
     type Cursor = u256
     type Item = u8
 
@@ -97,7 +95,7 @@ impl Collection for PromisedBytes {
         c + 1
     }
 
-    fn at(self, _ c: u256) -> ref u8 {
+    fn at(self, _ c: u256) -> ref u8 @self {
         ref self[c]
     }
 }

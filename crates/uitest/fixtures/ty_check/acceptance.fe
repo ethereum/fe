@@ -35,7 +35,6 @@ struct Keyed { len: u256 }
 
 impl Collection for Keyed {
     uses E = (key: Key)
-    space S = memory
     type Cursor = u256
     type Item = u256
 
@@ -51,7 +50,7 @@ impl Collection for Keyed {
         c + 1
     }
 
-    fn at(self, _ c: u256) -> ref u256 uses E {
+    fn at(self, _ c: u256) -> ref u256 @memory uses E {
         let item = key.n + c
         ref item
     }

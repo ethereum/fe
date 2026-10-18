@@ -1216,8 +1216,10 @@ pub struct Trait<'db> {
     pub(in crate::core) types: Vec<AssocTyDecl<'db>>,
     #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDecl<'db>>,
+    /// The effect rows: `uses E` in a trait, `uses E = ..` in an
+    /// implementation.
     #[return_ref]
-    pub(in crate::core) access_items: AccessItems<'db>,
+    pub rows: Vec<AssocRow<'db>>,
 
     pub top_mod: TopLevelMod<'db>,
 
@@ -1245,14 +1247,6 @@ impl<'db> Trait<'db> {
 
     pub fn is_unsafe(self, db: &dyn HirDb) -> bool {
         self.modifiers(db).is_unsafe
-    }
-
-    pub fn rows(self, db: &'db dyn HirDb) -> &'db [AssocRow<'db>] {
-        &self.access_items(db).rows
-    }
-
-    pub fn spaces(self, db: &'db dyn HirDb) -> &'db [AssocSpace<'db>] {
-        &self.access_items(db).spaces
     }
 
     pub fn children_non_nested(
@@ -1297,31 +1291,12 @@ pub struct AssocTyDecl<'db> {
     pub default: Option<TypeId<'db>>,
 }
 
-/// The associated items of a trait or implementation that say what its
-/// methods reach: effect rows and result spaces.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update, Default)]
-pub struct AccessItems<'db> {
-    pub rows: Vec<AssocRow<'db>>,
-    pub spaces: Vec<AssocSpace<'db>>,
-}
-
-/// An associated result space: `space S` in a trait, or `space S = memory`
-/// in an implementation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
-pub struct AssocSpace<'db> {
-    pub name: Partial<IdentId<'db>>,
-    /// The space an implementation gives: a space's name, `self` or a
-    /// sub-place of it (`self[_]`), or another associated space such as
-    /// `B::S`, with the steps after it.
-    pub value: Option<(Partial<PathId<'db>>, SpacePathId<'db>)>,
-}
-
-/// A result-space contract as written: `@S`, `@B::S`, `@memory`, `@p`,
-/// `@self`, `@p.f[_]`, or `@target(p)`.
+/// A result-space contract as written: `@memory`, `@p`, `@self`,
+/// `@p.f[_]`, or `@target(p)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub enum SpaceAnnotation<'db> {
-    /// A space, a parameter, an effect domain or an associated space, with
-    /// the steps to the sub-place it names.
+    /// A space, a parameter or an effect domain, with the steps to the
+    /// sub-place it names.
     Path(Partial<PathId<'db>>, SpacePathId<'db>),
     /// `@target(p)`: the space of the resource the handle `p` names.
     Target(Partial<PathId<'db>>),
@@ -1377,8 +1352,10 @@ pub struct ImplTrait<'db> {
     pub(crate) types: Vec<AssocTyDef<'db>>,
     #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDef<'db>>,
+    /// The effect rows: `uses E` in a trait, `uses E = ..` in an
+    /// implementation.
     #[return_ref]
-    pub(in crate::core) access_items: AccessItems<'db>,
+    pub rows: Vec<AssocRow<'db>>,
     /// `unsafe impl`, of an `unsafe trait`.
     pub is_unsafe: bool,
     pub top_mod: TopLevelMod<'db>,
@@ -1390,14 +1367,6 @@ pub struct ImplTrait<'db> {
 impl<'db> ImplTrait<'db> {
     pub fn span(self) -> LazyImplTraitSpan<'db> {
         LazyImplTraitSpan::new(self)
-    }
-
-    pub fn rows(self, db: &'db dyn HirDb) -> &'db [AssocRow<'db>] {
-        &self.access_items(db).rows
-    }
-
-    pub fn spaces(self, db: &'db dyn HirDb) -> &'db [AssocSpace<'db>] {
-        &self.access_items(db).spaces
     }
 
     /// Returns the trait reference for this impl.

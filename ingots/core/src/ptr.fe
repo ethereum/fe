@@ -666,21 +666,19 @@ fn elem<T>(_ ptr: *T, _ index: usize) -> *T {
 }
 
 impl<T> Index<usize> for MemArray<T> {
-    space S = memory
     type Output = T
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? T {
+    fn index(mut? self, _ index: usize) -> mut? T @memory {
         unsafe { mut? *mem_array_elem(self, index) }
     }
 }
 
 impl<T> Index<usize> for MemSlice<T> {
-    space S = memory
     type Output = T
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? T {
+    fn index(mut? self, _ index: usize) -> mut? T @memory {
         unsafe { mut? *self.ptr_at(index as u256) }
     }
 }
@@ -698,11 +696,10 @@ impl<T> Len for MemSlice<T> {
 }
 
 impl Index<usize> for MemBuffer {
-    space S = memory
     type Output = u8
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? u8 {
+    fn index(mut? self, _ index: usize) -> mut? u8 @memory {
         if index as u256 >= self.len {
             index_out_of_bounds()
         }

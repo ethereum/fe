@@ -105,7 +105,7 @@ impl super::Parse for ModeTypeScope {
     }
 }
 
-/// `@S`, `@p`, `@p.f[_]` or `@target(p)`, if present.
+/// `@memory`, `@p`, `@p.f[_]` or `@target(p)`, if present.
 pub(crate) fn parse_space_annotation_opt<S: TokenStream>(
     parser: &mut Parser<S>,
 ) -> Result<(), Recovery<ErrProof>> {

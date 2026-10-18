@@ -439,17 +439,16 @@ fn assemble_dyn_array<T>(_ parts: *MemBuffer, count: u256, parts_size: u256) -> 
 impl<T> Index<usize> for MemVec<T>
     where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
 {
-    space S = memory
     type Output = T
 
-    fn index(self, _ index: usize) -> ref T {
+    fn index(self, _ index: usize) -> ref T @memory {
         self.get(index as u256)
     }
 
     /// Lets `core::sort` order the copy of an ABI array in place:
     /// `sort(mut MemVec::from_dyn_array(signers))`. The element is a decoded
     /// temporary, encoded back when the access ends.
-    fn index(mut self, _ index: usize) -> mut T {
+    fn index(mut self, _ index: usize) -> mut T @memory {
         var value = self.get(index as u256)
         yield mut value
         self.set(index: index as u256, value)

@@ -1,16 +1,12 @@
 // A declared result-space contract holds every yield in every instance. An
-// implementation's methods hold to their trait method's contracts, whose
-// associated spaces the implementation gives.
+// implementation's methods hold to their trait method's contracts.
 trait Slot {
-    space S
-    fn slot(mut self) -> mut u256 @S
+    fn slot(mut self) -> mut u256 @memory
 }
 
 struct WrittenBack { n: u256 }
 
 impl Slot for WrittenBack {
-    space S = memory
-
     fn slot(mut self) -> mut u256 {
         var tmp = self.n
         yield mut tmp
@@ -22,8 +18,6 @@ impl Slot for WrittenBack {
 struct Direct { n: u256 }
 
 impl Slot for Direct {
-    space S = memory
-
     fn slot(mut self) -> mut u256 {
         mut self.n
     }

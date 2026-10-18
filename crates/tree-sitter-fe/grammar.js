@@ -438,7 +438,6 @@ module.exports = grammar({
         $.trait_type_item,
         $.trait_const_item,
         $.trait_uses_item,
-        $.trait_space_item,
       )),
       '}',
     ),
@@ -449,15 +448,6 @@ module.exports = grammar({
       'uses',
       field('name', $.identifier),
       optional(seq('=', choice($.uses_param_list, $.uses_param))),
-    ),
-
-    // Associated result space: `space S`, `space S = memory` or
-    // `space S = self[_]`
-    trait_space_item: $ => seq(
-      optional($.attribute_list),
-      'space',
-      field('name', $.identifier),
-      optional(seq('=', field('value', $.path), optional($.space_path))),
     ),
 
     trait_type_item: $ => seq(
@@ -653,7 +643,7 @@ module.exports = grammar({
       optional(field('space', $.space_annotation)),
     )),
 
-    // Result-space contract: @S, @B::S, @self, @self.f[_], @target(p)
+    // Result-space contract: @memory, @self, @self.f[_], @target(p)
     space_annotation: $ => prec.right(seq(
       '@',
       $.path,

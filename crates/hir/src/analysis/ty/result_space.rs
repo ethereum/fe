@@ -1,23 +1,18 @@
 //! Result-space contracts.
 //!
 //! Each access component of a projection's return lies in one address space,
-//! its contract. A signature may declare it after the component, or after the
-//! whole return for the components that declare none: a space by name
-//! (`@memory`, `@storage`, `@transient`, `@calldata`, `@code`), `@p` or
-//! `@self` for the space of a data parameter's place, `@target(p)` for the
-//! space of the resource a handle parameter names, `@d` for an effect
-//! domain's, or an associated space, `@S` or `@B::S`. A parameter's or
+//! which the access check infers per instance from its yields. A signature
+//! may declare it after the component, or after the whole return for the
+//! components that declare none: a space by name (`@memory`, `@storage`,
+//! `@transient`, `@calldata`, `@code`), `@p` or `@self` for the space of a
+//! data parameter's place, `@target(p)` for the space of the resource a
+//! handle parameter names, or `@d` for an effect domain's. A parameter's or
 //! domain's contract may name a sub-place, `@self.value` or `@self[_]`, by
 //! fields, tuple components and `[_]` elements: its space is the one the
 //! path reaches, through pinned types and collection entries, and memory for
-//! a lane, whose grants are memory copies. A trait declares an associated
-//! space, `space S`, and each implementation gives it: a space by name,
-//! `self` or a sub-place of it (`self[_]`) for where the implementing value
-//! or its elements lie, or another associated space (`space S = B::S`) of
-//! the implementation's own trait or a bound in scope, which must not lead
-//! back to itself. The access check
-//! holds each instance's yields to the contracts its signature declares, and
-//! an implementation's to its trait method's.
+//! a lane, whose grants are memory copies. The access check holds each
+//! instance's yields to the contracts its signature declares, and an
+//! implementation's to its trait method's.
 use num_traits::ToPrimitive;
 use salsa::Update;
 
@@ -25,62 +20,19 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         ty::{
-            binder::Binder,
-            fold::{TyFoldable, TyFolder},
             normalize::normalize_ty,
             provider::AddressSpace,
             state_index_tys,
-            trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
-            trait_resolution::{
-                PredicateListId, Selection, TraitSolveCx, constraint::resolve_assoc_item_path,
-            },
+            trait_resolution::PredicateListId,
             ty_check::{EffectParamSite, RecordLike},
             ty_def::TyId,
-            visitor::{TyVisitable, TyVisitor},
         },
     },
     core::semantic::{EffectRequirementKey, constraints_for, effect_requirements_for_site},
     hir_def::{
-        FieldIndex, Func, IdentId, ImplTrait, PathId, SpaceAnnotation, SpacePathId, SpaceStep,
-        Trait, scope_graph::ScopeId,
+        FieldIndex, Func, IdentId, SpaceAnnotation, SpacePathId, SpaceStep, scope_graph::ScopeId,
     },
 };
-
-/// Associated space `space` of a trait instance.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub struct SpaceKey<'db> {
-    pub inst: TraitInstId<'db>,
-    pub space: u16,
-}
-
-impl<'db> SpaceKey<'db> {
-    pub fn name(self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
-        self.inst.def(db).spaces(db)[self.space as usize]
-            .name
-            .to_opt()
-    }
-}
-
-impl<'db> TyVisitable<'db> for SpaceKey<'db> {
-    fn visit_with<V>(&self, visitor: &mut V)
-    where
-        V: TyVisitor<'db> + ?Sized,
-    {
-        self.inst.visit_with(visitor)
-    }
-}
-
-impl<'db> TyFoldable<'db> for SpaceKey<'db> {
-    fn super_fold_with<F>(self, db: &'db dyn HirAnalysisDb, folder: &mut F) -> Self
-    where
-        F: TyFolder<'db>,
-    {
-        SpaceKey {
-            inst: self.inst.fold_with(db, folder),
-            space: self.space,
-        }
-    }
-}
 
 /// A declared result-space contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
@@ -94,8 +46,6 @@ pub enum SpaceContract<'db> {
     /// The space of an effect's domain, or of a sub-place of its target:
     /// `@d`, `@d.f`.
     Domain(u32, SpacePathId<'db>),
-    /// An associated space: `@S`, `@B::S`.
-    Assoc(SpaceKey<'db>),
 }
 
 /// What one step of a sub-place's path is.
@@ -216,7 +166,6 @@ pub fn declared_result_spaces<'db>(
                 path.as_ident(db)
                     .and_then(|name| named_space(db, name))
                     .map(SpaceContract::Space)
-                    .or_else(|| space_key(db, path, scope, assumptions).map(SpaceContract::Assoc))
             }
         })
         .collect()
@@ -232,164 +181,4 @@ fn named_space(db: &dyn HirAnalysisDb, name: IdentId<'_>) -> Option<AddressSpace
         "code" => AddressSpace::Code,
         _ => return None,
     })
-}
-
-pub(crate) fn space_index<'db>(
-    db: &'db dyn HirAnalysisDb,
-    trait_def: Trait<'db>,
-    name: IdentId<'db>,
-) -> Option<usize> {
-    trait_def
-        .spaces(db)
-        .iter()
-        .position(|space| space.name.to_opt() == Some(name))
-}
-
-/// The associated space a path names: `S` or `Self::S` in a trait or an
-/// implementation of one, and `B::S` for a type `B` bounded by a trait with
-/// space `S`.
-fn space_key<'db>(
-    db: &'db dyn HirAnalysisDb,
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Option<SpaceKey<'db>> {
-    let (inst, space) =
-        resolve_assoc_item_path(db, path, scope, assumptions, |trait_def, name| {
-            space_index(db, trait_def, name)
-        })?;
-    Some(SpaceKey {
-        inst,
-        space: space as u16,
-    })
-}
-
-/// What an associated space is, once the implementations involved are known.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ResolvedSpace<'db> {
-    Space(AddressSpace),
-    /// Where the value of this type, or a sub-place of it, lies: the
-    /// implementation said `self` or `self[_]`.
-    Owner(TyId<'db>, SpacePathId<'db>),
-}
-
-/// What `key` is where the scope selects the implementations involved: none
-/// when an implementation is missing, or when the spaces name each other in a
-/// cycle, which the implementations report.
-pub fn resolve_space_key<'db>(
-    db: &'db dyn HirAnalysisDb,
-    key: SpaceKey<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Option<ResolvedSpace<'db>> {
-    follow_space_key(db, key, scope, assumptions).ok().flatten()
-}
-
-/// Whether following `key`'s associated spaces comes back to one already
-/// followed, as `space S = Self::S` does.
-pub fn space_key_cycles<'db>(
-    db: &'db dyn HirAnalysisDb,
-    key: SpaceKey<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> bool {
-    follow_space_key(db, key, scope, assumptions).is_err()
-}
-
-/// The space `key` names, following each associated space an implementation
-/// gives to the next, or `Err` when one comes back to a space already
-/// followed.
-fn follow_space_key<'db>(
-    db: &'db dyn HirAnalysisDb,
-    mut key: SpaceKey<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Result<Option<ResolvedSpace<'db>>, ()> {
-    let mut followed = Vec::new();
-    loop {
-        if followed.contains(&key) {
-            return Err(());
-        }
-        followed.push(key);
-        let Selection::Unique(resolved) = resolve_trait_impl_instance(
-            db,
-            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
-            key.inst,
-        ) else {
-            return Ok(None);
-        };
-        let ImplementorOrigin::Hir(impl_trait) = resolved.selected().origin(db) else {
-            return Ok(None);
-        };
-        let Some((value, steps)) = key.name(db).and_then(|name| {
-            impl_trait
-                .spaces(db)
-                .iter()
-                .find(|space| space.name.to_opt() == Some(name))?
-                .value
-        }) else {
-            return Ok(None);
-        };
-        match value
-            .to_opt()
-            .and_then(|value| impl_space_value(db, impl_trait, value, steps))
-        {
-            None => return Ok(None),
-            Some(SpaceValue::Space(space)) => return Ok(Some(ResolvedSpace::Space(space))),
-            Some(SpaceValue::Owner(steps)) => {
-                return Ok(Some(ResolvedSpace::Owner(key.inst.self_ty(db), steps)));
-            }
-            Some(SpaceValue::Assoc(inner)) => {
-                key =
-                    Binder::bind(impl_trait.into(), inner).instantiate(db, resolved.impl_args(db));
-            }
-        }
-    }
-}
-
-/// The space an implementation gives in `space S = value`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SpaceValue<'db> {
-    Space(AddressSpace),
-    /// `self` or a sub-place of it: where the implementing value lies, or
-    /// its elements (`self[_]`), as for an owner whose elements are its own
-    /// parts.
-    Owner(SpacePathId<'db>),
-    /// Another associated space: `B::S`.
-    Assoc(SpaceKey<'db>),
-}
-
-/// What `space S = value steps` gives; `None` when it names no space, or a
-/// sub-place of something other than `self` or of no part of the
-/// implementing type.
-pub fn impl_space_value<'db>(
-    db: &'db dyn HirAnalysisDb,
-    impl_trait: ImplTrait<'db>,
-    value: PathId<'db>,
-    steps: SpacePathId<'db>,
-) -> Option<SpaceValue<'db>> {
-    if value.as_ident(db).is_some_and(|name| name.is_self(db)) {
-        let owner = impl_trait.trait_inst_result(db).ok()?.self_ty(db);
-        let scope = impl_trait.scope();
-        let assumptions = constraints_for(db, impl_trait.into());
-        return (steps.steps(db).is_empty()
-            || space_path_steps(db, scope, assumptions, owner, steps).is_some())
-        .then_some(SpaceValue::Owner(steps));
-    }
-    if !steps.steps(db).is_empty() {
-        return None;
-    }
-    value
-        .as_ident(db)
-        .and_then(|name| named_space(db, name))
-        .map(SpaceValue::Space)
-        .or_else(|| {
-            space_key(
-                db,
-                value,
-                impl_trait.scope(),
-                constraints_for(db, impl_trait.into()),
-            )
-            .map(SpaceValue::Assoc)
-        })
 }

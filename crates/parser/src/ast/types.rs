@@ -58,14 +58,14 @@ impl ModeType {
         support::child(self.syntax())
     }
 
-    /// The component's result-space contract: `ref T @S`.
+    /// The component's result-space contract: `ref T @memory`.
     pub fn space(&self) -> Option<SpaceAnnotation> {
         support::child(self.syntax())
     }
 }
 
 ast_node! {
-    /// A result-space contract: `@S`, `@B::S`, `@p`, `@self`, `@p.f[_]` or
+    /// A result-space contract: `@memory`, `@p`, `@self`, `@p.f[_]` or
     /// `@target(p)`.
     pub struct SpaceAnnotation,
     SK::SpaceAnnotation,

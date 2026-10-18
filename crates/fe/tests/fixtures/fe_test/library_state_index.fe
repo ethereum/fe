@@ -51,7 +51,6 @@ impl Counters {
 // The first ten counters, as a collection whose elements are lanes: their
 // grants are memory copies, which `space S = self[_]` says.
 impl Collection for Counters {
-    space S = self[_]
     type Cursor = u256
     type Item = u32
 
@@ -67,7 +66,7 @@ impl Collection for Counters {
         c + 1
     }
 
-    fn at(mut? self, _ c: u256) -> mut? u32 {
+    fn at(mut? self, _ c: u256) -> mut? u32 @self[_] {
         mut? self[c]
     }
 }

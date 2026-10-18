@@ -2993,7 +2993,7 @@ fn spliced_func_effects<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Spl
     };
     let trait_rows = impl_trait
         .and_then(|impl_trait| impl_trait.candidate_trait_inst_result(db).ok())
-        .map(|inst| inst.def(db).rows(db))
+        .map(|inst| inst.def(db).rows(db).as_slice())
         .unwrap_or_default();
     let mut list = Vec::new();
     let mut origins = Vec::new();
