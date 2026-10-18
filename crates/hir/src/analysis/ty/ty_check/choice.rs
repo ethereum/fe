@@ -34,9 +34,7 @@ use crate::{
                 body_deliveries, const_declared_goals, declared_goals, own_slots, role_map,
                 slot_goal,
             },
-            trait_def::{
-                ImplementorOrigin, TraitInstId, named_impl_candidates, resolve_trait_impl_instance,
-            },
+            trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
             trait_lower::lower_impl_trait,
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
@@ -1076,28 +1074,39 @@ impl<'db> TyChecker<'db> {
         else {
             return None;
         };
-        let name = path.as_ident(self.db)?;
-        let minter = LoweringContext::new();
-        let candidates = named_impl_candidates(self.db, self.env.scope(), name);
-        // A name that is both a value and a named implementation is an error
-        // that asks which one is meant (RD85); a value alone is a value.
-        if !matches!(
-            resolve_ident_expr(
-                self.db,
-                &self.env,
-                *path,
-                value.span(self.body()).into(),
-                &minter
-            ),
-            ResolvedPathInBody::NewBinding(_)
-        ) {
-            return (!candidates.is_empty()).then_some(Err(
-                "this name is both a value and a named implementation; write `{ name }` for the value, or rename one of them",
-            ));
-        }
-        let [implementation] = candidates.as_slice() else {
-            return (!candidates.is_empty()).then_some(Err("the implementation name is ambiguous"));
+        use crate::analysis::name_resolution::path_resolver::{ImplNameRes, resolve_impl_name};
+        // The name is found as any item's is: in scope, imported, or by a
+        // module path, and visible here (RD110).
+        let implementation = match resolve_impl_name(self.db, *path, self.env.scope()) {
+            ImplNameRes::Found(implementation) => implementation,
+            ImplNameRes::NotVisible => {
+                return Some(Err(
+                    "this implementation name is not visible here; an implementation name is private to its module unless declared `pub impl`",
+                ));
+            }
+            ImplNameRes::Ambiguous => return Some(Err("the implementation name is ambiguous")),
+            ImplNameRes::NotFound => return None,
         };
+        // A bare name that is both a value and a named implementation is an
+        // error that asks which one is meant (RD85); a value alone is a value.
+        if path.as_ident(self.db).is_some() {
+            let minter = LoweringContext::new();
+            if !matches!(
+                resolve_ident_expr(
+                    self.db,
+                    &self.env,
+                    *path,
+                    value.span(self.body()).into(),
+                    &minter
+                ),
+                ResolvedPathInBody::NewBinding(_)
+            ) {
+                return Some(Err(
+                    "this name is both a value and a named implementation; write `{ name }` for the value, or rename one of them",
+                ));
+            }
+        }
+        let implementation = &implementation;
         let Some(candidate) = lower_impl_trait(self.db, *implementation) else {
             return Some(Err("the named implementation declaration is invalid"));
         };

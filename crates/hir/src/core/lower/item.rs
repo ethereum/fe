@@ -1067,6 +1067,7 @@ impl<'db> ImplTrait<'db> {
             ImplTraitModifiers {
                 is_unsafe: ast.unsafe_kw().is_some(),
                 selection_name: IdentId::lower_token_partial(ctxt, ast.selection_name()).to_opt(),
+                vis: super::lower_visibility(&ast),
             },
             ctxt.top_mod(),
             origin,

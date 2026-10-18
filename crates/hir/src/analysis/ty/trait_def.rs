@@ -55,8 +55,9 @@ pub fn impl_selection_class<'db>(
         .map_or(ImplSelectionClass::Ordinary, ImplSelectionClass::Named)
 }
 
-/// The ingot-local fallback namespace for explicit selection. A candidate still
-/// requires the checked application boundary before it can supply evidence.
+/// Every named implementation in the ingot with this name, whatever its
+/// module or visibility, for tests and diagnostics. A `with` operand is
+/// resolved by `path_resolver::resolve_impl_name`, as an item path (RD110).
 pub fn named_impl_candidates<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,

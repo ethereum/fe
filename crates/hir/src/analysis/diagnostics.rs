@@ -926,6 +926,17 @@ pub trait LazyDiagnostic<'db> {
 
 impl DiagnosticVoucher for DefConflictError<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        // A named implementation's name is the `as N` after its header.
+        fn name_span<'db>(
+            item: &crate::hir_def::ItemKind<'db>,
+        ) -> Option<crate::span::DynLazySpan<'db>> {
+            match *item {
+                crate::hir_def::ItemKind::ImplTrait(implementation) => {
+                    Some(implementation.span().selection_name().into())
+                }
+                item => item.name_span(),
+            }
+        }
         let mut items = self.0.iter();
         let first = items.next().unwrap();
         let name = first.name(db).unwrap().data(db);
@@ -936,13 +947,13 @@ impl DiagnosticVoucher for DefConflictError<'_> {
                 let mut subs = vec![SubDiagnostic::new(
                     LabelStyle::Primary,
                     format!("`{name}` is defined here"),
-                    first.name_span().unwrap().resolve(db),
+                    name_span(first).unwrap().resolve(db),
                 )];
                 subs.extend(items.map(|item| {
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
                         format!("`{name}` is redefined here"),
-                        item.name_span().unwrap().resolve(db),
+                        name_span(item).unwrap().resolve(db),
                     )
                 }));
                 subs

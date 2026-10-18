@@ -18,7 +18,7 @@ use crate::{
         name_resolution::{PathRes, resolve_path},
         ty::{
             corelib::evidence_goal,
-            trait_def::{TraitInstId, named_impl_candidates, named_impls_for_trait},
+            trait_def::{TraitInstId, named_impls_for_trait},
             trait_resolution::PredicateListId,
         },
     },
@@ -427,16 +427,15 @@ fn opened_by<'db>(
         return None;
     };
     let scope = func_body.scope();
-    if let Some(name) = path.as_ident(db) {
-        let candidates = named_impl_candidates(db, scope, name);
-        if !candidates.is_empty() {
-            return Some(
-                candidates
-                    .into_iter()
-                    .filter_map(|implementation| implementation.trait_inst(db))
-                    .collect(),
-            );
+    use crate::analysis::name_resolution::path_resolver::{ImplNameRes, resolve_impl_name};
+    match resolve_impl_name(db, *path, scope) {
+        ImplNameRes::Found(implementation) => {
+            return Some(implementation.trait_inst(db).into_iter().collect());
         }
+        ImplNameRes::NotVisible | ImplNameRes::Ambiguous => return Some(Vec::new()),
+        ImplNameRes::NotFound => {}
+    }
+    if let Some(name) = path.as_ident(db) {
         if let Some(ItemKind::Func(func)) = scope.parent_item(db)
             && let Some(index) = func
                 .params(db)
