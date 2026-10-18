@@ -22,16 +22,23 @@ the traversal: a `mut` item calls `at_mut` and opens the base mutably, as a
 way: `for (i, mut x) in xs.enumerate()`.
 
 `Collection` (`core::iter`) is the protocol: `start` and `next` move a
-cursor, `at` projects the element at it. `CollectionMut` adds `at_mut` with
-`mut` access for loops whose item is `mut`, and `Bidirectional` traverses in
-reverse. Arrays, `MemArray`, `MemSlice`, ranges, `SolArray` and
-`SolEnumerableSet` are collections; a collection declares the effects its
-methods need (`uses E`) and the space of the places it yields (`space S`).
+cursor, `has` tests whether it names an element, and `at` projects the
+element at it. A loop tests each cursor with `has` before its body runs,
+calls `at` only on a cursor `has` holds for, and steps with `next` from a
+cursor `has` accepted; the position after the last element (or, in reverse,
+before the first) is a cursor that names none. `CollectionMut` adds
+`at_mut` with `mut` access for loops whose item is `mut`, and
+`Bidirectional` (`last`, `prev`) traverses in reverse. Arrays, `MemArray`,
+`MemSlice`, ranges, `SolArray` and `SolEnumerableSet` are collections; a
+collection declares the effects its methods need (`uses E`) and the space
+of the places it yields (`space S`).
 
 A loop that copies each item (a `Copy` element bound by a plain name or
 `var`, or a producer's value) holds
 no access on its base between steps, so the body may change the collection,
-and `at` reads each element afresh. A projected or `mut` traversal holds the
+and `at` reads each element afresh. A body that removes the element it is
+at leaves `next` a cursor that names none, and `has` tests the one `next`
+returns, as always. A projected or `mut` traversal holds the
 element's session during the body, which then cannot change the base; so
 does a `while let` whose condition opens a session, until the back edge.
 
@@ -42,7 +49,10 @@ state and never holds the collection. The standard drivers are
 `reversed()`, `enumerate()`, `take(n)`, `skip(n)`, `step_by(k)` and
 `filter(p)`. A driver that yields an extra value with each element, such as
 `enumerate`, binds a pair: `for (i, x) in xs by enumerate()`. A producer,
-such as `map(f)`, yields owned values instead of accesses.
+such as `map(f)`, yields owned values instead of accesses. A driver may call
+its inner traversal more than it yields: `filter(p)` projects each element
+to test it and again to yield it, and `take(0)` still starts its inner
+driver.
 
 Drivers combine as methods, `xs.reversed().enumerate().take(3)`, and a
 method chain on a collection is sugar for `by`:
