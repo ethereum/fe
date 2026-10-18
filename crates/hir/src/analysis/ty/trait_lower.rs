@@ -1,5 +1,6 @@
 //! This module implements the trait and impl trait lowering process.
 
+use crate::hir_def::ModeMarker;
 use crate::{
     core::hir_def::{
         AssocTypeGenericArg, HirIngot, IdentId, ImplTrait, ItemKind, Partial, PathId, Trait,
@@ -69,6 +70,7 @@ fn raw_impl_self_key<'db>(
             HirTyKind::Ptr(_) => Some(ImplSelfKey::Prim(PrimTy::Ptr(AddressSpace::Memory))),
             HirTyKind::Mode(TypeMode::Mut, _) => Some(ImplSelfKey::Prim(PrimTy::BorrowMut)),
             HirTyKind::Mode(TypeMode::Ref, _) => Some(ImplSelfKey::Prim(PrimTy::BorrowRef)),
+            HirTyKind::Mode(TypeMode::MaybeMut, _) => None,
             HirTyKind::Mode(TypeMode::Own, inner) => lower(db, inner.to_opt()?, scope),
             HirTyKind::Path(path) => match resolve_type_path_definition(db, path.to_opt()?, scope)?
             {
@@ -503,7 +505,13 @@ pub(crate) fn lower_trait_ref_with_minter<'db>(
                 .map(|(&name, &ty)| (name, written_self(ty)))
                 .collect();
 
-            Ok(TraitInstId::new(db, t.def(db), args, assoc_bindings))
+            Ok(TraitInstId::new(
+                db,
+                t.def(db),
+                args,
+                assoc_bindings,
+                t.mode(db),
+            ))
         }
         Ok(res) => Err(TraitRefLowerError::InvalidDomain(res)),
         Err(e) => Err(TraitRefLowerError::PathResError(e)),
@@ -603,7 +611,13 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     }
 
     let args = complete_trait_args(db, t, t.self_param(db), &provided_explicit, lowering_cx)?;
-    Ok(TraitInstId::new(db, t, args, assoc_bindings))
+    Ok(TraitInstId::new(
+        db,
+        t,
+        args,
+        assoc_bindings,
+        ModeMarker::None,
+    ))
 }
 
 /// Completes the arguments of `trait_` implemented by `self_ty` from the
@@ -663,12 +677,25 @@ fn complete_trait_args<'db>(
     Ok(args)
 }
 
+/// An implementation's methods, by name. A `mut?` trait method may have one
+/// body per mode: two methods of its name, the one that takes the `mut`
+/// mode where the trait method takes `mut?` being its `mut` body.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Update)]
+pub(crate) struct ImplementorMethods<'db> {
+    /// Each name's method, or its `ref` body.
+    pub methods: IndexMap<IdentId<'db>, Func<'db>>,
+    /// The `mut` bodies of the methods with one body per mode.
+    pub mut_bodies: IndexMap<IdentId<'db>, Func<'db>>,
+    /// Methods of a name taken, and the ones of that name left over.
+    pub conflicts: Vec<(Func<'db>, Func<'db>)>,
+}
+
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_implementor_methods<'db>(
     db: &'db dyn HirAnalysisDb,
     implementor: ImplementorId<'db>,
-) -> IndexMap<IdentId<'db>, Func<'db>> {
-    let mut methods = IndexMap::default();
+) -> ImplementorMethods<'db> {
+    let mut methods = ImplementorMethods::default();
     let impl_trait = match implementor.origin(db) {
         super::trait_def::ImplementorOrigin::Hir(impl_trait) => impl_trait,
         super::trait_def::ImplementorOrigin::VirtualContract(_)
@@ -676,6 +703,7 @@ pub(crate) fn collect_implementor_methods<'db>(
         | super::trait_def::ImplementorOrigin::Callable
         | super::trait_def::ImplementorOrigin::Structural => return methods,
     };
+    let trait_methods = implementor.trait_def(db).method_defs(db);
     let scope = impl_trait.scope();
     let graph = scope.scope_graph(db);
     for method in graph.child_items(scope).filter_map(|item| match item {
@@ -685,10 +713,45 @@ pub(crate) fn collect_implementor_methods<'db>(
         let Some(name) = method.name(db).to_opt() else {
             continue;
         };
-        methods.insert(name, method);
+        let Some(&first) = methods.methods.get(&name) else {
+            methods.methods.insert(name, method);
+            continue;
+        };
+        // A second method of a `mut?` trait method's name is its other body.
+        let is_mut_body = |func| {
+            trait_methods
+                .get(&name)
+                .is_some_and(|&trait_m| takes_mut_body(db, func, trait_m))
+        };
+        if methods.mut_bodies.contains_key(&name) || is_mut_body(first) == is_mut_body(method) {
+            methods.conflicts.push((first, method));
+        } else if is_mut_body(first) {
+            methods.methods.insert(name, method);
+            methods.mut_bodies.insert(name, first);
+        } else {
+            methods.mut_bodies.insert(name, method);
+        }
     }
 
     methods
+}
+
+/// Whether `func`, a method of a `mut?` trait method `trait_m`'s name, is
+/// its `mut` body: it takes `mut` where `trait_m` takes `mut?`, as its
+/// receiver or result.
+fn takes_mut_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>, trait_m: Func<'db>) -> bool {
+    use crate::analysis::ty::ty_def::BorrowKind;
+    use crate::core::hir_def::params::FuncParamMode;
+    trait_m.is_maybe_mut(db)
+        && (trait_m
+            .params(db)
+            .zip(func.params(db))
+            .any(|(trait_param, param)| {
+                trait_param.is_maybe_mut(db) && param.mode_at(db, None) == FuncParamMode::Mut
+            })
+            || func
+                .return_shape(db, None)
+                .is_some_and(|shape| shape.has_access_of(BorrowKind::Mut)))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]

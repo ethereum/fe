@@ -1114,7 +1114,7 @@ mod tests {
                     .is_some_and(|func_name| func_name.data(db) == name)
             })
             .unwrap_or_else(|| panic!("missing function `{name}`"));
-        let key = root_semantic_instance_key(db, BodyOwner::Func(func))
+        let key = root_semantic_instance_key(db, BodyOwner::Func(func, None))
             .unwrap_or_else(|err| panic!("failed to root semantic function instance: {err:?}"));
         get_or_build_semantic_instance(db, key)
     }

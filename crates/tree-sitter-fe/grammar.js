@@ -199,9 +199,9 @@ module.exports = grammar({
     ),
 
     parameter: $ => choice(
-      // self parameter: [mut|var] [ref|own] self [: Type]
-      // e.g., `self`, `mut self`, `own self`, `var own self`, `ref self`
-      seq(optional(choice('mut', 'var')), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
+      // self parameter: [mut|mut?|var] [ref|own] self [: Type]
+      // e.g., `self`, `mut self`, `mut? self`, `own self`, `var own self`, `ref self`
+      seq(optional(choice('mut', 'mut?', 'var')), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
       // labeled parameter: [var|ref|own] label name : Type
       // e.g., `from sender: address`, `_ val: u256`, `var _ p: own Packed`
       seq(
@@ -385,14 +385,14 @@ module.exports = grammar({
       // labeled: `name: Type` or `mut name: Type` or `name: mut Type`
       // (mode prefix on type handled by mode_type in _type rule)
       seq(
-        optional(choice('mut', 'ref', 'own')),
+        optional(choice('mut', 'mut?', 'ref', 'own')),
         field('name', choice($.identifier, '_')),
         ':',
         field('type', $._type),
       ),
       // unlabeled: `Type` or `mut Type` or `Storage<T>`
       seq(
-        optional(choice('mut', 'ref', 'own')),
+        optional(choice('mut', 'mut?', 'ref', 'own')),
         field('type', $.path),
         optional($.generic_arg_list),
       ),
@@ -578,8 +578,8 @@ module.exports = grammar({
     ),
 
     type_bound: $ => choice(
-      // Trait bound: Path<Args>
-      prec.right(PREC.PATH + 5, seq($.path, optional($.generic_arg_list))),
+      // Trait bound: Path<Args>, with the modes it grants: `mut Index<usize>`
+      prec.right(PREC.PATH + 5, seq(optional(choice('mut', 'mut?')), $.path, optional($.generic_arg_list))),
       // Callable shape: Fn(own A, B) -> R
       $.fn_shape,
       // Kind bound: * -> * -> *, (* -> *) -> *, etc.
@@ -648,7 +648,7 @@ module.exports = grammar({
 
     // Mode-prefixed type: ref Foo, mut Foo, own Foo, ref Foo @S
     mode_type: $ => prec.right(seq(
-      field('mode', choice('ref', 'mut', 'own')),
+      field('mode', choice('ref', 'mut', 'mut?', 'own')),
       field('type', $._type),
       optional(field('space', $.space_annotation)),
     )),
@@ -747,7 +747,7 @@ module.exports = grammar({
     // Creates a borrow/move of the given expression.
     // e.g., `mut x`, `ref s.v`, `let p = mut foo`
     mode_expression: $ => prec(PREC.UNARY, seq(
-      field('mode', choice('mut', 'ref', 'own')),
+      field('mode', choice('mut', 'mut?', 'ref', 'own')),
       field('value', $._expression),
     )),
 
@@ -1217,7 +1217,7 @@ module.exports = grammar({
       optional(seq(':', field('type', choice($._type, $.closure_mode)))),
     ),
 
-    closure_mode: $ => choice('own', 'mut', 'ref'),
+    closure_mode: $ => choice('own', 'mut', 'mut?', 'ref'),
 
     with_param_list: $ => seq(
       '(',
@@ -1341,6 +1341,7 @@ module.exports = grammar({
       $.literal_pattern,
       $.identifier_pattern,
       $.mut_pattern,
+      $.maybe_mut_pattern,
       $.ref_pattern,
       $.var_pattern,
       $.tuple_pattern,
@@ -1365,6 +1366,9 @@ module.exports = grammar({
 
     // Mutable binding in pattern: `Some(mut t)`, `Foo { mut x }`
     mut_pattern: $ => prec(1, seq('mut', $._pattern)),
+
+    // Binding at the item's mode in pattern: `Some(mut? t)`
+    maybe_mut_pattern: $ => prec(1, seq('mut?', $._pattern)),
 
     // Read-access binding in pattern: `Some(ref t)`, `Foo { ref x }`
     ref_pattern: $ => prec(1, seq('ref', $._pattern)),
@@ -1408,6 +1412,7 @@ module.exports = grammar({
       field('name', $.identifier),
       // Marked shorthand bindings: `Foo { mut x, ref y, var z }`
       $.mut_pattern,
+      $.maybe_mut_pattern,
       $.ref_pattern,
       $.var_pattern,
       $.rest_pattern,

@@ -380,6 +380,8 @@ pub enum MutabilityFix {
     ViewParam,
     /// A view receiver: `mut self`.
     ViewSelf,
+    /// A `mut?` parameter, which the `ref` body of its function only reads.
+    MaybeMutParam,
     /// An owned receiver: `var own self`.
     OwnSelf,
     /// An effect binding: `uses (mut x)`.
@@ -709,6 +711,25 @@ pub enum BodyDiag<'db> {
     /// `mut x` on a read component, which has no mutable place behind it.
     MutBindingOfRead {
         primary: DynLazySpan<'db>,
+    },
+
+    /// `mut?` in a body whose function has no mode: its signature writes no
+    /// `mut?`.
+    MaybeMutWithoutMode {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A closure in a `mut?` function, whose two bodies would each define
+    /// it.
+    ClosureInMaybeMutFunc {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// An effect required at the function's mode, `uses (x: mut? T)`, which
+    /// is not supported yet.
+    MaybeMutEffect {
+        owner: EffectParamOwner<'db>,
+        idx: usize,
     },
 
     /// `var x` binding a type with no value reading (`#[view]` or
@@ -1250,6 +1271,9 @@ impl<'db> BodyDiag<'db> {
             Self::MutAccessCopied { .. } => 121,
             Self::VarOfAccess { .. } => 122,
             Self::MutBindingOfRead { .. } => 123,
+            Self::MaybeMutWithoutMode { .. } => 130,
+            Self::ClosureInMaybeMutFunc { .. } => 131,
+            Self::MaybeMutEffect { .. } => 132,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,
             Self::UnsafeFieldRequiresUnsafe { .. } => 126,
@@ -1438,6 +1462,23 @@ pub enum ImplDiag<'db> {
         impl_m: CallableDef<'db>,
         trait_ty: TyId<'db>,
         impl_ty: TyId<'db>,
+        /// The modes the two were compared at.
+        trait_mode: Option<BorrowKind>,
+        impl_mode: Option<BorrowKind>,
+    },
+
+    /// A `mut?` method implementing a trait method that is not `mut?`.
+    MethodMaybeMutMismatch {
+        trait_m: CallableDef<'db>,
+        impl_m: CallableDef<'db>,
+    },
+
+    /// An implementation giving one of the trait's `mut?` methods its `mut`
+    /// mode and not another, so `T: mut Trait` holds by it for neither.
+    PartialMutImpl {
+        primary: DynLazySpan<'db>,
+        given: IdentId<'db>,
+        missing: IdentId<'db>,
     },
 
     MethodEffectMismatch {
@@ -1628,6 +1669,8 @@ impl ImplDiag<'_> {
             Self::BlanketCopy { .. } => 32,
             Self::CyclicAssociatedSpace { .. } => 33,
             Self::CyclicEffectRow { .. } => 34,
+            Self::MethodMaybeMutMismatch { .. } => 35,
+            Self::PartialMutImpl { .. } => 36,
         }
     }
 }

@@ -28,15 +28,15 @@ use crate::analysis::ty::corelib::resolve_lib_type_path;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::method_table::ProbedMethod;
 use crate::analysis::ty::provider::{ProviderKind, provider_semantics};
-use crate::analysis::ty::shape::{Shape, view_param_misuse};
+use crate::analysis::ty::shape::{Shape, maybe_mut_kind, view_param_misuse};
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::trait_resolution::constraint::{
     PredicateSource, collect_func_decl_constraint_pairs,
 };
 use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty, walk_ty};
 use crate::hir_def::{
-    CallArg, CallableDef, FieldParent, GenericArgListId, ImplTrait, Trait, params::FuncParamMode,
-    scope_graph::ScopeId,
+    CallArg, CallableDef, FieldParent, GenericArgListId, ImplTrait, ModeMarker, Trait,
+    params::FuncParamMode, scope_graph::ScopeId,
 };
 use crate::{
     hir_def::{
@@ -131,12 +131,22 @@ use crate::analysis::{
     },
 };
 
+/// A function's checked body. A `mut?` function's bodies, one per mode,
+/// report together, a diagnostic both report once; the typed body is the
+/// `ref` one's.
 #[salsa::tracked(return_ref)]
 pub fn check_func_body<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
-    check_body(db, BodyOwner::Func(func))
+    let mut bodies = BodyOwner::func_bodies(db, func).map(|owner| check_body(db, owner));
+    let (mut diags, typed) = bodies.next().expect("a function has a body");
+    for diag in bodies.flat_map(|(diags, _)| diags) {
+        if !diags.contains(&diag) {
+            diags.push(diag);
+        }
+    }
+    (diags, typed)
 }
 
 #[salsa::tracked(return_ref)]
@@ -914,7 +924,7 @@ fn infer_body_query<'db>(
         return (
             Vec::new(),
             match owner {
-                BodyOwner::Func(func) => typed_body_for_bodyless_func(db, func),
+                BodyOwner::Func(func, mode) => typed_body_for_bodyless_func(db, func, mode),
                 BodyOwner::Const(_)
                 | BodyOwner::AnonConstBody { .. }
                 | BodyOwner::ContractInit { .. }
@@ -927,7 +937,7 @@ fn infer_body_query<'db>(
     checker.run();
     let (mut diags, typed_body) = checker.finish();
     diags.extend(check_unsafe_ops(db, owner, &typed_body));
-    if let BodyOwner::Func(func) = owner
+    if let BodyOwner::Func(func, _) = owner
         && func.is_const(db)
         && !func.is_extern(db)
     {
@@ -1282,8 +1292,11 @@ fn push_const_eval_diag<'db>(
 fn typed_body_for_bodyless_func<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> TypedBody<'db> {
-    let assumptions = crate::semantic::func_body_assumptions(db, func).extend_all_bounds(db);
+    let assumptions = crate::semantic::func_body_assumptions(db, func)
+        .at_mode(db, mode)
+        .extend_all_bounds(db);
     let mut result_ty = func.return_ty(db);
     if !result_ty.is_star_kind(db) {
         result_ty = TyId::invalid(db, InvalidCause::Other);
@@ -1304,7 +1317,7 @@ fn typed_body_for_bodyless_func<'db>(
             LocalBinding::Param {
                 site: ParamSite::Func(func),
                 idx,
-                mode: view.mode(db),
+                mode: view.mode_at(db, mode),
                 ty,
                 is_mut: view.is_mut(db),
             }
@@ -1487,7 +1500,7 @@ impl<'db> TyChecker<'db> {
 
     fn check_own_param_types(&mut self) {
         match self.env.owner() {
-            BodyOwner::Func(_) => {}
+            BodyOwner::Func(_, _) => {}
             BodyOwner::ContractInit { contract } => {
                 let Some(init) = contract.init(self.db) else {
                     return;
@@ -1533,7 +1546,9 @@ impl<'db> TyChecker<'db> {
 
     fn check_effect_param_keys_resolve(&mut self) {
         match self.env.owner() {
-            BodyOwner::Func(func) => self.check_free_func_effect_list(func, func.effects(self.db)),
+            BodyOwner::Func(func, _) => {
+                self.check_free_func_effect_list(func, func.effects(self.db))
+            }
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
             owner @ BodyOwner::ContractInit { contract } => {
                 self.check_contract_scoped_effect_list(owner, contract, owner.effects(self.db));
@@ -1550,6 +1565,12 @@ impl<'db> TyChecker<'db> {
         effects: crate::hir_def::EffectParamListId<'db>,
     ) {
         for (idx, effect) in effects.data(self.db).iter().enumerate() {
+            if effect.mode == ModeMarker::MaybeMut {
+                self.push_diag(BodyDiag::MaybeMutEffect {
+                    owner: EffectParamOwner::Func(func),
+                    idx,
+                });
+            }
             let Some(key_ty) = effect.key_ty.to_opt() else {
                 continue;
             };
@@ -1576,7 +1597,7 @@ impl<'db> TyChecker<'db> {
         effects: crate::hir_def::EffectParamListId<'db>,
     ) {
         let (owner, site) = match owner {
-            BodyOwner::Func(func) => (EffectParamOwner::Func(func), EffectParamSite::Func(func)),
+            BodyOwner::Func(func, _) => (EffectParamOwner::Func(func), EffectParamSite::Func(func)),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
                 unreachable!()
             }
@@ -1612,6 +1633,12 @@ impl<'db> TyChecker<'db> {
         .map(|registration| registration.provider_ty);
 
         for (idx, effect) in effects.data(self.db).iter().enumerate() {
+            // A contract's bodies have no mode.
+            if effect.mode == ModeMarker::MaybeMut {
+                self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                    primary: owner.effect_param_ty_span(self.db, idx),
+                });
+            }
             let Some(key_ty) = effect.key_ty.to_opt() else {
                 continue;
             };
@@ -1858,7 +1885,7 @@ impl<'db> TyChecker<'db> {
             .iter()
             .map(|(&name, &ty)| (name, normalize_ty(db, ty, scope, assumptions)))
             .collect();
-        TraitInstId::new(db, goal.def(db), args, assoc_type_bindings)
+        TraitInstId::new(db, goal.def(db), args, assoc_type_bindings, goal.mode(db))
     }
 
     fn trait_goal_is_concrete_for_diagnostics(&self, goal: TraitInstId<'db>) -> bool {
@@ -2640,7 +2667,7 @@ impl<'db> TyChecker<'db> {
     fn new_internal(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId<'db>) -> Self {
         let table = UnificationTable::new(db);
         let projection_shape = match env.owner() {
-            BodyOwner::Func(func) => func.return_shape(db).cloned(),
+            BodyOwner::Func(func, mode) => func.return_shape(db, mode).cloned(),
             _ => None,
         };
         let explicit_yields = env
@@ -2989,6 +3016,20 @@ impl<'db> TyChecker<'db> {
         let Some(shape) = &prop.shape else {
             return;
         };
+        // A `mut` binding of an access component asks a `mut?` call for
+        // `mut`, as an earlier arm may have.
+        let selected = self
+            .env
+            .callable_expr(source)
+            .is_some_and(|callable| callable.mode().is_some())
+            .then(|| {
+                if self.pattern_asks_mut(pat, shape) {
+                    self.select_mut_place(source);
+                }
+                self.env.typed_expr(source)?.shape
+            })
+            .flatten();
+        let shape = selected.as_ref().unwrap_or(shape);
         self.consume_access(source);
         let authority = self.expr_has_authority(source);
         let single_name = matches!(
@@ -3011,7 +3052,7 @@ impl<'db> TyChecker<'db> {
     /// unsafe split of them, or a block ending in one.
     fn is_named_access(&self, expr: ExprId) -> bool {
         match self.env.expr_data(expr) {
-            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut)) => true,
+            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut)) => true,
             Partial::Present(Expr::Tuple(_)) => self.env.is_unsafe_split(expr),
             Partial::Present(Expr::Block(stmts, _)) => {
                 matches!(
@@ -3031,7 +3072,7 @@ impl<'db> TyChecker<'db> {
             return self.env.binding_has_authority(&binding);
         }
         match expr.data(self.db, self.body()) {
-            Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) => {
+            Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref)) => {
                 self.expr_has_authority(*inner)
             }
             Partial::Present(Expr::Bin(base, _, BinOp::Index)) => self.expr_has_authority(*base),
@@ -3142,13 +3183,27 @@ impl<'db> TyChecker<'db> {
     }
 
     /// The marker the binding `pat`, written with `marker`, takes: its own,
-    /// or for a plain name the one a reported marker on its initializer
-    /// implies.
+    /// for a plain name the one a reported marker on its initializer
+    /// implies, and for `mut? x` the body's mode.
     pub(super) fn binding_marker(&self, pat: PatId, marker: BindingMarker) -> BindingMarker {
         match marker {
             BindingMarker::Plain => self.implied_markers.get(&pat).copied().unwrap_or(marker),
+            BindingMarker::MaybeMut => self.maybe_mut_marker(),
             _ => marker,
         }
+    }
+
+    /// The marker `mut?` is in this body: `mut` at `mut`, `ref` at `ref`.
+    fn maybe_mut_marker(&self) -> BindingMarker {
+        match self.maybe_mut_kind() {
+            BorrowKind::Mut => BindingMarker::Mut,
+            BorrowKind::Ref => BindingMarker::Ref,
+        }
+    }
+
+    /// The access `mut?` is in this body: its mode's.
+    pub(super) fn maybe_mut_kind(&self) -> BorrowKind {
+        maybe_mut_kind(self.env.owner().mode())
     }
 
     /// `ref p` or `mut p` standing as `source`, the scrutinee or initializer
@@ -3175,11 +3230,13 @@ impl<'db> TyChecker<'db> {
         Some(marker)
     }
 
-    /// The `ref p` or `mut p` that `expr` is or ends in, with its marker.
+    /// The `ref p`, `mut p` or `mut? p` that `expr` is or ends in, with its
+    /// marker.
     fn initializer_marker(&self, expr: ExprId) -> Option<(ExprId, BindingMarker)> {
         match self.env.expr_data(expr) {
             Partial::Present(Expr::Un(_, UnOp::Ref)) => Some((expr, BindingMarker::Ref)),
             Partial::Present(Expr::Un(_, UnOp::Mut)) => Some((expr, BindingMarker::Mut)),
+            Partial::Present(Expr::Un(_, UnOp::MaybeMut)) => Some((expr, self.maybe_mut_marker())),
             Partial::Present(Expr::Block(stmts, _)) => {
                 match stmts.last()?.data(self.db, self.body()) {
                     Partial::Present(Stmt::Expr(tail)) => self.initializer_marker(*tail),
@@ -3251,6 +3308,38 @@ impl<'db> TyChecker<'db> {
                 position,
                 names,
             });
+        }
+    }
+
+    /// Whether `pat` binds a component of `shape` that is an access with a
+    /// `mut` binding, which needs the access to be `mut`.
+    fn pattern_asks_mut(&self, pat: PatId, shape: &Shape<'db>) -> bool {
+        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
+            return false;
+        };
+        match (shape, pat_data) {
+            (Shape::Owned(_), _) => false,
+            (Shape::Access(..), _) => self.first_marked_binding(pat, BindingMarker::Mut).is_some(),
+            (_, Pat::Or(lhs, rhs)) => {
+                self.pattern_asks_mut(*lhs, shape) || self.pattern_asks_mut(*rhs, shape)
+            }
+            (Shape::Tuple(elems), Pat::Tuple(pats)) => {
+                let rest = pats
+                    .iter()
+                    .position(|pat| pat.is_rest(self.db, self.body()));
+                pats.iter().enumerate().any(|(idx, &pat)| {
+                    let elem = match rest {
+                        Some(rest) if idx > rest => (elems.len() + idx).checked_sub(pats.len()),
+                        _ => Some(idx),
+                    };
+                    elem.and_then(|elem| elems.get(elem))
+                        .is_some_and(|elem| self.pattern_asks_mut(pat, elem))
+                })
+            }
+            (Shape::Sum { payload, .. }, Pat::PathTuple(_, pats)) => {
+                matches!(pats.as_slice(), [payload_pat] if self.pattern_asks_mut(*payload_pat, payload))
+            }
+            _ => false,
         }
     }
 
@@ -3398,6 +3487,7 @@ impl<'db> TyChecker<'db> {
     ) -> Option<BorrowKind> {
         let primary = || pat.span(self.body()).into();
         match (binding, marker) {
+            (_, BindingMarker::MaybeMut) => unreachable!("`binding_marker` resolves `mut?`"),
             (_, BindingMarker::Ref) => Some(BorrowKind::Ref),
             (_, BindingMarker::Var) if !ty.has_value_reading(self.db) => {
                 self.push_diag(BodyDiag::VarOfNoValue {
@@ -3458,10 +3548,9 @@ impl<'db> TyChecker<'db> {
     fn check_marked_bindings(&mut self) {
         let body = self.body();
         for (pat, data) in body.pats(self.db).iter() {
-            if let Partial::Present(Pat::Path(
-                _,
-                marker @ (BindingMarker::Ref | BindingMarker::Mut),
-            )) = data
+            if let Partial::Present(Pat::Path(_, marker)) = data
+                && let marker @ (BindingMarker::Ref | BindingMarker::Mut) =
+                    self.binding_marker(pat, *marker)
                 && let Some(binding @ LocalBinding::Local { .. }) = self.env.pat_binding(pat)
                 && self.env.binding_access(&binding).is_none()
                 && self
@@ -3471,7 +3560,7 @@ impl<'db> TyChecker<'db> {
             {
                 self.push_diag(BodyDiag::MarkedBindingWithoutAccess {
                     primary: pat.span(body).into(),
-                    marker: *marker == BindingMarker::Mut,
+                    marker: marker == BindingMarker::Mut,
                 });
             }
         }
@@ -4025,7 +4114,7 @@ pub enum ReturnProvenance {
     cycle_initial=func_return_provenance_cycle_initial
 )]
 fn func_return_provenance<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> ReturnProvenance {
-    let (diags, typed_body) = infer_body(db, BodyOwner::Func(func));
+    let (diags, typed_body) = infer_body(db, BodyOwner::func(db, func));
     if !diags.is_empty() {
         return ReturnProvenance::Unknown;
     }
@@ -4502,11 +4591,12 @@ impl<'db> TypedBody<'db> {
             {
                 missing_plan()
             }
-            Expr::Un(inner, crate::hir_def::expr::UnOp::Mut | crate::hir_def::expr::UnOp::Ref)
-                if !self.has_lowerable_place(db, *inner) =>
-            {
-                missing_plan()
-            }
+            Expr::Un(
+                inner,
+                crate::hir_def::expr::UnOp::Mut
+                | crate::hir_def::expr::UnOp::MaybeMut
+                | crate::hir_def::expr::UnOp::Ref,
+            ) if !self.has_lowerable_place(db, *inner) => missing_plan(),
             Expr::Assign(dst, _)
                 if self.semantic_expr_lowering(*dst).is_none()
                     && !self.has_lowerable_place(db, *dst) =>
@@ -4995,7 +5085,7 @@ impl<'db> TypedBody<'db> {
             return None;
         }
 
-        let (diags, typed_body) = infer_body(db, BodyOwner::Func(func));
+        let (diags, typed_body) = infer_body(db, BodyOwner::func(db, func));
         if !diags.is_empty() {
             seen.remove(&func);
             return None;
@@ -5164,8 +5254,18 @@ impl<'db> TypedBody<'db> {
                 seen,
                 visited_locals,
             ),
-            Expr::Un(inner, crate::hir_def::UnOp::Mut | crate::hir_def::UnOp::Ref) => self
-                .forwarded_return_param_sources_from_expr(db, body, *inner, seen, visited_locals),
+            Expr::Un(
+                inner,
+                crate::hir_def::UnOp::Mut
+                | crate::hir_def::UnOp::MaybeMut
+                | crate::hir_def::UnOp::Ref,
+            ) => self.forwarded_return_param_sources_from_expr(
+                db,
+                body,
+                *inner,
+                seen,
+                visited_locals,
+            ),
             Expr::RecordInit(_, fields) => {
                 let (record_like, variant) = match self.record_init_lowering(expr)? {
                     RecordInitLowering::Struct => (RecordLike::Type(self.expr_ty(db, expr)), None),
@@ -5259,6 +5359,7 @@ impl<'db> TypedBody<'db> {
                 TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
                 inst,
                 name,
+                callable.mode(),
             )
             && let Some(body_func) = method.body()
         {
@@ -6604,7 +6705,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         let (scope, assumptions) = (body.scope(), self.assumptions);
         let mut params = (0..).map_while(|idx| {
             let ty = normalize_ty(db, callable.arg_ty(db, idx)?, scope, assumptions);
-            Some((def.param_mode(db, idx), ty))
+            Some((def.param_mode(db, idx, callable.mode()), ty))
         });
         let misuse = params
             .find_map(|(mode, ty)| view_param_misuse(db, mode, ty))
@@ -6676,7 +6777,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         let value = (0..)
             .map_while(|idx| {
                 let ty = normalize_ty(db, callable.arg_ty(db, idx)?, scope, assumptions);
-                Some((def.param_mode(db, idx), ty))
+                Some((def.param_mode(db, idx, callable.mode()), ty))
             })
             .find_map(|(mode, ty)| {
                 (mode == FuncParamMode::Own)

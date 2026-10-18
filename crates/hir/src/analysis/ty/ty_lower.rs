@@ -61,7 +61,7 @@ fn lower_hir_ty_impl<'db>(
         HirTyKind::Ptr(pointee) => TyId::ptr_to(db, lower_child(*pointee, 0)),
 
         HirTyKind::Mode(TypeMode::Own, inner) => lower_child(*inner, 0),
-        HirTyKind::Mode(TypeMode::Mut | TypeMode::Ref, _) => {
+        HirTyKind::Mode(TypeMode::Mut | TypeMode::MaybeMut | TypeMode::Ref, _) => {
             TyId::invalid(db, InvalidCause::ModeNotType)
         }
 
@@ -339,8 +339,13 @@ pub(crate) fn lower_const_body_path<'db>(
                 if let Some(self_arg) = args.first_mut() {
                     *self_arg = recv_ty;
                 }
-                let inst =
-                    TraitInstId::new(db, inst.def(db), args, inst.assoc_type_bindings(db).clone());
+                let inst = TraitInstId::new(
+                    db,
+                    inst.def(db),
+                    args,
+                    inst.assoc_type_bindings(db).clone(),
+                    inst.mode(db),
+                );
 
                 if let Some(expected_ty) = inst
                     .def(db)
@@ -428,8 +433,13 @@ pub(crate) fn lower_type_position_path<'db>(
             if let Some(self_arg) = args.first_mut() {
                 *self_arg = recv_ty;
             }
-            let inst =
-                TraitInstId::new(db, inst.def(db), args, inst.assoc_type_bindings(db).clone());
+            let inst = TraitInstId::new(
+                db,
+                inst.def(db),
+                args,
+                inst.assoc_type_bindings(db).clone(),
+                inst.mode(db),
+            );
 
             if let Some(expected_ty) = inst
                 .def(db)

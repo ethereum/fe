@@ -1,4 +1,4 @@
-use parser::ast::{self};
+use parser::{SyntaxKind, ast};
 
 use super::FileLowerCtxt;
 use crate::core::hir_def::{
@@ -178,6 +178,7 @@ impl<'db> FuncParam<'db> {
         let mut is_mut = has_mut_token || ast.var_token().is_some();
         let is_ref = ast.ref_token().is_some();
         let is_own = ast.own_token().is_some();
+        let is_maybe_mut = ast.maybe_mut_token().is_some();
         let is_label_suppressed = ast.is_label_suppressed();
         let name = ast.name().map(|ast| FuncParamName::lower_ast(ctxt, ast));
 
@@ -187,6 +188,8 @@ impl<'db> FuncParam<'db> {
             Some(TypeMode::Ref)
         } else if is_own {
             Some(TypeMode::Own)
+        } else if is_maybe_mut {
+            Some(TypeMode::MaybeMut)
         } else {
             None
         };
@@ -203,6 +206,11 @@ impl<'db> FuncParam<'db> {
                 Partial::Present(TypeId::new(
                     ctxt.db(),
                     TypeKind::Mode(TypeMode::Own, Partial::Present(fallback_self)),
+                ))
+            } else if is_maybe_mut {
+                Partial::Present(TypeId::new(
+                    ctxt.db(),
+                    TypeKind::Mode(TypeMode::MaybeMut, Partial::Present(fallback_self)),
                 ))
             } else if has_mut_token {
                 is_mut = false;
@@ -272,7 +280,12 @@ impl<'db> WherePredicate<'db> {
 impl<'db> TypeBound<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TypeBound) -> Self {
         if let Some(trait_bound) = ast.trait_bound() {
-            Self::Trait(TraitRefId::lower_ast(ctxt, trait_bound))
+            let mode = match ast.mode_token().map(|token| token.kind()) {
+                Some(SyntaxKind::MutKw) => ModeMarker::Mut,
+                Some(SyntaxKind::MaybeMutKw) => ModeMarker::MaybeMut,
+                _ => ModeMarker::None,
+            };
+            Self::Trait(TraitRefId::lower_ast(ctxt, trait_bound), mode)
         } else {
             Self::Kind(KindBound::lower_ast_opt(ctxt, ast.kind_bound()))
         }

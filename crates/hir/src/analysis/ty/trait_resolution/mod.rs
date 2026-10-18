@@ -6,7 +6,7 @@ use super::{
     fold::TyFoldable,
     normalize::normalize_from_assumptions,
     trait_def::{ImplementorId, TraitInstId},
-    ty_def::{TyData, TyFlags, TyId},
+    ty_def::{BorrowKind, TyData, TyFlags, TyId},
     visitor::{TyVisitable, TyVisitor},
 };
 use crate::analysis::{
@@ -22,7 +22,7 @@ use crate::analysis::{
 };
 use crate::{
     Ingot,
-    hir_def::{HirIngot, scope_graph::ScopeId},
+    hir_def::{HirIngot, ModeMarker, scope_graph::ScopeId},
 };
 use common::indexmap::IndexSet;
 use constraint::collect_constraints;
@@ -873,6 +873,25 @@ impl<'db> PredicateListId<'db> {
         Self::new(db, Vec::new())
     }
 
+    /// The predicates of an item used at `mode`: its `mut?` bounds are
+    /// `mut` at `mut`, and plain otherwise.
+    pub fn at_mode(self, db: &'db dyn HirAnalysisDb, mode: Option<BorrowKind>) -> Self {
+        if self
+            .list(db)
+            .iter()
+            .all(|pred| pred.mode(db) != ModeMarker::MaybeMut)
+        {
+            return self;
+        }
+        Self::new(
+            db,
+            self.list(db)
+                .iter()
+                .map(|pred| pred.at_mode(db, mode))
+                .collect::<Vec<_>>(),
+        )
+    }
+
     pub fn is_empty(self, db: &'db dyn HirAnalysisDb) -> bool {
         self.list(db).is_empty()
     }
@@ -893,6 +912,12 @@ impl<'db> PredicateListId<'db> {
         while let Some(pred) = worklist.pop() {
             let hir_trait = pred.def(db);
             let evidence = PredicateListId::new(db, vec![pred]);
+            // A `mut?` bound of the trait's is at the predicate's mode.
+            let mode = Some(if pred.is_mut(db) {
+                BorrowKind::Mut
+            } else {
+                BorrowKind::Ref
+            });
             // 1. Collect super traits
             for super_trait in hir_trait.super_traits(db) {
                 let inst = normalize_from_assumptions(
@@ -930,7 +955,8 @@ impl<'db> PredicateListId<'db> {
                         Binder::bind(hir_trait.into(), bound).instantiate(db, pred.args(db)),
                         hir_trait.scope(),
                         evidence,
-                    );
+                    )
+                    .at_mode(db, mode);
                     if predicate_has_recursive_assoc_projection(db, trait_inst) {
                         continue;
                     }
@@ -1119,12 +1145,14 @@ mod tests {
             named_trait(&db, top_mod, "A"),
             vec![TyId::bool(&db)],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let b = TraitInstId::new(
             &db,
             named_trait(&db, top_mod, "B"),
             vec![TyId::bool(&db)],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let left = PredicateListId::new(&db, vec![a, b, a]);
         let right = PredicateListId::new(&db, vec![b, a]);
@@ -1143,8 +1171,13 @@ mod tests {
             let ty_param = collect_generic_params(db, func.into()).explicit_params(db)[0];
             let assumptions =
                 collect_func_def_constraints(db, func.into(), true).instantiate_identity();
-            let goal =
-                TraitInstId::new(db, needs_a, vec![TyId::unit(db), ty_param], IndexMap::new());
+            let goal = TraitInstId::new(
+                db,
+                needs_a,
+                vec![TyId::unit(db), ty_param],
+                IndexMap::new(),
+                crate::hir_def::ModeMarker::None,
+            );
             let query = CanonicalGoalQuery::new(db, goal, assumptions);
             let solve_cx = TraitSolveCx::new(db, func.scope()).with_assumptions(assumptions);
             (query, solve_cx)
@@ -1249,7 +1282,13 @@ impl Foo for Ambiguous {}
         let foo = named_trait(&db, top_mod, "Foo");
         let solve = |name| {
             let self_ty = named_struct_ty(&db, top_mod, name);
-            let goal = TraitInstId::new(&db, foo, vec![self_ty], IndexMap::new());
+            let goal = TraitInstId::new(
+                &db,
+                foo,
+                vec![self_ty],
+                IndexMap::new(),
+                crate::hir_def::ModeMarker::None,
+            );
             is_goal_satisfiable(&db, TraitSolveCx::new(&db, top_mod.scope()), goal)
         };
 
@@ -1286,7 +1325,13 @@ impl<T> Foo for T where Wrap<T>: Foo {}
         let deep_root = nested_ty(&db, wrap, dead, 300);
 
         for self_ty in [dead, deep_root] {
-            let goal = TraitInstId::new(&db, foo, vec![self_ty], IndexMap::new());
+            let goal = TraitInstId::new(
+                &db,
+                foo,
+                vec![self_ty],
+                IndexMap::new(),
+                crate::hir_def::ModeMarker::None,
+            );
             assert!(matches!(
                 is_goal_satisfiable(&db, TraitSolveCx::new(&db, top_mod.scope()), goal),
                 GoalSatisfiability::NeedsConfirmation {
@@ -1322,16 +1367,33 @@ impl Foo for Subject {}
         let wrap = named_struct_ty(&db, top_mod, "Wrap");
         let deep = nested_ty(&db, wrap, leaf, 300);
 
-        let deep_goal = TraitInstId::new(&db, foo, vec![deep], IndexMap::new());
+        let deep_goal = TraitInstId::new(
+            &db,
+            foo,
+            vec![deep],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         assert!(matches!(
             is_goal_satisfiable(&db, TraitSolveCx::new(&db, top_mod.scope()), deep_goal,),
             GoalSatisfiability::Satisfied(_)
         ));
 
-        let unrelated_deep_assumption =
-            TraitInstId::new(&db, noise, vec![subject, deep], IndexMap::new());
+        let unrelated_deep_assumption = TraitInstId::new(
+            &db,
+            noise,
+            vec![subject, deep],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         let assumptions = PredicateListId::new(&db, vec![unrelated_deep_assumption]);
-        let shallow_goal = TraitInstId::new(&db, foo, vec![subject], IndexMap::new());
+        let shallow_goal = TraitInstId::new(
+            &db,
+            foo,
+            vec![subject],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         assert!(matches!(
             is_goal_satisfiable(
                 &db,
@@ -1374,7 +1436,13 @@ fn probe<T: Seed>() {}
         let ty_param = collect_generic_params(&db, probe.into()).explicit_params(&db)[0];
         let assumptions =
             collect_func_def_constraints(&db, probe.into(), true).instantiate_identity();
-        let goal = TraitInstId::new(&db, grow, vec![ty_param], IndexMap::new());
+        let goal = TraitInstId::new(
+            &db,
+            grow,
+            vec![ty_param],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
 
         assert!(matches!(
             is_goal_satisfiable(
@@ -1417,7 +1485,13 @@ impl<SelfT, T> Goal<T> for SelfT where SelfT: Accept<T>, SelfT: Choose<T> {}
         let solve_cx = TraitSolveCx::new(&db, top_mod.scope()).with_assumptions(assumptions);
         let mut table = UnificationTable::new(&db);
         let selected = table.new_var(TyVarSort::General, &Kind::Star);
-        let goal = TraitInstId::new(&db, goal_trait, vec![subject, selected], IndexMap::new());
+        let goal = TraitInstId::new(
+            &db,
+            goal_trait,
+            vec![subject, selected],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         let query = CanonicalGoalQuery::new(&db, goal, assumptions);
         let GoalSatisfiability::Satisfied(solution) =
             is_goal_query_satisfiable(&db, solve_cx, &query)
@@ -1425,7 +1499,13 @@ impl<SelfT, T> Goal<T> for SelfT where SelfT: Accept<T>, SelfT: Choose<T> {}
             panic!("the second constraint must observe the first constraint's binding");
         };
         let actual = query.extract_solution(&mut table, solution).inst;
-        let expected = TraitInstId::new(&db, goal_trait, vec![subject, a], IndexMap::new());
+        let expected = TraitInstId::new(
+            &db,
+            goal_trait,
+            vec![subject, a],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
 
         assert_eq!(Canonical::new(&db, actual), Canonical::new(&db, expected));
     }
@@ -1454,7 +1534,13 @@ impl Foo for Third {}
         let solve_cx = TraitSolveCx::new(&db, top_mod.scope()).with_assumptions(assumptions);
         let mut table = UnificationTable::new(&db);
         let self_ty = table.new_var(TyVarSort::General, &Kind::Star);
-        let goal = TraitInstId::new(&db, foo, vec![self_ty], IndexMap::new());
+        let goal = TraitInstId::new(
+            &db,
+            foo,
+            vec![self_ty],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         let query = CanonicalGoalQuery::new(&db, goal, assumptions);
         let GoalSatisfiability::NeedsConfirmation {
             solutions,
@@ -1480,7 +1566,13 @@ impl Foo for Third {}
                 let self_ty = named_struct_ty(&db, top_mod, name);
                 Canonical::new(
                     &db,
-                    TraitInstId::new(&db, foo, vec![self_ty], IndexMap::new()),
+                    TraitInstId::new(
+                        &db,
+                        foo,
+                        vec![self_ty],
+                        IndexMap::new(),
+                        crate::hir_def::ModeMarker::None,
+                    ),
                 )
             })
             .find(|candidate| !returned.contains(candidate))
@@ -1510,7 +1602,13 @@ fn unsupported<T>() {}
             let func = find_func(&db, top_mod, name);
             let parameter = collect_generic_params(&db, func.into()).explicit_params(&db)[0];
             let self_ty = TyId::app(&db, wrap, parameter);
-            let goal = TraitInstId::new(&db, picks, vec![self_ty], IndexMap::new());
+            let goal = TraitInstId::new(
+                &db,
+                picks,
+                vec![self_ty],
+                IndexMap::new(),
+                crate::hir_def::ModeMarker::None,
+            );
             let constraints =
                 collect_func_def_constraints(&db, func.into(), true).instantiate_identity();
             let assumptions = PredicateListId::new(
@@ -1564,6 +1662,7 @@ fn probe<T>() {}
             named_trait(&db, top_mod, "Picks"),
             vec![self_ty],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let solve = TraitSolveCx::new(&db, func.scope())
             .with_assumptions(PredicateListId::new(&db, vec![goal]));
@@ -1596,6 +1695,7 @@ fn probe<T: Picks>() {}
             named_trait(&db, top_mod, "Picks"),
             vec![self_ty],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let solve = TraitSolveCx::new(&db, func.scope()).with_assumptions(assumptions);
         assert!(matches!(

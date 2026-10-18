@@ -416,41 +416,57 @@ impl<'db> Func<'db> {
     /// A `#[view]` type is taken only by view and `mut` parameters and
     /// access results. A `mut` view points into an owner its session holds
     /// mutably, so a projection yielding one holds a mutable input or
-    /// effect; an `unsafe` one leaves that to its caller.
+    /// effect; an `unsafe` one leaves that to its caller. A `mut?` function
+    /// is checked at both of its modes.
     pub fn diags_view_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let normalize =
             |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
-        let params = self.params(db).filter_map(|param| {
-            let (ty, position) =
-                ty::shape::view_param_misuse(db, param.mode(db), normalize(param.ty(db)))?;
-            Some((param.span().into(), ty, position))
-        });
-        let shape = self
-            .return_shape(db)
-            .cloned()
-            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))));
-        let ret = shape
-            .view_misuse(db)
-            .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
-        let holds_mutably = self
-            .params(db)
-            .any(|param| param.mode(db) == FuncParamMode::Mut)
-            || self.effects(db).data(db).iter().any(|effect| effect.is_mut);
-        let unheld_mut_view = shape
-            .mut_view(db)
-            .filter(|_| !holds_mutably && !self.is_unsafe(db))
-            .map(|ty| {
-                (
-                    self.span().ret_ty().into(),
-                    ty,
-                    "yielded by `mut` from a projection that holds nothing mutably",
-                )
+        let mut diags: Vec<TyDiagCollection<'db>> = Vec::new();
+        for &mode in self.modes(db) {
+            let params = self.params(db).filter_map(|param| {
+                let (ty, position) = ty::shape::view_param_misuse(
+                    db,
+                    param.mode_at(db, mode),
+                    normalize(param.ty(db)),
+                )?;
+                Some((param.span().into(), ty, position))
             });
-        params
-            .chain(ret)
-            .chain(unheld_mut_view)
-            .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
-            .collect()
+            let shape = self
+                .return_shape(db, mode)
+                .cloned()
+                .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))));
+            let ret = shape
+                .view_misuse(db)
+                .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
+            let holds_mutably = self
+                .params(db)
+                .any(|param| param.mode_at(db, mode) == FuncParamMode::Mut)
+                || self
+                    .effects(db)
+                    .data(db)
+                    .iter()
+                    .any(|effect| effect.is_mut());
+            let unheld_mut_view = shape
+                .mut_view(db)
+                .filter(|_| !holds_mutably && !self.is_unsafe(db))
+                .map(|ty| {
+                    (
+                        self.span().ret_ty().into(),
+                        ty,
+                        "yielded by `mut` from a projection that holds nothing mutably",
+                    )
+                });
+            for diag in params
+                .chain(ret)
+                .chain(unheld_mut_view)
+                .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
+            {
+                if !diags.contains(&diag) {
+                    diags.push(diag);
+                }
+            }
+        }
+        diags
     }
 
     /// A state-only type is never a value: no `own` parameter takes one
@@ -461,11 +477,12 @@ impl<'db> Func<'db> {
         let params = self.params(db).filter_map(|param| {
             let ty = normalize(param.ty(db));
             let collection =
-                (param.mode(db) == FuncParamMode::Own).then(|| ty.pinned_part(db))??;
+                (param.mode_at(db, None) == FuncParamMode::Own).then(|| ty.pinned_part(db))??;
             Some((param.span().into(), ty, collection, "an `own` parameter"))
         });
+        // The owned parts of a return are the same at every mode.
         let ret = self
-            .return_shape(db)
+            .return_shape(db, self.modes(db)[0])
             .cloned()
             .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))))
             .state_only_value(db)
@@ -1907,7 +1924,7 @@ impl<'db> GenericParamOwner<'db> {
             };
 
             for (i, bound) in tp.bounds.iter().enumerate() {
-                let TypeBound::Trait(tr) = bound else {
+                let TypeBound::Trait(tr, _) = bound else {
                     continue;
                 };
                 let span = view

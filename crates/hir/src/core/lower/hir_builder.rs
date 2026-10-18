@@ -13,10 +13,10 @@ use crate::{
         BindingMarker, BlockKind, Body, BodyKind, EffectParamListId, Expr, ExprId, FieldDefListId,
         FieldIndex, Func, FuncModifiers, FuncParam, FuncParamListId, FuncParamMode, FuncParamName,
         FuncReturn, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
-        ImplTrait, IntegerId, ItemKind, LitKind, Mod, NormalAttr, Partial, Pat, PatId, PathId,
-        PathKind, Stmt, StmtId, Struct, TopLevelMod, TrackedItemId, TrackedItemVariant, TraitRefId,
-        TypeBound, TypeGenericArg, TypeGenericParam, TypeId, TypeKind, TypeMode, UnOp, Visibility,
-        WhereClauseId, expr::CallArg,
+        ImplTrait, IntegerId, ItemKind, LitKind, Mod, ModeMarker, NormalAttr, Partial, Pat, PatId,
+        PathId, PathKind, Stmt, StmtId, Struct, TopLevelMod, TrackedItemId, TrackedItemVariant,
+        TraitRefId, TypeBound, TypeGenericArg, TypeGenericParam, TypeId, TypeKind, TypeMode, UnOp,
+        Visibility, WhereClauseId, expr::CallArg,
     },
     span::{DesugaredOrigin, HirOrigin},
 };
@@ -244,7 +244,7 @@ where
                 .map(|&(ident, bound)| {
                     GenericParam::Type(TypeGenericParam {
                         name: Partial::Present(ident),
-                        bounds: vec![TypeBound::Trait(bound)],
+                        bounds: vec![TypeBound::Trait(bound, ModeMarker::None)],
                         default_ty: None,
                     })
                 })

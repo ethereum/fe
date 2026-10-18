@@ -1,4 +1,4 @@
-use crate::analysis::ty::ty_def::{ClosureTy, TyId};
+use crate::analysis::ty::ty_def::{BorrowKind, ClosureTy, TyId};
 use crate::hir_def::{
     ClosureDef, Expr, ExprId, ItemKind, Partial, attr::ArithmeticMode, params::FuncParamMode,
 };
@@ -13,7 +13,9 @@ use salsa::Update;
 /// Identifies the HIR owner of a [`Body`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum BodyOwner<'db> {
-    Func(Func<'db>),
+    /// A function's body, at the mode it is checked at if it is a `mut?`
+    /// function: one body per mode.
+    Func(Func<'db>, Option<BorrowKind>),
     Const(Const<'db>),
     AnonConstBody {
         body: Body<'db>,
@@ -120,10 +122,37 @@ impl<'db> BodyOwner<'db> {
         }
     }
 
+    /// The bodies of `func`: one per mode a `mut?` function is checked at,
+    /// and one for any other function.
+    pub fn func_bodies(
+        db: &'db dyn HirAnalysisDb,
+        func: Func<'db>,
+    ) -> impl Iterator<Item = Self> + 'db {
+        func.modes(db)
+            .iter()
+            .map(move |&mode| Self::Func(func, mode))
+    }
+
+    /// The body of `func` that questions every mode answers alike read: a
+    /// `mut?` function's `ref` body.
+    pub fn func(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Self {
+        Self::Func(func, func.modes(db)[0])
+    }
+
+    /// The mode this body is checked at: a `mut?` function's.
+    pub fn mode(self) -> Option<BorrowKind> {
+        match self {
+            Self::Func(_, mode) => mode,
+            _ => None,
+        }
+    }
+
     /// The owner of the item body `body`, which a closure's body is part of.
+    /// A `mut?` function has no closures (the type checker rejects them), so
+    /// a function's body is its first.
     pub fn from_body(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<Self> {
         if let Some(func) = body.containing_func(db) {
-            return Some(Self::Func(func));
+            return Some(Self::func(db, func));
         }
         match body.scope().parent_item(db)? {
             ItemKind::Const(const_) if const_.body(db).to_opt() == Some(body) => {
@@ -210,7 +239,7 @@ impl<'db> BodyOwner<'db> {
     }
 
     pub fn arithmetic_mode(self, db: &'db dyn HirAnalysisDb) -> ArithmeticMode {
-        if let Self::Func(func) = self {
+        if let Self::Func(func, _) = self {
             return func.arithmetic_mode(db);
         }
 
@@ -267,7 +296,7 @@ impl<'db> BodyOwner<'db> {
 
     pub fn body(self, db: &'db dyn HirAnalysisDb) -> Option<Body<'db>> {
         match self {
-            BodyOwner::Func(func) => func.body(db),
+            BodyOwner::Func(func, _) => func.body(db),
             BodyOwner::Const(const_) => const_.body(db).to_opt(),
             BodyOwner::AnonConstBody { body, .. } => Some(body),
             BodyOwner::ContractInit { contract } => Some(contract.init(db)?.body(db)),
@@ -287,7 +316,7 @@ impl<'db> BodyOwner<'db> {
 
     pub fn scope(self) -> ScopeId<'db> {
         match self {
-            BodyOwner::Func(func) => func.scope(),
+            BodyOwner::Func(func, _) => func.scope(),
             BodyOwner::Const(const_) => const_.scope(),
             BodyOwner::AnonConstBody { body, .. } => body.scope(),
             BodyOwner::ContractInit { contract } => contract.scope(),
@@ -298,7 +327,7 @@ impl<'db> BodyOwner<'db> {
 
     pub fn effects(self, db: &'db dyn HirAnalysisDb) -> EffectParamListId<'db> {
         match self {
-            BodyOwner::Func(func) => func.effects(db),
+            BodyOwner::Func(func, _) => func.effects(db),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
                 EffectParamListId::new(db, Vec::new())
             }
@@ -319,7 +348,7 @@ impl<'db> BodyOwner<'db> {
 
     pub fn effect_param_ty_span(self, db: &'db dyn HirAnalysisDb, idx: usize) -> DynLazySpan<'db> {
         match self {
-            BodyOwner::Func(func) => func
+            BodyOwner::Func(func, _) => func
                 .span()
                 .effects()
                 .param_idx(func.effect_origin(db, idx))

@@ -221,7 +221,13 @@ mod tests {
         let item = IdentId::new(&db, "Item".to_string());
         let mut bindings = IndexMap::new();
         bindings.insert(item, params[0]);
-        let predicate = TraitInstId::new(&db, trait_, vec![params[0], params[1]], bindings);
+        let predicate = TraitInstId::new(
+            &db,
+            trait_,
+            vec![params[0], params[1]],
+            bindings,
+            crate::hir_def::ModeMarker::None,
+        );
         let mapped = substitute_complete(&db, predicate, &sigma).unwrap();
         assert_eq!(mapped.args(&db), &[params[1], params[0]]);
         assert_eq!(mapped.assoc_type_bindings(&db)[&item], params[1]);

@@ -403,6 +403,7 @@ fn collect_typed_body_event_structs<'db>(
                     TraitSolveCx::new(db, body.scope()).with_assumptions(typed_body.assumptions()),
                     inst,
                     name,
+                    None,
                 )
                 && let Some(impl_func) = method.body()
                 && let Ok(body_args) = method.complete_body_args(db, callable.generic_args())

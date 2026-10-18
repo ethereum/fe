@@ -815,7 +815,13 @@ impl ToDoc for ast::TypeBound {
         let alloc = &ctx.alloc;
 
         if let Some(trait_bound) = self.trait_bound() {
-            trait_bound.to_doc(ctx)
+            match self.mode_token() {
+                Some(mode) => alloc
+                    .text(ctx.token(&mode))
+                    .append(alloc.text(" "))
+                    .append(trait_bound.to_doc(ctx)),
+                None => trait_bound.to_doc(ctx),
+            }
         } else if let Some(kind_bound) = self.kind_bound() {
             alloc.text(ctx.snippet_trimmed(&kind_bound))
         } else {
@@ -903,7 +909,10 @@ impl ToDoc for ast::ModeType {
                         })
                 },
                 |token| match token.kind() {
-                    SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw => {
+                    SyntaxKind::MutKw
+                    | SyntaxKind::MaybeMutKw
+                    | SyntaxKind::RefKw
+                    | SyntaxKind::OwnKw => {
                         Some(TokenPiece::new(alloc.text(ctx.token(&token))).space_after())
                     }
                     _ => None,

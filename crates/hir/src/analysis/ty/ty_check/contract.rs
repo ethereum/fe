@@ -42,7 +42,7 @@ use crate::{
     semantic::FieldView,
     span::{DynLazySpan, path::LazyPathSpan},
 };
-use common::{indexmap::IndexMap, ingot::IngotKind};
+use common::ingot::IngotKind;
 
 #[allow(clippy::enum_variant_names)]
 pub enum VariantResError<'db> {
@@ -128,7 +128,7 @@ fn check_ty_decodable<'db>(
         return;
     }
 
-    let inst = TraitInstId::new(db, decode_trait, vec![ty, sol_ty], IndexMap::new());
+    let inst = TraitInstId::new_simple(db, decode_trait, vec![ty, sol_ty]);
     if let GoalSatisfiability::UnSat(_) = is_goal_satisfiable(db, solve_cx, inst) {
         diags.push(
             TyDiagCollection::from(TraitConstraintDiag::TraitBoundNotSat {

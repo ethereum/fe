@@ -830,7 +830,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     panic!("unexpected access expression: {expr:?}")
                 };
                 let place = match data {
-                    Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) => *inner,
+                    Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref)) => {
+                        *inner
+                    }
                     _ => expr,
                 };
                 let place = self.lower_place(place);
@@ -891,7 +893,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             ))
         });
         let exit_ty = match self.template_owner {
-            BodyOwner::Func(func) if let Some(shape) = func.return_shape(self.db) => {
+            BodyOwner::Func(func, mode) if let Some(shape) = func.return_shape(self.db, mode) => {
                 shape.carrier_ty(self.db)
             }
             _ => self.typed_body.result_ty(),
@@ -1100,7 +1102,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let index = self.lower_expr_operand(*index);
                 self.emit_expr_with_origin(origin, ty, SExpr::Index { base, index })
             }
-            Expr::Un(_, UnOp::Mut | UnOp::Ref) => self.lower_access(expr),
+            Expr::Un(_, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref) => self.lower_access(expr),
             Expr::Un(_, UnOp::Deref) => {
                 let place = self.lower_place(expr);
                 self.emit_expr_with_origin(origin, ty, SExpr::ReadPlace { place })
@@ -1727,7 +1729,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         receiver: bool,
     ) -> SValueId {
         let ty = self.expr_ty(expr);
-        let mode = callable.callable_def().param_mode(self.db, param);
+        let mode = callable
+            .callable_def()
+            .param_mode(self.db, param, callable.mode());
         if mode == FuncParamMode::Own {
             let value = self.lower_expr(expr);
             return self.take_operand(expr, value);
@@ -1808,7 +1812,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         if let Some(&base) = self.loop_bases.get(&receiver) {
             return Receiver::Value(base);
         }
-        let mode = callable.callable_def().param_mode(self.db, 0);
+        let mode = callable
+            .callable_def()
+            .param_mode(self.db, 0, callable.mode());
         if mode != FuncParamMode::Own
             && self.typed_body.expr_prop(self.db, receiver).shape.is_some()
         {
@@ -1905,7 +1911,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         match prepared {
             Receiver::Value(value) => value,
             Receiver::Place(None)
-                if callable.callable_def().param_mode(self.db, 0) != FuncParamMode::Mut =>
+                if callable
+                    .callable_def()
+                    .param_mode(self.db, 0, callable.mode())
+                    != FuncParamMode::Mut =>
             {
                 self.lower_callable_argument(receiver, callable, 0, true)
             }

@@ -300,7 +300,7 @@ fn uniquify_function_symbols(
 
 fn semantic_leaf_component<'db>(db: &'db DriverDataBase, owner: BodyOwner<'db>) -> String {
     match owner {
-        BodyOwner::Func(func) => func
+        BodyOwner::Func(func, _) => func
             .name(db)
             .to_opt()
             .map_or_else(|| "__anon".to_string(), |name| name.data(db).to_string()),
@@ -351,7 +351,7 @@ fn semantic_owner_context_candidates<'db>(
 }
 
 fn readable_owner_context<'db>(db: &'db DriverDataBase, owner: BodyOwner<'db>) -> Option<String> {
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return None;
     };
 

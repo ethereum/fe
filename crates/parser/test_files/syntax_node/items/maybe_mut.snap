@@ -1,0 +1,311 @@
+---
+source: crates/parser/tests/syntax_node.rs
+assertion_line: 18
+expression: node
+input_file: test_files/syntax_node/items/maybe_mut.fe
+---
+Root@0..360
+  ItemList@0..359
+    Item@0..192
+      Impl@0..192
+        ImplKw@0..4 "impl"
+        WhiteSpace@4..5 " "
+        PathType@5..10
+          Path@5..10
+            PathSegment@5..10
+              Ident@5..10 "Items"
+        WhiteSpace@10..11 " "
+        ImplItemList@11..192
+          LBrace@11..12 "{"
+          Newline@12..13 "\n"
+          WhiteSpace@13..17 "    "
+          Func@17..190
+            FnKw@17..19 "fn"
+            WhiteSpace@19..20 " "
+            FuncSignature@20..100
+              Ident@20..22 "at"
+              FuncParamList@22..45
+                LParen@22..23 "("
+                FnParam@23..32
+                  MaybeMutKw@23..27 "mut?"
+                  WhiteSpace@27..28 " "
+                  SelfKw@28..32 "self"
+                Comma@32..33 ","
+                WhiteSpace@33..34 " "
+                FnParam@34..44
+                  Underscore@34..35 "_"
+                  WhiteSpace@35..36 " "
+                  Ident@36..37 "c"
+                  Colon@37..38 ":"
+                  WhiteSpace@38..39 " "
+                  PathType@39..44
+                    Path@39..44
+                      PathSegment@39..44
+                        Ident@39..44 "usize"
+                RParen@44..45 ")"
+              WhiteSpace@45..46 " "
+              Arrow@46..48 "->"
+              WhiteSpace@48..49 " "
+              ModeType@49..58
+                MaybeMutKw@49..53 "mut?"
+                WhiteSpace@53..54 " "
+                PathType@54..55
+                  Path@54..55
+                    PathSegment@54..55
+                      Ident@54..55 "T"
+                WhiteSpace@55..56 " "
+                SpaceAnnotation@56..58
+                  At@56..57 "@"
+                  Path@57..58
+                    PathSegment@57..58
+                      Ident@57..58 "S"
+              WhiteSpace@58..59 " "
+              UsesClause@59..100
+                UsesKw@59..63 "uses"
+                WhiteSpace@63..64 " "
+                UsesParamList@64..100
+                  LParen@64..65 "("
+                  UsesParam@65..89
+                    Ident@65..72 "storage"
+                    Colon@72..73 ":"
+                    WhiteSpace@73..74 " "
+                    MaybeMutKw@74..78 "mut?"
+                    WhiteSpace@78..79 " "
+                    PathType@79..89
+                      Path@79..89
+                        PathSegment@79..89
+                          Ident@79..89 "RawStorage"
+                  Comma@89..90 ","
+                  WhiteSpace@90..91 " "
+                  UsesParam@91..99
+                    MaybeMutKw@91..95 "mut?"
+                    WhiteSpace@95..96 " "
+                    PathType@96..99
+                      Path@96..99
+                        PathSegment@96..99
+                          Ident@96..99 "Log"
+                  RParen@99..100 ")"
+            WhiteSpace@100..101 " "
+            BlockExpr@101..190
+              LBrace@101..102 "{"
+              Newline@102..103 "\n"
+              WhiteSpace@103..111 "        "
+              LetStmt@111..150
+                LetKw@111..114 "let"
+                WhiteSpace@114..115 " "
+                TuplePat@115..132
+                  TuplePatElemList@115..132
+                    LParen@115..116 "("
+                    PathPat@116..125
+                      MaybeMutKw@116..120 "mut?"
+                      WhiteSpace@120..121 " "
+                      Path@121..125
+                        PathSegment@121..125
+                          Ident@121..125 "head"
+                    Comma@125..126 ","
+                    WhiteSpace@126..127 " "
+                    PathPat@127..131
+                      Path@127..131
+                        PathSegment@127..131
+                          Ident@127..131 "tail"
+                    RParen@131..132 ")"
+                WhiteSpace@132..133 " "
+                Eq@133..134 "="
+                WhiteSpace@134..135 " "
+                UnExpr@135..150
+                  MaybeMutKw@135..139 "mut?"
+                  WhiteSpace@139..140 " "
+                  FieldExpr@140..150
+                    PathExpr@140..144
+                      Path@140..144
+                        PathSegment@140..144
+                          SelfKw@140..144 "self"
+                    Dot@144..145 "."
+                    Ident@145..150 "items"
+              Newline@150..151 "\n"
+              WhiteSpace@151..159 "        "
+              ExprStmt@159..184
+                UnsafeExpr@159..184
+                  UnsafeKw@159..165 "unsafe"
+                  WhiteSpace@165..166 " "
+                  BlockExpr@166..184
+                    LBrace@166..167 "{"
+                    WhiteSpace@167..168 " "
+                    ExprStmt@168..182
+                      UnExpr@168..182
+                        MaybeMutKw@168..172 "mut?"
+                        WhiteSpace@172..173 " "
+                        UnExpr@173..182
+                          Star@173..174 "*"
+                          FieldExpr@174..182
+                            PathExpr@174..178
+                              Path@174..178
+                                PathSegment@174..178
+                                  SelfKw@174..178 "self"
+                            Dot@178..179 "."
+                            Ident@179..182 "ptr"
+                    WhiteSpace@182..183 " "
+                    RBrace@183..184 "}"
+              Newline@184..185 "\n"
+              WhiteSpace@185..189 "    "
+              RBrace@189..190 "}"
+          Newline@190..191 "\n"
+          RBrace@191..192 "}"
+    Newline@192..194 "\n\n"
+    Item@194..258
+      Func@194..258
+        FnKw@194..196 "fn"
+        WhiteSpace@196..197 " "
+        FuncSignature@197..255
+          Ident@197..202 "split"
+          FuncParamList@202..223
+            LParen@202..203 "("
+            FnParam@203..222
+              Underscore@203..204 "_"
+              WhiteSpace@204..205 " "
+              Ident@205..210 "items"
+              Colon@210..211 ":"
+              WhiteSpace@211..212 " "
+              ModeType@212..222
+                MaybeMutKw@212..216 "mut?"
+                WhiteSpace@216..217 " "
+                PathType@217..222
+                  Path@217..222
+                    PathSegment@217..222
+                      Ident@217..222 "Items"
+            RParen@222..223 ")"
+          WhiteSpace@223..224 " "
+          Arrow@224..226 "->"
+          WhiteSpace@226..227 " "
+          TupleType@227..255
+            LParen@227..228 "("
+            ModeType@228..238
+              MaybeMutKw@228..232 "mut?"
+              WhiteSpace@232..233 " "
+              PathType@233..238
+                Path@233..238
+                  PathSegment@233..238
+                    Ident@233..238 "Items"
+            Comma@238..239 ","
+            WhiteSpace@239..240 " "
+            PathType@240..254
+              Path@240..254
+                PathSegment@240..254
+                  Ident@240..246 "Option"
+                  GenericArgList@246..254
+                    Lt@246..247 "<"
+                    TypeGenericArg@247..253
+                      ModeType@247..253
+                        MaybeMutKw@247..251 "mut?"
+                        WhiteSpace@251..252 " "
+                        PathType@252..253
+                          Path@252..253
+                            PathSegment@252..253
+                              Ident@252..253 "T"
+                    Gt@253..254 ">"
+            RParen@254..255 ")"
+        WhiteSpace@255..256 " "
+        BlockExpr@256..258
+          LBrace@256..257 "{"
+          RBrace@257..258 "}"
+    Newline@258..260 "\n\n"
+    Item@260..359
+      Func@260..359
+        FnKw@260..262 "fn"
+        WhiteSpace@262..263 " "
+        FuncSignature@263..356
+          Ident@263..267 "sort"
+          GenericParamList@267..313
+            Lt@267..268 "<"
+            TypeGenericParam@268..293
+              Ident@268..269 "S"
+              TypeBoundList@269..293
+                Colon@269..270 ":"
+                WhiteSpace@270..271 " "
+                TypeBound@271..287
+                  MutKw@271..274 "mut"
+                  WhiteSpace@274..275 " "
+                  TraitRef@275..287
+                    Path@275..287
+                      PathSegment@275..287
+                        Ident@275..280 "Index"
+                        GenericArgList@280..287
+                          Lt@280..281 "<"
+                          TypeGenericArg@281..286
+                            PathType@281..286
+                              Path@281..286
+                                PathSegment@281..286
+                                  Ident@281..286 "usize"
+                          Gt@286..287 ">"
+                WhiteSpace@287..288 " "
+                Plus@288..289 "+"
+                WhiteSpace@289..290 " "
+                TypeBound@290..293
+                  TraitRef@290..293
+                    Path@290..293
+                      PathSegment@290..293
+                        Ident@290..293 "Len"
+            Comma@293..294 ","
+            WhiteSpace@294..295 " "
+            TypeGenericParam@295..312
+              Ident@295..296 "D"
+              TypeBoundList@296..312
+                Colon@296..297 ":"
+                WhiteSpace@297..298 " "
+                TypeBound@298..312
+                  MaybeMutKw@298..302 "mut?"
+                  WhiteSpace@302..303 " "
+                  TraitRef@303..312
+                    Path@303..312
+                      PathSegment@303..312
+                        Ident@303..309 "Driver"
+                        GenericArgList@309..312
+                          Lt@309..310 "<"
+                          TypeGenericArg@310..311
+                            PathType@310..311
+                              Path@310..311
+                                PathSegment@310..311
+                                  Ident@310..311 "S"
+                          Gt@311..312 ">"
+            Gt@312..313 ">"
+          FuncParamList@313..327
+            LParen@313..314 "("
+            FnParam@314..326
+              Underscore@314..315 "_"
+              WhiteSpace@315..316 " "
+              Ident@316..319 "seq"
+              Colon@319..320 ":"
+              WhiteSpace@320..321 " "
+              ModeType@321..326
+                MutKw@321..324 "mut"
+                WhiteSpace@324..325 " "
+                PathType@325..326
+                  Path@325..326
+                    PathSegment@325..326
+                      Ident@325..326 "S"
+            RParen@326..327 ")"
+          Newline@327..328 "\n"
+          WhiteSpace@328..332 "    "
+          WhereClause@332..356
+            WhereKw@332..337 "where"
+            WhiteSpace@337..338 " "
+            WherePredicate@338..356
+              PathType@338..339
+                Path@338..339
+                  PathSegment@338..339
+                    Ident@338..339 "S"
+              TypeBoundList@339..356
+                Colon@339..340 ":"
+                WhiteSpace@340..341 " "
+                TypeBound@341..356
+                  MaybeMutKw@341..345 "mut?"
+                  WhiteSpace@345..346 " "
+                  TraitRef@346..356
+                    Path@346..356
+                      PathSegment@346..356
+                        Ident@346..356 "Collection"
+        Newline@356..357 "\n"
+        BlockExpr@357..359
+          LBrace@357..358 "{"
+          RBrace@358..359 "}"
+  Newline@359..360 "\n"

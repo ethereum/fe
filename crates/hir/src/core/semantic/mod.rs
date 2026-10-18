@@ -33,7 +33,7 @@ use crate::analysis::ty::effects::rows::RowKey;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{Shape, lower_return_shape, mentions_mode, return_shape_diags};
-use crate::analysis::ty::ty_def::Kind;
+use crate::analysis::ty::ty_def::{BorrowKind, Kind};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
 use crate::hir_def::params::{FuncParamMode, KindBound as HirKindBound};
 use crate::hir_def::scope_graph::ScopeId;
@@ -165,7 +165,7 @@ pub(crate) fn trait_self_predicate<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: Trait<'db>,
 ) -> TraitInstId<'db> {
-    TraitInstId::new(db, trait_, trait_.params(db).to_vec(), IndexMap::new())
+    TraitInstId::new_simple(db, trait_, trait_.params(db).to_vec())
 }
 
 /// Appends `pred` to `preds` unless it is already present.
@@ -232,18 +232,21 @@ pub fn param_env<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Predic
 }
 
 /// Unelaborated assumptions for checking `func`'s body: the declared
-/// constraints (including the parent item's) plus the implicit `Self: Trait`
-/// predicate for trait methods. Effect-derived bounds are layered on
-/// separately by the body checker.
+/// constraints (including the parent item's) plus the implicit
+/// `Self: mut? Trait` predicate for trait methods, so a default body used at
+/// `mut` calls its trait's `mut?` methods at `mut`. Effect-derived bounds
+/// are layered on separately by the body checker.
 pub(crate) fn func_body_assumptions<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
 ) -> PredicateListId<'db> {
     let preds = collect_func_decl_constraints(db, func.into(), true).instantiate_identity();
     match func.scope().parent_item(db) {
-        Some(ItemKind::Trait(trait_)) => {
-            push_predicate(db, preds, trait_self_predicate(db, trait_))
-        }
+        Some(ItemKind::Trait(trait_)) => push_predicate(
+            db,
+            preds,
+            trait_self_predicate(db, trait_).with_mode(db, ModeMarker::MaybeMut),
+        ),
         _ => preds,
     }
 }
@@ -278,6 +281,7 @@ fn canonicalize_effect_binding_trait_inst<'db>(
         trait_inst.def(db),
         trait_inst.args(db).to_vec(),
         assoc.into_iter().collect::<IndexMap<_, _>>(),
+        ModeMarker::None,
     )
 }
 
@@ -307,7 +311,7 @@ fn func_effect_requirements_canonical<'db>(
             Some(EffectRequirement {
                 binding_name,
                 key,
-                is_mut: effect.is_mut,
+                is_mut: effect.is_mut(),
                 binding_site: EffectParamSite::Func(func),
                 binding_idx: idx as u32,
                 binding_ty: key_syntax,
@@ -437,7 +441,7 @@ fn contract_effect_requirements_canonical<'db>(
             Some(EffectRequirement {
                 binding_name,
                 key: EffectRequirementKey::from_parts(key_kind, key_ty, key_trait),
-                is_mut: effect.is_mut,
+                is_mut: effect.is_mut(),
                 binding_site: site,
                 binding_idx: idx as u32,
                 binding_ty: key_syntax,
@@ -460,10 +464,49 @@ fn lower_self_fallback_param_ty<'db>(
 }
 
 #[salsa::tracked(return_ref)]
-fn func_return_shape<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<Shape<'db>> {
+fn func_return_shape<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    mode: Option<BorrowKind>,
+) -> Option<Shape<'db>> {
     let hir_ty = func.ret_type_ref(db)?;
-    let shape = lower_return_shape(db, hir_ty, func.scope(), func.assumptions(db));
+    let shape = lower_return_shape(db, hir_ty, func.scope(), func.assumptions(db), mode);
     shape.has_access().then_some(shape)
+}
+
+/// Whether `func` is a `mut?` function: its signature mentions `mut?`, in a
+/// parameter, its return, an effect or a bound.
+#[salsa::tracked]
+fn func_is_maybe_mut<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
+    let mentions = |ty: Option<TypeId<'db>>| ty.is_some_and(|ty| ty.mentions_maybe_mut(db));
+    let bounds_mention = |bounds: &[TypeBound<'db>]| {
+        bounds
+            .iter()
+            .any(|bound| matches!(bound, TypeBound::Trait(_, ModeMarker::MaybeMut)))
+    };
+    func.params_list(db).to_opt().is_some_and(|params| {
+        params
+            .data(db)
+            .iter()
+            .any(|param| mentions(param.ty.to_opt()))
+    }) || mentions(func.ret_type_ref(db))
+        || func
+            .declared_effects(db)
+            .data(db)
+            .iter()
+            .any(|effect| effect.mode == ModeMarker::MaybeMut)
+        || func
+            .generic_params(db)
+            .data(db)
+            .iter()
+            .any(|param| match param {
+                GenericParam::Type(param) => bounds_mention(&param.bounds),
+                GenericParam::Const(_) => false,
+            })
+        || func
+            .where_clause(db)
+            .type_predicates(db)
+            .any(|(_, predicate)| bounds_mention(&predicate.bounds))
 }
 
 /// Call checking and callee planning elaborate the same parameters repeatedly.
@@ -577,7 +620,7 @@ impl<'db> Func<'db> {
     /// function has no explicit return type. A projection's return type is
     /// its shape's erased type.
     fn explicit_return_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
-        if let Some(shape) = self.return_shape(db) {
+        if let Some(shape) = self.return_shape(db, self.modes(db)[0]) {
             return Some(shape.erased_ty(db));
         }
         let assumptions = self.assumptions(db);
@@ -591,21 +634,35 @@ impl<'db> Func<'db> {
             .unwrap_or_else(|| TyId::unit(db))
     }
 
-    /// The return shape of a projection: a function whose return mentions
-    /// `ref` or `mut`. `None` for ordinary functions.
-    pub fn return_shape(self, db: &'db dyn HirAnalysisDb) -> Option<&'db Shape<'db>> {
-        func_return_shape(db, self).as_ref()
+    /// The return shape of a projection used at `mode`: a function whose
+    /// return mentions `ref`, `mut` or `mut?`. `None` for ordinary
+    /// functions.
+    pub fn return_shape(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
+    ) -> Option<&'db Shape<'db>> {
+        func_return_shape(db, self, mode).as_ref()
     }
 
+    /// Whether the function is a projection, at every mode it has.
     pub fn is_projection(self, db: &'db dyn HirAnalysisDb) -> bool {
-        self.return_shape(db).is_some()
+        self.return_shape(db, self.modes(db)[0]).is_some()
     }
 
-    /// The semantic-IR return type: a projection's access components are
-    /// carriers.
-    pub fn return_carrier_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
-        self.return_shape(db)
-            .map_or_else(|| self.return_ty(db), |shape| shape.carrier_ty(db))
+    /// Whether this is a `mut?` function, used at `ref` or at `mut`.
+    pub fn is_maybe_mut(self, db: &'db dyn HirAnalysisDb) -> bool {
+        func_is_maybe_mut(db, self)
+    }
+
+    /// The modes the function is checked and used at: `ref` and `mut` for a
+    /// `mut?` function, none for any other.
+    pub fn modes(self, db: &'db dyn HirAnalysisDb) -> &'static [Option<BorrowKind>] {
+        if self.is_maybe_mut(db) {
+            &[Some(BorrowKind::Ref), Some(BorrowKind::Mut)]
+        } else {
+            &[None]
+        }
     }
 
     /// Semantic argument types bound to identity parameters.
@@ -958,23 +1015,44 @@ impl<'db> CallableDef<'db> {
         }
     }
 
-    /// The return shape of a projection callee.
-    pub fn ret_shape(self, db: &'db dyn HirAnalysisDb) -> Option<Binder<'db, Shape<'db>>> {
+    /// The return shape of a projection callee called at `mode`.
+    pub fn ret_shape(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
+    ) -> Option<Binder<'db, Shape<'db>>> {
         match self {
-            Self::Func(func) => Some(Binder::bind(func.into(), func.return_shape(db)?.clone())),
+            Self::Func(func) => Some(Binder::bind(
+                func.into(),
+                func.return_shape(db, mode)?.clone(),
+            )),
             Self::VariantCtor(_) => None,
         }
     }
 
-    /// The mode of parameter `idx`. Variant constructors take their fields
-    /// by value.
-    pub fn param_mode(self, db: &'db dyn HirAnalysisDb, idx: usize) -> FuncParamMode {
+    /// The mode of parameter `idx` in a call at `mode`. Variant
+    /// constructors take their fields by value.
+    pub fn param_mode(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        idx: usize,
+        mode: Option<BorrowKind>,
+    ) -> FuncParamMode {
         match self {
             Self::Func(func) => func
                 .params(db)
                 .nth(idx)
-                .map_or(FuncParamMode::View, |param| param.mode(db)),
+                .map_or(FuncParamMode::View, |param| param.mode_at(db, mode)),
             Self::VariantCtor(_) => FuncParamMode::Own,
+        }
+    }
+
+    /// The modes the callee is called at: `ref` and `mut` for a `mut?`
+    /// function, none for any other.
+    pub fn modes(self, db: &'db dyn HirAnalysisDb) -> &'static [Option<BorrowKind>] {
+        match self {
+            Self::Func(func) => func.modes(db),
+            Self::VariantCtor(_) => &[None],
         }
     }
 
@@ -1037,12 +1115,24 @@ impl<'db> FuncParamView<'db> {
         }
     }
 
-    pub fn mode(self, db: &'db dyn HirDb) -> crate::hir_def::params::FuncParamMode {
+    /// The parameter's mode where its function is used at `mode`: a `mut?`
+    /// parameter is a view at `ref` and `mut` at `mut`.
+    pub fn mode_at(self, db: &'db dyn HirDb, mode: Option<BorrowKind>) -> FuncParamMode {
         let list = self.func.params_list(db).to_opt();
         match list.and_then(|l| l.data(db).get(self.idx)) {
+            Some(_) if self.is_maybe_mut(db) && mode == Some(BorrowKind::Mut) => FuncParamMode::Mut,
             Some(p) => p.mode,
-            None => crate::hir_def::params::FuncParamMode::View,
+            None => FuncParamMode::View,
         }
+    }
+
+    /// Whether the parameter takes its function's mode: `mut? self`,
+    /// `x: mut? T`.
+    pub fn is_maybe_mut(self, db: &'db dyn HirDb) -> bool {
+        let list = self.func.params_list(db).to_opt();
+        list.and_then(|l| l.data(db).get(self.idx))
+            .and_then(|p| p.ty.to_opt())
+            .is_some_and(|ty| matches!(ty.data(db), TypeKind::Mode(TypeMode::MaybeMut, _)))
     }
 
     pub fn span(self) -> crate::span::params::LazyFuncParamSpan<'db> {
@@ -1423,12 +1513,7 @@ impl<'db> RecvArmView<'db> {
         let return_ident = IdentId::new(db, "Return".to_string());
 
         let variant_ret_ty = if !variant_ty.has_invalid(db) && !abi.has_invalid(db) {
-            let inst = TraitInstId::new(
-                db,
-                msg_variant_trait,
-                vec![variant_ty, abi],
-                IndexMap::new(),
-            );
+            let inst = TraitInstId::new_simple(db, msg_variant_trait, vec![variant_ty, abi]);
             let return_proj = TyId::assoc_ty(db, inst.trait_ref(db), return_ident);
             normalize_ty(db, return_proj, contract.scope(), assumptions)
         } else {
@@ -2176,7 +2261,7 @@ fn contract_scoped_effect_requirements_canonical<'db>(
             out.push(EffectRequirement {
                 binding_name,
                 key: EffectRequirementKey::from_parts(key_kind, key_ty, key_trait),
-                is_mut: effect.is_mut,
+                is_mut: effect.is_mut(),
                 binding_site: list_site,
                 binding_idx: idx as u32,
                 binding_ty: key_syntax,
@@ -2188,7 +2273,7 @@ fn contract_scoped_effect_requirements_canonical<'db>(
             out.push(EffectRequirement {
                 binding_name: IdentId::new(db, "_effect".to_string()),
                 key: EffectRequirementKey::Other,
-                is_mut: effect.is_mut,
+                is_mut: effect.is_mut(),
                 binding_site: list_site,
                 binding_idx: idx as u32,
                 binding_ty: key_syntax,
@@ -2208,7 +2293,7 @@ fn contract_scoped_effect_requirements_canonical<'db>(
             out.push(EffectRequirement {
                 binding_name: name,
                 key,
-                is_mut: effect.is_mut,
+                is_mut: effect.is_mut(),
                 binding_site: list_site,
                 binding_idx: idx as u32,
                 binding_ty: key_syntax,
@@ -2241,7 +2326,7 @@ fn contract_scoped_effect_requirements_canonical<'db>(
         out.push(EffectRequirement {
             binding_name,
             key: EffectRequirementKey::Other,
-            is_mut: effect.is_mut,
+            is_mut: effect.is_mut(),
             binding_site: list_site,
             binding_idx: idx as u32,
             binding_ty: key_syntax,
@@ -2859,7 +2944,7 @@ impl<'db> EffectParamView<'db> {
 
     /// Whether this effect requires mutation.
     pub fn is_mut(self, db: &'db dyn HirAnalysisDb) -> bool {
-        self.effect(db).is_mut
+        self.effect(db).is_mut()
     }
 
     /// Index of this effect in the function's effect list.
@@ -3208,7 +3293,7 @@ impl<'db> WherePredicateView<'db> {
             .bounds
             .iter()
             .enumerate()
-            .filter_map(|(i, b)| matches!(b, TypeBound::Trait(_)).then_some(i))
+            .filter_map(|(i, b)| matches!(b, TypeBound::Trait(..)).then_some(i))
             .collect();
         idxs.into_iter()
             .map(move |idx| WherePredicateBoundView { pred: self, idx })
@@ -3254,7 +3339,7 @@ impl<'db> WherePredicateView<'db> {
 
         for (i, bound) in hir.bounds.iter().enumerate() {
             match bound {
-                TypeBound::Trait(_) => {
+                TypeBound::Trait(..) => {
                     let bview = WherePredicateBoundView::new(self, i);
                     out.extend(bview.diags(db));
                 }
@@ -3292,7 +3377,7 @@ impl<'db> WherePredicateBoundView<'db> {
     }
     pub fn trait_ref(self, db: &'db dyn HirDb) -> TraitRefId<'db> {
         match &self.pred.hir_pred(db).bounds[self.idx] {
-            TypeBound::Trait(tr) => *tr,
+            TypeBound::Trait(tr, _) => *tr,
             _ => unreachable!(),
         }
     }
@@ -5030,7 +5115,7 @@ impl<'db> TraitAssocTypeView<'db> {
     pub fn bounds(self, db: &'db dyn HirDb) -> impl Iterator<Item = AssocTypeBoundView<'db>> + 'db {
         let len = self.bounds_raw(db).len();
         let idxs: Vec<usize> = (0..len)
-            .filter(|&i| matches!(self.bounds_raw(db)[i], TypeBound::Trait(_)))
+            .filter(|&i| matches!(self.bounds_raw(db)[i], TypeBound::Trait(..)))
             .collect();
         idxs.into_iter()
             .map(move |idx| AssocTypeBoundView { owner: self, idx })
@@ -5045,7 +5130,7 @@ impl<'db> AssocTypeBoundView<'db> {
 
     pub(crate) fn trait_ref(self, db: &'db dyn HirDb) -> TraitRefId<'db> {
         match self.owner.bounds_raw(db)[self.idx] {
-            TypeBound::Trait(tr) => tr,
+            TypeBound::Trait(tr, _) => tr,
             _ => unreachable!(),
         }
     }

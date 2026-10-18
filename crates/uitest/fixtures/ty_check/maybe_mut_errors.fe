@@ -1,0 +1,53 @@
+struct Counter {
+    count: u256,
+}
+
+struct Pair {
+    first: Counter,
+    second: Counter,
+}
+
+impl Pair {
+    fn first(mut? self) -> mut? Counter {
+        mut? self.first
+    }
+
+    // The `ref` body cannot write through `self`.
+    fn reset(mut? self) -> mut? Counter {
+        self.first.count = 0
+        mut? self.first
+    }
+
+    // `mut?` takes the mode of a function whose signature writes it.
+    fn plain(self) -> u256 {
+        let first = mut? self.first
+        first.count
+    }
+
+    // Each body would define the closure.
+    fn mapped(mut? self) -> mut? Counter {
+        let f = |x: u256| x + 1
+        mut? self.first
+    }
+}
+
+fn first_of(_ pair: mut? Pair) -> mut? Counter {
+    mut? pair.first
+}
+
+fn immutable_base() {
+    let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+    let first = mut pair.first()
+    first.count = 2
+}
+
+fn implicit_argument() {
+    var pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+    let first = mut first_of(pair)
+    first.count = 2
+}
+
+// An effect at the function's mode is not supported yet.
+fn with_effect(_ pair: mut? Pair) -> mut? Counter uses (counter: mut? Counter) {
+    mut? pair.first
+}

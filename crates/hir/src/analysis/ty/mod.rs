@@ -10,7 +10,6 @@ use crate::core::hir_def::{
     scope_graph::{ScopeGraph, ScopeId},
 };
 use adt_def::{AdtDef, AdtRef};
-use common::indexmap::IndexMap;
 use diagnostics::{DefConflictError, TraitLowerDiag, TyLowerDiag};
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec1::SmallVec;
@@ -908,8 +907,7 @@ pub fn resolve_default_root_effect_ty<'db>(
     };
 
     let target_trait = corelib::resolve_core_trait(db, scope, &["contracts", "Target"])?;
-    let inst_target =
-        trait_def::TraitInstId::new(db, target_trait, vec![target_ty], IndexMap::new());
+    let inst_target = trait_def::TraitInstId::new_simple(db, target_trait, vec![target_ty]);
     let root_ident = IdentId::new(db, "RootEffect".to_owned());
     Some(normalize::normalize_ty(
         db,
@@ -931,7 +929,13 @@ pub(crate) fn instantiate_trait_self<'db>(
     } else {
         args[0] = self_ty;
     }
-    trait_def::TraitInstId::new(db, def, args, inst.assoc_type_bindings(db).clone())
+    trait_def::TraitInstId::new(
+        db,
+        def,
+        args,
+        inst.assoc_type_bindings(db).clone(),
+        inst.mode(db),
+    )
 }
 
 /// An analysis pass for trait definitions.
@@ -1113,7 +1117,13 @@ struct Plain {
         let copy_trait = resolve_core_trait(&db, top_mod.scope(), &["marker", "Copy"])
             .expect("missing Copy trait");
         let plain = named_struct_ty(&db, top_mod, "Plain");
-        let copy_plain = TraitInstId::new(&db, copy_trait, vec![plain], IndexMap::new());
+        let copy_plain = TraitInstId::new(
+            &db,
+            copy_trait,
+            vec![plain],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         let assumptions = PredicateListId::empty_list(&db);
         let solve_cx = TraitSolveCx::new(&db, top_mod.scope()).with_assumptions(assumptions);
 
@@ -1138,7 +1148,13 @@ impl Copy for Explicit {}
         let copy_trait = resolve_core_trait(&db, top_mod.scope(), &["marker", "Copy"])
             .expect("missing Copy trait");
         let explicit = named_struct_ty(&db, top_mod, "Explicit");
-        let copy_explicit = TraitInstId::new(&db, copy_trait, vec![explicit], IndexMap::new());
+        let copy_explicit = TraitInstId::new(
+            &db,
+            copy_trait,
+            vec![explicit],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         let assumptions = PredicateListId::empty_list(&db);
         let solve_cx = TraitSolveCx::new(&db, top_mod.scope()).with_assumptions(assumptions);
 

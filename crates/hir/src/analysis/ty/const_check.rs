@@ -139,6 +139,7 @@ impl<'db, 'a> ConstFnChecker<'db, 'a> {
                     .with_assumptions(self.typed_body.assumptions()),
                 inst,
                 name,
+                callable.mode(),
             )
             && let Some(impl_func) = method.body()
         {

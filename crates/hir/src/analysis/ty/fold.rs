@@ -467,7 +467,7 @@ impl<'db> TyFoldable<'db> for TraitInstId<'db> {
             .map(|(name, ty)| (*name, ty.fold_with(db, folder)))
             .collect();
 
-        TraitInstId::new(db, def, args, assoc_type_bindings)
+        TraitInstId::new(db, def, args, assoc_type_bindings, self.mode(db))
     }
 }
 

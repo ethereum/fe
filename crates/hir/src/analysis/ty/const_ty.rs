@@ -1336,6 +1336,7 @@ pub fn canonicalize_trait_inst_for_mode<'db>(
             .map(|ty| canonicalize_ty_for_mode(db, ty, env, mode))
             .collect::<Vec<_>>(),
         assoc_type_bindings.into_iter().collect::<IndexMap<_, _>>(),
+        trait_inst.mode(db),
     )
 }
 
@@ -1970,6 +1971,7 @@ pub(crate) fn evaluate_const_ty<'db>(
                         inst.def(db),
                         args,
                         inst.assoc_type_bindings(db).clone(),
+                        inst.mode(db),
                     );
                     let inst = capture.specialize(db, inst);
                     let assumptions =
@@ -2334,12 +2336,15 @@ pub(crate) fn const_body_assumptions<'db>(
     }
 
     match parent_item {
-        Some(ItemKind::Func(func)) => crate::semantic::func_body_assumptions(db, func),
+        // A const body has no mode: a `mut?` bound is plain in it.
+        Some(ItemKind::Func(func)) => {
+            crate::semantic::func_body_assumptions(db, func).at_mode(db, None)
+        }
         Some(ItemKind::Trait(trait_)) => {
             let declared = collect_constraints(db, trait_.into()).instantiate_identity();
             let self_predicate =
                 PredicateListId::new(db, vec![crate::semantic::trait_self_predicate(db, trait_)]);
-            declared.merge(db, self_predicate)
+            declared.merge(db, self_predicate).at_mode(db, None)
         }
         item => item.and_then(GenericParamOwner::from_item_opt).map_or_else(
             || PredicateListId::empty_list(db),
@@ -3321,7 +3326,7 @@ mod tests {
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
         let func = find_func(&db, module, "value");
-        let identity = identity_semantic_instance_key(&db, BodyOwner::Func(func));
+        let identity = identity_semantic_instance_key(&db, BodyOwner::Func(func, None));
         let assumptions = func.assumptions(&db);
         let witnesses = assumptions.list(&db).clone();
         let key = SemanticInstanceKey::new(

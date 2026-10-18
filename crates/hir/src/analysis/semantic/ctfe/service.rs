@@ -239,7 +239,7 @@ pub fn describe_const_computation<'db>(
     if let Some(provenance) = extracted.as_ref()
         && let ConstTyData::Abstract(expr, _) = provenance.term.data(db)
         && let ConstExpr::Invocation(invocation) = expr.data(db)
-        && let BodyOwner::Func(func) = invocation.key.owner(db)
+        && let BodyOwner::Func(func, _) = invocation.key.owner(db)
         && func.is_extern(db)
         && func.body(db).is_none()
         && ctfe_extern_intrinsic_kind(db, func).is_none()
@@ -360,7 +360,7 @@ fn extract_pure_body_term<'db>(
     // Execution rejects a non-const function, so a term must not erase it.
     if stack.len() >= extraction.depth_limit
         || stack.contains(&key.owner(db))
-        || matches!(key.owner(db), BodyOwner::Func(func) if !func.is_const(db))
+        || matches!(key.owner(db), BodyOwner::Func(func, _) if !func.is_const(db))
     {
         return None;
     }
@@ -878,7 +878,7 @@ impl<'db> BodyTermWalk<'_, 'db> {
                 effect_args,
                 ..
             } if effect_args.is_empty() => {
-                let BodyOwner::Func(func) = callee.key.owner(db) else {
+                let BodyOwner::Func(func, _) = callee.key.owner(db) else {
                     return None;
                 };
                 let operands = args
@@ -1489,7 +1489,7 @@ fn force_const_term<'db>(
             scope,
             origin,
         );
-        let wraps_callee = matches!(invocation.key.owner(db), BodyOwner::Func(func) if func.is_const(db) && !func.is_extern(db));
+        let wraps_callee = matches!(invocation.key.owner(db), BodyOwner::Func(func, _) if func.is_const(db) && !func.is_extern(db));
         return match cx.force_computation(db, request) {
             EvalOutcome::Ready(value) => Ok(value.value()),
             EvalOutcome::Blocked(mut info) => {

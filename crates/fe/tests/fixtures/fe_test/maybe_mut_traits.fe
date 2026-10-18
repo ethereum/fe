@@ -1,0 +1,96 @@
+// A trait's `mut?` method is granted at `mut` by the implementations that
+// give it a `mut` mode: `T: mut Trait` holds by them.
+
+trait Slot {
+    fn slot(mut? self) -> mut? u256
+}
+
+struct Cell {
+    value: u256,
+}
+
+impl Slot for Cell {
+    fn slot(mut? self) -> mut? u256 {
+        mut? self.value
+    }
+}
+
+/// Grants only `ref`.
+struct Fixed {
+    value: u256,
+}
+
+impl Slot for Fixed {
+    fn slot(self) -> ref u256 {
+        ref self.value
+    }
+}
+
+/// Keeps its slot halved: one body per mode, the `mut` one writing the
+/// changed slot back.
+struct Halved {
+    word: u256,
+}
+
+impl Slot for Halved {
+    fn slot(self) -> ref u256 {
+        self.word / 2
+    }
+
+    fn slot(mut self) -> mut u256 {
+        var value = self.word / 2
+        yield mut value
+        self.word = value * 2
+    }
+}
+
+/// Grants `mut` when its inner slot does.
+struct Wrap<S> {
+    inner: S,
+}
+
+impl<S: mut? Slot> Slot for Wrap<S> {
+    fn slot(mut? self) -> mut? u256 {
+        self.inner.slot()
+    }
+}
+
+fn read<S: Slot>(_ slot: S) -> u256 {
+    slot.slot()
+}
+
+fn bump<S: mut Slot>(_ slot: mut S) {
+    let value = mut slot.slot()
+    value += 1
+}
+
+#[test]
+fn reads_by_any_implementation() {
+    assert(read(Cell { value: 1 }) == 1)
+    assert(read(Fixed { value: 7 }) == 7)
+    assert(read(Wrap { inner: Fixed { value: 3 } }) == 3)
+    assert(read(Halved { word: 8 }) == 4)
+}
+
+#[test]
+fn writes_by_a_mut_implementation() {
+    var cell = Cell { value: 1 }
+    bump(mut cell)
+    assert(cell.value == 2)
+    var wrapped = Wrap { inner: Cell { value: 5 } }
+    bump(mut wrapped)
+    wrapped.slot() += 1
+    assert(wrapped.inner.value == 7)
+}
+
+#[test]
+fn the_mut_body_writes_back() {
+    var halved = Halved { word: 8 }
+    bump(mut halved)
+    assert(halved.word == 10)
+    var wrapped = Wrap { inner: Halved { word: 2 } }
+    bump(mut wrapped)
+    assert(wrapped.inner.word == 4)
+    // A read runs the `ref` body, which writes nothing.
+    assert(wrapped.slot() == 2)
+}

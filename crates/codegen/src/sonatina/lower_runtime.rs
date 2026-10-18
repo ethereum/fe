@@ -718,7 +718,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
                 .key(self.db)
                 .semantic(self.db)
                 .and_then(|semantic| match semantic.key(self.db).owner(self.db) {
-                    BodyOwner::Func(func) => Some(func),
+                    BodyOwner::Func(func, _) => Some(func),
                     _ => None,
                 })
         } else {
@@ -891,7 +891,7 @@ fn assign_sonatina_function_symbols<'db>(
                 .map(|(_, symbol)| symbol.to_string())
                 .or_else(|| {
                     let semantic = function.instance(db).key(db).semantic(db)?;
-                    let BodyOwner::Func(func) = semantic.key(db).owner(db) else {
+                    let BodyOwner::Func(func, _) = semantic.key(db).owner(db) else {
                         return None;
                     };
                     func.is_extern(db).then(|| {
@@ -923,7 +923,7 @@ fn describe_runtime_instance<'db>(
         RuntimeInstanceSource::Semantic(semantic) => {
             let owner = semantic.key(db).owner(db);
             let owner_desc = match owner {
-                BodyOwner::Func(func) => func.name(db).to_opt().map_or_else(
+                BodyOwner::Func(func, _) => func.name(db).to_opt().map_or_else(
                     || format!("func {func:?}"),
                     |name| format!("func {}", name.data(db)),
                 ),
@@ -5604,7 +5604,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 self.fb
                     .insert_inst(Not::new(self.module.inst_set(), value), ty)
             }
-            UnOp::Plus | UnOp::Mut | UnOp::Ref | UnOp::Deref => value,
+            UnOp::Plus | UnOp::Mut | UnOp::MaybeMut | UnOp::Ref | UnOp::Deref => value,
         })
     }
 

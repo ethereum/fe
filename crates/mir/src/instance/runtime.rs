@@ -109,7 +109,7 @@ impl<'db> RuntimeInstance<'db> {
 impl<'db> RuntimeInstance<'db> {
     pub fn is_external_declaration(self, db: &'db dyn MirDb) -> bool {
         self.key(db).semantic(db).is_some_and(|semantic| {
-            matches!(semantic.key(db).owner(db), BodyOwner::Func(func) if func.is_extern(db))
+            matches!(semantic.key(db).owner(db), BodyOwner::Func(func, _) if func.is_extern(db))
         })
     }
 }

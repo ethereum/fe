@@ -35,7 +35,7 @@ use crate::{
                 BodyOwner, Callable, ConstRef, EffectParamSite, EffectProviderSpecialization,
                 ResolvedEffectArg,
             },
-            ty_def::{TyFlags, TyId},
+            ty_def::{BorrowKind, TyFlags, TyId},
             ty_lower::{ParamKey, ParamSchemaId},
             visitor::{TyVisitable, TyVisitor, collect_flags},
         },
@@ -152,7 +152,7 @@ impl<'db> InstantiatedMethodSignature<'db> {
 
 fn instantiated_method_signature<'db>(
     db: &'db dyn HirAnalysisDb,
-    func: Func<'db>,
+    (func, mode): (Func<'db>, Option<BorrowKind>),
     args: &[TyId<'db>],
     scope: ScopeId<'db>,
     evidence: PredicateListId<'db>,
@@ -184,7 +184,7 @@ fn instantiated_method_signature<'db>(
     let inputs = arg_tys
         .iter()
         .zip(params)
-        .map(|(ty, param)| (param.mode(db), normalize(ty.instantiate(db, args))))
+        .map(|(ty, param)| (param.mode_at(db, mode), normalize(ty.instantiate(db, args))))
         .collect();
     let result = normalize(CallableDef::Func(func).ret_ty(db).instantiate(db, args));
     let provider_slots = place_effect_provider_param_index_map(db, func);
@@ -370,7 +370,7 @@ pub(super) fn root_impl_env<'db>(
     subst: GenericSubst<'db>,
 ) -> ImplEnv<'db> {
     let env = ImplEnv::empty(db, owner.scope());
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return env;
     };
     if !(func.containing_impl(db).is_some() || !func.is_associated_func(db))
@@ -589,7 +589,8 @@ fn semantic_callee_key_with_assumptions<'db>(
         let CallableDef::Func(func) = target.callable_def() else {
             unreachable!("a callable function item is a function")
         };
-        let owner = BodyOwner::Func(func);
+        // A `mut?` function is no callable value.
+        let owner = BodyOwner::Func(func, None);
         let (_, rows) = instantiated_effects(
             db,
             nominal_func,
@@ -740,6 +741,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             TraitSolveCx::new(db, impl_env.normalization_scope(db)).with_assumptions(assumptions),
             inst,
             name,
+            callable.mode(),
         )
         && let Some(impl_func) = method.body()
     {
@@ -851,7 +853,14 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else {
         nominal_func
     };
-    let owner = BodyOwner::Func(body_func);
+    // A `mut?` body is the one at the call's mode; an implementation without
+    // a mode gives a `mut?` trait method its `ref` mode only.
+    let body_mode = if body_func.is_maybe_mut(db) {
+        callable.mode()
+    } else {
+        None
+    };
+    let owner = BodyOwner::Func(body_func, body_mode);
     // An implementation selected without relying on a caller assumption.
     let selected_impl = selected_trait_method.is_some_and(|(resolved, _)| {
         !matches!(
@@ -911,6 +920,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                     TraitSolveCx::new(db, owner.scope()),
                     resolved.trait_inst(),
                     name,
+                    callable.mode(),
                 ),
                 Selection::Unique(method) if method.resolved() == resolved
             );
@@ -1066,7 +1076,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             .extend_all_bounds(db);
         let nominal_signature = instantiated_method_signature(
             db,
-            nominal_func,
+            (nominal_func, callable.mode()),
             callable.generic_args(),
             normalization_scope,
             evidence,
@@ -1075,7 +1085,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         )?;
         let body_signature = instantiated_method_signature(
             db,
-            body_func,
+            (body_func, body_mode),
             &subst_args,
             normalization_scope,
             evidence,

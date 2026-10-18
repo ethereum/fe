@@ -1089,7 +1089,7 @@ fn format_runtime_instance<'db>(db: &'db dyn MirDb, instance: RuntimeInstance<'d
         crate::instance::RuntimeInstanceSource::Semantic(semantic) => {
             let owner = semantic.key(db).owner(db);
             let owner_summary = match owner {
-                hir::analysis::ty::ty_check::BodyOwner::Func(func) => format!(
+                hir::analysis::ty::ty_check::BodyOwner::Func(func, _) => format!(
                     "func={} has_body={} trait={:?} impl_trait={:?} impl={:?} owner={owner:?}",
                     func.name(db)
                         .to_opt()

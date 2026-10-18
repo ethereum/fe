@@ -395,7 +395,13 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
                 for (&name, &ty) in inst.assoc_type_bindings(self.db) {
                     bindings.entry(name).or_insert(ty);
                 }
-                TraitInstId::new(self.db, trait_def, inst.args(self.db).to_vec(), bindings)
+                TraitInstId::new(
+                    self.db,
+                    trait_def,
+                    inst.args(self.db).to_vec(),
+                    bindings,
+                    inst.mode(self.db),
+                )
             }
             _ => inst,
         };

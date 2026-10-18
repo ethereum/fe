@@ -168,7 +168,7 @@ pub(super) fn check_runtime_body_supported<'db>(
                 expr: NExpr::Call { callee, .. },
                 ..
             } = &stmt.kind
-                && let BodyOwner::Func(func) = callee.key.owner(db)
+                && let BodyOwner::Func(func, _) = callee.key.owner(db)
                 && func.containing_trait(db).is_some()
                 && func.body(db).is_none()
                 && contract_metadata_builtin(db, get_or_build_semantic_instance(db, callee.key))
@@ -312,7 +312,7 @@ fn oversized_size_of_ty<'db>(
         return None;
     };
     let size_of = resolve_lib_func_path(db, key.owner(db).scope(), "core::size_of")?;
-    if invocation.key.owner(db) != BodyOwner::Func(size_of) {
+    if invocation.key.owner(db) != BodyOwner::Func(size_of, None) {
         return None;
     }
     let ty = *invocation.key.subst(db).generic_args(db).first()?;
@@ -349,7 +349,7 @@ fn builtin_arg_ty<'db>(
     args: &[NOperand],
     kind: RuntimeBuiltinFuncKind,
 ) -> Option<TyId<'db>> {
-    let BodyOwner::Func(func) = callee.key.owner(db) else {
+    let BodyOwner::Func(func, _) = callee.key.owner(db) else {
         return None;
     };
     if runtime_builtin_func_kind(db, func) != Some(kind) {
@@ -2925,7 +2925,7 @@ impl<'db> RmirEmitter<'db> {
                 self.lower_intrinsic_arith_expr(IntrinsicArithBinOp::Sub, true, zero, value, class)
             }
             UnOp::Minus | UnOp::BitNot | UnOp::Not => RExpr::Unary { op, value },
-            UnOp::Plus | UnOp::Mut | UnOp::Ref | UnOp::Deref => return None,
+            UnOp::Plus | UnOp::Mut | UnOp::MaybeMut | UnOp::Ref | UnOp::Deref => return None,
         })
     }
 
@@ -2957,7 +2957,7 @@ impl<'db> RmirEmitter<'db> {
         semantic: SemanticInstance<'db>,
         args: &[NOperand],
     ) -> Option<RLocalId> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
         let ret_ty = semantic_return_ty(self.db, semantic);
@@ -3275,7 +3275,7 @@ impl<'db> RmirEmitter<'db> {
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
     ) -> Option<RLocalId> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
 
@@ -3482,7 +3482,7 @@ impl<'db> RmirEmitter<'db> {
         semantic: SemanticInstance<'db>,
         args: &[NOperand],
     ) -> Option<RLocalId> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
         if func.body(self.db).is_some() {
@@ -3769,7 +3769,7 @@ impl<'db> RmirEmitter<'db> {
         semantic: SemanticInstance<'db>,
         args: &[RLocalId],
     ) -> Option<LoweredBuiltinCall<'db>> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
         let kind = runtime_builtin_func_kind(self.db, func)?;
@@ -4780,7 +4780,7 @@ impl<'db> RmirEmitter<'db> {
             .semantic(self.db)
             .map(|semantic| semantic.key(self.db).owner(self.db));
         let owner_name = owner.and_then(|owner| match owner {
-            BodyOwner::Func(func) => func
+            BodyOwner::Func(func, _) => func
                 .name(self.db)
                 .to_opt()
                 .map(|name| name.data(self.db).to_string()),
@@ -6169,7 +6169,7 @@ impl<'db> RmirEmitter<'db> {
         reify_runtime_const_for_ty(self.db, semantic, expected_ty, value).unwrap_or_else(|| {
             let owner = semantic.key(self.db).owner(self.db);
             let owner_name = match owner {
-                BodyOwner::Func(func) => func
+                BodyOwner::Func(func, _) => func
                     .name(self.db)
                     .to_opt()
                     .map(|name| {
@@ -6532,7 +6532,7 @@ fn forward<const ROOT: u256>(value: own Mixed<ROOT>) -> Mixed<ROOT> {
                 .unwrap_or_else(|| panic!("missing function `{name}`"));
             let semantic = get_or_build_semantic_instance(
                 &db,
-                identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+                identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
             );
             let body = runtime_instance_for_semantic(&db, semantic).body(&db);
             assert_eq!(body.signature.params.len(), 1);
