@@ -315,9 +315,10 @@ fn body_layout<'db>(db: &'db dyn HirAnalysisDb, func_body: Body<'db>) -> BodyLay
             item: ItemKind<'db>,
         ) {
             // A `const` item written inside the body reads the frames written
-            // around it (refused where it reads a slot one answers, decision
-            // (c)); any other item is refused where it reads one
-            // (`refused_items`). Items are not walked.
+            // around it in its value (refused where it reads a slot one
+            // answers, decision (c)); its declared type, and any other item,
+            // is refused where it reads one (`refused_items`). Items are not
+            // walked.
             let Some(at) = self.exprs.last() else {
                 return;
             };
@@ -326,6 +327,7 @@ fn body_layout<'db>(db: &'db dyn HirAnalysisDb, func_body: Body<'db>) -> BodyLay
                     if let Some(body) = constant.body(self.db).to_opt() {
                         self.layout.places.push((body, Place::Expr(*at)));
                     }
+                    self.layout.items.push((item, Place::Expr(*at)));
                 }
                 ItemKind::Use(_) | ItemKind::Body(_) => {}
                 _ => self.layout.items.push((item, Place::Expr(*at))),
@@ -455,7 +457,8 @@ pub(crate) fn refused_items<'db>(
 /// constants its written types name (unbraced ones included), as a
 /// constant's read-time refusal reads them. A path's generic arguments are
 /// types or constant bodies, so paths outside types (trait references,
-/// bounds) are read through them.
+/// bounds) are read through them. A `const` item's value is refused by its
+/// own check (`checked_body`), so only its declared type is read here.
 fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<TraitInstId<'db>> {
     use crate::{
         analysis::ty::ty_lower::hir_ty_const_slot_reads,
@@ -466,6 +469,8 @@ fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<
     };
     struct Reads<'db> {
         db: &'db dyn HirAnalysisDb,
+        /// A `const` item's value, which its own check refuses.
+        value: Option<Body<'db>>,
         reads: Vec<TraitInstId<'db>>,
     }
     impl<'db> Visitor<'db> for Reads<'db> {
@@ -481,6 +486,9 @@ fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<
         }
 
         fn visit_body(&mut self, ctxt: &mut VisitorCtxt<'db, LazyBodySpan<'db>>, body: Body<'db>) {
+            if self.value == Some(body) {
+                return;
+            }
             let db = self.db;
             let uses = match ScopeId::from_item(ItemKind::Body(body)).parent_item(db) {
                 Some(ItemKind::Func(func)) if body.body_kind(db) == BodyKind::FuncBody => {
@@ -506,6 +514,10 @@ fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<
     }
     let mut reads = Reads {
         db,
+        value: match item {
+            ItemKind::Const(constant) => constant.body(db).to_opt(),
+            _ => None,
+        },
         reads: Vec::new(),
     };
     walk_item(&mut reads, &mut VisitorCtxt::with_item(db, item), item);

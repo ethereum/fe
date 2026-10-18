@@ -885,8 +885,8 @@ pub(super) fn checked_body<'db>(
             .into(),
         );
     }
-    // Any other item written there that reads such a slot is refused as a
-    // `const` item is (decision of 2026-10-18).
+    // Any other item written there, or a `const` item's declared type, that
+    // reads such a slot is refused the same way (decision of 2026-10-18).
     if matches!(
         owner,
         BodyOwner::Func(_) | BodyOwner::ContractInit { .. } | BodyOwner::ContractRecvArm { .. }
