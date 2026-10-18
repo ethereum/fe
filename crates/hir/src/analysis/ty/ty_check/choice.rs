@@ -826,7 +826,12 @@ fn type_slot_reads_into<'db>(
         let Some(adt) = ty.adt_def(db) else {
             continue;
         };
+        // A type constructor not applied to all its arguments (`Cell` as the
+        // `Self` of a trait over `* -> *`) has no field values to read.
         let args = ty.generic_args(db);
+        if args.len() != adt.params(db).len() {
+            continue;
+        }
         for variant in adt.fields(db) {
             for field in variant.iter_types(db) {
                 let declared_ty = *field.skip_binder();
