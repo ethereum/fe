@@ -3,6 +3,7 @@ use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use rustc_hash::FxHashSet;
 
+use crate::analysis::ty::trait_choice::SlotChoices;
 use crate::analysis::{
     HirAnalysisDb,
     semantic::{
@@ -1254,7 +1255,9 @@ fn force_immutable_description<'db>(
         }
         SemConstValue::Tuple { elems, .. } | SemConstValue::Array { elems, .. } => elems,
         SemConstValue::Struct { fields, .. } | SemConstValue::Enum { fields, .. } => fields,
-        SemConstValue::Unit | SemConstValue::Scalar { .. } => return Ok(value),
+        SemConstValue::Unit | SemConstValue::Scalar { .. } | SemConstValue::Evidence { .. } => {
+            return Ok(value);
+        }
     };
     let fields = fields
         .iter()
@@ -1739,6 +1742,14 @@ fn force_const_computation_in_context<'db>(
                         ConstDependency::AssociatedSelection(use_),
                         origin,
                     ))
+                } else if use_.choice()
+                    == Some(crate::analysis::ty::trait_choice::Choice::Slot(
+                        crate::analysis::ty::trait_choice::SlotRef::Unsupplied,
+                    ))
+                {
+                    // A read refused where it is written (a frame around it
+                    // opened its slot); that refusal is the diagnostic.
+                    EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::InvalidBody { origin }))
                 } else {
                     EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::InvalidOperation {
                         origin,
@@ -1746,6 +1757,11 @@ fn force_const_computation_in_context<'db>(
                     }))
                 };
             };
+            // The body receives the decisions the use delivers to its bounds,
+            // as the constant's instance key gives them (`chosen_constant`).
+            let choices = crate::analysis::ty::trait_def::chosen_constant(db, use_)
+                .and_then(|chosen| chosen.body)
+                .map_or_else(SlotChoices::default, |body| body.choices);
             force_selected_const_ty(
                 db,
                 const_ty,
@@ -1755,6 +1771,7 @@ fn force_const_computation_in_context<'db>(
                     use_.origin_scope(),
                     use_.assumptions(),
                     vec![use_.inst()],
+                    choices,
                 ),
                 cx,
                 origin,
@@ -1783,7 +1800,13 @@ fn force_const_computation_in_context<'db>(
                 db,
                 const_ty,
                 computation.result_ty(db),
-                ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), Vec::new()),
+                ImplEnv::new(
+                    db,
+                    use_.origin_scope(),
+                    use_.assumptions(),
+                    Vec::new(),
+                    SlotChoices::default(),
+                ),
                 cx,
                 origin,
             )

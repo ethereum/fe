@@ -167,6 +167,7 @@ impl<'db> TyChecker<'db> {
                 self.take_initializer_marker(*expr, &[*pat], MarkerPosition::Initializer);
             }
             self.check_pat(*pat, prop.ty);
+            self.record_binding_choice(*pat, *expr, &prop);
             if let Some(LocalBinding::Local { pat, .. }) = self.env.pat_binding(*pat) {
                 self.env
                     .set_local_borrow_provider(pat, prop.borrow_provider);
@@ -497,6 +498,8 @@ impl<'db> TyChecker<'db> {
             );
             self.env.register_trait_obligation(TraitObligation {
                 goal: inst.mut_goal(self.db),
+                premises: self.env.assumptions(),
+                frame: self.env.choice_frames.current(),
                 origin: TraitObligationOrigin::GenericConfirmation,
                 span,
             });
@@ -597,6 +600,8 @@ impl<'db> TyChecker<'db> {
                 goal: inst,
                 origin: TraitObligationOrigin::GenericConfirmation,
                 span,
+                premises: self.env.assumptions(),
+                frame: self.env.choice_frames.current(),
             });
         }
         Some(inst)

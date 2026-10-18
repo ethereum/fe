@@ -26,6 +26,7 @@ use crate::analysis::{
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
+        trait_choice::{Choice, Delivery, SlotRef},
         trait_def::TraitInstId,
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
@@ -256,6 +257,15 @@ pub struct Callable<'db> {
     /// The mode a `mut?` callee is called at: `ref` unless a use of the
     /// call's result asks for `mut`.
     mode: Option<BorrowKind>,
+    /// The checker's decision for `trait_inst`'s slot, when it is not ordinary.
+    choice: Option<Choice<'db>>,
+    /// The choices this call delivers: to the callee's evidence parameters,
+    /// and to the goals it declares, instantiated here. A body reads them
+    /// through `trait_choice::body_deliveries`.
+    delivered: Vec<(Delivery<'db>, Choice<'db>)>,
+    /// The body the checker read for this call when its goal is concrete:
+    /// the instance that runs it must select the same one.
+    checked_body: Option<crate::hir_def::Func<'db>>,
 }
 
 impl<'db> TyVisitable<'db> for Callable<'db> {
@@ -270,6 +280,13 @@ impl<'db> TyVisitable<'db> for Callable<'db> {
         }
         if let Some(inst) = self.trait_inst {
             inst.visit_with(visitor);
+        }
+        if let Some(choice) = &self.choice {
+            choice.visit_with(visitor);
+        }
+        for (delivery, choice) in &self.delivered {
+            delivery.visit_with(visitor);
+            choice.visit_with(visitor);
         }
     }
 }
@@ -289,6 +306,15 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
                 .map(|inputs| inputs.fold_with(db, folder)),
             trait_inst: self.trait_inst.map(|i| i.fold_with(db, folder)),
             mode: self.mode,
+            choice: self.choice.map(|choice| choice.fold_with(db, folder)),
+            delivered: self
+                .delivered
+                .into_iter()
+                .map(|(delivery, choice)| {
+                    (delivery.fold_with(db, folder), choice.fold_with(db, folder))
+                })
+                .collect(),
+            checked_body: self.checked_body,
         }
     }
 }
@@ -296,6 +322,22 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
 impl<'db> Callable<'db> {
     pub fn callable_def(&self) -> CallableDef<'db> {
         self.callable_def
+    }
+
+    /// The call as written, for comparing two predicates: a decision that
+    /// only forwards an enclosing bound (`Slot(Bound)`) names that owner's
+    /// own bound, which substitution does not rename, and follows from the
+    /// generic arguments, so it is left out. Any other decision stays, so a
+    /// predicate that reads a fixed choice matches only one that reads the
+    /// same.
+    pub(crate) fn as_written(&self) -> Self {
+        let forwards = |choice: &Choice<'db>| matches!(choice, Choice::Slot(SlotRef::Bound(_)));
+        let mut written = self.clone();
+        if written.choice.as_ref().is_some_and(forwards) {
+            written.choice = None;
+        }
+        written.delivered.retain(|(_, choice)| !forwards(choice));
+        written
     }
 
     pub fn new(
@@ -340,6 +382,9 @@ impl<'db> Callable<'db> {
             checked_input_tys: None,
             trait_inst,
             mode: callable_def.modes(db)[0],
+            choice: None,
+            delivered: Vec::new(),
+            checked_body: None,
         })
     }
 
@@ -358,7 +403,89 @@ impl<'db> Callable<'db> {
             checked_input_tys: None,
             trait_inst,
             mode: callable_def.modes(db)[0],
+            choice: None,
+            delivered: Vec::new(),
+            checked_body: None,
         }
+    }
+
+    /// The function whose body runs for this call, when checking knows it, with
+    /// that body's complete generic arguments: the callee itself, or for a trait method
+    /// the recorded choice's implementation, or the ordinary implementation of
+    /// an undecided concrete goal. `None` while the body is supplied by a
+    /// slot. Every check that needs the body that runs reads it here.
+    pub fn called_body(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        scope: crate::hir_def::scope_graph::ScopeId<'db>,
+        assumptions: crate::analysis::ty::trait_resolution::PredicateListId<'db>,
+    ) -> Option<(crate::hir_def::Func<'db>, Vec<TyId<'db>>)> {
+        use crate::analysis::ty::trait_resolution::Selection;
+        let CallableDef::Func(func) = self.callable_def else {
+            return None;
+        };
+        let Some(inst) = self.trait_inst else {
+            return Some((func, self.generic_args.clone()));
+        };
+        // A goal that still holds inference variables (an unresolved call)
+        // selects no body.
+        if inst.args(db).iter().any(|ty| ty.has_var(db)) {
+            return None;
+        }
+        let name = func.name(db).to_opt()?;
+        // Read where the call is checked: a known choice, ordinary selection
+        // with no decision, nothing for a choice a slot supplies later.
+        let chosen = match self.choice {
+            Some(Choice::Known(known)) => crate::analysis::ty::trait_choice::Resolved::Known(known),
+            None => crate::analysis::ty::trait_choice::Resolved::Ordinary,
+            Some(Choice::Slot(_)) => return None,
+        };
+        let method = crate::analysis::ty::trait_def::chosen_method(
+            db,
+            chosen,
+            inst,
+            name,
+            scope,
+            assumptions,
+            self.mode,
+        );
+        let Selection::Unique(method) = method else {
+            return None;
+        };
+        let body = method.body()?;
+        let args = method
+            .complete_body_args(db, &self.generic_args)
+            .ok()?
+            .into_values();
+        Some((body, args))
+    }
+
+    /// The checker's decision for this call's trait slot, if not ordinary.
+    pub fn choice(&self) -> Option<Choice<'db>> {
+        self.choice
+    }
+
+    pub(crate) fn set_choice(&mut self, choice: Option<Choice<'db>>) {
+        self.choice = choice;
+    }
+
+    /// The choices this call delivers.
+    pub fn delivered(&self) -> &[(Delivery<'db>, Choice<'db>)] {
+        &self.delivered
+    }
+
+    pub(crate) fn set_delivered(&mut self, delivered: Vec<(Delivery<'db>, Choice<'db>)>) {
+        self.delivered = delivered;
+    }
+
+    /// The body the checker read for this call, recorded when its goal is
+    /// concrete (`record_choice_decisions`).
+    pub fn checked_body(&self) -> Option<crate::hir_def::Func<'db>> {
+        self.checked_body
+    }
+
+    pub(crate) fn set_checked_body(&mut self, body: Option<crate::hir_def::Func<'db>>) {
+        self.checked_body = body;
     }
 
     pub fn generic_args(&self) -> &[TyId<'db>] {
@@ -1052,6 +1179,8 @@ impl<'db> Callable<'db> {
                     constraint_idx,
                 },
                 span: span.clone(),
+                premises: tc.env.assumptions(),
+                frame: tc.env.choice_frames.current(),
             };
 
             match tc.process_trait_obligation(obligation, false) {

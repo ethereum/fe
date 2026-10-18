@@ -35,14 +35,14 @@ use crate::{
             provider::AddressSpace,
             ty_check::{
                 BodyOwner, EffectParamSite, EffectPassMode, LocalBinding, ParamSite, infer_body,
-                inference_met_lowering_cycle,
+                inference_met_lowering_cycle, inference_refused_a_choice,
             },
             ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId},
         },
     },
     core::hir_def::expr::LogicalBinOp,
     core::semantic::storage_slot_span,
-    hir_def::{ArithBinOp, BinOp, CompBinOp, UnOp, attr::ArithmeticMode},
+    hir_def::{ArithBinOp, BinOp, CompBinOp, ItemKind, UnOp, attr::ArithmeticMode},
     projection::{IndexSource, Projection},
 };
 
@@ -272,6 +272,38 @@ pub fn eval_body_owner_const_with_args<'db>(
         ImplEnv::empty(db, owner.scope()),
     );
     execute_resolved_const_computation(db, key, args, CtfeConfig::default(), SemOrigin::Body(owner))
+}
+
+/// Evaluate one instance on argument values. The key carries any choices
+/// delivered to the instance's slots.
+#[salsa::tracked(cycle_initial=eval_instance_with_args_cycle_initial, cycle_fn=eval_instance_with_args_cycle_recover)]
+pub fn eval_instance_with_args<'db>(
+    db: &'db dyn HirAnalysisDb,
+    key: SemanticInstanceKey<'db>,
+    args: Vec<SemConstId<'db>>,
+) -> EvalOutcome<'db, SemConstId<'db>> {
+    let origin = SemOrigin::Body(key.owner(db));
+    execute_resolved_const_computation(db, key, args, CtfeConfig::default(), origin)
+}
+
+fn eval_instance_with_args_cycle_initial<'db>(
+    db: &'db dyn HirAnalysisDb,
+    key: SemanticInstanceKey<'db>,
+    _args: Vec<SemConstId<'db>>,
+) -> EvalOutcome<'db, SemConstId<'db>> {
+    EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::RecursiveConst {
+        origin: SemOrigin::Body(key.owner(db)),
+    }))
+}
+
+fn eval_instance_with_args_cycle_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &EvalOutcome<'db, SemConstId<'db>>,
+    _count: u32,
+    _key: SemanticInstanceKey<'db>,
+    _args: Vec<SemConstId<'db>>,
+) -> salsa::CycleRecoveryAction<EvalOutcome<'db, SemConstId<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
 }
 
 pub(super) fn execute_resolved_const_computation<'db>(
@@ -543,6 +575,7 @@ impl<'db> CtfeConstValue<'db> {
 
     fn concrete(db: &'db dyn HirAnalysisDb, value: VerifiedConstValueId<'db>) -> Self {
         let kind = match value.value().value(db) {
+            SemConstValue::Evidence { .. } => CtfeConstKind::Interned(value),
             SemConstValue::Unit => CtfeConstKind::Unit,
             SemConstValue::Scalar {
                 value: SemConstScalar::Bool(value),
@@ -576,6 +609,7 @@ impl<'db> CtfeConstValue<'db> {
         value: VerifiedConstValueId<'db>,
     ) -> Self {
         let kind = match value.value().value(db) {
+            SemConstValue::Evidence { .. } => CtfeConstKind::Interned(value),
             SemConstValue::Unit => CtfeConstKind::Unit,
             SemConstValue::Scalar {
                 value: SemConstScalar::Bool(value),
@@ -890,7 +924,7 @@ pub(super) fn sem_const_dependency<'db>(
             .iter()
             .copied()
             .find_map(|field| sem_const_dependency(db, field)),
-        SemConstValue::Unit | SemConstValue::Scalar { .. } => None,
+        SemConstValue::Unit | SemConstValue::Scalar { .. } | SemConstValue::Evidence { .. } => None,
     }
 }
 
@@ -1328,6 +1362,38 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             }
             locals[local.index()] = CtfeSlot::Init(value);
         }
+        if let BodyOwner::Func(func, _) = instance.key(self.db).owner(self.db)
+            && let Some(ItemKind::Trait(trait_)) = func.scope().parent_item(self.db)
+        {
+            // An unselected trait declaration is a selection dependency, not
+            // an executable implementation. Its synthetic empty body must not
+            // publish unit, nor a default body run before its implementation
+            // is known.
+            if let Some(dependency) = instance
+                .key(self.db)
+                .subst(self.db)
+                .generic_args(self.db)
+                .iter()
+                .take(trait_.params(self.db).len())
+                .copied()
+                .find(|ty| {
+                    ty.has_param(self.db) || ty.has_var(self.db) || ty.has_projection(self.db)
+                })
+            {
+                return Err(EvalStop::Blocked(BlockedInfo::new(
+                    ConstDemandKind::CallableSelection,
+                    ConstDependency::Type(dependency),
+                    origin,
+                )));
+            }
+            if func.body(self.db).is_none() && !func.is_extern(self.db) {
+                return Err(CtfeError::InvalidOperation {
+                    origin,
+                    message: "associated function selection has no executable body".into(),
+                }
+                .into());
+            }
+        }
         let frame_idx = self.frames.len();
         self.frames.push(CtfeFrame::new(body, locals));
         let result = self.run_frame(frame_idx).and_then(|value| {
@@ -1406,7 +1472,10 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             owner @ (BodyOwner::Func(_, _)
             | BodyOwner::Const(_)
             | BodyOwner::AnonConstBody { .. }) => {
-                if inference_met_lowering_cycle(self.db, infer_body(self.db, owner)) {
+                let inference = infer_body(self.db, owner);
+                if inference_met_lowering_cycle(self.db, inference)
+                    || inference_refused_a_choice(inference)
+                {
                     return Err(CtfeError::InvalidBody { origin });
                 }
                 // An instance that reaches the instance limits recurses

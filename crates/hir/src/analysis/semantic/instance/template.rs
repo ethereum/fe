@@ -5,6 +5,7 @@ use crate::{
             const_ty::lexical_const_body_owner,
             provider::AddressSpace,
             subst::substitute_complete,
+            trait_choice::SlotChoices,
             trait_def::TraitInstId,
             trait_resolution::PredicateListId,
             ty_check::{BodyOwner, TypedBody, infer_body},
@@ -114,6 +115,9 @@ pub struct ImplEnv<'db> {
     pub assumptions: PredicateListId<'db>,
     #[return_ref]
     pub witnesses: Vec<TraitInstId<'db>>,
+    /// Choices the caller delivered to this instance's slots.
+    #[return_ref]
+    pub choices: SlotChoices<'db>,
 }
 
 impl<'db> ImplEnv<'db> {
@@ -123,6 +127,7 @@ impl<'db> ImplEnv<'db> {
             normalization_scope,
             PredicateListId::empty_list(db),
             Vec::new(),
+            SlotChoices::default(),
         )
     }
 }

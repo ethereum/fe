@@ -64,6 +64,7 @@ fn run(evm: mut Evm) -> u256 {
         inst,
         method_name,
         None,
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved method");
     };

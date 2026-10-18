@@ -22,6 +22,16 @@ pub enum PathResDiag<'db> {
     /// The name is not found.
     NotFound(DynLazySpan<'db>, IdentId<'db>),
 
+    /// An associated type of `ty` that only named implementations of
+    /// `trait_` give: path lookup reads ordinary implementations, so the
+    /// qualified form names it (`<W as Make>::Out`).
+    NamedOnlyAssocType {
+        span: DynLazySpan<'db>,
+        ident: IdentId<'db>,
+        ty: TyId<'db>,
+        trait_: crate::hir_def::Trait<'db>,
+    },
+
     MethodNotFound {
         primary: DynLazySpan<'db>,
         method_name: IdentId<'db>,
@@ -119,6 +129,7 @@ impl<'db> PathResDiag<'db> {
                 .min()
                 .unwrap(),
             Self::NotFound(span, _) => span.top_mod(db).unwrap(),
+            Self::NamedOnlyAssocType { span, .. } => span.top_mod(db).unwrap(),
             Self::MethodNotFound { primary, .. } => primary.top_mod(db).unwrap(),
             Self::Invisible(span, _, _) => span.top_mod(db).unwrap(),
             Self::Ambiguous(span, _, _) => span.top_mod(db).unwrap(),
@@ -162,7 +173,7 @@ impl<'db> PathResDiag<'db> {
     pub fn local_code(&self) -> u16 {
         match self {
             Self::Conflict(..) => 1,
-            Self::NotFound(..) => 2,
+            Self::NotFound(..) | Self::NamedOnlyAssocType { .. } => 2,
             Self::Invisible(..) => 3,
             Self::Ambiguous(..) => 4,
             Self::InvalidPathSegment { .. } => 5,

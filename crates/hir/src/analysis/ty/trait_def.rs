@@ -11,7 +11,7 @@ use crate::{
     },
     hir_def::{
         Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, ModeMarker, Trait,
-        params::FuncParamMode,
+        params::FuncParamMode, scope_graph::ScopeId,
     },
 };
 use common::{
@@ -26,6 +26,7 @@ use super::{
     closure::CallableShape,
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
+    normalize::normalize_ty,
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         TraitSolveCx, constraint::collect_candidate_constraints, is_goal_satisfiable,
@@ -37,6 +38,79 @@ use super::{
     visitor::{TyVisitable, TyVisitor},
 };
 use crate::analysis::HirAnalysisDb;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImplSelectionClass<'db> {
+    Ordinary,
+    Named(IdentId<'db>),
+}
+
+/// Selection names classify authored declarations; they are not values or
+/// implementation identity. Ordinary discovery uses only unnamed declarations.
+pub fn impl_selection_class<'db>(
+    db: &'db dyn HirAnalysisDb,
+    item: ImplTrait<'db>,
+) -> ImplSelectionClass<'db> {
+    item.selection_name(db)
+        .map_or(ImplSelectionClass::Ordinary, ImplSelectionClass::Named)
+}
+
+/// Every named implementation in the ingot with this name, whatever its
+/// module or visibility, for tests and diagnostics. A `with` operand is
+/// resolved by `path_resolver::resolve_impl_name`, as an item path.
+pub fn named_impl_candidates<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    name: IdentId<'db>,
+) -> Vec<ImplTrait<'db>> {
+    ingot_trait_env(db, scope.top_mod(db).ingot(db))
+        .named_by_name
+        .get(&name)
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// The trait of a named implementation for `ty` that declares an associated
+/// type `name`, when path lookup (which reads ordinary implementations) finds
+/// none: the trait the qualified form `<ty as Trait>::name` names.
+pub(crate) fn named_only_assoc_type_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    ty: TyId<'db>,
+    name: IdentId<'db>,
+) -> Option<Trait<'db>> {
+    ingot_trait_env(db, ingot)
+        .named_by_name
+        .values()
+        .flatten()
+        .filter_map(|item| super::trait_lower::lower_impl_trait(db, *item))
+        .find(|candidate| {
+            candidate.self_ty(db).base_ty(db) == ty.base_ty(db)
+                && candidate.trait_def(db).assoc_ty(db, name).is_some()
+        })
+        .map(|candidate| candidate.trait_def(db))
+}
+
+/// The named implementations of `trait_def` in the ingot, kept out of
+/// ordinary lookup.
+pub(crate) fn named_impls_for_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    trait_def: Trait<'db>,
+) -> Vec<ImplTrait<'db>> {
+    let mut out = ingot_trait_env(db, ingot)
+        .named_by_name
+        .values()
+        .flatten()
+        .copied()
+        .filter(|item| {
+            super::trait_lower::lower_impl_trait(db, *item)
+                .is_some_and(|candidate| candidate.trait_def(db) == trait_def)
+        })
+        .collect::<Vec<_>>();
+    out.sort_by_key(|item| format!("{item:?}"));
+    out
+}
 
 /// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref, cycle_fn=ingot_trait_env_cycle_recover, cycle_initial=ingot_trait_env_cycle_initial)]
@@ -258,6 +332,7 @@ fn ingot_trait_env_cycle_initial<'db>(
         impls: FxHashMap::default(),
         impls_by_self: FxHashMap::default(),
         unindexed_self_impls: Vec::new(),
+        named_by_name: FxHashMap::default(),
         ingot,
     }
 }
@@ -393,16 +468,70 @@ pub(crate) fn instantiate_selected_impl<'db>(
     })
 }
 
+/// Ordinary selection: the implementation that answers `inst` when no choice
+/// is read. Every caller names why that is right where it calls
+/// (`OrdinarySelection`).
 pub(crate) fn resolve_trait_impl_instance<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
+    _why: super::trait_choice::OrdinarySelection,
 ) -> Selection<ResolvedImplInstance<'db>> {
     match resolve_trait_impl_instance_query(db, solve_cx, inst) {
         ImplSelection::Unique(resolved) => Selection::Unique(resolved),
         ImplSelection::Ambiguous => Selection::Ambiguous(IndexSet::new()),
         ImplSelection::NotFound => Selection::NotFound,
     }
+}
+
+/// The implementation that gives `inst`'s slot its associated types,
+/// effect rows and result spaces: the ordinary one, or, for a slot with only
+/// named implementations, any named one whose header matches
+/// (`named_output_implementation`). Readers of associated outputs select
+/// through this, not through ordinary selection alone.
+pub(crate) fn output_implementation<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+) -> Selection<ResolvedImplInstance<'db>> {
+    match resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        inst,
+        super::trait_choice::OrdinarySelection::slot_outputs(),
+    ) {
+        Selection::NotFound => named_output_implementation(db, solve_cx, inst),
+        ordinary => ordinary,
+    }
+}
+
+/// The outputs of a slot that ordinary selection does not answer, from its
+/// named implementations. A named declaration is admitted only when its
+/// outputs equal the ordinary implementation's or, without one, every other
+/// named implementation's, so whichever named implementation answers the slot
+/// gives these outputs; its conditions do not matter for them.
+pub(crate) fn named_output_implementation<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+) -> Selection<ResolvedImplInstance<'db>> {
+    if inst.args(db).iter().any(|ty| ty.has_var(db)) {
+        return Selection::NotFound;
+    }
+    let norm_scope = solve_cx.normalization_scope_for_trait_inst(db, inst);
+    let inst =
+        normalize_trait_inst_preserving_validity(db, inst, norm_scope, solve_cx.assumptions());
+    let (primary, secondary) = solve_cx.search_ingots_for_trait_inst(db, inst);
+    [Some(primary), secondary]
+        .into_iter()
+        .flatten()
+        .flat_map(|ingot| named_impls_for_trait(db, ingot, inst.def(db)))
+        .filter_map(|item| super::trait_lower::lower_impl_trait(db, item))
+        .find_map(|candidate| {
+            complete_selected_impl(db, candidate)
+                .and_then(|completed| instantiate_selected_impl(db, completed, inst))
+        })
+        .map_or(Selection::NotFound, Selection::Unique)
 }
 
 /// An implementation selection, without candidates for an ambiguous one.
@@ -434,6 +563,373 @@ fn resolve_trait_impl_instance_query<'db>(
         Selection::Ambiguous(_) => ImplSelection::Ambiguous,
         Selection::NotFound => ImplSelection::NotFound,
     }
+}
+
+/// A borrowed, checked application of one implementation. This is compiler
+/// state, not a language Evidence value or a cross-revision certificate.
+/// Its only constructor proves that candidate through the ordinary solver.
+pub struct CheckedImplApplication<'db> {
+    db: &'db dyn HirAnalysisDb,
+    origin: TraitSolveCx<'db>,
+    candidate: ImplementorId<'db>,
+    goal: TraitInstId<'db>,
+    resolved: ResolvedImplInstance<'db>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckedApplicationError {
+    UnsupportedInput,
+    UnsupportedConditions,
+    ConditionsNotAdmitted,
+    NotProven,
+    Incomplete,
+    UnresolvedApplication,
+}
+
+impl std::fmt::Debug for CheckedImplApplication<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CheckedImplApplication")
+            .field("candidate", &self.candidate)
+            .field("goal", &self.goal)
+            .field("origin", &self.origin)
+            .finish()
+    }
+}
+
+fn checked_type<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    !ty.has_invalid(db) && !ty.has_var(db) && !ty.has_projection(db)
+}
+
+/// Header reconstruction alone is deliberately not a checked application.
+/// Proof conditions are checked outside solving through master's ordinary
+/// declaration admission. Unsupported generic conditions remain Unsupported.
+pub(crate) fn prove_selected_application<'db>(
+    db: &'db dyn HirAnalysisDb,
+    origin: TraitSolveCx<'db>,
+    candidate: ImplementorId<'db>,
+    goal: TraitInstId<'db>,
+) -> Result<CheckedImplApplication<'db>, CheckedApplicationError> {
+    use CheckedApplicationError::*;
+    if matches!(candidate.origin(db), ImplementorOrigin::Assumption)
+        || goal
+            .args(db)
+            .iter()
+            .chain(goal.assoc_type_bindings(db).values())
+            .any(|ty| !checked_type(db, *ty))
+    {
+        return Err(UnsupportedInput);
+    }
+    if super::trait_resolution::goal_has_const_type_requirements(db, goal) {
+        return Err(UnsupportedConditions);
+    }
+    let conditions = match origin.restricted_goal(db, goal, candidate) {
+        GoalSatisfiability::Satisfied(solution) => solution.value.impl_conditions,
+        GoalSatisfiability::NeedsConfirmation { .. } => return Err(Incomplete),
+        GoalSatisfiability::ContainsInvalid => return Err(UnsupportedInput),
+        GoalSatisfiability::UnSat(_) => return Err(NotProven),
+    };
+    let completed = complete_selected_impl(db, candidate).ok_or(UnsupportedInput)?;
+    let scope = origin.normalization_scope_for_trait_inst(db, goal);
+    let normalized =
+        normalize_trait_inst_preserving_validity(db, goal, scope, origin.assumptions());
+    let resolved =
+        instantiate_selected_impl(db, completed, normalized).ok_or(UnresolvedApplication)?;
+    // An associated type written as a projection is checked as what it
+    // normalizes to (`type Out = <Item as Has>::Out` is `u8`).
+    let assoc_types = resolved
+        .instantiated
+        .types(db)
+        .values()
+        .map(|ty| normalize_ty(db, *ty, scope, origin.assumptions()))
+        .collect::<Vec<_>>();
+    if resolved
+        .impl_args(db)
+        .iter()
+        .chain(assoc_types.iter())
+        .chain(resolved.trait_inst().args(db))
+        .chain(resolved.trait_inst().assoc_type_bindings(db).values())
+        .any(|ty| !checked_type(db, *ty))
+    {
+        return Err(UnresolvedApplication);
+    }
+    // Use the complete existing receipt, including prerequisite impls,
+    // after solving. Master's checker retains source admission policy:
+    // ground true is admitted; generic/false/blocked/failed is not.
+    for instance in conditions.instances(db) {
+        if super::trait_resolution::goal_has_const_type_requirements(db, instance.trait_inst(db)) {
+            return Err(UnsupportedConditions);
+        }
+        let ImplementorOrigin::Hir(implementation) = instance.origin(db) else {
+            return Err(ConditionsNotAdmitted);
+        };
+        if !super::ty_check::check_where_const_predicates(
+            db,
+            crate::hir_def::WhereClauseOwner::ImplTrait(implementation),
+        )
+        .is_empty()
+        {
+            return Err(ConditionsNotAdmitted);
+        }
+    }
+    for goal in conditions.trait_goals(db) {
+        if super::trait_resolution::goal_has_const_type_requirements(db, *goal) {
+            return Err(UnsupportedConditions);
+        }
+        if !super::ty_check::check_where_const_predicates(
+            db,
+            crate::hir_def::WhereClauseOwner::Trait(goal.def(db)),
+        )
+        .is_empty()
+        {
+            return Err(ConditionsNotAdmitted);
+        }
+    }
+    Ok(CheckedImplApplication {
+        db,
+        origin,
+        candidate,
+        goal,
+        resolved,
+    })
+}
+
+/// Check one authored implementation with the ordinary proof and admission
+/// machinery. This is a compiler API, not source Fe evidence or an execution
+/// certificate. Declarations and IDs must belong to `db`; callers still perform
+/// ordinary source/coherence, method requirement and body checks.
+///
+/// Generic impl const conditions and conditional nominal type applications are
+/// not admitted by this preparatory interface. Rigid type bounds are supported.
+pub fn prove_selected_hir_application<'db>(
+    db: &'db dyn HirAnalysisDb,
+    origin: TraitSolveCx<'db>,
+    implementation: ImplTrait<'db>,
+    goal: TraitInstId<'db>,
+) -> Result<CheckedImplApplication<'db>, CheckedApplicationError> {
+    let candidate = super::trait_lower::lower_impl_trait(db, implementation)
+        .ok_or(CheckedApplicationError::UnsupportedInput)?;
+    prove_selected_application(db, origin, candidate, goal)
+}
+
+impl<'db> CheckedImplApplication<'db> {
+    /// The complete requested goal, including associated equalities.
+    pub fn goal(&self) -> TraitInstId<'db> {
+        self.goal
+    }
+
+    pub fn resolved(&self) -> ResolvedImplInstance<'db> {
+        self.resolved
+    }
+    pub fn origin_context(&self) -> TraitSolveCx<'db> {
+        self.origin
+    }
+    pub fn associated_type(&self, name: IdentId<'db>) -> Option<TyId<'db>> {
+        self.resolved.instantiated_assoc_ty(self.db, name)
+    }
+    pub fn method(&self, name: IdentId<'db>) -> Selection<ResolvedMethodInstance<'db>> {
+        method_instance_from_resolved(self.db, self.resolved, name, None)
+    }
+    pub fn revalidate(
+        &self,
+        destination: TraitSolveCx<'db>,
+        goal: TraitInstId<'db>,
+    ) -> Result<Self, CheckedApplicationError> {
+        // Do not copy source assumptions into the destination or switch to a
+        // different implementation when this candidate loses a prerequisite.
+        prove_selected_application(self.db, self.origin, self.candidate, self.goal)?;
+        prove_selected_application(self.db, destination, self.candidate, goal)
+    }
+}
+
+/// What a named implementation's declaration gives differently from another
+/// implementation of its slot.
+pub(crate) enum NamedOutputMismatch<'db> {
+    /// An associated type; `with` is the implementation compared with.
+    AssocType {
+        with: ImplTrait<'db>,
+        ordinary: bool,
+        name: IdentId<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
+    },
+    /// An associated effect row.
+    Row {
+        with: ImplTrait<'db>,
+        ordinary: bool,
+        name: IdentId<'db>,
+    },
+}
+
+/// The traits whose implementation is chosen where no frame reaches it:
+/// storage locations (`StateIndex`, the storage map's `StorageKey`) and
+/// encodings (`AbiSize`, `Encode`, `Decode`, `ErrorVariant`). A named
+/// implementation of one would put a value at another location, or encode
+/// it another way, under a `with` than without it, so they have none.
+const UNIQUE_CORE_TRAITS: [&[&str]; 5] = [
+    &["ops", "StateIndex"],
+    &["abi", "AbiSize"],
+    &["abi", "Encode"],
+    &["abi", "Decode"],
+    &["error", "ErrorVariant"],
+];
+
+/// Whether `trait_` may have no named implementation: one of
+/// `UNIQUE_CORE_TRAITS`, or the storage map's `StorageKey`.
+pub(crate) fn has_only_ordinary_implementations<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: crate::hir_def::scope_graph::ScopeId<'db>,
+    trait_: crate::hir_def::Trait<'db>,
+) -> bool {
+    UNIQUE_CORE_TRAITS
+        .iter()
+        .any(|path| super::corelib::resolve_core_trait(db, scope, path) == Some(trait_))
+        || super::corelib::resolve_lib_trait_path(db, scope, "std::evm::storage_map::StorageKey")
+            == Some(trait_)
+}
+
+/// A slot's associated types and effect rows do not depend on which implementation answers it. A named
+/// declaration is compared with every other implementation of the trait,
+/// ordinary or named, whose header overlaps its own, at their overlap and
+/// whatever their conditions: a condition that does not hold here can hold
+/// where a `with` adds a premise, and two named implementations that both
+/// answer a slot would otherwise give it outputs that depend on which is
+/// found first. This is definition admission, independent of any opening.
+pub(crate) fn named_output_mismatch<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementation: ImplTrait<'db>,
+    candidate: ImplementorId<'db>,
+) -> Option<NamedOutputMismatch<'db>> {
+    let context = TraitSolveCx::new(db, implementation.scope())
+        .with_assumptions(crate::semantic::param_env(db, implementation.into()));
+    let header = candidate.trait_inst(db);
+    let goal = TraitInstId::new_simple(db, header.def(db), header.args(db).clone());
+    let (primary, secondary) = context.search_ingots_for_trait_inst(db, goal);
+    let ingots = [Some(primary), secondary]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    let ordinary = ingots
+        .iter()
+        .flat_map(|ingot| impls_for_trait_def(db, *ingot, goal.def(db)).to_vec())
+        .filter(|other| matches!(other.origin(db), ImplementorOrigin::Hir(_)))
+        .map(|other| (other, true));
+    let named = ingots
+        .iter()
+        .flat_map(|ingot| named_impls_for_trait(db, *ingot, goal.def(db)))
+        .filter(|other| *other != implementation)
+        .filter_map(|other| super::trait_lower::lower_impl_trait(db, other))
+        .map(|other| (other, false));
+    let others = ordinary.chain(named).collect::<Vec<_>>();
+    for (other, ordinary) in others {
+        let ImplementorOrigin::Hir(with) = other.origin(db) else {
+            continue;
+        };
+        let Some((own, other)) = at_overlap(db, candidate, other) else {
+            continue;
+        };
+        for assoc in goal.def(db).assoc_types(db) {
+            let Some(name) = assoc.name(db) else {
+                continue;
+            };
+            let (Some(expected), Some(given)) = (
+                other.instantiated_assoc_ty(db, name),
+                own.instantiated_assoc_ty(db, name),
+            ) else {
+                continue;
+            };
+            let expected = consts_evaluated(
+                db,
+                normalize_ty(db, expected, implementation.scope(), context.assumptions()),
+            );
+            let given = consts_evaluated(
+                db,
+                normalize_ty(db, given, implementation.scope(), context.assumptions()),
+            );
+            if expected.has_invalid(db) || given.has_invalid(db) {
+                continue;
+            }
+            // Equal at the overlap, for every value of what the overlap
+            // leaves open: the two are compared as they are, not unified.
+            if expected != given {
+                return Some(NamedOutputMismatch::AssocType {
+                    with,
+                    ordinary,
+                    name,
+                    expected,
+                    given,
+                });
+            }
+        }
+        for row in goal.def(db).rows(db) {
+            let Some(name) = row.name.to_opt() else {
+                continue;
+            };
+            let components = |resolved| {
+                super::effects::rows::implementation_row_components(db, resolved, name).map(
+                    |components| {
+                        components
+                            .into_iter()
+                            .map(|component| (component.name, component.key, component.is_mut))
+                            .collect::<Vec<_>>()
+                    },
+                )
+            };
+            if components(other) != components(own) {
+                return Some(NamedOutputMismatch::Row {
+                    with,
+                    ordinary,
+                    name,
+                });
+            }
+        }
+    }
+    None
+}
+
+/// `ty` with each constant in it evaluated, so two written forms of one type
+/// (`Arr<{ 100 }>` and `Arr<100>`, or one braced constant written twice)
+/// compare equal.
+fn consts_evaluated<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+    struct Evaluate;
+    impl<'db> TyFolder<'db> for Evaluate {
+        fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+            let ty = ty.super_fold_with(db, self);
+            super::const_ty::normalize_const_tys_for_comparison(db, ty)
+        }
+    }
+    ty.fold_with(db, &mut Evaluate)
+}
+
+/// Two implementations instantiated at their overlap: each header with fresh
+/// variables, unified with the other. `None` when the headers cannot both
+/// match one goal.
+fn at_overlap<'db>(
+    db: &'db dyn HirAnalysisDb,
+    own: ImplementorId<'db>,
+    other: ImplementorId<'db>,
+) -> Option<(ResolvedImplInstance<'db>, ResolvedImplInstance<'db>)> {
+    let mut table = UnificationTable::new(db);
+    let own_fresh = table.instantiate_with_fresh_vars(own);
+    let other_fresh = table.instantiate_with_fresh_vars(other);
+    for (&a, &b) in own_fresh
+        .trait_inst(db)
+        .args(db)
+        .iter()
+        .zip(other_fresh.trait_inst(db).args(db))
+    {
+        table.unify(a, b).ok()?;
+    }
+    let resolved = |selected, fresh: ImplementorId<'db>, table: &mut UnificationTable<'db>| {
+        let instantiated = fresh.fold_with(db, table);
+        ResolvedImplInstance {
+            selected,
+            instantiated,
+            trait_inst: instantiated.trait_inst(db),
+        }
+    };
+    let own = resolved(own, own_fresh, &mut table);
+    let other = resolved(other, other_fresh, &mut table);
+    Some((own, other))
 }
 
 /// A selected method retains the proof origin and the nominal trait reference.
@@ -568,12 +1064,266 @@ pub fn resolve_trait_method_instance<'db>(
     inst: TraitInstId<'db>,
     method: IdentId<'db>,
     mode: Option<BorrowKind>,
+    why: super::trait_choice::OrdinarySelection,
 ) -> Selection<ResolvedMethodInstance<'db>> {
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
+    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst, why) {
         Selection::Unique(resolved) => resolved,
         Selection::Ambiguous(_) => return Selection::Ambiguous(IndexSet::new()),
         Selection::NotFound => return Selection::NotFound,
     };
+    method_instance_from_resolved(db, resolved, method, mode)
+}
+
+/// The method body that runs for a trait call whose decision, read in the
+/// instance that makes the call, is `chosen`: the known choice's
+/// implementation applied to `inst` (normalized as the instance key
+/// normalizes it), ordinary selection when there is no decision, and nothing
+/// for a pending choice. With `chosen_constant` and `candidate_methods`, the
+/// one way from a choice to a body: the template functions they read are
+/// private here, so a body chosen by a choice is reached only through them.
+/// The choices the body receives are mapped by `trait_choice::body_deliveries`
+/// from the same call.
+pub(crate) fn chosen_method<'db>(
+    db: &'db dyn HirAnalysisDb,
+    chosen: super::trait_choice::Resolved<'db>,
+    inst: TraitInstId<'db>,
+    method: IdentId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    mode: Option<BorrowKind>,
+) -> Selection<ResolvedMethodInstance<'db>> {
+    use super::trait_choice::{OrdinarySelection, Resolved};
+    match chosen {
+        Resolved::Known(known) => {
+            let inst = normalize_trait_inst_preserving_validity(db, inst, scope, assumptions);
+            known_instance(db, known, inst).map_or(Selection::NotFound, |resolved| {
+                method_instance_from_resolved(db, resolved, method, mode)
+            })
+        }
+        Resolved::Ordinary => resolve_trait_method_instance(
+            db,
+            TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+            inst,
+            method,
+            mode,
+            OrdinarySelection::no_recorded_choice(),
+        ),
+        Resolved::Pending => Selection::NotFound,
+    }
+}
+
+/// The implementation a constant use reads, and its constant body with the
+/// choices that body receives: the use's recorded choice (known), ordinary
+/// selection when there is no decision or the decision is the reading body's
+/// own bound, and nothing for a pending choice, which is never answered the
+/// ordinary way. The body is the selected implementation's constant or
+/// the trait's default, absent for a built-in constant; its choices are the
+/// use's deliveries mapped to it (`DeliveryList::to_body`).
+pub(crate) fn chosen_constant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    use_: super::assoc_const::AssocConstUse<'db>,
+) -> Option<ChosenConstant<'db>> {
+    use super::trait_choice::{Choice, SlotChoices, SlotRef};
+    let resolved = match use_.choice() {
+        Some(Choice::Known(known)) => known_instance(
+            db,
+            known,
+            normalize_trait_inst_preserving_validity(
+                db,
+                use_.inst(),
+                use_.origin_scope(),
+                use_.assumptions(),
+            ),
+        )?,
+        Some(Choice::Slot(SlotRef::Bound(_))) | None => match resolve_trait_impl_instance(
+            db,
+            use_.solve_cx(db),
+            use_.inst(),
+            super::trait_choice::OrdinarySelection::no_recorded_choice(),
+        ) {
+            Selection::Unique(resolved) => resolved,
+            Selection::Ambiguous(_) | Selection::NotFound => return None,
+        },
+        Some(Choice::Slot(_)) => return None,
+    };
+    let body =
+        selected_assoc_const_body_template(db, resolved, use_.name()).map(|(body, ty, subst)| {
+            ConstantBody {
+                body,
+                ty,
+                subst,
+                choices: use_
+                    .delivered()
+                    .map_or_else(SlotChoices::default, |list| list.to_body(db, body)),
+            }
+        });
+    Some(ChosenConstant { resolved, body })
+}
+
+/// The ordinary implementation of `inst` and its constant `name`'s body, for
+/// a read that no choice can reach, named by `why`. Its body receives
+/// nothing.
+pub(crate) fn ordinary_constant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+    name: IdentId<'db>,
+    why: super::trait_choice::OrdinarySelection,
+) -> Option<ChosenConstant<'db>> {
+    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst, why) else {
+        return None;
+    };
+    let body = selected_assoc_const_body_template(db, resolved, name).map(|(body, ty, subst)| {
+        ConstantBody {
+            body,
+            ty,
+            subst,
+            choices: super::trait_choice::SlotChoices::default(),
+        }
+    });
+    Some(ChosenConstant { resolved, body })
+}
+
+/// The implementation a constant read selects, and the body it runs
+/// (`chosen_constant`, `ordinary_constant`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ChosenConstant<'db> {
+    /// The implementation applied to the read's goal.
+    pub resolved: ResolvedImplInstance<'db>,
+    /// Absent for a constant the compiler provides.
+    pub body: Option<ConstantBody<'db>>,
+}
+
+/// A constant body with its declared type, the arguments of its owner, and
+/// what its bounds receive from the read.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ConstantBody<'db> {
+    pub body: Body<'db>,
+    pub ty: TyId<'db>,
+    pub subst: CompleteSubst<'db>,
+    pub choices: super::trait_choice::SlotChoices<'db>,
+}
+
+/// The method bodies a trait call whose implementation is chosen later could
+/// run: `method` of every implementation that applies to `inst` as written
+/// (`applicable_impls`), read for the checks such a call owes. No choice is
+/// read, so none is received.
+pub(crate) fn candidate_methods<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    inst: TraitInstId<'db>,
+    method: IdentId<'db>,
+    mode: Option<BorrowKind>,
+) -> Vec<ResolvedMethodInstance<'db>> {
+    applicable_impls(db, ingot, inst)
+        .into_iter()
+        .filter_map(
+            |resolved| match method_instance_from_resolved(db, resolved, method, mode) {
+                Selection::Unique(method) => Some(method),
+                _ => None,
+            },
+        )
+        .collect()
+}
+
+/// The constant bodies a constant read whose implementation is chosen later
+/// could run, as `candidate_methods` for a call.
+pub(crate) fn candidate_constants<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    inst: TraitInstId<'db>,
+    name: IdentId<'db>,
+) -> Vec<(Body<'db>, TyId<'db>, CompleteSubst<'db>)> {
+    applicable_impls(db, ingot, inst)
+        .into_iter()
+        .filter_map(|resolved| selected_assoc_const_body_template(db, resolved, name))
+        .collect()
+}
+
+/// The implementations, ordinary and named, that apply to `inst` as written,
+/// each applied to it.
+fn applicable_impls<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    inst: TraitInstId<'db>,
+) -> Vec<ResolvedImplInstance<'db>> {
+    let mut candidates = impls_for_trait_def(db, ingot, inst.def(db)).clone();
+    candidates.extend(
+        named_impls_for_trait(db, ingot, inst.def(db))
+            .into_iter()
+            .filter_map(|item| super::trait_lower::lower_impl_trait(db, item)),
+    );
+    candidates
+        .into_iter()
+        .filter(|candidate| matches!(candidate.origin(db), ImplementorOrigin::Hir(_)))
+        .filter(|candidate| may_apply(db, *candidate, inst))
+        .filter_map(|candidate| {
+            complete_selected_impl(db, candidate)
+                .and_then(|completed| instantiate_selected_impl(db, completed, inst))
+        })
+        .collect()
+}
+
+/// Whether `candidate`, as lowered for lookup, may apply to `inst`. Its
+/// trait arguments are the checked lowering's unless they hold a constant or
+/// a projection, which only the checked lowering settles; a candidate whose
+/// arguments hold neither and do not unify with `inst` does not apply, and
+/// is not lowered again (`complete_selected_impl` is not cached).
+fn may_apply<'db>(
+    db: &'db dyn HirAnalysisDb,
+    candidate: ImplementorId<'db>,
+    inst: TraitInstId<'db>,
+) -> bool {
+    struct Unsettled<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: bool,
+    }
+    impl<'db> TyVisitor<'db> for Unsettled<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_const_ty(&mut self, const_ty: &super::const_ty::ConstTyId<'db>) {
+            if !matches!(
+                const_ty.data(self.db),
+                super::const_ty::ConstTyData::TyParam(..)
+            ) {
+                self.found = true;
+            }
+            super::visitor::walk_const_ty(self, const_ty)
+        }
+    }
+    let mut unsettled = Unsettled { db, found: false };
+    for ty in candidate.trait_inst(db).args(db) {
+        if ty.has_projection(db) {
+            return true;
+        }
+        unsettled.visit_ty(*ty);
+    }
+    unsettled.found || instantiate_selected_impl(db, candidate, inst).is_some()
+}
+
+/// A known choice's implementation applied to `inst`, a goal in its slot.
+fn known_instance<'db>(
+    db: &'db dyn HirAnalysisDb,
+    known: super::trait_choice::KnownChoice<'db>,
+    inst: TraitInstId<'db>,
+) -> Option<ResolvedImplInstance<'db>> {
+    let candidate = complete_selected_impl(
+        db,
+        super::trait_lower::lower_impl_trait(db, known.implementation())?,
+    )?;
+    instantiate_selected_impl(db, candidate, inst)
+}
+
+/// Assemble method metadata from one reconstructed application. Retained
+/// consumers use this path without running implementation discovery again.
+fn method_instance_from_resolved<'db>(
+    db: &'db dyn HirAnalysisDb,
+    resolved: ResolvedImplInstance<'db>,
+    method: IdentId<'db>,
+    mode: Option<BorrowKind>,
+) -> Selection<ResolvedMethodInstance<'db>> {
     let Some(declaration) = resolved
         .selected()
         .trait_def(db)
@@ -790,7 +1540,12 @@ pub fn assoc_const_body_template_for_trait_inst<'db>(
     inst: TraitInstId<'db>,
     const_name: IdentId<'db>,
 ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>)> {
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
+    let resolved = match resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        inst,
+        super::trait_choice::OrdinarySelection::outermost_tier_only(),
+    ) {
         Selection::Unique(resolved) => resolved,
         Selection::Ambiguous(_ambiguous) => return None,
         Selection::NotFound => return None,
@@ -798,7 +1553,7 @@ pub fn assoc_const_body_template_for_trait_inst<'db>(
     selected_assoc_const_body_template(db, resolved, const_name)
 }
 
-pub(crate) fn selected_assoc_const_body_template<'db>(
+fn selected_assoc_const_body_template<'db>(
     db: &'db dyn HirAnalysisDb,
     resolved: ResolvedImplInstance<'db>,
     const_name: IdentId<'db>,
@@ -850,7 +1605,12 @@ pub fn trait_inst_selects_concrete_impl<'db>(
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
 ) -> bool {
-    match resolve_trait_impl_instance(db, solve_cx, inst) {
+    match resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        inst,
+        super::trait_choice::OrdinarySelection::outermost_tier_only(),
+    ) {
         Selection::Unique(resolved) => !matches!(
             resolved.selected().origin(db),
             ImplementorOrigin::Assumption
@@ -873,6 +1633,9 @@ pub(crate) struct TraitEnv<'db> {
     /// that must be considered for every receiver type.
     unindexed_self_impls: Vec<ImplTrait<'db>>,
 
+    /// Explicit aliases remain separate from all ordinary discovery indexes.
+    named_by_name: FxHashMap<IdentId<'db>, Vec<ImplTrait<'db>>>,
+
     ingot: Ingot<'db>,
 }
 
@@ -882,6 +1645,12 @@ impl<'db> TraitEnv<'db> {
         let mut impls_by_self: FxHashMap<ImplSelfKey<'db>, Vec<ImplTrait<'db>>> =
             FxHashMap::default();
         let mut unindexed_self_impls = Vec::new();
+        let mut named_by_name: FxHashMap<IdentId<'db>, Vec<ImplTrait<'db>>> = FxHashMap::default();
+        for &item in ingot.all_impl_traits(db).iter() {
+            if let ImplSelectionClass::Named(name) = impl_selection_class(db, item) {
+                named_by_name.entry(name).or_default().push(item);
+            }
+        }
 
         for impl_map in ingot
             .resolved_external_ingots(db)
@@ -895,21 +1664,31 @@ impl<'db> TraitEnv<'db> {
                 impls
                     .entry(*trait_def)
                     .or_default()
-                    .extend(implementors.iter().copied());
+                    .extend(implementors.iter().copied().filter(|&item| {
+                        impl_selection_class(db, item) == ImplSelectionClass::Ordinary
+                    }));
             }
             for (self_key, implementors) in &impl_map.by_self {
-                impls_by_self
-                    .entry(*self_key)
-                    .or_default()
-                    .extend(implementors.iter().copied());
+                impls_by_self.entry(*self_key).or_default().extend(
+                    implementors.iter().copied().filter(|&item| {
+                        impl_selection_class(db, item) == ImplSelectionClass::Ordinary
+                    }),
+                );
             }
-            unindexed_self_impls.extend(impl_map.unindexed_self.iter().copied());
+            unindexed_self_impls.extend(
+                impl_map
+                    .unindexed_self
+                    .iter()
+                    .copied()
+                    .filter(|&item| impl_selection_class(db, item) == ImplSelectionClass::Ordinary),
+            );
         }
 
         Self {
             impls,
             impls_by_self,
             unindexed_self_impls,
+            named_by_name,
             ingot,
         }
     }
@@ -1606,9 +2385,12 @@ fn probe(value: own Wrapper<u16>) {}
             IndexMap::new(),
             crate::hir_def::ModeMarker::None,
         );
-        let Selection::Unique(resolved) =
-            resolve_trait_impl_instance(&db, TraitSolveCx::new(&db, func.scope()), inst)
-        else {
+        let Selection::Unique(resolved) = resolve_trait_impl_instance(
+            &db,
+            TraitSolveCx::new(&db, func.scope()),
+            inst,
+            crate::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
+        ) else {
             panic!("expected one concrete Projects implementation");
         };
         let output = IdentId::new(&db, "Output");
@@ -1622,5 +2404,426 @@ fn probe(value: own Wrapper<u16>) {}
         assert!(template.has_param(&db));
         assert_eq!(instantiated.pretty_print(&db).to_string(), "u16");
         assert_eq!(resolved.impl_args(&db), &[instantiated]);
+    }
+}
+
+#[cfg(test)]
+mod retained_application_tests {
+    use super::*;
+    use crate::{
+        analysis::ty::{
+            adt_def::AdtRef,
+            trait_resolution::constraint::collect_func_def_constraints,
+            ty_def::{Kind, PrimTy, TyVarSort},
+            ty_lower::collect_generic_params,
+        },
+        hir_def::{TopLevelMod, WhereClauseOwner},
+        test_db::{HirAnalysisTestDb, find_func},
+    };
+
+    fn trait_named<'db>(
+        db: &'db HirAnalysisTestDb,
+        module: TopLevelMod<'db>,
+        name: &str,
+    ) -> Trait<'db> {
+        *module
+            .all_traits(db)
+            .iter()
+            .find(|t| t.name(db).to_opt().unwrap().data(db) == name)
+            .unwrap()
+    }
+    fn record<'db>(db: &'db HirAnalysisTestDb, module: TopLevelMod<'db>, name: &str) -> TyId<'db> {
+        let item = *module
+            .all_structs(db)
+            .iter()
+            .find(|s| s.name(db).to_opt().unwrap().data(db) == name)
+            .unwrap();
+        TyId::adt(db, AdtRef::from(item).as_adt(db))
+    }
+    fn candidates<'db>(
+        db: &'db HirAnalysisTestDb,
+        module: TopLevelMod<'db>,
+        name: &str,
+    ) -> Vec<ImplementorId<'db>> {
+        impls_for_trait_def(db, module.ingot(db), trait_named(db, module, name)).to_vec()
+    }
+    fn goal<'db>(
+        db: &'db HirAnalysisTestDb,
+        module: TopLevelMod<'db>,
+        name: &str,
+        args: Vec<TyId<'db>>,
+    ) -> TraitInstId<'db> {
+        TraitInstId::new_simple(db, trait_named(db, module, name), args)
+    }
+    fn out(db: &HirAnalysisTestDb) -> IdentId<'_> {
+        IdentId::new(db, "Out")
+    }
+
+    #[test]
+    fn proof_checks_prerequisites_before_header_reconstruction() {
+        let mut db = HirAnalysisTestDb::default();
+        let file=db.new_stand_alone("retained_prerequisites.fe".into(),"trait Marker {}\ntrait Pick {}\nstruct Yes {}\nstruct No {}\nimpl Marker for Yes {}\nimpl<T> Pick for T where T: Marker {}");
+        let (module, _) = db.top_mod(file);
+        let candidate = candidates(&db, module, "Pick")[0];
+        let cx = TraitSolveCx::new(&db, module.scope());
+        let bad = goal(&db, module, "Pick", vec![record(&db, module, "No")]);
+        assert!(
+            instantiate_selected_impl(&db, candidate, bad).is_some(),
+            "matching a header is not proof"
+        );
+        assert_eq!(
+            prove_selected_application(&db, cx, candidate, bad).unwrap_err(),
+            CheckedApplicationError::NotProven
+        );
+        let good = goal(&db, module, "Pick", vec![record(&db, module, "Yes")]);
+        let checked = prove_selected_application(&db, cx, candidate, good).unwrap();
+        assert_eq!(
+            checked.resolved().selected().origin(&db),
+            candidate.origin(&db)
+        );
+        assert_eq!(checked.origin_context().scope(), module.scope());
+    }
+
+    #[test]
+    fn full_trait_arguments_equalities_generic_output_and_method_readers() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "retained_outputs.fe".into(),
+            r#"
+trait Pick<Tag> {
+    type Out
+    fn implemented(self) -> u256
+    fn inherited(self) -> u256 { 8 }
+}
+struct Wrap<T> {}
+impl<T> Pick<bool> for Wrap<T> {
+    type Out = T
+    fn implemented(self) -> u256 { 1 }
+}
+"#,
+        );
+        let (module, _) = db.top_mod(file);
+        let candidate = candidates(&db, module, "Pick")[0];
+        let cx = TraitSolveCx::new(&db, module.scope());
+        let u32_ = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U32)));
+        let bool_ = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::Bool)));
+        let subject = TyId::app(&db, record(&db, module, "Wrap"), u32_);
+        let g = goal(&db, module, "Pick", vec![subject, bool_]);
+        let checked = prove_selected_application(&db, cx, candidate, g).unwrap();
+        assert_eq!(checked.associated_type(out(&db)), Some(u32_));
+        assert_eq!(checked.resolved().impl_args(&db), [u32_]);
+        let Selection::Unique(own) = checked.method(IdentId::new(&db, "implemented")) else {
+            panic!("explicit method")
+        };
+        assert_eq!(own.body_args(), [u32_]);
+        let Selection::Unique(default) = checked.method(IdentId::new(&db, "inherited")) else {
+            panic!("default method")
+        };
+        assert_eq!(default.body_args(), g.args(&db));
+        let eq = TraitInstId::new(
+            &db,
+            g.def(&db),
+            g.args(&db).to_vec(),
+            [(out(&db), u32_)].into_iter().collect::<IndexMap<_, _>>(),
+        );
+        assert_eq!(
+            checked
+                .revalidate(cx, eq)
+                .unwrap()
+                .associated_type(out(&db)),
+            Some(u32_)
+        );
+        let wrong = TraitInstId::new(
+            &db,
+            g.def(&db),
+            g.args(&db).to_vec(),
+            [(out(&db), bool_)].into_iter().collect::<IndexMap<_, _>>(),
+        );
+        assert!(
+            checked.revalidate(cx, wrong).is_err(),
+            "same trait/subject slot does not prove Out equality"
+        );
+        assert!(
+            checked
+                .revalidate(cx, goal(&db, module, "Pick", vec![subject, u32_]))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn destination_proves_its_own_premises_and_does_not_switch_candidate() {
+        let mut db = HirAnalysisTestDb::default();
+        // Intentional overlapping solver fixture: does not certify source coherence.
+        let file = db.new_stand_alone(
+            "retained_destination.fe".into(),
+            r#"
+trait Marker {} trait Unused {} trait Pick { type Out }
+struct Wrap<T> {}
+impl<T> Pick for Wrap<T> where T: Marker { type Out = T }
+impl<T> Pick for Wrap<T> { type Out = bool }
+fn probe<T: Marker + Unused>(_ value: T) {}
+"#,
+        );
+        let (module, _) = db.top_mod(file);
+        let probe = find_func(&db, module, "probe");
+        let t = collect_generic_params(&db, probe.into()).explicit_params(&db)[0];
+        let premises = collect_func_def_constraints(&db, probe.into(), true).instantiate_identity();
+        let origin = TraitSolveCx::new(&db, probe.scope()).with_assumptions(premises);
+        let candidate = candidates(&db, module, "Pick")[0];
+        let g = goal(
+            &db,
+            module,
+            "Pick",
+            vec![TyId::app(&db, record(&db, module, "Wrap"), t)],
+        );
+        let checked = prove_selected_application(&db, origin, candidate, g).unwrap();
+        assert_eq!(checked.associated_type(out(&db)), Some(t));
+        let marker = goal(&db, module, "Marker", vec![t]);
+        let required = TraitSolveCx::new(&db, probe.scope())
+            .with_assumptions(PredicateListId::new(&db, vec![marker]));
+        assert!(
+            checked.revalidate(required, g).is_ok(),
+            "unused origin assumptions may be removed"
+        );
+        let empty = TraitSolveCx::new(&db, probe.scope());
+        assert_eq!(
+            checked.revalidate(empty, g).unwrap_err(),
+            CheckedApplicationError::NotProven
+        );
+        assert!(
+            matches!(resolve_trait_impl_instance(&db,empty,g,crate::analysis::ty::trait_choice::OrdinarySelection::for_tests()),Selection::Unique(other) if other.selected().origin(&db)!=candidate.origin(&db)),
+            "ordinary discovery can find the fallback, but retained choice cannot switch"
+        );
+        assert_eq!(checked.origin_context().scope(), probe.scope());
+    }
+
+    #[test]
+    fn fresh_variables_assumptions_and_unconstrained_impl_arguments_are_not_certificates() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "retained_unknown.fe".into(),
+            "trait Pick {}\nstruct Key {}\nimpl<T> Pick for Key {}",
+        );
+        let (module, _) = db.top_mod(file);
+        let candidate = candidates(&db, module, "Pick")[0];
+        let cx = TraitSolveCx::new(&db, module.scope());
+        let g = goal(&db, module, "Pick", vec![record(&db, module, "Key")]);
+        assert_eq!(
+            prove_selected_application(&db, cx, candidate, g).unwrap_err(),
+            CheckedApplicationError::UnresolvedApplication
+        );
+        let assumption = ImplementorId::assumption(&db, g);
+        assert_eq!(
+            prove_selected_application(&db, cx, assumption, g).unwrap_err(),
+            CheckedApplicationError::UnsupportedInput
+        );
+        let mut table = UnificationTable::new(&db);
+        let unknown = table.new_var(TyVarSort::General, &Kind::Star);
+        let unknown = goal(&db, module, "Pick", vec![unknown]);
+        assert_eq!(
+            prove_selected_application(&db, cx, candidate, unknown).unwrap_err(),
+            CheckedApplicationError::UnsupportedInput
+        );
+    }
+
+    #[test]
+    fn root_and_nested_const_conditions_follow_ordinary_admission() {
+        for condition in ["true", "false", "7", "fail()"] {
+            let mut db = HirAnalysisTestDb::default();
+            let source = format!(
+                "const fn fail() -> bool {{ assert!(false)\ntrue }}\ntrait Marker {{}}\ntrait Lift {{}}\ntrait Twice {{}}\nstruct Key {{}}\nimpl Marker for Key where {{ {condition} }} {{}}\nimpl<T> Lift for T where T: Marker {{}}\nimpl<T> Twice for T where T: Lift {{}}"
+            );
+            let file = db.new_stand_alone("retained_conditions.fe".into(), &source);
+            let (module, _) = db.top_mod(file);
+            let cx = TraitSolveCx::new(&db, module.scope());
+            let key = record(&db, module, "Key");
+            for name in ["Marker", "Lift", "Twice"] {
+                let candidate = candidates(&db, module, name)[0];
+                let g = goal(&db, module, name, vec![key]);
+                assert!(
+                    matches!(cx.restricted_goal(&db,g,candidate),GoalSatisfiability::Satisfied(solution) if !solution.value.impl_conditions.instances(&db).is_empty()),
+                    "a structural proof must retain nested condition metadata"
+                );
+                let checked = prove_selected_application(&db, cx, candidate, g);
+                assert_eq!(
+                    checked.is_ok(),
+                    condition == "true",
+                    "root/nested conditions cannot be ignored"
+                );
+                if condition != "true" {
+                    assert_eq!(
+                        checked.unwrap_err(),
+                        CheckedApplicationError::ConditionsNotAdmitted
+                    );
+                }
+            }
+            let marker = candidates(&db, module, "Marker")[0].hir_impl_trait(&db);
+            let ordinary = super::super::ty_check::check_where_const_predicates(
+                &db,
+                WhereClauseOwner::ImplTrait(marker),
+            );
+            assert_eq!(
+                ordinary.is_empty(),
+                condition == "true",
+                "ordinary ground condition admission remains master's policy"
+            );
+        }
+    }
+
+    #[test]
+    fn unresolved_nested_associated_outputs_are_not_exposed() {
+        let mut db = HirAnalysisTestDb::default();
+        let file=db.new_stand_alone("retained_projection.fe".into(),"trait Marker { type Out }\ntrait Pick { type Out }\nstruct Box<T> {}\nstruct Wrap<T> {}\nfn probe<T: Marker>(_ value: T) {}\nimpl<T> Pick for Wrap<T> where T: Marker { type Out = Box<T::Out> }");
+        let (module, _) = db.top_mod(file);
+        let probe = find_func(&db, module, "probe");
+        let t = collect_generic_params(&db, probe.into()).explicit_params(&db)[0];
+        let premises = collect_func_def_constraints(&db, probe.into(), true).instantiate_identity();
+        let cx = TraitSolveCx::new(&db, probe.scope()).with_assumptions(premises);
+        let candidate = candidates(&db, module, "Pick")[0];
+        let g = goal(
+            &db,
+            module,
+            "Pick",
+            vec![TyId::app(&db, record(&db, module, "Wrap"), t)],
+        );
+        assert!(matches!(
+            cx.restricted_goal(&db, g, candidate),
+            GoalSatisfiability::Satisfied(_)
+        ));
+        assert_eq!(
+            prove_selected_application(&db, cx, candidate, g).unwrap_err(),
+            CheckedApplicationError::UnresolvedApplication
+        );
+    }
+
+    #[test]
+    fn warm_edits_reconstruct_current_outputs_instead_of_serializing_a_choice() {
+        use salsa::Setter;
+        fn read(db: &HirAnalysisTestDb, file: common::file::File) -> String {
+            let (module, _) = db.top_mod(file);
+            let candidate = candidates(db, module, "Pick")[0];
+            let cx = TraitSolveCx::new(db, module.scope());
+            let g = goal(db, module, "Pick", vec![record(db, module, "Key")]);
+            prove_selected_application(db, cx, candidate, g)
+                .unwrap()
+                .associated_type(out(db))
+                .unwrap()
+                .pretty_print(db)
+                .to_string()
+        }
+        let source = "trait Pick { type Out }\nstruct Key {}\nstruct A {}\nstruct B {}\nimpl Pick for Key { type Out = A }";
+        let mut warm = HirAnalysisTestDb::default();
+        let file = warm.new_stand_alone("retained_warm.fe".into(), source);
+        assert_eq!(read(&warm, file), "A");
+        assert_eq!(read(&warm, file), "A");
+        let changed = source.replace("type Out = A", "type Out = B");
+        file.set_text(&mut warm).to(changed.clone());
+        assert_eq!(read(&warm, file), "B");
+        let mut fresh = HirAnalysisTestDb::default();
+        let fresh_file = fresh.new_stand_alone("retained_warm.fe".into(), &changed);
+        assert_eq!(read(&fresh, fresh_file), read(&warm, file));
+    }
+}
+
+#[cfg(test)]
+mod retained_application_tests_completion {
+    use super::*;
+    use crate::{analysis::ty::adt_def::AdtRef, test_db::HirAnalysisTestDb};
+    #[test]
+    fn recursive_failure_and_incomplete_growth_are_distinct() {
+        for (bound, expected) in [
+            ("T: Pick", CheckedApplicationError::NotProven),
+            ("Wrap<T>: Pick", CheckedApplicationError::Incomplete),
+        ] {
+            let mut db = HirAnalysisTestDb::default();
+            let source = format!(
+                "trait Pick {{}}\nstruct Key {{}}\nstruct Wrap<T> {{}}\nimpl<T> Pick for T where {bound} {{}}"
+            );
+            let file = db.new_stand_alone("retained_completion.fe".into(), &source);
+            let (module, _) = db.top_mod(file);
+            let trait_ = module.all_traits(&db)[0];
+            let candidate = impls_for_trait_def(&db, module.ingot(&db), trait_)[0];
+            let key = TyId::adt(&db, AdtRef::from(module.all_structs(&db)[0]).as_adt(&db));
+            let goal = TraitInstId::new_simple(&db, trait_, vec![key]);
+            assert_eq!(
+                prove_selected_application(
+                    &db,
+                    TraitSolveCx::new(&db, module.scope()),
+                    candidate,
+                    goal
+                )
+                .unwrap_err(),
+                expected
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod retained_application_tests_admission {
+    use super::*;
+    use crate::test_db::{HirAnalysisTestDb, find_func};
+    #[test]
+    fn concrete_use_cannot_admit_a_generic_impl_condition_rejected_on_master() {
+        let mut db = HirAnalysisTestDb::default();
+        let file=db.new_stand_alone("retained_generic_condition.fe".into(),"trait Marker {}\nstruct Wrap<const N: usize> {}\nimpl<const N: usize> Marker for Wrap<N> where { N > 0 } {}\nfn probe(_ value: Wrap<1>) {}");
+        let (module, _) = db.top_mod(file);
+        let trait_ = module.all_traits(&db)[0];
+        let candidate = impls_for_trait_def(&db, module.ingot(&db), trait_)[0];
+        let probe = find_func(&db, module, "probe");
+        let subject = probe.params(&db).next().unwrap().ty(&db);
+        let subject = subject.as_view(&db).unwrap_or(subject);
+        let goal = TraitInstId::new_simple(&db, trait_, vec![subject]);
+        let cx = TraitSolveCx::new(&db, probe.scope());
+        assert!(matches!(
+            cx.restricted_goal(&db, goal, candidate),
+            GoalSatisfiability::Satisfied(_)
+        ));
+        assert_eq!(
+            prove_selected_application(&db, cx, candidate, goal).unwrap_err(),
+            CheckedApplicationError::ConditionsNotAdmitted
+        );
+    }
+    #[test]
+    fn conditional_type_headers_need_the_owned_checked_use_adapter() {
+        let mut db = HirAnalysisTestDb::default();
+        let file=db.new_stand_alone("retained_type_conditions.fe".into(),"trait Pick {}\nstruct Bounded<const N: usize> where { N > 0 } {}\nimpl Pick for Bounded<1> {}\nfn probe(_ value: Bounded<1>) {}");
+        let (module, _) = db.top_mod(file);
+        let trait_ = module.all_traits(&db)[0];
+        let candidate = impls_for_trait_def(&db, module.ingot(&db), trait_)[0];
+        let probe = find_func(&db, module, "probe");
+        let subject = probe.params(&db).next().unwrap().ty(&db);
+        let subject = subject.as_view(&db).unwrap_or(subject);
+        let goal = TraitInstId::new_simple(&db, trait_, vec![subject]);
+        let cx = TraitSolveCx::new(&db, probe.scope());
+        assert_eq!(
+            prove_selected_application(&db, cx, candidate, goal).unwrap_err(),
+            CheckedApplicationError::UnsupportedConditions
+        );
+    }
+}
+
+#[cfg(test)]
+mod retained_application_tests_transitive_header {
+    use super::*;
+    use crate::{analysis::ty::adt_def::AdtRef, test_db::HirAnalysisTestDb};
+    #[test]
+    fn a_transitive_conditional_type_header_cannot_become_a_checked_application() {
+        let mut db = HirAnalysisTestDb::default();
+        let file=db.new_stand_alone("retained_transitive_header.fe".into(),"trait Marker<A> {}\ntrait Lift {}\ntrait Pick {}\nstruct Key {}\nstruct Other {}\nstruct Bounded<const N: usize> where { N > 0 } {}\nimpl Marker<Bounded<0>> for Other {}\nimpl Lift for Other where Other: Marker<Bounded<0>> {}\nimpl Pick for Key where Other: Lift {}");
+        let (module, _) = db.top_mod(file);
+        let trait_ = *module
+            .all_traits(&db)
+            .iter()
+            .find(|t| t.name(&db).to_opt().unwrap().data(&db) == "Pick")
+            .unwrap();
+        let candidate = impls_for_trait_def(&db, module.ingot(&db), trait_)[0];
+        let key = TyId::adt(&db, AdtRef::from(module.all_structs(&db)[0]).as_adt(&db));
+        let goal = TraitInstId::new_simple(&db, trait_, vec![key]);
+        let cx = TraitSolveCx::new(&db, module.scope());
+        assert!(
+            prove_selected_application(&db, cx, candidate, goal).is_err(),
+            "an inadmissible prerequisite header is not a checked proof"
+        );
     }
 }

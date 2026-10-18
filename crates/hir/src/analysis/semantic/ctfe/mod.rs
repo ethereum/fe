@@ -11,7 +11,7 @@ pub(crate) use canonicalize::{
 };
 pub use machine::{
     CtfeConfig, CtfeError, eval_body_owner_const, eval_body_owner_const_with_args,
-    eval_const_instance, eval_const_ref,
+    eval_const_instance, eval_const_ref, eval_instance_with_args,
 };
 pub use outcome::{
     BlockedInfo, ConstDemandKind, ConstDependency, EvalFailure, EvalOutcome, FoldAttempt,

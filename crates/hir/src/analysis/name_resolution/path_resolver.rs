@@ -294,6 +294,22 @@ impl<'db> PathResError<'db> {
                     }
                 } else if expected == ExpectedPathKind::Function {
                     func_not_found_err(span, ident, parent)
+                } else if let Some(PathRes::Ty(ty)) = parent.as_ref()
+                    && let Some(top_mod) = span.top_mod(db)
+                    && let Some(trait_) =
+                        crate::analysis::ty::trait_def::named_only_assoc_type_trait(
+                            db,
+                            top_mod.ingot(db),
+                            *ty,
+                            ident,
+                        )
+                {
+                    PathResDiag::NamedOnlyAssocType {
+                        span,
+                        ident,
+                        ty: *ty,
+                        trait_,
+                    }
                 } else {
                     PathResDiag::NotFound(span, ident)
                 }
@@ -523,6 +539,76 @@ pub(crate) fn resolve_type_path_definition<'db>(
         parent_scope = resolved.scope();
     }
     None
+}
+
+/// What a path names in the implementation-name domain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ImplNameRes<'db> {
+    Found(crate::hir_def::ImplTrait<'db>),
+    /// Found, but neither it nor a module on its path is visible from the
+    /// use: a name is private by default (`pub impl` publishes it).
+    NotVisible,
+    Ambiguous,
+    NotFound,
+}
+
+/// The named implementation a `with` operand's path names: its last segment
+/// in the implementation-name domain, found as any item is, through the
+/// lexical scope and imports for a bare name and through module paths
+/// otherwise, and visible from `scope`. A segment with generic arguments
+/// names nothing yet.
+pub(crate) fn resolve_impl_name<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+) -> ImplNameRes<'db> {
+    let mut parent_scope = None;
+    for segment_idx in 0..path.len(db) {
+        let Some(segment) = path.segment(db, segment_idx) else {
+            return ImplNameRes::NotFound;
+        };
+        if !matches!(segment.kind(db), PathKind::Ident { .. })
+            || !segment.generic_args(db).is_empty(db)
+        {
+            return ImplNameRes::NotFound;
+        }
+        let query_scope = parent_scope.unwrap_or(scope);
+        let directive = QueryDirective::for_scope(db, query_scope);
+        let query = make_query(db, segment, query_scope, directive);
+        let bucket = resolve_query(db, query);
+        if segment_idx + 1 == path.len(db) {
+            return match bucket.pick(NameDomain::IMPL) {
+                Ok(res) => match res.kind {
+                    NameResKind::Scope(ScopeId::Item(ItemKind::ImplTrait(implementation))) => {
+                        if res.is_visible(db, scope) {
+                            ImplNameRes::Found(implementation)
+                        } else {
+                            ImplNameRes::NotVisible
+                        }
+                    }
+                    _ => ImplNameRes::NotFound,
+                },
+                Err(NameResolutionError::Ambiguous(_) | NameResolutionError::Conflict(..)) => {
+                    ImplNameRes::Ambiguous
+                }
+                Err(NameResolutionError::Invisible(_)) => ImplNameRes::NotVisible,
+                Err(_) => ImplNameRes::NotFound,
+            };
+        }
+        let res = match bucket.pick(NameDomain::TYPE) {
+            Ok(res) => res,
+            Err(NameResolutionError::Invisible(_)) => return ImplNameRes::NotVisible,
+            Err(_) => return ImplNameRes::NotFound,
+        };
+        if !res.is_visible(db, scope) {
+            return ImplNameRes::NotVisible;
+        }
+        let Some(next) = res.scope() else {
+            return ImplNameRes::NotFound;
+        };
+        parent_scope = Some(next);
+    }
+    ImplNameRes::NotFound
 }
 
 /// Panics if path.ident is `Absent`
@@ -1965,6 +2051,21 @@ fn select_assoc_const_candidate<'db>(
             }
         }
     });
+
+    // A goal with only named implementations has no impl here; inside the
+    // `with` that opened it, it is a premise for this exact receiver.
+    if !unresolved && matches.is_empty() {
+        matches.extend(
+            assumptions
+                .extend_all_bounds(db)
+                .list(db)
+                .iter()
+                .copied()
+                .filter(|pred| {
+                    pred.self_ty(db) == receiver_ty && pred.def(db).const_(db, name).is_some()
+                }),
+        );
+    }
 
     if unresolved || matches.len() > 1 {
         AssocConstSelection::Ambiguous(matches.into_iter().collect())

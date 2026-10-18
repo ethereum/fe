@@ -18,7 +18,7 @@ use super::{
 };
 use crate::analysis::{
     HirAnalysisDb,
-    ty::const_ty::{ConstCaptureEnv, ConstTyData, normalize_const_tys_for_comparison},
+    ty::const_ty::{ConstCaptureEnv, ConstTyData, ConstTyId, normalize_const_tys_for_comparison},
 };
 
 pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<InferenceKey<'db>>>;
@@ -135,6 +135,19 @@ where
 
             (_, TyData::TyVar(var)) => self.unify_var_value(var, ty1),
 
+            (TyData::ConstraintTerm(left), TyData::ConstraintTerm(right)) => {
+                // Equality retains associated-binding names, not just the head.
+                let a = left.assoc_type_bindings(self.db);
+                let b = right.assoc_type_bindings(self.db);
+                if left.args(self.db).len() != right.args(self.db).len()
+                    || a.len() != b.len()
+                    || a.keys().any(|name| !b.contains_key(name))
+                {
+                    return Err(UnificationError::TypeMismatch);
+                }
+                Unifiable::unify(*left, self, *right)
+            }
+
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
                 self.unify_ty(*ty1_1, *ty2_1)?;
                 self.unify_ty(*ty1_2, *ty2_2)
@@ -184,6 +197,24 @@ where
             | (_, TyData::Never) => Ok(()),
 
             (TyData::ConstTy(const_ty1), TyData::ConstTy(const_ty2)) => {
+                // A constant refused where it is read stands for a refusal the
+                // body reports; like an invalid type, it is not a second
+                // mismatch. It is recognized as written, before comparison
+                // normalizes it; an inference variable still takes it as its
+                // value below.
+                let is_var = |const_ty: &ConstTyId<'db>| {
+                    matches!(const_ty.data(self.db), ConstTyData::TyVar(..))
+                };
+                if !is_var(const_ty1)
+                    && !is_var(const_ty2)
+                    && (crate::analysis::ty::ty_check::written_frames::refused_at_read(
+                        self.db, *const_ty1,
+                    ) || crate::analysis::ty::ty_check::written_frames::refused_at_read(
+                        self.db, *const_ty2,
+                    ))
+                {
+                    return Ok(());
+                }
                 let const_ty1 = match normalize_const_tys_for_comparison(
                     self.db,
                     TyId::const_ty(self.db, *const_ty1),

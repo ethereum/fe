@@ -517,12 +517,15 @@ fn declared_sol_compat_abi_type<'db>(
     // event `TOPIC0` hash does: through its `as_bytes` method.
     let as_bytes = resolve_lib_trait_path(db, scope, "core::AsBytes")?;
     let inst = TraitInstId::new_simple(db, as_bytes, vec![sem_const_ty(db, value)]);
+    // A message field's ABI type is decided where the field is declared,
+    // which no `with` reaches.
     let Selection::Unique(method) = resolve_trait_method_instance(
         db,
         solve_cx,
         inst,
         IdentId::new(db, "as_bytes".to_string()),
         None,
+        crate::analysis::ty::trait_choice::OrdinarySelection::outermost_tier_only(),
     ) else {
         return None;
     };

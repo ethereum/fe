@@ -54,6 +54,14 @@ impl<'db, T> Binder<'db, T> {
     pub fn skip_binder(&self) -> &T {
         &self.value
     }
+
+    /// A template derived from this one, in the same declaration coordinates.
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binder<'db, U> {
+        Binder {
+            owner: self.owner,
+            value: f(self.value),
+        }
+    }
 }
 
 impl<'db, T> Binder<'db, T>

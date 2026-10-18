@@ -33,6 +33,7 @@ pub struct SemConstId<'db> {
 impl<'db> SemConstId<'db> {
     pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
         match self.value(db) {
+            SemConstValue::Evidence { ty, .. } => format!("<{}>", ty.pretty_print(db)),
             SemConstValue::Unit => "()".to_string(),
             SemConstValue::Scalar { value, .. } => match value {
                 SemConstScalar::Bool(value) => value.to_string(),
@@ -100,6 +101,11 @@ impl<'db> SemConstId<'db> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub enum SemConstValue<'db> {
+    /// A compile-time `Evidence<G>` value: the choice it names.
+    Evidence {
+        ty: TyId<'db>,
+        choice: crate::analysis::ty::trait_choice::KnownChoice<'db>,
+    },
     Unit,
     Scalar {
         ty: TyId<'db>,
@@ -136,7 +142,8 @@ pub fn sem_const_ty<'db>(db: &'db dyn HirAnalysisDb, value: SemConstId<'db>) -> 
     match value.value(db) {
         SemConstValue::Unit => TyId::unit(db),
         SemConstValue::Description(term) => term.ty(db),
-        SemConstValue::Scalar { ty, .. }
+        SemConstValue::Evidence { ty, .. }
+        | SemConstValue::Scalar { ty, .. }
         | SemConstValue::Tuple { ty, .. }
         | SemConstValue::Struct { ty, .. }
         | SemConstValue::Array { ty, .. }
@@ -150,6 +157,11 @@ pub(crate) fn retype_sem_const_description<'db>(
     ty: TyId<'db>,
 ) -> Option<SemConstId<'db>> {
     let value = match value.value(db).clone() {
+        SemConstValue::Evidence {
+            ty: original,
+            choice,
+        } if original == ty => SemConstValue::Evidence { ty, choice },
+        SemConstValue::Evidence { .. } => return None,
         SemConstValue::Unit if ty == TyId::unit(db) => SemConstValue::Unit,
         SemConstValue::Unit => return None,
         SemConstValue::Scalar { value, .. } => SemConstValue::Scalar { ty, value },
@@ -256,6 +268,15 @@ fn verify_sem_const_shape_impl<'db>(
     allow_dependent: bool,
 ) -> Result<(), &'static str> {
     match value.value(db) {
+        SemConstValue::Evidence { ty, choice } => {
+            if crate::analysis::ty::corelib::evidence_goal(db, choice.implementation().scope(), *ty)
+                .is_some_and(|goal| choice.answers(db, goal))
+            {
+                Ok(())
+            } else {
+                Err("evidence payload differs from its declared goal")
+            }
+        }
         SemConstValue::Unit => Ok(()),
         SemConstValue::Description(term) if allow_dependent && !term.ty(db).has_invalid(db) => {
             match term.data(db) {
@@ -637,6 +658,8 @@ fn reify_runtime_const_impl<'db>(
         instance.normalized_ty(db, expected_ty)
     });
     let reified = match value.value(db) {
+        SemConstValue::Evidence { ty, .. } if *ty == expected_ty => value,
+        SemConstValue::Evidence { .. } => return None,
         SemConstValue::Unit => unit_const(db),
         SemConstValue::Scalar { ty, value } => {
             let ty = if ty.pretty_print(db) == "{integer}" || ty.is_integral_var(db) {

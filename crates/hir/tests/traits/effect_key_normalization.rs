@@ -2816,6 +2816,7 @@ fn impl_trait_method_typed_body_instantiation_substitutes_self() {
         inst,
         method.name(&db).to_opt().expect("missing method name"),
         None,
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved impl method");
     };
@@ -2859,6 +2860,7 @@ fn impl_trait_method_self_paths_preserve_binding_ty_after_instantiation() {
         inst,
         method.name(&db).to_opt().expect("missing method name"),
         None,
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved impl method");
     };
@@ -3069,6 +3071,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
         inst,
         method.name(&db).to_opt().expect("missing method name"),
         None,
+        fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("missing resolved impl method");
     };
