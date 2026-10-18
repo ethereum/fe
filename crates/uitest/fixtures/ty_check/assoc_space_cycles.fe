@@ -8,18 +8,18 @@ struct Named {
     v: u256,
 }
 
-// Rejected: `Named::S` is this space.
+// Rejected: `Named::Space` is this space.
 impl Pinned for Named {
-    space S = Named::S
+    type Space = Named::Space
 }
 
 struct Own {
     v: u256,
 }
 
-// Rejected: `Self::S` is this space.
+// Rejected: `Self::Space` is this space.
 impl Pinned for Own {
-    space S = Self::S
+    type Space = Self::Space
 }
 
 trait Two {
@@ -38,7 +38,7 @@ impl Two for Pair {
 }
 
 trait Other {
-    space T
+    type T
 }
 
 trait Marker: Pinned {}
@@ -57,13 +57,13 @@ impl Marker for Left {}
 impl Pinned for Left
     where Right: Other
 {
-    space S = Right::T
+    type Space = Right::T
 }
 
 impl Other for Right
     where Left: Marker
 {
-    space T = Left::S
+    type T = Left::Space
 }
 
 struct Words {

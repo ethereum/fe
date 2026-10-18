@@ -1,20 +1,20 @@
 // A pin belongs to the implementation that applies to each instance: here
 // the space is a type parameter's pin, so `Cell<InStorage>` is pinned to
 // storage and takes a slot of its own in the contract layout.
-use core::marker::Pinned
+use core::marker::{Pinned, Storage}
 use core::ops::{Location, StateIndex}
 use std::evm::{Evm, RawStorage, SolSlot, keccak_words}
 
 struct InStorage {}
 
 impl Pinned for InStorage {
-    space S = storage
+    type Space = Storage
 }
 
 struct Cell<P> {}
 
 impl<P: Pinned> Pinned for Cell<P> {
-    space S = P::S
+    type Space = P::Space
 }
 
 unsafe impl<P: Pinned> StateIndex for Cell<P> {

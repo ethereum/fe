@@ -1,4 +1,4 @@
-use core::marker::Pinned
+use core::marker::{Pinned, Transient}
 
 // A result space follows the pin that applies to the instance.
 trait X {}
@@ -14,7 +14,7 @@ struct Cell<P> {
 }
 
 impl<P: X> Pinned for Cell<P> {
-    space S = transient
+    type Space = Transient
 }
 
 impl Cell<A> {

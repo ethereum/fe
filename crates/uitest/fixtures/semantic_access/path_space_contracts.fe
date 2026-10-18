@@ -3,7 +3,7 @@
 // entries and lanes. An implementation's `space S = self[_]` is where its
 // elements lie, so a packed collection exports memory (S-50) and a plain
 // `@self` on a yield that crosses a pin is a mismatch (S-51).
-use core::marker::Pinned
+use core::marker::{Pinned, Storage}
 use core::iter::Collection
 use core::ops::{LaneCodec, Location, StateIndex}
 use std::evm::{TSlot, keccak_words}
@@ -26,7 +26,7 @@ impl LaneCodec<u8> for ByteLanes {
 struct Bytes {}
 
 impl Pinned for Bytes {
-    space S = storage
+    type Space = Storage
 }
 
 unsafe impl StateIndex for Bytes {
@@ -66,7 +66,7 @@ impl Collection for Bytes {
 struct PromisedBytes {}
 
 impl Pinned for PromisedBytes {
-    space S = storage
+    type Space = Storage
 }
 
 unsafe impl StateIndex for PromisedBytes {

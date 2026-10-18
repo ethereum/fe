@@ -371,12 +371,13 @@ balances.set(key: to, value: 0)     // rejected: `x` holds an entry of `balances
 x -= amount
 ```
 
-A type implementing `core::marker::Pinned` is *pinned* to its space `S`,
-`storage` or `transient`, or another pinned type's (`space S = P::S`):
+A type implementing `core::marker::Pinned` is *pinned* to its `Space`,
+`core::marker::Storage` or `core::marker::Transient`, or another pinned
+type's (`type Space = P::Space`):
 
 ```fe
 impl<K, V> Pinned for StorageMap<K, V> {
-    space S = storage
+    type Space = Storage
 }
 ```
 

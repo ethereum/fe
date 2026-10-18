@@ -1,8 +1,8 @@
 // A packed map as a library collection: eight 32-bit counters to a word,
 // each word hashed with its index like Solady's `LibMap`, so any key stays
-// in the map's region. Implementing `Pinned` with `S` storage pins it to
-// storage: no attribute, and no raw storage authority at its uses.
-use core::marker::Pinned
+// in the map's region. Implementing `Pinned` with `Space` `Storage` pins it
+// to storage: no attribute, and no raw storage authority at its uses.
+use core::marker::{Pinned, Storage}
 use core::iter::Collection
 use core::ops::{LaneCodec, Location, StateIndex}
 use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words}
@@ -27,7 +27,7 @@ struct Counters {
 }
 
 impl Pinned for Counters {
-    space S = storage
+    type Space = Storage
 }
 
 unsafe impl StateIndex for Counters {

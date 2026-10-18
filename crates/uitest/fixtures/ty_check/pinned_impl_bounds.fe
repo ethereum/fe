@@ -1,4 +1,4 @@
-use core::marker::Pinned
+use core::marker::{Pinned, Transient}
 
 // A `Pinned` implementation pins only the instances its bounds admit.
 trait Ready {}
@@ -14,7 +14,7 @@ struct Gated<P> {
 }
 
 impl<P: Ready> Pinned for Gated<P> {
-    space S = transient
+    type Space = Transient
 }
 
 // Accepted: the implementation does not apply to `Gated<No>`.
@@ -37,7 +37,7 @@ struct Forwarding<P> {
 }
 
 impl<P: Pinned> Pinned for Forwarding<P> {
-    space S = P::S
+    type Space = P::Space
 }
 
 // Accepted: `u256` is not pinned, so no implementation applies to
@@ -56,7 +56,7 @@ struct Marked {
 impl Mark for Marked {}
 
 impl<T: Mark> Pinned for T {
-    space S = transient
+    type Space = Transient
 }
 
 struct Plain {

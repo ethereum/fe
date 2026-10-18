@@ -6073,12 +6073,12 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 let mut diag = primary_diag(
                     severity,
                     "a type is pinned to a state space",
-                    "this space is not `storage` or `transient`",
+                    "this type is not `Storage` or `Transient`",
                     primary.resolve(db),
                     error_code,
                 );
                 diag.notes.push(
-                    "give `space S = storage`, `space S = transient`, or another pinned type's space, `P::S`"
+                    "give `type Space = Storage` or `type Space = Transient` (`core::marker`), or another pinned type's space, `P::Space`"
                         .to_string(),
                 );
                 diag

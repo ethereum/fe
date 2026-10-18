@@ -4,6 +4,30 @@ assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/assoc_space_cycles.fe
 ---
+error[3-0038]: cycle detected while resolving this type
+   ┌─ assoc_space_cycles.fe:13:18
+   │
+13 │     type Space = Named::Space
+   │                  ^^^^^^^^^^^^ this type's definition depends on itself
+
+error[3-0038]: cycle detected while resolving this type
+   ┌─ assoc_space_cycles.fe:22:18
+   │
+22 │     type Space = Self::Space
+   │                  ^^^^^^^^^^^ this type's definition depends on itself
+
+error[3-0038]: cycle detected while resolving this type
+   ┌─ assoc_space_cycles.fe:60:18
+   │
+60 │     type Space = Right::T
+   │                  ^^^^^^^^ this type's definition depends on itself
+
+error[3-0038]: cycle detected while resolving this type
+   ┌─ assoc_space_cycles.fe:66:14
+   │
+66 │     type T = Left::Space
+   │              ^^^^^^^^^^^ this type's definition depends on itself
+
 error[6-0024]: method `index` has incompatible effects
     ┌─ assoc_space_cycles.fe:79:8
     │
@@ -14,22 +38,6 @@ error[6-0024]: method `index` has incompatible effects
     │
 275 │     fn index(mut? self, _ index: I) -> mut? Self::Output @S uses E
     │        ----- trait requires these effects
-
-error[6-0033]: the associated space `S` names itself
-   ┌─ assoc_space_cycles.fe:12:17
-   │
-12 │ impl Pinned for Named {
-   │                 ^^^^^ following `S` through the spaces it names comes back to it
-   │
-   = an associated space must end in a space such as `storage`, `self`, or another type's space that does
-
-error[6-0033]: the associated space `S` names itself
-   ┌─ assoc_space_cycles.fe:21:17
-   │
-21 │ impl Pinned for Own {
-   │                 ^^^ following `S` through the spaces it names comes back to it
-   │
-   = an associated space must end in a space such as `storage`, `self`, or another type's space that does
 
 error[6-0033]: the associated space `A` names itself
    ┌─ assoc_space_cycles.fe:35:14
@@ -44,22 +52,6 @@ error[6-0033]: the associated space `B` names itself
    │
 35 │ impl Two for Pair {
    │              ^^^^ following `B` through the spaces it names comes back to it
-   │
-   = an associated space must end in a space such as `storage`, `self`, or another type's space that does
-
-error[6-0033]: the associated space `S` names itself
-   ┌─ assoc_space_cycles.fe:57:17
-   │
-57 │ impl Pinned for Left
-   │                 ^^^^ following `S` through the spaces it names comes back to it
-   │
-   = an associated space must end in a space such as `storage`, `self`, or another type's space that does
-
-error[6-0033]: the associated space `T` names itself
-   ┌─ assoc_space_cycles.fe:63:16
-   │
-63 │ impl Other for Right
-   │                ^^^^^ following `T` through the spaces it names comes back to it
    │
    = an associated space must end in a space such as `storage`, `self`, or another type's space that does
 

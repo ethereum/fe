@@ -17,7 +17,6 @@ use crate::analysis::ty::diagnostics::{
 use crate::analysis::ty::generic_defaults::{default_dependencies, type_default_diags};
 use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
-use crate::analysis::ty::provider::AddressSpace;
 use crate::analysis::ty::result_space::SpaceValue;
 use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
@@ -983,6 +982,30 @@ impl<'db> ImplTrait<'db> {
         })
     }
 
+    /// A pin is a state space, or another pinned type's: the `Space` of an
+    /// implementation of `core::marker::Pinned`.
+    fn diags_pin(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let pinned = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Pinned"])?;
+        let name = IdentId::new(db, "Space".to_string());
+        let idx = self
+            .types(db)
+            .iter()
+            .position(|assoc| assoc.name.to_opt() == Some(name))?;
+        (implementor.trait_def(db) == pinned
+            && !implementor.assoc_ty(db, name)?.has_invalid(db)
+            && !ty::provider::is_state_pin(db, self))
+        .then(|| {
+            ty::diagnostics::ImplDiag::PinNotStateSpace {
+                primary: self.span().associated_type(idx).ty().into(),
+            }
+            .into()
+        })
+    }
+
     fn diags_compiler_implemented_trait(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1093,8 +1116,6 @@ impl<'db> ImplTrait<'db> {
                 .into()
             })
             .collect();
-        let pinned = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Pinned"]);
-        let is_pin = pinned == Some(trait_);
         for name in trait_
             .spaces(db)
             .iter()
@@ -1143,20 +1164,12 @@ impl<'db> ImplTrait<'db> {
                 );
                 continue;
             }
-            match resolved {
-                None => diags.push(if steps.steps(db).is_empty() {
+            if resolved.is_none() {
+                diags.push(if steps.steps(db).is_empty() {
                     TyLowerDiag::UnknownResultSpace(primary()).into()
                 } else {
                     TyLowerDiag::InvalidResultSpacePath(primary()).into()
-                }),
-                // A pin is a state space, or another pinned type's.
-                Some(SpaceValue::Space(AddressSpace::Storage | AddressSpace::Transient))
-                    if is_pin => {}
-                Some(SpaceValue::Assoc(key)) if is_pin && Some(key.inst.def(db)) == pinned => {}
-                Some(_) if is_pin => {
-                    diags.push(ImplDiag::PinNotStateSpace { primary: primary() }.into())
-                }
-                Some(_) => {}
+                });
             }
         }
         // A row whose components name rows must end in effects:
@@ -2184,6 +2197,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(self.diags_state_only_copy(db, implementor));
         out.extend(self.diags_copy_fields(db, implementor));
         out.extend(self.diags_compiler_implemented_trait(db, implementor));
+        out.extend(self.diags_pin(db, implementor));
         out.extend(self.diags_unsafe_impl(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));

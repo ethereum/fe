@@ -4,15 +4,17 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         ty::{
+            corelib::{resolve_core_trait, resolve_lib_type_path},
             normalize::normalize_ty,
-            result_space::{ResolvedSpace, SpaceKey, resolve_space_key},
             trait_def::{TraitInstId, resolve_trait_impl_instance},
-            trait_resolution::{PredicateListId, Selection, TraitSolveCx},
+            trait_lower::lower_impl_trait,
+            trait_resolution::{PredicateListId, Selection, TraitSolveCx, goal_holds},
             ty_check::EffectParamSite,
-            ty_def::TyId,
+            ty_def::{TyData, TyId},
         },
     },
-    hir_def::{Contract, Func, IdentId, scope_graph::ScopeId},
+    core::semantic::constraints_for,
+    hir_def::{Contract, Func, IdentId, ImplTrait, scope_graph::ScopeId},
 };
 
 use super::resolve_default_root_effect_ty;
@@ -214,7 +216,7 @@ pub fn provider_semantics_for_specialized_call<'db>(
 }
 
 /// The state space `ty` is pinned to (`core::marker::Pinned`) under
-/// `assumptions`: the space its implementation's `S` names or forwards.
+/// `assumptions`: the one its implementation's `Space` names or forwards.
 /// A collection's entries (`core::ops::StateIndex`) lie in its space.
 #[salsa::tracked]
 pub fn pinned_space<'db>(
@@ -223,17 +225,49 @@ pub fn pinned_space<'db>(
     assumptions: PredicateListId<'db>,
     ty: TyId<'db>,
 ) -> Option<AddressSpace> {
-    let pinned = super::corelib::resolve_core_trait(db, scope, &["marker", "Pinned"])?;
-    let key = SpaceKey {
-        inst: TraitInstId::new_simple(db, pinned, vec![ty]),
-        space: 0,
-    };
-    match resolve_space_key(db, key, scope, assumptions)? {
-        ResolvedSpace::Space(space @ (AddressSpace::Storage | AddressSpace::Transient)) => {
-            Some(space)
-        }
-        _ => None,
+    let pinned = resolve_core_trait(db, scope, &["marker", "Pinned"])?;
+    let inst = TraitInstId::new_simple(db, pinned, vec![ty]);
+    if !goal_holds(
+        db,
+        TraitSolveCx::new(db, scope).with_assumptions(assumptions),
+        inst,
+    ) {
+        return None;
     }
+    let space = inst
+        .trait_ref(db)
+        .project_assoc_ty(db, IdentId::new(db, "Space".to_string()))?;
+    state_space(db, scope, normalize_ty(db, space, scope, assumptions))
+}
+
+/// The state space a pin's `Space` names: `core::marker::Storage` or
+/// `core::marker::Transient`.
+fn state_space<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<AddressSpace> {
+    [
+        ("core::marker::Storage", AddressSpace::Storage),
+        ("core::marker::Transient", AddressSpace::Transient),
+    ]
+    .into_iter()
+    .find_map(|(path, space)| (resolve_lib_type_path(db, scope, path) == Some(ty)).then_some(space))
+}
+
+/// Whether `impl_trait`, an implementation of `core::marker::Pinned`, gives
+/// a state space as its `Space`, or another pinned type's (`P::Space`).
+pub fn is_state_pin<'db>(db: &'db dyn HirAnalysisDb, impl_trait: ImplTrait<'db>) -> bool {
+    let scope = impl_trait.scope();
+    let Some(space) = lower_impl_trait(db, impl_trait)
+        .and_then(|implementor| implementor.assoc_ty(db, IdentId::new(db, "Space".to_string())))
+    else {
+        return false;
+    };
+    let space = normalize_ty(db, space, scope, constraints_for(db, impl_trait.into()));
+    state_space(db, scope, space).is_some()
+        || matches!(space.data(db), TyData::AssocTy(assoc)
+            if Some(assoc.trait_.def(db)) == resolve_core_trait(db, scope, &["marker", "Pinned"]))
 }
 
 /// How a collection whose elements are places (`core::ops::StateIndex`)
@@ -253,7 +287,7 @@ pub fn state_index_lanes<'db>(
     assumptions: PredicateListId<'db>,
     collection_ty: TyId<'db>,
 ) -> Option<StateIndexLanes<'db>> {
-    let state_index = super::corelib::resolve_core_trait(db, scope, &["ops", "StateIndex"])?;
+    let state_index = resolve_core_trait(db, scope, &["ops", "StateIndex"])?;
     let inst = TraitInstId::new_simple(db, state_index, vec![collection_ty]);
     let assoc = |name: &str| {
         let projected = inst
@@ -265,7 +299,7 @@ pub fn state_index_lanes<'db>(
     if codec == TyId::unit(db) {
         return None;
     }
-    let lane_codec = super::corelib::resolve_core_trait(db, scope, &["ops", "LaneCodec"])?;
+    let lane_codec = resolve_core_trait(db, scope, &["ops", "LaneCodec"])?;
     let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
     let Selection::Unique(resolved) = resolve_trait_impl_instance(
         db,

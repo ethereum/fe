@@ -1,5 +1,5 @@
 use core::intrinsic::clear
-use core::marker::{Clearable, Pinned}
+use core::marker::{Clearable, Pinned, Transient}
 use core::{ptr, size_of}
 use core::abi::{
     Abi,
@@ -147,7 +147,7 @@ pub struct TSlot<T> {
 }
 
 impl<T> Pinned for TSlot<T> {
-    space S = transient
+    type Space = Transient
 }
 
 impl<T> TSlot<T> {
