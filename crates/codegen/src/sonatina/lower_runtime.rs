@@ -20,7 +20,10 @@ use hir::{
     hir_def::{ArithBinOp, BinOp, CompBinOp, LogicalBinOp, UnOp},
     projection::IndexSource,
 };
-use mir::runtime::{RefKind, place::is_packed_newtype};
+use mir::runtime::{
+    RefKind,
+    place::{is_packed_newtype, ref_lane},
+};
 use mir::{
     ArrayLayout, ConstNode, ConstRegionId, ConstScalar, FieldPlacement, IntrinsicArithBinOp,
     Layout, LayoutId, RBlockId, RExpr, RLocalId, RStmt, RTerminator, ResolvedPlaceElem,
@@ -1000,6 +1003,15 @@ struct PackedLane {
 }
 
 impl PackedLane {
+    /// The lane a reference of class `class` views: a packed contract
+    /// field's.
+    fn of_ref(class: &RuntimeClass<'_>) -> Option<Self> {
+        ref_lane(class).map(|lane| Self {
+            lane: lane.lane(),
+            shared: lane.shared,
+        })
+    }
+
     fn from_placement(placement: FieldPlacement) -> Option<Self> {
         placement.lane.map(|lane| Self {
             lane,
@@ -3234,7 +3246,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 addr: self.local_value(value)?,
                 space,
                 class,
-                lane: None,
+                lane: PackedLane::of_ref(&carrier_class),
             }),
             RuntimeClass::AggregateValue { .. } if allow_value_carrier => {
                 Ok(PlaceTerminal::Object {
@@ -3310,7 +3322,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 addr: value,
                 space: *space,
                 class: (**pointee).clone(),
-                lane: None,
+                lane: PackedLane::of_ref(carrier_class),
             }),
             RuntimeClass::RawAddr {
                 space,
@@ -3411,7 +3423,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 addr: self.local_value(addr)?,
                 space,
                 class,
-                lane: None,
+                lane: self.body.value_class(addr).and_then(PackedLane::of_ref),
             },
         };
 

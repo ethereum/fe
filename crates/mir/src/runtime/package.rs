@@ -2280,6 +2280,10 @@ fn ref_view_sort_key<'db>(db: &'db dyn MirDb, view: &RefView<'db>) -> String {
             layout_sort_key(db, variant.enum_layout),
             variant.index
         ),
+        RefView::Lane(lane) => format!(
+            "lane:{}:{}:{}",
+            lane.byte_offset, lane.byte_width, lane.shared
+        ),
     }
 }
 

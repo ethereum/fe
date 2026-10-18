@@ -975,7 +975,7 @@ pub contract C {
     assert!(
         field_text.contains("### Field Layout")
             && field_text.contains("#### Storage")
-            && field_text.contains("- `0`: `supply` (inline field, `i32`)"),
+            && field_text.contains("- `0` bytes 0..4: `supply` (inline field, `i32`)"),
         "expected field hover to include layout info, got:\n{field_text}"
     );
 
@@ -983,7 +983,7 @@ pub contract C {
     let alias_text = hover_text(&alias_hover);
     assert!(
         alias_text.contains("### Field Layout")
-            && alias_text.contains("- `0`: `supply` (inline field, `i32`)"),
+            && alias_text.contains("- `0` bytes 0..4: `supply` (inline field, `i32`)"),
         "expected alias hover to include layout info, got:\n{alias_text}"
     );
 
