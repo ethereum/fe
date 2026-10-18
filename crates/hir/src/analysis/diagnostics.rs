@@ -1842,16 +1842,12 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 message: "string type exceeds inline capacity".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!(
-                        "`String<{given}>` exceeds the current inline limit of `String<{max}>`"
-                    ),
+                    message: format!("`String<{given}>` exceeds the inline limit of `String<{max}>`"),
                     span: span.resolve(db),
                 }],
-                notes: vec![
-                    format!(
-                        "strings currently use one word of storage: 1 length byte and {max} payload bytes"
-                    ),
-                ],
+                notes: vec![format!(
+                    "a `String<N>` packs its bytes into one word, so it holds at most {max} bytes; use `DynString` for longer text"
+                )],
                 error_code,
             },
 

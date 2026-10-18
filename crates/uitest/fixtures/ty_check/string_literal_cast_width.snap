@@ -7,17 +7,17 @@ error[3-0033]: string type exceeds inline capacity
   ┌─ string_literal_cast_width.fe:2:17
   │
 2 │ const TOO_WIDE: String<32> = "short" as String<32>
-  │                 ^^^^^^^^^^ `String<32>` exceeds the current inline limit of `String<31>`
+  │                 ^^^^^^^^^^ `String<32>` exceeds the inline limit of `String<31>`
   │
-  = strings currently use one word of storage: 1 length byte and 31 payload bytes
+  = a `String<N>` packs its bytes into one word, so it holds at most 31 bytes; use `DynString` for longer text
 
 error[3-0033]: string type exceeds inline capacity
   ┌─ string_literal_cast_width.fe:2:41
   │
 2 │ const TOO_WIDE: String<32> = "short" as String<32>
-  │                                         ^^^^^^^^^^ `String<32>` exceeds the current inline limit of `String<31>`
+  │                                         ^^^^^^^^^^ `String<32>` exceeds the inline limit of `String<31>`
   │
-  = strings currently use one word of storage: 1 length byte and 31 payload bytes
+  = a `String<N>` packs its bytes into one word, so it holds at most 31 bytes; use `DynString` for longer text
 
 error[8-0000]: type mismatch
   ┌─ string_literal_cast_width.fe:1:31
