@@ -4700,6 +4700,22 @@ impl<'db> ImplTrait<'db> {
         match self.lowered_implementor(db) {
             Ok(implementor) => {
                 let mut diags = Vec::new();
+                let trait_ = implementor.trait_inst(db).def(db);
+                if self.selection_name(db).is_some()
+                    && crate::analysis::ty::trait_def::has_only_ordinary_implementations(
+                        db,
+                        self.scope(),
+                        trait_,
+                    )
+                {
+                    diags.push(
+                        TraitLowerDiag::NamedImplementationOfUniqueTrait {
+                            primary: self,
+                            trait_,
+                        }
+                        .into(),
+                    );
+                }
                 if matches!(
                     crate::analysis::ty::trait_def::impl_selection_class(db, self),
                     crate::analysis::ty::trait_def::ImplSelectionClass::Named(_)

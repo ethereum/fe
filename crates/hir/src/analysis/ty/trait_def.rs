@@ -736,6 +736,34 @@ pub(crate) enum NamedOutputMismatch<'db> {
     },
 }
 
+/// The traits whose implementation is chosen where no frame reaches it:
+/// storage locations (`StateIndex`, the storage map's `StorageKey`) and
+/// encodings (`AbiSize`, `Encode`, `Decode`, `ErrorVariant`). A named
+/// implementation of one would put a value at another location, or encode
+/// it another way, under a `with` than without it, so they have none
+/// (decision of 2026-10-16, S5).
+const UNIQUE_CORE_TRAITS: [&[&str]; 5] = [
+    &["ops", "StateIndex"],
+    &["abi", "AbiSize"],
+    &["abi", "Encode"],
+    &["abi", "Decode"],
+    &["error", "ErrorVariant"],
+];
+
+/// Whether `trait_` may have no named implementation: one of
+/// `UNIQUE_CORE_TRAITS`, or the storage map's `StorageKey`.
+pub(crate) fn has_only_ordinary_implementations<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: crate::hir_def::scope_graph::ScopeId<'db>,
+    trait_: crate::hir_def::Trait<'db>,
+) -> bool {
+    UNIQUE_CORE_TRAITS
+        .iter()
+        .any(|path| super::corelib::resolve_core_trait(db, scope, path) == Some(trait_))
+        || super::corelib::resolve_lib_trait_path(db, scope, "std::evm::storage_map::StorageKey")
+            == Some(trait_)
+}
+
 /// RD108, and its extension D16: a slot's associated types, effect rows and
 /// result spaces do not depend on which implementation answers it. A named
 /// declaration is compared with every other implementation of the trait,

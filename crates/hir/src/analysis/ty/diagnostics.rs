@@ -1372,6 +1372,12 @@ pub enum TraitLowerDiag<'db> {
         ordinary: bool,
         name: IdentId<'db>,
     },
+    /// A named implementation of a trait chosen where no frame reaches:
+    /// storage locations and encodings have only ordinary implementations.
+    NamedImplementationOfUniqueTrait {
+        primary: ImplTrait<'db>,
+        trait_: Trait<'db>,
+    },
     ConflictTraitImpl {
         primary: ImplTrait<'db>,
         conflict_with: ImplTrait<'db>,
@@ -1394,7 +1400,8 @@ impl TraitLowerDiag<'_> {
         match self {
             Self::NamedAssociatedTypeMismatch { .. }
             | Self::NamedAssociatedTypeDisagreement { .. }
-            | Self::NamedAssociatedRowMismatch { .. } => 5,
+            | Self::NamedAssociatedRowMismatch { .. }
+            | Self::NamedImplementationOfUniqueTrait { .. } => 5,
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
             Self::CyclicSuperTraits { .. } => 2,

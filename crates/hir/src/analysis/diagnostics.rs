@@ -5268,6 +5268,19 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
         let error_code =
             GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code());
         match self {
+            Self::NamedImplementationOfUniqueTrait { primary, trait_ } => primary_diag(
+                Severity::Error,
+                "this trait cannot have a named implementation",
+                format!(
+                    "`{}` chooses a storage location or an encoding where no `with` reaches, so it has only ordinary implementations",
+                    trait_
+                        .name(db)
+                        .to_opt()
+                        .map_or("", |name| name.data(db).as_str())
+                ),
+                primary.span().resolve(db),
+                error_code,
+            ),
             Self::NamedAssociatedTypeMismatch {
                 primary,
                 name,
