@@ -82,6 +82,34 @@ pub fn main() -> i32 {
 }
 
 #[test]
+fn native_long_string_literals_hold_their_bytes() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("long_strings.fe");
+    fs::write(
+        &source,
+        r#"
+fn check(_ text: std::abi::DynString) {
+    assert!(text.len() == 65)
+    assert!(text.byte_at(0) == 0x61 && text.byte_at(31) == 0x35)
+    assert!(text.byte_at(32) == 0x36 && text.byte_at(63) == 0x2d && text.byte_at(64) == 0x21)
+}
+
+pub fn main() -> i32 {
+    check("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-!")
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let result = Command::new(out.join("long_strings")).output().unwrap();
+        assert!(result.status.success(), "{result:?}");
+    }
+}
+
+#[test]
 fn native_const_generic_packed_writer_uses_runtime_inputs() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/fe_test/const_generic_packed_writer.fe");

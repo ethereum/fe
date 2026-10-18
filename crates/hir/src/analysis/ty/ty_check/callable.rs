@@ -31,8 +31,7 @@ use crate::analysis::{
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
-        ty_def::BorrowKind,
-        ty_def::{TyBase, TyData, TyFlags, TyId},
+        ty_def::{BorrowKind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
         ty_error::emit_invalid_ty_error,
         ty_lower::{collect_generic_params, lower_generic_arg_list},
         visitor::{TyVisitable, TyVisitor, collect_flags},
@@ -597,7 +596,10 @@ impl<'db> Callable<'db> {
             let mut actual = if matches!(self.callable_def, CallableDef::Func(func) if func.is_const(db))
                 && expected.is_ty_var(db)
                 && let TyData::TyVar(var) = given_string_source_ty.base_ty(db).data(db)
-                && let crate::analysis::ty::ty_def::TyVarSort::String { min_len, .. } = var.sort
+                && let TyVarSort::String {
+                    min_len,
+                    fallback: StringFallback::Fixed,
+                } = var.sort
             {
                 let fixed_string_ty = TyId::string_with_len(db, min_len);
                 if let Some(binding) = given.expr_prop.binding {

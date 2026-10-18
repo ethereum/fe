@@ -1419,10 +1419,6 @@ fn depends_on_type_inference<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> 
 }
 
 impl<'db> TyChecker<'db> {
-    fn string_literal_fallback(&self) -> StringFallback {
-        StringFallback::Fixed
-    }
-
     fn new(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> Result<Self, ()> {
         let env = TyCheckEnv::new(db, owner)?;
         let expected = env.compute_expected_return();
@@ -2820,7 +2816,7 @@ impl<'db> TyChecker<'db> {
                 self.table.new_var(
                     TyVarSort::String {
                         min_len: len_bytes,
-                        fallback: self.string_literal_fallback(),
+                        fallback: StringFallback::Fixed,
                     },
                     &Kind::Star,
                 )
@@ -2840,11 +2836,18 @@ impl<'db> TyChecker<'db> {
             return expected;
         }
 
+        // A literal whose context leaves its type open is an inline
+        // `String<len>` while it fits in one word, else a `DynString`.
         let len_bytes = string_id.len_bytes(self.db);
+        let fallback = if len_bytes > MAX_INLINE_STRING_BYTES {
+            StringFallback::Dynamic
+        } else {
+            StringFallback::Fixed
+        };
         self.table.new_var(
             TyVarSort::String {
                 min_len: len_bytes,
-                fallback: self.string_literal_fallback(),
+                fallback,
             },
             &Kind::Star,
         )
