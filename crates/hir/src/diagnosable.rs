@@ -24,8 +24,8 @@ use crate::analysis::ty::ty_error::{collect_ty_lower_errors, emit_invalid_ty_err
 use crate::analysis::ty::ty_lower::generic_param_owner_assumptions;
 use crate::hir_def::{
     Contract, Enum, EnumVariant, FieldParent, Func, FuncParamMode, GenericParam, GenericParamOwner,
-    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, ModeMarker, Partial, PathId,
-    SpaceAnnotation, Struct, Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
+    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, ModeMarker, Partial, PathId, Struct,
+    Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
 };
 use crate::span::DynLazySpan;
 
@@ -2004,26 +2004,6 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_return(db));
         out.extend(self.diags_view_types(db));
         out.extend(self.diags_state_only_types(db));
-        // A result-space annotation names a space, or a sub-place of a root.
-        if let Some(annotation) = self
-            .ret_spaces(db)
-            .iter()
-            .zip(ty::result_space::declared_result_spaces(db, self))
-            .find_map(|(annotation, contract)| annotation.filter(|_| contract.is_none()))
-        {
-            let span = self.span().ret_ty().into();
-            out.push(
-                match annotation {
-                    SpaceAnnotation::Path(_, steps) if !steps.steps(db).is_empty() => {
-                        TyLowerDiag::InvalidResultSpacePath(span)
-                    }
-                    SpaceAnnotation::Path(..) | SpaceAnnotation::Target(_) => {
-                        TyLowerDiag::UnknownResultSpace(span)
-                    }
-                }
-                .into(),
-            );
-        }
 
         for pred in WhereClauseOwner::Func(self).clause(db).predicates(db) {
             out.extend(pred.diags(db));

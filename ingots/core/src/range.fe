@@ -65,7 +65,7 @@ impl<const LO: usize, const HI: usize> Collection for Range<Known<LO>, Known<HI>
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize @memory {
+    fn at(self, _ c: usize) -> ref usize {
         ref c
     }
 }
@@ -103,7 +103,7 @@ impl<const LO: usize> Collection for Range<Known<LO>, Unknown> {
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize @memory {
+    fn at(self, _ c: usize) -> ref usize {
         ref c
     }
 }
@@ -141,7 +141,7 @@ impl<const HI: usize> Collection for Range<Unknown, Known<HI>> {
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize @memory {
+    fn at(self, _ c: usize) -> ref usize {
         ref c
     }
 }
@@ -179,7 +179,7 @@ impl Collection for Range<Unknown, Unknown> {
     }
 
     #[inline(always)]
-    fn at(self, _ c: usize) -> ref usize @memory {
+    fn at(self, _ c: usize) -> ref usize {
         ref c
     }
 }

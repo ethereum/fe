@@ -8,7 +8,7 @@ impl Index<u256> for WordView {
     type Output = u256
 
     // The grant is a temporary of the projection's own frame.
-    fn index(self, _ offset: u256) -> ref u256 @memory {
+    fn index(self, _ offset: u256) -> ref u256 {
         let word = self.base + offset
         ref word
     }

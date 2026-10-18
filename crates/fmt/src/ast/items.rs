@@ -481,13 +481,7 @@ fn func_sig_to_doc<'a>(
 
     let ret_doc = sig.ret_ty().map_or_else(
         || alloc.nil(),
-        |ty| {
-            let ret = alloc.text(" -> ").append(ty.to_doc(ctx));
-            match sig.ret_space() {
-                Some(space) => ret.append(alloc.text(" ")).append(space.to_doc(ctx)),
-                None => ret,
-            }
-        },
+        |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
     );
 
     let has_uses = sig.uses_clause().is_some();

@@ -285,7 +285,7 @@ impl<T, const N: usize> Index<usize> for [T; N] {
     type Output = T
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? T @self[_] {
+    fn index(mut? self, _ index: usize) -> mut? T {
         mut? self[index]
     }
 }

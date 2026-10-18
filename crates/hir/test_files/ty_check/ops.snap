@@ -457,10 +457,10 @@ note:
    │                         ^ i32
 
 note:
-   ┌─ ops.fe:75:59
+   ┌─ ops.fe:75:51
    │
-75 │       fn index(self, _ i: usize) -> ref Option<i32> @memory {
-   │ ╭───────────────────────────────────────────────────────────^
+75 │       fn index(self, _ i: usize) -> ref Option<i32> {
+   │ ╭───────────────────────────────────────────────────^
 76 │ │         let value = match i {
 77 │ │             0 => Some(self.x)
 78 │ │             1 => Some(self.y)

@@ -26,10 +26,7 @@ use salsa::Update;
 pub use self::control::{
     ExecutableBlock, ExecutableControlFlow, semantic_executable_control_flow, semantic_may_return,
 };
-pub(crate) use self::{
-    refine::{CallSiteRefinements, provisional_call_site_provider_refinements},
-    space::PathSpace,
-};
+pub(crate) use self::refine::{CallSiteRefinements, provisional_call_site_provider_refinements};
 use crate::{
     analysis::{
         HirAnalysisDb,
@@ -59,7 +56,7 @@ use self::trust::{UnsafeTrust, UntrustedUnsafeUse};
 #[derive(Clone, Debug, PartialEq, Eq, Update)]
 pub enum SemanticAccessCheckResult<'db> {
     /// Checked, with the body's warnings and, for a projection, the address
-    /// space each access component yields: its result-space contract.
+    /// space each access component yields: its result spaces.
     Ok {
         warnings: Vec<SemanticDiagnosticId<'db>>,
         spaces: Vec<Option<AddressSpace>>,
@@ -96,8 +93,8 @@ impl fmt::Display for SemanticAnalysisError<'_> {
     }
 }
 
-/// A projection's result-space contract, per access component, as its body
-/// infers it: callers depend on this exported fact, never on the body.
+/// A projection's result space, per access component, as its body infers
+/// it: callers depend on this exported fact, never on the body.
 pub(crate) fn projection_result_spaces<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,

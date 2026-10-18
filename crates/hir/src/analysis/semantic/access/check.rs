@@ -16,9 +16,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use super::{
-    PathSpace,
     domain::Domains,
     place::{AbsPlace, Base, Path, Step, path_of, paths_overlap},
+    space::{PathSpace, PlaceStep},
 };
 use crate::{
     analysis::{
@@ -45,7 +45,6 @@ use crate::{
                 external_call_state_access, is_sealed_evm_capability,
             },
             provider::{AddressSpace, provider_semantics},
-            result_space::PlaceStep,
             shape::Shape,
             trait_resolution::PredicateListId,
             ty_check::{BodyOwner, LocalBinding, infer_body},
@@ -1236,7 +1235,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
 
     // --- checks -----------------------------------------------------------
 
-    /// Checks the body; returns its result-space contract.
+    /// Checks the body; returns its result spaces.
     pub fn check(&mut self) -> Result<Vec<Option<AddressSpace>>, Diag<'db>> {
         self.checking = true;
         for block in self.reverse_postorder() {
@@ -2286,7 +2285,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// A projection's yields: each component of every yield site names a
-    /// place in one address space, its result-space contract, and the access
+    /// place in one address space, its result space, and the access
     /// components of a split are disjoint.
     fn check_yields(&self) -> Result<Vec<Option<AddressSpace>>, Diag<'db>> {
         let BodyOwner::Func(func, mode) = self.instance.key(self.db).owner(self.db) else {
@@ -2353,32 +2352,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 }
             }
         }
-        // A declared contract holds every yield, and is the contract of a
-        // component no yield shows.
-        let declared = self.instance.declared_result_spaces(self.db);
-        spaces
+        Ok(spaces
             .into_iter()
-            .enumerate()
-            .map(|(index, inferred)| {
-                let declared = declared
-                    .get(index)
-                    .copied()
-                    .flatten()
-                    .and_then(|contract| self.instance.contract_space(self.db, contract));
-                match (inferred, declared) {
-                    (Some((space, origin)), Some(declared)) if space != declared => Err(self.diag(
-                        SemanticDiagnosticKind::TransportViolation,
-                        origin,
-                        format!(
-                            "this yield names {}, but the signature declares {}",
-                            space.pretty(),
-                            declared.pretty()
-                        ),
-                    )),
-                    (inferred, declared) => Ok(inferred.map(|(space, _)| space).or(declared)),
-                }
-            })
-            .collect()
+            .map(|space| space.map(|(space, _)| space))
+            .collect())
     }
 }
 
@@ -2520,7 +2497,7 @@ fn specific_origin<'db>(first: SemOrigin<'db>, second: SemOrigin<'db>) -> SemOri
     }
 }
 
-/// Checks a body, returning its warnings and its result-space contract.
+/// Checks a body, returning its warnings and its result spaces.
 pub(super) fn check_body<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,

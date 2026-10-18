@@ -7,13 +7,13 @@ use std::evm::{Evm, StorageMap}
 struct Cells { cells: [u256; 2] }
 impl Index<usize> for Cells {
     type Output = u256
-    fn index(mut? self, _ i: usize) -> mut? u256 @memory { mut? self.cells[i] }
+    fn index(mut? self, _ i: usize) -> mut? u256 { mut? self.cells[i] }
 }
 struct Table { inner: Cells }
 struct Tables { items: [Table; 2] }
 impl Index<usize> for Tables {
     type Output = Table
-    fn index(mut? self, _ i: usize) -> mut? Table @memory { mut? self.items[i] }
+    fn index(mut? self, _ i: usize) -> mut? Table { mut? self.items[i] }
 }
 
 #[test]

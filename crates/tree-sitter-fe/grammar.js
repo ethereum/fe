@@ -183,11 +183,7 @@ module.exports = grammar({
       field('name', $.identifier),
       optional($.generic_param_list),
       $.parameter_list,
-      optional(seq(
-        '->',
-        field('return_type', $._type),
-        optional(field('return_space', $.space_annotation)),
-      )),
+      optional(seq('->', field('return_type', $._type))),
       optional($.uses_clause),
       optional($.where_clause),
     )),
@@ -636,25 +632,11 @@ module.exports = grammar({
       $.qualified_path_type,
     ),
 
-    // Mode-prefixed type: ref Foo, mut Foo, own Foo, ref Foo @S
-    mode_type: $ => prec.right(seq(
+    // Mode-prefixed type: ref Foo, mut Foo, mut? Foo, own Foo
+    mode_type: $ => seq(
       field('mode', choice('ref', 'mut', 'mut?', 'own')),
       field('type', $._type),
-      optional(field('space', $.space_annotation)),
-    )),
-
-    // Result-space contract: @memory, @self, @self.f[_], @target(p)
-    space_annotation: $ => prec.right(seq(
-      '@',
-      $.path,
-      optional(choice(seq('(', $.path, ')'), $.space_path)),
-    )),
-
-    // The sub-place a result-space contract names: `.f`, `.0` and `[_]`
-    space_path: $ => prec.right(repeat1(choice(
-      seq('.', choice($.identifier, $.integer_literal)),
-      seq('[', '_', ']'),
-    ))),
+    ),
 
     // Qualified path: <Type as Trait>::AssocType
     qualified_path_type: $ => prec.right(seq(

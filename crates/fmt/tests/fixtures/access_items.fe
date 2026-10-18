@@ -5,23 +5,7 @@ trait Collection {
 
 impl Collection for Words {
     uses E =(storage:mut   Self)
-    fn at(self, _ c: u256) -> (u256, ref u256)@self uses E {
+    fn at(self, _ c: u256) -> (u256, ref u256) uses E {
         self.get(c)
-    }
-}
-
-impl Collection for Cells {
-    fn at(self, _ c: u256) -> ref u256   @self [_] uses E {
-        ref self.cells[c]
-    }
-}
-
-impl Guarded {
-    fn value_mut(mut self) -> mut u256   @self.value {
-        mut self.value
-    }
-
-    fn first(mut self) -> mut u256 @self . pair.0 {
-        mut self.pair.0
     }
 }

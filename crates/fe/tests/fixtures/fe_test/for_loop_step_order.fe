@@ -30,13 +30,13 @@ impl Collection for Tracked {
         c + 1
     }
 
-    fn at(self, _ c: usize) -> ref u256 @memory {
+    fn at(self, _ c: usize) -> ref u256 {
         let item = self.items[c]
         yield ref item
     }
 
     // At `mut`, the element is written back and its position recorded.
-    fn at(mut self, _ c: usize) -> mut u256 @memory {
+    fn at(mut self, _ c: usize) -> mut u256 {
         var item = self.items[c]
         yield mut item
         self.items[c] = item

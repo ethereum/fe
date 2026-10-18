@@ -9,7 +9,7 @@ impl Collection for Words {
     uses E = (storage: RawStorage)
     type Item = u256
 
-    fn at(self, _ c: u256) -> ref u256 @storage uses E {
+    fn at(self, _ c: u256) -> ref u256 uses E {
         self.get(c)
     }
 }
@@ -18,23 +18,7 @@ impl<B: Collection> Collection for Identity<B> {
     uses E = B::E
     type Item = B::Item
 
-    fn at(self, _ c: u256) -> (u256, ref B::Item) @self uses E {
+    fn at(self, _ c: u256) -> (u256, ref B::Item) uses E {
         (c, self.base.at(c))
     }
-}
-
-impl Cache {
-    fn entry(mut self, _ m: Map) -> mut u256 @target(m) {}
-}
-
-impl<T> Collection for Cells<T> {
-    fn at(self, _ c: u256) -> ref T @self[_] {}
-}
-
-impl Guarded {
-    fn value_mut(mut self) -> mut u256 @self.value {}
-
-    fn first(mut self) -> mut u256 @self.pair.0 {}
-
-    fn element(mut self) -> mut u256 @self.cells[_] {}
 }

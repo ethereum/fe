@@ -214,7 +214,7 @@ impl<T> Collection for SolArray<T> {
         c.wrapping_add(1)
     }
 
-    fn at(mut? self, _ c: u256) -> mut? T @self[_] {
+    fn at(mut? self, _ c: u256) -> mut? T {
         mut? self[c]
     }
 }

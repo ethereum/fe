@@ -50,7 +50,7 @@ impl<T: SolPacked> Collection for SolEnumerableSet<T> {
         c.wrapping_add(1)
     }
 
-    fn at(self, _ c: u256) -> ref T @memory {
+    fn at(self, _ c: u256) -> ref T {
         let value = self.get(c)
         ref value
     }

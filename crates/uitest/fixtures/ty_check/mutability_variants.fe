@@ -37,7 +37,7 @@ impl Collection for Fixed {
         c + 1
     }
 
-    fn at(self, _ c: usize) -> ref u256 @self.value {
+    fn at(self, _ c: usize) -> ref u256 {
         ref self.value
     }
 }

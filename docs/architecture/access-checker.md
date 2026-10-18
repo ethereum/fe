@@ -119,7 +119,7 @@ not conflict with an operation on the map's entries.
   zero-sized `Evm` implements, even as a generic helper's effect.
 - `Grant { session, component }`: what a session granted. Places derived from
   one grant overlap; sibling components of a split are disjoint. A grant lies
-  in the address space its projection's result-space contract exports.
+  in the address space its projection's result space exports.
 - `State(space)`: every slot of an address space, the footprint of external
   execution and raw storage authority.
 - `Raw`: memory reached through a raw pointer; never checked.
@@ -164,16 +164,14 @@ stack; they end at their `end`, in any order. In the projection's body:
   the grant's own ancestors are exempt. The exported referent must be
   initialized, and an owned component may not overlap an access component.
 - Each component of every yield site names places in one address space per
-  instantiation. That space is the projection's *result-space contract*
+  instantiation. That space is the projection's *result space*
   (`projection_result_spaces`), inferred from the body and exported with the
-  instance: callers combine grants by their contracts, never by bodies. A
-  declared contract naming a sub-place (`@self.value`, `@self[_]`)
-  resolves per instance by the same path walk (`access::space::PathSpace`)
-  that classifies yields, so the two agree on pins, entries and lanes. A
-  place's space is its root's, unless a pinned type or an entry along its
-  path moves it into the type's pin or the collection's: a `TSlot` held in
-  a storage struct, and its `mut self.lock.value`, are transient. The
-  innermost such step decides.
+  instance: callers combine grants by their result spaces, never by bodies.
+  A place's space is its root's, unless a pinned type or an entry along its
+  path moves it into the type's pin or the collection's
+  (`access::space::PathSpace`): a `TSlot` held in a storage struct, and its
+  `mut self.lock.value`, are transient. The innermost such step decides,
+  and a lane's grants lie in memory.
 - The `mut` components of a split are structurally disjoint.
 - A `#[raw_place]` projection has nothing to resume: after each yield it
   only ends the accesses its grant derives from, a session among them is a

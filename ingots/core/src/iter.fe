@@ -161,7 +161,7 @@ impl<T, const N: usize> Collection for [T; N] {
     }
 
     #[inline(always)]
-    fn at(mut? self, _ c: usize) -> mut? T @self[_] {
+    fn at(mut? self, _ c: usize) -> mut? T {
         mut? self[c]
     }
 }
@@ -198,7 +198,7 @@ impl<T> Collection for MemArray<T> {
     }
 
     #[inline(always)]
-    fn at(mut? self, _ c: usize) -> mut? T @memory {
+    fn at(mut? self, _ c: usize) -> mut? T {
         mut? self[c]
     }
 }
@@ -235,7 +235,7 @@ impl<T> Collection for MemSlice<T> {
     }
 
     #[inline(always)]
-    fn at(mut? self, _ c: usize) -> mut? T @memory {
+    fn at(mut? self, _ c: usize) -> mut? T {
         mut? self[c]
     }
 }

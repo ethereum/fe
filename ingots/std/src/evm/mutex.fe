@@ -39,7 +39,7 @@ impl<T> Mutex<T> {
         self.lock.read()
     }
 
-    pub fn value(mut? self) -> mut? T @self.value {
+    pub fn value(mut? self) -> mut? T {
         mut? self.value
     }
 

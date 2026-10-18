@@ -69,11 +69,6 @@ pub enum TyLowerDiag<'db> {
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
-    /// A result-space annotation that names no space.
-    UnknownResultSpace(DynLazySpan<'db>),
-    /// A result-space contract's path, `@p.f[_]`, that names no part of its
-    /// root's type, or follows a root that is not a parameter or effect.
-    InvalidResultSpacePath(DynLazySpan<'db>),
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -288,8 +283,6 @@ impl TyLowerDiag<'_> {
             Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
-            Self::UnknownResultSpace(_) => 60,
-            Self::InvalidResultSpacePath(_) => 67,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
             Self::GrowingRecursiveType(_) => 57,

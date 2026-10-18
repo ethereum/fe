@@ -98,12 +98,6 @@ impl FuncSignature {
         support::child(self.syntax())
     }
 
-    /// The result-space contract of the return's access components that
-    /// declare none: `-> (usize, ref T) @self`.
-    pub fn ret_space(&self) -> Option<super::SpaceAnnotation> {
-        support::child(self.syntax())
-    }
-
     /// Returns the optional `uses` clause of the function.
     pub fn uses_clause(&self) -> Option<super::UsesClause> {
         support::child(self.syntax())

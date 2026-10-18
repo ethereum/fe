@@ -669,7 +669,7 @@ impl<T> Index<usize> for MemArray<T> {
     type Output = T
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? T @memory {
+    fn index(mut? self, _ index: usize) -> mut? T {
         unsafe { mut? *mem_array_elem(self, index) }
     }
 }
@@ -678,7 +678,7 @@ impl<T> Index<usize> for MemSlice<T> {
     type Output = T
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? T @memory {
+    fn index(mut? self, _ index: usize) -> mut? T {
         unsafe { mut? *self.ptr_at(index as u256) }
     }
 }
@@ -699,7 +699,7 @@ impl Index<usize> for MemBuffer {
     type Output = u8
 
     #[inline(always)]
-    fn index(mut? self, _ index: usize) -> mut? u8 @memory {
+    fn index(mut? self, _ index: usize) -> mut? u8 {
         if index as u256 >= self.len {
             index_out_of_bounds()
         }

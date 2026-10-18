@@ -8,7 +8,7 @@ use crate::{
         semantic::{
             CallSiteId, PlaceProvenance, RuntimeSizeError, SExpr, SLocalId, SStmtKind, SemOrigin,
             SemanticBody, SemanticCalleeRef, SemanticLocalRole, ValueProvenance, VariantIndex,
-            access::{CallSiteRefinements, PathSpace, provisional_call_site_provider_refinements},
+            access::{CallSiteRefinements, provisional_call_site_provider_refinements},
             concrete_layout_fault,
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticId, SemanticDiagnosticKind,
@@ -37,10 +37,9 @@ use crate::{
             },
             provider::{
                 AddressSpace, ProviderKind, ProviderTransport, RootProviderRegistration,
-                RootProviderScope, provider_semantics, provider_semantics_for_specialized_call,
+                RootProviderScope, provider_semantics_for_specialized_call,
                 registered_root_providers,
             },
-            result_space::{SpaceContract, declared_result_spaces, space_path_steps},
             subst::substitute_complete,
             trait_def::{MethodArgMapError, TraitInstId},
             trait_resolution::{
@@ -57,9 +56,7 @@ use crate::{
             ty_lower::{ParamSchemaId, SubstError},
         },
     },
-    hir_def::{
-        CallableDef, Contract, ExprId, FuncParamMode, SpacePathId, StmtId, scope_graph::ScopeId,
-    },
+    hir_def::{CallableDef, Contract, ExprId, FuncParamMode, StmtId, scope_graph::ScopeId},
     semantic::{
         EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding, ProviderSource,
         ResolvedEffectBinding, effect_param_provider_semantics, effect_requirements_for_site,
@@ -1230,95 +1227,6 @@ impl<'db> SemanticInstance<'db> {
         let mut bindings = owner_effect_bindings(db, self.key(db).owner(db));
         bindings.extend(self.row_component_bindings(db));
         bindings
-    }
-
-    /// The result-space contracts the instance's return declares, per access
-    /// component: its own, or else its trait method's.
-    pub fn declared_result_spaces(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Vec<Option<SpaceContract<'db>>> {
-        let BodyOwner::Func(func, _) = self.key(db).owner(db) else {
-            return Vec::new();
-        };
-        // The trait method's contracts, but for an effect domain's: the
-        // domains are the trait method's effects.
-        let inherited = func
-            .trait_method_def(db)
-            .map(|method| {
-                declared_result_spaces(db, method)
-                    .iter()
-                    .map(|contract| {
-                        contract.filter(|contract| !matches!(contract, SpaceContract::Domain(..)))
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        declared_result_spaces(db, func)
-            .iter()
-            .enumerate()
-            .map(|(index, contract)| contract.or_else(|| inherited.get(index).copied().flatten()))
-            .collect()
-    }
-
-    /// The space a contract the instance's owner declares names here, where
-    /// the instance tells.
-    pub fn contract_space(
-        self,
-        db: &'db dyn HirAnalysisDb,
-        contract: SpaceContract<'db>,
-    ) -> Option<AddressSpace> {
-        let key = self.key(db);
-        match contract {
-            SpaceContract::Space(space) => Some(space),
-            SpaceContract::Param(param, steps) => {
-                let binding = key.typed_body(db).param_binding(param as usize)?;
-                self.sub_place_space(
-                    db,
-                    self.param_space(db, param),
-                    self.binding_ty(db, binding),
-                    steps,
-                )
-            }
-            SpaceContract::Target(param) => {
-                let binding = key.typed_body(db).param_binding(param as usize)?;
-                provider_semantics(db, self.binding_ty(db, binding)).address_space
-            }
-            SpaceContract::Domain(effect, steps) => {
-                let binding = self.effect_bindings(db).into_iter().find(|binding| {
-                    matches!(binding, LocalBinding::EffectParam { idx, .. } if *idx == effect as usize)
-                })?;
-                let provider = resolved_provider_binding_for_instance_effect(db, self, binding)?;
-                self.sub_place_space(
-                    db,
-                    provider.semantics.address_space?,
-                    provider
-                        .semantics
-                        .target_ty
-                        .unwrap_or_else(|| self.binding_ty(db, binding)),
-                    steps,
-                )
-            }
-        }
-    }
-
-    /// The space of the sub-place `steps` reaches from a place of type
-    /// `root` in `start`: a pinned type or an entry along it moves it, and a
-    /// lane's grants lie in memory.
-    fn sub_place_space(
-        self,
-        db: &'db dyn HirAnalysisDb,
-        start: AddressSpace,
-        root: TyId<'db>,
-        steps: SpacePathId<'db>,
-    ) -> Option<AddressSpace> {
-        let scope = self.normalization_scope(db);
-        let root = self.normalized_ty(db, root.as_capability(db).map_or(root, |(_, inner)| inner));
-        let mut walk = PathSpace::new(db, root);
-        for step in space_path_steps(db, scope, self.assumptions(db), root, steps)? {
-            walk.step(db, self, Some(start), step);
-        }
-        walk.grant_space(Some(start))
     }
 
     /// The bindings of the components of the rows the instance's effects

@@ -19,7 +19,7 @@ impl Collection for Grid {
         (c.0, c.1 + 1)
     }
 
-    fn at(self, _ c: (usize, usize)) -> ref u256 @self {
+    fn at(self, _ c: (usize, usize)) -> ref u256 {
         ref self.cells[c.0 * 2 + c.1]
     }
 }

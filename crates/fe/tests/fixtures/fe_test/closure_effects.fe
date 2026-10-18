@@ -155,7 +155,7 @@ impl Collection for BelowStore {
         c + 1
     }
 
-    fn at(self, _ c: u256) -> ref u256 @memory uses E {
+    fn at(self, _ c: u256) -> ref u256 uses E {
         let value = c
         ref value
     }

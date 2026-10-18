@@ -9,7 +9,7 @@ use common::{file::File, ingot::Ingot};
 use parser::ast;
 
 use super::{
-    AttrListId, Body, CompBinOp, EffectParamListId, FieldIndex, FuncParamListId, FuncParamName,
+    AttrListId, Body, CompBinOp, EffectParamListId, FuncParamListId, FuncParamName,
     GenericParamListId, HirIngot, IdentId, InlineAttr, InlineAttrErrorKind, InlineHint,
     ManualContractRootAttr, Partial, Pat, PatId, TupleTypeId, TypeBound, TypeId, UseAlias,
     WhereClauseId,
@@ -675,8 +675,7 @@ pub struct Func<'db> {
     pub(in crate::core) where_clause: WhereClauseId<'db>,
     pub(in crate::core) params_list: Partial<FuncParamListId<'db>>,
     pub(crate) declared_effects: EffectParamListId<'db>,
-    #[return_ref]
-    pub(in crate::core) ret: FuncReturn<'db>,
+    pub(in crate::core) ret_type_ref: Option<TypeId<'db>>,
     pub(in crate::core) modifiers: FuncModifiers,
     pub body: Option<Body<'db>>,
     pub top_mod: TopLevelMod<'db>,
@@ -685,25 +684,9 @@ pub struct Func<'db> {
     pub origin: HirOrigin<ast::Func>,
 }
 
-/// A function's return type, and the result-space contract each access
-/// component of it declares, in order.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
-pub struct FuncReturn<'db> {
-    pub ty: Option<TypeId<'db>>,
-    pub spaces: Vec<Option<SpaceAnnotation<'db>>>,
-}
-
 impl<'db> Func<'db> {
     pub fn span(self) -> LazyFuncSpan<'db> {
         LazyFuncSpan::new(self)
-    }
-
-    pub(in crate::core) fn ret_type_ref(self, db: &'db dyn HirDb) -> Option<TypeId<'db>> {
-        self.ret(db).ty
-    }
-
-    pub fn ret_spaces(self, db: &'db dyn HirDb) -> &'db [Option<SpaceAnnotation<'db>>] {
-        &self.ret(db).spaces
     }
 
     pub fn scope(self) -> ScopeId<'db> {
@@ -1289,35 +1272,6 @@ pub struct AssocTyDecl<'db> {
     pub name: Partial<IdentId<'db>>,
     pub bounds: Vec<TypeBound<'db>>,
     pub default: Option<TypeId<'db>>,
-}
-
-/// A result-space contract as written: `@memory`, `@p`, `@self`,
-/// `@p.f[_]`, or `@target(p)`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
-pub enum SpaceAnnotation<'db> {
-    /// A space, a parameter or an effect domain, with the steps to the
-    /// sub-place it names.
-    Path(Partial<PathId<'db>>, SpacePathId<'db>),
-    /// `@target(p)`: the space of the resource the handle `p` names.
-    Target(Partial<PathId<'db>>),
-}
-
-/// The steps after a result-space contract's root, `.f`, `.0` and `[_]`:
-/// the sub-place whose space the contract names. Empty for the root itself.
-#[salsa::interned]
-#[derive(Debug)]
-pub struct SpacePathId<'db> {
-    #[return_ref]
-    pub steps: Vec<SpaceStep<'db>>,
-}
-
-/// A step of a [`SpacePathId`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
-pub enum SpaceStep<'db> {
-    /// `.f` or `.0`: a field or tuple component.
-    Field(FieldIndex<'db>),
-    /// `[_]`: any element of an array or a `StateIndex` collection.
-    Element,
 }
 
 /// An associated effect row: `uses E` in a trait, with an optional default

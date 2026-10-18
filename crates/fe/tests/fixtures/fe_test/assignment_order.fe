@@ -9,7 +9,7 @@ use std::evm::{Evm, StorageMap}
 struct Cells { cells: [u256; 2] }
 impl Index<usize> for Cells {
     type Output = u256
-    fn index(mut? self, _ i: usize) -> mut? u256 @memory { mut? self.cells[i] }
+    fn index(mut? self, _ i: usize) -> mut? u256 { mut? self.cells[i] }
 }
 
 struct Counter { total: u256, n: u256, cells: Cells }

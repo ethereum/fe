@@ -8,9 +8,9 @@ use super::{
 };
 use crate::{
     hir_def::{
-        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FieldIndex, FuncParamListId,
-        GenericArg, GenericArgListId, GenericParamListId, IdentId, IntegerId, ModeMarker, Partial,
-        PathId, TraitRefId, TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
+        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId, GenericArg,
+        GenericArgListId, GenericParamListId, IdentId, ModeMarker, Partial, PathId, TraitRefId,
+        TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
     },
     lower::msg::lower_msg_as_mod,
     span::HirOrigin,
@@ -529,27 +529,6 @@ impl<'db> Func<'db> {
             .map(|params| FuncParamListId::lower_ast(ctxt, params))
             .into();
         let ret_ty = sig.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
-        // A contract after the whole return is that of the components that
-        // declare none.
-        let ret_space = sig.ret_space();
-        let ret_spaces = sig
-            .ret_ty()
-            .into_iter()
-            .flat_map(|ty| ty.syntax().descendants().filter_map(ast::ModeType::cast))
-            .filter(|mode| {
-                matches!(
-                    mode.mode(),
-                    Some(
-                        ast::TypeMode::Ref(_) | ast::TypeMode::Mut(_) | ast::TypeMode::MaybeMut(_)
-                    )
-                )
-            })
-            .map(|mode| {
-                mode.space()
-                    .or_else(|| ret_space.clone())
-                    .map(|space| SpaceAnnotation::lower_ast(ctxt, space))
-            })
-            .collect();
         let effects = lower_uses_clause_opt(ctxt, ast.sig().uses_clause());
         let vis = super::lower_visibility(&ast);
         let is_unsafe = super::lower_is_unsafe(&ast);
@@ -570,10 +549,7 @@ impl<'db> Func<'db> {
             where_clause,
             params,
             effects,
-            FuncReturn {
-                ty: ret_ty,
-                spaces: ret_spaces,
-            },
+            ret_ty,
             modifiers,
             body,
             top_mod,
@@ -668,46 +644,6 @@ fn lower_uses_params<'db>(
         })
         .collect();
     EffectParamListId::new(ctxt.db(), data)
-}
-
-impl<'db> SpaceAnnotation<'db> {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::SpaceAnnotation) -> Self {
-        let path = PathId::lower_ast_partial(ctxt, ast.path());
-        let steps = SpacePathId::lower_ast(ctxt, ast.space_path());
-        match ast.target() {
-            Some(target) => {
-                let target = Partial::Present(PathId::lower_ast(ctxt, target));
-                // Only `target` takes an argument.
-                if path.to_opt().and_then(|path| path.as_ident(ctxt.db()))
-                    == Some(IdentId::new(ctxt.db(), "target".to_string()))
-                {
-                    Self::Target(target)
-                } else {
-                    Self::Path(Partial::Absent, steps)
-                }
-            }
-            None => Self::Path(path, steps),
-        }
-    }
-}
-
-impl<'db> SpacePathId<'db> {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: Option<ast::SpacePath>) -> Self {
-        let steps: Vec<_> = ast
-            .into_iter()
-            .flat_map(|path| path.steps())
-            .map(|step| match step {
-                ast::SpacePathStep::Field(token) => {
-                    SpaceStep::Field(FieldIndex::Ident(IdentId::lower_token(ctxt, token)))
-                }
-                ast::SpacePathStep::Index(index) => {
-                    SpaceStep::Field(FieldIndex::Index(IntegerId::lower_ast(ctxt, index)))
-                }
-                ast::SpacePathStep::Element => SpaceStep::Element,
-            })
-            .collect();
-        SpacePathId::new(ctxt.db(), steps)
-    }
 }
 
 impl<'db> AssocRow<'db> {

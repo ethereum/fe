@@ -441,14 +441,14 @@ impl<T> Index<usize> for MemVec<T>
 {
     type Output = T
 
-    fn index(self, _ index: usize) -> ref T @memory {
+    fn index(self, _ index: usize) -> ref T {
         self.get(index as u256)
     }
 
     /// Lets `core::sort` order the copy of an ABI array in place:
     /// `sort(mut MemVec::from_dyn_array(signers))`. The element is a decoded
     /// temporary, encoded back when the access ends.
-    fn index(mut self, _ index: usize) -> mut T @memory {
+    fn index(mut self, _ index: usize) -> mut T {
         var value = self.get(index as u256)
         yield mut value
         self.set(index: index as u256, value)

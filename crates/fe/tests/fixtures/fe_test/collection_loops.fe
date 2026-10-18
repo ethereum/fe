@@ -25,7 +25,7 @@ impl Collection for Squares {
         c + 1
     }
 
-    fn at(self, _ c: usize) -> ref usize @memory {
+    fn at(self, _ c: usize) -> ref usize {
         let square = c * c
         yield ref square
     }

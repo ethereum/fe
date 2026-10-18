@@ -74,9 +74,6 @@ pub enum SyntaxKind {
     /// `#`
     #[token("#")]
     Pound,
-    /// `@`
-    #[token("@")]
-    At,
     /// `// Comment`
     #[regex(r"//[^\n\r]*")]
     Comment,
@@ -463,13 +460,8 @@ pub enum SyntaxKind {
     // Types. These are non-leaf nodes.
     /// `*i32`
     PtrType,
-    /// `ref T`, `mut T`, `own T`, `ref T @memory`
+    /// `ref T`, `mut T`, `own T`
     ModeType,
-    /// `@memory`, `@p`, `@p.f[_]` or `@target(p)`: a result-space contract
-    SpaceAnnotation,
-    /// `.f`, `.0` and `[_]` after a result-space contract's root: the
-    /// sub-place whose space it names
-    SpacePath,
     /// `foo::Type<T, U + 2>`
     PathType,
     /// `Self`
@@ -645,7 +637,6 @@ impl SyntaxKind {
             SyntaxKind::FatArrow => "`=>`",
             SyntaxKind::Underscore => "`_`",
             SyntaxKind::Pound => "`#`",
-            SyntaxKind::At => "`@`",
             SyntaxKind::Plus => "`+`",
             SyntaxKind::Minus => "`-`",
             SyntaxKind::Star => "`*`",
@@ -817,8 +808,6 @@ impl SyntaxKind {
             SyntaxKind::ItemList => "item list",
             SyntaxKind::PtrType => "pointer type",
             SyntaxKind::ModeType => "mode type",
-            SyntaxKind::SpaceAnnotation => "result space",
-            SyntaxKind::SpacePath => "result space path",
             SyntaxKind::SelfType => "`Self` type",
             SyntaxKind::TupleType => "tuple type definition",
             SyntaxKind::NeverType => "never type",

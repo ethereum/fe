@@ -9,3 +9,9 @@ error[5-0005]: a trait's effect row has no default
   │
 2 │ trait Collection {
   │       ^^^^^^^^^^ effect row `E` is given by each implementation, not the trait
+
+error[6-0026]: associated effect row not defined in trait
+   ┌─ trait_access_defaults.fe:14:15
+   │
+14 │ impl Slot for Unknown {
+   │               ^^^^^^^ associated effect row `E` is not defined in trait `Slot`

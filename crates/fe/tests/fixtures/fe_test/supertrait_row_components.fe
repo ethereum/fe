@@ -38,7 +38,7 @@ impl Collection for InUse {
         c + 1
     }
 
-    fn at(self, _ c: u256) -> ref u256 @memory uses E {
+    fn at(self, _ c: u256) -> ref u256 uses E {
         let v = value(c)
         ref v
     }
