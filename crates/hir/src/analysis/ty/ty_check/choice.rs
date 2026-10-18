@@ -1567,12 +1567,13 @@ impl<'db> TyChecker<'db> {
             }
             ConstRef::Const(_) => return Some(cref),
         };
-        let pending = own.is_some_and(|c| c.evidence_param().is_some())
-            || delivered.is_some_and(|list| {
-                list.items(self.db)
-                    .iter()
-                    .any(|(_, c)| c.evidence_param().is_some())
-            });
+        // Pending evidence, or a slot a written constant reads unsupplied
+        // under the frames around it (`seed_written_frames`): not known here.
+        let unknown = |choice: Choice<'db>| {
+            choice.evidence_param().is_some() || choice == Choice::Slot(SlotRef::Unsupplied)
+        };
+        let pending = own.is_some_and(unknown)
+            || delivered.is_some_and(|list| list.items(self.db).iter().any(|(_, c)| unknown(*c)));
         (!pending).then_some(decided)
     }
 

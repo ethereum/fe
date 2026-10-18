@@ -522,6 +522,30 @@ pub(crate) fn written_body_uses<'db>(
     super::choice::body_slot_uses(db, typed)
 }
 
+/// Whether the check of `body`, a constant written in a function's body,
+/// refused a type it writes for reading a slot the frames around it open.
+fn written_body_refuses_a_type<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+    expected: Option<crate::analysis::ty::ty_def::TyId<'db>>,
+) -> bool {
+    use crate::analysis::ty::{
+        diagnostics::{BodyDiag, FuncBodyDiag},
+        ty_def::{PrimTy, TyBase, TyData, TyId},
+    };
+    let expected =
+        expected.unwrap_or_else(|| TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))));
+    super::infer_body(db, super::BodyOwner::AnonConstBody { body, expected })
+        .0
+        .iter()
+        .any(|diag| {
+            matches!(
+                diag,
+                FuncBodyDiag::Body(BodyDiag::ChoiceDependentType { .. })
+            )
+        })
+}
+
 /// Whether evaluating `body`, a constant written in a function's body, would
 /// read a slot a frame around it opened. Evaluation refuses it (D5): the
 /// constant would read the ordinary implementation while the code around it
@@ -542,6 +566,12 @@ pub(crate) fn refuses_read<'db>(
         .into_iter()
         .any(|inner| refuses_read(db, inner, None))
     {
+        return true;
+    }
+    // A type-level read written in the body (an unbraced constant path in a
+    // type position, a constant argument) is refused by the body's own check
+    // under those frames (`refuse_written_const_args`), which reports it.
+    if written_body_refuses_a_type(db, body, expected) {
         return true;
     }
     // The body is checked with those slots unsupplied (`seed_written_frames`):
