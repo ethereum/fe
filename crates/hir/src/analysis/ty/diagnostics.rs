@@ -436,6 +436,13 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         reason: &'static str,
     },
+    /// An item written inside a `with` reads `slot`, which the `with`
+    /// answers; the item reads the ordinary implementation. `item` names it.
+    ItemReadsChoice {
+        primary: DynLazySpan<'db>,
+        item: String,
+        slot: TraitInstId<'db>,
+    },
     TypeMismatch {
         span: DynLazySpan<'db>,
         expected: TyId<'db>,
@@ -1218,7 +1225,7 @@ impl<'db> BodyDiag<'db> {
     pub(crate) fn local_code(&self) -> u16 {
         match self {
             Self::ObligationIntroduction { .. } => 97,
-            Self::ObligationOpening { .. } => 98,
+            Self::ObligationOpening { .. } | Self::ItemReadsChoice { .. } => 98,
             Self::EvidenceChoiceNotCompileTime { .. } => 120,
             Self::EvidenceMutableStorage { .. } => 100,
             Self::ChoiceDependentType { .. } | Self::ChoiceCarried { .. } => 122,

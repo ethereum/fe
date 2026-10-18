@@ -251,11 +251,12 @@ pub(crate) fn written_bodies<'db>(
         .collect()
 }
 
-/// For one function body: where each constant body directly in it is
-/// written, and each expression's parent.
+/// For one function body: where each constant body and each item other than
+/// a `const` item directly in it is written, and each expression's parent.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, salsa::Update)]
 struct BodyLayout<'db> {
     places: Vec<(Body<'db>, Place)>,
+    items: Vec<(ItemKind<'db>, Place)>,
     parents: Vec<(ExprId, ExprId)>,
 }
 
@@ -315,12 +316,19 @@ fn body_layout<'db>(db: &'db dyn HirAnalysisDb, func_body: Body<'db>) -> BodyLay
         ) {
             // A `const` item written inside the body reads the frames written
             // around it (refused where it reads a slot one answers, decision
-            // (c)); other items are not walked.
-            if let ItemKind::Const(constant) = item
-                && let Some(at) = self.exprs.last()
-                && let Some(body) = constant.body(self.db).to_opt()
-            {
-                self.layout.places.push((body, Place::Expr(*at)));
+            // (c)); any other item is refused where it reads one
+            // (`refused_items`). Items are not walked.
+            let Some(at) = self.exprs.last() else {
+                return;
+            };
+            match item {
+                ItemKind::Const(constant) => {
+                    if let Some(body) = constant.body(self.db).to_opt() {
+                        self.layout.places.push((body, Place::Expr(*at)));
+                    }
+                }
+                ItemKind::Use(_) | ItemKind::Body(_) => {}
+                _ => self.layout.items.push((item, Place::Expr(*at))),
             }
         }
     }
@@ -413,6 +421,95 @@ impl<'db> BodyLayout<'db> {
         }
         frames
     }
+}
+
+/// The items written in `func_body` that read a slot a frame around them
+/// answers, each with the first such slot. An item is its own owner: the
+/// frames around it do not reach it, and it reads the ordinary
+/// implementation, so it is refused as a `const` item is (decision of
+/// 2026-10-18), until module-level `with` lets items read the frames around
+/// them.
+pub(crate) fn refused_items<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func_body: Body<'db>,
+) -> Vec<(ItemKind<'db>, TraitInstId<'db>)> {
+    let layout = body_layout(db, func_body);
+    let mut refused = Vec::new();
+    for (item, place) in &layout.items {
+        let frames = layout.frames_at(db, func_body, *place);
+        if frames.is_empty() {
+            continue;
+        }
+        if let Some(slot) = item_slot_reads(db, *item)
+            .into_iter()
+            .find(|slot| frames.opens(db, *slot))
+        {
+            refused.push((*item, slot));
+        }
+    }
+    refused
+}
+
+/// Every slot `item` reads the ordinary implementation of, at any depth: the
+/// trait uses its function bodies and constant bodies record, and the
+/// constants its written types name (unbraced ones included), as a
+/// constant's read-time refusal reads them. A path's generic arguments are
+/// types or constant bodies, so paths outside types (trait references,
+/// bounds) are read through them.
+fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<TraitInstId<'db>> {
+    use crate::{
+        analysis::ty::ty_lower::hir_ty_const_slot_reads,
+        visitor::{
+            prelude::{LazyBodySpan, LazyTySpan},
+            walk_item, walk_type,
+        },
+    };
+    struct Reads<'db> {
+        db: &'db dyn HirAnalysisDb,
+        reads: Vec<TraitInstId<'db>>,
+    }
+    impl<'db> Visitor<'db> for Reads<'db> {
+        fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, ty: HirTyId<'db>) {
+            let assumptions = PredicateListId::empty_list(self.db);
+            self.reads.extend(hir_ty_const_slot_reads(
+                self.db,
+                ty,
+                ctxt.scope(),
+                assumptions,
+            ));
+            walk_type(self, ctxt, ty);
+        }
+
+        fn visit_body(&mut self, ctxt: &mut VisitorCtxt<'db, LazyBodySpan<'db>>, body: Body<'db>) {
+            let db = self.db;
+            let uses = match ScopeId::from_item(ItemKind::Body(body)).parent_item(db) {
+                Some(ItemKind::Func(func)) if body.body_kind(db) == BodyKind::FuncBody => {
+                    let typed = &super::infer_body(db, super::BodyOwner::Func(func)).1;
+                    super::choice::body_slot_uses(db, typed)
+                }
+                _ => written_body_uses(db, body, None),
+            };
+            // A use a frame inside the item decided does not read the
+            // ordinary implementation.
+            self.reads.extend(
+                uses.into_iter()
+                    .filter(|(_, choice)| {
+                        !matches!(
+                            choice,
+                            Some(crate::analysis::ty::trait_choice::Choice::Known(_))
+                        )
+                    })
+                    .map(|(goal, _)| goal),
+            );
+            walk_body(self, ctxt, body);
+        }
+    }
+    let mut reads = Reads {
+        db,
+        reads: Vec::new(),
+    };
+    walk_item(&mut reads, &mut VisitorCtxt::with_item(db, item), item);
+    reads.reads
 }
 
 /// The slots a `with` binding's value opens, read from what is written:

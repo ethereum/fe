@@ -885,6 +885,42 @@ pub(super) fn checked_body<'db>(
             .into(),
         );
     }
+    // Any other item written there that reads such a slot is refused as a
+    // `const` item is (decision of 2026-10-18).
+    if matches!(
+        owner,
+        BodyOwner::Func(_) | BodyOwner::ContractInit { .. } | BodyOwner::ContractRecvArm { .. }
+    ) && let Some(body) = typed.body()
+    {
+        for (item, slot) in written_frames::refused_items(db, body) {
+            let kind = match item {
+                crate::hir_def::ItemKind::ImplTrait(_) => "impl",
+                _ => item.kind_name(),
+            };
+            let item_name = match item.name(db) {
+                Some(name) => format!("`{kind} {}`", name.data(db)),
+                None => format!("this `{kind}`"),
+            };
+            // An implementation has no name of its own; its header names it.
+            let primary = match item {
+                crate::hir_def::ItemKind::ImplTrait(implementation) => {
+                    implementation.span().trait_ref().into()
+                }
+                crate::hir_def::ItemKind::Impl(implementation) => {
+                    implementation.span().target_ty().into()
+                }
+                _ => item.name_span().unwrap_or_else(|| item.span().into()),
+            };
+            diags.push(
+                BodyDiag::ItemReadsChoice {
+                    primary,
+                    item: item_name,
+                    slot,
+                }
+                .into(),
+            );
+        }
+    }
     let mut recursive = false;
     if diags_allow_evaluation(db, &diags) {
         let requirements = const_requirements::check_body_requirements(db, owner, &typed);

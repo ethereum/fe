@@ -2647,6 +2647,20 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary.resolve(db),
                 error_code,
             ),
+            Self::ItemReadsChoice {
+                primary,
+                item,
+                slot,
+            } => primary_diag(
+                severity,
+                "trait evidence opening failed",
+                format!(
+                    "{item} written inside `with` cannot read `{}`, which the `with` answers, yet",
+                    slot.pretty_print(db, true)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
             Self::EvidenceMutableStorage { primary } => primary_diag(
                 severity,
                 "evidence cannot be stored in a mutable place",
