@@ -31,6 +31,31 @@ use crate::analysis::{
 /// Type-key effects produce `EffectRef`/`EffectRefMut` bounds from the hidden
 /// provider type to the visible effect target, while trait-key effects produce
 /// the corresponding trait bound on the hidden provider type.
+/// The bounds a function's trait-keyed effect requirements put on their
+/// providers (`uses (p: Price)` is `P: Price` on the provider's parameter):
+/// slots like a written bound, decided at each call (decision (a) of
+/// 2026-10-17).
+pub(crate) fn collect_func_trait_provider_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: crate::hir_def::Func<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let trait_keyed = func
+        .effect_requirements(db)
+        .iter()
+        .any(|binding| matches!(binding.key.kind(), EffectKeyKind::Trait));
+    if !trait_keyed {
+        return Vec::new();
+    }
+    let effect_ref = ["EffectRef", "EffectRefMut"]
+        .iter()
+        .filter_map(|name| resolve_core_trait(db, func.scope(), &[name]))
+        .collect::<Vec<_>>();
+    collect_func_effect_provider_constraints(db, func)
+        .into_iter()
+        .filter(|inst| !effect_ref.contains(&inst.def(db)))
+        .collect()
+}
+
 pub(crate) fn collect_func_effect_provider_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     func: crate::hir_def::Func<'db>,

@@ -1890,17 +1890,31 @@ impl<'db> TyCheckEnv<'db> {
         }
         let written = slot_goal(db, inst);
         if let Some(own) = self
-            .base_assumptions()
-            .list(db)
-            .iter()
-            .map(|bound| slot_goal(db, *bound))
-            .find(|own| {
-                own.args(db).iter().any(|ty| ty.has_param(db)) && (*own == written || *own == slot)
-            })
+            .own_bounds()
+            .into_iter()
+            .find(|own| *own == written || *own == slot)
         {
             return Some(Choice::Slot(SlotRef::Bound(own)));
         }
         None
+    }
+
+    /// The slots this body's own bounds are, in slot form: a function's
+    /// `own_slots` (its bounds and its trait providers' bounds), or the bounds
+    /// a constant body's item declares.
+    pub(super) fn own_bounds(&self) -> Vec<TraitInstId<'db>> {
+        let db = self.db();
+        if let super::BodyOwner::Func(func) = self.owner() {
+            return own_slots(db, func);
+        }
+        let mut own = Vec::new();
+        for bound in self.base_assumptions().list(db) {
+            let bound = slot_goal(db, *bound);
+            if bound.args(db).iter().any(|ty| ty.has_param(db)) && !own.contains(&bound) {
+                own.push(bound);
+            }
+        }
+        own
     }
 
     /// `inst`'s slot as frames key it in this body (`SlotKey`).
@@ -1959,11 +1973,7 @@ impl<'db> TyCheckEnv<'db> {
         let own = callable
             .trait_inst
             .and_then(|inst| self.decide(frame, inst));
-        let generic = self
-            .base_assumptions()
-            .list(db)
-            .iter()
-            .any(|bound| bound.args(db).iter().any(|ty| ty.has_param(db)));
+        let generic = !self.own_bounds().is_empty();
         let CallableDef::Func(func) = callable.callable_def() else {
             return Ok((own, Vec::new()));
         };
@@ -2608,11 +2618,7 @@ impl<'db> TyCheckEnv<'db> {
         reached: &mut Vec<TraitInstId<'db>>,
     ) -> Result<Vec<(Delivery<'db>, Choice<'db>)>, ChoiceRefusal> {
         let db = self.db();
-        let generic = self
-            .base_assumptions()
-            .list(db)
-            .iter()
-            .any(|bound| bound.args(db).iter().any(|ty| ty.has_param(db)));
+        let generic = !self.own_bounds().is_empty();
         if frame.is_none() && !generic {
             return Ok(Vec::new());
         }

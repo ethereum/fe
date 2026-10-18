@@ -187,11 +187,28 @@ pub fn declared_goals<'db>(
     goals
 }
 
-/// The slots `func` declares, as written in its own generic context.
+/// The slots `func` declares, as written in its own generic context: its
+/// bounds, and the bounds its trait-keyed effect requirements put on their
+/// providers (decision (a): a trait provider is a bound in disguise).
 pub fn own_slots<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Vec<TraitInstId<'db>> {
+    own_slots_query(db, func).clone()
+}
+
+#[salsa::tracked(return_ref)]
+fn own_slots_query<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Vec<TraitInstId<'db>> {
+    let mut bounds = crate::semantic::func_body_assumptions(db, func)
+        .list(db)
+        .to_vec();
+    for provider in
+        super::trait_resolution::constraint::collect_func_trait_provider_constraints(db, func)
+    {
+        if !bounds.contains(&provider) {
+            bounds.push(provider);
+        }
+    }
     slots_of(
         db,
-        crate::semantic::func_body_assumptions(db, func).extend_all_bounds(db),
+        super::trait_resolution::PredicateListId::new(db, bounds).extend_all_bounds(db),
     )
 }
 
