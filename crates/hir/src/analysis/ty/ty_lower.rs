@@ -731,6 +731,36 @@ pub(crate) fn lower_type_position_path<'db>(
         position,
         lowering_cx,
     )?;
+    // In a named implementation's declaration, a constant of its own slot is
+    // refused where it is read, as the braced form is (D5 step 8b, RD129).
+    if let Some(cref) = match res {
+        PathRes::TraitConst(recv_ty, inst, name) => {
+            let mut args = inst.args(db).clone();
+            if let Some(self_arg) = args.first_mut() {
+                *self_arg = recv_ty;
+            }
+            let inst =
+                TraitInstId::new(db, inst.def(db), args, inst.assoc_type_bindings(db).clone());
+            Some(super::ty_check::ConstRef::TraitConst(AssocConstUse::new(
+                scope,
+                assumptions,
+                inst,
+                name,
+            )))
+        }
+        PathRes::InherentConst(recv_ty, impl_, name) => {
+            Some(super::ty_check::ConstRef::InherentConst(
+                InherentConstUse::new(scope, assumptions, impl_, recv_ty, name),
+            ))
+        }
+        _ => None,
+    } && let Some(frames) = super::ty_check::written_frames::declaration_frames_at(db, scope)
+        && super::ty_check::written_frames::constant_read_slots(db, cref)
+            .into_iter()
+            .any(|slot| frames.opens(db, slot))
+    {
+        return Ok(TyId::invalid(db, InvalidCause::ChoiceDependentPath));
+    }
     Ok(match res {
         PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty) => ty,
         PathRes::Const(const_def, ty) => {

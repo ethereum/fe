@@ -162,6 +162,38 @@ fn declaration_frames<'db>(
     None
 }
 
+/// The frames of a path written at `scope` in a named implementation's
+/// declaration (a method signature, an effect clause, an associated type or
+/// row), outside any body: inside `impl T for S as N`, the slot `T<S>` is N
+/// (RD129). A path inside a body is read by that body's check instead.
+pub(crate) fn declaration_frames_at<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> Option<WrittenFrames<'db>> {
+    let mut at = Some(scope);
+    while let Some(scope) = at {
+        match scope {
+            ScopeId::Item(ItemKind::ImplTrait(implementation)) => {
+                implementation.selection_name(db)?;
+                let inst = implementation.trait_inst(db)?;
+                let scope = implementation.scope();
+                let assumptions = PredicateListId::empty_list(db);
+                let key = super::choice::slot_key(db, inst, scope, assumptions).inst();
+                return Some(WrittenFrames {
+                    slots: vec![key],
+                    unknown: false,
+                    context: Some((scope, assumptions)),
+                    declaration: true,
+                });
+            }
+            ScopeId::Block(..) | ScopeId::Item(ItemKind::Body(_)) => return None,
+            ScopeId::Item(ItemKind::Mod(_) | ItemKind::TopMod(_)) => return None,
+            _ => at = scope.parent(db),
+        }
+    }
+    None
+}
+
 /// The function-level body `body` is written in, and the constant body
 /// directly inside it that contains `body` (itself, unless nested).
 fn enclosing_func_body<'db>(

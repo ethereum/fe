@@ -1418,6 +1418,9 @@ pub enum InvalidCause<'db> {
         body: Body<'db>,
         expr: ExprId,
     },
+    /// The same, for a constant path written unbraced in the declaration
+    /// (`St<<Self as Width>::N>`), reported at the type it is in.
+    ChoiceDependentPath,
     TypeLoweringCycle,
 
     /// Normalizing this type needed more nested projections, or larger ones,
@@ -1514,6 +1517,7 @@ impl InvalidCause<'_> {
             }
             InvalidCause::ConstEvalRecursiveConst { .. } => "ConstEvalRecursiveConst".into(),
             InvalidCause::ChoiceDependentConst { .. } => "ChoiceDependentConst".into(),
+            InvalidCause::ChoiceDependentPath => "ChoiceDependentPath".into(),
             InvalidCause::TypeLoweringCycle => "TypeLoweringCycle".into(),
             InvalidCause::TypeNormalizationLimit => "TypeNormalizationLimit".into(),
         }
