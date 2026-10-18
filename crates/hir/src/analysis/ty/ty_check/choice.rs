@@ -2917,6 +2917,11 @@ pub(super) fn check_choice_uses<'db>(
         use super::const_requirements::{EdgeRefusal, call_refusal};
         let primary = expr.span(body).into();
         match call_refusal(db, typed, body, scope, expr) {
+            // A call refused for the types it declares is that refusal.
+            Some(EdgeRefusal::TypeReach)
+                if typed.choice_refusals().iter().any(|(refused, refusal)| {
+                    *refused == expr && matches!(refusal, ChoiceRefusal::DependentType)
+                }) => {}
             Some(EdgeRefusal::TypeReach) => diags.push(
                 BodyDiag::ChoiceCarried {
                     primary,
