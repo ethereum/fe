@@ -86,11 +86,11 @@ use super::{
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     instantiate_trait_self,
-    trait_def::{TraitInstId, resolve_trait_method_instance},
+    trait_def::TraitInstId,
     trait_resolution::{
-        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
-        WellFormedness, check_trait_inst_wf_without_self, check_ty_wf,
-        goal_query_has_no_distinct_solution, is_goal_query_satisfiable, is_goal_satisfiable,
+        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx, WellFormedness,
+        check_trait_inst_wf_without_self, check_ty_wf, goal_query_has_no_distinct_solution,
+        is_goal_query_satisfiable, is_goal_satisfiable,
     },
     ty_def::{
         BorrowKind, InvalidCause, Kind, MAX_INLINE_STRING_BYTES, StringFallback, TyId, TyVarSort,
@@ -4396,6 +4396,16 @@ pub enum SemanticExprLowering<'db> {
     },
 }
 
+impl<'db> SemanticExprLowering<'db> {
+    pub(super) fn callable_mut(&mut self) -> &mut Callable<'db> {
+        match self {
+            Self::Call { callable }
+            | Self::CodeRegionIntrinsic { callable, .. }
+            | Self::ConstIntrinsic { callable, .. } => callable,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum RecordInitLowering<'db> {
     Struct,
@@ -5622,16 +5632,10 @@ impl<'db> TypedBody<'db> {
         let CallableDef::Func(mut func) = callable.callable_def() else {
             return None;
         };
-        if let Some(inst) = callable.trait_inst()
-            && let Some(name) = func.name(db).to_opt()
-            && let Selection::Unique(method) = resolve_trait_method_instance(
-                db,
-                TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
-                inst,
-                name,
-                callable.mode(),
-            )
-            && let Some(body_func) = method.body()
+        if let Some(method) = callable.selected_method(
+            db,
+            TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
+        ) && let Some(body_func) = method.body()
         {
             func = body_func;
         }

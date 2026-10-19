@@ -1,0 +1,114 @@
+use camino::Utf8PathBuf;
+use fe_hir::analysis::ty::trait_resolution::{PredicateListId, TraitSolveCx};
+use fe_hir::analysis::ty::ty_check::check_func_body;
+use fe_hir::hir_def::{Expr, Func, ItemKind, Partial, TopLevelMod};
+use fe_hir::test_db::HirAnalysisTestDb;
+
+const SOURCE: &str = r#"
+struct Wrap<T> {
+    t: T,
+}
+
+impl<T: Copy> Copy for Wrap<T> {}
+
+trait Grow {
+    fn grow(self) -> u256
+}
+
+impl<T: Copy> Grow for T {
+    fn grow(self) -> u256 {
+        1
+    }
+}
+
+fn wrapped<T: Copy>(_ x: T) -> u256 {
+    (Wrap { t: x }).grow()
+}
+
+fn bound<T: Grow>(_ x: T) -> u256 {
+    x.grow()
+}
+"#;
+
+fn func<'db>(db: &'db HirAnalysisTestDb, top_mod: TopLevelMod<'db>, name: &str) -> Func<'db> {
+    top_mod
+        .children_non_nested(db)
+        .find_map(|item| match item {
+            ItemKind::Func(func)
+                if func
+                    .name(db)
+                    .to_opt()
+                    .is_some_and(|func_name| func_name.data(db) == name) =>
+            {
+                Some(func)
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| panic!("missing function `{name}`"))
+}
+
+/// The body `func`'s only method call runs, selected in a context with no
+/// assumptions, and whether selecting with the body's assumptions reaches a
+/// body.
+fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option<Func<'db>>, bool) {
+    let typed_body = check_func_body(db, func).1.clone();
+    let body = func.body(db).expect("missing body");
+    let call = body
+        .exprs(db)
+        .keys()
+        .find(|expr| matches!(expr.data(db, body), Partial::Present(Expr::MethodCall(..))))
+        .expect("missing method call");
+    let callable = typed_body.callable_expr(call).expect("missing callable");
+    let without_assumptions = callable
+        .selected_method(
+            db,
+            TraitSolveCx::new(db, func.scope()).with_assumptions(PredicateListId::empty_list(db)),
+        )
+        .and_then(|method| method.body());
+    let with_assumptions = callable
+        .selected_method(
+            db,
+            TraitSolveCx::new(db, func.scope()).with_assumptions(typed_body.assumptions()),
+        )
+        .is_some_and(|method| method.body().is_some());
+    (without_assumptions, with_assumptions)
+}
+
+#[test]
+fn checker_selection_answers_a_call_without_the_body_context() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("checker_selection_answers_a_call_without_the_body_context.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // `Wrap<T>: Grow` holds only because `T: Copy` is assumed. The checker
+    // selected the blanket implementation, so the call reaches its body even
+    // where nothing is assumed.
+    let (body, _) = grow_call_bodies(&db, func(&db, top_mod, "wrapped"));
+    let body = body.expect("the recorded blanket implementation answers the call");
+    assert!(matches!(
+        body.scope().parent_item(&db),
+        Some(ItemKind::ImplTrait(_))
+    ));
+}
+
+#[test]
+fn bound_dispatch_is_selected_where_the_body_is_instantiated() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("bound_dispatch_is_selected_where_the_body_is_instantiated.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // `T: Grow` holds by the body's own bound: no implementation is chosen
+    // until `T` is known.
+    let (without_assumptions, with_assumptions) =
+        grow_call_bodies(&db, func(&db, top_mod, "bound"));
+    assert_eq!(without_assumptions, None);
+    assert!(!with_assumptions);
+}

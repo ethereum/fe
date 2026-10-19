@@ -26,9 +26,12 @@ use crate::analysis::{
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
-        trait_def::TraitInstId,
+        trait_def::{
+            ImplementorOrigin, ResolvedImplInstance, ResolvedMethodInstance, TraitInstId,
+            resolve_trait_impl_instance,
+        },
         trait_resolution::{
-            TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
+            Selection, TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
         ty_def::{BorrowKind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
         ty_error::emit_invalid_ty_error,
@@ -253,6 +256,10 @@ pub struct Callable<'db> {
     /// The originating trait instance if this callable comes from a trait method
     /// (e.g., operator overloading, method call, indexing). None for inherent functions.
     pub trait_inst: Option<TraitInstId<'db>>,
+    /// The implementation the checker selected for `trait_inst` in the
+    /// checked body. One selected through an assumption, a bound of that
+    /// body, is selected again where the body is instantiated.
+    selection: Option<ResolvedImplInstance<'db>>,
     /// The mode a `mut?` callee is called at: `ref` unless a use of the
     /// call's result asks for `mut`.
     mode: Option<BorrowKind>,
@@ -271,6 +278,9 @@ impl<'db> TyVisitable<'db> for Callable<'db> {
         if let Some(inst) = self.trait_inst {
             inst.visit_with(visitor);
         }
+        if let Some(selection) = &self.selection {
+            selection.visit_with(visitor);
+        }
     }
 }
 
@@ -288,6 +298,9 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
                 .checked_input_tys
                 .map(|inputs| inputs.fold_with(db, folder)),
             trait_inst: self.trait_inst.map(|i| i.fold_with(db, folder)),
+            selection: self
+                .selection
+                .map(|selection| selection.fold_with(db, folder)),
             mode: self.mode,
         }
     }
@@ -339,6 +352,7 @@ impl<'db> Callable<'db> {
             effect_providers: Vec::new(),
             checked_input_tys: None,
             trait_inst,
+            selection: None,
             mode: callable_def.modes(db)[0],
         })
     }
@@ -357,6 +371,7 @@ impl<'db> Callable<'db> {
             effect_providers: Vec::new(),
             checked_input_tys: None,
             trait_inst,
+            selection: None,
             mode: callable_def.modes(db)[0],
         }
     }
@@ -387,6 +402,69 @@ impl<'db> Callable<'db> {
 
     pub fn trait_inst(&self) -> Option<TraitInstId<'db>> {
         self.trait_inst
+    }
+
+    /// Selects the implementation of the call's trait goal in the checked
+    /// body's context. A selection that still holds inference variables,
+    /// such as a generic function item's own, is left to the instance.
+    pub(super) fn record_selection(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) {
+        let settled = |flags: TyFlags| !flags.intersects(TyFlags::HAS_VAR | TyFlags::HAS_INVALID);
+        self.selection = self
+            .trait_inst
+            .filter(|&inst| settled(collect_flags(db, inst)))
+            .and_then(
+                |inst| match resolve_trait_impl_instance(db, solve_cx, inst) {
+                    Selection::Unique(resolved) => Some(resolved),
+                    Selection::Ambiguous(_) | Selection::NotFound => None,
+                },
+            )
+            .filter(|&resolved| settled(collect_flags(db, resolved)));
+    }
+
+    /// The trait method the call runs, with its body: from the
+    /// implementation the checker selected, or, for a call the checker
+    /// dispatched through an assumption, the one `solve_cx` selects for the
+    /// instantiated goal. Absent for a call of no trait method.
+    pub fn selected_method(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) -> Option<ResolvedMethodInstance<'db>> {
+        let inst = self.trait_inst?;
+        let CallableDef::Func(func) = self.callable_def else {
+            return None;
+        };
+        let name = func.name(db).to_opt()?;
+        let resolved = match self.selection {
+            // An instantiated body can expose projections its checker could
+            // not resolve.
+            Some(resolved)
+                if !matches!(
+                    resolved.selected().origin(db),
+                    ImplementorOrigin::Assumption
+                ) =>
+            {
+                if collect_flags(db, resolved).contains(TyFlags::HAS_PROJECTION) {
+                    normalize_ty(
+                        db,
+                        resolved,
+                        solve_cx.normalization_scope_for_trait_inst(db, inst),
+                        solve_cx.assumptions(),
+                    )
+                } else {
+                    resolved
+                }
+            }
+            _ => match resolve_trait_impl_instance(db, solve_cx, inst) {
+                Selection::Unique(resolved) => resolved,
+                Selection::Ambiguous(_) | Selection::NotFound => return None,
+            },
+        };
+        resolved.method(db, name, self.mode)
     }
 
     /// The mode a `mut?` callee is called at; `None` for any other.

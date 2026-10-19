@@ -1,7 +1,6 @@
 use crate::analysis::HirAnalysisDb;
 use crate::analysis::ty::diagnostics::{BodyDiag, FuncBodyDiag};
-use crate::analysis::ty::trait_def::resolve_trait_method_instance;
-use crate::analysis::ty::trait_resolution::{Selection, TraitSolveCx};
+use crate::analysis::ty::trait_resolution::TraitSolveCx;
 use crate::analysis::ty::ty_check::{Callable, EffectParamSite, EffectPassMode, TypedBody};
 use crate::analysis::ty::ty_def::InvalidCause;
 use crate::hir_def::{
@@ -131,17 +130,11 @@ impl<'db, 'a> ConstFnChecker<'db, 'a> {
         let CallableDef::Func(func) = callable.callable_def() else {
             return None;
         };
-        if let Some(inst) = callable.trait_inst()
-            && let Some(name) = func.name(self.db).to_opt()
-            && let Selection::Unique(method) = resolve_trait_method_instance(
-                self.db,
-                TraitSolveCx::new(self.db, self.body.scope())
-                    .with_assumptions(self.typed_body.assumptions()),
-                inst,
-                name,
-                callable.mode(),
-            )
-            && let Some(impl_func) = method.body()
+        if let Some(method) = callable.selected_method(
+            self.db,
+            TraitSolveCx::new(self.db, self.body.scope())
+                .with_assumptions(self.typed_body.assumptions()),
+        ) && let Some(impl_func) = method.body()
         {
             return Some(impl_func);
         }

@@ -25,7 +25,7 @@ use crate::{
             normalize::normalize_ty,
             trait_def::{
                 ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId,
-                assoc_const_body_template_for_trait_inst, resolve_trait_method_instance,
+                assoc_const_body_template_for_trait_inst, resolve_trait_impl_instance,
             },
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
@@ -735,13 +735,9 @@ fn semantic_callee_key_with_assumptions<'db>(
         .collect::<Vec<_>>();
     let mut subst_args = callable.generic_args().to_vec();
     let body_func = if let Some(inst) = callable.trait_inst()
-        && let Some(name) = nominal_func.name(db).to_opt()
-        && let Selection::Unique(method) = resolve_trait_method_instance(
+        && let Some(method) = callable.selected_method(
             db,
             TraitSolveCx::new(db, impl_env.normalization_scope(db)).with_assumptions(assumptions),
-            inst,
-            name,
-            callable.mode(),
         )
         && let Some(impl_func) = method.body()
     {
@@ -897,7 +893,6 @@ fn semantic_callee_key_with_assumptions<'db>(
     let (context_independent, nominal_witness_required) = if let Some((resolved, inst)) =
         selected_trait_method
         && selected_impl
-        && let Some(name) = nominal_func.name(db).to_opt()
     {
         let body_ground = is_ground(
             collect_flags(db, subst_args.as_slice())
@@ -908,14 +903,12 @@ fn semantic_callee_key_with_assumptions<'db>(
         let original_ground = is_ground(collect_flags(db, inst));
         let independent = body_ground
             && matches!(
-                resolve_trait_method_instance(
+                resolve_trait_impl_instance(
                     db,
                     TraitSolveCx::new(db, owner.scope()),
                     resolved.trait_inst(),
-                    name,
-                    callable.mode(),
                 ),
-                Selection::Unique(method) if method.resolved() == resolved
+                Selection::Unique(selected) if selected == resolved
             );
         // A symbolic nominal receiver can be discarded after selection only if
         // it normalizes to the independent implementation and neither signature
