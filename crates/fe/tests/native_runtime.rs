@@ -1053,6 +1053,52 @@ pub fn main() -> i32 {
 }
 
 #[test]
+fn native_byte_buffer_copies_ranges_between_buffers() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("byte_buffer_copy.fe");
+    fs::write(
+        &source,
+        r#"
+use std::native::ByteBuffer
+pub fn main() -> i32 {
+    var from = ByteBuffer::new()
+    var into = ByteBuffer::new()
+    from.copy_from(dest: 0, source: into, offset: 0, len: 0)
+    core::assert(from.try_resize(100) && into.try_resize(70))
+    var i: u64 = 0
+    while i < 100 {
+        from.set_byte(index: i, value: (i + 1).downcast_truncate())
+        i += 1
+    }
+    into.copy_from(dest: 3, source: from, offset: 40, len: 60)
+    into.copy_from(dest: 70, source: from, offset: 100, len: 0)
+    i = 0
+    while i < 70 {
+        let expected: u8 = if i >= 3 && i < 63 { (i + 38).downcast_truncate() } else { 0 }
+        core::assert(into.byte_at(i) == expected)
+        i += 1
+    }
+    i = 0
+    while i < 100 {
+        core::assert(from.byte_at(i) == (i + 1).downcast_truncate())
+        i += 1
+    }
+    from.release()
+    into.release()
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let result = Command::new(out.join("byte_buffer_copy")).output().unwrap();
+        assert!(result.status.success(), "O{level}: {result:?}");
+    }
+}
+
+#[test]
 fn native_byte_buffer_preserves_contents_and_reuses_zeroed_storage() {
     let temp = tempdir().unwrap();
     let source = temp.path().join("byte_buffer.fe");
