@@ -26,16 +26,15 @@ use super::{
     closure::CallableShape,
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
-    normalize::normalize_ty,
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         TraitSolveCx, constraint::collect_candidate_constraints, is_goal_satisfiable,
         normalize_trait_inst_preserving_validity,
     },
-    ty_def::{BorrowKind, TyBase, TyData, TyFlags, TyId},
+    ty_def::{BorrowKind, TyBase, TyData, TyId},
     ty_lower::{CompleteSubst, ParamBasis, ParamDomainId, ParamKey, PartialSubst, param_schema},
     unify::UnificationTable,
-    visitor::{TyVisitable, TyVisitor, collect_flags},
+    visitor::{TyVisitable, TyVisitor},
 };
 use crate::analysis::HirAnalysisDb;
 
@@ -372,6 +371,14 @@ impl<'db> ResolvedImplInstance<'db> {
         self.selected.assoc_ty(db, name)
     }
 
+    /// The selected implementation's conditions, instantiated for the goal.
+    pub(crate) fn instantiated_constraints(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> PredicateListId<'db> {
+        self.instantiated.constraints(db)
+    }
+
     pub fn instantiated_assoc_ty(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -446,66 +453,6 @@ pub(crate) fn resolve_trait_impl_instance<'db>(
         ImplSelection::Unique(resolved) => Selection::Unique(resolved),
         ImplSelection::Ambiguous => Selection::Ambiguous(IndexSet::new()),
         ImplSelection::NotFound => Selection::NotFound,
-    }
-}
-
-/// The implementation the checker records for `inst`, selected in the
-/// checked body's context `solve_cx`. A goal or selection that still holds
-/// inference variables, such as a generic function item's own, is left to
-/// the instance.
-pub(crate) fn checked_selection<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-) -> Option<ResolvedImplInstance<'db>> {
-    let settled = |flags: TyFlags| !flags.intersects(TyFlags::HAS_VAR | TyFlags::HAS_INVALID);
-    if !settled(collect_flags(db, inst)) {
-        return None;
-    }
-    match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved) => {
-            Some(resolved).filter(|&resolved| settled(collect_flags(db, resolved)))
-        }
-        Selection::Ambiguous(_) | Selection::NotFound => None,
-    }
-}
-
-/// The implementation answering `inst` where a checked body is
-/// instantiated: the checker's `recorded` selection, or, for a goal the
-/// checker answered by an assumption (a bound of the body) or did not
-/// record, the one `solve_cx` selects.
-pub(crate) fn instantiated_selection<'db>(
-    db: &'db dyn HirAnalysisDb,
-    recorded: Option<ResolvedImplInstance<'db>>,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-) -> Option<ResolvedImplInstance<'db>> {
-    match recorded {
-        // An instantiated body can expose projections its checker could not
-        // resolve.
-        Some(resolved)
-            if !matches!(
-                resolved.selected().origin(db),
-                ImplementorOrigin::Assumption
-            ) =>
-        {
-            Some(
-                if collect_flags(db, resolved).contains(TyFlags::HAS_PROJECTION) {
-                    normalize_ty(
-                        db,
-                        resolved,
-                        solve_cx.normalization_scope_for_trait_inst(db, inst),
-                        solve_cx.assumptions(),
-                    )
-                } else {
-                    resolved
-                },
-            )
-        }
-        _ => match resolve_trait_impl_instance(db, solve_cx, inst) {
-            Selection::Unique(resolved) => Some(resolved),
-            Selection::Ambiguous(_) | Selection::NotFound => None,
-        },
     }
 }
 

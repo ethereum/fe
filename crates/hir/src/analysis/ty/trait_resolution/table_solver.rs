@@ -132,6 +132,50 @@ fn unify_trait_inst_with_normalized_assoc_bindings<'db>(
     Ok(())
 }
 
+/// Whether `assumption` answers the normalized `goal`: a `mut` goal holds
+/// only by a `mut` assumption.
+fn assumption_answers<'db>(
+    db: &'db dyn HirAnalysisDb,
+    table: &mut PersistentUnificationTable<'db>,
+    assumption: TraitInstId<'db>,
+    goal: TraitInstId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: super::PredicateListId<'db>,
+) -> bool {
+    (!goal.is_mut(db) || assumption.is_mut(db))
+        && unify_trait_inst_with_normalized_assoc_bindings(
+            db,
+            table,
+            assumption,
+            goal,
+            scope,
+            assumptions,
+        )
+        .is_ok()
+}
+
+/// The position, in `solve_cx`'s extended assumption list, of the first
+/// assumption that answers `goal`, in the order the solver tries them.
+pub(crate) fn answering_assumption<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    goal: TraitInstId<'db>,
+) -> Option<usize> {
+    let scope = solve_cx.normalization_scope_for_trait_inst(db, goal);
+    let assumptions = solve_cx.assumptions().extend_all_bounds(db);
+    let goal = normalize_trait_inst_preserving_validity(db, goal, scope, assumptions);
+    assumptions.list(db).iter().position(|&assumption| {
+        assumption_answers(
+            db,
+            &mut PersistentUnificationTable::new(db),
+            assumption,
+            goal,
+            scope,
+            assumptions,
+        )
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StopReason {
     MaximumTypeDepth,
@@ -502,19 +546,14 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 let Some(&assumption) = query.assumptions.list(self.db).get(index) else {
                     return Ok(Transition::Reject);
                 };
-                if normalized_goal.is_mut(self.db) && !assumption.is_mut(self.db) {
-                    return Ok(Transition::Reject);
-                }
-                if unify_trait_inst_with_normalized_assoc_bindings(
+                if !assumption_answers(
                     self.db,
                     &mut table,
                     assumption,
                     normalized_goal,
                     scope,
                     query.assumptions,
-                )
-                .is_err()
-                {
+                ) {
                     return Ok(Transition::Reject);
                 }
                 ImplementorId::assumption(self.db, query.goal.fold_with(self.db, &mut table))

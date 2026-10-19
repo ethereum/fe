@@ -528,7 +528,7 @@ impl<'db> TyChecker<'db> {
                             inst,
                             name,
                         ),
-                        selection: None,
+                        evidence: None,
                     };
                     (
                         ty,

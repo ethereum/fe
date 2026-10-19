@@ -40,6 +40,7 @@ pub mod const_expr;
 pub mod const_ty;
 pub mod corelib;
 pub mod effects;
+pub mod evidence;
 pub mod msg_selector;
 
 pub mod decision_tree;

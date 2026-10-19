@@ -32,6 +32,8 @@ use salsa::Update;
 pub(crate) mod constraint;
 mod table_solver;
 
+pub(crate) use table_solver::answering_assumption;
+
 pub(crate) const TRAIT_SOLVER_ROOT_ANSWER_LIMIT: usize = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]

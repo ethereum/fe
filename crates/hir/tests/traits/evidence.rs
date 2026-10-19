@@ -1,6 +1,7 @@
 use camino::Utf8PathBuf;
+use fe_hir::analysis::ty::evidence::{Evidence, EvidenceId};
 use fe_hir::analysis::ty::trait_resolution::{PredicateListId, TraitSolveCx};
-use fe_hir::analysis::ty::ty_check::{ConstRef, check_func_body};
+use fe_hir::analysis::ty::ty_check::{Callable, ConstRef, TypedBody, check_func_body};
 use fe_hir::hir_def::{Expr, Func, ItemKind, Partial, TopLevelMod};
 use fe_hir::test_db::HirAnalysisTestDb;
 
@@ -63,10 +64,11 @@ fn func<'db>(db: &'db HirAnalysisTestDb, top_mod: TopLevelMod<'db>, name: &str) 
         .unwrap_or_else(|| panic!("missing function `{name}`"))
 }
 
-/// The body `func`'s only method call runs, selected in a context with no
-/// assumptions, and whether selecting with the body's assumptions reaches a
-/// body.
-fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option<Func<'db>>, bool) {
+/// `func`'s checked body and its only method call.
+fn method_call<'db>(
+    db: &'db HirAnalysisTestDb,
+    func: Func<'db>,
+) -> (TypedBody<'db>, Callable<'db>) {
     let typed_body = check_func_body(db, func).1.clone();
     let body = func.body(db).expect("missing body");
     let call = body
@@ -74,7 +76,66 @@ fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option
         .keys()
         .find(|expr| matches!(expr.data(db, body), Partial::Present(Expr::MethodCall(..))))
         .expect("missing method call");
-    let callable = typed_body.callable_expr(call).expect("missing callable");
+    let callable = typed_body
+        .callable_expr(call)
+        .expect("missing callable")
+        .clone();
+    (typed_body, callable)
+}
+
+/// The checked body's assumption a proof leaf names.
+fn assumption<'db>(
+    db: &'db HirAnalysisTestDb,
+    typed_body: &TypedBody<'db>,
+    evidence: EvidenceId<'db>,
+) -> String {
+    let Evidence::Assumption(index) = evidence.data(db) else {
+        panic!("expected an assumption: {:?}", evidence.data(db));
+    };
+    typed_body.assumptions().list(db)[*index as usize].pretty_print(db, true)
+}
+
+/// The proofs of an implementation's conditions.
+fn conds<'db>(db: &'db HirAnalysisTestDb, evidence: EvidenceId<'db>) -> &'db [EvidenceId<'db>] {
+    let Evidence::Impl { conds, .. } = evidence.data(db) else {
+        panic!("expected an implementation: {:?}", evidence.data(db));
+    };
+    conds
+}
+
+#[test]
+fn a_proof_names_the_body_assumptions_it_uses() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("a_proof_names_the_body_assumptions_it_uses.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // `Wrap<T>: Grow` holds by the blanket implementation, whose condition
+    // `Wrap<T>: Copy` holds by `Copy for Wrap<T>`, whose condition is the
+    // body's own bound.
+    let (typed_body, callable) = method_call(&db, func(&db, top_mod, "wrapped"));
+    let evidence = callable.evidence().expect("the call's goal is proved");
+    let [wrap_copy] = conds(&db, evidence) else {
+        panic!("the blanket implementation has one condition");
+    };
+    let [t_copy] = conds(&db, *wrap_copy) else {
+        panic!("`Copy for Wrap<T>` has one condition");
+    };
+    assert_eq!(assumption(&db, &typed_body, *t_copy), "T: Copy");
+
+    let (typed_body, callable) = method_call(&db, func(&db, top_mod, "bound"));
+    let evidence = callable.evidence().expect("the call's goal is proved");
+    assert_eq!(assumption(&db, &typed_body, evidence), "T: Grow");
+}
+
+/// The body `func`'s only method call runs, selected in a context with no
+/// assumptions, and whether selecting with the body's assumptions reaches a
+/// body.
+fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option<Func<'db>>, bool) {
+    let (typed_body, callable) = method_call(db, func);
     let without_assumptions = callable
         .selected_method(
             db,
@@ -94,16 +155,16 @@ fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option
 /// nothing is assumed, and where the body's assumptions are.
 fn k_use_bodies(db: &HirAnalysisTestDb, func: Func<'_>) -> (bool, bool) {
     let typed_body = check_func_body(db, func).1.clone();
-    let Some(ConstRef::TraitConst { use_, selection }) = typed_body.const_refs().next() else {
+    let Some(ConstRef::TraitConst { use_, evidence }) = typed_body.const_refs().next() else {
         panic!("missing trait constant use");
     };
     let without_assumptions = ConstRef::TraitConst {
         use_: use_.with_env(func.scope(), PredicateListId::empty_list(db)),
-        selection,
+        evidence,
     };
     let with_assumptions = ConstRef::TraitConst {
         use_: use_.with_env(func.scope(), typed_body.assumptions()),
-        selection,
+        evidence,
     };
     (
         without_assumptions.trait_const_body(db).is_some(),

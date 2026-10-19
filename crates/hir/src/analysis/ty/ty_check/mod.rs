@@ -84,12 +84,10 @@ use super::{
         StaticAssertComparisonValues, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
+    evidence::{EvidenceId, instantiated_selection},
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     instantiate_trait_self,
-    trait_def::{
-        ResolvedImplInstance, TraitInstId, instantiated_selection,
-        selected_assoc_const_body_template,
-    },
+    trait_def::{TraitInstId, selected_assoc_const_body_template},
     trait_resolution::{
         CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx, WellFormedness,
         check_trait_inst_wf_without_self, check_ty_wf, goal_query_has_no_distinct_solution,
@@ -4093,9 +4091,9 @@ pub enum ConstRef<'db> {
     Const(Const<'db>),
     TraitConst {
         use_: AssocConstUse<'db>,
-        /// The implementation the checker selected for the use's trait goal,
-        /// as for a call's [`Callable`].
-        selection: Option<ResolvedImplInstance<'db>>,
+        /// The checker's proof of the use's trait goal, as for a call's
+        /// [`Callable`].
+        evidence: Option<EvidenceId<'db>>,
     },
     InherentConst(InherentConstUse<'db>),
 }
@@ -4109,10 +4107,10 @@ impl<'db> ConstRef<'db> {
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>)> {
-        let ConstRef::TraitConst { use_, selection } = self else {
+        let ConstRef::TraitConst { use_, evidence } = self else {
             return None;
         };
-        let resolved = instantiated_selection(db, selection, use_.solve_cx(db), use_.inst())?;
+        let resolved = instantiated_selection(db, evidence, use_.solve_cx(db), use_.inst())?;
         selected_assoc_const_body_template(db, resolved, use_.name())
     }
 }
@@ -4124,10 +4122,10 @@ impl<'db> TyVisitable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(_) => {}
-            ConstRef::TraitConst { use_, selection } => {
+            ConstRef::TraitConst { use_, evidence } => {
                 use_.visit_with(visitor);
-                if let Some(selection) = selection {
-                    selection.visit_with(visitor);
+                if let Some(evidence) = evidence {
+                    evidence.visit_with(visitor);
                 }
             }
             ConstRef::InherentConst(use_) => use_.visit_with(visitor),
@@ -4142,9 +4140,9 @@ impl<'db> TyFoldable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(const_def) => ConstRef::Const(const_def),
-            ConstRef::TraitConst { use_, selection } => ConstRef::TraitConst {
+            ConstRef::TraitConst { use_, evidence } => ConstRef::TraitConst {
                 use_: use_.fold_with(db, folder),
-                selection: selection.map(|selection| selection.fold_with(db, folder)),
+                evidence: evidence.map(|evidence| evidence.fold_with(db, folder)),
             },
             ConstRef::InherentConst(use_) => ConstRef::InherentConst(use_.fold_with(db, folder)),
         }
