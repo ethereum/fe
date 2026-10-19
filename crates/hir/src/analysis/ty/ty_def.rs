@@ -2529,11 +2529,14 @@ pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlag
 
         fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
             // An identity capture reads its owner's formals without
-            // spelling them, so the body still depends on parameters.
+            // spelling them, so the body still depends on parameters. A
+            // capture with no formals, such as the `4` in
+            // `type Bytes4 = FixedBytes<4>`, depends on none.
             if let ConstTyData::UnEvaluated {
-                capture: ConstCaptureEnv::Identity(_),
+                capture: ConstCaptureEnv::Identity(domain),
                 ..
             } = const_ty.data(self.db)
+                && domain.has_formals(self.db)
             {
                 self.flags.insert(TyFlags::HAS_PARAM);
             }
