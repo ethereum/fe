@@ -3051,6 +3051,12 @@ impl<'db> ConstCaptureDomain<'db> {
             },
         )
     }
+
+    /// Whether the captured domain has any formals, which an identity
+    /// capture reads without spelling them.
+    pub(crate) fn has_formals(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.materialize(db).len(db) != 0
+    }
 }
 
 impl<'db> ConstCaptureEnv<'db> {
