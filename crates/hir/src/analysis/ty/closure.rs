@@ -95,6 +95,7 @@ impl CallableShape {
 /// an `unsafe fn` and a projection are not callable values: a variant is
 /// made rather than called, an `unsafe fn` may only be called in an `unsafe`
 /// context, and a projection grants accesses rather than returning a value.
+/// Nor is a function with a product parameter, which no shape trait names.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum CallableValue<'db> {
     Closure(ClosureTy<'db>),
@@ -114,7 +115,10 @@ impl<'db> CallableValue<'db> {
         (!func.is_unsafe(db)
             && !func.is_projection(db)
             && !func.is_raw_place(db)
-            && !func.is_maybe_mut(db))
+            && !func.is_maybe_mut(db)
+            && !func
+                .params(db)
+                .any(|param| param.product(db, None).is_some()))
         .then_some(Self::Func(*func, args))
     }
 

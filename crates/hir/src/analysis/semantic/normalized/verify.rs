@@ -401,10 +401,11 @@ fn verify_expr<'db>(
         } => {
             let callee = get_or_build_semantic_instance(db, callee.key);
             let typed_body = callee.key(db).typed_body(db);
-            let mut param_tys = Vec::new();
-            while let Some(binding) = typed_body.param_binding(param_tys.len()) {
-                param_tys.push(callee.normalized_binding_ty(db, binding));
-            }
+            let param_tys: Vec<_> = typed_body
+                .input_bindings()
+                .iter()
+                .map(|&binding| callee.normalized_binding_ty(db, binding))
+                .collect();
             if args.len() != param_tys.len() {
                 return Err(NormalizedBodyVerifyError::ExpressionType);
             }

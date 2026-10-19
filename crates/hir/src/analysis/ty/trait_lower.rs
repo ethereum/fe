@@ -762,9 +762,9 @@ pub(crate) fn collect_implementor_methods<'db>(
 
 /// Whether `func`, a method of a `mut?` trait method `trait_m`'s name, is
 /// its `mut` body: it takes `mut` where `trait_m` takes `mut?`, as a
-/// parameter or a result component.
+/// parameter, a product parameter's part or a result component.
 fn takes_mut_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>, trait_m: Func<'db>) -> bool {
-    /// Whether `shape` is `mut` where the trait method's result, `at_ref` and
+    /// Whether `shape` is `mut` where the trait method's shape, `at_ref` and
     /// `at_mut` at its two modes, is `mut?`.
     fn mut_where_maybe_mut(shape: &Shape, at_ref: &Shape, at_mut: &Shape) -> bool {
         match (shape, at_ref, at_mut) {
@@ -794,6 +794,15 @@ fn takes_mut_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>, trait_m: Fun
             .zip(func.params(db))
             .any(|(trait_param, param)| {
                 trait_param.is_maybe_mut(db) && param.mode_at(db, None) == FuncParamMode::Mut
+                    || matches!(
+                        (
+                            param.product(db, None),
+                            trait_param.product(db, Some(BorrowKind::Ref)),
+                            trait_param.product(db, Some(BorrowKind::Mut)),
+                        ),
+                        (Some(shape), Some(at_ref), Some(at_mut))
+                            if mut_where_maybe_mut(shape, at_ref, at_mut)
+                    )
             })
             || matches!(
                 (

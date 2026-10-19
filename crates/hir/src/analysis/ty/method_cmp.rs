@@ -315,10 +315,20 @@ fn compare_ty<'db>(
             trait_inst,
             false,
         );
-        // 4) Compare for equality, including the parameter's mode.
+        // 4) Compare for equality, including the parameter's mode, or its
+        // parts' modes for a product.
+        let same_parts = match (
+            trait_m.param_product(db, idx, trait_mode),
+            impl_m.param_product(db, idx, impl_mode),
+        ) {
+            (None, None) => true,
+            (Some(trait_p), Some(impl_p)) => trait_p.skip_binder().same_modes(impl_p.skip_binder()),
+            _ => false,
+        };
         if !impl_m_ty.has_invalid(db)
             && (trait_m_ty_normalized != impl_m_ty_normalized
-                || trait_m.param_mode(db, idx, trait_mode) != impl_m.param_mode(db, idx, impl_mode))
+                || trait_m.param_mode(db, idx, trait_mode) != impl_m.param_mode(db, idx, impl_mode)
+                || !same_parts)
         {
             sink.push(
                 ImplDiag::MethodArgTyMismatch {
@@ -327,6 +337,8 @@ fn compare_ty<'db>(
                     trait_m_ty: trait_m_ty_normalized,
                     impl_m_ty: impl_m_ty_normalized,
                     param_idx: idx,
+                    trait_mode,
+                    impl_mode,
                 }
                 .into(),
             );

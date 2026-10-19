@@ -2211,7 +2211,7 @@ pub(crate) fn desired_runtime_param_plan<'db>(
     typed_body: &hir::analysis::ty::ty_check::TypedBody<'db>,
     idx: usize,
 ) -> RuntimeParamPlan<'db> {
-    let Some(binding) = typed_body.param_binding(idx) else {
+    let Some(&binding) = typed_body.input_bindings().get(idx) else {
         return RuntimeParamPlan::Erased;
     };
     let binding_ty = semantic.binding_ty(db, binding);

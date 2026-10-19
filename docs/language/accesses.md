@@ -24,6 +24,23 @@ parameter would, so from a view of a tuple a `Copy` part is copied and any
 other part is bound `ref` (`_ (i, ref x): (usize, Buf)`). A function without
 a body, such as a trait method's declaration, names its parameters.
 
+A parameter may also take several accesses at once as a *product*: a tuple
+whose parts carry their own modes, as in `_ (i, ref x): (own usize, ref T)`.
+A part without a mode is `ref`, and a `mut?` part takes its function's
+mode. The argument is either a tuple of the parts, each written as an
+argument of its part's mode (`bump((mut y, ref x))`), or a projection's
+result that grants them (`swap(p.both())`). The parts are accesses of the
+call, as separate arguments are. So `add_to((mut x, ref x))` is rejected, as
+is a part that overlaps another argument or an effect, while
+`add_to((mut p.a, ref p.b))` is accepted. No single name holds a product:
+
+- a function with a body destructures it;
+- the parts carry its modes, so `own (own u256, ref u256)` is an error;
+- a receiver cannot be one.
+
+Only a named function's parameter is a product. A closure's parameter is
+not, and a function that takes one is not a callable value.
+
 A view argument that is a scalar or a handle (an integer, `bool`,
 `Address`, a raw pointer, or any `core::marker::Snapshot` type) is a
 *snapshot*: the callee gets a copy, and the caller may change the original

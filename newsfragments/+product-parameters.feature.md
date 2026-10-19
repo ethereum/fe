@@ -1,0 +1,1 @@
+A function parameter may be a product, which takes several accesses at once, each part in its own mode: `fn add_to(_ (mut a, b): (mut u256, ref u256))`, called as `add_to((mut x, ref y))` or with a projection's result that grants the parts. The parts are checked as separate arguments are, so `add_to((mut x, ref x))` is rejected.

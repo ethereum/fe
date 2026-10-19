@@ -56,11 +56,11 @@ pub use callable::{Callable, EffectProviderProvenance, EffectProviderSpecializat
 use common::indexmap::IndexMap;
 use cranelift_entity::{PrimaryMap, SecondaryMap, entity_impl, packed_option::PackedOption};
 use ena::unify::InPlace;
-use env::TyCheckEnv;
 pub use env::{
     BindingAccess, ClosureCapture, ClosureInfo, EffectParamSite, ExprProp, LocalBinding, ParamSite,
     PatBindingMode, PathReadSemantics,
 };
+use env::{TyCheckEnv, func_param_bindings};
 pub(super) use expr::TraitOps;
 use num_traits::ToPrimitive;
 pub use owner::BodyOwner;
@@ -953,6 +953,8 @@ pub(super) enum AccessBinding {
     /// `mut` result of a type with no values stays the access, as `let s`
     /// of a call returning `mut MemSpan`.
     LetResult,
+    /// A destructured parameter's parts, bound as a result's are.
+    Param,
 }
 
 /// A body checked by the pipeline every kind of body takes: inference with
@@ -1414,28 +1416,7 @@ fn typed_body_for_bodyless_func<'db>(
     if !result_ty.is_star_kind(db) {
         result_ty = TyId::invalid(db, InvalidCause::Other);
     }
-    let param_bindings = func
-        .params(db)
-        .enumerate()
-        .map(|(idx, view)| {
-            let mut ty = *func
-                .arg_tys(db)
-                .get(idx)
-                .map_or(&TyId::invalid(db, InvalidCause::ParseError), |binder| {
-                    binder.skip_binder()
-                });
-            if !ty.is_star_kind(db) {
-                ty = TyId::invalid(db, InvalidCause::Other);
-            }
-            LocalBinding::Param {
-                site: ParamSite::Func(func),
-                idx,
-                mode: view.mode_at(db, mode),
-                ty,
-                is_mut: view.is_mut(db),
-            }
-        })
-        .collect();
+    let bindings = func_param_bindings(db, func, mode);
     TypedBodyTables {
         body: None,
         result_ty,
@@ -1445,6 +1426,7 @@ fn typed_body_for_bodyless_func<'db>(
         yield_shapes: SecondaryMap::new(),
         place_entries: FxHashSet::default(),
         unsafe_splits: FxHashSet::default(),
+        product_args: FxHashSet::default(),
         value_calls: FxHashSet::default(),
         matched_places: FxHashSet::default(),
         inspected_places: FxHashSet::default(),
@@ -1457,7 +1439,9 @@ fn typed_body_for_bodyless_func<'db>(
         resolved_field_index: SecondaryMap::new(),
         call_effect_args: SecondaryMap::new(),
         return_borrow_provider: None,
-        param_bindings,
+        param_bindings: bindings.params,
+        input_bindings: bindings.inputs,
+        param_products: bindings.products,
         pat_bindings: SecondaryMap::new(),
         pat_binding_modes: SecondaryMap::new(),
         pattern_store: PatternStore::default(),
@@ -1494,6 +1478,11 @@ pub struct TyChecker<'db> {
     mutable_sources: FxHashSet<PatId>,
     /// The names parameter patterns bind, with the parameters' site.
     param_pattern_sites: FxHashMap<PatId, ParamSite<'db>>,
+    /// The names a product parameter's pattern binds to its `ref` parts,
+    /// which the parts' modes in the signature keep read-only.
+    ref_part_bindings: FxHashSet<PatId>,
+    /// Names bound to a shape whole, which is reported where they bind.
+    shape_bindings: FxHashSet<PatId>,
     diags: Vec<FuncBodyDiag<'db>>,
     /// Set once deferred work is resolved for the last time, after which type
     /// equalities are decided rather than retained.
@@ -1935,7 +1924,9 @@ impl<'db> TyChecker<'db> {
         .or_else(|| {
             matches!(
                 binding,
-                LocalBinding::Local { .. } | LocalBinding::Param { .. }
+                LocalBinding::Local { .. }
+                    | LocalBinding::Param { .. }
+                    | LocalBinding::ParamPart { .. }
             )
             .then(|| {
                 self.env
@@ -1992,14 +1983,18 @@ impl<'db> TyChecker<'db> {
                 site: ParamSite::EffectField(..),
                 ..
             } => self.concrete_borrow_provider_for_binding(binding),
-            LocalBinding::Local { .. } | LocalBinding::Param { .. } => None,
+            LocalBinding::Local { .. }
+            | LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. } => None,
         };
         binding_provider
             .or_else(|| self.concrete_borrow_provider_for_capability_ty(place_result_ty))
             .or_else(|| {
                 matches!(
                     binding,
-                    LocalBinding::Local { .. } | LocalBinding::Param { .. }
+                    LocalBinding::Local { .. }
+                        | LocalBinding::Param { .. }
+                        | LocalBinding::ParamPart { .. }
                 )
                 .then_some(AddressSpace::Memory)
             })
@@ -2833,6 +2828,8 @@ impl<'db> TyChecker<'db> {
             initializer_markers: Vec::new(),
             mutable_sources: FxHashSet::default(),
             param_pattern_sites: FxHashMap::default(),
+            ref_part_bindings: FxHashSet::default(),
+            shape_bindings: FxHashSet::default(),
             diags: Vec::new(),
             final_pass: false,
         }
@@ -2951,7 +2948,9 @@ impl<'db> TyChecker<'db> {
                 idx,
                 ..
             } => self.env.resolved_provider_binding(site, idx).is_some(),
-            LocalBinding::Local { .. } | LocalBinding::Param { .. } => false,
+            LocalBinding::Local { .. }
+            | LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. } => false,
         }
     }
 
@@ -3175,8 +3174,15 @@ impl<'db> TyChecker<'db> {
             pat.data(self.db, self.body()),
             Partial::Present(Pat::Path(..))
         );
+        // The `let` a destructured product parameter's body begins with.
+        let product = self.destructured_param(prop.binding).is_some()
+            && prop
+                .binding
+                .is_some_and(|binding| self.env.param_product(&binding).is_some());
         let binding = if self.env.is_matched_place(source) {
             AccessBinding::Place
+        } else if product {
+            AccessBinding::Param
         } else if single_name && self.is_named_access(source) {
             AccessBinding::Named
         } else if single_name && is_let {
@@ -3533,8 +3539,10 @@ impl<'db> TyChecker<'db> {
                 }
             }
             (_, Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
+                self.shape_bindings.insert(pat);
                 self.push_diag(BodyDiag::ShapeNotDestructured {
                     primary: pat.span(self.body()).into(),
+                    part: binding == AccessBinding::Param,
                 });
             }
             _ => {}
@@ -3581,6 +3589,9 @@ impl<'db> TyChecker<'db> {
                     }
                     return;
                 };
+                if binding == AccessBinding::Param && kind == BorrowKind::Ref {
+                    self.ref_part_bindings.insert(pat);
+                }
                 self.env.set_pat_binding_mode(
                     pat,
                     PatBindingMode::Access {
@@ -3685,11 +3696,13 @@ impl<'db> TyChecker<'db> {
     }
 
     /// Reports `ref` and `mut` bindings that bind a value: of an owned value
-    /// or component, or a copied element, which has no access to hold.
+    /// or component, or a copied element, which has no access to hold. A
+    /// name bound to a shape whole is reported already.
     fn check_marked_bindings(&mut self) {
         let body = self.body();
         for (pat, data) in body.pats(self.db).iter() {
-            if let Partial::Present(Pat::Path(_, marker)) = data
+            if !self.shape_bindings.contains(&pat)
+                && let Partial::Present(Pat::Path(_, marker)) = data
                 && let marker @ (BindingMarker::Ref | BindingMarker::Mut) =
                     self.binding_marker(pat, *marker)
                 && let Some(binding @ LocalBinding::Local { .. }) = self.env.pat_binding(pat)
@@ -4189,6 +4202,8 @@ mod typed_body_tables {
         /// The tuples that are unsafe splits: an `unsafe` block's tail tuple
         /// of accesses, granted by one session.
         pub(super) unsafe_splits: FxHashSet<ExprId>,
+        /// The tuples passed to product parameters, a part each.
+        pub(super) product_args: FxHashSet<ExprId>,
         /// The calls `f(..)` of callable values: the callee is the receiver
         /// of a callable shape trait's method.
         pub(super) value_calls: FxHashSet<ExprId>,
@@ -4209,6 +4224,11 @@ mod typed_body_tables {
         pub(super) return_borrow_provider: Option<AddressSpace>,
         /// Bindings for function parameters (indexed by param position)
         pub(super) param_bindings: Vec<LocalBinding<'db>>,
+        /// The inputs a call passes the body: each parameter, or each part of
+        /// a product parameter.
+        pub(super) input_bindings: Vec<LocalBinding<'db>>,
+        /// Each parameter's shape if it is a product, by index.
+        pub(super) param_products: Vec<Option<Shape<'db>>>,
         /// Bindings for local variables (keyed by the pattern that introduces them)
         pub(super) pat_bindings: SecondaryMap<PatId, Option<LocalBinding<'db>>>,
         /// Binding capture mode for local variables (keyed by the pattern that introduces them)
@@ -4237,9 +4257,17 @@ pub struct BindingSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ReturnProjectionStep {
     Field(u16),
-    VariantField { variant: u16, field: u16 },
+    VariantField {
+        variant: u16,
+        field: u16,
+    },
     ConstantIndex(usize),
-    ParamIndex(usize),
+    /// An index the call passes: parameter `param`, or its part `part` if it
+    /// is a product.
+    ParamIndex {
+        param: usize,
+        part: Option<u16>,
+    },
     AnyIndex,
 }
 
@@ -4520,6 +4548,10 @@ impl<'db> TypedBody<'db> {
             args.visit_with(visitor);
         }
         self.tables.param_bindings.visit_with(visitor);
+        self.tables.input_bindings.visit_with(visitor);
+        for product in self.tables.param_products.iter().flatten() {
+            product.visit_with(visitor);
+        }
         for binding in self.tables.pat_bindings.values().flatten() {
             binding.visit_with(visitor);
         }
@@ -4586,6 +4618,13 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
         this.param_bindings
             .iter_mut()
             .for_each(|binding| *binding = binding.fold_with(db, folder));
+        this.input_bindings
+            .iter_mut()
+            .for_each(|binding| *binding = binding.fold_with(db, folder));
+        this.param_products
+            .iter_mut()
+            .flatten()
+            .for_each(|product| *product = product.clone().fold_with(db, folder));
         this.pat_bindings
             .values_mut()
             .flatten()
@@ -4902,6 +4941,12 @@ impl<'db> TypedBody<'db> {
         self.tables.unsafe_splits.contains(&expr)
     }
 
+    /// Whether the tuple `expr` is passed to a product parameter, each of its
+    /// elements as a part.
+    pub fn is_product_arg(&self, expr: ExprId) -> bool {
+        self.tables.product_args.contains(&expr)
+    }
+
     /// The receiver of the call `expr`: a method call's receiver, or the
     /// callee of a call `f(..)` of a callable value, which runs a callable
     /// shape trait's method on it.
@@ -4979,6 +5024,7 @@ impl<'db> TypedBody<'db> {
         tables.param_bindings = iter::once(LocalBinding::closure_env(db, closure, receiver))
             .chain(params)
             .collect();
+        tables.input_bindings = tables.param_bindings.clone();
         body
     }
 
@@ -5031,6 +5077,70 @@ impl<'db> TypedBody<'db> {
         self.tables.param_bindings.get(idx).copied()
     }
 
+    /// The inputs a call passes the body, in order: each parameter, or each
+    /// part of a product parameter.
+    pub fn input_bindings(&self) -> &[LocalBinding<'db>] {
+        &self.tables.input_bindings
+    }
+
+    /// The position of `binding` among the body's inputs.
+    pub fn input_index(&self, binding: LocalBinding<'db>) -> Option<usize> {
+        self.tables
+            .input_bindings
+            .iter()
+            .position(|input| *input == binding)
+    }
+
+    /// The input a return forwarding parameter `param`'s place at
+    /// `projection` reads, and the steps it takes from that input's place: a
+    /// product parameter's leading field steps select its part.
+    pub fn return_source_input<'a>(
+        &self,
+        param: usize,
+        projection: &'a [ReturnProjectionStep],
+    ) -> Option<(usize, &'a [ReturnProjectionStep])> {
+        let binding = self.param_binding(param)?;
+        let Some(mut shape) = self.param_product(binding) else {
+            return Some((self.input_index(binding)?, projection));
+        };
+        let mut part = 0;
+        let mut steps = projection;
+        while let Shape::Tuple(elems) = shape {
+            let (ReturnProjectionStep::Field(field), rest) = steps.split_first()? else {
+                return None;
+            };
+            let field = usize::from(*field);
+            part += elems[..field.min(elems.len())]
+                .iter()
+                .map(|elem| elem.leaves().len())
+                .sum::<usize>();
+            shape = elems.get(field)?;
+            steps = rest;
+        }
+        Some((
+            self.param_input_index(param, Some(u16::try_from(part).ok()?))?,
+            steps,
+        ))
+    }
+
+    /// The position among the body's inputs of parameter `param`, or of its
+    /// part `part` if it is a product.
+    pub fn param_input_index(&self, param: usize, part: Option<u16>) -> Option<usize> {
+        let Some(part) = part else {
+            return self.input_index(self.param_binding(param)?);
+        };
+        self.tables.input_bindings.iter().position(|input| {
+            matches!(input, LocalBinding::ParamPart { idx, part: leaf, .. }
+                if *idx == param && *leaf == part)
+        })
+    }
+
+    /// The shape of `binding` if it is a product parameter's: the product the
+    /// body destructures.
+    pub fn param_product(&self, binding: LocalBinding<'db>) -> Option<&Shape<'db>> {
+        env::param_product(&self.tables.param_products, &binding)
+    }
+
     /// Get the binding for a local variable by its pattern.
     pub fn pat_binding(&self, pat: PatId) -> Option<LocalBinding<'db>> {
         self.tables.pat_bindings[pat]
@@ -5058,6 +5168,9 @@ impl<'db> TypedBody<'db> {
         db: &'db dyn HirAnalysisDb,
         binding: LocalBinding<'db>,
     ) -> TyId<'db> {
+        if let Some(product) = self.param_product(binding) {
+            return product.carrier_ty(db);
+        }
         let ty = self.binding_ty(db, binding);
         match self.binding_access(binding) {
             None => ty,
@@ -5070,7 +5183,7 @@ impl<'db> TypedBody<'db> {
     pub fn binding_ty(&self, db: &'db dyn HirAnalysisDb, binding: LocalBinding<'db>) -> TyId<'db> {
         match binding {
             LocalBinding::Local { pat, .. } => self.pat_ty(db, pat),
-            LocalBinding::Param { ty, .. } => ty,
+            LocalBinding::Param { ty, .. } | LocalBinding::ParamPart { ty, .. } => ty,
             LocalBinding::EffectParam { site, idx, .. } => {
                 crate::core::semantic::EffectEnvView::new(site)
                     .visible_effect_binding_ty(db, idx)
@@ -5589,7 +5702,9 @@ impl<'db> TypedBody<'db> {
                 visited_locals.remove(&pat);
                 sources?
             }
-            LocalBinding::Param {
+            // A part is never named, so no place is rooted in one.
+            LocalBinding::ParamPart { .. }
+            | LocalBinding::Param {
                 site: ParamSite::ContractInit(_) | ParamSite::Closure(_) | ParamSite::ClosureEnv(_),
                 ..
             } => return None,
@@ -5670,8 +5785,13 @@ impl<'db> TypedBody<'db> {
                 }
             }
         }?;
-        let projection =
-            self.instantiate_return_projection(db, body, &callee_source.projection, call_args)?;
+        let projection = self.instantiate_return_projection(
+            db,
+            body,
+            call_expr,
+            &callee_source.projection,
+            call_args,
+        )?;
         let mut sources = project_return_sources(sources, &projection)?;
         prefix_return_sources(&mut sources, &callee_source.result_projection);
         Some(sources)
@@ -5694,25 +5814,108 @@ impl<'db> TypedBody<'db> {
                 site: ParamSite::Func(_),
                 idx,
                 ..
-            } => Some(ReturnProjectionStep::ParamIndex(idx)),
+            } => Some(ReturnProjectionStep::ParamIndex {
+                param: idx,
+                part: None,
+            }),
+            // A product parameter's part, which the body's leading `let`
+            // binds as the call passes it.
+            binding @ LocalBinding::Local { pat, is_mut: false }
+                if !matches!(
+                    self.pat_binding_mode(pat),
+                    Some(PatBindingMode::Access {
+                        kind: BorrowKind::Mut,
+                        ..
+                    })
+                ) =>
+            {
+                let source = self.binding_source(db, binding)?;
+                let LocalBinding::Param {
+                    site: ParamSite::Func(_),
+                    idx,
+                    ..
+                } = self.expr_binding(source.init_expr)?
+                else {
+                    return None;
+                };
+                let (input, []) = self.return_source_input(idx, &source.projection)? else {
+                    return None;
+                };
+                let LocalBinding::ParamPart { part, .. } = self.tables.input_bindings[input] else {
+                    return None;
+                };
+                Some(ReturnProjectionStep::ParamIndex {
+                    param: idx,
+                    part: Some(part),
+                })
+            }
             LocalBinding::Local { .. }
             | LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. }
             | LocalBinding::EffectParam { .. } => None,
         }
+    }
+
+    /// The expression `arg`, a call's argument to a product parameter of
+    /// `product`, passes as the product's `part`th part, if it writes the
+    /// parts out.
+    fn product_arg_part(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        body: Body<'db>,
+        arg: ExprId,
+        product: &Shape<'db>,
+        mut part: usize,
+    ) -> Option<ExprId> {
+        let (Shape::Tuple(parts), Partial::Present(Expr::Tuple(elems))) =
+            (product, arg.data(db, body))
+        else {
+            return None;
+        };
+        if !self.is_product_arg(arg) {
+            return None;
+        }
+        for (&elem, shape) in elems.iter().zip(parts) {
+            let leaves = shape.leaves().len();
+            if part < leaves {
+                return match shape {
+                    Shape::Tuple(_) => self.product_arg_part(db, body, elem, shape, part),
+                    _ => Some(elem),
+                };
+            }
+            part -= leaves;
+        }
+        None
     }
 
     fn instantiate_return_projection(
         &self,
         db: &'db dyn HirAnalysisDb,
         body: Body<'db>,
+        call_expr: ExprId,
         projection: &[ReturnProjectionStep],
         call_args: &[ExprId],
     ) -> Option<Vec<ReturnProjectionStep>> {
         projection
             .iter()
             .map(|step| match *step {
-                ReturnProjectionStep::ParamIndex(param_idx) => {
-                    self.return_index_projection(db, body, *call_args.get(param_idx)?)
+                ReturnProjectionStep::ParamIndex { param, part } => {
+                    let mut arg = *call_args.get(param)?;
+                    if let Some(part) = part {
+                        let callable = self.callable_expr(call_expr)?;
+                        let product =
+                            callable
+                                .callable_def()
+                                .param_product(db, param, callable.mode())?;
+                        arg = self.product_arg_part(
+                            db,
+                            body,
+                            arg,
+                            product.skip_binder(),
+                            usize::from(part),
+                        )?;
+                    }
+                    self.return_index_projection(db, body, arg)
                 }
                 ReturnProjectionStep::AnyIndex => Some(ReturnProjectionStep::AnyIndex),
                 step => Some(step),
@@ -6283,6 +6486,7 @@ impl<'db> TypedBody<'db> {
             yield_shapes: SecondaryMap::new(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
+            product_args: FxHashSet::default(),
             value_calls: FxHashSet::default(),
             matched_places: FxHashSet::default(),
             inspected_places: FxHashSet::default(),
@@ -6296,6 +6500,8 @@ impl<'db> TypedBody<'db> {
             call_effect_args: SecondaryMap::new(),
             return_borrow_provider: None,
             param_bindings: Vec::new(),
+            input_bindings: Vec::new(),
+            param_products: Vec::new(),
             pat_bindings: SecondaryMap::new(),
             pat_binding_modes: SecondaryMap::new(),
             pattern_store: PatternStore::default(),
@@ -6445,7 +6651,7 @@ fn return_projection_step_matches(
                 ReturnProjectionStep::AnyIndex,
                 ReturnProjectionStep::AnyIndex
                     | ReturnProjectionStep::ConstantIndex(_)
-                    | ReturnProjectionStep::ParamIndex(_)
+                    | ReturnProjectionStep::ParamIndex { .. }
             )
         )
 }
@@ -6656,9 +6862,11 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
                 }
             }
             // A tuple of accesses is a projection's yield, an unsafe split or
-            // reported as an access used as a value.
+            // reported as an access used as a value. A product argument is no
+            // value: its elements are arguments of their own.
             Expr::Tuple(elems) | Expr::Array(elems)
                 if !self.body.yield_shape(expr).is_some_and(Shape::has_access)
+                    && !self.body.is_product_arg(expr)
                     && !elems
                         .iter()
                         .any(|&elem| self.body.expr_prop(self.db, elem).shape.is_some()) =>
@@ -6856,12 +7064,12 @@ impl<'db> TyCheckerFinalizer<'db> {
             return;
         };
         let (scope, assumptions) = (body.scope(), self.assumptions);
-        let mut params = (0..).map_while(|idx| {
-            let ty = normalize_ty(db, callable.arg_ty(db, idx)?, scope, assumptions);
-            Some((def.param_mode(db, idx, callable.mode()), ty))
-        });
-        let misuse = params
-            .find_map(|(mode, ty)| view_param_misuse(db, mode, ty))
+        let misuse = callable
+            .input_modes(db)
+            .into_iter()
+            .find_map(|(mode, ty)| {
+                view_param_misuse(db, mode, normalize_ty(db, ty, scope, assumptions))
+            })
             .or_else(|| {
                 let ret = callable
                     .ret_shape(db)
@@ -6931,12 +7139,11 @@ impl<'db> TyCheckerFinalizer<'db> {
             return;
         };
         let (scope, assumptions) = (body.scope(), self.assumptions);
-        let value = (0..)
-            .map_while(|idx| {
-                let ty = normalize_ty(db, callable.arg_ty(db, idx)?, scope, assumptions);
-                Some((def.param_mode(db, idx, callable.mode()), ty))
-            })
+        let value = callable
+            .input_modes(db)
+            .into_iter()
             .find_map(|(mode, ty)| {
+                let ty = normalize_ty(db, ty, scope, assumptions);
                 (mode == FuncParamMode::Own)
                     .then(|| ty.pinned_part(db).map(|collection| (ty, collection)))?
             })

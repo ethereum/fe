@@ -407,7 +407,9 @@ impl<'db> PathView<'db> {
                     .resolved_binding(db, entry)
                     .and_then(|binding| binding.provider.source.contract_field())
                     .and_then(|field| field.scope(db)),
-                LocalBinding::Local { .. } | LocalBinding::Param { .. } => None,
+                LocalBinding::Local { .. }
+                | LocalBinding::Param { .. }
+                | LocalBinding::ParamPart { .. } => None,
             };
             return scope.into_iter().collect();
         }

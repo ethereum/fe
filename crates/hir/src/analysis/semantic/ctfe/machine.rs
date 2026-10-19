@@ -1242,14 +1242,24 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 .entry_locals
                 .iter()
                 .filter_map(|local| match body.local(*local)?.source? {
-                    LocalBinding::Param {
+                    binding @ (LocalBinding::Param {
                         site: ParamSite::Func(candidate),
-                        idx,
                         ..
-                    } if candidate == func => Some((idx, *local)),
+                    }
+                    | LocalBinding::ParamPart {
+                        site: ParamSite::Func(candidate),
+                        ..
+                    }) if candidate == func => Some((
+                        instance
+                            .key(self.db)
+                            .typed_body(self.db)
+                            .input_index(binding)?,
+                        *local,
+                    )),
                     LocalBinding::Local { .. }
                     | LocalBinding::EffectParam { .. }
-                    | LocalBinding::Param { .. } => None,
+                    | LocalBinding::Param { .. }
+                    | LocalBinding::ParamPart { .. } => None,
                 })
                 .collect::<Vec<_>>(),
             BodyOwner::Const(_)

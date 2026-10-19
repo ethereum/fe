@@ -32,7 +32,10 @@ use crate::analysis::ty::diagnostics::{ContractFieldLayoutIssue, ImplDiag, TyLow
 use crate::analysis::ty::effects::rows::RowKey;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
-use crate::analysis::ty::shape::{Shape, lower_return_shape, mentions_mode, return_shape_diags};
+use crate::analysis::ty::shape::{
+    Shape, is_param_product, lower_param_product, lower_return_shape, mentions_mode,
+    param_product_diags, return_shape_diags,
+};
 use crate::analysis::ty::ty_def::{BorrowKind, Kind};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
 use crate::hir_def::params::{FuncParamMode, KindBound as HirKindBound};
@@ -481,6 +484,32 @@ fn lower_self_fallback_param_ty<'db>(
     }
 }
 
+/// The shape of `func`'s parameter `idx` where `func` is used at `mode`, if
+/// the parameter is a product (`_ (i, x): (own usize, ref T)`).
+#[salsa::tracked(return_ref)]
+fn func_param_product<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    idx: usize,
+    mode: Option<BorrowKind>,
+) -> Option<Shape<'db>> {
+    let hir_ty = func
+        .params_list(db)
+        .to_opt()?
+        .data(db)
+        .get(idx)?
+        .ty
+        .to_opt()?;
+    // Decided from the written type, before the function's constraints,
+    // which may need its other parameters' types.
+    if !is_param_product(db, hir_ty) {
+        return None;
+    }
+    let (scope, assumptions) = (func.scope(), func.assumptions(db));
+    let product = lower_param_product(db, hir_ty, scope, assumptions, mode)?;
+    Some(normalize_from_assumptions(db, product, scope, assumptions))
+}
+
 #[salsa::tracked(return_ref)]
 fn func_return_shape<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -543,6 +572,10 @@ fn func_arg_ty<'db>(
     idx: usize,
 ) -> Option<Binder<'db, TyId<'db>>> {
     let param = func.params_list(db).to_opt()?.data(db).get(idx)?;
+    // A product's type is its parts' types.
+    if let Some(product) = func_param_product(db, func, idx, None) {
+        return Some(Binder::bind(func.into(), product.erased_ty(db)));
+    }
     // The mode is the parameter's, not part of its type.
     let ty = match (
         param
@@ -1076,6 +1109,22 @@ impl<'db> CallableDef<'db> {
         }
     }
 
+    /// The shape of parameter `idx` in a call at `mode`, if it is a product.
+    pub fn param_product(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        idx: usize,
+        mode: Option<BorrowKind>,
+    ) -> Option<Binder<'db, Shape<'db>>> {
+        match self {
+            Self::Func(func) => Some(Binder::bind(
+                func.into(),
+                func.params(db).nth(idx)?.product(db, mode)?.clone(),
+            )),
+            Self::VariantCtor(_) | Self::StructCtor(_) => None,
+        }
+    }
+
     /// The mode of parameter `idx` in a call at `mode`. Variant and tuple
     /// struct constructors take their fields by value.
     pub fn param_mode(
@@ -1173,6 +1222,29 @@ impl<'db> FuncParamView<'db> {
             Some(_) if self.is_maybe_mut(db) && mode == Some(BorrowKind::Mut) => FuncParamMode::Mut,
             Some(p) => p.mode,
             None => FuncParamMode::View,
+        }
+    }
+
+    /// The parameter's shape where its function is used at `mode`, if it is
+    /// a product: a tuple whose parts carry modes, `(own usize, ref T)`.
+    pub fn product(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
+    ) -> Option<&'db Shape<'db>> {
+        func_param_product(db, self.func, self.idx, mode).as_ref()
+    }
+
+    /// The mode and type of each input the parameter takes where its
+    /// function is used at `mode`: the parameter, or each part of a product.
+    pub fn input_modes(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
+    ) -> Vec<(FuncParamMode, TyId<'db>)> {
+        match self.product(db, mode) {
+            Some(product) => product.part_modes(),
+            None => vec![(self.mode_at(db, mode), self.ty(db))],
         }
     }
 
@@ -1301,6 +1373,25 @@ impl<'db> FuncParamView<'db> {
             return vec![TyLowerDiag::VarParamNotOwned { span }.into()];
         }
 
+        // A product's parts carry its modes, and its body takes it apart.
+        if let TypeKind::Mode(_, inner) = hir_ty.data(db)
+            && inner
+                .to_opt()
+                .is_some_and(|inner| is_param_product(db, inner))
+        {
+            let span = self.span().ty().into();
+            return vec![TyLowerDiag::ModeOnProduct(span).into()];
+        }
+        if self.product(db, None).is_some() {
+            if self.is_self_param(db) {
+                return vec![TyLowerDiag::ProductReceiver(self.span().into()).into()];
+            }
+            if !param.is_destructured() && func.body(db).is_some() {
+                let span = self.span().into();
+                return vec![TyLowerDiag::ProductParamNotDestructured(span).into()];
+            }
+        }
+
         // Surface name-resolution errors for the parameter type first. The
         // outer mode belongs to the parameter, not to its type.
         let (inner_ty, inner_span) = match hir_ty.data(db) {
@@ -1310,7 +1401,11 @@ impl<'db> FuncParamView<'db> {
         let Some(inner_ty) = inner_ty.to_opt() else {
             return Vec::new();
         };
-        let errs = collect_hir_ty_diags(db, func.scope(), inner_ty, inner_span, assumptions);
+        let errs = if self.product(db, None).is_some() {
+            param_product_diags(db, inner_ty, func.scope(), inner_span, assumptions)
+        } else {
+            collect_hir_ty_diags(db, func.scope(), inner_ty, inner_span, assumptions)
+        };
         if !errs.is_empty() {
             return errs;
         }

@@ -47,12 +47,12 @@ use crate::{
             provider::{AddressSpace, provider_semantics},
             shape::Shape,
             trait_resolution::PredicateListId,
-            ty_check::{BodyOwner, LocalBinding, infer_body},
+            ty_check::{BindingAccess, BodyOwner, LocalBinding, infer_body},
             ty_def::{BorrowKind, CapabilityKind, TyId},
             ty_is_snapshot,
         },
     },
-    hir_def::{CallableDef, FuncParamMode, Partial, Stmt, scope_graph::ScopeId},
+    hir_def::{Partial, Stmt, scope_graph::ScopeId},
     semantic::{EffectRequirementKey, ProviderSource, effect_requirements_for_site},
 };
 
@@ -194,9 +194,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         divergence: bool,
     ) -> Self {
         let typed_body = instance.key(db).typed_body(db);
-        let param_count = (0..)
-            .take_while(|index| typed_body.param_binding(*index).is_some())
-            .count() as u32;
+        let param_count = typed_body.input_bindings().len() as u32;
         let mut analysis = Self {
             db,
             instance,
@@ -406,12 +404,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
             .collect()
     }
 
-    /// The accesses a carrier argument for a parameter of `mode` passes. A
-    /// handle opens none, and a snapshot view argument is passed by copy.
-    fn passed_to(&self, value: NValueId, mode: FuncParamMode) -> TokenSet {
+    /// The accesses a carrier argument for an input taken by `access` passes.
+    /// A handle opens none, and a snapshot view argument is passed by copy.
+    fn passed_to(&self, value: NValueId, access: Option<BindingAccess>) -> TokenSet {
         let ty = self.body.values[value.index()].ty;
         let ty = ty.as_capability(self.db).map_or(ty, |(_, target)| target);
-        if mode == FuncParamMode::View && ty_is_snapshot(self.db, self.scope, ty, self.assumptions)
+        if access == Some(BindingAccess::View)
+            && ty_is_snapshot(self.db, self.scope, ty, self.assumptions)
         {
             return TokenSet::new();
         }
@@ -842,19 +841,19 @@ impl<'a, 'db> Analysis<'a, 'db> {
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
     ) -> Held {
-        let owner @ BodyOwner::Func(func, mode) = callee.owner(self.db) else {
+        let BodyOwner::Func(..) = callee.owner(self.db) else {
             return Held::new();
         };
         let mut reservations = TokenSet::new();
         for (position, arg) in args.iter().enumerate() {
-            let param_mode = CallableDef::Func(func).param_mode(self.db, position, mode);
-            let direct = self.passed_to(arg.value, param_mode);
+            let access = callee_input_access(self.db, callee, position);
+            let direct = self.passed_to(arg.value, access);
             if direct.is_empty() {
                 continue;
             }
-            let mode = match param_mode {
-                FuncParamMode::Mut => BorrowKind::Mut,
-                FuncParamMode::View | FuncParamMode::Own => BorrowKind::Ref,
+            let mode = match access {
+                Some(BindingAccess::Mut) => BorrowKind::Mut,
+                Some(BindingAccess::View | BindingAccess::Ref) | None => BorrowKind::Ref,
             };
             let regions: Vec<AbsPlace> = direct
                 .iter()
@@ -877,7 +876,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         let mut footprints: Vec<_> = args
             .iter()
             .enumerate()
-            .filter_map(|(position, arg)| self.capability_arg_footprint(owner, position, arg))
+            .filter_map(|(position, arg)| self.capability_arg_footprint(callee, position, arg))
             .collect();
         for effect in effect_args {
             footprints.extend(self.effect_footprint(callee, effect));
@@ -940,7 +939,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// Every persistent and transient slot, when the data argument at
-    /// `position` of a call of `func` is a reentrant or raw storage
+    /// `position` of a call of `callee` is a reentrant or raw storage
     /// capability: the callee may start an external execution or address
     /// slots through it, as through an effect. Read through a view. The
     /// methods `core` and `std` define on the capabilities say what they
@@ -948,10 +947,11 @@ impl<'a, 'db> Analysis<'a, 'db> {
     /// reaches nothing.
     fn capability_arg_footprint(
         &self,
-        owner: BodyOwner<'db>,
+        callee: SemanticInstanceKey<'db>,
         position: usize,
         arg: &NOperand,
     ) -> Option<Footprint> {
+        let owner = callee.owner(self.db);
         if let BodyOwner::Func(func, _) = owner
             && matches!(
                 func.top_mod(self.db).ingot(self.db).kind(self.db),
@@ -960,15 +960,19 @@ impl<'a, 'db> Analysis<'a, 'db> {
         {
             return None;
         }
-        let mode = callee_param_mode(self.db, owner, position)?;
-        let declared = match owner {
-            BodyOwner::Func(func, _) => func.params(self.db).nth(position).map(|p| p.ty(self.db)),
-            _ => None,
-        };
+        // The declared type, before the callee's generic arguments.
+        let typed_body = &infer_body(self.db, owner).1;
+        let input = *typed_body.input_bindings().get(position)?;
+        let declared =
+            matches!(owner, BodyOwner::Func(..)).then(|| typed_body.binding_ty(self.db, input));
         let ty = self.body.values[arg.value.index()].ty;
         let ty = ty.as_capability(self.db).map_or(ty, |(_, inner)| inner);
-        let access =
-            self.capability_state_access(owner, declared, ty, mode != FuncParamMode::View)?;
+        // A view or a `ref` part only reads; an owned or `mut` input may write.
+        let reads = matches!(
+            typed_body.binding_access(input),
+            Some(BindingAccess::View | BindingAccess::Ref)
+        );
+        let access = self.capability_state_access(owner, declared, ty, !reads)?;
         Some(Footprint {
             regions: state_regions(),
             mode: access.borrow_kind(),
@@ -2096,16 +2100,22 @@ impl<'a, 'db> Analysis<'a, 'db> {
         // The places each argument passes, as the callee takes them.
         let mut passed = Vec::new();
         for (position, arg) in args.iter().enumerate() {
-            let Some(param_mode) = callee_param_mode(self.db, owner, position) else {
+            if callee
+                .typed_body(self.db)
+                .input_bindings()
+                .get(position)
+                .is_none()
+            {
                 continue;
-            };
+            }
+            let access = callee_input_access(self.db, callee, position);
             let arg_origin = operand_origin(*arg, origin);
-            let direct = self.passed_to(arg.value, param_mode);
+            let direct = self.passed_to(arg.value, access);
             if direct.is_empty() {
                 // An aggregate passed by value is still viewed in place: the
                 // call reads the place it came from.
                 let ty = self.body.values[arg.value.index()].ty;
-                if param_mode == FuncParamMode::View
+                if access == Some(BindingAccess::View)
                     && !ty_is_snapshot(self.db, self.scope, ty, self.assumptions)
                 {
                     let (regions, parents) = self.source_place(arg.value);
@@ -2123,9 +2133,9 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 }
                 continue;
             }
-            let (mode, kind) = match param_mode {
-                FuncParamMode::Mut => (BorrowKind::Mut, MemoryAccessKind::MutAccess),
-                FuncParamMode::View | FuncParamMode::Own => {
+            let (mode, kind) = match access {
+                Some(BindingAccess::Mut) => (BorrowKind::Mut, MemoryAccessKind::MutAccess),
+                Some(BindingAccess::View | BindingAccess::Ref) | None => {
                     (BorrowKind::Ref, MemoryAccessKind::Read)
                 }
             };
@@ -2153,7 +2163,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         let mut footprints: Vec<_> = args
             .iter()
             .enumerate()
-            .filter_map(|(position, arg)| self.capability_arg_footprint(owner, position, arg))
+            .filter_map(|(position, arg)| self.capability_arg_footprint(callee, position, arg))
             .collect();
         for effect in effect_args {
             footprints.extend(self.effect_footprint(callee, effect));
@@ -2501,21 +2511,16 @@ fn call_args(body: &NormalizedBody<'_>) -> FxHashSet<NValueId> {
     args
 }
 
-/// The mode of a callee's parameter at `position`: a closure's first is its
-/// environment, in the mode the closure is called with.
-fn callee_param_mode<'db>(
+/// How the callee `callee` takes its input at `position`: a parameter, or a
+/// product parameter's part; a closure's first input is its environment, in
+/// the mode the closure is called with. `None` for an owned input.
+pub(super) fn callee_input_access<'db>(
     db: &'db dyn HirAnalysisDb,
-    owner: BodyOwner<'db>,
+    callee: SemanticInstanceKey<'db>,
     position: usize,
-) -> Option<FuncParamMode> {
-    match owner {
-        BodyOwner::Func(func, mode) => Some(CallableDef::Func(func).param_mode(db, position, mode)),
-        BodyOwner::Closure { ty, receiver, .. } => match position.checked_sub(1) {
-            None => Some(receiver),
-            Some(idx) => ty.modes(db).get(idx).copied(),
-        },
-        _ => None,
-    }
+) -> Option<BindingAccess> {
+    let typed_body = callee.typed_body(db);
+    typed_body.binding_access(*typed_body.input_bindings().get(position)?)
 }
 
 fn state_regions() -> Vec<AbsPlace> {

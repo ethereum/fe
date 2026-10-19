@@ -101,6 +101,11 @@ pub(crate) struct TyCheckEnv<'db> {
 
     /// Param bindings for transfer to TypedBody
     param_bindings: Vec<LocalBinding<'db>>,
+    /// The inputs a call passes the body: each parameter, or each part of a
+    /// product parameter.
+    input_bindings: Vec<LocalBinding<'db>>,
+    /// Each parameter's shape if it is a product, by index.
+    param_products: Vec<Option<Shape<'db>>>,
     /// Pat bindings for transfer to TypedBody
     pat_bindings: SecondaryMap<PatId, Option<LocalBinding<'db>>>,
     local_borrow_providers: SecondaryMap<PatId, Option<AddressSpace>>,
@@ -127,6 +132,8 @@ pub(crate) struct TyCheckEnv<'db> {
     place_entries: FxHashSet<ExprId>,
     /// The tuples that are unsafe splits (`check_unsafe_split`).
     unsafe_splits: FxHashSet<ExprId>,
+    /// The tuples passed to product parameters, a part each.
+    product_args: FxHashSet<ExprId>,
     /// The calls `f(..)` of callable values, whose callee is the receiver.
     value_calls: FxHashSet<ExprId>,
     covered_providers: FxHashSet<ExprId>,
@@ -238,6 +245,8 @@ impl<'db> TyCheckEnv<'db> {
             loop_stack: Vec::new(),
             expr_stack: Vec::new(),
             param_bindings: Vec::new(),
+            input_bindings: Vec::new(),
+            param_products: Vec::new(),
             pat_bindings: SecondaryMap::new(),
             local_borrow_providers: SecondaryMap::new(),
             pat_binding_modes: SecondaryMap::new(),
@@ -249,6 +258,7 @@ impl<'db> TyCheckEnv<'db> {
             inspected_places: FxHashSet::default(),
             place_entries: FxHashSet::default(),
             unsafe_splits: FxHashSet::default(),
+            product_args: FxHashSet::default(),
             value_calls: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
             yield_shapes: SecondaryMap::new(),
@@ -260,30 +270,15 @@ impl<'db> TyCheckEnv<'db> {
 
         match owner {
             BodyOwner::Func(func, mode) => {
-                let arg_tys = func.arg_tys(db);
-                for (idx, view) in func.params(db).enumerate() {
-                    let mut ty = *arg_tys
-                        .get(idx)
-                        .map_or(&TyId::invalid(db, InvalidCause::ParseError), |b| {
-                            b.skip_binder()
-                        });
-
-                    if !ty.is_star_kind(db) {
-                        ty = TyId::invalid(db, InvalidCause::Other);
-                    }
-                    let var = LocalBinding::Param {
-                        site: ParamSite::Func(func),
-                        idx,
-                        mode: view.mode_at(db, mode),
-                        ty,
-                        is_mut: view.is_mut(db),
-                    };
-
-                    env.param_bindings.push(var);
+                let bindings = func_param_bindings(db, func, mode);
+                for (view, &var) in func.params(db).zip(&bindings.params) {
                     if let Some(name) = view.name(db) {
                         env.register_var_in_current_scope(name, var);
                     };
                 }
+                env.param_bindings = bindings.params;
+                env.input_bindings = bindings.inputs;
+                env.param_products = bindings.products;
             }
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } => {}
             BodyOwner::ContractInit { contract } => {
@@ -313,6 +308,7 @@ impl<'db> TyCheckEnv<'db> {
                         is_mut: param.is_mut,
                     };
                     env.param_bindings.push(var);
+                    env.input_bindings.push(var);
                     if let Some(name) = param.name() {
                         env.register_var_in_current_scope(name, var);
                     }
@@ -824,6 +820,11 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
+    /// The shape of `binding` if it is a product parameter's.
+    pub(super) fn param_product(&self, binding: &LocalBinding<'db>) -> Option<&Shape<'db>> {
+        param_product(&self.param_products, binding)
+    }
+
     pub(super) fn lookup_binding_ty(&self, binding: &LocalBinding<'db>) -> TyId<'db> {
         match binding {
             LocalBinding::Local { pat, .. } => self
@@ -833,7 +834,7 @@ impl<'db> TyCheckEnv<'db> {
                 .flatten()
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
 
-            LocalBinding::Param { ty, .. } => *ty,
+            LocalBinding::Param { ty, .. } | LocalBinding::ParamPart { ty, .. } => *ty,
 
             LocalBinding::EffectParam { site, idx, .. } => self
                 .resolved_effect_param_ty(*site, *idx)
@@ -876,6 +877,14 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn record_unsafe_split(&mut self, tuple: ExprId) {
         self.unsafe_splits.insert(tuple);
+    }
+
+    pub(super) fn record_product_arg(&mut self, tuple: ExprId) {
+        self.product_args.insert(tuple);
+    }
+
+    pub(super) fn is_product_arg(&self, expr: ExprId) -> bool {
+        self.product_args.contains(&expr)
     }
 
     pub(super) fn record_value_call(&mut self, call: ExprId) {
@@ -1449,6 +1458,7 @@ impl<'db> TyCheckEnv<'db> {
             yield_shapes: self.yield_shapes,
             place_entries: self.place_entries,
             unsafe_splits: self.unsafe_splits,
+            product_args: self.product_args,
             value_calls: self.value_calls,
             matched_places: self.matched_places,
             inspected_places: self.inspected_places,
@@ -1462,6 +1472,8 @@ impl<'db> TyCheckEnv<'db> {
             call_effect_args: self.call_effect_args,
             return_borrow_provider: None,
             param_bindings: self.param_bindings,
+            input_bindings: self.input_bindings,
+            param_products: self.param_products,
             pat_bindings: self.pat_bindings,
             pat_binding_modes: self.pat_binding_modes,
             pattern_store,
@@ -1758,6 +1770,89 @@ fn param_name<'db>(
     }
 }
 
+/// The shape of `binding` among `products` if it is a product parameter's:
+/// the product its body destructures.
+pub(super) fn param_product<'a, 'db>(
+    products: &'a [Option<Shape<'db>>],
+    binding: &LocalBinding<'db>,
+) -> Option<&'a Shape<'db>> {
+    let LocalBinding::Param {
+        site: ParamSite::Func(_),
+        idx,
+        ..
+    } = binding
+    else {
+        return None;
+    };
+    products.get(*idx)?.as_ref()
+}
+
+/// The bindings of a function's parameters at a mode.
+#[derive(Default)]
+pub(super) struct FuncParamBindings<'db> {
+    /// One per parameter: a product parameter's is the product its body
+    /// destructures.
+    pub(super) params: Vec<LocalBinding<'db>>,
+    /// The inputs a call passes the function: each parameter, or each part
+    /// of a product parameter.
+    pub(super) inputs: Vec<LocalBinding<'db>>,
+    /// Each parameter's shape if it is a product, by index.
+    pub(super) products: Vec<Option<Shape<'db>>>,
+}
+
+/// The bindings of `func`'s parameters where it is used at `mode`.
+pub(super) fn func_param_bindings<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    mode: Option<BorrowKind>,
+) -> FuncParamBindings<'db> {
+    let arg_tys = func.arg_tys(db);
+    let site = ParamSite::Func(func);
+    let mut bindings = FuncParamBindings::default();
+    for (idx, view) in func.params(db).enumerate() {
+        let mut ty = *arg_tys
+            .get(idx)
+            .map_or(&TyId::invalid(db, InvalidCause::ParseError), |b| {
+                b.skip_binder()
+            });
+        if !ty.is_star_kind(db) {
+            ty = TyId::invalid(db, InvalidCause::Other);
+        }
+        let product = view.product(db, mode);
+        // A product parameter's binding owns the carriers of its parts.
+        let param = LocalBinding::Param {
+            site,
+            idx,
+            mode: if product.is_some() {
+                FuncParamMode::Own
+            } else {
+                view.mode_at(db, mode)
+            },
+            ty,
+            is_mut: view.is_mut(db),
+        };
+        bindings.params.push(param);
+        bindings.products.push(product.cloned());
+        match product {
+            Some(product) => {
+                bindings
+                    .inputs
+                    .extend(product.leaves().into_iter().enumerate().map(
+                        |(part, (access, ty))| LocalBinding::ParamPart {
+                            site,
+                            idx,
+                            part: part as u16,
+                            access,
+                            ty,
+                        },
+                    ));
+            }
+            None => bindings.inputs.push(param),
+        }
+    }
+    bindings
+}
+
 /// The declaration of parameter `idx` of `site`: a function's, a contract
 /// `init`'s or a closure's.
 pub(crate) fn hir_param<'db>(
@@ -1921,6 +2016,16 @@ pub enum LocalBinding<'db> {
         ty: TyId<'db>,
         is_mut: bool,
     },
+    /// A part of a product parameter (`_ (i, x): (own usize, ref T)`), which
+    /// a call passes as an input of its own: the `part`th leaf of parameter
+    /// `idx`'s shape, an `access` of the caller's place, or owned.
+    ParamPart {
+        site: ParamSite<'db>,
+        idx: usize,
+        part: u16,
+        access: Option<BorrowKind>,
+        ty: TyId<'db>,
+    },
     EffectParam {
         site: EffectParamSite<'db>,
         idx: usize,
@@ -1978,6 +2083,10 @@ pub(crate) fn binding_access<'db>(
             FuncParamMode::Mut => Some(BindingAccess::Mut),
             FuncParamMode::Own => None,
         },
+        LocalBinding::ParamPart { access, .. } => access.map(|access| match access {
+            BorrowKind::Ref => BindingAccess::Ref,
+            BorrowKind::Mut => BindingAccess::Mut,
+        }),
         LocalBinding::EffectParam { .. } => None,
     }
 }
@@ -1995,7 +2104,7 @@ pub(crate) fn binding_has_authority<'db>(
             site: ParamSite::EffectField(_),
             ..
         } => true,
-        LocalBinding::Param { .. } => false,
+        LocalBinding::Param { .. } | LocalBinding::ParamPart { .. } => false,
         LocalBinding::Local { pat, .. } => matches!(
             pat_mode(*pat),
             Some(PatBindingMode::Access {
@@ -2016,6 +2125,7 @@ impl<'db> LocalBinding<'db> {
             LocalBinding::Local { is_mut, .. }
             | LocalBinding::Param { is_mut, .. }
             | LocalBinding::EffectParam { is_mut, .. } => *is_mut,
+            LocalBinding::ParamPart { .. } => false,
         }
     }
 
@@ -2036,7 +2146,10 @@ impl<'db> LocalBinding<'db> {
                 ..
             }
             | Self::EffectParam { idx, .. } => Some(CallableInputOrigin::Effect(idx)),
+            // A part is never named: the product it is a part of is what
+            // the body reads.
             Self::Local { .. }
+            | Self::ParamPart { .. }
             | Self::Param {
                 site: ParamSite::ContractInit(_) | ParamSite::Closure(_) | ParamSite::ClosureEnv(_),
                 ..
@@ -2101,8 +2214,10 @@ impl<'db> LocalBinding<'db> {
                 .map(|binding| binding.binding_name)
                 .or_else(|| param_name(env.db, ParamSite::EffectField(*effect_site), *idx))
                 .unwrap_or_else(|| IdentId::new(env.db, "_".to_string())),
-            Self::Param { site, idx, .. } => param_name(env.db, *site, *idx)
-                .unwrap_or_else(|| IdentId::new(env.db, "_".to_string())),
+            Self::Param { site, idx, .. } | Self::ParamPart { site, idx, .. } => {
+                param_name(env.db, *site, *idx)
+                    .unwrap_or_else(|| IdentId::new(env.db, "_".to_string()))
+            }
             Self::EffectParam { binding_name, .. } => *binding_name,
         }
     }
@@ -2110,7 +2225,9 @@ impl<'db> LocalBinding<'db> {
     pub(super) fn def_span(&self, env: &TyCheckEnv<'db>) -> DynLazySpan<'db> {
         match self {
             LocalBinding::Local { pat, .. } => pat.span(env.body).into(),
-            LocalBinding::Param { site, idx, .. } => param_span(env.db, *site, *idx),
+            LocalBinding::Param { site, idx, .. } | LocalBinding::ParamPart { site, idx, .. } => {
+                param_span(env.db, *site, *idx)
+            }
             LocalBinding::EffectParam { site, idx, .. } => effect_param_span(env.db, *site, *idx),
         }
     }
@@ -2136,7 +2253,9 @@ impl<'db> LocalBinding<'db> {
     ) -> DynLazySpan<'db> {
         match self {
             LocalBinding::Local { pat, .. } => pat.span(body).into(),
-            LocalBinding::Param { site, idx, .. } => param_span(db, *site, *idx),
+            LocalBinding::Param { site, idx, .. } | LocalBinding::ParamPart { site, idx, .. } => {
+                param_span(db, *site, *idx)
+            }
             LocalBinding::EffectParam { site, idx, .. } => effect_param_span(db, *site, *idx),
         }
     }

@@ -554,6 +554,19 @@ impl<'db> TyFoldable<'db> for LocalBinding<'db> {
                 ty: ty.fold_with(db, folder),
                 is_mut,
             },
+            LocalBinding::ParamPart {
+                site,
+                idx,
+                part,
+                access,
+                ty,
+            } => LocalBinding::ParamPart {
+                site,
+                idx,
+                part,
+                access,
+                ty: ty.fold_with(db, folder),
+            },
         }
     }
 }

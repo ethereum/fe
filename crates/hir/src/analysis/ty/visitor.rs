@@ -387,7 +387,9 @@ impl<'db> TyVisitable<'db> for LocalBinding<'db> {
         V: TyVisitor<'db> + ?Sized,
     {
         match self {
-            LocalBinding::Param { ty, .. } => ty.visit_with(visitor),
+            LocalBinding::Param { ty, .. } | LocalBinding::ParamPart { ty, .. } => {
+                ty.visit_with(visitor)
+            }
             LocalBinding::Local { .. } | LocalBinding::EffectParam { .. } => {}
         }
     }

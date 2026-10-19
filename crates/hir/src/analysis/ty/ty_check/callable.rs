@@ -426,6 +426,31 @@ impl<'db> Callable<'db> {
         Some(self.normalize_with_trait_evidence(db, shape))
     }
 
+    /// The instantiated product of parameter `idx`, if it is a product
+    /// parameter.
+    pub fn param_product(&self, db: &'db dyn HirAnalysisDb, idx: usize) -> Option<Shape<'db>> {
+        let product = self
+            .callable_def
+            .param_product(db, idx, self.mode)?
+            .instantiate(db, &self.generic_args);
+        Some(self.normalize_with_trait_evidence(db, product))
+    }
+
+    /// The mode and type of each input the call passes: each parameter, or
+    /// each part of a product parameter.
+    pub fn input_modes(&self, db: &'db dyn HirAnalysisDb) -> Vec<(FuncParamMode, TyId<'db>)> {
+        (0..)
+            .map_while(|idx| {
+                let ty = self.arg_ty(db, idx)?;
+                Some(match self.param_product(db, idx) {
+                    Some(product) => product.part_modes(),
+                    None => vec![(self.callable_def.param_mode(db, idx, self.mode), ty)],
+                })
+            })
+            .flatten()
+            .collect()
+    }
+
     pub fn arg_ty(&self, db: &'db dyn HirAnalysisDb, idx: usize) -> Option<TyId<'db>> {
         let arg = self
             .callable_def
@@ -588,7 +613,10 @@ impl<'db> Callable<'db> {
                 && Some(expected_label) != given.label
             {
                 let diag = BodyDiag::CallArgLabelMismatch {
-                    primary: given.label_span.unwrap_or(given.expr_span.clone()),
+                    primary: given
+                        .label_span
+                        .clone()
+                        .unwrap_or_else(|| given.expr_span.clone()),
                     def_span: self.callable_def.name_span(),
                     given: given.label,
                     expected: expected_label,
@@ -626,106 +654,11 @@ impl<'db> Callable<'db> {
                 given.expr_prop.ty
             };
 
-            // A view or `mut` parameter accesses the caller's place for the
-            // call. An argument that is already an access (`ref p`, `mut p`, a
-            // projection's result) is used as one; a receiver is accessed
-            // implicitly; any other `mut` argument must be written `mut p`.
             let is_receiver = has_receiver && i == 0;
-            // A `mut self` receiver needs a mutable place.
-            if is_receiver
-                && mode == FuncParamMode::Mut
-                && !given.expr_prop.is_mut
-                && tc.select_mut_place(given.expr)
-            {
-                given.expr_prop = tc
-                    .env
-                    .typed_expr(given.expr)
-                    .expect("selected place is typed");
-            }
-            // A `mut?` call passed to a `mut` parameter is called at `mut`.
-            if !is_receiver
-                && mode == FuncParamMode::Mut
-                && given.expr_prop.access() == Some(BorrowKind::Ref)
-                && tc.select_mut_place(given.expr)
-            {
-                given.expr_prop = tc
-                    .env
-                    .typed_expr(given.expr)
-                    .expect("selected call is typed");
-            }
-            let access = given.expr_prop.access();
-            let mut diagnosed = false;
-            match mode {
-                FuncParamMode::Own => {}
-                FuncParamMode::View => {
-                    if access.is_some() {
-                        tc.consume_access(given.expr);
-                    }
-                }
-                // A projection's `mut` result is marked `mut` like a place,
-                // unless its type has no values, so the type says it is an
-                // access (`fill(buf.span())`).
-                FuncParamMode::Mut
-                    if access == Some(BorrowKind::Mut)
-                        && (is_receiver
-                            || tc.is_named_access(given.expr)
-                            || !given.expr_prop.ty.has_value_reading(db)) =>
-                {
-                    tc.consume_access(given.expr);
-                }
-                FuncParamMode::Mut if access == Some(BorrowKind::Mut) => {
-                    tc.consume_access(given.expr);
-                    tc.push_diag(BodyDiag::ExplicitBorrowRequired {
-                        primary: given.expr_span.clone(),
-                        kind: BorrowKind::Mut,
-                        suggestion: place_borrow_suggestion(
-                            db,
-                            tc.body(),
-                            given.expr,
-                            BorrowKind::Mut,
-                        ),
-                    });
-                    diagnosed = true;
-                }
-                FuncParamMode::Mut if is_receiver && access.is_none() => {
-                    if !given.expr_prop.is_mut && tc.env.is_place_expr(given.expr) {
-                        tc.report_cannot_borrow_mut(given.expr, given.expr_span.clone());
-                        diagnosed = true;
-                    }
-                }
-                // A closure literal is a temporary its callee may mutate:
-                // its captures are its own, read-only. A function item named
-                // by its path is a temporary that holds nothing.
-                FuncParamMode::Mut
-                    if matches!(
-                        given.expr.data(db, tc.body()),
-                        Partial::Present(Expr::Closure { .. })
-                    ) || tc.env.value_path_ref(given.expr)
-                        == Some(ValuePathRef::FunctionItem) => {}
-                FuncParamMode::Mut => {
-                    diagnosed = true;
-                    if access.is_some() {
-                        tc.consume_access(given.expr);
-                        tc.report_cannot_borrow_mut(given.expr, given.expr_span.clone());
-                    } else if tc.env.is_place_expr(given.expr) {
-                        tc.push_diag(BodyDiag::ExplicitBorrowRequired {
-                            primary: given.expr_span.clone(),
-                            kind: BorrowKind::Mut,
-                            suggestion: place_borrow_suggestion(
-                                db,
-                                tc.body(),
-                                given.expr,
-                                BorrowKind::Mut,
-                            ),
-                        });
-                    } else if !given.expr_prop.ty.has_invalid(db) {
-                        tc.push_diag(BodyDiag::BorrowArgMustBePlace {
-                            primary: given.expr_span.clone(),
-                            kind: BorrowKind::Mut,
-                        });
-                    }
-                }
-            }
+            let diagnosed = match self.callable_def.param_product(db, i, self.mode) {
+                Some(product) => check_product_arg(tc, &given, product.skip_binder()),
+                None => check_arg_mode(tc, &mut given, mode, is_receiver),
+            };
 
             if !diagnosed {
                 actual = tc.equate_ty(actual, expected, given.expr_span.clone());
@@ -886,6 +819,150 @@ fn expr_hint<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>, expr: ExprId) -> 
         Partial::Present(Expr::Lit(lit)) => Some(lit.pretty_print(db)),
         _ => None,
     }
+}
+
+/// Checks `arg` against a parameter of `mode`, or the receiver: a view or
+/// `mut` parameter accesses the caller's place. Returns whether it reported
+/// an error.
+fn check_arg_mode<'db>(
+    tc: &mut TyChecker<'db>,
+    arg: &mut CallArg<'db>,
+    mode: FuncParamMode,
+    is_receiver: bool,
+) -> bool {
+    let db = tc.db;
+    // A view or `mut` parameter accesses the caller's place for the
+    // call. An argument that is already an access (`ref p`, `mut p`, a
+    // projection's result) is used as one; a receiver is accessed
+    // implicitly; any other `mut` argument must be written `mut p`.
+    // A `mut self` receiver needs a mutable place.
+    if is_receiver
+        && mode == FuncParamMode::Mut
+        && !arg.expr_prop.is_mut
+        && tc.select_mut_place(arg.expr)
+    {
+        arg.expr_prop = tc
+            .env
+            .typed_expr(arg.expr)
+            .expect("selected place is typed");
+    }
+    // A `mut?` call passed to a `mut` parameter is called at `mut`.
+    if !is_receiver
+        && mode == FuncParamMode::Mut
+        && arg.expr_prop.access() == Some(BorrowKind::Ref)
+        && tc.select_mut_place(arg.expr)
+    {
+        arg.expr_prop = tc.env.typed_expr(arg.expr).expect("selected call is typed");
+    }
+    let access = arg.expr_prop.access();
+    let mut diagnosed = false;
+    match mode {
+        FuncParamMode::Own => {}
+        FuncParamMode::View => {
+            if access.is_some() {
+                tc.consume_access(arg.expr);
+            }
+        }
+        // A projection's `mut` result is marked `mut` like a place,
+        // unless its type has no values, so the type says it is an
+        // access (`fill(buf.span())`).
+        FuncParamMode::Mut
+            if access == Some(BorrowKind::Mut)
+                && (is_receiver
+                    || tc.is_named_access(arg.expr)
+                    || !arg.expr_prop.ty.has_value_reading(db)) =>
+        {
+            tc.consume_access(arg.expr);
+        }
+        FuncParamMode::Mut if access == Some(BorrowKind::Mut) => {
+            tc.consume_access(arg.expr);
+            tc.push_diag(BodyDiag::ExplicitBorrowRequired {
+                primary: arg.expr_span.clone(),
+                kind: BorrowKind::Mut,
+                suggestion: place_borrow_suggestion(db, tc.body(), arg.expr, BorrowKind::Mut),
+            });
+            diagnosed = true;
+        }
+        FuncParamMode::Mut if is_receiver && access.is_none() => {
+            if !arg.expr_prop.is_mut && tc.env.is_place_expr(arg.expr) {
+                tc.report_cannot_borrow_mut(arg.expr, arg.expr_span.clone());
+                diagnosed = true;
+            }
+        }
+        // A closure literal is a temporary its callee may mutate:
+        // its captures are its own, read-only. A function item named
+        // by its path is a temporary that holds nothing.
+        FuncParamMode::Mut
+            if matches!(
+                arg.expr.data(db, tc.body()),
+                Partial::Present(Expr::Closure { .. })
+            ) || tc.env.value_path_ref(arg.expr) == Some(ValuePathRef::FunctionItem) => {}
+        FuncParamMode::Mut => {
+            diagnosed = true;
+            if access.is_some() {
+                tc.consume_access(arg.expr);
+                tc.report_cannot_borrow_mut(arg.expr, arg.expr_span.clone());
+            } else if tc.env.is_place_expr(arg.expr) {
+                tc.push_diag(BodyDiag::ExplicitBorrowRequired {
+                    primary: arg.expr_span.clone(),
+                    kind: BorrowKind::Mut,
+                    suggestion: place_borrow_suggestion(db, tc.body(), arg.expr, BorrowKind::Mut),
+                });
+            } else if !arg.expr_prop.ty.has_invalid(db) {
+                tc.push_diag(BodyDiag::BorrowArgMustBePlace {
+                    primary: arg.expr_span.clone(),
+                    kind: BorrowKind::Mut,
+                });
+            }
+        }
+    }
+    diagnosed
+}
+
+/// Checks `arg`, passed to a product parameter of `product`: a tuple whose
+/// elements are passed to the parts as arguments of the parts' modes, or a
+/// projection's result granting the parts. Returns whether it reported an
+/// error.
+fn check_product_arg<'db>(
+    tc: &mut TyChecker<'db>,
+    arg: &CallArg<'db>,
+    product: &Shape<'db>,
+) -> bool {
+    let db = tc.db;
+    let Shape::Tuple(parts) = product else {
+        unreachable!("a product is a tuple of parts")
+    };
+    if let Partial::Present(Expr::Tuple(elems)) = arg.expr.data(db, tc.body())
+        && elems.len() == parts.len()
+    {
+        tc.env.record_product_arg(arg.expr);
+        let mut diagnosed = false;
+        for (&elem, part) in elems.iter().zip(parts) {
+            let prop = tc
+                .env
+                .typed_expr(elem)
+                .unwrap_or_else(|| ExprProp::invalid(db));
+            let mut elem = CallArg::new(None, elem, prop, None, elem.span(tc.body()).into());
+            diagnosed |= match part {
+                Shape::Tuple(_) => check_product_arg(tc, &elem, part),
+                Shape::Owned(_) => check_arg_mode(tc, &mut elem, FuncParamMode::Own, false),
+                Shape::Access(BorrowKind::Ref, _) => {
+                    check_arg_mode(tc, &mut elem, FuncParamMode::View, false)
+                }
+                Shape::Access(BorrowKind::Mut, _) => {
+                    check_arg_mode(tc, &mut elem, FuncParamMode::Mut, false)
+                }
+                Shape::Sum { .. } => unreachable!("a product's parts are no sums"),
+            };
+        }
+        return diagnosed;
+    }
+    if tc.grants_product(arg.expr, product) {
+        tc.consume_access(arg.expr);
+        return false;
+    }
+    tc.report_product_arg(arg.expr, product, false);
+    true
 }
 
 /// The lowered representation of [`HirCallArg`]

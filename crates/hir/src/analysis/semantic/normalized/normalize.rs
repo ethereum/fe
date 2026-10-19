@@ -33,12 +33,11 @@ use crate::{
             adt_def::AdtRef,
             provider::{AddressSpace, ProviderKind},
             trait_resolution::PredicateListId,
-            ty_check::{BodyOwner, LocalBinding},
+            ty_check::{BindingAccess, BodyOwner, LocalBinding},
             ty_def::{BorrowKind, CapabilityKind, TyData, TyId},
             ty_is_copy,
         },
     },
-    hir_def::FuncParamMode,
     projection::{IndexSource, Projection},
     semantic::ProviderBinding,
 };
@@ -2210,10 +2209,11 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         index: usize,
     ) -> Option<TyId<'db>> {
         let instance = get_or_build_semantic_instance(self.db, callee.key);
-        let binding = instance
+        let binding = *instance
             .key(self.db)
             .typed_body(self.db)
-            .param_binding(index)?;
+            .input_bindings()
+            .get(index)?;
         Some(copied_scalar_ty(
             self.db,
             instance.normalized_binding_ty(self.db, binding),
@@ -2226,14 +2226,14 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         index: usize,
         local: SLocalId,
     ) -> Option<ReadMode> {
-        let BodyOwner::Func(func, mode) = callee.key.owner(self.db) else {
+        let BodyOwner::Func(..) = callee.key.owner(self.db) else {
             return None;
         };
+        let typed_body = callee.key.typed_body(self.db);
+        let binding = *typed_body.input_bindings().get(index)?;
         matches!(
-            func.params(self.db)
-                .nth(index)
-                .map(|param| param.mode_at(self.db, mode)),
-            Some(FuncParamMode::View)
+            typed_body.binding_access(binding),
+            Some(BindingAccess::View)
         )
         .then(|| {
             if self.ty_is_copy(self.normalized_local_ty(local)) {

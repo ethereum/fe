@@ -27,10 +27,10 @@ use crate::{
             normalize::normalize_ty,
             shape::{Shape, SumKind, sum_kind},
             ty_check::{
-                BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef,
-                ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics, RecordInitLowering,
-                RecordLike, SemanticExprLowering, TypedBody, ValuePathRef, constructed_variant,
-                infer_body, transparent_newtype_field_ty,
+                BindingAccess, BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind,
+                ConstRef, ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics,
+                RecordInitLowering, RecordLike, SemanticExprLowering, TypedBody, ValuePathRef,
+                constructed_variant, infer_body, transparent_newtype_field_ty,
             },
             ty_def::{BorrowKind, TyData, TyId},
             ty_is_copy, ty_is_snapshot,
@@ -123,10 +123,8 @@ pub(crate) fn lower_to_smir_with_call_sites<'a, 'db>(
             });
             entry_locals.push(local);
         };
-        let mut idx = 0;
-        while let Some(binding) = typed_body.param_binding(idx) {
+        for &binding in typed_body.input_bindings() {
             push_binding_local(binding);
-            idx += 1;
         }
         for binding in
             owner_effect_bindings_for_mode(db, instance, template_owner, binding_role_mode)
@@ -324,6 +322,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         };
         cx.collect_binding_locals();
         cx.current = cx.new_block();
+        cx.bind_param_products();
         cx
     }
 
@@ -351,10 +350,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     }
 
     fn collect_binding_locals(&mut self) {
-        let mut param_idx = 0;
-        while let Some(binding) = self.typed_body.param_binding(param_idx) {
+        for &binding in self.typed_body.input_bindings() {
             self.alloc_entry_binding_local(binding);
-            param_idx += 1;
         }
         if let BodyOwner::ContractRecvArm {
             contract,
@@ -390,6 +387,56 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             if let Some(binding) = self.typed_body.pat_binding(pat) {
                 self.alloc_binding_local(binding);
             }
+        }
+    }
+
+    /// Gathers each product parameter's parts, the inputs a call passes, into
+    /// the product its body destructures.
+    fn bind_param_products(&mut self) {
+        for (idx, binding) in
+            (0..).map_while(|idx| Some((idx, self.typed_body.param_binding(idx)?)))
+        {
+            let Some(product) = self.typed_body.param_product(binding).cloned() else {
+                continue;
+            };
+            let parts: Vec<_> = self
+                .typed_body
+                .input_bindings()
+                .iter()
+                .filter(|input| {
+                    matches!(input, LocalBinding::ParamPart { idx: param, .. } if *param == idx)
+                })
+                .map(|input| self.binding_locals[input])
+                .collect();
+            let expr = self.gather_product(&product, &mut parts.into_iter());
+            let local = self.alloc_binding_local(binding);
+            self.push_synthetic_stmt(SStmtKind::Assign { dst: local, expr });
+        }
+    }
+
+    /// The product `shape` of `parts`, its leaves' carriers in order.
+    fn gather_product(
+        &mut self,
+        shape: &Shape<'db>,
+        parts: &mut impl Iterator<Item = SLocalId>,
+    ) -> SExpr<'db> {
+        let Shape::Tuple(elems) = shape else {
+            unreachable!("a product is a tuple of parts")
+        };
+        let mut fields = Vec::with_capacity(elems.len());
+        for elem in elems {
+            let value = if matches!(elem, Shape::Tuple(_)) {
+                let expr = self.gather_product(elem, parts);
+                self.emit_expr(elem.carrier_ty(self.db), expr)
+            } else {
+                parts.next().expect("an input for each part")
+            };
+            fields.push(SOperand::synthetic(value));
+        }
+        let ty = shape.carrier_ty(self.db);
+        SExpr::AggregateMake {
+            ty,
+            fields: fields.into(),
         }
     }
 
@@ -750,10 +797,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         ) && let Some(binding) = self.typed_body.expr_binding(expr)
             && !self.capture_places.contains_key(&binding)
             && let Some(&local) = self.binding_locals.get(&binding)
-            && self.locals[local.index()]
+            && (self.locals[local.index()]
                 .ty
                 .as_capability(self.db)
                 .is_some()
+                || self.typed_body.param_product(binding).is_some())
         {
             return self.value_pattern_source(local);
         }
@@ -1697,7 +1745,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let offset = usize::from(receiver.is_some());
         let mut values = Vec::with_capacity(args.len() + offset);
         for (index, &arg) in args.iter().enumerate() {
-            let value = self.lower_callable_argument(arg, callable, index + offset, false);
+            let param = index + offset;
+            if let Some(product) = callable.param_product(self.db, param) {
+                self.lower_product_arg(arg, &product, &mut values);
+                continue;
+            }
+            let value = self.lower_callable_argument(arg, callable, param, false);
             values.push(SOperand::expr(value, arg));
         }
         if let Some((receiver, prepared)) = receiver {
@@ -1844,6 +1897,85 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         } else {
             self.take_operand(expr, value)
         }
+    }
+
+    /// Lowers `arg`, passed to a product parameter of `product`, to one input
+    /// for each of its parts: a tuple's elements, or the carriers of a
+    /// projection's result.
+    fn lower_product_arg(&mut self, arg: ExprId, product: &Shape<'db>, values: &mut Vec<SOperand>) {
+        if !self.typed_body.is_product_arg(arg) {
+            let value = self.lower_source(arg);
+            self.lower_product_value(arg, value, product, values);
+            return;
+        }
+        let (Shape::Tuple(parts), Partial::Present(Expr::Tuple(elems))) =
+            (product, arg.data(self.db, self.body))
+        else {
+            unreachable!("a product argument is a tuple of its parts")
+        };
+        for (&elem, part) in elems.iter().zip(parts) {
+            let value = match part {
+                Shape::Tuple(_) => {
+                    self.lower_product_arg(elem, part, values);
+                    continue;
+                }
+                Shape::Owned(_) => {
+                    let value = self.lower_expr(elem);
+                    self.take_operand(elem, value)
+                }
+                Shape::Access(kind, _) => self.lower_product_part(elem, *kind),
+                Shape::Sum { .. } => unreachable!("a product's parts are no sums"),
+            };
+            values.push(SOperand::expr(value, elem));
+        }
+    }
+
+    /// The carriers of `value`, the product of shape `product` that `arg`
+    /// grants, one input for each part.
+    fn lower_product_value(
+        &mut self,
+        arg: ExprId,
+        value: SValueId,
+        product: &Shape<'db>,
+        values: &mut Vec<SOperand>,
+    ) {
+        let Shape::Tuple(parts) = product else {
+            values.push(SOperand::expr(value, arg));
+            return;
+        };
+        for (idx, part) in parts.iter().enumerate() {
+            let mut place = SPlace::new(value);
+            place.push_field(FieldIndex(idx as u16));
+            let read = self.emit_expr(part.carrier_ty(self.db), SExpr::ReadPlace { place });
+            self.lower_product_value(arg, read, part, values);
+        }
+    }
+
+    /// Lowers `elem`, passed as a product parameter's part of `kind`, to the
+    /// carrier of an access to the caller's place: one it is already, a
+    /// place it names, or a temporary holding its value.
+    fn lower_product_part(&mut self, elem: ExprId, kind: BorrowKind) -> SValueId {
+        if self.typed_body.expr_prop(self.db, elem).shape.is_some() {
+            return self.lower_source(elem);
+        }
+        if matches!(
+            elem.data(self.db, self.body),
+            Partial::Present(Expr::Path(_))
+        ) && let Some(binding) = self.typed_body.expr_binding(elem)
+            && !self.capture_places.contains_key(&binding)
+            && matches!(
+                self.typed_body.binding_access(binding),
+                Some(BindingAccess::Ref | BindingAccess::Mut)
+            )
+        {
+            return self.binding_locals[&binding];
+        }
+        let ty = self.expr_ty(elem);
+        let place = match self.try_lower_place(elem) {
+            Some(place) => place,
+            None => SPlace::new(self.hoist_temporary(elem, ty)),
+        };
+        self.emit_borrow(elem, place, kind, ty)
     }
 
     /// Resolves a receiver before the call's arguments: a temporary is
