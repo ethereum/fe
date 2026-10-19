@@ -11,8 +11,8 @@ use hir::{
             binder::Binder,
             corelib::{RuntimeBuiltinFuncKind, runtime_builtin_func_kind},
             normalize::normalize_from_assumptions,
-            trait_def::{TraitInstId, resolve_trait_method_instance},
-            trait_resolution::{PredicateListId, Selection, TraitSolveCx},
+            trait_def::TraitInstId,
+            trait_resolution::{PredicateListId, TraitSolveCx},
             ty_check::{BodyOwner, check_body},
             ty_def::{BorrowKind, TyBase, TyData, TyId},
         },
@@ -397,16 +397,10 @@ fn collect_typed_body_event_structs<'db>(
             && let hir::hir_def::CallableDef::Func(func) = callable.callable_def
         {
             let mut target = VisitedFuncBody::from_callable(func, callable);
-            if let Some(inst) = callable.trait_inst()
-                && let Some(name) = func.name(db).to_opt()
-                && let Selection::Unique(method) = resolve_trait_method_instance(
-                    db,
-                    TraitSolveCx::new(db, body.scope()).with_assumptions(typed_body.assumptions()),
-                    inst,
-                    name,
-                    callable.mode(),
-                )
-                && let Some(impl_func) = method.body()
+            if let Some(method) = callable.selected_method(
+                db,
+                TraitSolveCx::new(db, body.scope()).with_assumptions(typed_body.assumptions()),
+            ) && let Some(impl_func) = method.body()
                 && let Ok(body_args) = method.complete_body_args(db, callable.generic_args())
             {
                 target.func = impl_func;

@@ -299,28 +299,68 @@ impl<'db> ResolvedImplInstance<'db> {
         self.selected.params(db)
     }
 
-    /// Resolves an implemented trait method, called at `mode`, using this
-    /// already-selected impl.
+    /// The trait method `name` of this already-selected impl, called at
+    /// `mode`, with the body it runs. Absent when the trait has no such
+    /// method.
     ///
-    /// The returned generic arguments match the selected implementation for an
+    /// The body's generic arguments match the selected implementation for an
     /// explicit method and the resolved trait instance for a default method.
-    fn method_instance(
+    pub fn method(
         self,
         db: &'db dyn HirAnalysisDb,
         name: IdentId<'db>,
         mode: Option<BorrowKind>,
-    ) -> Option<(Func<'db>, Vec<TyId<'db>>)> {
+    ) -> Option<ResolvedMethodInstance<'db>> {
         let implementor = self.selected();
-        if let Some(func) = implementor.method_at(db, name, mode) {
-            return Some((func, self.impl_args(db).to_vec()));
-        }
-        let func = implementor
+        let declaration = implementor
             .trait_def(db)
             .method_defs(db)
             .get(&name)
-            .copied()
-            .filter(|method| method.body(db).is_some())?;
-        Some((func, self.trait_inst().args(db).to_vec()))
+            .copied()?;
+        let (body, body_args) = if let Some(func) = implementor.method_at(db, name, mode) {
+            (Some(func), self.impl_args(db).to_vec())
+        } else {
+            (
+                declaration.body(db).is_some().then_some(declaration),
+                self.trait_inst().args(db).to_vec(),
+            )
+        };
+        let (body_to_nominal, effect_pairs) = body.map_or_else(
+            || (Vec::new(), Some(Vec::new())),
+            |body| {
+                if body == declaration {
+                    (
+                        (0..param_schema(db, body.into(), ParamBasis::Full)
+                            .keys(db)
+                            .len())
+                            .map(Some)
+                            .collect(),
+                        None,
+                    )
+                } else {
+                    let correspondence = method_param_correspondence(
+                        db,
+                        body.as_callable(db).expect("selected method is callable"),
+                        declaration
+                            .as_callable(db)
+                            .expect("trait method is callable"),
+                        implementor.trait_inst(db),
+                    );
+                    (
+                        correspondence.body_to_trait_slots,
+                        Some(correspondence.trait_effect_to_body),
+                    )
+                }
+            },
+        );
+        Some(ResolvedMethodInstance {
+            resolved: self,
+            declaration,
+            body,
+            body_args,
+            body_to_nominal,
+            effect_pairs,
+        })
     }
 
     pub fn assoc_ty_template(
@@ -572,60 +612,13 @@ pub fn resolve_trait_method_instance<'db>(
     method: IdentId<'db>,
     mode: Option<BorrowKind>,
 ) -> Selection<ResolvedMethodInstance<'db>> {
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved) => resolved,
-        Selection::Ambiguous(_) => return Selection::Ambiguous(IndexSet::new()),
-        Selection::NotFound => return Selection::NotFound,
-    };
-    let Some(declaration) = resolved
-        .selected()
-        .trait_def(db)
-        .method_defs(db)
-        .get(&method)
-        .copied()
-    else {
-        return Selection::NotFound;
-    };
-    let (body, body_args) = resolved.method_instance(db, method, mode).map_or_else(
-        || (None, resolved.trait_inst().args(db).to_vec()),
-        |(func, args)| (Some(func), args),
-    );
-    let (body_to_nominal, effect_pairs) = body.map_or_else(
-        || (Vec::new(), Some(Vec::new())),
-        |body| {
-            if body == declaration {
-                (
-                    (0..param_schema(db, body.into(), ParamBasis::Full)
-                        .keys(db)
-                        .len())
-                        .map(Some)
-                        .collect(),
-                    None,
-                )
-            } else {
-                let correspondence = method_param_correspondence(
-                    db,
-                    body.as_callable(db).expect("selected method is callable"),
-                    declaration
-                        .as_callable(db)
-                        .expect("trait method is callable"),
-                    resolved.selected().trait_inst(db),
-                );
-                (
-                    correspondence.body_to_trait_slots,
-                    Some(correspondence.trait_effect_to_body),
-                )
-            }
-        },
-    );
-    Selection::Unique(ResolvedMethodInstance {
-        resolved,
-        declaration,
-        body,
-        body_args,
-        body_to_nominal,
-        effect_pairs,
-    })
+    match resolve_trait_impl_instance(db, solve_cx, inst) {
+        Selection::Unique(resolved) => resolved
+            .method(db, method, mode)
+            .map_or(Selection::NotFound, Selection::Unique),
+        Selection::Ambiguous(_) => Selection::Ambiguous(IndexSet::new()),
+        Selection::NotFound => Selection::NotFound,
+    }
 }
 
 /// Returns all implementors for the given `ty` whose constraints are fully proven.

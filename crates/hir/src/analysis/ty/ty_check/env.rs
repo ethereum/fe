@@ -40,7 +40,9 @@ use crate::analysis::{
         provider::AddressSpace,
         shape::Shape,
         trait_def::TraitInstId,
-        trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
+        trait_resolution::{
+            PredicateListId, TraitSolveCx, constraint::collect_func_effect_provider_constraints,
+        },
         ty_def::{BorrowKind, ClosureTy, InvalidCause, StringFallback, TyData, TyId, TyVarSort},
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
@@ -1389,6 +1391,17 @@ impl<'db> TyCheckEnv<'db> {
             .values_mut()
             .flatten()
             .for_each(|plan| *plan = plan.clone().fold_with(self.db, &mut prober));
+        // Each call's trait goal is now final: select its implementation once,
+        // here, for every later stage.
+        let solve_cx = TraitSolveCx::new(self.db, prober.scope).with_assumptions(assumptions);
+        for lowering in self.semantic_expr_lowering.values_mut().flatten() {
+            lowering.callable_mut().record_selection(self.db, solve_cx);
+        }
+        for plan in self.for_loop_plans.values_mut().flatten() {
+            for call in &mut plan.calls {
+                call.callable.record_selection(self.db, solve_cx);
+            }
+        }
         self.closure_infos
             .values_mut()
             .flatten()
