@@ -680,7 +680,10 @@ pub(crate) fn const_use_reads<'db>(
         ConstRef::Const(_) => return Vec::new(),
     };
     let mut reads = own.into_iter().collect::<Vec<_>>();
-    let given = delivered.map_or_else(Vec::new, |list| list.const_body_deliveries(db, body));
+    let chosen = own.and_then(|(_, choice)| choice).and_then(|choice| choice.known());
+    let given = delivered
+        .or_else(|| chosen.and_then(|known| known.bounds()))
+        .map_or_else(Vec::new, |list| list.const_body_deliveries(db, chosen, body));
     for (bound, at_use) in const_declared_goals(db, body, &subst) {
         let choice = given
             .iter()
@@ -2773,7 +2776,10 @@ impl<'db> TyCheckEnv<'db> {
         reached: &mut Vec<TraitInstId<'db>>,
     ) -> Result<crate::analysis::ty::assoc_const::AssocConstUse<'db>, ChoiceRefusal> {
         let db = self.db();
-        let own = self.decide(frame, use_.inst());
+        let own = self.decide(frame, use_.inst()).or_else(|| {
+            let mut active = rustc_hash::FxHashSet::default();
+            self.ordinary_choice(use_.inst(), 0, &mut active)
+        });
         let use_ = use_.with_choice(own);
         let mut undecided = Vec::new();
         let items = match use_.body_that_runs(db) {
@@ -2879,28 +2885,33 @@ impl<'db> TyCheckEnv<'db> {
         reached: &mut Vec<TraitInstId<'db>>,
     ) -> Result<Vec<(Delivery<'db>, Choice<'db>)>, ChoiceRefusal> {
         let db = self.db();
-        let generic = !self.own_bounds().is_empty();
-        if !has_frames(frame) && !generic {
-            return Ok(Vec::new());
-        }
         let mut items = Vec::new();
         for (bound, at_use) in const_declared_goals(db, body, &subst) {
-            let Some(choice) = self.decide(frame, at_use) else {
-                undecided.push(at_use);
-                continue;
-            };
-            if const_type_reads(db, body, ty).contains(&bound) {
-                match choice {
-                    Choice::Slot(SlotRef::Bound(goal)) => {
-                        if !reached.contains(&goal) {
-                            reached.push(goal);
+            let choice = match self.decide(frame, at_use) {
+                Some(choice) => {
+                    if const_type_reads(db, body, ty).contains(&bound) {
+                        match choice {
+                            Choice::Slot(SlotRef::Bound(goal)) => {
+                                if !reached.contains(&goal) {
+                                    reached.push(goal);
+                                }
+                            }
+                            // Refused where it is read (`written_frames`).
+                            Choice::Slot(SlotRef::Unsupplied) => {}
+                            _ => return Err(ChoiceRefusal::DependentType),
                         }
                     }
-                    // Refused where it is read (`written_frames`).
-                    Choice::Slot(SlotRef::Unsupplied) => {}
-                    _ => return Err(ChoiceRefusal::DependentType),
+                    choice
                 }
-            }
+                None => {
+                    undecided.push(at_use);
+                    let mut active = rustc_hash::FxHashSet::default();
+                    let Some(choice) = self.ordinary_choice(at_use, 0, &mut active) else {
+                        continue;
+                    };
+                    choice
+                }
+            };
             let delivery = if nominal {
                 Delivery::Nominal(bound)
             } else {

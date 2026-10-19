@@ -1377,7 +1377,7 @@ fn semantic_const_key_for_inherent_const<'db>(
     let ty = inherent_const_decl_ty(db, use_.impl_(), use_.name())?;
     let choices = use_
         .delivered()
-        .map_or_else(SlotChoices::default, |list| list.to_body(db, body));
+        .map_or_else(SlotChoices::default, |list| list.to_body(db, None, body));
     Some(SemanticInstanceKey::new(
         db,
         BodyOwner::AnonConstBody { body, expected: ty },

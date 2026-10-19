@@ -431,3 +431,182 @@ fn bad_through_generic() -> u32 {
     }
 }
 
+#[test]
+fn ordinary_assoc_const_records_known_choice_and_prerequisite_bound_evidence() {
+    use fe_hir::{
+        analysis::ty::{
+            trait_choice::{Choice, Delivery, SlotChoices, body_deliveries},
+            ty_check::{ConstRef, check_func_body},
+        },
+        hir_def::CallableDef,
+    };
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "ordinary_assoc_const_known_choice.fe".into(),
+        r#"
+trait Inner {
+    const INNER: u256
+}
+
+impl Inner for u32 {
+    const INNER: u256 = 7
+}
+
+trait Outer {
+    const OUTER: u256
+}
+
+struct Box<T> {
+    pub val: T,
+}
+
+impl<T: Inner> Outer for Box<T> {
+    const OUTER: u256 = T::INNER + 3
+}
+
+impl<T: Inner> Box<T> {
+    const INHERENT: u256 = T::INNER + 5
+}
+
+const fn read_outer<M: Outer>() -> u256 {
+    M::OUTER
+}
+
+const fn generic_box<U: Inner>() -> u256 {
+    read_outer<Box<U>>() + Box<U>::OUTER + Box<U>::INHERENT
+}
+
+const fn caller() -> u256 {
+    let a = u32::INNER
+    let b = Box<u32>::OUTER
+    let c = read_outer<Box<u32>>()
+    let d = generic_box<u32>()
+    let e = Box<u32>::INHERENT
+    a + b + c + d + e
+}
+
+struct Verify<const N: u256> where { N == 71 } {}
+fn verify(_ v: Verify<{ caller() }>) {}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    db.assert_no_diags(module);
+
+    let impls = module.all_impl_traits(&db);
+    let inner_u32_impl = impls[0];
+    let outer_box_impl = impls[1];
+
+    let caller = find_func(&db, module, "caller");
+    let (_, typed) = check_func_body(&db, caller);
+
+    let mut saw_inner = false;
+    let mut saw_outer = false;
+    let mut saw_inherent = false;
+
+    for cref in typed.const_refs() {
+        match cref {
+            ConstRef::TraitConst(assoc) => match assoc.name().data(&db).as_str() {
+                "INNER" => {
+                    saw_inner = true;
+                    let Some(Choice::Known(known)) = assoc.choice() else {
+                        panic!("expected KnownChoice on u32::INNER, got {:?}", assoc.choice());
+                    };
+                    assert!(known.is_ordinary());
+                    assert_eq!(known.implementation(), inner_u32_impl);
+                    assert!(known.bounds().is_none());
+                }
+                "OUTER" => {
+                    saw_outer = true;
+                    let Some(Choice::Known(known)) = assoc.choice() else {
+                        panic!("expected KnownChoice on Box<u32>::OUTER, got {:?}", assoc.choice());
+                    };
+                    assert!(known.is_ordinary());
+                    assert_eq!(known.implementation(), outer_box_impl);
+                    let bounds = known
+                        .bounds()
+                        .expect("expected prerequisite bounds on Box<u32>: Outer");
+                    assert_eq!(bounds.items(&db).len(), 1);
+                    let (Delivery::Bound(_), Choice::Known(prereq)) = bounds.items(&db)[0] else {
+                        panic!(
+                            "expected KnownChoice prerequisite bound, got {:?}",
+                            bounds.items(&db)
+                        );
+                    };
+                    assert!(prereq.is_ordinary());
+                    assert_eq!(prereq.implementation(), inner_u32_impl);
+                }
+                other => panic!("unexpected trait const {other}"),
+            },
+            ConstRef::InherentConst(use_) => {
+                assert_eq!(use_.name().data(&db).as_str(), "INHERENT");
+                saw_inherent = true;
+                let delivered = use_
+                    .delivered()
+                    .expect("expected delivered bounds on Box<u32>::INHERENT");
+                assert_eq!(delivered.items(&db).len(), 1);
+                let (Delivery::Bound(_), Choice::Known(prereq)) = delivered.items(&db)[0] else {
+                    panic!(
+                        "expected KnownChoice bound on Box<u32>::INHERENT, got {:?}",
+                        delivered.items(&db)
+                    );
+                };
+                assert!(prereq.is_ordinary());
+                assert_eq!(prereq.implementation(), inner_u32_impl);
+            }
+            ConstRef::Const(_) => {}
+        }
+    }
+    assert!(saw_inner && saw_outer && saw_inherent);
+
+    // Also verify generic_box's parameterized AssocConstUse specializes cleanly
+    // when given a concrete SlotChoices for U: Inner.
+    let generic_box = find_func(&db, module, "generic_box");
+    let (_, gb_typed) = check_func_body(&db, generic_box);
+
+    let caller_call = typed
+        .body()
+        .unwrap()
+        .exprs(&db)
+        .keys()
+        .filter_map(|expr| typed.callable_expr(expr))
+        .find(|c| matches!(c.callable_def(), CallableDef::Func(f) if f == generic_box))
+        .expect("expected call to generic_box in caller");
+    let gb_slots = SlotChoices::from_resolved(
+        body_deliveries(
+            &db,
+            caller_call.choice().and_then(|c| c.known()),
+            caller_call.delivered(),
+            generic_box,
+            generic_box,
+        )
+        .into_iter()
+        .map(|(slot, choice)| (slot, SlotChoices::default().resolve_in(&db, Some(choice))))
+        .collect(),
+    );
+
+    let mut saw_gb_outer = false;
+    for cref in gb_typed.const_refs() {
+        if let ConstRef::TraitConst(assoc) = cref {
+            saw_gb_outer = true;
+            let specialized = assoc.specialize(&db, &gb_slots);
+            let Some(Choice::Known(known)) = specialized.choice() else {
+                panic!(
+                    "expected specialized Choice::Known, got {:?}",
+                    specialized.choice()
+                );
+            };
+            assert!(known.is_ordinary());
+            assert_eq!(known.implementation(), outer_box_impl);
+            let bounds = known.bounds().expect("expected specialized bounds");
+            let (Delivery::Bound(_bound_slot), Choice::Known(prereq)) = bounds.items(&db)[0] else {
+                panic!(
+                    "expected specialized KnownChoice bound, got {:?}",
+                    bounds.items(&db)
+                );
+            };
+            assert_eq!(prereq.implementation(), inner_u32_impl);
+        }
+    }
+    assert!(saw_gb_outer);
+}

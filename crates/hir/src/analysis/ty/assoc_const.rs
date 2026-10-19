@@ -93,16 +93,26 @@ impl<'db> AssocConstUse<'db> {
 
     /// This use read inside an instance that carries `choices`: its own
     /// decision and the decisions it delivers to the constant body.
-    pub(crate) fn specialize(self, db: &'db dyn HirAnalysisDb, choices: &SlotChoices<'db>) -> Self {
+    pub fn specialize(self, db: &'db dyn HirAnalysisDb, choices: &SlotChoices<'db>) -> Self {
         let delivered = self.delivered.map(|list| list.specialize(db, choices));
         let this = Self { delivered, ..self };
-        if !matches!(this.choice, Some(Choice::Slot(_))) {
+        if this.choice.is_none() {
             return this;
         }
-        match choices.resolve(this.choice) {
+        match choices.resolve_in(db, this.choice) {
             Resolved::Known(known) => this.with_choice(Some(Choice::Known(known))),
             Resolved::Pending => this.with_choice(Some(Choice::Slot(SlotRef::Unsupplied))),
             Resolved::Ordinary => this,
+        }
+    }
+
+    /// This use without ordinary value-position choices, for canonical
+    /// type-level comparison.
+    pub(crate) fn without_ordinary_choices(self, db: &'db dyn HirAnalysisDb) -> Self {
+        Self {
+            choice: self.choice.filter(|choice| !choice.is_ordinary()),
+            delivered: self.delivered.and_then(|list| list.without_ordinary(db)),
+            ..self
         }
     }
 
@@ -223,6 +233,15 @@ impl<'db> InherentConstUse<'db> {
     pub(crate) fn specialize(self, db: &'db dyn HirAnalysisDb, choices: &SlotChoices<'db>) -> Self {
         Self {
             delivered: self.delivered.map(|list| list.specialize(db, choices)),
+            ..self
+        }
+    }
+
+    /// This use without ordinary value-position choices, for canonical
+    /// type-level comparison.
+    pub(crate) fn without_ordinary_choices(self, db: &'db dyn HirAnalysisDb) -> Self {
+        Self {
+            delivered: self.delivered.and_then(|list| list.without_ordinary(db)),
             ..self
         }
     }

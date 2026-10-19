@@ -2575,7 +2575,7 @@ pub(crate) fn const_ty_or_abstract_from_assoc_const_use<'db>(
 ) -> Option<ConstTyId<'db>> {
     Some(const_ty_or_abstract(
         db,
-        ConstExpr::TraitConst(assoc),
+        ConstExpr::TraitConst(assoc.without_ordinary_choices(db)),
         const_ty_from_assoc_const_use(db, assoc),
         expected_ty,
     ))
@@ -2769,7 +2769,7 @@ pub(crate) fn const_ty_or_abstract_from_inherent_const_use<'db>(
 ) -> Option<ConstTyId<'db>> {
     Some(const_ty_or_abstract(
         db,
-        ConstExpr::InherentConst(use_),
+        ConstExpr::InherentConst(use_.without_ordinary_choices(db)),
         const_ty_from_inherent_const_use(db, use_),
         expected_ty,
     ))

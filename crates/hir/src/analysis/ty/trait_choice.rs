@@ -383,42 +383,63 @@ impl<'db> DeliveryList<'db> {
         Self::new(db, items)
     }
 
-    /// What this list delivers to the slots of `body`, the constant body
-    /// that runs, by that body's bound names. The one mapping from a constant
-    /// use to the body that runs.
+    /// The list without ordinary selections, for canonical type-level
+    /// comparison.
+    pub fn without_ordinary(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
+        let items: Vec<(Delivery<'db>, Choice<'db>)> = self
+            .items(db)
+            .iter()
+            .copied()
+            .filter(|(_, choice)| !choice.is_ordinary())
+            .collect();
+        (!items.is_empty()).then(|| Self::new(db, items))
+    }
+
+    /// What this list (and any prerequisite bounds carried by `chosen`)
+    /// delivers to the slots of `body`, the constant body that runs, by that
+    /// body's bound names. The one mapping from a constant use to the body
+    /// that runs.
     pub fn const_body_deliveries(
         self,
         db: &'db dyn HirAnalysisDb,
+        chosen: Option<KnownChoice<'db>>,
         body: crate::hir_def::Body<'db>,
     ) -> Vec<(TraitInstId<'db>, Choice<'db>)> {
         let slots = const_body_slots(db, body);
-        self.items(db)
-            .iter()
-            .filter_map(|(delivery, choice)| match delivery {
-                // A constant's declaration is its trait's default body, so a
-                // declaration's name reaches that body as its own; an
-                // implementation's constant declares its own bounds.
-                Delivery::Bound(bound) | Delivery::Nominal(bound) if slots.contains(bound) => {
-                    Some((*bound, *choice))
-                }
-                _ => None,
-            })
-            .collect()
+        let mut given: Vec<(TraitInstId<'db>, Choice<'db>)> = Vec::new();
+        let chosen_bounds = chosen
+            .and_then(|known| known.bounds())
+            .map(|list| list.items(db).as_slice())
+            .unwrap_or(&[]);
+        for (delivery, choice) in self.items(db).iter().chain(chosen_bounds.iter()) {
+            // A constant's declaration is its trait's default body, so a
+            // declaration's name reaches that body as its own; an
+            // implementation's constant declares its own bounds.
+            if let Delivery::Bound(bound) | Delivery::Nominal(bound) = delivery
+                && slots.contains(bound)
+                && !given.iter().any(|(slot, _)| slot == bound)
+            {
+                given.push((*bound, *choice));
+            }
+        }
+        given
     }
 
-    /// The instance choices a constant body receives from this list.
+    /// The instance choices a constant body receives from this list (and any
+    /// prerequisite bounds carried by `chosen`).
     pub fn to_body(
         self,
         db: &'db dyn HirAnalysisDb,
+        chosen: Option<KnownChoice<'db>>,
         body: crate::hir_def::Body<'db>,
     ) -> SlotChoices<'db> {
         SlotChoices::from_resolved(
-            self.const_body_deliveries(db, body)
+            self.const_body_deliveries(db, chosen, body)
                 .into_iter()
                 .map(|(bound, choice)| {
                     (
                         SlotRef::Bound(bound),
-                        SlotChoices::default().resolve(Some(choice)),
+                        SlotChoices::default().resolve_in(db, Some(choice)),
                     )
                 })
                 .collect(),

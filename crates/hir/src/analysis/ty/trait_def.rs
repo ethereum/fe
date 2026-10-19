@@ -1136,8 +1136,13 @@ pub(crate) fn chosen_constant<'db>(
     use_: super::assoc_const::AssocConstUse<'db>,
 ) -> Option<ChosenConstant<'db>> {
     use super::trait_choice::{Choice, SlotChoices, SlotRef};
-    let resolved = match use_.choice() {
-        Some(Choice::Known(known)) => known_instance(
+    let chosen = match use_.choice() {
+        Some(Choice::Known(known)) => Some(known),
+        Some(Choice::Slot(SlotRef::Bound(_))) | None => None,
+        Some(Choice::Slot(_)) => return None,
+    };
+    let resolved = match chosen {
+        Some(known) => known_instance(
             db,
             known,
             normalize_trait_inst_preserving_validity(
@@ -1147,7 +1152,7 @@ pub(crate) fn chosen_constant<'db>(
                 use_.assumptions(),
             ),
         )?,
-        Some(Choice::Slot(SlotRef::Bound(_))) | None => match resolve_trait_impl_instance(
+        None => match resolve_trait_impl_instance(
             db,
             use_.solve_cx(db),
             use_.inst(),
@@ -1156,7 +1161,6 @@ pub(crate) fn chosen_constant<'db>(
             Selection::Unique(resolved) => resolved,
             Selection::Ambiguous(_) | Selection::NotFound => return None,
         },
-        Some(Choice::Slot(_)) => return None,
     };
     let body =
         selected_assoc_const_body_template(db, resolved, use_.name()).map(|(body, ty, subst)| {
@@ -1166,7 +1170,8 @@ pub(crate) fn chosen_constant<'db>(
                 subst,
                 choices: use_
                     .delivered()
-                    .map_or_else(SlotChoices::default, |list| list.to_body(db, body)),
+                    .or_else(|| chosen.and_then(|known| known.bounds()))
+                    .map_or_else(SlotChoices::default, |list| list.to_body(db, chosen, body)),
             }
         });
     Some(ChosenConstant { resolved, body })
