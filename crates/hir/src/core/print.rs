@@ -1067,13 +1067,9 @@ impl<'db> Stmt<'db> {
                 result
             }
 
-            Stmt::For(pat, iter, driver, body_expr, unroll) => {
+            Stmt::For(pat, iter, body_expr, unroll) => {
                 let pat = unwrap_partial_ref(pat.data(db, body), "For::pat");
                 let iter_expr = unwrap_partial_ref(iter.data(db, body), "For::iter");
-                let driver = driver.map_or_else(String::new, |driver| {
-                    let driver = unwrap_partial_ref(driver.data(db, body), "For::driver");
-                    format!(" by {}", driver.pretty_print(db, body, indent))
-                });
                 let body_block = unwrap_partial_ref(body_expr.data(db, body), "For::body");
 
                 let prefix = match unroll {
@@ -1082,11 +1078,10 @@ impl<'db> Stmt<'db> {
                     None => "",
                 };
                 format!(
-                    "{}for {} in {}{} {}",
+                    "{}for {} in {} {}",
                     prefix,
                     pat.pretty_print(db, body),
                     iter_expr.pretty_print(db, body, indent),
-                    driver,
                     body_block.pretty_print(db, body, indent)
                 )
             }

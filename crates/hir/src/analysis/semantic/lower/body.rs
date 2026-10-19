@@ -2096,7 +2096,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 }
             }
             Stmt::While(cond, body_expr) => self.lower_while(*cond, *body_expr),
-            Stmt::For(pat, _, _, body_expr, _) => self.lower_for(stmt, *pat, *body_expr),
+            Stmt::For(pat, _, body_expr, _) => self.lower_for(stmt, *pat, *body_expr),
             Stmt::Continue => {
                 let is_reachable = !self.is_terminated(self.current);
                 let scope = self.loop_stack.last_mut().expect("continue outside loop");
@@ -2203,15 +2203,15 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
     }
 
-    /// Lowers `for pat in base by d { body }` to the protocol its plan
-    /// selects: the collection's own, or the driver's. The header tests the
-    /// state the body then projects from with `has`, so only the state is
-    /// carried around the loop. The next state is taken at the latch, after
-    /// the body and its element's cleanup, which is where `continue` goes;
-    /// `break` leaves without advancing. The latch does not test the state
-    /// again: a body over copied items may change the base, and `produce`
-    /// the producer, so `next` accepts a state that may name no element by
-    /// now, and the header tests what it returns.
+    /// Lowers `for pat in base { body }` to the protocol its plan selects:
+    /// the collection's own, or that of the method chain driving it. The
+    /// header tests the state the body then projects from with `has`, so only
+    /// the state is carried around the loop. The next state is taken at the
+    /// latch, after the body and its element's cleanup, which is where
+    /// `continue` goes; `break` leaves without advancing. The latch does not
+    /// test the state again: a body over copied items may change the base,
+    /// and `produce` the producer, so `next` accepts a state that may name no
+    /// element by now, and the header tests what it returns.
     fn lower_for(&mut self, stmt: StmtId, pat: PatId, body_expr: ExprId) {
         let sites = self
             .for_loop_call_sites
@@ -2228,9 +2228,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let value = self.loop_base_operand(base_expr, &base).value;
         self.loop_bases.insert(base_expr, value);
         // The driver is evaluated once, so the body cannot retarget it. A
-        // producer advances its own copy, which the loop takes; any other
-        // driver the loop holds as it does a base, by a view of its place for
-        // the whole loop, unless it is `Copy` or a fresh value.
+        // producer advances its own copy, which the loop takes; a driver that
+        // a projection yields is held as a base is, by a view of its place for
+        // the whole loop, unless it is `Copy`.
         let driver = plan.driver.map(|driver| {
             let ty = self.expr_ty(driver);
             if plan.item != ForLoopItem::Produced

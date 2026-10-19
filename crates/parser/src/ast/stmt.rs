@@ -86,12 +86,6 @@ impl ForStmt {
         support::child(self.syntax())
     }
 
-    /// The driver of `for x in y by d`.
-    pub fn driver(&self) -> Option<super::Expr> {
-        support::child::<ForDriver>(self.syntax())
-            .and_then(|driver| support::child(driver.syntax()))
-    }
-
     pub fn body(&self) -> Option<super::BlockExpr> {
         let mut block_exprs = support::children(self.syntax());
         let first = block_exprs.next();
@@ -100,12 +94,6 @@ impl ForStmt {
             None => first,
         }
     }
-}
-
-ast_node! {
-    /// `by d` in `for x in y by d {..}`
-    pub struct ForDriver,
-    SK::ForDriver
 }
 
 ast_node! {

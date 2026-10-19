@@ -395,11 +395,10 @@ impl<'db> UnsafeChecker<'db, '_> {
                     self.check_expr(*expr);
                 }
             }
-            Stmt::For(pat, iter, driver, body, _) => {
+            Stmt::For(pat, iter, body, _) => {
                 self.check_pat(*pat);
-                for expr in [*iter].into_iter().chain(*driver).chain([*body]) {
-                    self.check_expr(expr);
-                }
+                self.check_expr(*iter);
+                self.check_expr(*body);
             }
             Stmt::While(cond, body) => {
                 self.check_cond(*cond);
