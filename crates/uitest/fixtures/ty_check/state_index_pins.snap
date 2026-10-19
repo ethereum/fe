@@ -117,9 +117,9 @@ error[6-0029]: a type is pinned to a state space
     = give `type Space = Storage` or `type Space = Transient` (`core::marker`), or another pinned type's space, `P::Space`
 
 error[6-0029]: a type is pinned to a state space
-    ┌─ state_index_pins.fe:148:18
+    ┌─ state_index_pins.fe:168:18
     │
-148 │     type Space = S
+168 │     type Space = S
     │                  ^ this type is not `Storage` or `Transient`
     │
     = give `type Space = Storage` or `type Space = Transient` (`core::marker`), or another pinned type's space, `P::Space`

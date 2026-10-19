@@ -13,7 +13,7 @@ use crate::{
             ty_def::TyId,
         },
     },
-    core::semantic::constraints_for,
+    core::semantic::param_env,
     hir_def::{Contract, Func, IdentId, ImplTrait, scope_graph::ScopeId},
 };
 
@@ -256,8 +256,9 @@ fn state_space<'db>(
 }
 
 /// Whether `impl_trait`, an implementation of `core::marker::Pinned`, gives
-/// a state space as its `Space`, or the `Space` of a type its bounds pin:
-/// `P::Space`, which is `S` under `P: Pinned<Space = S>`.
+/// a state space as its `Space`, or the `Space` of a type its bounds, with
+/// the ones they imply, pin: `P::Space`, which is `S` under
+/// `P: Pinned<Space = S>`.
 pub fn is_state_pin<'db>(db: &'db dyn HirAnalysisDb, impl_trait: ImplTrait<'db>) -> bool {
     let scope = impl_trait.scope();
     let name = IdentId::new(db, "Space".to_string());
@@ -267,19 +268,15 @@ pub fn is_state_pin<'db>(db: &'db dyn HirAnalysisDb, impl_trait: ImplTrait<'db>)
     ) else {
         return false;
     };
-    let assumptions = constraints_for(db, impl_trait.into());
+    let assumptions = param_env(db, impl_trait.into());
     let space = normalize_ty(db, space, scope, assumptions);
     state_space(db, scope, space).is_some()
-        || assumptions
-            .extend_all_bounds(db)
-            .list(db)
-            .iter()
-            .any(|bound| {
-                bound.def(db) == pinned
-                    && bound.project_assoc_ty(db, name).is_some_and(|bound_space| {
-                        normalize_ty(db, bound_space, scope, assumptions) == space
-                    })
-            })
+        || assumptions.list(db).iter().any(|bound| {
+            bound.def(db) == pinned
+                && bound.project_assoc_ty(db, name).is_some_and(|bound_space| {
+                    normalize_ty(db, bound_space, scope, assumptions) == space
+                })
+        })
 }
 
 /// How a collection whose elements are places (`core::ops::StateIndex`)

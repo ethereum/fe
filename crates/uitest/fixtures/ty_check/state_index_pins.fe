@@ -141,6 +141,26 @@ impl<P: Pinned<Space = S>, S> Pinned for Equal<P, S> {
     type Space = S
 }
 
+trait Marker<S>: Pinned<Space = S> {}
+
+struct Implied<P, S> {}
+
+// Accepted: `P: Marker<S>` implies `P: Pinned<Space = S>`.
+impl<P: Marker<S>, S> Pinned for Implied<P, S> {
+    type Space = S
+}
+
+trait WhereMarker<S>
+    where Self: Pinned<Space = S>
+{}
+
+struct WhereImplied<P, S> {}
+
+// Accepted: so does a trait's `where Self: Pinned<Space = S>`.
+impl<P: WhereMarker<S>, S> Pinned for WhereImplied<P, S> {
+    type Space = S
+}
+
 struct Loose<P, S> {}
 
 // Rejected: nothing makes `S` a pinned type's space.
