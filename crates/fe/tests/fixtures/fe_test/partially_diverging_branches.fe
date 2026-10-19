@@ -116,6 +116,25 @@ fn code_after_match_with_diverging_arms_runs() {
     assert!(after_match(Choice::Fail) == 2)
 }
 
+fn after_panicking_arm(_ panic: bool) -> u64 {
+    var r: u64 = 0
+    match panic {
+        true => {
+            r = 1
+            core::panic()
+        },
+        false => {
+            r = 2
+        },
+    }
+    r
+}
+
+#[test]
+fn arms_after_a_diverging_first_arm_fall_through() {
+    assert!(after_panicking_arm(false) == 2)
+}
+
 fn always_returns(_ x: u64) -> u64 {
     if x == 0 { return 1 } else { return 2 }
 }
