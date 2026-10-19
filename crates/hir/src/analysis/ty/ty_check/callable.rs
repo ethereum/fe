@@ -26,7 +26,7 @@ use crate::analysis::{
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
-        trait_choice::{Choice, Delivery, SlotRef},
+        trait_choice::{Choice, Delivery},
         trait_def::TraitInstId,
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
@@ -331,7 +331,7 @@ impl<'db> Callable<'db> {
     /// predicate that reads a fixed choice matches only one that reads the
     /// same.
     pub(crate) fn as_written(&self) -> Self {
-        let forwards = |choice: &Choice<'db>| matches!(choice, Choice::Slot(SlotRef::Bound(_)));
+        let forwards = |choice: &Choice<'db>| choice.is_ordinary_or_bound();
         let mut written = self.clone();
         if written.choice.as_ref().is_some_and(forwards) {
             written.choice = None;

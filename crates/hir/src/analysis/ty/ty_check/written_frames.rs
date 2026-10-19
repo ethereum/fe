@@ -506,7 +506,8 @@ fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<
                     .filter(|(_, choice)| {
                         !matches!(
                             choice,
-                            Some(crate::analysis::ty::trait_choice::Choice::Known(_))
+                            Some(crate::analysis::ty::trait_choice::Choice::Known(known))
+                                if !known.is_ordinary()
                         )
                     })
                     .map(|(goal, _)| goal),

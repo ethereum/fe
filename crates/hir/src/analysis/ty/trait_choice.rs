@@ -42,15 +42,14 @@ pub fn slot_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> Tra
 }
 
 /// One implementation for one slot, with its conditions checked where the
-/// choice was decided. Identity is the implementation and the slot only.
-/// A decision is a proof: an implementation with the choices for its
-/// bounds. For now the proof is one level deep: a call delivers its
-/// implementation's bounds; sub-choices carried with the choice are not yet
-/// supported.
+/// choice was decided. Identity includes the implementation, the slot, and
+/// any decisions recorded for the implementation's own prerequisite bounds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub struct KnownChoice<'db> {
     implementation: ImplTrait<'db>,
     goal: TraitInstId<'db>,
+    bounds: Option<DeliveryList<'db>>,
+    ordinary: bool,
 }
 
 impl<'db> KnownChoice<'db> {
@@ -60,6 +59,14 @@ impl<'db> KnownChoice<'db> {
 
     pub fn goal(self) -> TraitInstId<'db> {
         self.goal
+    }
+
+    pub fn bounds(self) -> Option<DeliveryList<'db>> {
+        self.bounds
+    }
+
+    pub fn is_ordinary(self) -> bool {
+        self.ordinary
     }
 
     /// Check one authored implementation for `goal` in `cx` and name it.
@@ -73,6 +80,8 @@ impl<'db> KnownChoice<'db> {
         Ok(Self {
             implementation,
             goal: slot_goal(db, goal),
+            bounds: None,
+            ordinary: false,
         })
     }
 
@@ -86,6 +95,45 @@ impl<'db> KnownChoice<'db> {
         Self {
             implementation,
             goal: slot_goal(db, goal),
+            bounds: None,
+            ordinary: false,
+        }
+    }
+
+    /// An ambient ordinary implementation selected by the checker, together
+    /// with the decisions recorded for its prerequisite bounds.
+    pub fn ordinary(
+        db: &'db dyn HirAnalysisDb,
+        implementation: ImplTrait<'db>,
+        goal: TraitInstId<'db>,
+        bounds: Option<DeliveryList<'db>>,
+    ) -> Self {
+        let bounds = bounds.filter(|list| !list.items(db).is_empty());
+        let ordinary = bounds
+            .is_none_or(|list| list.items(db).iter().all(|(_, c)| c.is_ordinary_or_bound()));
+        Self {
+            implementation,
+            goal: slot_goal(db, goal),
+            bounds,
+            ordinary,
+        }
+    }
+
+    /// Specialize this choice's prerequisite bound decisions inside an
+    /// instance carrying `choices`.
+    pub fn specialize(self, db: &'db dyn HirAnalysisDb, choices: &SlotChoices<'db>) -> Self {
+        let Some(bounds) = self.bounds else {
+            return self;
+        };
+        let bounds = bounds.specialize(db, choices);
+        let bounds = (!bounds.items(db).is_empty()).then_some(bounds);
+        let ordinary = self.ordinary
+            && bounds
+                .is_none_or(|list| list.items(db).iter().all(|(_, c)| c.is_ordinary_or_bound()));
+        Self {
+            bounds,
+            ordinary,
+            ..self
         }
     }
 
@@ -126,6 +174,8 @@ impl<'db> TyFoldable<'db> for KnownChoice<'db> {
         Self {
             implementation: self.implementation,
             goal: self.goal.fold_with(db, folder),
+            bounds: self.bounds.map(|bounds| bounds.fold_with(db, folder)),
+            ordinary: self.ordinary,
         }
     }
 }
@@ -133,6 +183,9 @@ impl<'db> TyFoldable<'db> for KnownChoice<'db> {
 impl<'db> TyVisitable<'db> for KnownChoice<'db> {
     fn visit_with<V: TyVisitor<'db> + ?Sized>(&self, visitor: &mut V) {
         self.goal.visit_with(visitor);
+        if let Some(bounds) = self.bounds {
+            bounds.visit_with(visitor);
+        }
     }
 }
 
@@ -195,6 +248,39 @@ pub fn declared_goals<'db>(
         }
     }
     goals
+}
+
+/// The slots `implementation` declares on its generic parameters, each as
+/// written in its own generic context and as instantiated with `args`.
+pub fn impl_declared_goals<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementation: ImplTrait<'db>,
+    args: &[TyId<'db>],
+) -> Vec<(TraitInstId<'db>, TraitInstId<'db>)> {
+    let mut goals = Vec::new();
+    for own in impl_slots(db, implementation) {
+        let at_use = slot_goal(
+            db,
+            Binder::bind(
+                crate::hir_def::GenericParamOwner::ImplTrait(implementation),
+                own,
+            )
+            .instantiate(db, args),
+        );
+        if !goals.contains(&(own, at_use)) {
+            goals.push((own, at_use));
+        }
+    }
+    goals
+}
+
+fn impl_slots<'db>(db: &'db dyn HirAnalysisDb, implementation: ImplTrait<'db>) -> Vec<TraitInstId<'db>> {
+    let bounds = super::trait_resolution::constraint::collect_constraints(
+        db,
+        crate::hir_def::GenericParamOwner::ImplTrait(implementation),
+    )
+    .instantiate_identity();
+    slots_of(db, bounds.extend_all_bounds(db))
 }
 
 /// The slots `func` declares, as written in its own generic context: its
@@ -286,7 +372,7 @@ impl<'db> DeliveryList<'db> {
             .items(db)
             .iter()
             .filter_map(|(delivery, choice)| {
-                let choice = match choices.resolve(Some(*choice)) {
+                let choice = match choices.resolve_in(db, Some(*choice)) {
                     Resolved::Known(known) => Choice::Known(known),
                     Resolved::Pending => Choice::Slot(SlotRef::Unsupplied),
                     Resolved::Ordinary => return None,
@@ -360,11 +446,12 @@ impl<'db> TyVisitable<'db> for DeliveryList<'db> {
 }
 
 /// What a call of `nominal` delivers to the slots of `body`, the body that
-/// runs: a parameter by its index, a bound of `body` by name, and a bound of
-/// `nominal` through `role_map`. The one mapping from a call to the body that
-/// runs.
+/// runs: a parameter by its index, a bound of `body` by name (including any
+/// prerequisite bounds carried by `chosen`), and a bound of `nominal` through
+/// `role_map`. The one mapping from a call to the body that runs.
 pub fn body_deliveries<'db>(
     db: &'db dyn HirAnalysisDb,
+    chosen: Option<KnownChoice<'db>>,
     delivered: &[(Delivery<'db>, Choice<'db>)],
     nominal: Func<'db>,
     body: Func<'db>,
@@ -375,21 +462,31 @@ pub fn body_deliveries<'db>(
             slots.push((slot, choice));
         }
     };
+    let chosen_bounds = chosen
+        .and_then(|known| known.bounds())
+        .map(|list| list.items(db).as_slice())
+        .unwrap_or(&[]);
     let own = if delivered
         .iter()
+        .chain(chosen_bounds.iter())
         .any(|(delivery, _)| matches!(delivery, Delivery::Bound(_)))
     {
         own_slots(db, body)
     } else {
         Vec::new()
     };
-    for (delivery, choice) in delivered {
+    for (delivery, choice) in delivered.iter().chain(chosen_bounds.iter()) {
         match delivery {
             Delivery::Param(idx) => give(SlotRef::EvidenceParam(*idx), *choice, &mut slots),
             Delivery::Bound(bound) if own.contains(bound) => {
                 give(SlotRef::Bound(*bound), *choice, &mut slots)
             }
-            Delivery::Bound(_) => {}
+            Delivery::Bound(bound) => {
+                let mut_bound = bound.at_mode(db, Some(super::BorrowKind::Mut));
+                if own.contains(&mut_bound) {
+                    give(SlotRef::Bound(mut_bound), *choice, &mut slots);
+                }
+            }
             Delivery::Nominal(bound) => {
                 if let Some((_, in_body)) = role_map(db, nominal, body)
                     .iter()
@@ -548,6 +645,21 @@ impl<'db> Choice<'db> {
             _ => None,
         }
     }
+
+    pub fn known(self) -> Option<KnownChoice<'db>> {
+        match self {
+            Self::Known(known) => Some(known),
+            Self::Slot(_) => None,
+        }
+    }
+
+    pub fn is_ordinary(self) -> bool {
+        matches!(self, Self::Known(known) if known.is_ordinary())
+    }
+
+    pub fn is_ordinary_or_bound(self) -> bool {
+        self.is_ordinary() || matches!(self, Self::Slot(SlotRef::Bound(_)))
+    }
 }
 
 impl<'db> TyFoldable<'db> for Choice<'db> {
@@ -605,6 +717,12 @@ impl<'db> SlotChoices<'db> {
         self.slots.is_empty()
     }
 
+    pub fn is_ordinary(&self) -> bool {
+        self.slots
+            .iter()
+            .all(|(_, choice)| choice.is_some_and(|known| known.is_ordinary()))
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (SlotRef<'db>, Option<KnownChoice<'db>>)> + '_ {
         self.slots.iter().copied()
     }
@@ -630,6 +748,19 @@ impl<'db> SlotChoices<'db> {
                 None if matches!(slot, SlotRef::Bound(_)) => Resolved::Ordinary,
                 None => Resolved::Pending,
             },
+        }
+    }
+
+    /// Resolve `choice` inside `self` and specialize any prerequisite bound
+    /// decisions carried by a resulting [`KnownChoice`] with `self`.
+    pub fn resolve_in(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        choice: Option<Choice<'db>>,
+    ) -> Resolved<'db> {
+        match self.resolve(choice) {
+            Resolved::Known(known) => Resolved::Known(known.specialize(db, self)),
+            resolved => resolved,
         }
     }
 }

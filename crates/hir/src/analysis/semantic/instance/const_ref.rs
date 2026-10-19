@@ -763,7 +763,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     // undelivered bound selects the ordinary one, and a pending choice
     // selects nothing: the call stays symbolic.
     let caller_choices = impl_env.choices(db);
-    let chosen = caller_choices.resolve(callable.choice());
+    let chosen = caller_choices.resolve_in(db, callable.choice());
     let body_func = if let Some(inst) = callable.trait_inst()
         && let Some(name) = nominal_func.name(db).to_opt()
         && let Selection::Unique(method) = {
@@ -773,7 +773,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             let delivered_goals = callable
                 .delivered()
                 .iter()
-                .filter_map(|(_, choice)| match caller_choices.resolve(Some(*choice)) {
+                .filter_map(|(_, choice)| match caller_choices.resolve_in(db, Some(*choice)) {
                     Resolved::Known(known) => Some(known.goal()),
                     _ => None,
                 })
@@ -909,10 +909,16 @@ fn semantic_callee_key_with_assumptions<'db>(
     // its implementation's bounds, a default body's `Self`) and its evidence
     // parameters, from what the call delivers, resolved in the caller.
     let delivered = SlotChoices::from_resolved(
-        body_deliveries(db, callable.delivered(), nominal_func, body_func)
-            .into_iter()
-            .map(|(slot, choice)| (slot, caller_choices.resolve(Some(choice))))
-            .collect(),
+        body_deliveries(
+            db,
+            chosen.known(),
+            callable.delivered(),
+            nominal_func,
+            body_func,
+        )
+        .into_iter()
+        .map(|(slot, choice)| (slot, caller_choices.resolve_in(db, Some(choice))))
+        .collect(),
     );
     // Every call form delivers each evidence operand (`record_call`). An
     // evidence parameter a call left undelivered would make the instance
@@ -997,17 +1003,18 @@ fn semantic_callee_key_with_assumptions<'db>(
         );
         let original_ground = is_ground(collect_flags(db, inst));
         let independent = body_ground
-            && matches!(
-                resolve_trait_method_instance(
-                    db,
-                    TraitSolveCx::new(db, owner.scope()),
-                    resolved.trait_inst(),
-                    name,
-                    callable.mode(),
-                    crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
-                ),
-                Selection::Unique(method) if method.resolved() == resolved
-            );
+            && (chosen.known().is_some()
+                || matches!(
+                    resolve_trait_method_instance(
+                        db,
+                        TraitSolveCx::new(db, owner.scope()),
+                        resolved.trait_inst(),
+                        name,
+                        callable.mode(),
+                        crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
+                    ),
+                    Selection::Unique(method) if method.resolved() == resolved
+                ));
         // A symbolic nominal receiver can be discarded after selection only if
         // it normalizes to the independent implementation and neither signature
         // has additional effects, method bounds, or layout slots to carry.

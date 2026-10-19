@@ -2426,7 +2426,7 @@ fn condition_at_call<'db>(
     let mut opened = false;
     for (slot, choice) in reads {
         if let Some(choice) = choice.ok()? {
-            opened |= !matches!(choice, Choice::Slot(SlotRef::Bound(_)));
+            opened |= !choice.is_ordinary_or_bound();
             mapped.push((slot, choice));
         }
     }
@@ -2509,7 +2509,7 @@ fn owed_at_call<'db>(
         walk.low = 0;
         let carries_choice = slots
             .iter()
-            .any(|(_, choice)| !matches!(choice, Choice::Slot(SlotRef::Bound(_))));
+            .any(|(_, choice)| !choice.is_ordinary_or_bound());
         return if carries_choice {
             vec![EdgeFact::TooDeep]
         } else {
@@ -2633,7 +2633,13 @@ fn facts_at_call<'db>(
     // ordinary way, which can decide a debt the callee holds.
     let mut facts = Vec::new();
     if direct && callable.trait_inst.is_none() {
-        let slots = body_deliveries(db, callable.delivered(), func, func);
+        let slots = body_deliveries(
+            db,
+            callable.choice().and_then(|c| c.known()),
+            callable.delivered(),
+            func,
+            func,
+        );
         facts.extend(
             direct_conditions_at_call(db, func, callable.generic_args(), &slots)
                 .into_iter()
@@ -2642,7 +2648,13 @@ fn facts_at_call<'db>(
     }
     match callable.called_body(db, scope, assumptions) {
         Some((body, body_args)) => {
-            let slots = body_deliveries(db, callable.delivered(), func, body);
+            let slots = body_deliveries(
+                db,
+                callable.choice().and_then(|c| c.known()),
+                callable.delivered(),
+                func,
+                body,
+            );
             facts.extend(owed_at_call(
                 db,
                 body,
@@ -2777,7 +2789,7 @@ pub(super) fn call_refusal<'db>(
     if facts.iter().any(|fact| matches!(fact, EdgeFact::TooDeep)) {
         return Some(EdgeRefusal::TooDeep);
     }
-    let refused = |choice: &Choice<'db>| !matches!(choice, Choice::Slot(SlotRef::Bound(_)));
+    let refused = |choice: &Choice<'db>| !choice.is_ordinary_or_bound();
     if facts.iter().any(
         |fact| matches!(fact, EdgeFact::Reaches { choice, signature: false } if refused(choice)),
     ) {

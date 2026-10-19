@@ -134,3 +134,300 @@ fn normalized_prerequisite_cannot_hide_conditional_nominal_admission() {
         }
     }
 }
+
+#[test]
+fn ordinary_call_records_known_choice_and_prerequisite_bound_evidence() {
+    use fe_hir::{
+        analysis::ty::{
+            trait_choice::{Choice, Delivery, Resolved, SlotChoices, SlotRef, body_deliveries},
+            ty_check::{TypedBody, check_func_body},
+        },
+        hir_def::CallableDef,
+    };
+
+    fn calls_of<'a, 'db>(
+        db: &'db HirAnalysisTestDb,
+        typed: &'a TypedBody<'db>,
+    ) -> Vec<&'a fe_hir::analysis::ty::ty_check::Callable<'db>> {
+        let body = typed.body().unwrap();
+        body.exprs(db)
+            .keys()
+            .filter_map(|expr| typed.callable_expr(expr))
+            .collect()
+    }
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "ordinary_known_choice_skeleton.fe".into(),
+        r#"
+trait Inner {
+    const fn inner() -> u32
+}
+
+impl Inner for u32 {
+    const fn inner() -> u32 { 11 }
+}
+
+struct Box<T> {
+    pub val: T,
+}
+
+trait Outer {
+    const fn outer(self) -> u32
+}
+
+impl<T: Inner> Outer for Box<T> {
+    const fn outer(self) -> u32 {
+        T::inner()
+    }
+}
+
+const fn run<M: Outer>(_ m: M) -> u32 {
+    m.outer()
+}
+
+const fn wrap<U: Inner>(_ x: U) -> u32 {
+    run(Box { val: x })
+}
+
+const fn caller() -> u32 {
+    let one: u32 = 1
+    let a = u32::inner()
+    let b = (Box { val: one }).outer()
+    let c = run(Box { val: one })
+    let d = wrap(one)
+    a + b + c + d
+}
+
+struct Verify<const N: u32> where { N == 44 } {}
+fn verify(_ v: Verify<{ caller() }>) {}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    db.assert_no_diags(module);
+
+    let impls = module.all_impl_traits(&db);
+    let inner_u32_impl = impls[0];
+    let outer_box_impl = impls[1];
+
+    // 1. Check `caller`: direct concrete call, conditional concrete impl call,
+    // and generic bound call `run(Box { val: 1u32 })`.
+    let caller_fn = find_func(&db, module, "caller");
+    let (_, caller_typed) = check_func_body(&db, caller_fn);
+    let caller_calls: Vec<_> = calls_of(&db, caller_typed)
+        .into_iter()
+        .filter(|callable| {
+            let CallableDef::Func(func) = callable.callable_def() else {
+                return false;
+            };
+            matches!(
+                func.name(&db).to_opt().map(|id| id.data(&db).as_str()),
+                Some("inner" | "outer" | "run" | "wrap")
+            )
+        })
+        .collect();
+    assert_eq!(caller_calls.len(), 4);
+
+    // Call 0: `u32::inner()` records `KnownChoice::ordinary` for `impl Inner for u32` with no bounds.
+    let inner_call = caller_calls[0];
+    let Some(Choice::Known(inner_known)) = inner_call.choice() else {
+        panic!("expected KnownChoice on u32::inner(), got {:?}", inner_call.choice());
+    };
+    assert!(inner_known.is_ordinary());
+    assert_eq!(inner_known.implementation(), inner_u32_impl);
+    assert!(inner_known.bounds().is_none());
+
+    // Call 1: `(Box { val: 1u32 }).outer()` records `KnownChoice::ordinary` for `impl<T: Inner> Outer for Box<T>`
+    // with prerequisite `bounds` mapping `Inner<T> => Choice::Known(impl Inner for u32)`.
+    let outer_call = caller_calls[1];
+    let Some(Choice::Known(outer_known)) = outer_call.choice() else {
+        panic!("expected KnownChoice on Box.outer(), got {:?}", outer_call.choice());
+    };
+    assert!(outer_known.is_ordinary());
+    assert_eq!(outer_known.implementation(), outer_box_impl);
+    let outer_bounds = outer_known.bounds().expect("conditional impl must record prerequisite bounds");
+    assert_eq!(outer_bounds.items(&db).len(), 1);
+    assert_eq!(outer_bounds.items(&db)[0].1, Choice::Known(inner_known));
+
+    // Call 2: `run(Box { val: 1u32 })` delivers `outer_known` (carrying `inner_known`) to `run`'s `M: Outer` bound.
+    let run_call = caller_calls[2];
+    assert_eq!(run_call.delivered().len(), 1);
+    assert_eq!(run_call.delivered()[0].1, Choice::Known(outer_known));
+
+    // Follow `run`'s body: `m.outer()` resolves `SlotRef::Bound(Outer<M>)` to `Resolved::Known(outer_known)`,
+    // and `body_deliveries` unpacks `outer_known.bounds()` into `<Box<T> as Outer>::outer`'s `Inner<T>` slot
+    // without running the trait solver.
+    let run_fn = find_func(&db, module, "run");
+    let (_, run_typed) = check_func_body(&db, run_fn);
+    let m_outer_call = calls_of(&db, run_typed)[0];
+    let CallableDef::Func(nominal_outer_fn) = m_outer_call.callable_def() else {
+        panic!("expected Func callable");
+    };
+    let run_deliveries = body_deliveries(&db, None, run_call.delivered(), run_fn, run_fn);
+    let run_choices = SlotChoices::from_resolved(
+        run_deliveries
+            .into_iter()
+            .map(|(slot, choice)| (slot, SlotChoices::default().resolve_in(&db, Some(choice))))
+            .collect(),
+    );
+    let chosen_at_m_outer = run_choices.resolve_in(&db, m_outer_call.choice());
+    assert_eq!(chosen_at_m_outer, Resolved::Known(outer_known));
+
+    let box_outer_fn = outer_box_impl.methods(&db).next().unwrap();
+    let box_outer_deliveries = body_deliveries(
+        &db,
+        chosen_at_m_outer.known(),
+        m_outer_call.delivered(),
+        nominal_outer_fn,
+        box_outer_fn,
+    );
+    let box_outer_choices = SlotChoices::from_resolved(
+        box_outer_deliveries
+            .into_iter()
+            .map(|(slot, choice)| (slot, run_choices.resolve_in(&db, Some(choice))))
+            .collect(),
+    );
+    let (_, box_outer_typed) = check_func_body(&db, box_outer_fn);
+    let t_inner_call = calls_of(&db, box_outer_typed)[0];
+    assert_eq!(
+        box_outer_choices.resolve_in(&db, t_inner_call.choice()),
+        Resolved::Known(inner_known)
+    );
+
+    // 2. Check `wrap<U: Inner>`: `run(Box { val: x })` records parameterized `KnownChoice` whose
+    // prerequisite bound is `Choice::Slot(SlotRef::Bound(Inner<U>))`, and specializing with `wrap(1u32)`'s
+    // `SlotChoices` yields a concrete `KnownChoice` carrying `inner_known`.
+    let wrap_fn = find_func(&db, module, "wrap");
+    let (_, wrap_typed) = check_func_body(&db, wrap_fn);
+    let wrap_run_call = calls_of(&db, wrap_typed)[0];
+    let Some((_, Choice::Known(param_outer_known))) = wrap_run_call.delivered().first() else {
+        panic!("expected parameterized KnownChoice delivered in wrap");
+    };
+    assert!(param_outer_known.is_ordinary());
+    assert_eq!(param_outer_known.implementation(), outer_box_impl);
+    let param_bounds = param_outer_known.bounds().expect("parameterized impl must record bound slot");
+    assert!(matches!(
+        param_bounds.items(&db).as_slice(),
+        [(Delivery::Bound(_), Choice::Slot(SlotRef::Bound(_)))]
+    ));
+
+    let wrap_call = caller_calls[3];
+    let wrap_deliveries = body_deliveries(&db, None, wrap_call.delivered(), wrap_fn, wrap_fn);
+    let wrap_choices = SlotChoices::from_resolved(
+        wrap_deliveries
+            .into_iter()
+            .map(|(slot, choice)| (slot, SlotChoices::default().resolve_in(&db, Some(choice))))
+            .collect(),
+    );
+    let Resolved::Known(specialized_outer) =
+        wrap_choices.resolve_in(&db, Some(Choice::Known(*param_outer_known)))
+    else {
+        panic!("expected Known after specializing parameterized KnownChoice");
+    };
+    let specialized_bounds = specialized_outer.bounds().expect("specialized bounds");
+    assert_eq!(specialized_bounds.items(&db)[0].1, Choice::Known(inner_known));
+}
+
+#[test]
+fn ordinary_choice_records_coinductive_cycle_without_diverging() {
+    use fe_hir::analysis::ty::ty_check::check_func_body;
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "coinductive_ordinary_choice.fe".into(),
+        r#"
+struct Node {}
+
+trait Cycle {
+    fn ping(self) -> u32
+}
+
+impl Cycle for Node
+where
+    Node: Cycle
+{
+    fn ping(self) -> u32 { 7 }
+}
+
+fn use_cycle(_ n: Node) -> u32 {
+    n.ping()
+}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    let use_cycle = find_func(&db, module, "use_cycle");
+    let (diags, _) = check_func_body(&db, use_cycle);
+    assert!(
+        !diags.is_empty(),
+        "cyclic impl condition terminates cleanly without diverging"
+    );
+}
+
+#[test]
+fn conditional_impl_under_with_remains_refused() {
+    use fe_hir::analysis::ty::ty_check::check_func_body;
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "conditional_impl_under_with_refused.fe".into(),
+        r#"
+trait Inner {
+    fn inner() -> u32
+}
+
+impl Inner for u32 {
+    fn inner() -> u32 { 1 }
+}
+
+impl AltInner: Inner for u32 {
+    fn inner() -> u32 { 2 }
+}
+
+struct Box<T> {
+    pub val: T,
+}
+
+trait Outer {
+    fn outer(self) -> u32
+}
+
+impl<T: Inner> Outer for Box<T> {
+    fn outer(self) -> u32 {
+        T::inner()
+    }
+}
+
+fn run<M: Outer>(_ m: M) -> u32 {
+    m.outer()
+}
+
+fn wrap<U: Inner>(_ x: U) -> u32 {
+    run(Box { val: x })
+}
+
+fn bad_direct() -> u32 {
+    let one: u32 = 1
+    with (AltInner) {
+        run(Box { val: one })
+    }
+}
+
+fn bad_through_generic() -> u32 {
+    let one: u32 = 1
+    with (AltInner) {
+        wrap(one)
+    }
+}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    for func_name in ["bad_direct", "bad_through_generic"] {
+        let func = find_func(&db, module, func_name);
+        let (diags, _) = check_func_body(&db, func);
+        assert!(
+            !diags.is_empty(),
+            "expected conditional impl under `with` to be refused in `{func_name}`"
+        );
+    }
+}
+

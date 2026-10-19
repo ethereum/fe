@@ -31,8 +31,8 @@ use crate::{
             fold::{TyFoldable, TyFolder},
             trait_choice::{
                 Choice, ChoiceRefusal, Delivery, DeliveryList, KnownChoice, SlotRef,
-                body_deliveries, const_declared_goals, declared_goals, own_slots, role_map,
-                slot_goal,
+                body_deliveries, const_declared_goals, declared_goals, impl_declared_goals,
+                own_slots, role_map, slot_goal,
             },
             trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
             trait_lower::lower_impl_trait,
@@ -484,7 +484,13 @@ fn body_trait_uses<'db>(
         let (body_func, body_args) = callable
             .called_body(db, body.scope(), typed.assumptions())
             .unwrap_or_else(|| (func, callable.generic_args().to_vec()));
-        let slots = body_deliveries(db, callable.delivered(), func, body_func);
+        let slots = body_deliveries(
+            db,
+            callable.choice().and_then(|c| c.known()),
+            callable.delivered(),
+            func,
+            body_func,
+        );
         for (bound, goal) in declared_goals(db, body_func, &body_args) {
             let delivered = slots
                 .iter()
@@ -514,7 +520,11 @@ pub(super) fn owed_opened_conditions<'db>(
     let mut owed = Vec::new();
     let mut seen = Vec::new();
     for (goal, choice, own_slot) in body_trait_uses(db, typed) {
-        if own_slot || choice.is_some() || own.contains(&goal) || seen.contains(&goal) {
+        if own_slot
+            || choice.is_some_and(|c| !c.is_ordinary())
+            || own.contains(&goal)
+            || seen.contains(&goal)
+        {
             continue;
         }
         seen.push(goal);
@@ -1511,9 +1521,15 @@ impl<'db> TyChecker<'db> {
         let Some((body, _)) = callable.called_body(self.db, scope, assumptions) else {
             return Err(unknown);
         };
-        if body_deliveries(self.db, callable.delivered(), func, body)
-            .iter()
-            .any(|(_, choice)| matches!(choice, Choice::Slot(_)))
+        if body_deliveries(
+            self.db,
+            callable.choice().and_then(|c| c.known()),
+            callable.delivered(),
+            func,
+            body,
+        )
+        .iter()
+        .any(|(_, choice)| matches!(choice, Choice::Slot(_)))
         {
             return Err(unknown);
         }
@@ -2083,6 +2099,70 @@ impl<'db> TyCheckEnv<'db> {
         );
     }
 
+    /// The ordinary implementation of `inst`, together with the choices for
+    /// the bounds its `impl` declares, when `inst` has a unique authored
+    /// ordinary implementation in this body's proof context. A bound of the
+    /// `impl` that is one of this body's own bounds records `SlotRef::Bound`,
+    /// and a cyclic goal on the current proof path is left to the body's
+    /// slot resolution so coinductive proofs terminate.
+    fn ordinary_choice(
+        &self,
+        inst: TraitInstId<'db>,
+        depth: usize,
+        active: &mut rustc_hash::FxHashSet<TraitInstId<'db>>,
+    ) -> Option<Choice<'db>> {
+        let db = self.db();
+        let written = slot_goal(db, inst);
+        let slot = self.normalized_slot(inst).inst();
+        if let Some(own) = self
+            .own_bounds()
+            .into_iter()
+            .find(|own| *own == written || *own == slot)
+        {
+            return Some(Choice::Slot(SlotRef::Bound(own)));
+        }
+        if slot.args(db).iter().any(|ty| ty.has_var(db))
+            || !choice_walk_step_within_limits(db, WalkStep::Proof, depth)
+            || !active.insert(slot)
+        {
+            return None;
+        }
+        let cx = self.proof_context();
+        let resolved = match resolve_trait_impl_instance(
+            db,
+            cx,
+            slot,
+            crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
+        ) {
+            Selection::Unique(resolved) => resolved,
+            _ => {
+                active.remove(&slot);
+                return None;
+            }
+        };
+        let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(db) else {
+            active.remove(&slot);
+            return None;
+        };
+        let mut bounds = Vec::new();
+        for (bound, at_use) in impl_declared_goals(db, implementation, resolved.impl_args(db)) {
+            if let Some(choice) = self.ordinary_choice(at_use, depth + 1, active) {
+                let item = (Delivery::Bound(bound), choice);
+                if !bounds.contains(&item) {
+                    bounds.push(item);
+                }
+            }
+        }
+        active.remove(&slot);
+        let bounds = (!bounds.is_empty()).then(|| DeliveryList::new(db, bounds));
+        Some(Choice::Known(KnownChoice::ordinary(
+            db,
+            implementation,
+            slot,
+            bounds,
+        )))
+    }
+
     /// The decisions a direct call checked in `frame` records: its trait
     /// slot's, and one for each bound of the body that runs, decided for the
     /// goal it means where the call is written. A body known here is
@@ -2098,14 +2178,16 @@ impl<'db> TyCheckEnv<'db> {
         let db = self.db();
         let own = callable
             .trait_inst
-            .and_then(|inst| self.decide(frame, inst));
+            .and_then(|inst| self.decide(frame, inst))
+            .or_else(|| {
+                let inst = callable.trait_inst?;
+                let mut active = rustc_hash::FxHashSet::default();
+                self.ordinary_choice(inst, 0, &mut active)
+            });
         let generic = !self.own_bounds().is_empty();
         let CallableDef::Func(func) = callable.callable_def() else {
             return Ok((own, Vec::new()));
         };
-        if !has_frames(frame) && !generic {
-            return Ok((own, Vec::new()));
-        }
         let mut called = callable.clone();
         called.set_choice(own);
         let known = called.called_body(db, self.scope(), self.assumptions());
@@ -2156,7 +2238,11 @@ impl<'db> TyCheckEnv<'db> {
             return Err(refusal);
         }
         let mut delivered: Vec<(Delivery<'db>, Choice<'db>)> = Vec::new();
-        for (bound, _, choice) in decided {
+        for (bound, at_call, choice) in decided {
+            let choice = choice.or_else(|| {
+                let mut active = rustc_hash::FxHashSet::default();
+                self.ordinary_choice(at_call, 0, &mut active)
+            });
             let Some(choice) = choice else {
                 continue;
             };
@@ -3056,10 +3142,7 @@ pub(super) fn check_choice_uses<'db>(
         });
     }
     for (expr, read) in typed.closure_choices() {
-        if read
-            .iter()
-            .any(|choice| !matches!(choice, Choice::Slot(SlotRef::Bound(_))))
-        {
+        if read.iter().any(|choice| !choice.is_ordinary_or_bound()) {
             diags.push(
                 BodyDiag::ObligationOpening {
                     primary: expr.span(body).into(),
@@ -3070,10 +3153,7 @@ pub(super) fn check_choice_uses<'db>(
         }
     }
     for (expr, captured) in typed.function_value_choices() {
-        if captured
-            .iter()
-            .any(|choice| !matches!(choice, Choice::Slot(SlotRef::Bound(_))))
-        {
+        if captured.iter().any(|choice| !choice.is_ordinary_or_bound()) {
             diags.push(
                 BodyDiag::ChoiceCarried {
                     primary: expr.span(body).into(),

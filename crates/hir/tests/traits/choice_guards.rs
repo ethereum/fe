@@ -74,6 +74,10 @@ fn only_the_checker_proves_known_choices() {
         occurrences_outside("KnownChoice::prove(", &[CHECKER, REPRESENTATION]),
         Vec::<String>::new()
     );
+    assert_eq!(
+        occurrences_outside("KnownChoice::ordinary(", &[CHECKER, REPRESENTATION]),
+        Vec::<String>::new()
+    );
     // A named implementation is its own choice in its body (the checker's
     // seed), for its constants' recursion check, and for a trait signature
     // compared under it.

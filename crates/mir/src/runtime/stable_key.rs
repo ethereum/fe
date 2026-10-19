@@ -291,7 +291,7 @@ fn impl_env_identity<'db>(
         ingot_identity_for_top_mod(db, scope.top_mod(db)),
         module_path_components_for_scope(db, scope).join("$")
     );
-    if env.choices(db).is_empty() {
+    if env.choices(db).is_ordinary() {
         return identity;
     }
     // Instances that differ only in a delivered choice run different code.
