@@ -38,6 +38,18 @@ pub struct MemArray<T> {
     unsafe len: usize,
 }
 
+/// A growable array in linear memory.
+///
+/// The first `len` of the `capacity` elements its allocation holds are in
+/// use. An allocation cannot grow in place, so growing past the capacity
+/// moves the elements to a larger one; growth takes `mut self`, so no element
+/// access is open across it.
+pub struct MemVec<T> {
+    unsafe ptr: *T,
+    unsafe len: usize,
+    unsafe capacity: usize,
+}
+
 /// A view over typed values in linear memory.
 ///
 /// A slice does not own or allocate its memory: it exists only as the result
@@ -185,38 +197,25 @@ impl<T> MemArray<T> {
         Option::Some(unsafe { mut? *elem(self.ptr, index) })
     }
 
-    /// Two distinct elements at once. Reverts unless `i != j`, which makes
-    /// the two accesses disjoint.
+    /// Two distinct elements at once; see `MemSlice::pair_mut`.
     pub fn pair_mut(mut self, _ i: usize, _ j: usize) -> (mut T, mut T) {
-        if i == j {
-            index_out_of_bounds()
-        }
-        unsafe { (mut *mem_array_elem(self, i), mut *mem_array_elem(self, j)) }
+        self.as_slice().pair_mut(i, j)
     }
 
     /// Moves `value` into element `index` and returns the element it
-    /// replaces: the owner-side move out of a dynamically indexed element.
+    /// replaces; see `MemSlice::replace`.
     pub fn replace(mut self, _ index: usize, _ value: own T) -> T {
-        let slot = mut self[index]
-        let old = slot
-        slot = value
-        old
+        self.as_slice().replace(index, value)
     }
 
     /// Moves `value` into element `index`.
     pub fn set(mut self, _ index: usize, _ value: own T) {
-        self[index] = value
+        self.as_slice().set(index, value)
     }
 
     /// Exchanges elements `i` and `j`.
     pub fn swap(mut self, _ i: usize, _ j: usize) {
-        if i == j {
-            return
-        }
-        let (mut a, mut b) = self.pair_mut(i, j)
-        let tmp = a
-        a = b
-        b = tmp
+        self.as_slice().swap(i, j)
     }
 
     /// Sets every element to its zero value: its bytes zeroed, which is a
@@ -225,6 +224,141 @@ impl<T> MemArray<T> {
         where T: Clearable
     {
         unsafe { zero_bytes(cast<T, u8>(self.ptr), self.byte_len() as u256) }
+    }
+}
+
+impl<T> MemVec<T> {
+    /// An empty vector. Allocates nothing until the first `push`.
+    pub fn new() -> Self {
+        Self::with_capacity(0)
+    }
+
+    /// An empty vector with room for `capacity` elements.
+    pub fn with_capacity(_ capacity: usize) -> Self {
+        // A fresh allocation of `capacity` elements, none in use.
+        unsafe {
+            Self {
+                ptr: cast<u8, T>(alloc_bytes(capacity as u256 * size_of<T>())),
+                len: 0,
+                capacity,
+            }
+        }
+    }
+
+    pub fn ptr(self) -> *T {
+        self.ptr
+    }
+
+    pub fn len(self) -> usize {
+        self.len
+    }
+
+    pub fn capacity(self) -> usize {
+        self.capacity
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.len == 0
+    }
+
+    pub fn as_slice(mut? self) -> mut? MemSlice<T> {
+        unsafe { MemSlice::from_raw_parts(ptr: self.ptr, len: self.len) }
+    }
+
+    pub fn get(mut? self, _ index: usize) -> Option<mut? T> {
+        if index >= self.len {
+            return Option::None
+        }
+        Option::Some(unsafe { mut? *elem(self.ptr, index) })
+    }
+
+    /// Two distinct elements at once; see `MemSlice::pair_mut`.
+    pub fn pair_mut(mut self, _ i: usize, _ j: usize) -> (mut T, mut T) {
+        self.as_slice().pair_mut(i, j)
+    }
+
+    /// Moves `value` into element `index` and returns the element it
+    /// replaces; see `MemSlice::replace`.
+    pub fn replace(mut self, _ index: usize, _ value: own T) -> T {
+        self.as_slice().replace(index, value)
+    }
+
+    /// Moves `value` into element `index`.
+    pub fn set(mut self, _ index: usize, _ value: own T) {
+        self.as_slice().set(index, value)
+    }
+
+    /// Exchanges elements `i` and `j`.
+    pub fn swap(mut self, _ i: usize, _ j: usize) {
+        self.as_slice().swap(i, j)
+    }
+
+    /// Ensure that `additional` more elements fit without growing.
+    pub fn reserve(mut self, _ additional: usize) {
+        let needed = self.len + additional
+        if needed <= self.capacity {
+            return
+        }
+        var capacity = if self.capacity == 0 { 4 } else { self.capacity }
+        while capacity < needed {
+            capacity *= 2
+        }
+        let replacement = cast<u8, T>(alloc_bytes(capacity as u256 * size_of<T>()))
+        // The replacement holds every element in use, in `capacity` elements.
+        unsafe {
+            copy(dest: byte_ptr(replacement), source: self.as_slice().as_bytes())
+            self.ptr = replacement
+            self.capacity = capacity
+        }
+    }
+
+    /// Append `value`, growing the allocation when it is full.
+    pub fn push(mut self, _ value: own T) {
+        self.reserve(1)
+        // `reserve` made room for element `len`, which the write initializes.
+        unsafe {
+            *elem(self.ptr, self.len) = value
+            self.len += 1
+        }
+    }
+
+    /// Remove the last element and return it, or `None` when empty.
+    pub fn pop(mut self) -> Option<T> {
+        if self.len == 0 {
+            return Option::None
+        }
+        // The element leaves the vector before it is moved out.
+        unsafe {
+            self.len -= 1
+            Option::Some(*elem(self.ptr, self.len))
+        }
+    }
+
+    /// Keep the first `len` elements.
+    pub fn truncate(mut self, _ len: usize) {
+        if len > self.len {
+            index_out_of_bounds()
+        }
+        // Shrinking keeps every element in use initialized.
+        unsafe { self.len = len }
+    }
+
+    /// Append copies of `source`'s elements.
+    pub fn extend_from_slice(mut self, _ source: MemSlice<T>)
+        where T: Copy
+    {
+        self.reserve(source.len())
+        // `reserve` made room, and the copy initializes the added elements.
+        unsafe {
+            copy(dest: byte_ptr(elem(self.ptr, self.len)), source: source.as_bytes())
+            self.len += source.len()
+        }
+    }
+
+    /// The elements as a fixed-length array, in the same allocation.
+    pub fn into_array(own self) -> MemArray<T> {
+        // The first `len` elements are in use.
+        unsafe { MemArray { ptr: self.ptr, len: self.len } }
     }
 }
 
@@ -343,6 +477,42 @@ impl<T> MemSlice<T> {
             return Option::None
         }
         Option::Some(unsafe { *self.ptr_at(index) })
+    }
+
+    /// Two distinct elements at once. Reverts unless `i != j`, which makes
+    /// the two accesses disjoint.
+    pub fn pair_mut(mut self, _ i: usize, _ j: usize) -> (mut T, mut T) {
+        if i == j {
+            index_out_of_bounds()
+        }
+        unsafe { (mut *self.ptr_at(i), mut *self.ptr_at(j)) }
+    }
+
+    /// Moves `value` into element `index` and returns the element it
+    /// replaces: the owner-side move out of a dynamically indexed element.
+    pub fn replace(mut self, _ index: usize, _ value: own T) -> T {
+        let slot = mut self[index]
+        let old = slot
+        slot = value
+        old
+    }
+
+    /// Moves `value` into element `index`.
+    pub fn set(mut self, _ index: usize, _ value: own T) {
+        self[index] = value
+    }
+
+    /// Exchanges elements `i` and `j`. Reverts unless both are in range,
+    /// including when they are equal.
+    pub fn swap(mut self, _ i: usize, _ j: usize) {
+        if i == j {
+            let _ = self.ptr_at(i)
+            return
+        }
+        let (mut a, mut b) = self.pair_mut(i, j)
+        let tmp = a
+        a = b
+        b = tmp
     }
 }
 
@@ -697,6 +867,14 @@ fn mem_array_elem<T>(_ array: MemArray<T>, _ index: usize) -> *T {
 }
 
 #[inline(always)]
+fn mem_vec_elem<T>(_ vec: MemVec<T>, _ index: usize) -> *T {
+    if index >= vec.len {
+        index_out_of_bounds()
+    }
+    elem(vec.ptr, index)
+}
+
+#[inline(always)]
 fn elem<T>(_ ptr: *T, _ index: usize) -> *T {
     offset(ptr, index as u256)
 }
@@ -710,6 +888,15 @@ impl<T> Index<usize> for MemArray<T> {
     }
 }
 
+impl<T> Index<usize> for MemVec<T> {
+    type Output = T
+
+    #[inline(always)]
+    fn index(mut? self, _ index: usize) -> mut? T {
+        unsafe { mut? *mem_vec_elem(self, index) }
+    }
+}
+
 impl<T> Index<usize> for MemSlice<T> {
     type Output = T
 
@@ -720,6 +907,12 @@ impl<T> Index<usize> for MemSlice<T> {
 }
 
 impl<T> Len for MemArray<T> {
+    fn len(self) -> usize {
+        self.len
+    }
+}
+
+impl<T> Len for MemVec<T> {
     fn len(self) -> usize {
         self.len
     }

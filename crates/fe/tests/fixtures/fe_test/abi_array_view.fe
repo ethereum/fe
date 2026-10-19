@@ -5,9 +5,9 @@ use std::abi::{
     Bytes,
     DynArray,
     DynString,
-    MemVec,
     decode_array_view,
     decode_array_view_at,
+    dyn_array_from,
 }
 use std::evm::{Address, Call, CallData, Evm}
 
@@ -239,17 +239,13 @@ fn test_u256_array() uses (evm: mut Evm) {
 #[test]
 fn test_typed_caller_encoding() uses (evm: mut Evm) {
     let v = deploy()
-    var values = MemVec<u256>::zeroed(4)
-    values.set(index: 0, value: 10)
-    values.set(index: 1, value: 20)
-    values.set(index: 2, value: 30)
-    values.set(index: 3, value: 40)
+    let values: DynArray<u256> = dyn_array_from([10, 20, 30, 40])
     let sum: u256 = evm
         .call(
             addr: v,
             gas: 1000000,
             value: 0,
-            message: TypedMsg::Sum { values: values.to_dyn_array() },
+            message: TypedMsg::Sum { values },
         )
     assert!(sum == 100)
 }

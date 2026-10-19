@@ -3,7 +3,7 @@
 
 use core::ptr
 use core::abi::store_word
-use std::abi::Bytes4
+use std::abi::{Bytes4, dyn_array_from}
 use std::evm::{RawOps, ReceiverCheck, TokenCall, bubble_last_revert, erc721, erc1155}
 
 msg Erc721Msg {
@@ -179,11 +179,7 @@ fn receiver_code(_ outcome: ReceiverCheck) -> u256 {
 }
 
 fn u256_vec(_ a: u256, _ b: u256, _ c: u256) -> Vec<u256> {
-    var v = MemVec<u256>::zeroed(3)
-    v.set(index: 0, value: a)
-    v.set(index: 1, value: b)
-    v.set(index: 2, value: c)
-    v.to_dyn_array()
+    dyn_array_from([a, b, c])
 }
 
 // ---------------------------------------------------------------------------
