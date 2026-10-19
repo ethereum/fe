@@ -66,6 +66,9 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
+    /// A `T: mut? Trait` bound of an item without a mode: one that is not a
+    /// function or an implementation.
+    MaybeMutBound(DynLazySpan<'db>),
     /// A result-space annotation, or an implementation's associated space,
     /// that names no space.
     UnknownResultSpace(DynLazySpan<'db>),
@@ -283,6 +286,7 @@ impl TyLowerDiag<'_> {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
+            Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
             Self::UnknownResultSpace(_) => 60,

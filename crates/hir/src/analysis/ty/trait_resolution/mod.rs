@@ -912,12 +912,6 @@ impl<'db> PredicateListId<'db> {
         while let Some(pred) = worklist.pop() {
             let hir_trait = pred.def(db);
             let evidence = PredicateListId::new(db, vec![pred]);
-            // A `mut?` bound of the trait's is at the predicate's mode.
-            let mode = Some(if pred.is_mut(db) {
-                BorrowKind::Mut
-            } else {
-                BorrowKind::Ref
-            });
             // 1. Collect super traits
             for super_trait in hir_trait.super_traits(db) {
                 let inst = normalize_from_assumptions(
@@ -955,8 +949,7 @@ impl<'db> PredicateListId<'db> {
                         Binder::bind(hir_trait.into(), bound).instantiate(db, pred.args(db)),
                         hir_trait.scope(),
                         evidence,
-                    )
-                    .at_mode(db, mode);
+                    );
                     if predicate_has_recursive_assoc_projection(db, trait_inst) {
                         continue;
                     }

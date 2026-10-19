@@ -229,7 +229,11 @@ impl<T> Index<usize> for MemVec<T> where .. {
 An implementation with only a `ref` method, such as a range's `at`, is no
 `mut Collection`. A `mut?` bound (`D: mut? Driver<B>`) is `mut` where its
 item is used at `mut`: `impl<D: mut? Driver<B>> Driver<B> for Enumerate<D>`
-makes `Enumerate<D>` a `mut Driver<B>` exactly when `D` is one.
+makes `Enumerate<D>` a `mut Driver<B>` exactly when `D` is one, and a
+separate `mut` body of the implementation takes `D` as one. Only a function
+or an implementation is used at a mode, so only their bounds may be `mut?`;
+a struct's or a trait's bounds, including those of its associated types
+(`type Item: mut Slot`) and of `Self`, are `mut` or plain.
 
 A `mut?` function cannot define a closure, and an effect cannot be `mut?`
 yet.

@@ -1698,6 +1698,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::MaybeMutBound(span) => primary_diag(
+                Severity::Error,
+                "`mut?` bound of an item without a mode",
+                "only a function or an implementation is used at a mode",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ExpectedStarKind(span) => {
                 // find expected ty name, num of generic args, etc
                 primary_diag(

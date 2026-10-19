@@ -26,8 +26,8 @@ use crate::analysis::ty::ty_error::{collect_ty_lower_errors, emit_invalid_ty_err
 use crate::analysis::ty::ty_lower::generic_param_owner_assumptions;
 use crate::hir_def::{
     Contract, Enum, EnumVariant, FieldParent, Func, FuncParamMode, GenericParam, GenericParamOwner,
-    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, Partial, PathId, SpaceAnnotation, Struct,
-    Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
+    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, ModeMarker, Partial, PathId,
+    SpaceAnnotation, Struct, Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
 };
 use crate::span::DynLazySpan;
 
@@ -258,6 +258,14 @@ impl<'db> WherePredicateBoundView<'db> {
 
         let mut out = Vec::new();
         let owner_item = ItemKind::from(self.pred.clause.owner);
+        if self.mode(db) == ModeMarker::MaybeMut
+            && !matches!(
+                owner_item,
+                ItemKind::Func(_) | ItemKind::Impl(_) | ItemKind::ImplTrait(_)
+            )
+        {
+            out.push(TyLowerDiag::MaybeMutBound(self.span().into()).into());
+        }
         let scope = owner_item.scope();
         let assumptions = header_constraints_for(db, owner_item);
         let is_trait_self_subject =
@@ -571,8 +579,8 @@ impl<'db> Trait<'db> {
         diags
     }
 
-    /// Diagnostics for trait bounds on associated types whose path does not
-    /// name a trait, such as `type Out: Missing`.
+    /// Diagnostics for trait bounds on associated types that are `mut?`, or
+    /// whose path does not name a trait, such as `type Out: Missing`.
     pub fn diags_assoc_type_bounds(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let mut diags = Vec::new();
         let scope = self.scope();
@@ -580,6 +588,11 @@ impl<'db> Trait<'db> {
         let self_ty = self.self_param(db);
         for assoc in self.assoc_types(db) {
             for bound in assoc.bounds(db) {
+                // A trait has no mode for a `mut?` bound to be at.
+                if bound.mode(db) == ModeMarker::MaybeMut {
+                    let span = assoc.span().bounds().bound(bound.index());
+                    diags.push(TyLowerDiag::MaybeMutBound(span.into()).into());
+                }
                 let trait_ref = bound.trait_ref(db);
                 let Err(error) = ty::trait_lower::lower_trait_ref(
                     db,
@@ -1924,15 +1937,21 @@ impl<'db> GenericParamOwner<'db> {
             };
 
             for (i, bound) in tp.bounds.iter().enumerate() {
-                let TypeBound::Trait(tr, _) = bound else {
+                let TypeBound::Trait(tr, mode) = bound else {
                     continue;
                 };
-                let span = view
-                    .span()
-                    .into_type_param()
-                    .bounds()
-                    .bound(i)
-                    .trait_bound();
+                let bound_span = view.span().into_type_param().bounds().bound(i);
+                if *mode == ModeMarker::MaybeMut
+                    && !matches!(
+                        self,
+                        GenericParamOwner::Func(_)
+                            | GenericParamOwner::Impl(_)
+                            | GenericParamOwner::ImplTrait(_)
+                    )
+                {
+                    out.push(TyLowerDiag::MaybeMutBound(bound_span.clone().into()).into());
+                }
+                let span = bound_span.trait_bound();
                 match trait_lower::lower_trait_ref(db, subject, *tr, scope, assumptions, None) {
                     Ok(inst) => {
                         let expected = inst.def(db).self_param(db).kind(db);

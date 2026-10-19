@@ -3313,15 +3313,17 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// Whether `pat` binds a component of `shape` that is an access with a
-    /// `mut` binding, which needs the access to be `mut`.
+    /// Whether `pat` binds a component of `shape` that is a `ref` access with
+    /// a `mut` binding, which needs the access to be `mut`.
     fn pattern_asks_mut(&self, pat: PatId, shape: &Shape<'db>) -> bool {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return false;
         };
         match (shape, pat_data) {
-            (Shape::Owned(_), _) => false,
-            (Shape::Access(..), _) => self.first_marked_binding(pat, BindingMarker::Mut).is_some(),
+            (Shape::Owned(_) | Shape::Access(BorrowKind::Mut, _), _) => false,
+            (Shape::Access(BorrowKind::Ref, _), _) => {
+                self.first_marked_binding(pat, BindingMarker::Mut).is_some()
+            }
             (_, Pat::Or(lhs, rhs)) => {
                 self.pattern_asks_mut(*lhs, shape) || self.pattern_asks_mut(*rhs, shape)
             }

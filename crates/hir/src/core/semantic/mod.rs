@@ -86,7 +86,8 @@ use crate::analysis::ty::trait_def::{
     ImplementorId, ImplementorOrigin, TraitInstId, does_impl_trait_conflict, impls_for_trait_def,
 };
 use crate::analysis::ty::trait_lower::{
-    TraitRefLowerError, collect_trait_impls, lower_trait_ref, lower_trait_ref_deferred,
+    TraitRefLowerError, collect_implementor_methods, collect_trait_impls, lower_impl_trait,
+    lower_trait_ref, lower_trait_ref_deferred,
 };
 use crate::analysis::ty::trait_resolution::constraint::{
     collect_candidate_constraints, collect_constraints, collect_func_decl_constraints,
@@ -234,8 +235,10 @@ pub fn param_env<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Predic
 /// Unelaborated assumptions for checking `func`'s body: the declared
 /// constraints (including the parent item's) plus the implicit
 /// `Self: mut? Trait` predicate for trait methods, so a default body used at
-/// `mut` calls its trait's `mut?` methods at `mut`. Effect-derived bounds
-/// are layered on separately by the body checker.
+/// `mut` calls its trait's `mut?` methods at `mut`. The `mut` body of a
+/// method with one body per mode is that method at `mut`: its
+/// implementation's `mut?` bounds are `mut`. Effect-derived bounds are
+/// layered on separately by the body checker.
 pub(crate) fn func_body_assumptions<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -247,6 +250,21 @@ pub(crate) fn func_body_assumptions<'db>(
             preds,
             trait_self_predicate(db, trait_).with_mode(db, ModeMarker::MaybeMut),
         ),
+        Some(ItemKind::ImplTrait(impl_trait)) => {
+            let is_mut_body = func.name(db).to_opt().is_some_and(|name| {
+                lower_impl_trait(db, impl_trait).is_some_and(|implementor| {
+                    collect_implementor_methods(db, implementor)
+                        .mut_bodies
+                        .get(&name)
+                        == Some(&func)
+                })
+            });
+            if is_mut_body {
+                preds.at_mode(db, Some(BorrowKind::Mut))
+            } else {
+                preds
+            }
+        }
         _ => preds,
     }
 }
@@ -3382,6 +3400,14 @@ impl<'db> WherePredicateBoundView<'db> {
         }
     }
 
+    /// The mode written before the bound's trait: `mut` in `T: mut Trait`.
+    pub fn mode(self, db: &'db dyn HirDb) -> ModeMarker {
+        match &self.pred.hir_pred(db).bounds[self.idx] {
+            TypeBound::Trait(_, mode) => *mode,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn span(self) -> crate::span::params::LazyTypeBoundSpan<'db> {
         self.pred.span().bounds().bound(self.idx)
     }
@@ -3399,7 +3425,9 @@ impl<'db> WherePredicateBoundView<'db> {
         let owner_item = ItemKind::from(self.pred.clause.owner);
         let assumptions = header_constraints_for(db, owner_item);
         let scope = owner_item.scope();
-        lower_trait_ref(db, subject, self.trait_ref(db), scope, assumptions, None).ok()
+        lower_trait_ref(db, subject, self.trait_ref(db), scope, assumptions, None)
+            .ok()
+            .map(|inst| inst.with_mode(db, self.mode(db)))
     }
 }
 
@@ -5134,6 +5162,15 @@ impl<'db> AssocTypeBoundView<'db> {
             _ => unreachable!(),
         }
     }
+
+    /// The mode written before the bound's trait: `mut` in
+    /// `type Item: mut Trait`.
+    pub(crate) fn mode(self, db: &'db dyn HirDb) -> ModeMarker {
+        match self.owner.bounds_raw(db)[self.idx] {
+            TypeBound::Trait(_, mode) => mode,
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -5173,6 +5210,7 @@ impl<'db> AssocTypeBoundView<'db> {
             Some(owner_self),
         )
         .ok()
+        .map(|inst| inst.with_mode(db, self.mode(db)))
     }
 }
 

@@ -4,7 +4,8 @@ use crate::hir_def::ModeMarker;
 use crate::{
     core::hir_def::{
         AssocTypeGenericArg, HirIngot, IdentId, ImplTrait, ItemKind, Partial, PathId, Trait,
-        TraitRefId, TypeId as HirTyId, TypeKind as HirTyKind, TypeMode, params::GenericArg,
+        TraitRefId, TypeId as HirTyId, TypeKind as HirTyKind, TypeMode,
+        params::{FuncParamMode, GenericArg},
         scope_graph::ScopeId,
     },
     hir_def::Func,
@@ -19,9 +20,10 @@ use super::{
     fold::{TyFoldable, TyFolder},
     generic_defaults::DefaultApplication,
     provider::AddressSpace,
+    shape::Shape,
     trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
     trait_resolution::PredicateListId,
-    ty_def::{InvalidCause, PrimTy, TyBase, TyId},
+    ty_def::{BorrowKind, InvalidCause, PrimTy, TyBase, TyId},
     ty_lower::{lower_hir_ty_with_minter, lower_opt_const_body, lower_opt_hir_ty_with_minter},
 };
 use crate::analysis::{
@@ -737,11 +739,33 @@ pub(crate) fn collect_implementor_methods<'db>(
 }
 
 /// Whether `func`, a method of a `mut?` trait method `trait_m`'s name, is
-/// its `mut` body: it takes `mut` where `trait_m` takes `mut?`, as its
-/// receiver or result.
+/// its `mut` body: it takes `mut` where `trait_m` takes `mut?`, as a
+/// parameter or a result component.
 fn takes_mut_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>, trait_m: Func<'db>) -> bool {
-    use crate::analysis::ty::ty_def::BorrowKind;
-    use crate::core::hir_def::params::FuncParamMode;
+    /// Whether `shape` is `mut` where the trait method's result, `at_ref` and
+    /// `at_mut` at its two modes, is `mut?`.
+    fn mut_where_maybe_mut(shape: &Shape, at_ref: &Shape, at_mut: &Shape) -> bool {
+        match (shape, at_ref, at_mut) {
+            (Shape::Access(kind, _), Shape::Access(at_ref, _), Shape::Access(at_mut, _)) => {
+                at_ref != at_mut && *kind == BorrowKind::Mut
+            }
+            (Shape::Tuple(elems), Shape::Tuple(at_ref), Shape::Tuple(at_mut)) => elems
+                .iter()
+                .zip(at_ref)
+                .zip(at_mut)
+                .any(|((elem, at_ref), at_mut)| mut_where_maybe_mut(elem, at_ref, at_mut)),
+            (
+                Shape::Sum { payload, .. },
+                Shape::Sum {
+                    payload: at_ref, ..
+                },
+                Shape::Sum {
+                    payload: at_mut, ..
+                },
+            ) => mut_where_maybe_mut(payload, at_ref, at_mut),
+            _ => false,
+        }
+    }
     trait_m.is_maybe_mut(db)
         && (trait_m
             .params(db)
@@ -749,9 +773,15 @@ fn takes_mut_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>, trait_m: Fun
             .any(|(trait_param, param)| {
                 trait_param.is_maybe_mut(db) && param.mode_at(db, None) == FuncParamMode::Mut
             })
-            || func
-                .return_shape(db, None)
-                .is_some_and(|shape| shape.has_access_of(BorrowKind::Mut)))
+            || matches!(
+                (
+                    func.return_shape(db, None),
+                    trait_m.return_shape(db, Some(BorrowKind::Ref)),
+                    trait_m.return_shape(db, Some(BorrowKind::Mut)),
+                ),
+                (Some(shape), Some(at_ref), Some(at_mut))
+                    if mut_where_maybe_mut(shape, at_ref, at_mut)
+            ))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]

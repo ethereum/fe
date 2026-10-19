@@ -4,6 +4,30 @@ assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/maybe_mut_traits.fe
 ---
+error[3-0071]: `mut?` bound of an item without a mode
+    ┌─ maybe_mut_traits.fe:109:16
+    │
+109 │     type Item: mut? Slot
+    │                ^^^^^^^^^ only a function or an implementation is used at a mode
+
+error[3-0071]: `mut?` bound of an item without a mode
+    ┌─ maybe_mut_traits.fe:112:33
+    │
+112 │ trait MaybeWritable where Self: mut? Slot {}
+    │                                 ^^^^^^^^^ only a function or an implementation is used at a mode
+
+error[3-0071]: `mut?` bound of an item without a mode
+    ┌─ maybe_mut_traits.fe:114:23
+    │
+114 │ trait MaybeSlotted<S: mut? Slot> {}
+    │                       ^^^^^^^^^ only a function or an implementation is used at a mode
+
+error[3-0071]: `mut?` bound of an item without a mode
+    ┌─ maybe_mut_traits.fe:116:21
+    │
+116 │ struct MaybeWrap<S: mut? Slot> {
+    │                     ^^^^^^^^^ only a function or an implementation is used at a mode
+
 error[6-0003]: trait bound is not satisfied
    ┌─ maybe_mut_traits.fe:78:21
    │
@@ -36,6 +60,18 @@ error[6-0003]: trait bound is not satisfied
    │     │
    │     `Wrap<Fixed>` doesn't implement `mut Slot`
    │     trait bound `Fixed: mut Slot` is not satisfied
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ maybe_mut_traits.fe:99:17
+   │
+99 │     type Item = Fixed
+   │                 ^^^^^ `Fixed` doesn't implement `mut Slot`
+
+error[6-0003]: trait bound is not satisfied
+    ┌─ maybe_mut_traits.fe:105:19
+    │
+105 │ impl Writable for Fixed {}
+    │                   ^^^^^ `Fixed` doesn't implement `mut Slot`
 
 error[6-0035]: method `get` is `mut?`, but the trait method is not
    ┌─ maybe_mut_traits.fe:66:8
