@@ -509,7 +509,7 @@ fn test_memory_input_and_element_pos() uses (evm: mut Evm) {
     assert!(view.element_pos(1) == 0xe0)
     let second = view.get(1)
     assert!(second.0 == 2)
-    assert!(second.1.inner == 0xbb)
+    assert!(second.1.word() == 0xbb)
     // Individual fields of a static struct element via its position.
     let amount: u256 = view.input().word_at(view.element_pos(1) + 0x40)
     assert!(amount == 200)
