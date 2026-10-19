@@ -251,7 +251,6 @@ impl<I> ArrayView<I, Bytes>
     #[arithmetic(unchecked)]
     pub fn bytes_at(self, _ index: u256) -> BytesView<I> {
         self.check_index(index)
-        let _ = checked_offset(self.input.word_at(self.elems + index * 32))
         decode_bytes_view_at(self.input, base: self.elems, head_pos: index * 32)
     }
 }
@@ -266,7 +265,6 @@ impl<I> ArrayView<I, DynString>
     #[arithmetic(unchecked)]
     pub fn string_at(self, _ index: u256) -> StringView<I> {
         self.check_index(index)
-        let _ = checked_offset(self.input.word_at(self.elems + index * 32))
         decode_string_view_at(self.input, base: self.elems, head_pos: index * 32)
     }
 }
