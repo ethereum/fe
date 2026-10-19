@@ -1492,6 +1492,8 @@ pub struct TyChecker<'db> {
     /// Plain names that take a value from a mutable place or grant, which
     /// `mut` would write through.
     mutable_sources: FxHashSet<PatId>,
+    /// The names parameter patterns bind, with the parameters' site.
+    param_pattern_sites: FxHashMap<PatId, ParamSite<'db>>,
     diags: Vec<FuncBodyDiag<'db>>,
     /// Set once deferred work is resolved for the last time, after which type
     /// equalities are decided rather than retained.
@@ -2830,6 +2832,7 @@ impl<'db> TyChecker<'db> {
             implied_markers: FxHashMap::default(),
             initializer_markers: Vec::new(),
             mutable_sources: FxHashSet::default(),
+            param_pattern_sites: FxHashMap::default(),
             diags: Vec::new(),
             final_pass: false,
         }

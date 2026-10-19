@@ -1119,9 +1119,13 @@ pub struct FuncParamView<'db> {
 }
 
 impl<'db> FuncParamView<'db> {
+    /// The parameter's declaration.
+    pub fn hir(self, db: &'db dyn HirDb) -> Option<&'db FuncParam<'db>> {
+        self.func.params_list(db).to_opt()?.data(db).get(self.idx)
+    }
+
     pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
-        let list = self.func.params_list(db).to_opt()?;
-        list.data(db).get(self.idx)?.name()
+        self.hir(db)?.name()
     }
 
     pub fn label(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
@@ -1175,9 +1179,7 @@ impl<'db> FuncParamView<'db> {
     /// Whether the parameter takes its function's mode: `mut? self`,
     /// `x: mut? T`.
     pub fn is_maybe_mut(self, db: &'db dyn HirDb) -> bool {
-        let list = self.func.params_list(db).to_opt();
-        list.and_then(|l| l.data(db).get(self.idx))
-            .is_some_and(|p| p.is_maybe_mut(db))
+        self.hir(db).is_some_and(|p| p.is_maybe_mut(db))
     }
 
     pub fn span(self) -> crate::span::params::LazyFuncParamSpan<'db> {

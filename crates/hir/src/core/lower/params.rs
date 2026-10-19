@@ -45,7 +45,8 @@ impl<'db> FuncParamListId<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParamList) -> Self {
         let params = ast
             .into_iter()
-            .map(|param| FuncParam::lower_ast(ctxt, param))
+            .enumerate()
+            .map(|(idx, param)| FuncParam::lower_ast(ctxt, param, idx))
             .collect::<Vec<_>>();
         Self::new(ctxt.db(), params)
     }
@@ -64,6 +65,7 @@ impl<'db> WhereClauseId<'db> {
                     let body = Body::lower_ast_with_variant(
                         ctxt,
                         pred.expr(),
+                        None,
                         TrackedItemVariant::WhereConstPredicate(const_idx),
                         BodyKind::Anonymous,
                     );
@@ -173,14 +175,21 @@ impl<'db> GenericParam<'db> {
 }
 
 impl<'db> FuncParam<'db> {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParam) -> Self {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParam, idx: usize) -> Self {
         let has_mut_token = ast.mut_token().is_some();
         let mut is_mut = has_mut_token || ast.var_token().is_some();
         let is_ref = ast.ref_token().is_some();
         let is_own = ast.own_token().is_some();
         let is_maybe_mut = ast.maybe_mut_token().is_some();
         let is_label_suppressed = ast.is_label_suppressed();
-        let name = ast.name().map(|ast| FuncParamName::lower_ast(ctxt, ast));
+        let name = if ast.pat().is_some() {
+            Some(FuncParamName::Destructured(FuncParamName::destructured(
+                ctxt.db(),
+                idx,
+            )))
+        } else {
+            ast.name().map(|ast| FuncParamName::lower_ast(ctxt, ast))
+        };
 
         let name_is_self = name.is_some_and(|name| name.is_self(ctxt.db()));
         let self_ty_fallback = name_is_self && ast.ty().is_none();

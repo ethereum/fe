@@ -294,11 +294,23 @@ impl<'db> Func<'db> {
 
     /// Diagnostics related to parameters (duplicate names/labels).
     pub fn diags_parameters(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
-        check_duplicate_names(self.params(db).map(|v| v.name(db)), |idxs| {
-            TyLowerDiag::DuplicateArgName(self, idxs).into()
-        })
-        .into_iter()
-        .collect()
+        let mut diags: Vec<_> =
+            check_duplicate_names(self.params(db).map(|v| v.name(db)), |idxs| {
+                TyLowerDiag::DuplicateArgName(self, idxs).into()
+            })
+            .into_iter()
+            .collect();
+        // The body binds a parameter pattern.
+        if self.body(db).is_none() {
+            diags.extend(
+                self.params(db)
+                    .filter(|param| param.hir(db).is_some_and(|param| param.is_destructured()))
+                    .map(|param| {
+                        TyLowerDiag::DestructuredParamWithoutBody(param.span().into()).into()
+                    }),
+            );
+        }
+        diags
     }
 
     /// Diagnostics related to the explicit return type (kind/const checks).

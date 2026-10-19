@@ -534,9 +534,15 @@ impl<'db> Func<'db> {
         let is_unsafe = super::lower_is_unsafe(&ast);
         let is_const = ast.const_kw().is_some();
         let modifiers = FuncModifiers::new(vis, is_unsafe, is_const, is_extern);
-        let body = ast
-            .body()
-            .map(|body| Body::lower_ast(ctxt, ast::Expr::cast(body.syntax().clone()).unwrap()));
+        let body = ast.body().map(|body| {
+            Body::lower_ast_with_variant(
+                ctxt,
+                ast::Expr::cast(body.syntax().clone()),
+                sig.params(),
+                TrackedItemVariant::FuncBody,
+                BodyKind::FuncBody,
+            )
+        });
         let origin = HirOrigin::raw(&ast);
         let top_mod = ctxt.top_mod();
 
@@ -1094,6 +1100,7 @@ impl<'db> StaticAssert<'db> {
         let condition = Body::lower_ast_with_variant(
             ctxt,
             condition_ast.clone(),
+            None,
             TrackedItemVariant::StaticAssertCondition,
             BodyKind::Anonymous,
         );
@@ -1129,12 +1136,14 @@ impl<'db> StaticAssertComparison<'db> {
             lhs: Body::lower_ast_with_variant(
                 ctxt,
                 bin.lhs(),
+                None,
                 TrackedItemVariant::StaticAssertComparisonLhs,
                 BodyKind::Anonymous,
             ),
             rhs: Body::lower_ast_with_variant(
                 ctxt,
                 bin.rhs(),
+                None,
                 TrackedItemVariant::StaticAssertComparisonRhs,
                 BodyKind::Anonymous,
             ),

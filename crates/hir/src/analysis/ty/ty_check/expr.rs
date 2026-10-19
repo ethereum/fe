@@ -24,7 +24,7 @@ use super::{
     env::{
         BindingAccess, ClosureExpectation, EffectOrigin, EffectParamSite, ExprProp, LocalBinding,
         ParamSite, PendingPrimitiveOp, ProvidedEffect, TraitObligation, TraitObligationOrigin,
-        TyCheckEnv, param_is_maybe_mut,
+        TyCheckEnv, hir_param,
     },
     has_invisible_newtype_field, merged_borrow_provider,
     path::ResolvedPathInBody,
@@ -5252,7 +5252,8 @@ impl<'db> TyChecker<'db> {
                         }
                     }
                     LocalBinding::Param { site, idx, .. }
-                        if param_is_maybe_mut(self.db, site, idx) =>
+                        if hir_param(self.db, site, idx)
+                            .is_some_and(|param| param.is_maybe_mut(self.db)) =>
                     {
                         MutabilityFix::MaybeMutParam
                     }

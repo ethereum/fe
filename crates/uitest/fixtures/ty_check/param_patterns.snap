@@ -1,0 +1,64 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/param_patterns.fe
+---
+error[3-0076]: a parameter pattern needs a body to bind it
+  ┌─ param_patterns.fe:5:12
+  │
+5 │     fn sum(_ (a, b): (u256, u256)) -> u256
+  │            ^^^^^^^^^^^^^^^^^^^^^^ this function has no body
+  │
+  = name the parameter instead: `_ x: T`
+
+error[8-0000]: type mismatch
+   ┌─ param_patterns.fe:12:12
+   │
+12 │ fn arity(_ (a, b, c): (u256, u256)) -> u256 {
+   │            ^^^^^^^^^ expected `(u256, u256)`, but `(_, _, _)` is given
+
+error[8-0133]: refutable pattern in a parameter
+  ┌─ param_patterns.fe:8:16
+  │
+8 │ fn refutable(_ Option::Some(x): Option<u256>) -> u256 {
+  │                ^^^^^^^^^^^^^^^ this pattern may not match every argument
+
+error[8-0134]: `a` is bound by more than one parameter
+   ┌─ param_patterns.fe:16:28
+   │
+16 │ fn named_twice(a: u256, _ (a, b): (u256, u256)) -> u256 {
+   │                -           ^ `a` is bound again here
+   │                │
+   │                `a` is first bound here
+
+error[8-0134]: `a` is bound by more than one parameter
+   ┌─ param_patterns.fe:20:50
+   │
+20 │ fn patterned_twice(_ (a, b): (u256, u256), _ (c, a): (u256, u256)) -> u256 {
+   │                       -                          ^ `a` is bound again here
+   │                       │
+   │                       `a` is first bound here
+
+error[8-0134]: `a` is bound by more than one parameter
+   ┌─ param_patterns.fe:24:40
+   │
+24 │ fn named_after(_ (a, b): (u256, u256), a: u256) -> u256 {
+   │                   -                    ^ `a` is bound again here
+   │                   │
+   │                   `a` is first bound here
+
+error[8-0134]: `a` is bound by more than one parameter
+   ┌─ param_patterns.fe:29:24
+   │
+29 │     let f = |a: u256, (a, b): (u256, u256)| a + b
+   │              -         ^ `a` is bound again here
+   │              │
+   │              `a` is first bound here
+
+error[8-0134]: `a` is bound by more than one parameter
+   ┌─ param_patterns.fe:34:36
+   │
+34 │     let f = |(a, b): (u256, u256), a: u256| a + b
+   │               -                    ^ `a` is bound again here
+   │               │
+   │               `a` is first bound here

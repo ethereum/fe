@@ -407,7 +407,9 @@ impl<'db> ScopeGraphBuilder<'db> {
                 .name
                 .to_opt()
                 .map_or_else(EdgeKind::anon, |name| match name {
-                    FuncParamName::Ident(ident) => EdgeKind::value(ident),
+                    FuncParamName::Ident(ident) | FuncParamName::Destructured(ident) => {
+                        EdgeKind::value(ident)
+                    }
                     FuncParamName::Underscore => EdgeKind::anon(),
                 });
             self.graph.add_edge(parent_node, func_param_node, kind)

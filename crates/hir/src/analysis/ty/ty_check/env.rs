@@ -8,7 +8,7 @@ use crate::{
 };
 
 use crate::hir_def::CallableDef;
-use crate::hir_def::params::FuncParamMode;
+use crate::hir_def::params::{FuncParam, FuncParamMode};
 use common::indexmap::IndexMap;
 use cranelift_entity::{PrimaryMap, SecondaryMap};
 use num_bigint::BigInt;
@@ -1293,6 +1293,14 @@ impl<'db> TyCheckEnv<'db> {
     /// This function moves all pending bindings from the `pending_vars` map
     /// into the latest `BlockEnv` in `var_env`. After this operation, the
     /// `pending_vars` map will be empty.
+    /// The binding `name` names at this point of the body, if a binding has
+    /// it.
+    pub(super) fn visible_binding(&self, name: IdentId<'db>) -> Option<LocalBinding<'db>> {
+        (0..=self.current_block_idx())
+            .rev()
+            .find_map(|idx| self.get_block(idx).lookup_var(name))
+    }
+
     pub(super) fn flush_pending_bindings(&mut self) {
         let block_idx = self.current_block_idx();
         let var_env = self.var_env.last_mut().unwrap();
@@ -1744,38 +1752,29 @@ fn param_name<'db>(
     idx: usize,
 ) -> Option<IdentId<'db>> {
     match site {
-        ParamSite::Func(func) => func.params(db).nth(idx).and_then(|p| p.name(db)),
-        ParamSite::ContractInit(contract) => contract
-            .init(db)?
-            .params(db)
-            .data(db)
-            .get(idx)
-            .and_then(|p| p.name()),
-        ParamSite::Closure(def) => {
-            let Partial::Present(Expr::Closure { params, .. }) = def.expr.data(db, def.body) else {
-                return None;
-            };
-            params.data(db).get(idx).and_then(|param| param.name())
-        }
         ParamSite::ClosureEnv(_) => Some(IdentId::make_self(db)),
         ParamSite::EffectField(effect_site) => effect_param_name(db, effect_site, idx),
+        _ => hir_param(db, site, idx)?.name(),
     }
 }
 
-/// Whether parameter `idx` of `site` is written `mut?`, a function's or a
-/// closure's in a `mut?` function.
-pub(crate) fn param_is_maybe_mut(db: &dyn HirAnalysisDb, site: ParamSite<'_>, idx: usize) -> bool {
-    match site {
-        ParamSite::Func(func) => func.params(db).nth(idx).is_some_and(|p| p.is_maybe_mut(db)),
+/// The declaration of parameter `idx` of `site`: a function's, a contract
+/// `init`'s or a closure's.
+pub(crate) fn hir_param<'db>(
+    db: &'db dyn HirAnalysisDb,
+    site: ParamSite<'db>,
+    idx: usize,
+) -> Option<&'db FuncParam<'db>> {
+    let params = match site {
+        ParamSite::Func(func) => return func.params(db).nth(idx)?.hir(db),
+        ParamSite::ContractInit(contract) => contract.init(db)?.params(db),
         ParamSite::Closure(def) => match def.expr.data(db, def.body) {
-            Partial::Present(Expr::Closure { params, .. }) => params
-                .data(db)
-                .get(idx)
-                .is_some_and(|param| param.is_maybe_mut(db)),
-            _ => false,
+            Partial::Present(Expr::Closure { params, .. }) => *params,
+            _ => return None,
         },
-        ParamSite::ContractInit(_) | ParamSite::ClosureEnv(_) | ParamSite::EffectField(_) => false,
-    }
+        ParamSite::ClosureEnv(_) | ParamSite::EffectField(_) => return None,
+    };
+    params.data(db).get(idx)
 }
 
 fn effect_param_name<'db>(

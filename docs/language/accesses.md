@@ -18,6 +18,12 @@ an owned argument is moved, or copied if its type is `Copy`. A projection's
 `mut` result is marked like a place (`bump(mut xs.at(0))`), unless its
 type has no value, as a view's does (`fill(buf.span())`).
 
+A parameter may be a pattern, written after `_` since it has no label:
+`fn sum(_ (a, b): (u256, u256))`. The body binds its names as a `let` of the
+parameter would, so from a view of a tuple a `Copy` part is copied and any
+other part is bound `ref` (`_ (i, ref x): (usize, Buf)`). A function without
+a body, such as a trait method's declaration, names its parameters.
+
 A view argument that is a scalar or a handle (an integer, `bool`,
 `Address`, a raw pointer, or any `core::marker::Snapshot` type) is a
 *snapshot*: the callee gets a copy, and the caller may change the original

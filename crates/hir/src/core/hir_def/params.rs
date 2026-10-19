@@ -301,19 +301,26 @@ impl<'db> FuncParam<'db> {
             .flatten()
             .and_then(|name| match name {
                 FuncParamName::Ident(ident) => Some(ident),
-                FuncParamName::Underscore => None,
+                FuncParamName::Underscore | FuncParamName::Destructured(_) => None,
             })
     }
 
+    /// The name the parameter's binding has: its own, or the name a
+    /// destructured parameter's body binds its pattern from.
     pub fn name(&self) -> Option<IdentId<'db>> {
         match self.name.to_opt()? {
-            FuncParamName::Ident(name) => Some(name),
-            _ => None,
+            FuncParamName::Ident(name) | FuncParamName::Destructured(name) => Some(name),
+            FuncParamName::Underscore => None,
         }
     }
 
     pub fn is_self_param(&self, db: &dyn HirDb) -> bool {
         self.name.to_opt().is_some_and(|name| name.is_self(db))
+    }
+
+    /// Whether the parameter is a pattern its body destructures it with.
+    pub fn is_destructured(&self) -> bool {
+        matches!(self.name.to_opt(), Some(FuncParamName::Destructured(_)))
     }
 
     /// Whether the parameter is written `mut?`: `mut? self` or `x: mut? T`.
@@ -334,11 +341,21 @@ pub struct WherePredicate<'db> {
 pub enum FuncParamName<'db> {
     Ident(IdentId<'db>),
     Underscore,
+    /// A pattern, `_ (a, b): T`, which the body that binds the parameter
+    /// (the function's own, or a closure's) begins by destructuring it with:
+    /// `let (a, b) = %1`. The name, which source cannot write, is the
+    /// parameter's `%` and its index.
+    Destructured(IdentId<'db>),
 }
 
 impl<'db> FuncParamName<'db> {
     pub fn ident(db: &'db dyn HirDb, name: &str) -> Self {
         Self::Ident(IdentId::new(db, name))
+    }
+
+    /// The name of destructured parameter `idx`.
+    pub fn destructured(db: &'db dyn HirDb, idx: usize) -> IdentId<'db> {
+        IdentId::new(db, format!("%{idx}"))
     }
 
     pub fn is_self(&self, db: &dyn HirDb) -> bool {
@@ -351,7 +368,7 @@ impl<'db> FuncParamName<'db> {
     pub fn pretty_print(&self, db: &dyn HirDb) -> String {
         match self {
             FuncParamName::Ident(name) => name.data(db).to_string(),
-            FuncParamName::Underscore => "_".to_string(),
+            FuncParamName::Underscore | FuncParamName::Destructured(_) => "_".to_string(),
         }
     }
 }

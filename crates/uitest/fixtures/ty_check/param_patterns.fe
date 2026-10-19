@@ -1,0 +1,42 @@
+use core::option::Option
+
+// A parameter destructured by a pattern is bound by its function's body.
+trait Pairs {
+    fn sum(_ (a, b): (u256, u256)) -> u256
+}
+
+fn refutable(_ Option::Some(x): Option<u256>) -> u256 {
+    x
+}
+
+fn arity(_ (a, b, c): (u256, u256)) -> u256 {
+    a
+}
+
+fn named_twice(a: u256, _ (a, b): (u256, u256)) -> u256 {
+    a + b
+}
+
+fn patterned_twice(_ (a, b): (u256, u256), _ (c, a): (u256, u256)) -> u256 {
+    a + b + c
+}
+
+fn named_after(_ (a, b): (u256, u256), a: u256) -> u256 {
+    a + b
+}
+
+fn closure_twice() -> u256 {
+    let f = |a: u256, (a, b): (u256, u256)| a + b
+    f(1, (2, 3))
+}
+
+fn closure_named_after() -> u256 {
+    let f = |(a, b): (u256, u256), a: u256| a + b
+    f((2, 3), 1)
+}
+
+// Accepted: a pattern may rebind a name of the enclosing function's.
+fn shadows(a: u256) -> u256 {
+    let f = |(a, b): (u256, u256)| a + b
+    f((a, 1))
+}

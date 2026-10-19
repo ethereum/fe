@@ -67,6 +67,8 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
+    /// A parameter pattern of a function without a body to bind it.
+    DestructuredParamWithoutBody(DynLazySpan<'db>),
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
@@ -300,6 +302,7 @@ impl TyLowerDiag<'_> {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
+            Self::DestructuredParamWithoutBody(_) => 76,
             Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
@@ -805,6 +808,19 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
     },
 
+    /// A parameter pattern that may not match.
+    RefutableParamPattern {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A name a parameter pattern binds that another parameter of the same
+    /// function or closure binds too.
+    ParamBindsTwice {
+        primary: DynLazySpan<'db>,
+        first: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
+
     /// The `else` block of a `let … else` can complete.
     LetElseMustDiverge {
         primary: DynLazySpan<'db>,
@@ -1285,6 +1301,8 @@ impl<'db> BodyDiag<'db> {
             Self::MutBindingOfRead { .. } => 123,
             Self::MaybeMutWithoutMode { .. } => 130,
             Self::MaybeMutEffect { .. } => 132,
+            Self::RefutableParamPattern { .. } => 133,
+            Self::ParamBindsTwice { .. } => 134,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,
             Self::UnsafeFieldRequiresUnsafe { .. } => 126,

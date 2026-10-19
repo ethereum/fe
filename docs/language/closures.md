@@ -13,6 +13,9 @@ Each parameter has a mode and a type, as a function parameter does
 may be left out: `|x|`, or `|x: own|` for a mode without a type. The return
 type is optional too.
 
+A parameter may be a pattern, which takes its argument apart as a `let`
+would: `pairs.fold(0, |acc, (a, b)| acc + a * b)`, `|Point { x, y }| x + y`.
+
 ## Callable shapes
 
 Because modes are not types, a closure's type is described by its *shape*,

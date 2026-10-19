@@ -593,6 +593,7 @@ fn create_selector_const<'db>(
             Body::lower_ast_with_variant(
                 ctxt,
                 None,
+                None,
                 TrackedItemVariant::NamelessBody,
                 BodyKind::Anonymous,
             )
@@ -601,6 +602,7 @@ fn create_selector_const<'db>(
         } else {
             Body::lower_ast_with_variant(
                 ctxt,
+                None,
                 None,
                 TrackedItemVariant::NamelessBody,
                 BodyKind::Anonymous,
@@ -620,6 +622,7 @@ fn create_selector_const<'db>(
         .accumulate(db);
         Body::lower_ast_with_variant(
             ctxt,
+            None,
             None,
             TrackedItemVariant::NamelessBody,
             BodyKind::Anonymous,

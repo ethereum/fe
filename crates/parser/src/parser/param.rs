@@ -9,7 +9,8 @@ use super::{
     expr::{is_expr_start, parse_const_generic_expr, parse_expr, parse_expr_no_struct},
     expr_atom::{BlockExprScope, LitExprScope},
     parse_list,
-    path::PathScope,
+    pat::parse_pat_operand,
+    path::{PathScope, is_path_segment},
     token_stream::TokenStream,
     type_::{TupleTypeScope, is_type_start, parse_closure_param_type, parse_type},
 };
@@ -93,6 +94,27 @@ fn maybe_mut_param_name_error<S: TokenStream>(parser: &mut Parser<S>) {
     parser.error_msg_on_current_token("a parameter's mode goes on its type: `x: mut? T`");
 }
 
+/// Whether a parameter pattern starts here, after any binding marker, which
+/// the pattern parser reports: a tuple pattern, or a path to a tuple struct,
+/// record or variant. A path starts as any path does (`Self`, `super`,
+/// `ingot`, a qualified type, `self::` or a name), and only a name, or
+/// `self` alone, may be the parameter's name instead.
+fn is_param_pat_start<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    use SyntaxKind::*;
+    let tokens = parser.peek_n_non_trivia(3);
+    let tokens = match tokens.as_slice() {
+        [MutKw | MaybeMutKw | RefKw | VarKw, rest @ ..] => rest,
+        tokens => tokens,
+    };
+    match tokens {
+        [LParen, ..] => true,
+        [Ident, next, ..] => matches!(next, LParen | LBrace | Colon2 | Lt),
+        [SelfKw, next, ..] => *next == Colon2,
+        [Ident | SelfKw, ..] | [] => false,
+        [first, ..] => is_path_segment(*first),
+    }
+}
+
 impl super::Parse for FnParamScope {
     type Error = Recovery<ErrProof>;
 
@@ -114,6 +136,22 @@ impl super::Parse for FnParamScope {
         }
         if allow_own_self_shorthand {
             parser.bump_expected(SyntaxKind::OwnKw);
+        }
+        // A closure parameter may be a pattern; a function's takes `_` first,
+        // having no label.
+        if !allow_ref_self_shorthand && !allow_own_self_shorthand && is_param_pat_start(parser) {
+            if has_mut || has_maybe_mut || has_var {
+                parser.error_msg_on_current_token(
+                    "a parameter pattern's markers go on the names it binds: `(var a, ref b)`",
+                );
+            }
+            if !self.allow_inferred_type {
+                parser.error_msg_on_current_token(
+                    "a parameter pattern has no label; write `_` before it: `_ (a, b): T`",
+                );
+            }
+            parse_pat_operand(parser)?;
+            return self.parse_param_ty(parser);
         }
         parser.expect(
             &[
@@ -180,7 +218,9 @@ impl super::Parse for FnParamScope {
                 parser.bump();
 
                 // A closure parameter may be a bare `_` with an inferred type.
-                if !self.allow_inferred_type
+                if is_param_pat_start(parser) {
+                    parse_pat_operand(parser)?;
+                } else if !self.allow_inferred_type
                     || !matches!(
                         parser.current_kind(),
                         Some(SyntaxKind::Comma | SyntaxKind::Pipe)

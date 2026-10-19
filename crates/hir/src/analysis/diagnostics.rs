@@ -1705,6 +1705,18 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::DestructuredParamWithoutBody(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a parameter pattern needs a body to bind it".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this function has no body".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec!["name the parameter instead: `_ x: T`".to_string()],
+                error_code,
+            },
+
             Self::MaybeMutBound(span) => primary_diag(
                 Severity::Error,
                 "`mut?` bound of an item without a mode",
@@ -4022,6 +4034,37 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary.resolve(db),
                 error_code,
             ),
+
+            Self::RefutableParamPattern { primary } => primary_diag(
+                Severity::Error,
+                "refutable pattern in a parameter",
+                "this pattern may not match every argument",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ParamBindsTwice {
+                primary,
+                first,
+                name,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!("`{}` is bound by more than one parameter", name.data(db)),
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{}` is bound again here", name.data(db)),
+                        span: primary.resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{}` is first bound here", name.data(db)),
+                        span: first.resolve(db),
+                    },
+                ],
+                notes: vec![],
+                error_code,
+            },
 
             Self::LetElseMustDiverge { primary } => primary_diag(
                 Severity::Error,
