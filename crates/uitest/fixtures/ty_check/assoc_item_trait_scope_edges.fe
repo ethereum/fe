@@ -75,3 +75,25 @@ impl api::Local for u8 {
     const DEPTH: usize = 2
     fn depth() -> usize { Self::DEPTH }
 }
+
+// The enclosing impl only selects its own items: `u16::DEPTH` in it selects
+// `Near`, the trait in scope, over `api::Local`'s impl for `u16`.
+impl api::Local for u16 {
+    const DEPTH: usize = 1
+    fn depth() -> usize { 1 }
+}
+
+pub trait Near {
+    const DEPTH: usize
+}
+
+impl Near for u16 {
+    const DEPTH: usize = 7
+}
+
+pub struct Probe {}
+
+impl api::Local for Probe {
+    const DEPTH: usize = 3
+    fn depth() -> usize { u16::DEPTH }
+}
