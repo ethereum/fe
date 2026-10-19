@@ -490,44 +490,37 @@ impl<'db> RawTransportTracer<'_, 'db> {
 
 /// Holds the access checker's result space of each access component of a
 /// projection, which instantiates its callers' callees, to the class lowering
-/// returns the component in. A component with no runtime class carries
-/// nothing; a native reference keeps its space at run time; constant data is
-/// a read-only memory value. Any other disagreement, or a component the
-/// checker found no space for, is an error rather than a miscompile.
+/// returns the component in. A component no yield grants, such as the payload
+/// of a variant the projection never returns, and one with no runtime class
+/// carry nothing; a native reference keeps its space at run time; constant
+/// data is a read-only memory value. Any other disagreement is an error
+/// rather than a miscompile.
 pub(crate) fn check_projection_result_spaces<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
     ret: Option<&RuntimeClass<'db>>,
 ) -> Result<(), LowerError> {
     for (steps, space) in projection_component_spaces(db, semantic) {
-        let Some(class) =
-            ret.and_then(|ret| project_declaration_return_source(db, ret.clone(), &steps))
-        else {
+        let (Some(space), Some(class)) = (
+            space,
+            ret.and_then(|ret| project_declaration_return_source(db, ret.clone(), &steps)),
+        ) else {
             continue;
         };
-        let agrees = match (&class, space) {
-            (
-                RuntimeClass::Ref {
-                    kind: RefKind::Native,
-                    ..
-                },
-                Some(_),
-            ) => true,
-            (
-                RuntimeClass::Ref {
-                    kind: RefKind::Object | RefKind::Const,
-                    ..
-                },
-                Some(space),
-            ) => space == AddressSpace::Memory,
-            (
-                RuntimeClass::Ref {
-                    kind: RefKind::Provider { space: actual, .. },
-                    ..
-                }
-                | RuntimeClass::RawAddr { space: actual, .. },
-                Some(space),
-            ) => *actual == space,
+        let agrees = match &class {
+            RuntimeClass::Ref {
+                kind: RefKind::Native,
+                ..
+            } => true,
+            RuntimeClass::Ref {
+                kind: RefKind::Object | RefKind::Const,
+                ..
+            } => space == AddressSpace::Memory,
+            RuntimeClass::Ref {
+                kind: RefKind::Provider { space: actual, .. },
+                ..
+            }
+            | RuntimeClass::RawAddr { space: actual, .. } => *actual == space,
             _ => false,
         };
         if !agrees {

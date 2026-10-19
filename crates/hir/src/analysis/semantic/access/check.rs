@@ -2330,7 +2330,9 @@ impl<'a, 'db> Analysis<'a, 'db> {
 
     /// A projection's yields: each component of every yield site names a
     /// place in one address space, its result space, and the access
-    /// components of a split are disjoint.
+    /// components of a split are disjoint. A component no yield grants has
+    /// none: every place but a grant has a space, and a grant of a callee's
+    /// component that no yield of the callee grants is never live.
     fn check_yields(&self) -> Result<Vec<Option<AddressSpace>>, Diag<'db>> {
         let BodyOwner::Func(func, mode) = self.instance.key(self.db).owner(self.db) else {
             return Ok(Vec::new());

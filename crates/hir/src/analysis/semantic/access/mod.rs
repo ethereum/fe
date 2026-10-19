@@ -113,7 +113,8 @@ pub(crate) fn projection_result_spaces<'db>(
 }
 
 /// A projection's result space per access component, with the steps from its
-/// return to the component: `None` where no yield shows the space, as for an
+/// return to the component: `None` where no yield grants the component, as
+/// for the payload of a variant the projection never returns, and for an
 /// instance whose body is not checked.
 pub fn projection_component_spaces<'db>(
     db: &'db dyn HirAnalysisDb,
