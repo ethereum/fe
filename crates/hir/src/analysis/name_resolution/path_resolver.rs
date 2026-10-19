@@ -4,7 +4,7 @@ use crate::{
     core::hir_def::{
         Const, Enum, EnumVariant, GenericArgListId, GenericParamOwner, HirIngot, IdentId, Impl,
         ImplTrait, ItemKind, Partial, PathId, PathKind, Trait, TypeBound, TypeId, TypeKind,
-        VariantKind, scope_graph::ScopeId,
+        VariantKind, WhereClauseOwner, scope_graph::ScopeId,
     },
     core::semantic::trait_self_predicate,
     span::{DynLazySpan, path::LazyPathSpan, types::LazyTySpan},
@@ -17,7 +17,7 @@ use std::iter::successors;
 use thin_vec::ThinVec;
 
 use super::{
-    EarlyNameQueryId, ExpectedPathKind, NameDomain,
+    EarlyNameQueryId, ExpectedPathKind, NameDomain, available_traits_in_scope,
     diagnostics::PathResDiag,
     is_scope_visible_from,
     method_selection::{MethodCandidate, MethodSelectionError, select_method_candidate},
@@ -37,7 +37,9 @@ use crate::analysis::{
         generic_defaults::DefaultApplication,
         method_table::{MethodProbe, probe_method},
         normalize::normalize_ty,
-        trait_def::{TraitInstId, impls_for_ty_with_satisfied_constraints},
+        trait_def::{
+            ImplementorId, ImplementorOrigin, TraitInstId, impls_for_ty_with_satisfied_constraints,
+        },
         trait_lower::{
             TraitRefLowerError, complete_candidate_impl_assoc_ty, complete_impl_assoc_ty,
             lower_candidate_impl_assoc_ty, lower_checked_impl_assoc_ty, lower_trait_ref,
@@ -851,6 +853,31 @@ where
     )
 }
 
+/// The trait that the bare ident `path`, written where a trait is expected in
+/// `scope`, names although it resolves to `definition`, an associated type of
+/// an enclosing trait that lexically shadows a same-named trait
+/// (`trait Abi { type Decoder: Decoder<Self> }`). It is looked up from outside
+/// the shadowing trait.
+fn shadowed_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    definition: NameResKind<'db>,
+) -> Option<&'db NameRes<'db>> {
+    if let NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _)) = definition
+        && path.parent(db).is_none()
+        // The shadow can only come from a trait that encloses the use site.
+        && scope.is_transitive_child_of(db, shadowing_trait.scope())
+        && let Some(outer_scope) = shadowing_trait.scope().parent(db)
+        && let Ok(outer) = resolve_ident_to_bucket(db, path, outer_scope).pick(NameDomain::TYPE)
+        && matches!(outer.kind, NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))))
+    {
+        Some(outer)
+    } else {
+        None
+    }
+}
+
 /// Resolves `path` written where a trait is expected.
 ///
 /// What the path names is looked up before any generic args are lowered
@@ -875,13 +902,8 @@ where
 {
     let is_trait = |kind| matches!(kind, NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))));
     let definition = resolve_type_path_definition(db, path, scope);
-    if let Some(NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _))) = definition
-        && path.parent(db).is_none()
-        // The shadow can only come from a trait that encloses the use site.
-        && scope.is_transitive_child_of(db, shadowing_trait.scope())
-        && let Some(outer_scope) = shadowing_trait.scope().parent(db)
-        && let Ok(outer) = resolve_ident_to_bucket(db, path, outer_scope).pick(NameDomain::TYPE)
-        && is_trait(outer.kind)
+    if let Some(outer) =
+        definition.and_then(|definition| shadowed_trait(db, path, scope, definition))
     {
         let res =
             resolve_name_res_with_minter(db, outer, None, path, scope, assumptions, lowering_cx)?;
@@ -1943,7 +1965,9 @@ fn select_assoc_const_candidate<'db>(
     ];
 
     let mut matches: IndexSet<TraitInstId<'db>> = IndexSet::default();
-    let mut unresolved = false;
+    // Candidates whose trait arguments this receiver doesn't determine.
+    let mut unresolved: IndexSet<TraitInstId<'db>> = IndexSet::default();
+    let mut enclosing: IndexSet<TraitInstId<'db>> = IndexSet::default();
     receiver.with_materialized(db, |cx| {
         let receiver_ty = cx.query();
         for ingot in search_ingots.into_iter().flatten() {
@@ -1963,11 +1987,13 @@ fn select_assoc_const_candidate<'db>(
                 let snapshot = cx.snapshot();
                 let inst = cx.instantiate_with_fresh_vars(declared);
                 if cx.unify::<TyId<'db>>(receiver_ty, inst.self_ty(db)).is_ok() {
-                    if let Some(inst) = cx.try_extract::<TraitInstId<'db>>(inst) {
-                        matches.insert(inst);
-                    } else {
-                        unresolved = true;
-                        matches.insert(declared);
+                    let inst = cx.try_extract::<TraitInstId<'db>>(inst).unwrap_or_else(|| {
+                        unresolved.insert(declared);
+                        declared
+                    });
+                    matches.insert(inst);
+                    if is_enclosing_impl(db, candidate, scope) {
+                        enclosing.insert(inst);
                     }
                 }
                 cx.rollback_to(snapshot);
@@ -1975,13 +2001,88 @@ fn select_assoc_const_candidate<'db>(
         }
     });
 
-    if unresolved || matches.len() > 1 {
-        AssocConstSelection::Ambiguous(matches.into_iter().collect())
-    } else if let Some(inst) = matches.into_iter().next() {
-        AssocConstSelection::Found(inst)
+    // Like method selection: a sole applicable candidate is used, but among
+    // several only traits in scope and the impl `scope` is in count, so an
+    // unrelated trait elsewhere (even in another ingot) can't make the path
+    // ambiguous.
+    let candidates = if matches.len() > 1 {
+        let available = traits_available_for_selection(db, scope, assumptions);
+        let visible: IndexSet<TraitInstId<'db>> = matches
+            .iter()
+            .copied()
+            .filter(|inst| enclosing.contains(inst) || available.contains(&inst.def(db)))
+            .collect();
+        if visible.is_empty() { matches } else { visible }
     } else {
-        AssocConstSelection::NotFound
+        matches
+    };
+    // A candidate whose trait arguments are unknown can't be selected.
+    match candidates.first() {
+        None => AssocConstSelection::NotFound,
+        Some(&inst) if candidates.len() == 1 && !unresolved.contains(&inst) => {
+            AssocConstSelection::Found(inst)
+        }
+        Some(_) => AssocConstSelection::Ambiguous(candidates.into_iter().collect()),
     }
+}
+
+/// The traits whose items a `Type::Item` path in `scope` may select: those in
+/// scope, the traits of `assumptions`, and all their super-traits.
+///
+/// Super-traits are found from their paths alone, as lowering names them.
+/// Lowering a super-trait reference could resolve the path being selected
+/// again, as `u8::N` in `trait Top: Parent<{ u8::N }>`, where `Top` is itself
+/// in scope. Any super-trait missed here would silently make another candidate
+/// the only one in scope.
+fn traits_available_for_selection<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> IndexSet<Trait<'db>> {
+    let mut pending: Vec<Trait<'db>> = available_traits_in_scope(db, scope)
+        .iter()
+        .copied()
+        .chain(assumptions.list(db).iter().map(|pred| pred.def(db)))
+        .collect();
+    let mut traits = IndexSet::default();
+    while let Some(trait_def) = pending.pop() {
+        if !traits.insert(trait_def) {
+            continue;
+        }
+        let super_refs = trait_def
+            .super_trait_refs(db)
+            .map(|super_ref| super_ref.trait_ref(db));
+        let self_bounds = WhereClauseOwner::Trait(trait_def)
+            .clause(db)
+            .predicates(db)
+            .filter(|pred| pred.is_self_subject(db))
+            .flat_map(|pred| pred.bounds(db).map(|bound| bound.trait_ref(db)));
+        pending.extend(super_refs.chain(self_bounds).filter_map(|trait_ref| {
+            let path = trait_ref.path(db).to_opt()?;
+            let scope = trait_def.scope();
+            let definition = resolve_type_path_definition(db, path, scope)?;
+            match shadowed_trait(db, path, scope, definition).map_or(definition, |outer| outer.kind)
+            {
+                NameResKind::Scope(ScopeId::Item(ItemKind::Trait(super_trait))) => {
+                    Some(super_trait)
+                }
+                NameResKind::Scope(_) | NameResKind::Prim(_) => None,
+            }
+        }));
+    }
+    traits
+}
+
+/// Whether `implementor` is the trait impl that `scope` is in. Its items are
+/// selected by paths such as `Self::SIZE` in it although its trait needn't be
+/// in scope, as in `impl api::Local for u8`.
+fn is_enclosing_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementor: ImplementorId<'db>,
+    scope: ScopeId<'db>,
+) -> bool {
+    matches!(implementor.origin(db), ImplementorOrigin::Hir(impl_trait)
+        if scope.is_transitive_child_of(db, impl_trait.scope()))
 }
 
 pub(crate) fn find_associated_type<'db>(
@@ -2066,6 +2167,7 @@ fn find_associated_type_in_mode<'db>(
 
     let scope_ingot = scope.ingot(db);
     let mut candidates = SmallVec::new();
+    let mut enclosing: IndexSet<TraitInstId<'db>> = IndexSet::default();
 
     if let TyData::TyParam(param) = original_ty.data(db) {
         // Trait self, in trait or impl trait. Associated type must be in this trait
@@ -2168,6 +2270,9 @@ fn find_associated_type_in_mode<'db>(
                         })
                     {
                         candidates.push((inst, assoc_ty));
+                        if is_enclosing_impl(db, impl_, scope) {
+                            enclosing.insert(inst);
+                        }
                     }
                 }
             }
@@ -2241,6 +2346,24 @@ fn find_associated_type_in_mode<'db>(
     // paths to one declaration are not an ambiguity.
     let mut seen = IndexSet::new();
     candidates.retain(|candidate| seen.insert(*candidate));
+
+    // Implementations of a concrete type: like method selection and associated
+    // consts, only traits in scope and the impl `scope` is in count among
+    // several candidates, so an unrelated trait elsewhere can't make the path
+    // ambiguous.
+    if candidates.len() > 1
+        && !matches!(
+            original_ty.data(db),
+            TyData::TyParam(_) | TyData::AssocTy(_)
+        )
+    {
+        let available = traits_available_for_selection(db, scope, assumptions);
+        let visible =
+            |inst: &TraitInstId<'db>| enclosing.contains(inst) || available.contains(&inst.def(db));
+        if candidates.iter().any(|(inst, _)| visible(inst)) {
+            candidates.retain(|(inst, _)| visible(inst));
+        }
+    }
 
     Ok(candidates)
 }
