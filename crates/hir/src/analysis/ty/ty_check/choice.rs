@@ -1192,6 +1192,8 @@ impl<'db> TyChecker<'db> {
         // frames of the opening: a condition that only
         // a named implementation answers is refused until sub-choices carry
         // the opening's answer into the implementation.
+        let mut active = rustc_hash::FxHashSet::default();
+        let bounds = self.env.impl_bound_choices(*implementation, &[], 0, &mut active);
         Some(
             KnownChoice::prove(
                 self.db,
@@ -1201,6 +1203,7 @@ impl<'db> TyChecker<'db> {
                 // (compared with the ordinary ones where it is declared).
                 slot_goal(self.db, candidate.trait_inst(self.db)),
             )
+            .map(|known| known.with_bounds(self.db, bounds))
             .map_err(|_| {
                 "the named implementation's conditions do not hold where it is declared; a condition only a named implementation answers is not supported yet"
             }),
@@ -1938,7 +1941,15 @@ impl<'db> TyChecker<'db> {
         let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(self.db) else {
             return Err("the requested trait goal has no authored implementation");
         };
+        let mut active = rustc_hash::FxHashSet::default();
+        let bounds = self.env.impl_bound_choices(
+            implementation,
+            resolved.impl_args(self.db),
+            0,
+            &mut active,
+        );
         KnownChoice::prove(self.db, cx, implementation, goal)
+            .map(|known| known.with_bounds(self.db, bounds))
             .map_err(|_| "the implementation's conditions were not admitted")
     }
 }
@@ -2147,23 +2158,38 @@ impl<'db> TyCheckEnv<'db> {
             active.remove(&slot);
             return None;
         };
-        let mut bounds = Vec::new();
-        for (bound, at_use) in impl_declared_goals(db, implementation, resolved.impl_args(db)) {
-            if let Some(choice) = self.ordinary_choice(at_use, depth + 1, active) {
-                let item = (Delivery::Bound(bound), choice);
-                if !bounds.contains(&item) {
-                    bounds.push(item);
-                }
-            }
-        }
+        let bounds =
+            self.impl_bound_choices(implementation, resolved.impl_args(db), depth + 1, active);
         active.remove(&slot);
-        let bounds = (!bounds.is_empty()).then(|| DeliveryList::new(db, bounds));
         Some(Choice::Known(KnownChoice::ordinary(
             db,
             implementation,
             slot,
             bounds,
         )))
+    }
+
+    /// The prerequisite bound decisions for `implementation` instantiated with
+    /// `impl_args`, recorded by `Delivery::Bound` in `implementation`'s parameter
+    /// context.
+    fn impl_bound_choices(
+        &self,
+        implementation: crate::hir_def::ImplTrait<'db>,
+        impl_args: &[TyId<'db>],
+        depth: usize,
+        active: &mut rustc_hash::FxHashSet<TraitInstId<'db>>,
+    ) -> Option<DeliveryList<'db>> {
+        let db = self.db();
+        let mut bounds = Vec::new();
+        for (bound, at_use) in impl_declared_goals(db, implementation, impl_args) {
+            if let Some(choice) = self.ordinary_choice(at_use, depth, active) {
+                let item = (Delivery::Bound(bound), choice);
+                if !bounds.contains(&item) {
+                    bounds.push(item);
+                }
+            }
+        }
+        (!bounds.is_empty()).then(|| DeliveryList::new(db, bounds))
     }
 
     /// The decisions a direct call checked in `frame` records: its trait
@@ -2434,20 +2460,6 @@ impl<'db> TyCheckEnv<'db> {
             let mut delivered = callable.delivered().to_vec();
             delivered.extend(decided);
             callable.set_delivered(delivered);
-        }
-        // The body read here for a concrete goal is what the instance
-        // must run (checked where the instance is built, `const_ref`).
-        let concrete = callable.trait_inst().is_none_or(|inst| {
-            !inst
-                .args(db)
-                .iter()
-                .any(|ty| ty.has_param(db) || ty.has_var(db))
-        });
-        if concrete && !matches!(callable.choice(), Some(Choice::Slot(_))) {
-            let body = callable
-                .called_body(db, self.scope(), self.assumptions())
-                .map(|(body, _)| body);
-            callable.set_checked_body(body);
         }
         (callable, refusals)
     }

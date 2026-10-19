@@ -119,6 +119,25 @@ impl<'db> KnownChoice<'db> {
         }
     }
 
+    /// Attach prerequisite bound decisions to a checked choice while
+    /// preserving whether the choice itself is ambiently ordinary or explicitly
+    /// proved/opened.
+    pub fn with_bounds(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        bounds: Option<DeliveryList<'db>>,
+    ) -> Self {
+        let bounds = bounds.filter(|list| !list.items(db).is_empty());
+        let ordinary = self.ordinary
+            && bounds
+                .is_none_or(|list| list.items(db).iter().all(|(_, c)| c.is_ordinary_or_bound()));
+        Self {
+            bounds,
+            ordinary,
+            ..self
+        }
+    }
+
     /// Specialize this choice's prerequisite bound decisions inside an
     /// instance carrying `choices`.
     pub fn specialize(self, db: &'db dyn HirAnalysisDb, choices: &SlotChoices<'db>) -> Self {

@@ -365,8 +365,6 @@ fn use_cycle(_ n: Node) -> u32 {
 
 #[test]
 fn conditional_impl_under_with_remains_refused() {
-    use fe_hir::analysis::ty::ty_check::check_func_body;
-
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
         "conditional_impl_under_with_refused.fe".into(),
@@ -379,7 +377,7 @@ impl Inner for u32 {
     fn inner() -> u32 { 1 }
 }
 
-impl AltInner: Inner for u32 {
+impl Inner for u32 as AltInner {
     fn inner() -> u32 { 2 }
 }
 
@@ -405,6 +403,11 @@ fn wrap<U: Inner>(_ x: U) -> u32 {
     run(Box { val: x })
 }
 
+fn ok_outside_with() -> u32 {
+    let one: u32 = 1
+    run(Box { val: one }) + wrap(one)
+}
+
 fn bad_direct() -> u32 {
     let one: u32 = 1
     with (AltInner) {
@@ -421,12 +424,19 @@ fn bad_through_generic() -> u32 {
 "#,
     );
     let (module, _) = db.top_mod(file);
+    let ok_func = find_func(&db, module, "ok_outside_with");
+    let (ok_diags, _) = fe_hir::analysis::ty::ty_check::check_func_body(&db, ok_func);
+    assert!(
+        ok_diags.is_empty(),
+        "expected ok_outside_with to have no diagnostics, got: {ok_diags:?}"
+    );
     for func_name in ["bad_direct", "bad_through_generic"] {
         let func = find_func(&db, module, func_name);
-        let (diags, _) = check_func_body(&db, func);
+        let (diags, _) = fe_hir::analysis::ty::ty_check::check_func_body(&db, func);
+        let formatted = format!("{diags:?}");
         assert!(
-            !diags.is_empty(),
-            "expected conditional impl under `with` to be refused in `{func_name}`"
+            formatted.contains("conditional implementations under `with` are not supported yet"),
+            "expected OpenedCondition refusal in `{func_name}`, got: {formatted}"
         );
     }
 }
@@ -609,4 +619,171 @@ fn verify(_ v: Verify<{ caller() }>) {}
         }
     }
     assert!(saw_gb_outer);
+}
+
+#[test]
+fn prove_and_named_choice_record_prerequisite_bound_evidence_through_evidence_param() {
+    use fe_hir::{
+        analysis::ty::{
+            trait_choice::{Choice, Delivery, Resolved, SlotChoices, body_deliveries},
+            ty_check::check_func_body,
+        },
+        hir_def::CallableDef,
+    };
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "prove_and_named_choice_bounds.fe".into(),
+        r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const fn inner() -> u32
+}
+
+impl Inner for u32 {
+    const fn inner() -> u32 { 7 }
+}
+
+struct Box<T> {
+    pub val: T,
+}
+
+trait Outer {
+    const fn outer(self) -> u32
+}
+
+impl<T: Inner> Outer for Box<T> {
+    const fn outer(self) -> u32 {
+        T::inner() + 3
+    }
+}
+
+impl Outer for Box<u32> as AltOuter
+where
+    u32: Inner
+{
+    const fn outer(self) -> u32 {
+        u32::inner() + 100
+    }
+}
+
+const fn run_with_ev(_ ev: Evidence<Outer<Box<u32>>>, _ b: Box<u32>) -> u32 {
+    with (ev) {
+        b.outer()
+    }
+}
+
+const fn caller() -> u32 {
+    let one: u32 = 1
+    let b = Box { val: one }
+    let ev_ord = prove<Outer<Box<u32>>>()
+    let ev_alt = with (AltOuter) {
+        prove<Outer<Box<u32>>>()
+    }
+    run_with_ev(ev_ord, b) + run_with_ev(ev_alt, b)
+}
+
+struct Verify<const N: u32> where { N == 117 } {}
+fn verify(_ v: Verify<{ caller() }>) {}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    db.assert_no_diags(module);
+
+    let impls = module.all_impl_traits(&db);
+    let inner_u32_impl = impls[0];
+    let outer_box_impl = impls[1];
+    let alt_outer_impl = impls[2];
+
+    let caller = find_func(&db, module, "caller");
+    let (_, typed) = check_func_body(&db, caller);
+    let run_with_ev = find_func(&db, module, "run_with_ev");
+
+    let run_calls: Vec<_> = typed
+        .body()
+        .unwrap()
+        .exprs(&db)
+        .keys()
+        .filter_map(|expr| typed.callable_expr(expr))
+        .filter(|c| matches!(c.callable_def(), CallableDef::Func(f) if f == run_with_ev))
+        .collect();
+    assert_eq!(run_calls.len(), 2);
+
+    // 1. `ev_ord = prove<Outer<Box<u32>>>()` selects generic `impl<T: Inner> Outer for Box<T>`,
+    // records `!known.is_ordinary()`, carries `bounds: Some([Inner<T> => KnownChoice(impl Inner for u32)])`,
+    // and when passed through `ev: Evidence<Outer<Box<u32>>>` to `run_with_ev`, unpacks `Inner<T>`
+    // into `<Box<T> as Outer>::outer` without solver re-selection.
+    let ord_call = run_calls[0];
+    let Some((Delivery::Param(0), Choice::Known(ord_known))) = ord_call.delivered().first().copied()
+    else {
+        panic!(
+            "expected Evidence param delivery Choice::Known, got {:?}",
+            ord_call.delivered()
+        );
+    };
+    assert!(!ord_known.is_ordinary());
+    assert_eq!(ord_known.implementation(), outer_box_impl);
+    let bounds = ord_known
+        .bounds()
+        .expect("expected prerequisite bounds on proved generic impl choice");
+    assert_eq!(bounds.items(&db).len(), 1);
+    let (Delivery::Bound(_), Choice::Known(prereq)) = bounds.items(&db)[0] else {
+        panic!("expected KnownChoice bound, got {:?}", bounds.items(&db));
+    };
+    assert!(prereq.is_ordinary());
+    assert_eq!(prereq.implementation(), inner_u32_impl);
+
+    let (_, run_typed) = check_func_body(&db, run_with_ev);
+    let b_outer_call = run_typed
+        .body()
+        .unwrap()
+        .exprs(&db)
+        .keys()
+        .find_map(|expr| run_typed.callable_expr(expr))
+        .expect("b.outer() call");
+    let CallableDef::Func(nominal_outer) = b_outer_call.callable_def() else {
+        panic!("expected Func callable");
+    };
+    let run_slots = SlotChoices::from_resolved(
+        body_deliveries(&db, None, ord_call.delivered(), run_with_ev, run_with_ev)
+            .into_iter()
+            .map(|(slot, choice)| (slot, SlotChoices::default().resolve_in(&db, Some(choice))))
+            .collect(),
+    );
+    let chosen_outer = run_slots.resolve_in(&db, b_outer_call.choice());
+    assert_eq!(chosen_outer, Resolved::Known(ord_known));
+    let box_outer_fn = outer_box_impl.methods(&db).next().unwrap();
+    let box_outer_deliveries = body_deliveries(
+        &db,
+        chosen_outer.known(),
+        b_outer_call.delivered(),
+        nominal_outer,
+        box_outer_fn,
+    );
+    assert_eq!(box_outer_deliveries.len(), 1);
+    assert_eq!(box_outer_deliveries[0].1, Choice::Known(prereq));
+
+    // 2. `ev_alt = with (AltOuter) { prove<Outer<Box<u32>>>() }` selects `AltOuter` (`!is_ordinary()`),
+    // and inside `AltOuter::outer`, `u32::inner()` directly carries `Choice::Known(prereq)`.
+    let alt_call = run_calls[1];
+    let Some((Delivery::Param(0), Choice::Known(alt_known))) = alt_call.delivered().first().copied()
+    else {
+        panic!(
+            "expected Evidence param delivery Choice::Known, got {:?}",
+            alt_call.delivered()
+        );
+    };
+    assert!(!alt_known.is_ordinary());
+    assert_eq!(alt_known.implementation(), alt_outer_impl);
+    let alt_outer_fn = alt_outer_impl.methods(&db).next().unwrap();
+    let (_, alt_outer_typed) = check_func_body(&db, alt_outer_fn);
+    let inner_call_in_alt = alt_outer_typed
+        .body()
+        .unwrap()
+        .exprs(&db)
+        .keys()
+        .find_map(|expr| alt_outer_typed.callable_expr(expr))
+        .expect("u32::inner() call inside AltOuter::outer");
+    assert_eq!(inner_call_in_alt.choice(), Some(Choice::Known(prereq)));
 }

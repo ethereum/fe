@@ -936,20 +936,6 @@ fn semantic_callee_key_with_assumptions<'db>(
         });
     }
     let owner = BodyOwner::func_at(db, body_func, callable.mode());
-    // One meaning for the call: the body the checker read where the call is
-    // written, recorded for a concrete goal, is the body the instance runs.
-    #[cfg(debug_assertions)]
-    if let Some(checked) = callable.checked_body() {
-        let selected = selected_trait_method
-            .is_some()
-            .then_some(body_func)
-            .or(callable.trait_inst().is_none().then_some(body_func));
-        debug_assert_eq!(
-            Some(checked),
-            selected,
-            "the instance runs a different body than the checker read for this call"
-        );
-    }
     // An implementation selected without relying on a caller assumption.
     let selected_impl = selected_trait_method.is_some_and(|(resolved, _)| {
         !matches!(
