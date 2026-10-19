@@ -72,6 +72,7 @@ use crate::analysis::ty::{
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
     shape::{Shape, SumKind, sum_kind},
     trait_def::TraitInstId,
+    trait_lower::complete_impl_trait,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
     },
@@ -3467,8 +3468,7 @@ impl<'db> TyChecker<'db> {
                 };
                 let canonical_goal = Canonicalized::new(self.db, trait_goal);
                 let solved = canonical_goal.extract_solution(&mut table, solution);
-                let solved_inst = solved
-                    .implementor
+                let solved_inst = complete_impl_trait(self.db, solved.implementor)
                     .trait_inst(self.db)
                     .fold_with(self.db, &mut table);
                 let instantiated = reify_unresolved_pattern_slots(

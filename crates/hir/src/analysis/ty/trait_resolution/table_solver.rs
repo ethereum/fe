@@ -29,6 +29,7 @@ use crate::analysis::{
         fold::TyFoldable,
         sol_codec::sol_codec_implementor,
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_in_ingots},
+        trait_lower::complete_candidate_impl_assoc_ty,
         ty_def::{BorrowKind, TyData, TyId},
         unify::{PersistentUnificationTable, UnificationError, UnificationResult},
         visitor::{TyVisitable, TyVisitor},
@@ -445,7 +446,18 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 {
                     return Ok(Transition::Reject);
                 }
-                let candidate = table.instantiate_with_fresh_vars(selected_impl);
+                // Candidates are headers; lower only the associated types
+                // the goal binds (see `impls_for_trait_def`).
+                let Some(candidate) = normalized_goal
+                    .assoc_type_bindings(self.db)
+                    .keys()
+                    .try_fold(selected_impl, |implementor, &name| {
+                        complete_candidate_impl_assoc_ty(self.db, implementor, name)
+                    })
+                else {
+                    return Ok(Transition::Reject);
+                };
+                let candidate = table.instantiate_with_fresh_vars(candidate);
                 let normalized_candidate = normalize_trait_inst_preserving_validity(
                     self.db,
                     candidate.trait_inst(self.db),

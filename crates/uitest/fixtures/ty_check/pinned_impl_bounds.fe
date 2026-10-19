@@ -46,6 +46,27 @@ fn make_forwarding() -> Forwarding<u256> {
     Forwarding { base: 0 }
 }
 
+// A pin can forward another forwarding pin: `Nested`'s space is
+// `Forwarding<P>`'s, which is `P`'s.
+struct Nested<P, S> {
+    base: u256,
+}
+
+impl<P: Pinned<Space = S>, S> Pinned for Nested<P, S> {
+    type Space = Forwarding<P>::Space
+}
+
+// Accepted: `u256` is not pinned.
+fn make_nested() -> Nested<u256, Transient> {
+    Nested { base: 0 }
+}
+
+// Rejected: `Gated<Yes>` is pinned to transient storage, and so is
+// `Nested<Gated<Yes>, Transient>`.
+fn make_nested_gated() {
+    let _nested: Nested<Gated<Yes>, Transient> = Nested { base: 0 }
+}
+
 // A blanket implementation pins only the types its bound admits.
 trait Mark {}
 
