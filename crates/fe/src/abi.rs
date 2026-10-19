@@ -13,7 +13,8 @@ use hir::{
             normalize::normalize_from_assumptions,
             trait_def::{TraitInstId, resolve_trait_method_instance},
             trait_resolution::{PredicateListId, Selection, TraitSolveCx},
-            ty_def::{TyBase, TyData, TyId},
+            ty_check::{BodyOwner, check_body},
+            ty_def::{BorrowKind, TyBase, TyData, TyId},
         },
     },
     hir_def::{
@@ -403,7 +404,7 @@ fn collect_typed_body_event_structs<'db>(
                     TraitSolveCx::new(db, body.scope()).with_assumptions(typed_body.assumptions()),
                     inst,
                     name,
-                    None,
+                    callable.mode(),
                 )
                 && let Some(impl_func) = method.body()
                 && let Ok(body_args) = method.complete_body_args(db, callable.generic_args())
@@ -411,11 +412,13 @@ fn collect_typed_body_event_structs<'db>(
                 target.func = impl_func;
                 target.generic_args = body_args.into_values();
             }
+            // The body the call runs: a `mut?` function's at the call's mode.
+            let owner = BodyOwner::func_at(db, target.func, callable.mode());
+            target.mode = owner.mode();
             if target.func.body(db).is_none() || !visited_funcs.insert(target.clone()) {
                 continue;
             }
-            let (_, func_typed_body) =
-                hir::analysis::ty::ty_check::check_func_body(db, target.func);
+            let (_, func_typed_body) = check_body(db, owner);
             let func_typed_body =
                 instantiate_callable_typed_body(db, func_typed_body.clone(), &target);
             collect_typed_body_event_structs(
@@ -435,6 +438,8 @@ fn collect_typed_body_event_structs<'db>(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct VisitedFuncBody<'db> {
     func: Func<'db>,
+    /// The mode of the body of `func`, a `mut?` function, the call runs.
+    mode: Option<BorrowKind>,
     generic_args: Vec<TyId<'db>>,
     trait_inst: Option<TraitInstId<'db>>,
 }
@@ -446,6 +451,7 @@ impl<'db> VisitedFuncBody<'db> {
     ) -> Self {
         Self {
             func,
+            mode: callable.mode(),
             generic_args: callable.generic_args().to_vec(),
             trait_inst: callable.trait_inst(),
         }

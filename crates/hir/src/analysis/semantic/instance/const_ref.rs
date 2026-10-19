@@ -853,14 +853,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else {
         nominal_func
     };
-    // A `mut?` body is the one at the call's mode; an implementation without
-    // a mode gives a `mut?` trait method its `ref` mode only.
-    let body_mode = if body_func.is_maybe_mut(db) {
-        callable.mode()
-    } else {
-        None
-    };
-    let owner = BodyOwner::Func(body_func, body_mode);
+    let owner = BodyOwner::func_at(db, body_func, callable.mode());
     // An implementation selected without relying on a caller assumption.
     let selected_impl = selected_trait_method.is_some_and(|(resolved, _)| {
         !matches!(
@@ -1085,7 +1078,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         )?;
         let body_signature = instantiated_method_signature(
             db,
-            (body_func, body_mode),
+            (body_func, owner.mode()),
             &subst_args,
             normalization_scope,
             evidence,

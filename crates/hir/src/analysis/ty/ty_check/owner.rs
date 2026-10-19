@@ -139,6 +139,13 @@ impl<'db> BodyOwner<'db> {
         Self::Func(func, func.modes(db)[0])
     }
 
+    /// The body of `func` a call at `mode` runs: a `mut?` function's body at
+    /// that mode, and the one body of any other function, such as either
+    /// body of a method with one body per mode.
+    pub fn func_at(db: &'db dyn HirAnalysisDb, func: Func<'db>, mode: Option<BorrowKind>) -> Self {
+        Self::Func(func, if func.is_maybe_mut(db) { mode } else { None })
+    }
+
     /// The mode this body is checked at: a `mut?` function's.
     pub fn mode(self) -> Option<BorrowKind> {
         match self {

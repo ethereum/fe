@@ -836,7 +836,9 @@ fn eval_static_assert_comparison_operand<'db>(
     eval_body_owner_const(db, owner, GenericSubst::none(db)).into_ready()
 }
 
-pub(super) fn check_body<'db>(
+/// The checked body of `owner`, with its own diagnostics: one mode's of a
+/// `mut?` function.
+pub fn check_body<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
