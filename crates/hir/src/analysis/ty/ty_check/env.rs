@@ -1,8 +1,8 @@
 use crate::{
     analysis::place::{Place, is_grant_place_expr, is_pointer_place_expr},
     hir_def::{
-        BinOp, Body, ClosureDef, Contract, Expr, ExprId, Func, IdentId, Partial, Pat, PatId, Stmt,
-        StmtId, TypeId as HirTypeId, UnOp, scope_graph::ScopeId,
+        BinOp, Body, Contract, Expr, ExprId, Func, IdentId, Partial, Pat, PatId, Stmt, StmtId,
+        TypeId as HirTypeId, UnOp, scope_graph::ScopeId,
     },
     span::DynLazySpan,
 };
@@ -45,7 +45,10 @@ use crate::analysis::{
         shape::Shape,
         trait_def::TraitInstId,
         trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
-        ty_def::{BorrowKind, ClosureTy, InvalidCause, StringFallback, TyData, TyId, TyVarSort},
+        ty_def::{
+            BorrowKind, ClosureDef, ClosureTy, InvalidCause, StringFallback, TyData, TyId,
+            TyVarSort,
+        },
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
     },
@@ -1756,6 +1759,22 @@ fn param_name<'db>(
         }
         ParamSite::ClosureEnv(_) => Some(IdentId::make_self(db)),
         ParamSite::EffectField(effect_site) => effect_param_name(db, effect_site, idx),
+    }
+}
+
+/// Whether parameter `idx` of `site` is written `mut?`, a function's or a
+/// closure's in a `mut?` function.
+pub(crate) fn param_is_maybe_mut(db: &dyn HirAnalysisDb, site: ParamSite<'_>, idx: usize) -> bool {
+    match site {
+        ParamSite::Func(func) => func.params(db).nth(idx).is_some_and(|p| p.is_maybe_mut(db)),
+        ParamSite::Closure(def) => match def.expr.data(db, def.body) {
+            Partial::Present(Expr::Closure { params, .. }) => params
+                .data(db)
+                .get(idx)
+                .is_some_and(|param| param.is_maybe_mut(db)),
+            _ => false,
+        },
+        ParamSite::ContractInit(_) | ParamSite::ClosureEnv(_) | ParamSite::EffectField(_) => false,
     }
 }
 

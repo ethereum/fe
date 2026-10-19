@@ -1177,8 +1177,7 @@ impl<'db> FuncParamView<'db> {
     pub fn is_maybe_mut(self, db: &'db dyn HirDb) -> bool {
         let list = self.func.params_list(db).to_opt();
         list.and_then(|l| l.data(db).get(self.idx))
-            .and_then(|p| p.ty.to_opt())
-            .is_some_and(|ty| matches!(ty.data(db), TypeKind::Mode(TypeMode::MaybeMut, _)))
+            .is_some_and(|p| p.is_maybe_mut(db))
     }
 
     pub fn span(self) -> crate::span::params::LazyFuncParamSpan<'db> {

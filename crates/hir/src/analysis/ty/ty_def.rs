@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{
     hir_def::{
-        Body, ClosureDef, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId, Struct,
+        Body, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId, Struct,
         TypeAlias as HirTypeAlias, VariantKind,
         params::FuncParamMode,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
@@ -1215,6 +1215,16 @@ pub enum TyData<'db> {
     // This type can be unified with any other types.
     // NOTE: For type soundness check in this level, we don't consider trait satisfiability.
     Invalid(InvalidCause<'db>),
+}
+
+/// A closure expression within the body that contains it, at the mode that
+/// body is checked at: each body of a `mut?` function defines its own
+/// closure.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub struct ClosureDef<'db> {
+    pub body: Body<'db>,
+    pub expr: ExprId,
+    pub mode: Option<BorrowKind>,
 }
 
 /// The type of a closure expression: an environment of captured values and a

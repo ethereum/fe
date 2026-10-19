@@ -34,9 +34,10 @@ impl Pair {
         first.count
     }
 
-    // Each body would define the closure.
-    fn mapped(mut? self) -> mut? Counter {
-        let f = |x: u256| x + 1
+    // The `ref` body's closure cannot write through its `mut?` parameter.
+    fn cleared(mut? self) -> mut? Counter {
+        let clear = |c: mut? Counter| { c.count = 0 }
+        clear(mut? self.first)
         mut? self.first
     }
 }

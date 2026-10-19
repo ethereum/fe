@@ -1007,7 +1007,7 @@ fn infer_body_query<'db>(
     let owner = key.owner(db);
     // A closure's body is checked inline in its parent's.
     if let BodyOwner::Closure { ty, def, receiver } = owner {
-        let body = BodyOwner::from_body(db, def.body).map_or_else(
+        let body = BodyOwner::closure_parent(db, def).map_or_else(
             || TypedBody::empty(db),
             |parent| infer_body(db, parent).1.for_closure(db, ty, receiver),
         );

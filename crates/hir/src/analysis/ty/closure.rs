@@ -20,14 +20,13 @@ use super::{
     effects::rows::RowComponent,
     trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
     ty_check::{BodyOwner, EffectParamSite, infer_body},
-    ty_def::{ClosureTy, TyBase, TyData, TyId},
+    ty_def::{ClosureDef, ClosureTy, TyBase, TyData, TyId},
 };
 use crate::{
     analysis::HirAnalysisDb,
     core::semantic::EffectRequirement,
     hir_def::{
-        Body, CallableDef, ClosureDef, Cond, CondId, Expr, ExprId, Func, IdentId, Partial, Stmt,
-        StmtId, Trait,
+        Body, CallableDef, Cond, CondId, Expr, ExprId, Func, IdentId, Partial, Stmt, StmtId, Trait,
         params::{FuncParamMode, callable_shape_name},
         scope_graph::ScopeId,
     },
@@ -452,7 +451,7 @@ fn parent_closure_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     def: ClosureDef<'db>,
 ) -> Option<ClosureTy<'db>> {
-    let parent = BodyOwner::from_body(db, def.body)?;
+    let parent = BodyOwner::closure_parent(db, def)?;
     infer_body(db, parent)
         .1
         .expr_ty(db, def.expr)

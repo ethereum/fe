@@ -6,10 +6,10 @@ use smallvec1::SmallVec;
 
 use crate::core::{
     hir_def::{
-        ArithBinOp, BinOp, CallArg as HirCallArg, CallableDef, ClosureDef, Cond, CondId, Expr,
-        ExprId, FieldIndex, Func, FuncParam, FuncParamListId, FuncParamMode, IdentId, IntegerId,
-        LitKind, LogicalBinOp, Partial, PatId, PathId, Stmt, StmtId, TypeId as HirTyId, TypeKind,
-        TypeMode, UnOp, VariantKind, WithBinding,
+        ArithBinOp, BinOp, CallArg as HirCallArg, CallableDef, Cond, CondId, Expr, ExprId,
+        FieldIndex, Func, FuncParam, FuncParamListId, FuncParamMode, IdentId, IntegerId, LitKind,
+        LogicalBinOp, Partial, PatId, PathId, Stmt, StmtId, TypeId as HirTyId, TypeKind, TypeMode,
+        UnOp, VariantKind, WithBinding,
     },
     semantic::{EffectRequirement, EffectRequirementKey as SemanticEffectRequirementKey},
 };
@@ -24,7 +24,7 @@ use super::{
     env::{
         BindingAccess, ClosureExpectation, EffectOrigin, EffectParamSite, ExprProp, LocalBinding,
         ParamSite, PendingPrimitiveOp, ProvidedEffect, TraitObligation, TraitObligationOrigin,
-        TyCheckEnv,
+        TyCheckEnv, param_is_maybe_mut,
     },
     has_invisible_newtype_field, merged_borrow_provider,
     path::ResolvedPathInBody,
@@ -77,7 +77,7 @@ use crate::analysis::ty::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
     },
     ty_check::callable::{Callable, EffectProviderProvenance, EffectProviderSpecialization},
-    ty_def::{BorrowKind, ClosureTy, PrimTy, TyBase, TyData, prim_int_bits},
+    ty_def::{BorrowKind, ClosureDef, ClosureTy, PrimTy, TyBase, TyData, prim_int_bits},
     ty_error::{diag_from_invalid_cause, first_invalid_ty_cause},
     unify::UnificationTable,
 };
@@ -620,6 +620,7 @@ impl<'db> TyChecker<'db> {
         let def = ClosureDef {
             body: self.body(),
             expr,
+            mode: self.env.owner().mode(),
         };
         let params = params.data(self.db);
         let span: DynLazySpan<'db> = expr.span(self.body()).into();
@@ -630,11 +631,6 @@ impl<'db> TyChecker<'db> {
             self.push_diag(BodyDiag::ClosureInConstContext {
                 primary: span.clone(),
             });
-        }
-        // Each of a `mut?` function's bodies would define the closure.
-        if self.env.owner().mode().is_some() {
-            self.push_diag(BodyDiag::ClosureInMaybeMutFunc { primary: span });
-            return ExprProp::invalid(self.db);
         }
 
         // The shape the callee the closure is passed to expects types its
@@ -859,12 +855,18 @@ impl<'db> TyChecker<'db> {
                     TypeMode::Own => FuncParamMode::Own,
                     TypeMode::Mut => FuncParamMode::Mut,
                     TypeMode::Ref => FuncParamMode::View,
-                    // A `mut?` function has no closures.
+                    // `mut?` is the mode of the `mut?` function that defines
+                    // the closure.
                     TypeMode::MaybeMut => {
-                        self.push_diag(BodyDiag::MaybeMutWithoutMode {
-                            primary: span.clone().into(),
-                        });
-                        FuncParamMode::View
+                        if self.env.owner().mode().is_none() {
+                            self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                                primary: span.clone().into(),
+                            });
+                        }
+                        match self.maybe_mut_kind() {
+                            BorrowKind::Mut => FuncParamMode::Mut,
+                            BorrowKind::Ref => FuncParamMode::View,
+                        }
                     }
                 }),
                 payload.to_opt(),
@@ -5249,14 +5251,8 @@ impl<'db> TyChecker<'db> {
                             MutabilityFix::Var
                         }
                     }
-                    LocalBinding::Param {
-                        site: ParamSite::Func(func),
-                        idx,
-                        ..
-                    } if func
-                        .params(self.db)
-                        .nth(idx)
-                        .is_some_and(|param| param.is_maybe_mut(self.db)) =>
+                    LocalBinding::Param { site, idx, .. }
+                        if param_is_maybe_mut(self.db, site, idx) =>
                     {
                         MutabilityFix::MaybeMutParam
                     }

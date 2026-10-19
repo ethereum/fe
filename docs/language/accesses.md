@@ -241,8 +241,9 @@ or an implementation is used at a mode, so only their bounds may be `mut?`;
 a struct's or a trait's bounds, including those of its associated types
 (`type Item: mut Slot`) and of `Self`, are `mut` or plain.
 
-A `mut?` function cannot define a closure, and an effect cannot be `mut?`
-yet.
+Each body of a `mut?` function defines its own closures, and a `mut?` in
+one, such as a parameter `c: mut? T`, is that body's mode. An effect cannot
+be `mut?` yet.
 
 ## Views
 

@@ -1,7 +1,7 @@
 use super::{Body, IdentId, Partial, PathId};
 use crate::{
     HirDb,
-    hir_def::{GenericParamOwner, TypeId},
+    hir_def::{GenericParamOwner, TypeId, TypeKind, TypeMode},
 };
 
 #[salsa::interned]
@@ -314,6 +314,13 @@ impl<'db> FuncParam<'db> {
 
     pub fn is_self_param(&self, db: &dyn HirDb) -> bool {
         self.name.to_opt().is_some_and(|name| name.is_self(db))
+    }
+
+    /// Whether the parameter is written `mut?`: `mut? self` or `x: mut? T`.
+    pub fn is_maybe_mut(&self, db: &dyn HirDb) -> bool {
+        self.ty
+            .to_opt()
+            .is_some_and(|ty| matches!(ty.data(db), TypeKind::Mode(TypeMode::MaybeMut, _)))
     }
 }
 

@@ -3870,18 +3870,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
-            Self::ClosureInMaybeMutFunc { primary } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "a `mut?` function cannot define a closure".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this closure is in a `mut?` function".to_string(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec!["move the closure into a function without a mode".to_string()],
-                error_code,
-            },
-
             Self::MutBindingOfRead { primary } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a `mut` binding needs a mutable place or access".to_string(),

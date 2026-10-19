@@ -737,12 +737,6 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
     },
 
-    /// A closure in a `mut?` function, whose two bodies would each define
-    /// it.
-    ClosureInMaybeMutFunc {
-        primary: DynLazySpan<'db>,
-    },
-
     /// An effect required at the function's mode, `uses (x: mut? T)`, which
     /// is not supported yet.
     MaybeMutEffect {
@@ -1290,7 +1284,6 @@ impl<'db> BodyDiag<'db> {
             Self::VarOfAccess { .. } => 122,
             Self::MutBindingOfRead { .. } => 123,
             Self::MaybeMutWithoutMode { .. } => 130,
-            Self::ClosureInMaybeMutFunc { .. } => 131,
             Self::MaybeMutEffect { .. } => 132,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,

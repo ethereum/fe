@@ -7,12 +7,10 @@ use hir::{
             RootProviderScope,
             trait_def::{TraitInstId, TraitRefId},
             ty_check::{BodyOwner, EffectParamSite},
-            ty_def::{BorrowKind, ClosureTy, TyBase, TyData, TyId},
+            ty_def::{BorrowKind, ClosureDef, ClosureTy, TyBase, TyData, TyId},
         },
     },
-    hir_def::{
-        Body, CallableDef, ItemKind, TopLevelMod, params::FuncParamMode, scope_graph::ScopeId,
-    },
+    hir_def::{CallableDef, ItemKind, TopLevelMod, params::FuncParamMode, scope_graph::ScopeId},
     semantic::{ProviderBinding, ProviderSource},
 };
 
@@ -415,16 +413,16 @@ fn effect_param_site_identity<'db>(
         ),
         EffectParamSite::Closure(def) => format!(
             "closure${}${}",
-            closure_owner_identity(db, def.body),
+            closure_owner_identity(db, def),
             def.expr.as_u32()
         ),
     }
 }
 
 /// The owner of the body a closure is in: closures are nameless.
-fn closure_owner_identity<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> String {
-    BodyOwner::from_body(db, body).map_or_else(
-        || module_path_components_for_scope(db, body.scope()).join("$"),
+fn closure_owner_identity<'db>(db: &'db dyn HirAnalysisDb, def: ClosureDef<'db>) -> String {
+    BodyOwner::closure_parent(db, def).map_or_else(
+        || module_path_components_for_scope(db, def.body.scope()).join("$"),
         |owner| body_owner_identity(db, owner),
     )
 }
@@ -463,7 +461,7 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
                 // Closures are nameless: the owner of the body defining one
                 // and its position there identify it.
                 let def = closure.def(db);
-                let owner = closure_owner_identity(db, def.body);
+                let owner = closure_owner_identity(db, def);
                 let tys = closure
                     .parent_args(db)
                     .iter()
