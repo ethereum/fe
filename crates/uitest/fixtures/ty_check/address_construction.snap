@@ -25,7 +25,7 @@ error[2-0003]: `inner` is not visible
 46 │ pub struct Address { pub(ingot) inner: u256 }
    │                                 ----- `inner` is defined here
 
-error[3-0071]: panic in const context
+error[3-0072]: panic in const context
    ┌─ src/evm/effects.fe:53:13
    │
 53 │             core::panic_code(PANIC_OVERFLOW)

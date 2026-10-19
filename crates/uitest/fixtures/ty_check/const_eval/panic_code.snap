@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/const_eval/panic_code.fe
 ---
-error[3-0071]: panic in const context
+error[3-0072]: panic in const context
   ┌─ panic_code.fe:6:9
   │
 6 │         core::panic_code(PANIC_OVERFLOW)

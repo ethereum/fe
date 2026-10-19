@@ -307,7 +307,7 @@ impl TyLowerDiag<'_> {
             Self::InvalidConstTyExpr(_) => 15,
             Self::ConstEvalUnsupported(_) => 23,
             Self::ConstEvalAssertionFailed { .. } => 36,
-            Self::ConstEvalPanicked { .. } => 71,
+            Self::ConstEvalPanicked { .. } => 72,
             Self::ConstEvalNonConstCall(_) => 24,
             Self::ConstEvalDivisionByZero(_) => 25,
             Self::ConstEvalOutOfBounds(_) => 50,
