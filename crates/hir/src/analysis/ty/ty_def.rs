@@ -19,6 +19,7 @@ use common::{
 };
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use ruint::aliases::U256;
 use rustc_hash::FxHashSet;
 use salsa::Update;
 use smallvec::SmallVec;
@@ -1325,6 +1326,13 @@ pub enum InvalidCause<'db> {
         message: Option<String>,
     },
 
+    /// `core::panic_code(code)` was reached in const evaluation.
+    ConstEvalPanicked {
+        body: Body<'db>,
+        expr: ExprId,
+        code: U256,
+    },
+
     ConstEvalNonConstCall {
         body: Body<'db>,
         expr: ExprId,
@@ -1442,6 +1450,9 @@ impl<'db> InvalidCause<'db> {
                 *expr,
                 "assertion failed in const context".to_string(),
             )),
+            InvalidCause::ConstEvalPanicked { body, expr, .. } => {
+                Some((*body, *expr, "panic in const context".to_string()))
+            }
             InvalidCause::ConstEvalNonConstCall { body, expr } => Some((
                 *body,
                 *expr,
@@ -1590,6 +1601,7 @@ impl InvalidCause<'_> {
                 "ConstEvalArithmeticOverflow".into()
             }
             InvalidCause::ConstEvalNegativeExponent { .. } => "ConstEvalNegativeExponent".into(),
+            InvalidCause::ConstEvalPanicked { code, .. } => format!("ConstEvalPanicked({code:#x})"),
             InvalidCause::ConstEvalStepLimitExceeded { .. } => "ConstEvalStepLimitExceeded".into(),
             InvalidCause::ConstEvalRecursionLimitExceeded { .. } => {
                 "ConstEvalRecursionLimitExceeded".into()

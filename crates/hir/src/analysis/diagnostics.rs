@@ -2372,6 +2372,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
+            Self::ConstEvalPanicked { span, code } => primary_diag(
+                Severity::Error,
+                "panic in const context",
+                format!("panics with code {code:#x}"),
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ConstEvalNonConstCall(span) => primary_diag(
                 Severity::Error,
                 "non-const function call in const context",

@@ -46,7 +46,7 @@ pub contract WithArgs {
     mut stored: Stored
 
     init(x: u256, owner: Address) uses (mut stored) {
-        stored.value = x + owner.inner
+        stored.value = x + owner.word()
     }
 
     recv ChildMsg {
@@ -110,7 +110,7 @@ fn no_arg_init_code_hash_is_hash_of_embedded_code() uses (evm: mut Evm) {
 
 #[test]
 fn static_args_are_abi_encoded_after_the_code() uses (evm: mut Evm) {
-    let owner = Address { inner: 0xabc }
+    let owner = Address::new(0xabc)
     let len = <WithArgs as Contract>::init_code_len()
     var code = MemBuffer::alloc(len + 64)
     evm.codecopy(dest: mut code, dest_offset: 0, src_offset: <WithArgs as Contract>::init_code_offset(), len)
@@ -122,7 +122,7 @@ fn static_args_are_abi_encoded_after_the_code() uses (evm: mut Evm) {
 
 #[test]
 fn static_args_contract_address_matches_create2() uses (evm: mut Evm) {
-    let owner = Address { inner: 0xabc }
+    let owner = Address::new(0xabc)
     let predicted = predict_create2<WithArgs>(deployer: evm.address(), args: (42, owner), salt: 1)
     assert(predicted != predict_create2<WithArgs>(deployer: evm.address(), args: (43, owner), salt: 1))
 

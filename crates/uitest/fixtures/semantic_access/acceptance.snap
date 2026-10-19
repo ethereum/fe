@@ -1,6 +1,5 @@
 ---
 source: crates/uitest/tests/semantic_access.rs
-assertion_line: 32
 expression: diags
 input_file: fixtures/semantic_access/acceptance.fe
 ---
@@ -154,7 +153,7 @@ error[16-0001]: access conflict in `fn Case44EffectDuringCall::__init__`
     │
 677 │         with (mut ledger) {
     │               ---------- access opened here
-678 │             credit_and_reset(mut ledger.balances, Address { inner: 1 })
+678 │             credit_and_reset(mut ledger.balances, Address::new(1))
     │                              ^^^^^^^^^^^^^^^^^^^ cannot mutably access this place while a `mut` access of it is open
 
 error[16-0002]: move conflict in `fn case13_uninitialized`

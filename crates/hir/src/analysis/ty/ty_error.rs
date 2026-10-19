@@ -700,6 +700,12 @@ pub(crate) fn diag_from_invalid_cause<'db>(
         }
         .into(),
 
+        InvalidCause::ConstEvalPanicked { body, expr, code } => TyLowerDiag::ConstEvalPanicked {
+            span: expr.span(body).into(),
+            code,
+        }
+        .into(),
+
         InvalidCause::ConstEvalNonConstCall { body, expr } => {
             TyLowerDiag::ConstEvalNonConstCall(expr.span(body).into()).into()
         }

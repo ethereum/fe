@@ -232,7 +232,7 @@ uses (evm: Evm)
     unsafe { ptr::zero_bytes(ptr, 64) }
     var ret = MemBuffer::with_capacity(32)
     let outcome = evm.raw_staticcall(
-        addr: Address { inner: 4 },
+        addr: Address::new(4),
         gas: 1000000,
         args: buffer(ptr, 64),
         ret: mut ret,

@@ -143,7 +143,7 @@ pub contract C {
 }
 
 fn key(_ fee: u32) -> Key {
-    Key { currency0: Address { inner: 0xabc }, fee: Uint24 { val: fee }, tick_spacing: Int24 { val: -60 } }
+    Key { currency0: Address::new(0xabc), fee: Uint24 { val: fee }, tick_spacing: Int24 { val: -60 } }
 }
 
 #[test]
@@ -152,7 +152,7 @@ fn static_struct_encodes_like_tuple() {
     assert(!<Key as AbiSize>::IS_DYNAMIC)
     assert(<Empty as AbiSize>::HEAD_SIZE == 0)
     let encoded = encode_abi_payload(key(3000))
-    let tuple = encode_abi_payload((Address { inner: 0xabc }, Uint24 { val: 3000 }, Int24 { val: -60 }))
+    let tuple = encode_abi_payload((Address::new(0xabc), Uint24 { val: 3000 }, Int24 { val: -60 }))
     assert(encoded.len() == 96)
     assert(encoded.span().word_at(0) == tuple.span().word_at(0))
     assert(encoded.span().word_at(32) == tuple.span().word_at(32))
@@ -175,7 +175,7 @@ fn dynamic_struct_round_trips() {
 fn struct_messages_round_trip() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: 0, args: (), salt: 0)
     let out: Key = evm.call(addr: c, gas: 1000000, value: 0, message: M::RoundTrip { key: key(3000) })
-    assert(out.currency0.inner == 0xabc)
+    assert(out.currency0.word() == 0xabc)
     assert(out.fee.val == 3000)
     assert(out.tick_spacing.val == -60)
 
@@ -419,7 +419,7 @@ fn struct_decode_from_preserves_nonzero_base() {
     let prefixed = MemBuffer::alloc(encoded.len() + 32)
     unsafe { ptr::copy(ptr::offset_bytes(prefixed.ptr(), 32), encoded.span()) }
     let decoded = <Hop as Decode<Sol>>::decode_from(prefixed.span(), 32)
-    assert(decoded.key.currency0.inner == 0xabc)
+    assert(decoded.key.currency0.word() == 0xabc)
     assert(decoded.key.fee.val == 500)
     assert(decoded.key.tick_spacing.val == -60)
     assert(decoded.data.len() == 2)

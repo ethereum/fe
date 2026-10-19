@@ -19,6 +19,7 @@ use crate::{
     hir_def::TypeAlias,
 };
 use either::Either;
+use ruint::aliases::U256;
 use salsa::Update;
 use smallvec1::SmallVec;
 use thin_vec::ThinVec;
@@ -182,6 +183,10 @@ pub enum TyLowerDiag<'db> {
         span: DynLazySpan<'db>,
         message: Option<String>,
     },
+    ConstEvalPanicked {
+        span: DynLazySpan<'db>,
+        code: U256,
+    },
     ConstEvalNonConstCall(DynLazySpan<'db>),
     ConstEvalDivisionByZero(DynLazySpan<'db>),
     ConstEvalOutOfBounds(DynLazySpan<'db>),
@@ -302,6 +307,7 @@ impl TyLowerDiag<'_> {
             Self::InvalidConstTyExpr(_) => 15,
             Self::ConstEvalUnsupported(_) => 23,
             Self::ConstEvalAssertionFailed { .. } => 36,
+            Self::ConstEvalPanicked { .. } => 72,
             Self::ConstEvalNonConstCall(_) => 24,
             Self::ConstEvalDivisionByZero(_) => 25,
             Self::ConstEvalOutOfBounds(_) => 50,

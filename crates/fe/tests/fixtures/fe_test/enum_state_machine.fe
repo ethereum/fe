@@ -100,7 +100,7 @@ pub contract Order {
 #[test]
 fn test_order_initial_state() uses (evm: mut Evm) {
     let order = evm.create2<Order>(value: 0, args: (), salt: 0)
-    assert!(order.inner != 0)
+    assert!(order.word() != 0)
 
     let s: u256 = evm.call(addr: order, gas: 100000, value: 0, message: OrderMsg::Which {})
     assert!(s == 0)
@@ -112,7 +112,7 @@ fn test_order_initial_state() uses (evm: mut Evm) {
 #[test]
 fn test_order_lifecycle() uses (evm: mut Evm) {
     let order = evm.create2<Order>(value: 0, args: (), salt: 0)
-    assert!(order.inner != 0)
+    assert!(order.word() != 0)
 
     let s: u256 = evm.call(addr: order, gas: 100000, value: 0, message: OrderMsg::Which {})
     assert!(s == 0)
@@ -143,7 +143,7 @@ fn test_order_lifecycle() uses (evm: mut Evm) {
 #[test]
 fn test_order_cancellation() uses (evm: mut Evm) {
     let order = evm.create2<Order>(value: 0, args: (), salt: 1)
-    assert!(order.inner != 0)
+    assert!(order.word() != 0)
 
     let r: u256 = evm.call(addr: order, gas: 100000, value: 0, message: OrderMsg::Cancel {})
     assert!(r == 0)

@@ -122,7 +122,7 @@ pub contract C {
 #[test]
 fn test_contract_field_mut_borrow_matrix() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: 0, args: (10, 20, 30), salt: 3)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let a = evm.call(addr: c, gas: 100000, value: 0, message: Msg::MutateA { by: 5 })
     assert!(a == 15)

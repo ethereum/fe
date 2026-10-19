@@ -1061,7 +1061,7 @@ fn test_it() {
 use std::evm::storage_map::StorageKey
 
 fn test_it() {
-    let a = Address { inner: 42 }
+    let a = Address::new(42)
     let _len = a.encoded_len()
 }
 "#,

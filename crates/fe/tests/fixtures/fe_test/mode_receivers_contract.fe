@@ -62,7 +62,7 @@ pub contract ModeContract {
 #[test]
 fn test_mode_receivers_contract() uses (evm: mut Evm) {
     let contract_addr = evm.create2<ModeContract>(value: 0, args: (), salt: 0)
-    assert!(contract_addr.inner != 0)
+    assert!(contract_addr.word() != 0)
 
     let v: u256 = evm.call(
         addr: contract_addr,

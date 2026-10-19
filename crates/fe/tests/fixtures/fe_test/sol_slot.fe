@@ -11,7 +11,7 @@ fn packed_fields_round_trip() uses (evm: mut Evm) {
     with (RawStorage = evm) {
         // address currency; uint24 fee; int24 tickSpacing; bool flag; int8 small
         let slot = unsafe { SolSlot::at(7) }
-        slot.write(offset: 0, value: Address { inner: 0xabc })
+        slot.write(offset: 0, value: Address::new(0xabc))
         slot.write(offset: 20, value: Uint24 { val: 3000 })
         slot.write(offset: 23, value: Int24 { val: -60 })
         slot.write(offset: 26, value: true)
@@ -24,7 +24,7 @@ fn packed_fields_round_trip() uses (evm: mut Evm) {
         let flag: bool = slot.read(offset: 26)
         let small: i8 = slot.read(offset: 27)
         let tag: Bytes4 = slot.read(offset: 28)
-        assert(currency.inner == 0xabc)
+        assert(currency.word() == 0xabc)
         assert(fee.val == 3000)
         assert(spacing.val == -60)
         assert(flag)
@@ -32,7 +32,7 @@ fn packed_fields_round_trip() uses (evm: mut Evm) {
         assert(tag.val == 0x11223344)
 
         // Overwriting one field keeps the others.
-        slot.write(offset: 0, value: Address { inner: 0 })
+        slot.write(offset: 0, value: Address::new(0))
         let fee_again: Uint24 = slot.read(offset: 20)
         assert(fee_again.val == 3000)
         let word: u256 = unsafe { SolSlot::at(7).read(offset: 0) }
@@ -101,13 +101,6 @@ fn zero_width_fixed_bytes_write_reverts() uses (evm: mut Evm) {
     }
 }
 
-#[test(should_revert)]
-fn noncanonical_address_write_reverts() uses (evm: mut Evm) {
-    with (RawStorage = evm) {
-        unsafe { SolSlot::at(1).write(offset: 0, value: Address { inner: 1 << 160 }) }
-    }
-}
-
 #[test]
 fn short_read_zeroes_bytes_past_len() uses (evm: mut Evm) {
     with (RawStorage = evm) {
@@ -167,7 +160,7 @@ fn mapping_slots_follow_solidity() {
     unsafe { assert(SolMapping::at(3).slot_of(Int24 { val: -1 }) == hash_words(u256::max(), 3, 2)) }
     unsafe { assert(SolMapping::at(3).slot_of(-1 as i16) == hash_words(u256::max(), 3, 2)) }
     // mapping(address => mapping(address => V)) at slot 1
-    let a = Address { inner: 0xa }
-    let b = Address { inner: 0xb }
+    let a = Address::new(0xa)
+    let b = Address::new(0xb)
     unsafe { assert(SolMapping::at(1).nested(a).slot_of(b) == hash_words(0xb, hash_words(0xa, 1, 2), 2)) }
 }

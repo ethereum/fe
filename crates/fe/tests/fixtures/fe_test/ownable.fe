@@ -24,19 +24,19 @@ pub contract Ownable uses (ctx: Ctx) {
     mut store: OwnableStore
 
     init() uses (mut store, ctx) {
-        store.owner_inner = ctx.caller().inner
+        store.owner_inner = ctx.caller().word()
         store.count = 0
     }
 
     recv OwnableMsg {
         TransferOwnership { new_owner_inner } uses (mut store, ctx) {
-            if ctx.caller().inner == store.owner_inner {
+            if ctx.caller().word() == store.owner_inner {
                 store.owner_inner = new_owner_inner
             }
         }
 
         ProtectedIncrement -> u256 uses (mut store, ctx) {
-            if ctx.caller().inner != store.owner_inner {
+            if ctx.caller().word() != store.owner_inner {
                 return 0
             }
             store.count += 1
@@ -76,7 +76,7 @@ pub contract NonOwnerCaller uses (call: mut Call) {
 fn test_ownable() uses (evm: mut Evm) {
     // Deploy — test runner becomes owner via ctx.caller() in init
     let ownable = evm.create2<Ownable>(value: 0, args: (), salt: 0)
-    assert!(ownable.inner != 0)
+    assert!(ownable.word() != 0)
 
     // Owner can increment
     let res: u256 = evm.call(addr: ownable, gas: 100000, value: 0, message: OwnableMsg::ProtectedIncrement {})
@@ -86,7 +86,7 @@ fn test_ownable() uses (evm: mut Evm) {
 
     // Deploy a proxy (different address)
     let proxy = evm.create2<NonOwnerCaller>(value: 0, args: (), salt: 1)
-    assert!(proxy.inner != 0)
+    assert!(proxy.word() != 0)
 
     // Non-owner rejected (returns 0)
     let res: u256 = evm.call(addr: proxy, gas: 200000, value: 0, message: ProxyMsg::TryIncrement { target: ownable })
@@ -97,7 +97,7 @@ fn test_ownable() uses (evm: mut Evm) {
     assert!(count == 2)
 
     // Transfer ownership to proxy
-    evm.call(addr: ownable, gas: 100000, value: 0, message: OwnableMsg::TransferOwnership { new_owner_inner: proxy.inner })
+    evm.call(addr: ownable, gas: 100000, value: 0, message: OwnableMsg::TransferOwnership { new_owner_inner: proxy.word() })
 
     // Test runner no longer owner
     let res: u256 = evm.call(addr: ownable, gas: 100000, value: 0, message: OwnableMsg::ProtectedIncrement {})

@@ -28,7 +28,7 @@ pub contract SpecializedExtent {
 #[test]
 fn test_specialized_adt_array_extent() uses (evm: mut Evm) {
     let addr = evm.create2<SpecializedExtent>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     let first: u8 = evm.call(
         addr: addr,

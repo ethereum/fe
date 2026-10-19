@@ -229,7 +229,7 @@ fn case40_owned_extra() {
 fn ping() uses (call: mut Call) {
     var output = MemBuffer::empty()
     let outcome = call.raw_call(
-        addr: Address { inner: 1 }, gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
     )
 }
@@ -368,7 +368,7 @@ pub contract Case44Bank {
 #[test]
 fn case44_map_as_mut_argument() uses (evm: mut Evm) {
     let bank = evm.create2<Case44Bank>(value: 0, args: (), salt: 44)
-    let who = Address { inner: 7 }
+    let who = Address::new(7)
     let first: u256 = evm.call(addr: bank, gas: 300000, value: 0, message: LedgerMsg::Credit { who, amount: 5 })
     assert(first == 15)
 }
