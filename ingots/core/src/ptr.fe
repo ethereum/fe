@@ -666,7 +666,6 @@ fn elem<T>(_ ptr: *T, _ index: usize) -> *T {
 }
 
 impl<T> Index<usize> for MemArray<T> {
-    space S = memory
     type Output = T
 
     #[inline(always)]
@@ -676,7 +675,6 @@ impl<T> Index<usize> for MemArray<T> {
 }
 
 impl<T> Index<usize> for MemSlice<T> {
-    space S = memory
     type Output = T
 
     #[inline(always)]
@@ -698,7 +696,6 @@ impl<T> Len for MemSlice<T> {
 }
 
 impl Index<usize> for MemBuffer {
-    space S = memory
     type Output = u8
 
     #[inline(always)]

@@ -31,7 +31,7 @@
 //! layout for a `bytes` or `string` state variable in the slot.
 use core::abi::{ByteInput, Bytes, DynString, store_word}
 use core::num::IntDowncast
-use core::marker::Pinned
+use core::marker::{Pinned, Storage}
 use core::ops::{Location, StateIndex, WrappingAdd}
 use core::ptr::{self, MemSpan}
 use super::crypto::keccak_words
@@ -60,7 +60,7 @@ struct Payload {
 }
 
 impl Pinned for Payload {
-    space S = storage
+    type Space = Storage
 }
 
 unsafe impl StateIndex for Payload {

@@ -310,7 +310,6 @@ struct Scores {
 }
 
 impl Index<u256> for Scores {
-    space S = memory
     type Output = u32
     fn index(self, _ i: u256) -> ref u32 {
         (self.words[i / 8] >> ((i % 8) * 32)).downcast_truncate()

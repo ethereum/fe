@@ -277,7 +277,6 @@ struct Keyed { len: u256 }
 
 impl Collection for Keyed {
     uses E = (key: Key)
-    space S = memory
     type Cursor = u256
     type Item = u256
 
@@ -362,7 +361,7 @@ pub contract Case22OutstandingAccess {
 }
 
 // 23. Accepted: `Identity` and `Reversed` forward a storage-yielding base;
-// the elements' result space composes as `@B::S`, storage here.
+// the elements' result space is the base's, storage here.
 pub contract Case23StorageBase {
     mut words: [u256; 3],
     init() uses (mut words) {

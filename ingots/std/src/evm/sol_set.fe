@@ -34,7 +34,6 @@ pub struct SolEnumerableSet<T> {
 
 // A loop visits the elements in the set's internal order, like `get`.
 impl<T: SolPacked> Collection for SolEnumerableSet<T> {
-    space S = memory
     type Cursor = u256
     type Item = T
 

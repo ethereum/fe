@@ -5,7 +5,7 @@ expression: output
 input_file: tests/fixtures/maybe_mut.fe
 ---
 impl Items {
-    fn at(mut? self, _ c: usize) -> mut? T @S
+    fn at(mut? self, _ c: usize) -> mut? T
     uses (storage: mut? RawStorage, mut? Log)
     {
         let (mut? head, tail) = mut? self.items

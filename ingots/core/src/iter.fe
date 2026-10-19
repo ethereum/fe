@@ -17,8 +17,6 @@ use ingot::functional::FnMut_v
 pub trait Collection {
     /// The effects of reaching an element, retained while an element is open.
     uses E
-    /// The address space of the projected elements.
-    space S
     type Cursor: Copy
     type Item
 
@@ -34,7 +32,7 @@ pub trait Collection {
 
     /// The element at `c`; `has(c)` must hold. A loop that mutates its
     /// elements takes it at `mut`, from a `mut Collection`.
-    fn at(mut? self, _ c: Self::Cursor) -> mut? Self::Item @S uses E
+    fn at(mut? self, _ c: Self::Cursor) -> mut? Self::Item uses E
 
     /// Each element with its index: `for (i, x) in xs.enumerate()`.
     fn enumerate(self) -> Enumerate<Identity> {
@@ -144,7 +142,6 @@ impl<T, const N: usize> [T; N] {
 // An array's elements are its own parts, wherever it lies, unless they are
 // pinned elsewhere.
 impl<T, const N: usize> Collection for [T; N] {
-    space S = self[_]
     type Cursor = usize
     type Item = T
 
@@ -182,7 +179,6 @@ impl<T, const N: usize> Bidirectional for [T; N] {
 }
 
 impl<T> Collection for MemArray<T> {
-    space S = memory
     type Cursor = usize
     type Item = T
 
@@ -220,7 +216,6 @@ impl<T> Bidirectional for MemArray<T> {
 }
 
 impl<T> Collection for MemSlice<T> {
-    space S = memory
     type Cursor = usize
     type Item = T
 
@@ -284,7 +279,7 @@ pub trait Driver<B: Collection> {
 
     /// The element at `s`; `has(s)` must hold. A loop that mutates its
     /// elements takes it at `mut`, from a `mut Driver<B>`.
-    fn at(self, _ base: mut? B, _ s: Self::State) -> (Self::Extra, mut? Self::Item) @B::S uses (B::E, E)
+    fn at(self, _ base: mut? B, _ s: Self::State) -> (Self::Extra, mut? Self::Item) uses (B::E, E)
 }
 
 /// A traversal that produces an owned value at each position, so non-`Copy`

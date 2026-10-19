@@ -3,7 +3,7 @@ use super::crypto::keccak256
 use ingot::evm::ops::mstore
 use core::num::IntWord
 use core::ptr
-use core::marker::{Clearable, Pinned}
+use core::marker::{Clearable, Pinned, Storage}
 use core::ops::{Location, StateIndex, clear_storage}
 
 /// Keys that can be written into the mapping preimage for keccak hashing.
@@ -206,7 +206,7 @@ impl StorageKey for bool {
 pub struct StorageMap<K, V> {}
 
 impl<K, V> Pinned for StorageMap<K, V> {
-    space S = storage
+    type Space = Storage
 }
 
 unsafe impl<K: StorageKey + Copy, V> StateIndex for StorageMap<K, V> {

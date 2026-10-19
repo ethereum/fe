@@ -13,7 +13,6 @@ struct Tracked {
 }
 
 impl Collection for Tracked {
-    space S = memory
     type Cursor = usize
     type Item = u256
 

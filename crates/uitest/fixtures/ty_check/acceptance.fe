@@ -35,7 +35,6 @@ struct Keyed { len: u256 }
 
 impl Collection for Keyed {
     uses E = (key: Key)
-    space S = memory
     type Cursor = u256
     type Item = u256
 

@@ -69,12 +69,6 @@ pub enum TyLowerDiag<'db> {
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
-    /// A result-space annotation, or an implementation's associated space,
-    /// that names no space.
-    UnknownResultSpace(DynLazySpan<'db>),
-    /// A result-space contract's path, `@p.f[_]`, that names no part of its
-    /// root's type, or follows a root that is not a parameter or effect.
-    InvalidResultSpacePath(DynLazySpan<'db>),
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -289,8 +283,6 @@ impl TyLowerDiag<'_> {
             Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
-            Self::UnknownResultSpace(_) => 60,
-            Self::InvalidResultSpacePath(_) => 67,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
             Self::GrowingRecursiveType(_) => 57,
@@ -1344,11 +1336,10 @@ pub enum TraitLowerDiag<'db> {
     UnsafeLocalBoundBlanketImpl(ImplTrait<'db>),
     CyclicTraitRef(ImplTrait<'db>),
     CyclicSuperTraits(Vec<Trait<'db>>),
-    /// A trait's effect row or result space with a value: each
-    /// implementation gives its own.
+    /// A trait's effect row with a value: each implementation gives its
+    /// own.
     AccessItemDefault {
         primary: DynLazySpan<'db>,
-        kind: &'static str,
         name: IdentId<'db>,
     },
 }
@@ -1578,15 +1569,8 @@ pub enum ImplDiag<'db> {
         const_name: IdentId<'db>,
     },
 
-    /// An effect row or result space the trait does not declare.
+    /// An effect row the trait does not declare.
     AccessItemNotDefinedInTrait {
-        primary: DynLazySpan<'db>,
-        trait_: Trait<'db>,
-        kind: &'static str,
-        name: IdentId<'db>,
-    },
-
-    MissingAssociatedSpace {
         primary: DynLazySpan<'db>,
         trait_: Trait<'db>,
         name: IdentId<'db>,
@@ -1620,13 +1604,6 @@ pub enum ImplDiag<'db> {
     /// A `Copy` implementation for a bare type parameter, which covers types
     /// whose fields, views and state the checks of a `Copy` type never see.
     BlanketCopy { primary: DynLazySpan<'db> },
-
-    /// An associated space whose value, followed through the spaces it names,
-    /// comes back to itself.
-    CyclicAssociatedSpace {
-        primary: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    },
 
     /// An effect row whose components, expanded through the rows they name,
     /// come back to it.
@@ -1665,13 +1642,11 @@ impl ImplDiag<'_> {
             Self::InherentConstShadowsFn { .. } => 21,
             Self::TypeNotDefinedInTrait { .. } => 23,
             Self::AccessItemNotDefinedInTrait { .. } => 26,
-            Self::MissingAssociatedSpace { .. } => 27,
             Self::CompilerImplementedTrait { .. } => 28,
             Self::PinNotStateSpace { .. } => 29,
             Self::UnsafeImplMismatch { .. } => 30,
             Self::CopyFieldNotCopy { .. } => 31,
             Self::BlanketCopy { .. } => 32,
-            Self::CyclicAssociatedSpace { .. } => 33,
             Self::CyclicEffectRow { .. } => 34,
             Self::MethodMaybeMutMismatch { .. } => 35,
             Self::PartialMutImpl { .. } => 36,

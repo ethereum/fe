@@ -4,7 +4,7 @@ use super::{
     param::{ItemBlock, parse_generic_params_opt, parse_where_clause_opt},
     parse_list,
     token_stream::TokenStream,
-    type_::{parse_space_annotation_opt, parse_type},
+    type_::parse_type,
 };
 use crate::{ExpectedKind, ParseError, SyntaxKind, TextRange};
 
@@ -125,7 +125,6 @@ impl super::Parse for FuncSignatureScope {
         parser.expect_and_pop_recovery_stack()?;
         if parser.bump_if(SyntaxKind::Arrow) {
             parse_type(parser, None)?;
-            parse_space_annotation_opt(parser)?;
         }
 
         parser.expect_and_pop_recovery_stack()?;

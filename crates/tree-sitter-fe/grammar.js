@@ -183,11 +183,7 @@ module.exports = grammar({
       field('name', $.identifier),
       optional($.generic_param_list),
       $.parameter_list,
-      optional(seq(
-        '->',
-        field('return_type', $._type),
-        optional(field('return_space', $.space_annotation)),
-      )),
+      optional(seq('->', field('return_type', $._type))),
       optional($.uses_clause),
       optional($.where_clause),
     )),
@@ -438,7 +434,6 @@ module.exports = grammar({
         $.trait_type_item,
         $.trait_const_item,
         $.trait_uses_item,
-        $.trait_space_item,
       )),
       '}',
     ),
@@ -449,15 +444,6 @@ module.exports = grammar({
       'uses',
       field('name', $.identifier),
       optional(seq('=', choice($.uses_param_list, $.uses_param))),
-    ),
-
-    // Associated result space: `space S`, `space S = memory` or
-    // `space S = self[_]`
-    trait_space_item: $ => seq(
-      optional($.attribute_list),
-      'space',
-      field('name', $.identifier),
-      optional(seq('=', field('value', $.path), optional($.space_path))),
     ),
 
     trait_type_item: $ => seq(
@@ -646,25 +632,11 @@ module.exports = grammar({
       $.qualified_path_type,
     ),
 
-    // Mode-prefixed type: ref Foo, mut Foo, own Foo, ref Foo @S
-    mode_type: $ => prec.right(seq(
+    // Mode-prefixed type: ref Foo, mut Foo, mut? Foo, own Foo
+    mode_type: $ => seq(
       field('mode', choice('ref', 'mut', 'mut?', 'own')),
       field('type', $._type),
-      optional(field('space', $.space_annotation)),
-    )),
-
-    // Result-space contract: @S, @B::S, @self, @self.f[_], @target(p)
-    space_annotation: $ => prec.right(seq(
-      '@',
-      $.path,
-      optional(choice(seq('(', $.path, ')'), $.space_path)),
-    )),
-
-    // The sub-place a result-space contract names: `.f`, `.0` and `[_]`
-    space_path: $ => prec.right(repeat1(choice(
-      seq('.', choice($.identifier, $.integer_literal)),
-      seq('[', '_', ']'),
-    ))),
+    ),
 
     // Qualified path: <Type as Trait>::AssocType
     qualified_path_type: $ => prec.right(seq(

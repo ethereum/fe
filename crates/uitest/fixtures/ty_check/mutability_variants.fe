@@ -22,7 +22,6 @@ struct Fixed {
 }
 
 impl Collection for Fixed {
-    space S = self.value
     type Cursor = usize
     type Item = u256
 

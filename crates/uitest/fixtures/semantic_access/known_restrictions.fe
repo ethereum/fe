@@ -4,7 +4,6 @@ use core::iter::Collection
 struct Grid { cells: [u256; 4] }
 
 impl Collection for Grid {
-    space S = self
     type Cursor = (usize, usize)
     type Item = u256
 

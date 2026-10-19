@@ -10,7 +10,6 @@ struct Account { balance: u256, owner: u256 }
 struct Squares { n: usize }
 
 impl Collection for Squares {
-    space S = memory
     type Cursor = usize
     type Item = usize
 

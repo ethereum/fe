@@ -140,7 +140,6 @@ impl Copy for BelowStore {}
 
 impl Collection for BelowStore {
     uses E = (store: Store)
-    space S = memory
     type Cursor = u256
     type Item = u256
 

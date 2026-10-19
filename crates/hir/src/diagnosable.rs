@@ -17,8 +17,6 @@ use crate::analysis::ty::diagnostics::{
 use crate::analysis::ty::generic_defaults::{default_dependencies, type_default_diags};
 use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
-use crate::analysis::ty::provider::AddressSpace;
-use crate::analysis::ty::result_space::SpaceValue;
 use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::ty_def::{InvalidCause, TyId};
@@ -26,8 +24,8 @@ use crate::analysis::ty::ty_error::{collect_ty_lower_errors, emit_invalid_ty_err
 use crate::analysis::ty::ty_lower::generic_param_owner_assumptions;
 use crate::hir_def::{
     Contract, Enum, EnumVariant, FieldParent, Func, FuncParamMode, GenericParam, GenericParamOwner,
-    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, ModeMarker, Partial, PathId,
-    SpaceAnnotation, Struct, Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
+    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, ModeMarker, Partial, PathId, Struct,
+    Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
 };
 use crate::span::DynLazySpan;
 
@@ -628,27 +626,19 @@ impl<'db> Trait<'db> {
         diags
     }
 
-    /// Diagnostics for effect rows and result spaces given values in the
-    /// trait itself.
+    /// Diagnostics for effect rows given values in the trait itself.
     pub fn diags_access_defaults(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
-        let rows = self
-            .rows(db)
+        self.rows(db)
             .iter()
             .filter(|row| row.effects.is_some())
-            .filter_map(|row| Some(("effect row", row.name.to_opt()?)));
-        let spaces = self
-            .spaces(db)
-            .iter()
-            .filter(|space| space.value.is_some())
-            .filter_map(|space| Some(("space", space.name.to_opt()?)));
-        rows.chain(spaces)
-            .map(|(kind, name)| {
-                TraitLowerDiag::AccessItemDefault {
-                    primary: self.span().name().into(),
-                    kind,
-                    name,
-                }
-                .into()
+            .filter_map(|row| {
+                Some(
+                    TraitLowerDiag::AccessItemDefault {
+                        primary: self.span().name().into(),
+                        name: row.name.to_opt()?,
+                    }
+                    .into(),
+                )
             })
             .collect()
     }
@@ -983,6 +973,30 @@ impl<'db> ImplTrait<'db> {
         })
     }
 
+    /// A pin is a state space, or another pinned type's: the `Space` of an
+    /// implementation of `core::marker::Pinned`.
+    fn diags_pin(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let pinned = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Pinned"])?;
+        let name = IdentId::new(db, "Space".to_string());
+        let idx = self
+            .types(db)
+            .iter()
+            .position(|assoc| assoc.name.to_opt() == Some(name))?;
+        (implementor.trait_def(db) == pinned
+            && !implementor.assoc_ty(db, name)?.has_invalid(db)
+            && !ty::provider::is_state_pin(db, self))
+        .then(|| {
+            ty::diagnostics::ImplDiag::PinNotStateSpace {
+                primary: self.span().associated_type(idx).ty().into(),
+            }
+            .into()
+        })
+    }
+
     fn diags_compiler_implemented_trait(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1054,8 +1068,8 @@ impl<'db> ImplTrait<'db> {
         diags
     }
 
-    /// Diagnostics for effect rows and result spaces: each one the trait
-    /// declares, and every space given, naming a space.
+    /// Diagnostics for effect rows: each one the trait declares, and none
+    /// naming itself.
     pub fn diags_access_items(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         use ty::diagnostics::ImplDiag;
         use ty::trait_lower::lower_impl_trait;
@@ -1065,100 +1079,25 @@ impl<'db> ImplTrait<'db> {
         };
         let trait_ = implementor.trait_def(db);
         let primary = || DynLazySpan::from(self.span().ty());
-        let rows = self.rows(db).iter().filter_map(|row| {
-            let name = row.name.to_opt()?;
-            (!trait_
-                .rows(db)
-                .iter()
-                .any(|row| row.name.to_opt() == Some(name)))
-            .then_some(("effect row", name))
-        });
-        let spaces = self.spaces(db).iter().filter_map(|space| {
-            let name = space.name.to_opt()?;
-            (!trait_
-                .spaces(db)
-                .iter()
-                .any(|space| space.name.to_opt() == Some(name)))
-            .then_some(("space", name))
-        });
-        let mut diags: Vec<TyDiagCollection<'db>> = rows
-            .chain(spaces)
-            .map(|(kind, name)| {
-                ImplDiag::AccessItemNotDefinedInTrait {
-                    primary: primary(),
-                    trait_,
-                    kind,
-                    name,
-                }
-                .into()
-            })
-            .collect();
-        let pinned = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Pinned"]);
-        let is_pin = pinned == Some(trait_);
-        for name in trait_
-            .spaces(db)
+        let mut diags: Vec<TyDiagCollection<'db>> = self
+            .rows(db)
             .iter()
-            .filter_map(|space| space.name.to_opt())
-        {
-            let Some((value, steps)) = self
-                .spaces(db)
-                .iter()
-                .find(|given| given.name.to_opt() == Some(name))
-                .and_then(|given| given.value)
-            else {
-                diags.push(
-                    ImplDiag::MissingAssociatedSpace {
+            .filter_map(|row| {
+                let name = row.name.to_opt()?;
+                (!trait_
+                    .rows(db)
+                    .iter()
+                    .any(|row| row.name.to_opt() == Some(name)))
+                .then(|| {
+                    ImplDiag::AccessItemNotDefinedInTrait {
                         primary: primary(),
                         trait_,
                         name,
                     }
-                    .into(),
-                );
-                continue;
-            };
-            let resolved = value
-                .to_opt()
-                .and_then(|value| ty::result_space::impl_space_value(db, self, value, steps));
-            // A space that names another implementation's space must end in
-            // one: `space S = Self::S` names only itself.
-            if let Some(SpaceValue::Assoc(_)) = resolved
-                && let Ok(inst) = self.trait_inst_result(db)
-                && let Some(space) = ty::result_space::space_index(db, trait_, name)
-                && ty::result_space::space_key_cycles(
-                    db,
-                    ty::result_space::SpaceKey {
-                        inst,
-                        space: space as u16,
-                    },
-                    self.scope(),
-                    constraints_for(db, self.into()),
-                )
-            {
-                diags.push(
-                    ImplDiag::CyclicAssociatedSpace {
-                        primary: primary(),
-                        name,
-                    }
-                    .into(),
-                );
-                continue;
-            }
-            match resolved {
-                None => diags.push(if steps.steps(db).is_empty() {
-                    TyLowerDiag::UnknownResultSpace(primary()).into()
-                } else {
-                    TyLowerDiag::InvalidResultSpacePath(primary()).into()
-                }),
-                // A pin is a state space, or another pinned type's.
-                Some(SpaceValue::Space(AddressSpace::Storage | AddressSpace::Transient))
-                    if is_pin => {}
-                Some(SpaceValue::Assoc(key)) if is_pin && Some(key.inst.def(db)) == pinned => {}
-                Some(_) if is_pin => {
-                    diags.push(ImplDiag::PinNotStateSpace { primary: primary() }.into())
-                }
-                Some(_) => {}
-            }
-        }
+                    .into()
+                })
+            })
+            .collect();
         // A row whose components name rows must end in effects:
         // `uses E = Self::E` names only itself.
         if let Ok(inst) = self.trait_inst_result(db) {
@@ -2065,26 +2004,6 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_return(db));
         out.extend(self.diags_view_types(db));
         out.extend(self.diags_state_only_types(db));
-        // A result-space annotation names a space, or a sub-place of a root.
-        if let Some(annotation) = self
-            .ret_spaces(db)
-            .iter()
-            .zip(ty::result_space::declared_result_spaces(db, self))
-            .find_map(|(annotation, contract)| annotation.filter(|_| contract.is_none()))
-        {
-            let span = self.span().ret_ty().into();
-            out.push(
-                match annotation {
-                    SpaceAnnotation::Path(_, steps) if !steps.steps(db).is_empty() => {
-                        TyLowerDiag::InvalidResultSpacePath(span)
-                    }
-                    SpaceAnnotation::Path(..) | SpaceAnnotation::Target(_) => {
-                        TyLowerDiag::UnknownResultSpace(span)
-                    }
-                }
-                .into(),
-            );
-        }
 
         for pred in WhereClauseOwner::Func(self).clause(db).predicates(db) {
             out.extend(pred.diags(db));
@@ -2184,6 +2103,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(self.diags_state_only_copy(db, implementor));
         out.extend(self.diags_copy_fields(db, implementor));
         out.extend(self.diags_compiler_implemented_trait(db, implementor));
+        out.extend(self.diags_pin(db, implementor));
         out.extend(self.diags_unsafe_impl(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));

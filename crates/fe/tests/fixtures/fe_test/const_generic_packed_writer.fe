@@ -18,7 +18,6 @@ impl<const N: usize> PackedBytes<N> {
     const fn len(self) -> usize { N }
 }
 impl<const N: usize> Index<usize> for PackedBytes<N> {
-    space S = memory
     type Output = u8
     const fn index(self, _ index: usize) -> ref u8 {
         assert!(index < N)

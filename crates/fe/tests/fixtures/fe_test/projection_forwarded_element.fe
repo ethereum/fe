@@ -12,7 +12,6 @@ struct Cells {
 }
 
 impl Collection for Cells {
-    space S = memory
     type Cursor = usize
     type Item = u256
 

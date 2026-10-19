@@ -1674,22 +1674,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 diag
             }
 
-            Self::UnknownResultSpace(span) => primary_diag(
-                Severity::Error,
-                "unknown result space",
-                "expected `memory`, `storage`, `transient`, `calldata`, `code`, a parameter, an effect, `target(p)`, or an associated space",
-                span.resolve(db),
-                error_code,
-            ),
-
-            Self::InvalidResultSpacePath(span) => primary_diag(
-                Severity::Error,
-                "invalid result-space path",
-                "the steps after a parameter, an effect or `self` must name its fields, tuple components and `[_]` elements",
-                span.resolve(db),
-                error_code,
-            ),
-
             Self::ModeNotType(span) => primary_diag(
                 Severity::Error,
                 "`ref` and `mut` are not types",
@@ -5272,15 +5256,11 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::AccessItemDefault {
-                primary,
-                kind,
-                name,
-            } => primary_diag(
+            Self::AccessItemDefault { primary, name } => primary_diag(
                 Severity::Error,
-                format!("a trait's {kind} has no default"),
+                "a trait's effect row has no default",
                 format!(
-                    "{kind} `{}` is given by each implementation, not the trait",
+                    "effect row `{}` is given by each implementation, not the trait",
                     name.data(db)
                 ),
                 primary.resolve(db),
@@ -5935,29 +5915,12 @@ impl DiagnosticVoucher for ImplDiag<'_> {
             Self::AccessItemNotDefinedInTrait {
                 primary,
                 trait_,
-                kind,
                 name,
             } => primary_diag(
                 severity,
-                format!("associated {kind} not defined in trait"),
+                "associated effect row not defined in trait",
                 format!(
-                    "associated {kind} `{}` is not defined in trait `{}`",
-                    name.data(db),
-                    trait_.name(db).unwrap().data(db)
-                ),
-                primary.resolve(db),
-                error_code,
-            ),
-
-            Self::MissingAssociatedSpace {
-                primary,
-                trait_,
-                name,
-            } => primary_diag(
-                severity,
-                "missing associated space in trait implementation",
-                format!(
-                    "missing associated space `{}` from trait `{}`",
+                    "associated effect row `{}` is not defined in trait `{}`",
                     name.data(db),
                     trait_.name(db).unwrap().data(db)
                 ),
@@ -6012,22 +5975,6 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 diag
             }
 
-            Self::CyclicAssociatedSpace { primary, name } => {
-                let name = name.data(db);
-                let mut diag = primary_diag(
-                    severity,
-                    format!("the associated space `{name}` names itself"),
-                    format!("following `{name}` through the spaces it names comes back to it"),
-                    primary.resolve(db),
-                    error_code,
-                );
-                diag.notes.push(
-                    "an associated space must end in a space such as `storage`, `self`, or another type's space that does"
-                        .to_string(),
-                );
-                diag
-            }
-
             Self::BlanketCopy { primary } => {
                 let mut diag = primary_diag(
                     severity,
@@ -6073,12 +6020,12 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 let mut diag = primary_diag(
                     severity,
                     "a type is pinned to a state space",
-                    "this space is not `storage` or `transient`",
+                    "this type is not `Storage` or `Transient`",
                     primary.resolve(db),
                     error_code,
                 );
                 diag.notes.push(
-                    "give `space S = storage`, `space S = transient`, or another pinned type's space, `P::S`"
+                    "give `type Space = Storage` or `type Space = Transient` (`core::marker`), or another pinned type's space, `P::Space`"
                         .to_string(),
                 );
                 diag

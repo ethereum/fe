@@ -16,9 +16,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use super::{
-    PathSpace,
     domain::Domains,
     place::{AbsPlace, Base, Path, Step, path_of, paths_overlap},
+    space::{PathSpace, PlaceStep},
 };
 use crate::{
     analysis::{
@@ -45,7 +45,6 @@ use crate::{
                 external_call_state_access, is_sealed_evm_capability,
             },
             provider::{AddressSpace, provider_semantics},
-            result_space::PlaceStep,
             shape::Shape,
             trait_resolution::PredicateListId,
             ty_check::{BodyOwner, LocalBinding, infer_body},
@@ -476,6 +475,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 let base = self.root_domain[root.index()].map_or(Base::Root(root), Base::Domain);
                 (vec![rooted(self, base, path)], TokenSet::new())
             }
+            // A carrier with no access names no known place: none until the
+            // flow gives it one (`check_places_known`).
             NPlaceBase::CapabilityTarget { carrier } => {
                 let direct = self.direct(carrier);
                 let mut regions: Vec<AbsPlace> = direct
@@ -487,9 +488,6 @@ impl<'a, 'db> Analysis<'a, 'db> {
                         region.extended(&path, moved, lane)
                     })
                     .collect();
-                if regions.is_empty() {
-                    regions = vec![rooted(self, Base::Raw, path)];
-                }
                 regions.sort();
                 regions.dedup();
                 (regions, direct)
@@ -497,11 +495,20 @@ impl<'a, 'db> Analysis<'a, 'db> {
             // A pointer holds no access. A memory pointee is raw memory; a
             // state pointee may be any place of its space.
             NPlaceBase::Deref { pointer } => {
-                let base = match self.body.values[pointer.index()].ty.as_ptr(self.db) {
-                    Some((_, AddressSpace::Memory)) | None => Base::Raw,
-                    Some((_, space)) => Base::Domain(self.domains.dynamic(Some(space))),
-                };
-                (vec![rooted(self, base, path)], TokenSet::new())
+                let base =
+                    self.body.values[pointer.index()]
+                        .ty
+                        .as_ptr(self.db)
+                        .map(|(_, space)| match space {
+                            AddressSpace::Memory => Base::Raw,
+                            space => Base::Domain(self.domains.dynamic(Some(space))),
+                        });
+                (
+                    base.map(|base| rooted(self, base, path))
+                        .into_iter()
+                        .collect(),
+                    TokenSet::new(),
+                )
             }
         };
         Resolved {
@@ -1236,7 +1243,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
 
     // --- checks -----------------------------------------------------------
 
-    /// Checks the body; returns its result-space contract.
+    /// Checks the body; returns its result spaces.
     pub fn check(&mut self) -> Result<Vec<Option<AddressSpace>>, Diag<'db>> {
         self.checking = true;
         for block in self.reverse_postorder() {
@@ -1245,6 +1252,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             };
             let statements: Vec<_> = self.statements(block).collect();
             for (_, statement) in statements {
+                self.check_places_known(statement)?;
                 self.transfer(statement, &mut state)?;
             }
             if !self.diverges(block) {
@@ -1255,6 +1263,41 @@ impl<'a, 'db> Analysis<'a, 'db> {
         self.check_raw_place()?;
         self.check_projection_recursion()?;
         self.check_yields()
+    }
+
+    /// Every place a reachable operation names is known once the flow is
+    /// solved: its carrier holds the access it reaches the place through, and
+    /// a dereference is of a pointer. A place nothing traces is an error,
+    /// never memory.
+    fn check_places_known(&self, statement: &NStatement<'db>) -> Result<(), Diag<'db>> {
+        let known = |place: &NPlace<'db>| match place.base {
+            NPlaceBase::Root(_) => true,
+            NPlaceBase::CapabilityTarget { carrier } => !self.direct(carrier).is_empty(),
+            NPlaceBase::Deref { pointer } => self.body.values[pointer.index()]
+                .ty
+                .as_ptr(self.db)
+                .is_some(),
+        };
+        let mut unknown = None;
+        match &statement.kind {
+            NStatementKind::Store { destination, .. } if !known(destination) => {
+                unknown = Some(destination.origin);
+            }
+            NStatementKind::Define { expr, .. } => expr.for_each_place_operand(|place| {
+                if unknown.is_none() && !known(place) {
+                    unknown = Some(place.origin);
+                }
+            }),
+            NStatementKind::Store { .. } | NStatementKind::End { .. } => {}
+        }
+        match unknown {
+            Some(origin) => Err(self.diag(
+                SemanticDiagnosticKind::Internal,
+                specific_origin(origin, statement.origin),
+                "cannot tell which place this access names".into(),
+            )),
+            None => Ok(()),
+        }
     }
 
     /// A `#[raw_place]` projection yields a place computed from its inputs,
@@ -2286,8 +2329,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// A projection's yields: each component of every yield site names a
-    /// place in one address space, its result-space contract, and the access
-    /// components of a split are disjoint.
+    /// place in one address space, its result space, and the access
+    /// components of a split are disjoint. A component no yield grants has
+    /// none: every place but a grant has a space, and a grant of a callee's
+    /// component that no yield of the callee grants is never live.
     fn check_yields(&self) -> Result<Vec<Option<AddressSpace>>, Diag<'db>> {
         let BodyOwner::Func(func, mode) = self.instance.key(self.db).owner(self.db) else {
             return Ok(Vec::new());
@@ -2353,32 +2398,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 }
             }
         }
-        // A declared contract holds every yield, and is the contract of a
-        // component no yield shows.
-        let declared = self.instance.declared_result_spaces(self.db);
-        spaces
+        Ok(spaces
             .into_iter()
-            .enumerate()
-            .map(|(index, inferred)| {
-                let declared = declared
-                    .get(index)
-                    .copied()
-                    .flatten()
-                    .and_then(|contract| self.instance.contract_space(self.db, contract));
-                match (inferred, declared) {
-                    (Some((space, origin)), Some(declared)) if space != declared => Err(self.diag(
-                        SemanticDiagnosticKind::TransportViolation,
-                        origin,
-                        format!(
-                            "this yield names {}, but the signature declares {}",
-                            space.pretty(),
-                            declared.pretty()
-                        ),
-                    )),
-                    (inferred, declared) => Ok(inferred.map(|(space, _)| space).or(declared)),
-                }
-            })
-            .collect()
+            .map(|space| space.map(|(space, _)| space))
+            .collect())
     }
 }
 
@@ -2415,7 +2438,7 @@ fn reaches_owner<'db>(
 
 /// The access components of a shape, by their path in its carrier, with
 /// their mode and type.
-fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKind, TyId<'db>)> {
+pub(super) fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKind, TyId<'db>)> {
     fn walk<'db>(
         shape: &Shape<'db>,
         path: &mut Path,
@@ -2520,7 +2543,7 @@ fn specific_origin<'db>(first: SemOrigin<'db>, second: SemOrigin<'db>) -> SemOri
     }
 }
 
-/// Checks a body, returning its warnings and its result-space contract.
+/// Checks a body, returning its warnings and its result spaces.
 pub(super) fn check_body<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,

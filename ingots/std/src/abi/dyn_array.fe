@@ -439,7 +439,6 @@ fn assemble_dyn_array<T>(_ parts: *MemBuffer, count: u256, parts_size: u256) -> 
 impl<T> Index<usize> for MemVec<T>
     where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
 {
-    space S = memory
     type Output = T
 
     fn index(self, _ index: usize) -> ref T {

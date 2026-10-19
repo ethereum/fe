@@ -23,7 +23,6 @@ struct InUse {}
 
 impl Collection for InUse {
     uses E = (counts: Counts)
-    space S = memory
     type Cursor = u256
     type Item = u256
 

@@ -142,26 +142,20 @@ structurally disjoint, as in `(mut self.a, mut self.b)`. An optional shape,
 the `yield`.
 
 Each access a projection grants lies in one address space, its *result
-space*. The compiler infers it from the body, and a signature may declare it
-after a component or after the whole return: a space (`@memory`, `@storage`,
-`@transient`, `@calldata`, `@code`), a parameter's or effect's place
-(`@self`, `@total`), a sub-place of one (`@self.value`, `@self.pair.0`,
-`@self.cells[_]`), the resource a handle names (`@target(p)`), or an
-associated space (`@S`). A sub-place lies where its path leads: a step into a
-pinned type moves it into the pin's space, an entry into its collection's,
-and a packed field or entry is reached through a memory copy, so
-its grants lie in memory. Every yield must lie in the declared space, so
-`@self` on a struct holding a `TSlot` does not cover a yield of the `TSlot`'s
-value, while `@self.locked` does. An implementation gives its trait's
-`space S` the same way; `space S = self[_]` says its elements are its own
-parts, which is memory for packed elements.
+space*, which the compiler infers from the body for each instance. A place
+lies where its path leads: a step into a pinned type moves it into the pin's
+space, an entry into its collection's, and a packed field or entry is
+reached through a memory copy, so its grants lie in memory. Every yield of a
+component must lie in one space:
 
 ```fe
-fn value(mut? self) -> mut? T @self.value { mut? self.value }
+struct Guarded { value: u256, hits: TSlot<u256> }
 
-impl<T> Collection for Cells<T> {
-    space S = self[_]       // where its elements lie: memory for packed ones
-    ..
+impl Guarded {
+    // rejected: the yields lie in storage and transient storage
+    fn pick(mut self, _ c: bool) -> mut u256 {
+        if c { mut self.value } else { mut self.hits.value }
+    }
 }
 ```
 
@@ -371,12 +365,13 @@ balances.set(key: to, value: 0)     // rejected: `x` holds an entry of `balances
 x -= amount
 ```
 
-A type implementing `core::marker::Pinned` is *pinned* to its space `S`,
-`storage` or `transient`, or another pinned type's (`space S = P::S`):
+A type implementing `core::marker::Pinned` is *pinned* to its `Space`,
+`core::marker::Storage` or `core::marker::Transient`, or another pinned
+type's (`type Space = P::Space`):
 
 ```fe
 impl<K, V> Pinned for StorageMap<K, V> {
-    space S = storage
+    type Space = Storage
 }
 ```
 

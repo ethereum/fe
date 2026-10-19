@@ -8,7 +8,6 @@ use std::evm::{Evm, StorageMap}
 
 struct Cells { cells: [u256; 2] }
 impl Index<usize> for Cells {
-    space S = memory
     type Output = u256
     fn index(mut? self, _ i: usize) -> mut? u256 { mut? self.cells[i] }
 }
