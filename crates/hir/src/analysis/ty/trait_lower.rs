@@ -24,7 +24,7 @@ use super::{
     trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
     trait_resolution::PredicateListId,
     ty_def::{BorrowKind, InvalidCause, PrimTy, TyBase, TyId},
-    ty_lower::{lower_hir_ty_with_minter, lower_opt_const_body, lower_opt_hir_ty_with_minter},
+    ty_lower::{lower_generic_arg_list, lower_hir_ty_with_minter},
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -587,22 +587,15 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     t: Trait<'db>,
     lowering_cx: &LoweringContext<'db>,
 ) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
-    let args = path.generic_args(db).data(db);
-    // Lower provided explicit args (excluding Self)
+    let generic_args = path.generic_args(db);
+    // Lower provided explicit args (excluding Self) as a type's generic args
+    // are: a path among them is the constant it names, if it names one.
+    let lowered = lower_generic_arg_list(db, generic_args, scope, assumptions, lowering_cx);
     let mut provided_explicit = Vec::new();
     let mut assoc_bindings = IndexMap::new();
-    for arg in args {
+    for (arg, lowered) in generic_args.data(db).iter().zip(lowered) {
         match arg {
-            GenericArg::Type(ty_arg) => {
-                let ty =
-                    lower_opt_hir_ty_with_minter(db, ty_arg.ty, scope, assumptions, lowering_cx);
-                provided_explicit.push(ty);
-            }
-            GenericArg::Const(const_arg) => {
-                let const_ty =
-                    lower_opt_const_body(db, const_arg.value, scope, assumptions, lowering_cx);
-                provided_explicit.push(TyId::const_ty(db, const_ty));
-            }
+            GenericArg::Type(_) | GenericArg::Const(_) => provided_explicit.push(lowered),
             GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
                 if let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) {
                     let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);
