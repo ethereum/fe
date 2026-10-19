@@ -1,0 +1,28 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/trait_bound/assoc_binding_paths.fe
+---
+error[2-0002]: `Nope` is not found
+   ┌─ assoc_binding_paths.fe:27:27
+   │
+27 │ fn undefined<G: Get<Out = Nope>>() {}
+   │                           ^^^^ `Nope` is not found
+
+error[2-0002]: `T` is not found
+   ┌─ assoc_binding_paths.fe:30:28
+   │
+30 │ fn unbound<G: Get<Out = Q::T>, Q>() {}
+   │                            ^ `T` is not found
+
+error[2-0002]: `Nope` is not found
+   ┌─ assoc_binding_paths.fe:36:26
+   │
+36 │ fn undefined_arg<P: Conv<Nope>>() {}
+   │                          ^^^^ `Nope` is not found
+
+error[2-0006]: expected type item here
+   ┌─ assoc_binding_paths.fe:33:28
+   │
+33 │ fn not_a_type<G: Get<Out = helper>>() {}
+   │                            ^^^^^^ expected type here, but found fn `helper`

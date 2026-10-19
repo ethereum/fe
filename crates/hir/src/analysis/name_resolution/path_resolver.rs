@@ -117,12 +117,12 @@ pub enum PathResErrorKind<'db> {
         expected: Option<TyId<'db>>,
         given: Option<TyId<'db>>,
     },
-    /// Trait path generic argument expected a type; wrong domain was found.
-    /// Carries the argument index and offending ident/kind for precise diagnostics.
+    /// A type argument or associated type binding of a trait path names no
+    /// type: `Ok` with what it names instead, `Err` with why it does not
+    /// resolve.
     TraitGenericArgType {
         arg_idx: usize,
-        ident: IdentId<'db>,
-        given_kind: &'static str,
+        result: Box<PathResolutionResult<'db, PathRes<'db>>>,
     },
 
     MethodSelection(MethodSelectionError<'db>),
@@ -203,9 +203,10 @@ impl<'db> PathResError<'db> {
             PathResErrorKind::ArgTypeMismatch { .. } => {
                 "Generic const argument type mismatch".to_string()
             }
-            PathResErrorKind::TraitGenericArgType { .. } => {
-                "Trait generic argument expects a type".to_string()
-            }
+            PathResErrorKind::TraitGenericArgType { result, .. } => match result.as_ref() {
+                Ok(_) => "Trait generic argument expects a type".to_string(),
+                Err(err) => err.print(),
+            },
             PathResErrorKind::MethodSelection(err) => match err {
                 MethodSelectionError::AmbiguousInherentMethod(cands) => {
                     format!("Ambiguous method; {} inherent candidates.", cands.len())
@@ -234,7 +235,8 @@ impl<'db> PathResError<'db> {
         match &self.kind {
             PathResErrorKind::InfiniteBoundRecursion { .. } => true,
             PathResErrorKind::QualifiedTypeType(result)
-            | PathResErrorKind::QualifiedTypeTrait(result) => {
+            | PathResErrorKind::QualifiedTypeTrait(result)
+            | PathResErrorKind::TraitGenericArgType { result, .. } => {
                 matches!(result.as_ref(), Err(inner) if inner.is_infinite_bound_recursion())
             }
             _ => false,
@@ -413,20 +415,34 @@ impl<'db> PathResError<'db> {
                 MethodSelectionError::NotFound => PathResDiag::NotFound(span, ident),
             },
 
-            // Force a type-expected diagnostic at the specific generic arg span.
-            PathResErrorKind::TraitGenericArgType {
-                arg_idx,
-                ident,
-                given_kind,
-            } => {
-                let ty_span = path_span
+            // The argument's own diagnostic, at the argument.
+            PathResErrorKind::TraitGenericArgType { arg_idx, result } => {
+                let arg = path_span
                     .clone()
                     .segment(failed_idx)
                     .generic_args()
-                    .arg(arg_idx)
-                    .into_type_arg()
-                    .ty();
-                PathResDiag::ExpectedType(ty_span.into(), ident, given_kind)
+                    .arg(arg_idx);
+                let (ty, ty_span) = match seg_path.generic_args(db).data(db).get(arg_idx)? {
+                    GenericArg::Type(ty_arg) => (ty_arg.ty, arg.into_type_arg().ty()),
+                    GenericArg::AssocType(binding) => (binding.ty, arg.into_assoc_type_arg().ty()),
+                    GenericArg::Const(_) => return None,
+                };
+                let TypeKind::Path(Partial::Present(arg_path)) = ty.to_opt()?.data(db) else {
+                    return None;
+                };
+                match *result {
+                    Ok(res) => PathResDiag::ExpectedType(
+                        ty_span.into(),
+                        arg_path.ident(db).to_opt()?,
+                        res.kind_name(),
+                    ),
+                    Err(inner) => inner.into_diag(
+                        db,
+                        *arg_path,
+                        ty_span.into_path_type().path(),
+                        ExpectedPathKind::Type,
+                    )?,
+                }
             }
         };
         Some(diag)
@@ -2233,18 +2249,24 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                         let ty = TyId::foldl(db, ty, &args());
                         PathRes::Ty(ty)
                     } else {
-                        // Pre-validate type generic arguments of the trait path to surface
-                        // domain errors (e.g., trait or value used where a type is expected)
-                        // with precise spans in the name-resolution phase.
+                        // Pre-validate the type arguments and associated type bindings of the
+                        // trait path to surface domain errors (e.g., trait or value used where
+                        // a type is expected) with precise spans in the name-resolution phase.
+                        // A path that does not resolve yet, such as `Q::T` before `Q: Ty` is
+                        // collected, fails the trait path, so its bound waits for the others.
                         if !path.generic_args(db).is_empty(db) {
                             let gen_args = path.generic_args(db).data(db);
                             for (idx, ga) in gen_args.iter().enumerate() {
-                                if let GenericArg::Type(ty_arg) = ga
-                                    && let Some(hir_ty) = ty_arg.ty.to_opt()
+                                let ty = match ga {
+                                    GenericArg::Type(ty_arg) => ty_arg.ty,
+                                    GenericArg::AssocType(binding) => binding.ty,
+                                    GenericArg::Const(_) => continue,
+                                };
+                                if let Some(hir_ty) = ty.to_opt()
                                     && let TypeKind::Path(p) = hir_ty.data(db)
                                     && let Some(arg_path) = p.to_opt()
                                 {
-                                    match resolve_path_with_minter(
+                                    let result = match resolve_path_with_minter(
                                         db,
                                         arg_path,
                                         scope,
@@ -2252,29 +2274,16 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                                         false,
                                         lowering_cx,
                                     ) {
-                                        Ok(res)
-                                            if !matches!(
-                                                res,
-                                                PathRes::Ty(_) | PathRes::TyAlias(..)
-                                            ) =>
-                                        {
-                                            let ident = arg_path.ident(db).unwrap();
-                                            let kind = res.kind_name();
-                                            return Err(PathResError::new(
-                                                PathResErrorKind::TraitGenericArgType {
-                                                    arg_idx: idx,
-                                                    ident,
-                                                    given_kind: kind,
-                                                },
-                                                path,
-                                            ));
-                                        }
-                                        Ok(_) => {}
-                                        Err(inner) => {
-                                            // Bubble up inner error; caller will render
-                                            return Err(inner);
-                                        }
-                                    }
+                                        Ok(PathRes::Ty(_) | PathRes::TyAlias(..)) => continue,
+                                        result => result,
+                                    };
+                                    return Err(PathResError::new(
+                                        PathResErrorKind::TraitGenericArgType {
+                                            arg_idx: idx,
+                                            result: Box::new(result),
+                                        },
+                                        path,
+                                    ));
                                 }
                             }
                         }

@@ -161,6 +161,17 @@ impl<P: WhereMarker<S>, S> Pinned for WhereImplied<P, S> {
     type Space = S
 }
 
+trait Ty {
+    type T
+}
+
+struct Transitive<P, Q> {}
+
+// Accepted: the binding names `Q::T`, the pin of `P`.
+impl<P: Pinned<Space = Q::T>, Q: Ty> Pinned for Transitive<P, Q> {
+    type Space = Q::T
+}
+
 struct Loose<P, S> {}
 
 // Rejected: nothing makes `S` a pinned type's space.

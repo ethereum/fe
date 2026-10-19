@@ -1,0 +1,54 @@
+// A bound's associated type binding may name another parameter's
+// associated type, whichever bound comes first.
+trait Ty {
+    type T
+}
+
+trait Get {
+    type Out
+
+    fn get(self) -> Self::Out
+}
+
+struct Words {}
+
+impl Ty for Words {
+    type T = u256
+}
+
+struct Seven {}
+
+impl Get for Seven {
+    type Out = u256
+
+    fn get(self) -> u256 {
+        7
+    }
+}
+
+fn fetch_later<G: Get<Out = Q::T>, Q: Ty>(_ g: G) -> Q::T {
+    g.get()
+}
+
+fn fetch_earlier<Q: Ty, G: Get<Out = Q::T>>(_ g: G) -> Q::T {
+    g.get()
+}
+
+fn fetch_where<G, Q>(_ g: G) -> Q::T where G: Get<Out = Q::T>, Q: Ty {
+    g.get()
+}
+
+#[test]
+fn binding_names_a_later_parameter() {
+    assert(fetch_later<Seven, Words>(Seven {}) == 7)
+}
+
+#[test]
+fn binding_names_an_earlier_parameter() {
+    assert(fetch_earlier<Words, Seven>(Seven {}) == 7)
+}
+
+#[test]
+fn binding_in_a_where_clause() {
+    assert(fetch_where<Seven, Words>(Seven {}) == 7)
+}
