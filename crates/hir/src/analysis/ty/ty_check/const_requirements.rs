@@ -619,6 +619,11 @@ pub(super) fn check_body_requirements<'db>(
             entered.push(checker.check_expr(expr, data));
         }
     }
+    for stmt in body.stmts(db).keys() {
+        if let Some(plan) = typed.for_loop_plan(stmt) {
+            checker.check_for_loop_plan(plan);
+        }
+    }
     let mut check = checker.check_inferred_types(&entered);
     for (nested, expected) in expression_const_bodies(db, body, typed) {
         check.extend(anon_const_position_check(db, nested, expected));
@@ -758,12 +763,34 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
         CheckedExpr { expr, ty, failed }
     }
 
+    fn check_for_loop_plan(&mut self, plan: &super::ForLoopPlan<'db>) {
+        for call in &plan.calls {
+            self.discharge_call_conditions_under_choices(plan.base, &call.callable, true);
+            if let CallableDef::Func(func) = call.callable.callable_def() {
+                self.check_callee_headers(plan.base, func, call.callable.generic_args());
+            }
+        }
+    }
+
     /// Evaluate the conditions under choices that a call at `expr` checks,
     /// reporting each failure at this call. Returns the callee's own
     /// conditions that were so checked, which premise forwarding skips.
     fn discharge_conditions_under_choices(&mut self, expr: ExprId) -> FxHashSet<Body<'db>> {
+        let Some(callable) = self.typed.callable_expr(expr) else {
+            return FxHashSet::default();
+        };
+        let direct = calls_directly(self.db, self.typed, self.body, expr);
+        self.discharge_call_conditions_under_choices(expr, callable, direct)
+    }
+
+    fn discharge_call_conditions_under_choices(
+        &mut self,
+        expr: ExprId,
+        callable: &Callable<'db>,
+        direct: bool,
+    ) -> FxHashSet<Body<'db>> {
         let mut by_choice = FxHashSet::default();
-        for condition in conditions_at_call_expr(self.db, self.typed, self.body, self.scope, expr) {
+        for condition in conditions_at_call(self.db, self.typed, self.scope, callable, direct) {
             if condition.direct {
                 by_choice.insert(condition.predicate);
             }
@@ -1002,6 +1029,22 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
                     } else {
                         check.unmet(expr.span(body).into(), unmet.predicate, unmet.failure);
                     }
+                }
+            }
+        }
+        for stmt in body.stmts(db).keys() {
+            let Some(plan) = typed.for_loop_plan(stmt) else {
+                continue;
+            };
+            let types = std::iter::once(plan.state_ty).chain(
+                plan.calls
+                    .iter()
+                    .flat_map(|call| call.callable.generic_args().iter().copied()),
+            );
+            for ty in types {
+                while let Some(unmet) = check_type_requirements(db, ty, scope, &reported) {
+                    reported.insert(unmet.ty);
+                    check.unmet_inferred(plan.base.span(body).into(), &unmet);
                 }
             }
         }
@@ -2355,13 +2398,17 @@ fn map_choice<'db>(
     slots: &[(SlotRef<'db>, Choice<'db>)],
     choice: Choice<'db>,
 ) -> Result<Option<Choice<'db>>, ()> {
-    match choice {
-        Choice::Known(_) => Ok(Some(choice)),
-        Choice::Slot(own) => match delivered_for(slots, own) {
-            Some(choice) => Ok(Some(choice)),
-            None if matches!(own, SlotRef::Bound(_)) => Ok(None),
-            None => Err(()),
-        },
+    if let Choice::Slot(own) = choice
+        && let Some(delivered) = delivered_for(slots, own)
+    {
+        return Ok(Some(delivered));
+    }
+    match SlotChoices::default().resolve(Some(choice)) {
+        crate::analysis::ty::trait_choice::Resolved::Known(known) => {
+            Ok(Some(Choice::Known(known)))
+        }
+        crate::analysis::ty::trait_choice::Resolved::Ordinary => Ok(None),
+        crate::analysis::ty::trait_choice::Resolved::Pending => Err(()),
     }
 }
 
@@ -2526,7 +2573,12 @@ fn owed_facts_at_call<'db>(
                 }
             }
             OwedCheck::NoEvidence { param } => facts.push(EdgeFact::NoEvidence {
-                ty: at_call(db, body, body_args, *param),
+                ty: crate::analysis::ty::normalize::normalize_ty(
+                    db,
+                    at_call(db, body, body_args, *param),
+                    scope,
+                    assumptions,
+                ),
             }),
             OwedCheck::Call(pending) => {
                 let Ok(choice) = map_choice(slots, pending.choice) else {
@@ -2639,61 +2691,55 @@ fn calls_directly<'db>(
 pub(super) fn reached_bounds_at_call<'db>(
     db: &'db dyn HirAnalysisDb,
     typed: &TypedBody<'db>,
-    body: Body<'db>,
     scope: ScopeId<'db>,
-    expr: ExprId,
+    callable: &Callable<'db>,
+    direct: bool,
 ) -> Vec<TraitInstId<'db>> {
-    facts_at_call_expr(db, typed, body, scope, expr)
-        .into_iter()
-        .filter_map(|fact| match fact {
-            EdgeFact::Reaches {
-                choice: Choice::Slot(SlotRef::Bound(slot)),
-                ..
-            } => Some(slot),
-            _ => None,
-        })
-        .collect()
-}
-
-fn facts_at_call_expr<'db>(
-    db: &'db dyn HirAnalysisDb,
-    typed: &TypedBody<'db>,
-    body: Body<'db>,
-    scope: ScopeId<'db>,
-    expr: ExprId,
-) -> Vec<EdgeFact<'db>> {
-    let Some(callable) = typed.callable_expr(expr) else {
-        return Vec::new();
-    };
     facts_at_call(
         db,
         callable,
-        calls_directly(db, typed, body, expr),
+        direct,
         scope,
         typed.assumptions(),
         &mut Walk::new(),
     )
+    .into_iter()
+    .filter_map(|fact| match fact {
+        EdgeFact::Reaches {
+            choice: Choice::Slot(SlotRef::Bound(slot)),
+            ..
+        } => Some(slot),
+        _ => None,
+    })
+    .collect()
 }
 
 /// Every condition a call checks or owes under the choices it delivers.
-fn conditions_at_call_expr<'db>(
+fn conditions_at_call<'db>(
     db: &'db dyn HirAnalysisDb,
     typed: &TypedBody<'db>,
-    body: Body<'db>,
     scope: ScopeId<'db>,
-    expr: ExprId,
+    callable: &Callable<'db>,
+    direct: bool,
 ) -> Vec<CallCondition<'db>> {
-    facts_at_call_expr(db, typed, body, scope, expr)
-        .into_iter()
-        .filter_map(|fact| match fact {
-            EdgeFact::Condition(condition) => Some(condition),
-            EdgeFact::Reaches { .. }
-            | EdgeFact::OpenedCondition { .. }
-            | EdgeFact::NoEvidence { .. }
-            | EdgeFact::Pending(_)
-            | EdgeFact::TooDeep => None,
-        })
-        .collect()
+    facts_at_call(
+        db,
+        callable,
+        direct,
+        scope,
+        typed.assumptions(),
+        &mut Walk::new(),
+    )
+    .into_iter()
+    .filter_map(|fact| match fact {
+        EdgeFact::Condition(condition) => Some(condition),
+        EdgeFact::Reaches { .. }
+        | EdgeFact::OpenedCondition { .. }
+        | EdgeFact::NoEvidence { .. }
+        | EdgeFact::Pending(_)
+        | EdgeFact::TooDeep => None,
+    })
+    .collect()
 }
 
 /// Why a call is refused once its edge checks are known.
@@ -2716,11 +2762,18 @@ pub(super) enum EdgeRefusal {
 pub(super) fn call_refusal<'db>(
     db: &'db dyn HirAnalysisDb,
     typed: &TypedBody<'db>,
-    body: Body<'db>,
     scope: ScopeId<'db>,
-    expr: ExprId,
+    callable: &Callable<'db>,
+    direct: bool,
 ) -> Option<EdgeRefusal> {
-    let facts = facts_at_call_expr(db, typed, body, scope, expr);
+    let facts = facts_at_call(
+        db,
+        callable,
+        direct,
+        scope,
+        typed.assumptions(),
+        &mut Walk::new(),
+    );
     if facts.iter().any(|fact| matches!(fact, EdgeFact::TooDeep)) {
         return Some(EdgeRefusal::TooDeep);
     }
@@ -2775,8 +2828,15 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
             owed.push(item);
         }
     };
-    for expr in body.exprs(db).keys() {
-        for fact in facts_at_call_expr(db, typed, body, func.scope(), expr) {
+    for (_, callable, direct) in typed.recorded_calls(db) {
+        for fact in facts_at_call(
+            db,
+            callable,
+            direct,
+            func.scope(),
+            typed.assumptions(),
+            &mut Walk::new(),
+        ) {
             match fact {
                 EdgeFact::Condition(CallCondition {
                     predicate,
@@ -2810,6 +2870,9 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
                 // Refused where `func` itself is checked.
                 EdgeFact::OpenedCondition { .. } => {}
                 EdgeFact::NoEvidence { ty } => {
+                    if ty.has_param(db) && !super::choice::holds_evidence(db, func.scope(), ty) {
+                        push(OwedCheck::NoEvidence { param: ty }, &mut owed);
+                    }
                     for param in type_params_in(db, ty) {
                         push(OwedCheck::NoEvidence { param }, &mut owed);
                     }
@@ -2855,6 +2918,30 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
             .filter_map(param_of)
         {
             push(OwedCheck::NoEvidence { param }, &mut owed);
+        }
+    }
+    for stmt in body.stmts(db).keys() {
+        let Some(plan) = typed.for_loop_plan(stmt) else {
+            continue;
+        };
+        if plan.state_ty.has_param(db)
+            && !super::choice::holds_evidence(db, func.scope(), plan.state_ty)
+        {
+            push(OwedCheck::NoEvidence { param: plan.state_ty }, &mut owed);
+        }
+        if plan.calls.iter().any(|call| {
+            call.callable
+                .called_body(db, func.scope(), typed.assumptions())
+                .is_none()
+        }) {
+            for param in plan
+                .driver
+                .into_iter()
+                .chain([plan.base])
+                .filter_map(param_of)
+            {
+                push(OwedCheck::NoEvidence { param }, &mut owed);
+            }
         }
     }
     owed

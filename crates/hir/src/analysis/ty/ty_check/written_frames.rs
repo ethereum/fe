@@ -22,8 +22,8 @@ use crate::{
         },
     },
     hir_def::{
-        Body, BodyKind, Expr, ExprId, GenericArg, GenericArgListId, ItemKind, Partial, PathId,
-        PathKind, TypeId as HirTyId, TypeKind as HirTyKind, scope_graph::ScopeId,
+        Body, BodyKind, Expr, ExprId, GenericArg, GenericArgListId, ItemKind, Partial, PatId,
+        PathId, PathKind, TypeId as HirTyId, TypeKind as HirTyKind, scope_graph::ScopeId,
     },
     visitor::{Visitor, VisitorCtxt, walk_body, walk_expr},
 };
@@ -88,9 +88,14 @@ pub(crate) fn has_named_implementation<'db>(
     slot: TraitInstId<'db>,
 ) -> bool {
     let trait_ = slot.def(db);
-    [scope.top_mod(db).ingot(db), trait_.ingot(db)]
+    let ingot = scope.top_mod(db).ingot(db);
+    let (primary, secondary) = crate::analysis::ty::trait_resolution::TraitSolveCx::search_ingots_for_trait_inst_with_origin(
+        db, ingot, slot,
+    );
+    [Some(ingot), Some(primary), secondary]
         .into_iter()
-        .any(|ingot| !named_impls_for_trait(db, ingot, trait_).is_empty())
+        .flatten()
+        .any(|search_ingot| !named_impls_for_trait(db, search_ingot, trait_).is_empty())
 }
 
 /// Where in its function's body a constant body is written.
@@ -532,119 +537,141 @@ fn opened_by<'db>(
     let Partial::Present(Expr::Path(Partial::Present(path))) = value.data(db, func_body) else {
         return None;
     };
-    let scope = func_body.scope();
+    let lex = super::env::body_lexical_env(db, func_body);
+    let body_scope = func_body.scope();
+    let expr_scope = lex.expr_scope(value).unwrap_or(body_scope);
+    let assumptions = crate::analysis::ty::const_ty::assumptions_for_body(db, func_body);
     use crate::analysis::name_resolution::path_resolver::{ImplNameRes, resolve_impl_name};
-    match resolve_impl_name(db, *path, scope) {
+    match resolve_impl_name(db, *path, expr_scope) {
         ImplNameRes::Found(implementation) => {
+            if path.is_bare_ident(db) && lex.expr_binding(value).is_some() {
+                return Some(Vec::new());
+            }
             return Some(implementation.trait_inst(db).into_iter().collect());
         }
         ImplNameRes::NotVisible | ImplNameRes::Ambiguous => return Some(Vec::new()),
         ImplNameRes::NotFound => {}
     }
-    if let Some(name) = path.as_ident(db)
-        && let Some(goal) = local_evidence_goal(db, func_body, name)
-    {
-        return goal.map(|goal| vec![goal]);
+    if path.is_bare_ident(db) {
+        use super::env::LexicalBinding;
+        let ty = match lex.expr_binding(value)? {
+            LexicalBinding::Local { pat } => {
+                return local_evidence_goal(db, func_body, lex, pat).map(|goal| vec![goal]);
+            }
+            LexicalBinding::Param { idx } => match super::BodyOwner::from_body(db, func_body)? {
+                super::BodyOwner::Func(func, _) => *func.arg_tys(db).get(idx)?.skip_binder(),
+                super::BodyOwner::ContractInit { contract } => {
+                    let param = contract.init(db)?.params(db).data(db).get(idx)?;
+                    lower_written_hir_ty(db, param.ty, contract.scope(), assumptions)?
+                }
+                _ => return None,
+            },
+            LexicalBinding::ClosureParam { closure, idx } => {
+                let Partial::Present(Expr::Closure { params, .. }) = closure.data(db, func_body)
+                else {
+                    return None;
+                };
+                let param = params.data(db).get(idx)?;
+                let closure_scope = lex.expr_scope(closure).unwrap_or(expr_scope);
+                lower_written_hir_ty(db, param.ty, closure_scope, assumptions)?
+            }
+            LexicalBinding::EffectParam => return None,
+            LexicalBinding::Item(ScopeId::Item(ItemKind::Const(constant))) => {
+                let mut bodies = Vec::new();
+                ty_bodies(db, constant.hir_ty(db).into(), &mut bodies);
+                if !bodies.is_empty() {
+                    return None;
+                }
+                match resolve_path(db, *path, expr_scope, assumptions, true) {
+                    Ok(PathRes::Const(_, ty)) => ty,
+                    _ => return None,
+                }
+            }
+            LexicalBinding::Item(_) => return None,
+        };
+        return evidence_goal(db, body_scope, ty).map(|goal| vec![goal]);
     }
-    if let Some(name) = path.as_ident(db)
-        && let Some(ItemKind::Func(func)) = scope.parent_item(db)
-        && let Some(index) = func
-            .params(db)
-            .position(|param| param.name(db) == Some(name))
-    {
-        let ty = *func.arg_tys(db).get(index)?.skip_binder();
-        return evidence_goal(db, scope, ty).map(|goal| vec![goal]);
-    }
-    let assumptions = crate::analysis::ty::const_ty::assumptions_for_body(db, func_body);
-    match resolve_path(db, *path, scope, assumptions, true) {
-        Ok(PathRes::Const(_, ty)) => evidence_goal(db, scope, ty).map(|goal| vec![goal]),
+    match resolve_path(db, *path, expr_scope, assumptions, true) {
+        Ok(PathRes::Const(_, ty)) => evidence_goal(db, body_scope, ty).map(|goal| vec![goal]),
         _ => None,
     }
 }
 
-/// The goal of the evidence a local named `name` holds, when the body binds
-/// that name once: the `Evidence<G>` its `let` annotation writes, or else the
-/// one its initializer's callee returns (`prove<G>()`, or a function declared
-/// to return it), read through blocks and `with` blocks. One binding means
-/// the operand names it, whatever the scopes. `None` when no pattern binds the
-/// name; `Some(None)` when the goal is not written down.
+fn lower_written_hir_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: Partial<HirTyId<'db>>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Option<crate::analysis::ty::ty_def::TyId<'db>> {
+    let Partial::Present(ty) = ty else {
+        return None;
+    };
+    let mut bodies = Vec::new();
+    ty_bodies(db, Partial::Present(ty), &mut bodies);
+    bodies
+        .is_empty()
+        .then(|| crate::analysis::ty::ty_lower::lower_hir_ty(db, ty, scope, assumptions))
+}
+
+/// The goal of the evidence the local pattern `pat` holds: the
+/// `Evidence<G>` its `let` annotation writes, or else the one its
+/// initializer's callee returns (`prove<G>()`, or a function declared to
+/// return it), read through blocks and `with` blocks. `None` when the
+/// goal is not written down.
 fn local_evidence_goal<'db>(
     db: &'db dyn HirAnalysisDb,
     func_body: Body<'db>,
-    name: crate::hir_def::IdentId<'db>,
-) -> Option<Option<TraitInstId<'db>>> {
-    use crate::hir_def::{Pat, Stmt};
-    let mut binders = func_body.pats(db).iter().filter_map(|(id, pat)| match pat {
-        Partial::Present(Pat::Path(Partial::Present(path), _))
-            if path.as_ident(db) == Some(name) =>
-        {
-            Some((id, *path))
-        }
-        _ => None,
-    });
-    let (pat, path) = binders.next()?;
+    lex: &super::env::BodyLexicalEnv<'db>,
+    pat: PatId,
+) -> Option<TraitInstId<'db>> {
+    use crate::hir_def::Stmt;
+    let let_binding = lex.let_binding(pat)?;
     let scope = func_body.scope();
     let assumptions = crate::analysis::ty::const_ty::assumptions_for_body(db, func_body);
-    // A second binding of the name, a parameter or a constant item, could be
-    // the one the operand names.
-    let is_param = matches!(scope.parent_item(db), Some(ItemKind::Func(func))
-        if func.params(db).any(|param| param.name(db) == Some(name)));
-    let is_const = matches!(
-        resolve_path(db, path, scope, assumptions, true),
-        Ok(PathRes::Const(..))
-    );
-    if binders.next().is_some() || is_param || is_const {
-        return Some(None);
-    }
-    let Some((annotation, init)) = func_body.stmts(db).values().find_map(|stmt| match stmt {
-        Partial::Present(Stmt::Let(bound, annotation, init, _)) if *bound == pat => {
-            Some((*annotation, *init))
-        }
-        _ => None,
-    }) else {
-        return Some(None);
-    };
     // A written constant in the type is not lowered here: its evaluation
     // reads these frames.
-    let mut bodies = Vec::new();
-    if let Some(annotation) = annotation {
-        ty_bodies(db, Partial::Present(annotation), &mut bodies);
-        if !bodies.is_empty() {
-            return Some(None);
-        }
-        let ty = crate::analysis::ty::ty_lower::lower_hir_ty(db, annotation, scope, assumptions);
-        return Some(evidence_goal(db, scope, ty));
+    if let Some(annotation) = let_binding.annotation {
+        let ty = lower_written_hir_ty(
+            db,
+            Partial::Present(annotation),
+            let_binding.init_scope,
+            assumptions,
+        )?;
+        return evidence_goal(db, scope, ty);
     }
-    let mut value = init?;
+    let mut value = let_binding.init?;
     let callee = loop {
         match value.data(db, func_body) {
             Partial::Present(Expr::Block(stmts, _)) => {
                 match stmts.last().map(|stmt| stmt.data(db, func_body)) {
                     Some(Partial::Present(Stmt::Expr(tail))) => value = *tail,
-                    _ => return Some(None),
+                    _ => return None,
                 }
             }
             Partial::Present(Expr::With(_, block)) => value = *block,
             Partial::Present(Expr::Call(callee, _)) => break *callee,
-            _ => return Some(None),
+            _ => return None,
         }
     };
     let Partial::Present(Expr::Path(Partial::Present(path))) = callee.data(db, func_body) else {
-        return Some(None);
+        return None;
     };
+    let mut bodies = Vec::new();
     path_bodies(db, *path, &mut bodies);
     if !bodies.is_empty() {
-        return Some(None);
+        return None;
     }
-    let Ok(PathRes::Func(func_ty)) = resolve_path(db, *path, scope, assumptions, true) else {
-        return Some(None);
+    let callee_scope = lex.expr_scope(callee).unwrap_or(let_binding.init_scope);
+    let Ok(PathRes::Func(func_ty)) = resolve_path(db, *path, callee_scope, assumptions, true)
+    else {
+        return None;
     };
     let (base, args) = func_ty.decompose_ty_app(db);
     let crate::analysis::ty::ty_def::TyData::TyBase(crate::analysis::ty::ty_def::TyBase::Func(
         crate::hir_def::CallableDef::Func(func),
     )) = base.data(db)
     else {
-        return Some(None);
+        return None;
     };
     // `prove<G>()` returns evidence for its written goal; a function with no
     // generic parameters returns the evidence its signature declares.
@@ -653,24 +680,24 @@ fn local_evidence_goal<'db>(
             Some(GenericArg::Type(arg)) => arg
                 .ty
                 .to_opt()
-                .map(|ty| crate::analysis::ty::ty_lower::lower_hir_ty(db, ty, scope, assumptions)),
+                .map(|ty| crate::analysis::ty::ty_lower::lower_hir_ty(db, ty, callee_scope, assumptions)),
             _ => None,
         };
-        return Some(match goal.map(|goal| goal.data(db)) {
+        return match goal.map(|goal| goal.data(db)) {
             Some(crate::analysis::ty::ty_def::TyData::ConstraintTerm(goal)) => Some(*goal),
             _ => None,
-        });
+        };
     }
     if !args.is_empty() {
-        return Some(None);
+        return None;
     }
     let ret = crate::hir_def::CallableDef::Func(*func)
         .ret_ty(db)
         .instantiate_identity();
     if ret.has_param(db) || ret.has_var(db) {
-        return Some(None);
+        return None;
     }
-    Some(evidence_goal(db, scope, ret))
+    evidence_goal(db, scope, ret)
 }
 
 /// The constant bodies written in a path's generic arguments, at any depth.

@@ -472,13 +472,13 @@ impl OrdinarySelection {
     /// A use for which the checker recorded no decision that names an
     /// implementation: it means the ordinary implementation (a pending
     /// choice is a recorded decision and never comes here).
-    pub fn no_recorded_choice() -> Self {
+    pub(super) fn no_recorded_choice() -> Self {
         Self(())
     }
 
     /// A slot's associated types, effect rows and result spaces, equal for
     /// every implementation whose header overlaps.
-    pub fn slot_outputs() -> Self {
+    pub(super) fn slot_outputs() -> Self {
         Self(())
     }
 
@@ -486,20 +486,20 @@ impl OrdinarySelection {
     /// reaches it: declarations, storage and encoding, the ABI, generated
     /// code. A module-level frame would reach some of them; each use is a
     /// site to revisit then.
-    pub fn outermost_tier_only() -> Self {
+    pub(super) fn outermost_tier_only() -> Self {
         Self(())
     }
 
     /// A check that decides no choice: it may only refuse, or compare with a
     /// body already selected.
-    pub fn decides_nothing() -> Self {
+    pub(crate) fn decides_nothing() -> Self {
         Self(())
     }
 
     /// A trait constant read in a type. Every type that would read a slot a
     /// frame answers is refused, so the outermost tier's value is the only
     /// one a type can mean.
-    pub fn outermost_tier_type() -> Self {
+    pub(super) fn outermost_tier_type() -> Self {
         Self(())
     }
 

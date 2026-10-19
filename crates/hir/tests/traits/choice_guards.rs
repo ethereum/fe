@@ -133,6 +133,22 @@ fn choices_resolve_through_one_function() {
         ),
         Vec::<String>::new()
     );
+    // `const_requirements::map_choice` delegates undelivered slot classification
+    // to `SlotChoices::default().resolve(Some(choice))` rather than duplicating
+    // the `SlotRef::Bound(_)` fallback rule.
+    let owed = code(&text_of("src/analysis/ty/ty_check/const_requirements.rs"));
+    let map_choice = functions(&owed)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn map_choice<")
+        })
+        .expect("`map_choice` exists");
+    assert!(map_choice.contains("SlotChoices::default().resolve(Some(choice))"));
+    assert!(!map_choice.contains("SlotRef::Bound("));
 }
 
 #[test]
@@ -154,6 +170,22 @@ fn bodies_are_chosen_through_one_accessor() {
             "{raw}"
         );
     }
+    // `applicable_impls` searches the same cross-ingot candidate set as the
+    // solver (`TraitSolveCx::search_ingots_for_trait_inst_with_origin`) so
+    // `candidate_methods` and `candidate_constants` discover cross-ingot
+    // ordinary and named implementations.
+    let trait_def_text = code(&text_of("src/analysis/ty/trait_def.rs"));
+    let applicable = functions(&trait_def_text)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn applicable_impls<")
+        })
+        .expect("`applicable_impls` exists");
+    assert!(applicable.contains("search_ingots_for_trait_inst_with_origin("));
 }
 
 #[test]
@@ -436,11 +468,27 @@ fn ordinary_selection_names_its_reason() {
             }
         }
     }
+    // Non-test constructors other than `decides_nothing` are private to
+    // `analysis::ty` (`pub(super)`), as are `resolve_trait_impl_instance`
+    // and `assoc_const_body_template_for_trait_inst`.
+    let representation = code(&text_of(REPRESENTATION));
+    for restricted in [
+        "pub(super) fn no_recorded_choice()",
+        "pub(super) fn slot_outputs()",
+        "pub(super) fn outermost_tier_only()",
+        "pub(super) fn outermost_tier_type()",
+        "pub(crate) fn decides_nothing()",
+    ] {
+        assert!(
+            representation.contains(restricted),
+            "`OrdinarySelection` visibility mismatch for `{restricted}`"
+        );
+    }
     // The two entry points take a reason; there is no way around it.
     let trait_def_text = code(&text_of(trait_def));
     for entry in [
-        "fn resolve_trait_impl_instance<",
-        "fn resolve_trait_method_instance<",
+        "pub(super) fn resolve_trait_impl_instance<",
+        "pub fn resolve_trait_method_instance<",
     ] {
         let function = functions(&trait_def_text)
             .into_iter()
@@ -452,6 +500,7 @@ fn ordinary_selection_names_its_reason() {
             "{entry} does not take a reason"
         );
     }
+    assert!(trait_def_text.contains("pub(super) fn assoc_const_body_template_for_trait_inst<"));
 }
 
 #[test]
@@ -489,6 +538,11 @@ fn written_constants_are_refused_where_they_are_read() {
             "fn checked_body",
             "unreported_choice_dependent_consts(",
         ),
+        (
+            "src/analysis/ty/ty_check/mod.rs",
+            "fn checked_body",
+            "verify_lexical_bindings_match_typed_body(",
+        ),
     ] {
         let text = code(&text_of(path));
         let found = functions(&text)
@@ -502,6 +556,22 @@ fn written_constants_are_refused_where_they_are_read() {
             .any(|chunk| chunk.contains(reads));
         assert!(found, "{path}: {function} does not read {reads}");
     }
+    // `written_frames` resolves pre-inference lexical bindings (`expr_binding`,
+    // `let_binding`) rather than scanning `func_body.pats(db)` by name inside
+    // `local_evidence_goal`.
+    let written = code(&text_of("src/analysis/ty/ty_check/written_frames.rs"));
+    let local_goal = functions(&written)
+        .into_iter()
+        .find(|function| {
+            function
+                .lines()
+                .next()
+                .unwrap_or_default()
+                .contains("fn local_evidence_goal")
+        })
+        .expect("`local_evidence_goal` exists");
+    assert!(local_goal.contains("lex.let_binding(pat)"));
+    assert!(!local_goal.contains("func_body.pats(db)"));
     // One predicate decides a refused constant, for the unifier, the
     // reporter and the reads of a type's slots.
     assert_eq!(
@@ -814,13 +884,25 @@ fn type_reach_reads_one_list() {
             .find(|function| function.lines().next().unwrap_or_default().contains(name))
             .unwrap_or_else(|| panic!("{name} exists"))
     };
-    // Each expression call and each `for` loop protocol call.
+    // Each expression call and each `for` loop protocol call, through one
+    // list (`TypedBody::recorded_calls`).
     assert_eq!(
         function("fn body_type_reads")
             .matches("call_slot_reads(")
             .count(),
-        2
+        1
     );
+    for reader in [
+        "fn body_trait_uses",
+        "fn body_type_reads",
+        "fn const_type_reads",
+        "fn check_choice_uses",
+    ] {
+        assert!(
+            function(reader).contains("recorded_calls("),
+            "{reader} does not read `recorded_calls`"
+        );
+    }
     assert!(function("fn body_type_reads").contains("written_body_uses("));
     assert!(function("fn own_type_reads").contains("body_type_reads("));
     assert!(function("fn const_type_reads").contains("body_type_reads("));

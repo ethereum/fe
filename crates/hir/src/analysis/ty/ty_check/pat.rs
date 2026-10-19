@@ -420,30 +420,10 @@ impl<'db> TyChecker<'db> {
         }
 
         let span = pat.span(self.body()).into_path_pat();
-        let lowering_cx = LoweringContext::new();
-        let res = self.resolve_path(
-            *path,
-            true,
-            span.clone().path(),
-            span.clone().into(),
-            &lowering_cx,
-        );
-
         // Bare identifiers that don't resolve to a type/variant are local bindings,
         // unless the expected type is a msg type, in which case we try to resolve
         // the identifier as a msg variant first.
-        if let Some(name) = path.as_ident(self.db)
-            && matches!(
-                res,
-                Err(_)
-                    | Ok(PathRes::Trait(_)
-                        | PathRes::Mod(_)
-                        | PathRes::Func(_)
-                        | PathRes::TraitMethod(..)
-                        | PathRes::Method(..)
-                        | PathRes::FuncParam(..))
-            )
-        {
+        if let Some(name) = path.as_ident(self.db) && self.env.is_pat_local_binding(name) {
             let binding = LocalBinding::local(
                 pat,
                 matches!(
@@ -472,6 +452,15 @@ impl<'db> TyChecker<'db> {
             };
             return self.finish_pat_check(pat, expected, actual, analysis);
         }
+
+        let lowering_cx = LoweringContext::new();
+        let res = self.resolve_path(
+            *path,
+            true,
+            span.clone().path(),
+            span.clone().into(),
+            &lowering_cx,
+        );
 
         let (actual, analysis) = match res {
             Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => {

@@ -84,15 +84,14 @@ use crate::analysis::ty::{
 use crate::analysis::{
     HirAnalysisDb, Spanned,
     name_resolution::{
-        EarlyNameQueryId, ExpectedPathKind, NameDomain, NameResBucket, NameResolutionError,
-        PathRes, QueryDirective,
+        ExpectedPathKind, NameDomain, NameResBucket, NameResolutionError, PathRes,
         diagnostics::PathResDiag,
         is_scope_visible_from,
         method_selection::{
             AmbiguousTraitMethods, MethodCandidate, MethodSelectionError,
             select_callable_value_method, select_method_candidate, select_trait_method_candidates,
         },
-        resolve_name_res_with_minter, resolve_query,
+        resolve_name_res_with_minter,
     },
     place::resolve_place_field,
     semantic::{
@@ -5608,37 +5607,15 @@ pub(super) fn resolve_ident_expr<'db>(
         ResolvedPathInBody::Reso(reso)
     };
 
-    let mut current_idx = env.current_block_idx();
-
-    loop {
-        let block = env.get_block(current_idx);
-        if let Some(binding) = block.lookup_var(ident) {
-            return ResolvedPathInBody::Binding(binding);
+    match env.resolve_ident_in_blocks(ident, |bucket, scope| {
+        match resolve_bucket(bucket, scope) {
+            ResolvedPathInBody::Invalid => None,
+            resolved => Some(resolved),
         }
-
-        let scope = block.scope;
-        let directive = QueryDirective::for_scope(db, scope).disallow_lex();
-        let query = EarlyNameQueryId::new(db, ident, scope, directive);
-        let bucket = resolve_query(db, query);
-
-        let resolved = resolve_bucket(bucket, scope);
-        if matches!(resolved, ResolvedPathInBody::Invalid) {
-            if current_idx == 0 {
-                break;
-            }
-            current_idx -= 1;
-        } else {
-            return resolved;
-        }
-    }
-
-    let body_scope = env.body().scope();
-    let directive = QueryDirective::for_scope(db, body_scope);
-    let query = EarlyNameQueryId::new(db, ident, body_scope, directive);
-    let bucket = resolve_query(db, query);
-    match resolve_bucket(bucket, env.scope()) {
-        ResolvedPathInBody::Invalid => ResolvedPathInBody::NewBinding(ident),
-        r => r,
+    }) {
+        super::env::IdentInBlocks::Binding(binding) => ResolvedPathInBody::Binding(binding),
+        super::env::IdentInBlocks::Scope(resolved) => resolved,
+        super::env::IdentInBlocks::Unresolved => ResolvedPathInBody::NewBinding(ident),
     }
 }
 

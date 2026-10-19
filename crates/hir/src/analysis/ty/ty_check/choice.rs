@@ -472,17 +472,7 @@ fn body_trait_uses<'db>(
     let Some(body) = typed.body() else {
         return uses;
     };
-    let loops = body
-        .stmts(db)
-        .keys()
-        .filter_map(|stmt| typed.for_loop_plan(stmt))
-        .flat_map(|plan| plan.calls.iter().map(|call| &call.callable));
-    let calls = body
-        .exprs(db)
-        .keys()
-        .filter_map(|expr| typed.callable_expr(expr))
-        .chain(loops);
-    for callable in calls {
+    for (_, callable, _) in typed.recorded_calls(db) {
         if let Some(inst) = callable.trait_inst {
             uses.push((slot_goal(db, inst), callable.choice(), true));
         }
@@ -2432,8 +2422,11 @@ impl<'db> TyCheckEnv<'db> {
             for call in &mut plan.calls {
                 let (callable, refusals) =
                     self.decided_call(self.use_frames[written], call.callable.clone(), true);
-                self.choice_refusals
-                    .extend(refusals.into_iter().map(|refusal| (written, refusal)));
+                for refusal in refusals {
+                    if !self.choice_refusals.contains(&(written, refusal)) {
+                        self.choice_refusals.push((written, refusal));
+                    }
+                }
                 call.callable = callable;
             }
             self.for_loop_plans[stmt] = Some(plan);
@@ -2866,16 +2859,9 @@ fn body_type_reads<'db>(
     };
     for expr in body.exprs(db).keys() {
         reads.extend(type_slot_reads(db, typed.expr_ty(db, expr)));
-        if let Some(callable) = typed.callable_expr(expr) {
-            reads.extend(call_slot_reads(db, callable));
-        }
     }
-    for stmt in body.stmts(db).keys() {
-        if let Some(plan) = typed.for_loop_plan(stmt) {
-            for call in &plan.calls {
-                reads.extend(call_slot_reads(db, &call.callable));
-            }
-        }
+    for (_, callable, _) in typed.recorded_calls(db) {
+        reads.extend(call_slot_reads(db, callable));
     }
     for pat in body.pats(db).keys() {
         reads.extend(type_slot_reads(db, typed.pat_ty(db, pat)));
@@ -2918,13 +2904,13 @@ pub(crate) fn const_type_reads<'db>(
     let typed = &super::infer_body(db, super::BodyOwner::AnonConstBody { body, expected }).1;
     let mut reads = body_type_reads(db, typed);
     if let Some(checked) = typed.body() {
-        for expr in checked.exprs(db).keys() {
+        for (_, callable, direct) in typed.recorded_calls(db) {
             reads.extend(super::const_requirements::reached_bounds_at_call(
                 db,
                 typed,
-                checked,
                 checked.scope(),
-                expr,
+                callable,
+                direct,
             ));
         }
     }
@@ -3097,47 +3083,52 @@ pub(super) fn check_choice_uses<'db>(
             );
         }
     }
-    for expr in body.exprs(db).keys() {
-        if typed.callable_expr(expr).is_none() {
+    let mut refused_calls = Vec::new();
+    for (expr, callable, direct) in typed.recorded_calls(db) {
+        use super::const_requirements::{EdgeRefusal, call_refusal};
+        let Some(refusal) = call_refusal(db, typed, scope, callable, direct) else {
+            continue;
+        };
+        let key = (expr, std::mem::discriminant(&refusal));
+        if refused_calls.contains(&key) {
             continue;
         }
-        use super::const_requirements::{EdgeRefusal, call_refusal};
+        refused_calls.push(key);
         let primary = expr.span(body).into();
-        match call_refusal(db, typed, body, scope, expr) {
+        match refusal {
             // A call refused for the types it declares is that refusal.
-            Some(EdgeRefusal::TypeReach)
+            EdgeRefusal::TypeReach
                 if typed.choice_refusals().iter().any(|(refused, refusal)| {
                     *refused == expr && matches!(refusal, ChoiceRefusal::DependentType)
                 }) => {}
-            Some(EdgeRefusal::TypeReach) => diags.push(
+            EdgeRefusal::TypeReach => diags.push(
                 BodyDiag::ChoiceCarried {
                     primary,
                     reason: "this call passes a `with` choice into a body that reads it in a type, a function value or a closure, which is not supported yet",
                 }
                 .into(),
             ),
-            Some(EdgeRefusal::EvidenceThroughParam) => diags.push(
+            EdgeRefusal::EvidenceThroughParam => diags.push(
                 BodyDiag::ObligationOpening {
                     primary,
                     reason: "evidence passed as a value of a type parameter reaches a body that opens it or passes it on where no choice arrives with it; pass it where its `Evidence` type is written",
                 }
                 .into(),
             ),
-            Some(EdgeRefusal::OpenedCondition) => diags.push(
+            EdgeRefusal::OpenedCondition => diags.push(
                 BodyDiag::ObligationOpening {
                     primary,
                     reason: "a body this call runs leaves a bound to an implementation with a condition on a slot this call delivers an opened choice to; conditional implementations under `with` are not supported yet",
                 }
                 .into(),
             ),
-            Some(EdgeRefusal::TooDeep) => diags.push(
+            EdgeRefusal::TooDeep => diags.push(
                 BodyDiag::ObligationOpening {
                     primary,
                     reason: "the checks this call owes through bodies chosen later could not be followed to an end",
                 }
                 .into(),
             ),
-            None => {}
         }
     }
     diags

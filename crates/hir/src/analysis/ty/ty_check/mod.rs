@@ -936,6 +936,16 @@ pub(super) fn checked_body<'db>(
     }
     let mut recursive = false;
     if diags_allow_evaluation(db, &diags) {
+        #[cfg(debug_assertions)]
+        if matches!(
+            owner,
+            BodyOwner::Func(_, _)
+                | BodyOwner::ContractInit { .. }
+                | BodyOwner::ContractRecvArm { .. }
+        ) && let Some(body) = typed.body()
+        {
+            env::verify_lexical_bindings_match_typed_body(db, body, &typed);
+        }
         let requirements = const_requirements::check_body_requirements(db, owner, &typed);
         recursive = requirements.recursive;
         diags.extend(requirements.diags);
@@ -5178,6 +5188,39 @@ impl<'db> TypedBody<'db> {
     /// The Collection protocol plan of a for-loop statement.
     pub fn for_loop_plan(&self, stmt: StmtId) -> Option<&ForLoopPlan<'db>> {
         self.tables.for_loop_plans[stmt].as_ref()
+    }
+
+    /// Every call a checked body records: each expression call and each
+    /// `for` loop's protocol calls, with the expression where it is written
+    /// and whether its callee body receives the call's decisions.
+    pub(crate) fn recorded_calls<'a>(
+        &'a self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Vec<(ExprId, &'a Callable<'db>, bool)> {
+        let Some(body) = self.body() else {
+            return Vec::new();
+        };
+        let expr_calls = body.exprs(db).keys().filter_map(|expr| {
+            let callable = self.callable_expr(expr)?;
+            let direct = choice::calls_directly(
+                db,
+                body,
+                expr,
+                |callee| self.expr_binding(callee).is_some(),
+                |callee| Some(self.expr_ty(db, callee)),
+            );
+            Some((expr, callable, direct))
+        });
+        let loop_calls = body
+            .stmts(db)
+            .keys()
+            .filter_map(|stmt| self.for_loop_plan(stmt))
+            .flat_map(|plan| {
+                plan.calls
+                    .iter()
+                    .map(move |call| (plan.base, &call.callable, true))
+            });
+        expr_calls.chain(loop_calls).collect()
     }
 
     pub fn binding_source(

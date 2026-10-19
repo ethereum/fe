@@ -471,7 +471,7 @@ pub(crate) fn instantiate_selected_impl<'db>(
 /// Ordinary selection: the implementation that answers `inst` when no choice
 /// is read. Every caller names why that is right where it calls
 /// (`OrdinarySelection`).
-pub(crate) fn resolve_trait_impl_instance<'db>(
+pub(super) fn resolve_trait_impl_instance<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
@@ -1259,12 +1259,30 @@ fn applicable_impls<'db>(
     ingot: Ingot<'db>,
     inst: TraitInstId<'db>,
 ) -> Vec<ResolvedImplInstance<'db>> {
-    let mut candidates = impls_for_trait_def(db, ingot, inst.def(db)).clone();
-    candidates.extend(
-        named_impls_for_trait(db, ingot, inst.def(db))
-            .into_iter()
-            .filter_map(|item| super::trait_lower::lower_impl_trait(db, item)),
-    );
+    let (primary, secondary) =
+        TraitSolveCx::search_ingots_for_trait_inst_with_origin(db, ingot, inst);
+    let mut search_ingots = Vec::new();
+    for candidate_ingot in [Some(ingot), Some(primary), secondary]
+        .into_iter()
+        .flatten()
+    {
+        if !search_ingots.contains(&candidate_ingot) {
+            search_ingots.push(candidate_ingot);
+        }
+    }
+    let mut candidates: IndexSet<ImplementorId<'db>> = IndexSet::default();
+    for search_ingot in search_ingots {
+        candidates.extend(
+            impls_for_trait_def(db, search_ingot, inst.def(db))
+                .iter()
+                .copied(),
+        );
+        candidates.extend(
+            named_impls_for_trait(db, search_ingot, inst.def(db))
+                .into_iter()
+                .filter_map(|item| super::trait_lower::lower_impl_trait(db, item)),
+        );
+    }
     candidates
         .into_iter()
         .filter(|candidate| matches!(candidate.origin(db), ImplementorOrigin::Hir(_)))
@@ -1534,7 +1552,7 @@ pub(crate) fn impls_for_ty<'db>(
 /// Returns the selected body, its declared template type, and the checked
 /// substitution over the body's owner. Explicit impl bodies use impl
 /// arguments; inherited defaults use trait arguments.
-pub fn assoc_const_body_template_for_trait_inst<'db>(
+pub(super) fn assoc_const_body_template_for_trait_inst<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
