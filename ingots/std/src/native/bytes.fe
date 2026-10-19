@@ -107,6 +107,22 @@ impl ByteBuffer {
         }
     }
 
+    /// Copy `len` bytes of `source`, starting at `offset`, over this buffer's
+    /// bytes starting at `dest`. Both ranges must lie within initialized extents.
+    pub fn copy_from(mut self, dest: u64, source: ByteBuffer, offset: u64, len: u64) {
+        core::assert(dest <= self.len && len <= self.len - dest)
+        core::assert(offset <= source.len && len <= source.len - offset)
+        if len == 0 { return }
+        // A mutable and a shared borrow name two distinct owners and allocations.
+        unsafe {
+            ptr::copy_raw(
+                dest: ptr::offset(self.data(), dest as u256),
+                source: ptr::offset(source.data(), offset as u256),
+                len: len as u256,
+            )
+        }
+    }
+
     /// Reset the logical extent while retaining reusable storage.
     pub fn clear(mut self) {
         // An empty extent is trivially initialized.
