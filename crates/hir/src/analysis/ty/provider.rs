@@ -10,7 +10,7 @@ use crate::{
             trait_lower::lower_impl_trait,
             trait_resolution::{PredicateListId, Selection, TraitSolveCx, goal_holds},
             ty_check::EffectParamSite,
-            ty_def::{TyData, TyId},
+            ty_def::TyId,
         },
     },
     core::semantic::constraints_for,
@@ -256,18 +256,30 @@ fn state_space<'db>(
 }
 
 /// Whether `impl_trait`, an implementation of `core::marker::Pinned`, gives
-/// a state space as its `Space`, or another pinned type's (`P::Space`).
+/// a state space as its `Space`, or the `Space` of a type its bounds pin:
+/// `P::Space`, which is `S` under `P: Pinned<Space = S>`.
 pub fn is_state_pin<'db>(db: &'db dyn HirAnalysisDb, impl_trait: ImplTrait<'db>) -> bool {
     let scope = impl_trait.scope();
-    let Some(space) = lower_impl_trait(db, impl_trait)
-        .and_then(|implementor| implementor.assoc_ty(db, IdentId::new(db, "Space".to_string())))
-    else {
+    let name = IdentId::new(db, "Space".to_string());
+    let (Some(pinned), Some(space)) = (
+        resolve_core_trait(db, scope, &["marker", "Pinned"]),
+        lower_impl_trait(db, impl_trait).and_then(|implementor| implementor.assoc_ty(db, name)),
+    ) else {
         return false;
     };
-    let space = normalize_ty(db, space, scope, constraints_for(db, impl_trait.into()));
+    let assumptions = constraints_for(db, impl_trait.into());
+    let space = normalize_ty(db, space, scope, assumptions);
     state_space(db, scope, space).is_some()
-        || matches!(space.data(db), TyData::AssocTy(assoc)
-            if Some(assoc.trait_.def(db)) == resolve_core_trait(db, scope, &["marker", "Pinned"]))
+        || assumptions
+            .extend_all_bounds(db)
+            .list(db)
+            .iter()
+            .any(|bound| {
+                bound.def(db) == pinned
+                    && bound.project_assoc_ty(db, name).is_some_and(|bound_space| {
+                        normalize_ty(db, bound_space, scope, assumptions) == space
+                    })
+            })
 }
 
 /// How a collection whose elements are places (`core::ops::StateIndex`)

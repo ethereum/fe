@@ -119,3 +119,31 @@ struct Forwarded<P> {}
 impl<P: Placement> Pinned for Forwarded<P> {
     type Space = P::Space
 }
+
+struct Bound<P, S> {}
+
+// Accepted: under `P: Pinned<Space = S>`, `P::Space` is `S`, the pin of `P`.
+impl<P: Pinned<Space = S>, S> Pinned for Bound<P, S> {
+    type Space = P::Space
+}
+
+struct Qualified<P, S> {}
+
+// Accepted: the qualified path is the same space.
+impl<P: Pinned<Space = S>, S> Pinned for Qualified<P, S> {
+    type Space = <P as Pinned>::Space
+}
+
+struct Equal<P, S> {}
+
+// Accepted: `S` is the pin of `P`.
+impl<P: Pinned<Space = S>, S> Pinned for Equal<P, S> {
+    type Space = S
+}
+
+struct Loose<P, S> {}
+
+// Rejected: nothing makes `S` a pinned type's space.
+impl<P: Pinned, S> Pinned for Loose<P, S> {
+    type Space = S
+}
