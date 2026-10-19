@@ -67,7 +67,7 @@ fn second<Y: B>() { target(true) }
             let func = find_func(&db, module, name);
             first_callee_key(
                 &db,
-                identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+                identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
             )
         });
         assert_eq!(first, second, "{source}");
@@ -101,8 +101,9 @@ fn caller(_ x: mut Counter) { x.target() }",
                             .is_some_and(|name| name.data(&db) == "target")
                     })
                     .expect("target function or method"),
+                None,
             );
-            let caller = BodyOwner::Func(find_func(&db, module, "caller"));
+            let caller = BodyOwner::Func(find_func(&db, module, "caller"), None);
             let root = || root_semantic_instance_key(&db, target).expect("closed root");
             let called = || first_callee_key(&db, identity_semantic_instance_key(&db, caller));
             let (root, called) = if root_first {
@@ -131,7 +132,7 @@ fn target<T: Value>(_ x: own T) -> T { x }",
         let file = db.new_stand_alone(Utf8PathBuf::from("root_callee_evidence.fe"), source);
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let owner = BodyOwner::Func(find_func(&db, module, "target"));
+        let owner = BodyOwner::Func(find_func(&db, module, "target"), None);
         let key = identity_semantic_instance_key(&db, owner);
         assert_eq!(key.impl_env(&db).normalization_scope(&db), owner.scope());
         let instance = get_or_build_semantic_instance(&db, key);
@@ -189,7 +190,7 @@ fn root_callee_sharing_preserves_the_callers_ingot() {
                 &db,
                 identity_semantic_instance_key(
                     &db,
-                    BodyOwner::Func(find_func(&db, module, "caller")),
+                    BodyOwner::Func(find_func(&db, module, "caller"), None),
                 ),
             )
         })
@@ -332,10 +333,10 @@ fn access() -> u256 uses (raw: mut RawStorage) { unsafe { raw.sload(0) } }
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     let func = find_func(&db, module, "access");
-    let identity = identity_semantic_instance_key(&db, BodyOwner::Func(func));
+    let identity = identity_semantic_instance_key(&db, BodyOwner::Func(func, None));
     let instance = get_or_build_semantic_instance(&db, identity);
     check_semantic_accesses(&db, instance).expect("sealed effect call must pass access validation");
-    let BodyOwner::Func(selected) = first_callee_key(&db, identity).owner(&db) else {
+    let BodyOwner::Func(selected, _) = first_callee_key(&db, identity).owner(&db) else {
         panic!("sealed effect callee is not a function");
     };
     assert!(
@@ -343,9 +344,9 @@ fn access() -> u256 uses (raw: mut RawStorage) { unsafe { raw.sload(0) } }
         "sealed effect call unexpectedly selected its runtime body in HIR"
     );
 
-    let root_key = root_semantic_instance_key(&db, BodyOwner::Func(func))
+    let root_key = root_semantic_instance_key(&db, BodyOwner::Func(func, None))
         .expect("standalone root must synthesize the sealed effect provider");
-    let BodyOwner::Func(selected) = first_callee_key(&db, root_key).owner(&db) else {
+    let BodyOwner::Func(selected, _) = first_callee_key(&db, root_key).owner(&db) else {
         panic!("root sealed effect callee is not a function");
     };
     assert!(
@@ -380,6 +381,7 @@ fn substituting_projection_and_evidence_preserves_both_arguments_and_bindings() 
         trait_,
         vec![param],
         IndexMap::from_iter([(item, param)]),
+        fe_hir::hir_def::ModeMarker::None,
     );
     let projection = TyId::assoc_ty(&db, inst.trait_ref(&db), item);
     let result = Binder::bind(func.into(), projection).instantiate(&db, &[TyId::bool(&db)]);
@@ -421,6 +423,7 @@ fn projection_normalization_does_not_commit_speculative_trait_arguments() {
         trait_,
         vec![TyId::bool(&db), TyId::u8(&db)],
         IndexMap::from_iter([(item, TyId::u256(&db))]),
+        fe_hir::hir_def::ModeMarker::None,
     );
     let assumptions = PredicateListId::new(&db, vec![assumption]);
     assert_eq!(

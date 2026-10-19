@@ -1231,6 +1231,45 @@ fn test_cli_build_emit_abi_follows_inherent_const_selector() {
 }
 
 #[test]
+fn test_cli_build_emit_abi_follows_the_called_mode() {
+    let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/cli_output/emit_abi/abi_mut_body_events.fe");
+    let fixture_path_str = fixture_path.to_str().expect("fixture path utf8");
+
+    let temp = tempdir().expect("tempdir");
+    let out_dir = temp.path().join("out");
+    let out_dir_str = out_dir.to_string_lossy().to_string();
+
+    let (output, exit_code) = run_fe_main(&[
+        "build",
+        "--emit",
+        "abi",
+        "--contract",
+        "Foo",
+        "--out-dir",
+        out_dir_str.as_str(),
+        fixture_path_str,
+    ]);
+    assert_eq!(exit_code, 0, "fe build failed:\n{output}");
+
+    let abi_path = out_dir.join("Foo.abi.json");
+    let abi: Value = serde_json::from_str(&fs::read_to_string(&abi_path).expect("read ABI"))
+        .expect("parse ABI JSON");
+
+    // The recv arm calls `slot` at `mut`, through a `mut?` function: the
+    // event and the error of its `mut` body are the contract's.
+    let entries = abi.as_array().expect("abi array");
+    for (kind, name) in [("event", "Wrote"), ("error", "Overflow")] {
+        assert!(
+            entries
+                .iter()
+                .any(|entry| entry["type"] == kind && entry["name"] == name),
+            "missing {kind} `{name}`: {abi}"
+        );
+    }
+}
+
+#[test]
 fn test_cli_build_emit_metadata_standalone_writes_single_source() {
     let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/cli_output/emit_abi/abi_contract.fe");

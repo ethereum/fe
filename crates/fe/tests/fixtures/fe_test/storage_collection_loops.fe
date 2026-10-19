@@ -32,7 +32,7 @@ fn sol_array_loops() uses (evm: mut Evm) {
         assert(weighted == 80)
 
         var tail = 0
-        for x in a by core::iter::skip(1) {
+        for x in a.skip(1) {
             tail += x
         }
         assert(tail == 50)

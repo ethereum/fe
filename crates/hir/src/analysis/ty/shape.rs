@@ -114,6 +114,16 @@ impl<'db> Shape<'db> {
         }
     }
 
+    /// Whether this shape grants an access of `kind`.
+    pub fn has_access_of(&self, kind: BorrowKind) -> bool {
+        match self {
+            Self::Owned(_) => false,
+            Self::Access(given, _) => *given == kind,
+            Self::Tuple(elems) => elems.iter().any(|elem| elem.has_access_of(kind)),
+            Self::Sum { payload, .. } => payload.has_access_of(kind),
+        }
+    }
+
     /// The type a projection call has in the type checker.
     pub fn erased_ty(&self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         match self {
@@ -305,6 +315,12 @@ impl<'db> TyFoldable<'db> for Shape<'db> {
     }
 }
 
+/// The access `mut?` is in an item used at `mode`. An item without a mode
+/// has no `mut?` to resolve; one written there is taken as `ref`.
+pub fn maybe_mut_kind(mode: Option<BorrowKind>) -> BorrowKind {
+    mode.unwrap_or(BorrowKind::Ref)
+}
+
 /// Whether a written type mentions a mode anywhere.
 pub fn mentions_mode<'db>(db: &'db dyn HirAnalysisDb, ty: HirTyId<'db>) -> bool {
     let mentions = |ty: &Partial<HirTyId<'db>>| ty.to_opt().is_some_and(|ty| mentions_mode(db, ty));
@@ -327,12 +343,14 @@ pub fn mentions_mode<'db>(db: &'db dyn HirAnalysisDb, ty: HirTyId<'db>) -> bool 
     }
 }
 
-/// Lowers a written return type to its shape.
+/// Lowers a written return type to its shape, with `mut?` at `mode`, the
+/// mode of the function it returns from.
 pub fn lower_return_shape<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: HirTyId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
+    mode: Option<BorrowKind>,
 ) -> Shape<'db> {
     let lower_opt = |ty: Partial<HirTyId<'db>>| {
         ty.to_opt().map_or_else(
@@ -345,6 +363,9 @@ pub fn lower_return_shape<'db>(
     }
     match ty.data(db) {
         TypeKind::Mode(TypeMode::Mut, inner) => Shape::Access(BorrowKind::Mut, lower_opt(*inner)),
+        TypeKind::Mode(TypeMode::MaybeMut, inner) => {
+            Shape::Access(maybe_mut_kind(mode), lower_opt(*inner))
+        }
         TypeKind::Mode(TypeMode::Ref, inner) => Shape::Access(BorrowKind::Ref, lower_opt(*inner)),
         TypeKind::Mode(TypeMode::Own, inner) => Shape::Owned(lower_opt(*inner)),
         TypeKind::Tuple(elems) => Shape::Tuple(
@@ -352,12 +373,12 @@ pub fn lower_return_shape<'db>(
                 .data(db)
                 .iter()
                 .map(|elem| match elem.to_opt() {
-                    Some(elem) => lower_return_shape(db, elem, scope, assumptions),
+                    Some(elem) => lower_return_shape(db, elem, scope, assumptions, mode),
                     None => Shape::Owned(TyId::invalid(db, InvalidCause::ParseError)),
                 })
                 .collect(),
         ),
-        TypeKind::Path(Partial::Present(path)) => sum_shape(db, *path, scope, assumptions)
+        TypeKind::Path(Partial::Present(path)) => sum_shape(db, *path, scope, assumptions, mode)
             .unwrap_or_else(|| Shape::Owned(lower_hir_ty(db, ty, scope, assumptions))),
         _ => Shape::Owned(lower_hir_ty(db, ty, scope, assumptions)),
     }
@@ -442,13 +463,14 @@ fn sum_shape<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
+    mode: Option<BorrowKind>,
 ) -> Option<Shape<'db>> {
     let (ctor, variant, arg) = sum_shape_slot(db, path, scope, assumptions)?;
     let args = sum_type_args(db, path)?;
     if args.len() != arg + 1 {
         return None;
     }
-    let payload = lower_return_shape(db, args[arg], scope, assumptions);
+    let payload = lower_return_shape(db, args[arg], scope, assumptions, mode);
     let ty = args.iter().enumerate().fold(ctor, |acc, (idx, &ty_arg)| {
         let ty_arg = if idx == arg {
             payload.erased_ty(db)
@@ -483,7 +505,7 @@ pub fn return_shape_diags<'db>(
         return collect_hir_ty_diags(db, scope, ty, span, assumptions);
     }
     match ty.data(db) {
-        TypeKind::Mode(TypeMode::Mut | TypeMode::Ref, inner) => inner
+        TypeKind::Mode(TypeMode::Mut | TypeMode::MaybeMut | TypeMode::Ref, inner) => inner
             .to_opt()
             .map(|inner| {
                 collect_hir_ty_diags(db, scope, inner, span.into_mode_type().inner(), assumptions)

@@ -285,7 +285,8 @@ fn format_method_param_ty<'db>(
         return ty;
     };
 
-    let mode = match param.mode(db) {
+    let mode = match param.mode_at(db, None) {
+        _ if param.is_maybe_mut(db) => "mut? ",
         FuncParamMode::View => "",
         FuncParamMode::Mut => "mut ",
         FuncParamMode::Own if param.is_mut(db) => "mut own ",
@@ -1673,26 +1674,18 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 diag
             }
 
-            Self::UnknownResultSpace(span) => primary_diag(
-                Severity::Error,
-                "unknown result space",
-                "expected `memory`, `storage`, `transient`, `calldata`, `code`, a parameter, an effect, `target(p)`, or an associated space",
-                span.resolve(db),
-                error_code,
-            ),
-
-            Self::InvalidResultSpacePath(span) => primary_diag(
-                Severity::Error,
-                "invalid result-space path",
-                "the steps after a parameter, an effect or `self` must name its fields, tuple components and `[_]` elements",
-                span.resolve(db),
-                error_code,
-            ),
-
             Self::ModeNotType(span) => primary_diag(
                 Severity::Error,
                 "`ref` and `mut` are not types",
                 "modes are only allowed on parameters and in projection returns",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::MaybeMutBound(span) => primary_diag(
+                Severity::Error,
+                "`mut?` bound of an item without a mode",
+                "only a function or an implementation is used at a mode",
                 span.resolve(db),
                 error_code,
             ),
@@ -1842,16 +1835,12 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 message: "string type exceeds inline capacity".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!(
-                        "`String<{given}>` exceeds the current inline limit of `String<{max}>`"
-                    ),
+                    message: format!("`String<{given}>` exceeds the inline limit of `String<{max}>`"),
                     span: span.resolve(db),
                 }],
-                notes: vec![
-                    format!(
-                        "strings currently use one word of storage: 1 length byte and {max} payload bytes"
-                    ),
-                ],
+                notes: vec![format!(
+                    "a `String<N>` packs its bytes into one word, so it holds at most {max} bytes; use `DynString` for longer text"
+                )],
                 error_code,
             },
 
@@ -3819,6 +3808,45 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
+            Self::MaybeMutWithoutMode { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "`mut?` outside a `mut?` function".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "`mut?` is the mode of the function it is in".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![
+                    "a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T` or `-> mut? T`"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
+            Self::MaybeMutEffect { owner, idx } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut?` effect is not supported yet".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this effect is required at the function's mode".to_string(),
+                    span: owner.effect_param_ty_span(db, *idx).resolve(db),
+                }],
+                notes: vec!["write `mut` or no mode on the effect".to_string()],
+                error_code,
+            },
+
+            Self::ClosureInMaybeMutFunc { primary } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut?` function cannot define a closure".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this closure is in a `mut?` function".to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec!["move the closure into a function without a mode".to_string()],
+                error_code,
+            },
+
             Self::MutBindingOfRead { primary } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a `mut` binding needs a mutable place or access".to_string(),
@@ -4087,6 +4115,9 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         MutabilityFix::ViewSelf => {
                             "write `mut self` for a mutable borrow".to_string()
                         }
+                        MutabilityFix::MaybeMutParam => format!(
+                            "`{name}` is `mut?`, which a `mut?` function's `ref` body only reads"
+                        ),
                         MutabilityFix::OwnSelf => {
                             "write `var own self` for a mutable owned receiver".to_string()
                         }
@@ -5182,14 +5213,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
-            BodyDiag::MixedLoopBases { primary } => primary_diag(
-                severity,
-                "a two-base loop binds both items `mut` or neither",
-                "one item is `mut` and the other is not",
-                primary.resolve(db),
-                error_code,
-            ),
-
 
             BodyDiag::UnsafeCallRequiresUnsafe { primary, callee } => {
                 let name = callee
@@ -5233,15 +5256,11 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::AccessItemDefault {
-                primary,
-                kind,
-                name,
-            } => primary_diag(
+            Self::AccessItemDefault { primary, name } => primary_diag(
                 Severity::Error,
-                format!("a trait's {kind} has no default"),
+                "a trait's effect row has no default",
                 format!(
-                    "{kind} `{}` is given by each implementation, not the trait",
+                    "effect row `{}` is given by each implementation, not the trait",
                     name.data(db)
                 ),
                 primary.resolve(db),
@@ -5656,11 +5675,13 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 impl_m,
                 trait_ty,
                 impl_ty,
+                trait_mode,
+                impl_mode,
             } => {
                 let method_name = impl_m.name(db).expect("methods have names").data(db);
                 // A projection's return is its shape.
-                let render = |callable: &CallableDef, ty: &TyId| {
-                    callable.ret_shape(db).map_or_else(
+                let render = |callable: &CallableDef, ty: &TyId, mode| {
+                    callable.ret_shape(db, mode).map_or_else(
                         || ty.pretty_print(db).to_string(),
                         |shape| shape.skip_binder().pretty_print(db),
                     )
@@ -5674,8 +5695,8 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                             style: LabelStyle::Primary,
                             message: format!(
                                 "expected `{}`, found `{}`",
-                                render(trait_m, trait_ty),
-                                render(impl_m, impl_ty),
+                                render(trait_m, trait_ty, *trait_mode),
+                                render(impl_m, impl_ty, *impl_mode),
                             ),
                             span: impl_m.name_span().resolve(db),
                         },
@@ -5726,6 +5747,54 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                     error_code,
                 }
             }
+
+            Self::PartialMutImpl {
+                primary,
+                given,
+                missing,
+            } => CompleteDiagnostic {
+                severity,
+                message: format!(
+                    "this implementation gives `{}` its `mut` mode but not `{}`",
+                    given.data(db),
+                    missing.data(db)
+                ),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message:
+                        "every `mut?` method of the trait has its `mut` mode here, or none does"
+                            .to_string(),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![format!(
+                    "write `{}` with `mut?` or add its `mut` body, or write `{}` without `mut?`",
+                    missing.data(db),
+                    given.data(db)
+                )],
+                error_code,
+            },
+
+            Self::MethodMaybeMutMismatch { trait_m, impl_m } => CompleteDiagnostic {
+                severity,
+                message: format!(
+                    "method `{}` is `mut?`, but the trait method is not",
+                    impl_m.name(db).expect("methods have names").data(db),
+                ),
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: "this method takes the mode it is called at".to_string(),
+                        span: impl_m.name_span().resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: "trait method has no mode".to_string(),
+                        span: trait_m.name_span().resolve(db),
+                    },
+                ],
+                notes: vec![],
+                error_code,
+            },
 
             Self::MethodUnsafeMismatch { trait_m, impl_m } => {
                 let (impl_label, trait_label) = if matches!(trait_m, CallableDef::Func(func) if func.is_unsafe(db))
@@ -5846,29 +5915,12 @@ impl DiagnosticVoucher for ImplDiag<'_> {
             Self::AccessItemNotDefinedInTrait {
                 primary,
                 trait_,
-                kind,
                 name,
             } => primary_diag(
                 severity,
-                format!("associated {kind} not defined in trait"),
+                "associated effect row not defined in trait",
                 format!(
-                    "associated {kind} `{}` is not defined in trait `{}`",
-                    name.data(db),
-                    trait_.name(db).unwrap().data(db)
-                ),
-                primary.resolve(db),
-                error_code,
-            ),
-
-            Self::MissingAssociatedSpace {
-                primary,
-                trait_,
-                name,
-            } => primary_diag(
-                severity,
-                "missing associated space in trait implementation",
-                format!(
-                    "missing associated space `{}` from trait `{}`",
+                    "associated effect row `{}` is not defined in trait `{}`",
                     name.data(db),
                     trait_.name(db).unwrap().data(db)
                 ),
@@ -5923,22 +5975,6 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 diag
             }
 
-            Self::CyclicAssociatedSpace { primary, name } => {
-                let name = name.data(db);
-                let mut diag = primary_diag(
-                    severity,
-                    format!("the associated space `{name}` names itself"),
-                    format!("following `{name}` through the spaces it names comes back to it"),
-                    primary.resolve(db),
-                    error_code,
-                );
-                diag.notes.push(
-                    "an associated space must end in a space such as `storage`, `self`, or another type's space that does"
-                        .to_string(),
-                );
-                diag
-            }
-
             Self::BlanketCopy { primary } => {
                 let mut diag = primary_diag(
                     severity,
@@ -5984,12 +6020,12 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 let mut diag = primary_diag(
                     severity,
                     "a type is pinned to a state space",
-                    "this space is not `storage` or `transient`",
+                    "this type is not `Storage` or `Transient`",
                     primary.resolve(db),
                     error_code,
                 );
                 diag.notes.push(
-                    "give `space S = storage`, `space S = transient`, or another pinned type's space, `P::S`"
+                    "give `type Space = Storage` or `type Space = Transient` (`core::marker`), or another pinned type's space, `P::Space`"
                         .to_string(),
                 );
                 diag
@@ -6220,7 +6256,7 @@ fn effect_clause<'db>(
                     .name
                     .map(|name| format!("{}: ", name.data(db)))
                     .unwrap_or_default();
-                let mode = if param.is_mut { "mut " } else { "" };
+                let mode = param.mode.prefix();
                 format!("({name}{mode}{key_str})")
             },
         )

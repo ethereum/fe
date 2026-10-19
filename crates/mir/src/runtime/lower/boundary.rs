@@ -48,14 +48,6 @@ pub(super) struct BoundaryRef<'a, 'db> {
 }
 
 impl<'a, 'db> BoundaryRef<'a, 'db> {
-    pub(super) fn unstaged(boundary: &'a RuntimeBoundarySpec<'db>) -> Self {
-        Self {
-            site: None,
-            boundary,
-            matcher: None,
-        }
-    }
-
     pub(super) fn staged(boundary: &'a StagedBoundary<'db>) -> Self {
         Self {
             site: Some(boundary.site),

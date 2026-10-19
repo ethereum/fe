@@ -1,3 +1,4 @@
+use crate::hir_def::ModeMarker;
 use either::Either;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::ToPrimitive;
@@ -71,12 +72,13 @@ use crate::analysis::ty::{
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
     shape::{Shape, SumKind, sum_kind},
     trait_def::TraitInstId,
+    trait_lower::complete_impl_trait,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
     },
     ty_check::callable::{Callable, EffectProviderProvenance, EffectProviderSpecialization},
     ty_def::{BorrowKind, ClosureTy, PrimTy, TyBase, TyData, prim_int_bits},
-    ty_error::{diag_from_invalid_cause, first_invalid_ty_cause, is_const_eval_fault},
+    ty_error::{diag_from_invalid_cause, first_invalid_ty_cause},
     unify::UnificationTable,
 };
 use crate::analysis::{
@@ -94,12 +96,11 @@ use crate::analysis::{
     },
     place::resolve_place_field,
     semantic::{
-        ConstRepr, EvalOutcome, SemConstScalar, SemConstValue, SemOrigin, eval_const_ref,
-        instance::resolve_semantic_const_ref, int_const,
+        CtfeConfig, EvalOutcome, SemConstScalar, SemConstValue, SemOrigin, eval_const_ref,
+        force_const_term_value, instance::resolve_semantic_const_ref, int_const,
     },
     ty::{
-        const_expr::ConstExpr,
-        const_ty::{ConstTyData, ConstTyId, const_ty_from_sem_const, try_eval_const_int_expr},
+        const_ty::{ConstTyId, const_ty_from_sem_const, try_eval_const_int_expr},
         normalize::normalize_ty,
         ty_check::{RecordInitLowering, TyChecker, path::RecordInitChecker},
         ty_def::{InvalidCause, TyId},
@@ -409,7 +410,7 @@ impl<'db> TyChecker<'db> {
         // a place, so it grants none.
         if !matches!(
             expr_data,
-            Expr::Un(_, UnOp::Ref | UnOp::Mut)
+            Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut)
                 | Expr::Call(..)
                 | Expr::MethodCall(..)
                 | Expr::Bin(_, _, BinOp::Index)
@@ -521,7 +522,7 @@ impl<'db> TyChecker<'db> {
                 continue;
             }
             let mut call = *elem;
-            while let Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) =
+            while let Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref)) =
                 self.env.expr_data(call)
             {
                 call = *inner;
@@ -630,6 +631,11 @@ impl<'db> TyChecker<'db> {
                 primary: span.clone(),
             });
         }
+        // Each of a `mut?` function's bodies would define the closure.
+        if self.env.owner().mode().is_some() {
+            self.push_diag(BodyDiag::ClosureInMaybeMutFunc { primary: span });
+            return ExprProp::invalid(self.db);
+        }
 
         // The shape the callee the closure is passed to expects types its
         // unannotated parameters and its result in context. Against a shape
@@ -692,7 +698,7 @@ impl<'db> TyChecker<'db> {
         let (info, effects) = self.env.leave_closure(expr);
 
         let parent_args = match self.env.owner() {
-            BodyOwner::Func(func) => CallableDef::Func(func).params(self.db).to_vec(),
+            BodyOwner::Func(func, _) => CallableDef::Func(func).params(self.db).to_vec(),
             _ => Vec::new(),
         };
         let closure = ClosureTy::new(
@@ -820,6 +826,23 @@ impl<'db> TyChecker<'db> {
         }
     }
 
+    /// `op` with `mut?` taken at the body's mode. A body without a mode has
+    /// no `mut?`, which `expr` reports, taken as `ref`.
+    pub(super) fn access_op(&mut self, expr: ExprId, op: UnOp) -> UnOp {
+        if op != UnOp::MaybeMut {
+            return op;
+        }
+        if self.env.owner().mode().is_none() {
+            self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                primary: expr.span(self.body()).into(),
+            });
+        }
+        match self.maybe_mut_kind() {
+            BorrowKind::Mut => UnOp::Mut,
+            BorrowKind::Ref => UnOp::Ref,
+        }
+    }
+
     /// A closure parameter's mode and type: as annotated, else as the
     /// expected shape has them, else a view of an inferred type. A mode
     /// written without a type (`x: own`) keeps the mode and infers the type.
@@ -836,6 +859,13 @@ impl<'db> TyChecker<'db> {
                     TypeMode::Own => FuncParamMode::Own,
                     TypeMode::Mut => FuncParamMode::Mut,
                     TypeMode::Ref => FuncParamMode::View,
+                    // A `mut?` function has no closures.
+                    TypeMode::MaybeMut => {
+                        self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                            primary: span.clone().into(),
+                        });
+                        FuncParamMode::View
+                    }
                 }),
                 payload.to_opt(),
             ),
@@ -853,6 +883,7 @@ impl<'db> TyChecker<'db> {
         let Expr::Un(lhs, op) = expr_data else {
             unreachable!()
         };
+        let op = &self.access_op(expr, *op);
         let mut prop = self.check_expr_unknown(*lhs);
         if prop.ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
@@ -976,8 +1007,11 @@ impl<'db> TyChecker<'db> {
         }
         if let Some(Shape::Sum { payload, .. }) = prop.shape {
             self.consume_access(inner);
+            let shape = (!matches!(*payload, Shape::Owned(_))).then(|| (*payload).clone());
+            // The payload is mutable as a call's result is.
             return ExprProp {
-                shape: (!matches!(*payload, Shape::Owned(_))).then(|| (*payload).clone()),
+                is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
+                shape,
                 ..ExprProp::new(payload.erased_ty(self.db), true)
             };
         }
@@ -991,11 +1025,6 @@ impl<'db> TyChecker<'db> {
         inner_expr: ExprId,
         target_ty: Partial<crate::hir_def::TypeId<'db>>,
     ) -> ExprProp<'db> {
-        let inner_prop = self.check_expr_unknown(inner_expr);
-        if inner_prop.ty.has_invalid(self.db) {
-            return ExprProp::invalid(self.db);
-        }
-
         let Some(hir_target_ty) = target_ty.to_opt() else {
             return ExprProp::invalid(self.db);
         };
@@ -1003,6 +1032,22 @@ impl<'db> TyChecker<'db> {
         let span = expr.span(self.body()).into_cast_expr().ty();
         let target_ty = self.lower_ty(hir_target_ty, span, true);
         if target_ty.has_invalid(self.db) {
+            return ExprProp::invalid(self.db);
+        }
+
+        // A fixed String cast supplies the width of a string literal, just
+        // as an annotation does. Other casts still infer the source type
+        // independently before checking whether the conversion is allowed.
+        let inner_prop = if target_ty.is_string(self.db)
+            && matches!(
+                inner_expr.data(self.db, self.body()),
+                Partial::Present(Expr::Lit(LitKind::String(_)))
+            ) {
+            self.check_expr(inner_expr, target_ty)
+        } else {
+            self.check_expr_unknown(inner_expr)
+        };
+        if inner_prop.ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -1938,7 +1983,7 @@ impl<'db> TyChecker<'db> {
         }
         let call: DynLazySpan<'db> = expr.span(self.body()).into();
         if let Some(cause) = first_invalid_ty_cause(self.db, ret_ty)
-            && is_const_eval_fault(&cause)
+            && cause.const_eval_fault().is_some()
             && let Some(fault) = diag_from_invalid_cause(call.clone(), &cause)
         {
             self.push_diag(BodyDiag::CallReturnTypeConstFault {
@@ -2416,7 +2461,7 @@ impl<'db> TyChecker<'db> {
             };
             return Some((binding, RowPath::entry(idx as u32)));
         }
-        let super::BodyOwner::Func(caller) = self.env.owner() else {
+        let super::BodyOwner::Func(caller, _) = self.env.owner() else {
             return None;
         };
         let (scope, assumptions) = (self.env.scope(), self.env.assumptions());
@@ -2719,6 +2764,7 @@ impl<'db> TyChecker<'db> {
             instantiated.def(self.db),
             args,
             instantiated.assoc_type_bindings(self.db).clone(),
+            ModeMarker::None,
         );
         let GoalSatisfiability::Satisfied(solution) =
             self.trait_effect_goal_satisfiability(trait_goal)
@@ -3171,6 +3217,7 @@ impl<'db> TyChecker<'db> {
                             .iter()
                             .copied()
                             .collect::<IndexMap<_, _>>(),
+                        ModeMarker::None,
                     ),
                     given: provider.ty,
                 });
@@ -3351,6 +3398,7 @@ impl<'db> TyChecker<'db> {
                             .iter()
                             .copied()
                             .collect::<IndexMap<_, _>>(),
+                        ModeMarker::None,
                     );
                     if emit_diag {
                         self.push_diag(BodyDiag::WithEffectTraitUnsatisfied {
@@ -3397,6 +3445,7 @@ impl<'db> TyChecker<'db> {
                     instantiated.def(self.db),
                     args,
                     instantiated.assoc_type_bindings(self.db).clone(),
+                    ModeMarker::None,
                 );
                 let GoalSatisfiability::Satisfied(solution) =
                     self.trait_effect_goal_satisfiability_in_scope(scope, assumptions, trait_goal)
@@ -3419,8 +3468,7 @@ impl<'db> TyChecker<'db> {
                 };
                 let canonical_goal = Canonicalized::new(self.db, trait_goal);
                 let solved = canonical_goal.extract_solution(&mut table, solution);
-                let solved_inst = solved
-                    .implementor
+                let solved_inst = complete_impl_trait(self.db, solved.implementor)
                     .trait_inst(self.db)
                     .fold_with(self.db, &mut table);
                 let instantiated = reify_unresolved_pattern_slots(
@@ -3543,11 +3591,10 @@ impl<'db> TyChecker<'db> {
         }
 
         let Some(enclosing_inst) = (match current_func.scope().parent_item(self.db) {
-            Some(ItemKind::Trait(trait_)) => Some(TraitInstId::new(
+            Some(ItemKind::Trait(trait_)) => Some(TraitInstId::new_simple(
                 self.db,
                 trait_,
                 trait_.params(self.db).to_vec(),
-                IndexMap::new(),
             )),
             Some(ItemKind::ImplTrait(impl_trait)) => impl_trait.trait_inst_result(self.db).ok(),
             _ => None,
@@ -3586,6 +3633,7 @@ impl<'db> TyChecker<'db> {
             inst.def(self.db),
             args,
             enclosing_inst.assoc_type_bindings(self.db).clone(),
+            inst.mode(self.db),
         )
     }
 
@@ -3991,6 +4039,7 @@ impl<'db> TyChecker<'db> {
                                     inst.def(self.db),
                                     args,
                                     inst.assoc_type_bindings(self.db).clone(),
+                                    inst.mode(self.db),
                                 )
                             } else {
                                 inst
@@ -4088,6 +4137,7 @@ impl<'db> TyChecker<'db> {
                             trait_inst.def(self.db),
                             args,
                             assoc_type_bindings,
+                            trait_inst.mode(self.db),
                         )
                     } else {
                         trait_inst
@@ -4128,6 +4178,7 @@ impl<'db> TyChecker<'db> {
                         inst.def(self.db),
                         args,
                         inst.assoc_type_bindings(self.db).clone(),
+                        inst.mode(self.db),
                     );
 
                     if !super::trait_const_goal_has_foreign_params(self.db, inst, self.env.scope())
@@ -4554,33 +4605,28 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(ty, true)
     }
 
-    /// Whether `const_ty` is acceptable as an array-repeat length: a known
-    /// literal, or a symbolic const that resolves per monomorphization — a bare
-    /// const param (`N`) or a bare trait-const projection (`T::N`). The latter
-    /// two stay symbolic during checking and become concrete once the owning
-    /// type parameters are.
+    /// Whether `const_ty` is acceptable as an array-repeat length. Each
+    /// specialization materializes the repeat by forcing its length through
+    /// the common CTFE service, so the length must be forceable now or be
+    /// blocked only on facts that specialization supplies. Admission depends
+    /// on that outcome alone, not on how the length is described: the service
+    /// reports a reached fault or an unsupported operation, such as an opaque
+    /// extern call with known inputs, as a failure, and any fault behind an
+    /// unresolved parameter, selection or type when a concrete use forces it.
+    /// Holes and inference variables are never supplied, so a length that
+    /// mentions one cannot wait.
     fn array_len_const_is_acceptable(&self, const_ty: ConstTyId<'db>) -> bool {
-        if const_ty.integer_value(self.db).is_some() {
-            return true;
-        }
-        match const_ty.data(self.db) {
-            ConstTyData::TyParam(..) => true,
-            ConstTyData::Computation { description, .. } => match description.repr() {
-                ConstRepr::Term(term) => self.array_len_const_is_acceptable(*term),
-                ConstRepr::Value(value) => matches!(
-                    value.value().value(self.db),
-                    SemConstValue::Scalar {
-                        value: SemConstScalar::Int { .. },
-                        ..
-                    }
+        let len = TyId::const_ty(self.db, const_ty);
+        !len.has_var(self.db)
+            && !matches!(
+                force_const_term_value(
+                    self.db,
+                    const_ty,
+                    CtfeConfig::default(),
+                    SemOrigin::Synthetic
                 ),
-                ConstRepr::Deferred(_) => false,
-            },
-            ConstTyData::Abstract(expr, _) => {
-                matches!(expr.data(self.db), ConstExpr::TraitConst(_))
-            }
-            _ => false,
-        }
+                EvalOutcome::Failed(_)
+            )
     }
 
     fn check_if(
@@ -5157,6 +5203,17 @@ impl<'db> TyChecker<'db> {
                             MutabilityFix::Var
                         }
                     }
+                    LocalBinding::Param {
+                        site: ParamSite::Func(func),
+                        idx,
+                        ..
+                    } if func
+                        .params(self.db)
+                        .nth(idx)
+                        .is_some_and(|param| param.is_maybe_mut(self.db)) =>
+                    {
+                        MutabilityFix::MaybeMutParam
+                    }
                     LocalBinding::Param { mode, .. } => {
                         match (mode == FuncParamMode::Own, ident.is_self(self.db)) {
                             (true, true) => MutabilityFix::OwnSelf,
@@ -5522,6 +5579,7 @@ impl TraitOps for UnOp {
             UnOp::BitNot => ["BitNot", "bit_not", "~"],
             UnOp::Mut => ["MutBorrow", "mut_borrow", "mut"],
             UnOp::Ref => ["RefBorrow", "ref_borrow", "ref"],
+            UnOp::MaybeMut => unreachable!("`mut?` is the body's mode, never trait-lowered"),
             UnOp::Deref => unreachable!("pointer dereference is not trait-lowered"),
         }
     }
@@ -5595,14 +5653,5 @@ impl TraitOps for AugAssignOp {
             // Range doesn't have an augmented assignment form
             Range => unreachable!("Range operator cannot be used in augmented assignment"),
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(super) struct IndexMutOp;
-
-impl TraitOps for IndexMutOp {
-    fn triple(&self) -> [&str; 3] {
-        ["IndexMut", "index_mut", "[]="]
     }
 }

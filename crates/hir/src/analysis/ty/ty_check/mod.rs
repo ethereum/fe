@@ -23,19 +23,20 @@ pub use self::path::RecordLike;
 use crate::analysis::name_resolution::{ResolvedVariant, is_scope_visible_from};
 pub use crate::analysis::ty::AddressSpace;
 use crate::analysis::ty::adt_def::AdtRef;
+use crate::analysis::ty::const_check::const_body_language_failure;
 use crate::analysis::ty::corelib::resolve_lib_type_path;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::method_table::ProbedMethod;
 use crate::analysis::ty::provider::{ProviderKind, provider_semantics};
-use crate::analysis::ty::shape::{Shape, view_param_misuse};
+use crate::analysis::ty::shape::{Shape, maybe_mut_kind, view_param_misuse};
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::trait_resolution::constraint::{
     PredicateSource, collect_func_decl_constraint_pairs,
 };
-use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty};
+use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty, walk_ty};
 use crate::hir_def::{
-    CallArg, CallableDef, FieldParent, GenericArgListId, ImplTrait, Trait, params::FuncParamMode,
-    scope_graph::ScopeId,
+    CallArg, CallableDef, FieldParent, GenericArgListId, ImplTrait, ModeMarker, Trait,
+    params::FuncParamMode, scope_graph::ScopeId,
 };
 use crate::{
     hir_def::{
@@ -130,12 +131,22 @@ use crate::analysis::{
     },
 };
 
+/// A function's checked body. A `mut?` function's bodies, one per mode,
+/// report together, a diagnostic both report once; the typed body is the
+/// `ref` one's.
 #[salsa::tracked(return_ref)]
 pub fn check_func_body<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
-    check_body(db, BodyOwner::Func(func))
+    let mut bodies = BodyOwner::func_bodies(db, func).map(|owner| check_body(db, owner));
+    let (mut diags, typed) = bodies.next().expect("a function has a body");
+    for diag in bodies.flat_map(|(diags, _)| diags) {
+        if !diags.contains(&diag) {
+            diags.push(diag);
+        }
+    }
+    (diags, typed)
 }
 
 #[salsa::tracked(return_ref)]
@@ -825,7 +836,9 @@ fn eval_static_assert_comparison_operand<'db>(
     eval_body_owner_const(db, owner, GenericSubst::none(db)).into_ready()
 }
 
-pub(super) fn check_body<'db>(
+/// The checked body of `owner`, with its own diagnostics: one mode's of a
+/// `mut?` function.
+pub fn check_body<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
@@ -846,8 +859,8 @@ pub(super) enum AccessBinding {
     /// binding takes a value or an access by `TyChecker::binding_access_kind`.
     Result,
     /// A projection's result bound whole to the single name of a `let`: a
-    /// `mut` result of a type with no values stays the access, as
-    /// `let s = buf.span_mut()`.
+    /// `mut` result of a type with no values stays the access, as `let s`
+    /// of a call returning `mut MemSpan`.
     LetResult,
 }
 
@@ -913,7 +926,7 @@ fn infer_body_query<'db>(
         return (
             Vec::new(),
             match owner {
-                BodyOwner::Func(func) => typed_body_for_bodyless_func(db, func),
+                BodyOwner::Func(func, mode) => typed_body_for_bodyless_func(db, func, mode),
                 BodyOwner::Const(_)
                 | BodyOwner::AnonConstBody { .. }
                 | BodyOwner::ContractInit { .. }
@@ -926,7 +939,7 @@ fn infer_body_query<'db>(
     checker.run();
     let (mut diags, typed_body) = checker.finish();
     diags.extend(check_unsafe_ops(db, owner, &typed_body));
-    if let BodyOwner::Func(func) = owner
+    if let BodyOwner::Func(func, _) = owner
         && func.is_const(db)
         && !func.is_extern(db)
     {
@@ -1077,8 +1090,13 @@ fn const_body_ctfe_diags_with_context<'db>(
             unreachable!("optional folding does not produce declaration diagnostics")
         }
     };
-    let outcome = if require_value {
-        eval_body_owner_const(db, owner, GenericSubst::none(db))
+    // A dependent body waits on its parameters before reaching a call it may
+    // not make, so the const language is checked before any evaluation.
+    let language_failure = const_body_language_failure(db, body, &infer_body(db, owner).1);
+    let outcome = if let Some(cause) = language_failure {
+        Err(cause)
+    } else if require_value {
+        Ok(eval_body_owner_const(db, owner, GenericSubst::none(db)))
     } else {
         // A dependent declaration may describe opaque computations, such as
         // extern const calls, that only a value demand has to execute.
@@ -1091,12 +1109,14 @@ fn const_body_ctfe_diags_with_context<'db>(
         );
         let request = const_computation_for_instance(db, key, Vec::new());
         match describe_const_computation(db, request, CtfeConfig::default()) {
-            EvalOutcome::Failed(failure) => EvalOutcome::Failed(failure),
+            EvalOutcome::Failed(failure) => Ok(EvalOutcome::Failed(failure)),
             EvalOutcome::Ready(_) | EvalOutcome::Blocked(_) => return diags,
         }
     };
-    match outcome {
-        EvalOutcome::Ready(value) => {
+    let cause = match outcome {
+        Err(cause) => cause,
+        Ok(EvalOutcome::Failed(failure)) => invalid_cause_from_eval_failure(db, owner, failure),
+        Ok(EvalOutcome::Ready(value)) => {
             if matches!(value.value(db), SemConstValue::Description(..)) {
                 let cause = InvalidCause::ConstEvalInvariant {
                     body,
@@ -1136,8 +1156,9 @@ fn const_body_ctfe_diags_with_context<'db>(
                     );
                 }
             }
+            return diags;
         }
-        EvalOutcome::Blocked(info) => {
+        Ok(EvalOutcome::Blocked(info)) => {
             if require_value {
                 let (primary, dependency) = blocked_const_detail(db, body, &info);
                 if let Some(context) = context {
@@ -1160,66 +1181,54 @@ fn const_body_ctfe_diags_with_context<'db>(
                     );
                 }
             }
+            return diags;
         }
-        EvalOutcome::Failed(failure) => {
-            let cause = invalid_cause_from_eval_failure(db, owner, failure);
-            if let Some(context) = context {
-                let reason = match &cause {
-                    InvalidCause::ConstEvalAssertionFailed { message, .. } => {
-                        message.as_ref().map_or_else(
-                            || "failed an assertion".to_string(),
-                            |message| format!("failed an assertion: {message}"),
-                        )
-                    }
-                    InvalidCause::ConstEvalDivisionByZero { .. } => "divided by zero".into(),
-                    InvalidCause::ConstEvalOutOfBounds { .. } => "indexed out of bounds".into(),
-                    InvalidCause::ConstEvalInvalidOperation { message, .. } => message.clone(),
-                    InvalidCause::ConstEvalInvalidBorrow { .. } => "used an invalid borrow".into(),
-                    InvalidCause::ConstEvalInvalidProviderUse { .. } => {
-                        "used an invalid effect provider".into()
-                    }
-                    InvalidCause::ConstEvalVariantMismatch { .. } => {
-                        "selected the wrong enum variant".into()
-                    }
-                    InvalidCause::ConstEvalUninitializedLocal { .. } => {
-                        "read an uninitialized value".into()
-                    }
-                    InvalidCause::ConstEvalArithmeticOverflow { .. } => "overflowed".into(),
-                    InvalidCause::ConstEvalNegativeExponent { .. } => {
-                        "used a negative exponent".into()
-                    }
-                    InvalidCause::ConstEvalStepLimitExceeded { .. } => {
-                        "exceeded the CTFE step limit".into()
-                    }
-                    InvalidCause::ConstEvalRecursionLimitExceeded { .. } => {
-                        "exceeded the CTFE recursion limit".into()
-                    }
-                    InvalidCause::ConstEvalRecursiveConst { .. } => {
-                        "depends recursively on itself".into()
-                    }
-                    InvalidCause::ConstEvalNonConstCall { .. } => {
-                        "called a non-const function".into()
-                    }
-                    InvalidCause::ConstEvalInvariant { message, .. } => {
-                        format!("hit a compiler invariant: {message}")
-                    }
-                    _ => "failed during compile-time evaluation".into(),
-                };
-                diags.push(
-                    BodyDiag::ConstEvaluationFailed {
-                        primary: body.span().into(),
-                        const_name: context.const_name,
-                        origin: context.origin,
-                        reason,
-                    }
-                    .into(),
-                );
-            } else {
-                if let Some(diag) = TyId::invalid(db, cause).emit_diag(db, body.span().into()) {
-                    diags.push(diag.into());
-                }
+    };
+    if let Some(context) = context {
+        let reason = match &cause {
+            InvalidCause::ConstEvalAssertionFailed { message, .. } => message.as_ref().map_or_else(
+                || "failed an assertion".to_string(),
+                |message| format!("failed an assertion: {message}"),
+            ),
+            InvalidCause::ConstEvalDivisionByZero { .. } => "divided by zero".into(),
+            InvalidCause::ConstEvalOutOfBounds { .. } => "indexed out of bounds".into(),
+            InvalidCause::ConstEvalInvalidOperation { message, .. } => message.clone(),
+            InvalidCause::ConstEvalInvalidBorrow { .. } => "used an invalid borrow".into(),
+            InvalidCause::ConstEvalInvalidProviderUse { .. } => {
+                "used an invalid effect provider".into()
             }
-        }
+            InvalidCause::ConstEvalVariantMismatch { .. } => {
+                "selected the wrong enum variant".into()
+            }
+            InvalidCause::ConstEvalUninitializedLocal { .. } => {
+                "read an uninitialized value".into()
+            }
+            InvalidCause::ConstEvalArithmeticOverflow { .. } => "overflowed".into(),
+            InvalidCause::ConstEvalNegativeExponent { .. } => "used a negative exponent".into(),
+            InvalidCause::ConstEvalStepLimitExceeded { .. } => {
+                "exceeded the CTFE step limit".into()
+            }
+            InvalidCause::ConstEvalRecursionLimitExceeded { .. } => {
+                "exceeded the CTFE recursion limit".into()
+            }
+            InvalidCause::ConstEvalRecursiveConst { .. } => "depends recursively on itself".into(),
+            InvalidCause::ConstEvalNonConstCall { .. } => "called a non-const function".into(),
+            InvalidCause::ConstEvalInvariant { message, .. } => {
+                format!("hit a compiler invariant: {message}")
+            }
+            _ => "failed during compile-time evaluation".into(),
+        };
+        diags.push(
+            BodyDiag::ConstEvaluationFailed {
+                primary: body.span().into(),
+                const_name: context.const_name,
+                origin: context.origin,
+                reason,
+            }
+            .into(),
+        );
+    } else if let Some(diag) = TyId::invalid(db, cause).emit_diag(db, body.span().into()) {
+        diags.push(diag.into());
     }
     diags
 }
@@ -1285,8 +1294,11 @@ fn push_const_eval_diag<'db>(
 fn typed_body_for_bodyless_func<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> TypedBody<'db> {
-    let assumptions = crate::semantic::func_body_assumptions(db, func).extend_all_bounds(db);
+    let assumptions = crate::semantic::func_body_assumptions(db, func)
+        .at_mode(db, mode)
+        .extend_all_bounds(db);
     let mut result_ty = func.return_ty(db);
     if !result_ty.is_star_kind(db) {
         result_ty = TyId::invalid(db, InvalidCause::Other);
@@ -1307,7 +1319,7 @@ fn typed_body_for_bodyless_func<'db>(
             LocalBinding::Param {
                 site: ParamSite::Func(func),
                 idx,
-                mode: view.mode(db),
+                mode: view.mode_at(db, mode),
                 ty,
                 is_mut: view.is_mut(db),
             }
@@ -1370,6 +1382,9 @@ pub struct TyChecker<'db> {
     /// `mut` would write through.
     mutable_sources: FxHashSet<PatId>,
     diags: Vec<FuncBodyDiag<'db>>,
+    /// Set once deferred work is resolved for the last time, after which type
+    /// equalities are decided rather than retained.
+    final_pass: bool,
 }
 
 pub(crate) struct TyCheckerSnapshot<'db> {
@@ -1383,11 +1398,42 @@ enum TraitObligationOutcome<'db> {
     Requeue(env::TraitObligation<'db>),
 }
 
-impl<'db> TyChecker<'db> {
-    fn string_literal_fallback(&self) -> StringFallback {
-        StringFallback::Fixed
+/// Whether a projection or const computation in `ty` still waits on inference.
+fn depends_on_type_inference<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    struct Computation<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: bool,
     }
+    impl<'db> TyVisitor<'db> for Computation<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
 
+        fn visit_ty(&mut self, ty: TyId<'db>) {
+            if self.found || !ty.has_var(self.db) {
+                return;
+            }
+            self.found = match ty.data(self.db) {
+                TyData::ConstTy(const_ty) => matches!(
+                    const_ty.data(self.db),
+                    ConstTyData::Abstract(..)
+                        | ConstTyData::Computation { .. }
+                        | ConstTyData::UnEvaluated { .. }
+                ),
+                TyData::AssocTy(_) | TyData::QualifiedTy(_) => true,
+                _ => false,
+            };
+            if !self.found {
+                walk_ty(self, ty);
+            }
+        }
+    }
+    let mut visitor = Computation { db, found: false };
+    ty.visit_with(&mut visitor);
+    visitor.found
+}
+
+impl<'db> TyChecker<'db> {
     fn new(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> Result<Self, ()> {
         let env = TyCheckEnv::new(db, owner)?;
         let expected = env.compute_expected_return();
@@ -1456,7 +1502,7 @@ impl<'db> TyChecker<'db> {
 
     fn check_own_param_types(&mut self) {
         match self.env.owner() {
-            BodyOwner::Func(_) => {}
+            BodyOwner::Func(_, _) => {}
             BodyOwner::ContractInit { contract } => {
                 let Some(init) = contract.init(self.db) else {
                     return;
@@ -1502,7 +1548,9 @@ impl<'db> TyChecker<'db> {
 
     fn check_effect_param_keys_resolve(&mut self) {
         match self.env.owner() {
-            BodyOwner::Func(func) => self.check_free_func_effect_list(func, func.effects(self.db)),
+            BodyOwner::Func(func, _) => {
+                self.check_free_func_effect_list(func, func.effects(self.db))
+            }
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
             owner @ BodyOwner::ContractInit { contract } => {
                 self.check_contract_scoped_effect_list(owner, contract, owner.effects(self.db));
@@ -1519,6 +1567,12 @@ impl<'db> TyChecker<'db> {
         effects: crate::hir_def::EffectParamListId<'db>,
     ) {
         for (idx, effect) in effects.data(self.db).iter().enumerate() {
+            if effect.mode == ModeMarker::MaybeMut {
+                self.push_diag(BodyDiag::MaybeMutEffect {
+                    owner: EffectParamOwner::Func(func),
+                    idx,
+                });
+            }
             let Some(key_ty) = effect.key_ty.to_opt() else {
                 continue;
             };
@@ -1545,7 +1599,7 @@ impl<'db> TyChecker<'db> {
         effects: crate::hir_def::EffectParamListId<'db>,
     ) {
         let (owner, site) = match owner {
-            BodyOwner::Func(func) => (EffectParamOwner::Func(func), EffectParamSite::Func(func)),
+            BodyOwner::Func(func, _) => (EffectParamOwner::Func(func), EffectParamSite::Func(func)),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
                 unreachable!()
             }
@@ -1581,6 +1635,12 @@ impl<'db> TyChecker<'db> {
         .map(|registration| registration.provider_ty);
 
         for (idx, effect) in effects.data(self.db).iter().enumerate() {
+            // A contract's bodies have no mode.
+            if effect.mode == ModeMarker::MaybeMut {
+                self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                    primary: owner.effect_param_ty_span(self.db, idx),
+                });
+            }
             let Some(key_ty) = effect.key_ty.to_opt() else {
                 continue;
             };
@@ -1827,7 +1887,7 @@ impl<'db> TyChecker<'db> {
             .iter()
             .map(|(&name, &ty)| (name, normalize_ty(db, ty, scope, assumptions)))
             .collect();
-        TraitInstId::new(db, goal.def(db), args, assoc_type_bindings)
+        TraitInstId::new(db, goal.def(db), args, assoc_type_bindings, goal.mode(db))
     }
 
     fn trait_goal_is_concrete_for_diagnostics(&self, goal: TraitInstId<'db>) -> bool {
@@ -2173,6 +2233,46 @@ impl<'db> TyChecker<'db> {
         }
     }
 
+    fn process_type_equality(&mut self, mut equality: env::TypeEquality<'db>) -> bool {
+        if self.final_pass {
+            let mut prober = env::Prober::new(&mut self.table, self.env.scope());
+            equality.actual = equality.actual.fold_with(self.db, &mut prober);
+            equality.expected = equality.expected.fold_with(self.db, &mut prober);
+        }
+        equality.actual = self.normalize_ty(equality.actual);
+        equality.expected = self.normalize_ty(equality.expected);
+        match self.table.unify(equality.actual, equality.expected) {
+            Ok(()) => true,
+            Err(UnificationError::TypeMismatch) => !self.retain_or_report_mismatch(equality),
+            Err(UnificationError::OccursCheckFailed) => {
+                self.push_diag(BodyDiag::InfiniteOccurrence(equality.span));
+                true
+            }
+        }
+    }
+
+    /// Retains a mismatched equality while a projection or const computation
+    /// in it still waits on inference, to decide it once other constraints
+    /// and literal fallback settle, and otherwise reports the mismatch.
+    /// Returns whether the equality was retained.
+    fn retain_or_report_mismatch(&mut self, equality: env::TypeEquality<'db>) -> bool {
+        if !self.final_pass
+            && (depends_on_type_inference(self.db, equality.actual)
+                || depends_on_type_inference(self.db, equality.expected))
+        {
+            self.env.register_type_equality(equality);
+            return true;
+        }
+        if !equality.actual.has_invalid(self.db) && !equality.expected.has_invalid(self.db) {
+            self.push_diag(BodyDiag::TypeMismatch {
+                span: equality.span,
+                expected: equality.expected,
+                given: equality.actual,
+            });
+        }
+        false
+    }
+
     fn resolve_deferred(&mut self) {
         let db = self.db;
         let body = self.env.body();
@@ -2307,6 +2407,9 @@ impl<'db> TyChecker<'db> {
             let tasks = self.env.take_deferred_tasks();
             for task in tasks {
                 match task {
+                    env::DeferredTask::TypeEquality(equality) => {
+                        progressed |= self.process_type_equality(equality);
+                    }
                     env::DeferredTask::Obligation(obligation) => {
                         match self.process_trait_obligation(obligation, false) {
                             TraitObligationOutcome::Discharged => {}
@@ -2497,9 +2600,15 @@ impl<'db> TyChecker<'db> {
             }
         }
 
-        // Emit diagnostics for remaining tasks.
+        // Final trait solving can still bind types after literal fallback.
+        // Check retained equalities after those constraints have settled.
+        self.final_pass = true;
+        let mut equalities = Vec::new();
         for task in self.env.take_deferred_tasks() {
             match task {
+                env::DeferredTask::TypeEquality(equality) => {
+                    equalities.push(equality);
+                }
                 env::DeferredTask::Obligation(obligation) => {
                     let _ = self.process_trait_obligation(obligation, true);
                 }
@@ -2552,12 +2661,15 @@ impl<'db> TyChecker<'db> {
                 }
             }
         }
+        for equality in equalities {
+            self.process_type_equality(equality);
+        }
     }
 
     fn new_internal(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId<'db>) -> Self {
         let table = UnificationTable::new(db);
         let projection_shape = match env.owner() {
-            BodyOwner::Func(func) => func.return_shape(db).cloned(),
+            BodyOwner::Func(func, mode) => func.return_shape(db, mode).cloned(),
             _ => None,
         };
         let explicit_yields = env
@@ -2578,6 +2690,7 @@ impl<'db> TyChecker<'db> {
             initializer_markers: Vec::new(),
             mutable_sources: FxHashSet::default(),
             diags: Vec::new(),
+            final_pass: false,
         }
     }
 
@@ -2732,7 +2845,7 @@ impl<'db> TyChecker<'db> {
                 self.table.new_var(
                     TyVarSort::String {
                         min_len: len_bytes,
-                        fallback: self.string_literal_fallback(),
+                        fallback: StringFallback::Fixed,
                     },
                     &Kind::Star,
                 )
@@ -2752,11 +2865,18 @@ impl<'db> TyChecker<'db> {
             return expected;
         }
 
+        // A literal whose context leaves its type open is an inline
+        // `String<len>` while it fits in one word, else a `DynString`.
         let len_bytes = string_id.len_bytes(self.db);
+        let fallback = if len_bytes > MAX_INLINE_STRING_BYTES {
+            StringFallback::Dynamic
+        } else {
+            StringFallback::Fixed
+        };
         self.table.new_var(
             TyVarSort::String {
                 min_len: len_bytes,
-                fallback: self.string_literal_fallback(),
+                fallback,
             },
             &Kind::Star,
         )
@@ -2898,6 +3018,13 @@ impl<'db> TyChecker<'db> {
         let Some(shape) = &prop.shape else {
             return;
         };
+        // A `mut` binding of an access component asks the `mut?` call the
+        // source grants through for `mut`, as an earlier arm may have.
+        if self.pattern_asks_mut(pat, shape) {
+            self.select_mut_place(source);
+        }
+        let selected = self.env.typed_expr(source).and_then(|source| source.shape);
+        let shape = selected.as_ref().unwrap_or(shape);
         self.consume_access(source);
         let authority = self.expr_has_authority(source);
         let single_name = matches!(
@@ -2920,7 +3047,7 @@ impl<'db> TyChecker<'db> {
     /// unsafe split of them, or a block ending in one.
     fn is_named_access(&self, expr: ExprId) -> bool {
         match self.env.expr_data(expr) {
-            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut)) => true,
+            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut)) => true,
             Partial::Present(Expr::Tuple(_)) => self.env.is_unsafe_split(expr),
             Partial::Present(Expr::Block(stmts, _)) => {
                 matches!(
@@ -2940,7 +3067,7 @@ impl<'db> TyChecker<'db> {
             return self.env.binding_has_authority(&binding);
         }
         match expr.data(self.db, self.body()) {
-            Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) => {
+            Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref)) => {
                 self.expr_has_authority(*inner)
             }
             Partial::Present(Expr::Bin(base, _, BinOp::Index)) => self.expr_has_authority(*base),
@@ -2974,8 +3101,8 @@ impl<'db> TyChecker<'db> {
     /// value, or a read access to a component with no value reading. A
     /// non-`Copy` place is matched there even without markers, so a pattern
     /// moves only what its names bind; its tests read the place's value
-    /// (`is_inspected_place`). Index syntax `t[i]` selects `index_mut` for a
-    /// `mut` binding and is destructured as that projection's result.
+    /// (`is_inspected_place`). Index syntax `t[i]` calls `index` at `mut` for
+    /// a `mut` binding and is destructured as that projection's result.
     fn open_matched_place(
         &mut self,
         scrutinee: ExprId,
@@ -3051,13 +3178,27 @@ impl<'db> TyChecker<'db> {
     }
 
     /// The marker the binding `pat`, written with `marker`, takes: its own,
-    /// or for a plain name the one a reported marker on its initializer
-    /// implies.
+    /// for a plain name the one a reported marker on its initializer
+    /// implies, and for `mut? x` the body's mode.
     pub(super) fn binding_marker(&self, pat: PatId, marker: BindingMarker) -> BindingMarker {
         match marker {
             BindingMarker::Plain => self.implied_markers.get(&pat).copied().unwrap_or(marker),
+            BindingMarker::MaybeMut => self.maybe_mut_marker(),
             _ => marker,
         }
+    }
+
+    /// The marker `mut?` is in this body: `mut` at `mut`, `ref` at `ref`.
+    fn maybe_mut_marker(&self) -> BindingMarker {
+        match self.maybe_mut_kind() {
+            BorrowKind::Mut => BindingMarker::Mut,
+            BorrowKind::Ref => BindingMarker::Ref,
+        }
+    }
+
+    /// The access `mut?` is in this body: its mode's.
+    pub(super) fn maybe_mut_kind(&self) -> BorrowKind {
+        maybe_mut_kind(self.env.owner().mode())
     }
 
     /// `ref p` or `mut p` standing as `source`, the scrutinee or initializer
@@ -3084,11 +3225,13 @@ impl<'db> TyChecker<'db> {
         Some(marker)
     }
 
-    /// The `ref p` or `mut p` that `expr` is or ends in, with its marker.
+    /// The `ref p`, `mut p` or `mut? p` that `expr` is or ends in, with its
+    /// marker.
     fn initializer_marker(&self, expr: ExprId) -> Option<(ExprId, BindingMarker)> {
         match self.env.expr_data(expr) {
             Partial::Present(Expr::Un(_, UnOp::Ref)) => Some((expr, BindingMarker::Ref)),
             Partial::Present(Expr::Un(_, UnOp::Mut)) => Some((expr, BindingMarker::Mut)),
+            Partial::Present(Expr::Un(_, UnOp::MaybeMut)) => Some((expr, self.maybe_mut_marker())),
             Partial::Present(Expr::Block(stmts, _)) => {
                 match stmts.last()?.data(self.db, self.body()) {
                     Partial::Present(Stmt::Expr(tail)) => self.initializer_marker(*tail),
@@ -3160,6 +3303,40 @@ impl<'db> TyChecker<'db> {
                 position,
                 names,
             });
+        }
+    }
+
+    /// Whether `pat` binds a component of `shape` that is a `ref` access with
+    /// a `mut` binding, which needs the access to be `mut`.
+    fn pattern_asks_mut(&self, pat: PatId, shape: &Shape<'db>) -> bool {
+        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
+            return false;
+        };
+        match (shape, pat_data) {
+            (Shape::Owned(_) | Shape::Access(BorrowKind::Mut, _), _) => false,
+            (Shape::Access(BorrowKind::Ref, _), _) => {
+                self.first_marked_binding(pat, BindingMarker::Mut).is_some()
+            }
+            (_, Pat::Or(lhs, rhs)) => {
+                self.pattern_asks_mut(*lhs, shape) || self.pattern_asks_mut(*rhs, shape)
+            }
+            (Shape::Tuple(elems), Pat::Tuple(pats)) => {
+                let rest = pats
+                    .iter()
+                    .position(|pat| pat.is_rest(self.db, self.body()));
+                pats.iter().enumerate().any(|(idx, &pat)| {
+                    let elem = match rest {
+                        Some(rest) if idx > rest => (elems.len() + idx).checked_sub(pats.len()),
+                        _ => Some(idx),
+                    };
+                    elem.and_then(|elem| elems.get(elem))
+                        .is_some_and(|elem| self.pattern_asks_mut(pat, elem))
+                })
+            }
+            (Shape::Sum { payload, .. }, Pat::PathTuple(_, pats)) => {
+                matches!(pats.as_slice(), [payload_pat] if self.pattern_asks_mut(*payload_pat, payload))
+            }
+            _ => false,
         }
     }
 
@@ -3307,6 +3484,7 @@ impl<'db> TyChecker<'db> {
     ) -> Option<BorrowKind> {
         let primary = || pat.span(self.body()).into();
         match (binding, marker) {
+            (_, BindingMarker::MaybeMut) => unreachable!("`binding_marker` resolves `mut?`"),
             (_, BindingMarker::Ref) => Some(BorrowKind::Ref),
             (_, BindingMarker::Var) if !ty.has_value_reading(self.db) => {
                 self.push_diag(BodyDiag::VarOfNoValue {
@@ -3367,10 +3545,9 @@ impl<'db> TyChecker<'db> {
     fn check_marked_bindings(&mut self) {
         let body = self.body();
         for (pat, data) in body.pats(self.db).iter() {
-            if let Partial::Present(Pat::Path(
-                _,
-                marker @ (BindingMarker::Ref | BindingMarker::Mut),
-            )) = data
+            if let Partial::Present(Pat::Path(_, marker)) = data
+                && let marker @ (BindingMarker::Ref | BindingMarker::Mut) =
+                    self.binding_marker(pat, *marker)
                 && let Some(binding @ LocalBinding::Local { .. }) = self.env.pat_binding(pat)
                 && self.env.binding_access(&binding).is_none()
                 && self
@@ -3380,7 +3557,7 @@ impl<'db> TyChecker<'db> {
             {
                 self.push_diag(BodyDiag::MarkedBindingWithoutAccess {
                     primary: pat.span(body).into(),
-                    marker: *marker == BindingMarker::Mut,
+                    marker: marker == BindingMarker::Mut,
                 });
             }
         }
@@ -3501,14 +3678,17 @@ impl<'db> TyChecker<'db> {
             Err(UnificationError::TypeMismatch) => {
                 let actual = actual.fold_with(self.db, &mut self.table);
                 let expected = expected.fold_with(self.db, &mut self.table);
-                if !actual.has_invalid(self.db) && !expected.has_invalid(self.db) {
-                    self.push_diag(BodyDiag::TypeMismatch {
-                        span,
-                        expected,
-                        given: actual,
-                    });
+                // A retained equality is decided, and reported, where it is
+                // written; enclosing expressions see the type they expect.
+                if self.retain_or_report_mismatch(env::TypeEquality {
+                    actual,
+                    expected,
+                    span,
+                }) {
+                    expected
+                } else {
+                    TyId::invalid(self.db, InvalidCause::Other)
                 }
-                TyId::invalid(self.db, InvalidCause::Other)
             }
 
             Err(UnificationError::OccursCheckFailed) => {
@@ -3931,7 +4111,7 @@ pub enum ReturnProvenance {
     cycle_initial=func_return_provenance_cycle_initial
 )]
 fn func_return_provenance<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> ReturnProvenance {
-    let (diags, typed_body) = infer_body(db, BodyOwner::Func(func));
+    let (diags, typed_body) = infer_body(db, BodyOwner::func(db, func));
     if !diags.is_empty() {
         return ReturnProvenance::Unknown;
     }
@@ -4408,11 +4588,12 @@ impl<'db> TypedBody<'db> {
             {
                 missing_plan()
             }
-            Expr::Un(inner, crate::hir_def::expr::UnOp::Mut | crate::hir_def::expr::UnOp::Ref)
-                if !self.has_lowerable_place(db, *inner) =>
-            {
-                missing_plan()
-            }
+            Expr::Un(
+                inner,
+                crate::hir_def::expr::UnOp::Mut
+                | crate::hir_def::expr::UnOp::MaybeMut
+                | crate::hir_def::expr::UnOp::Ref,
+            ) if !self.has_lowerable_place(db, *inner) => missing_plan(),
             Expr::Assign(dst, _)
                 if self.semantic_expr_lowering(*dst).is_none()
                     && !self.has_lowerable_place(db, *dst) =>
@@ -4776,15 +4957,6 @@ impl<'db> TypedBody<'db> {
         self.tables.for_loop_plans[stmt].as_ref()
     }
 
-    /// Whether `expr` is a base a `for` loop holds.
-    pub fn is_loop_base(&self, expr: ExprId) -> bool {
-        self.tables
-            .for_loop_plans
-            .values()
-            .flatten()
-            .any(|plan| plan.bases.contains(&expr))
-    }
-
     pub fn binding_source(
         &self,
         db: &'db dyn HirAnalysisDb,
@@ -4910,7 +5082,7 @@ impl<'db> TypedBody<'db> {
             return None;
         }
 
-        let (diags, typed_body) = infer_body(db, BodyOwner::Func(func));
+        let (diags, typed_body) = infer_body(db, BodyOwner::func(db, func));
         if !diags.is_empty() {
             seen.remove(&func);
             return None;
@@ -5079,8 +5251,18 @@ impl<'db> TypedBody<'db> {
                 seen,
                 visited_locals,
             ),
-            Expr::Un(inner, crate::hir_def::UnOp::Mut | crate::hir_def::UnOp::Ref) => self
-                .forwarded_return_param_sources_from_expr(db, body, *inner, seen, visited_locals),
+            Expr::Un(
+                inner,
+                crate::hir_def::UnOp::Mut
+                | crate::hir_def::UnOp::MaybeMut
+                | crate::hir_def::UnOp::Ref,
+            ) => self.forwarded_return_param_sources_from_expr(
+                db,
+                body,
+                *inner,
+                seen,
+                visited_locals,
+            ),
             Expr::RecordInit(_, fields) => {
                 let (record_like, variant) = match self.record_init_lowering(expr)? {
                     RecordInitLowering::Struct => (RecordLike::Type(self.expr_ty(db, expr)), None),
@@ -5174,6 +5356,7 @@ impl<'db> TypedBody<'db> {
                 TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
                 inst,
                 name,
+                callable.mode(),
             )
             && let Some(body_func) = method.body()
         {
@@ -5416,17 +5599,15 @@ impl<'db> TypedBody<'db> {
                     );
                 }
             }
-            crate::hir_def::Stmt::For(_, iter, driver, loop_body, _) => {
-                for expr in [*iter].into_iter().chain(*driver) {
-                    self.collect_explicit_return_param_sources_in_expr(
-                        db,
-                        body,
-                        expr,
-                        out,
-                        saw_non_param,
-                        seen,
-                    );
-                }
+            crate::hir_def::Stmt::For(_, iter, loop_body, _) => {
+                self.collect_explicit_return_param_sources_in_expr(
+                    db,
+                    body,
+                    *iter,
+                    out,
+                    saw_non_param,
+                    seen,
+                );
                 self.collect_explicit_return_param_sources_in_expr(
                     db,
                     body,
@@ -6317,14 +6498,12 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
                 }
             }
             // A tuple of accesses is a projection's yield, an unsafe split or
-            // reported as an access used as a value, and a two-base loop
-            // holds the bases it names.
+            // reported as an access used as a value.
             Expr::Tuple(elems) | Expr::Array(elems)
                 if !self.body.yield_shape(expr).is_some_and(Shape::has_access)
-                    && !elems.iter().any(|&elem| {
-                        self.body.is_loop_base(elem)
-                            || self.body.expr_prop(self.db, elem).shape.is_some()
-                    }) =>
+                    && !elems
+                        .iter()
+                        .any(|&elem| self.body.expr_prop(self.db, elem).shape.is_some()) =>
             {
                 let ty = self.body.expr_prop(self.db, expr).ty;
                 self.check_state_only_value(
@@ -6521,7 +6700,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         let (scope, assumptions) = (body.scope(), self.assumptions);
         let mut params = (0..).map_while(|idx| {
             let ty = normalize_ty(db, callable.arg_ty(db, idx)?, scope, assumptions);
-            Some((def.param_mode(db, idx), ty))
+            Some((def.param_mode(db, idx, callable.mode()), ty))
         });
         let misuse = params
             .find_map(|(mode, ty)| view_param_misuse(db, mode, ty))
@@ -6593,7 +6772,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         let value = (0..)
             .map_while(|idx| {
                 let ty = normalize_ty(db, callable.arg_ty(db, idx)?, scope, assumptions);
-                Some((def.param_mode(db, idx), ty))
+                Some((def.param_mode(db, idx, callable.mode()), ty))
             })
             .find_map(|(mode, ty)| {
                 (mode == FuncParamMode::Own)

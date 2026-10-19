@@ -1,8 +1,8 @@
 // Run-time results of the draft-13 acceptance list ("Acceptance tests"),
 // numbered as the spec lists it. Static results are in
 // `uitest/semantic_access/acceptance.fe` and `uitest/ty_check/acceptance.fe`.
-use core::iter::{Collection, Driver, Identity, reversed}
-use core::ops::{Index, IndexMut}
+use core::iter::{Collection, Driver, Identity}
+use core::ops::Index
 use core::ptr::{MemBuffer, MemSpan}
 use std::evm::{Address, Call, Evm, StorageMap}
 
@@ -109,12 +109,12 @@ pub contract StoredWords {
 
     init() uses (mut words) {
         var next: u256 = 1
-        for mut word in words by reversed() {
+        for mut word in words.reversed() {
             word = next
             next += 1
         }
         let d = Identity {}
-        for mut word in words by d {
+        for mut word in words.by(d) {
             word *= 10
         }
     }
@@ -197,11 +197,15 @@ impl<B: Collection> Driver<B> for Tagged {
     type Item = B::Item
     type Extra = Tag
 
-    fn start(self, _ base: B) -> Option<B::Cursor> uses (B::E, E) {
+    fn start(self, _ base: B) -> B::Cursor uses (B::E, E) {
         base.start()
     }
 
-    fn next(self, _ base: B, _ s: B::Cursor) -> Option<B::Cursor> uses (B::E, E) {
+    fn has(self, _ base: B, _ s: B::Cursor) -> bool uses (B::E, E) {
+        base.has(s)
+    }
+
+    fn next(self, _ base: B, _ s: B::Cursor) -> B::Cursor uses (B::E, E) {
         base.next(s)
     }
 
@@ -216,26 +220,10 @@ fn case40_owned_extra() {
     let xs: [u256; 3] = [1, 2, 3]
     let d = Tagged {}
     var total: u256 = 0
-    for (tag, x) in xs by d {
+    for (tag, x) in xs.by(d) {
         total += tag.n + x
     }
     assert(total == 9)
-}
-
-// 20. A non-`Copy` driver over `Copy` items is borrowed by the loop, not
-// moved into an owned adapter: it drives a second loop after the first.
-#[test]
-fn case20_borrowed_driver() {
-    let xs: [u256; 3] = [1, 2, 3]
-    let d = Tagged {}
-    var total: u256 = 0
-    for (tag, x) in xs by d {
-        total += tag.n + x
-    }
-    for (tag, x) in xs by d {
-        total += tag.n * x
-    }
-    assert(total == 15)
 }
 
 fn ping() uses (call: mut Call) {
@@ -306,15 +294,12 @@ struct Scores {
 }
 
 impl Index<u256> for Scores {
-    space S = memory
     type Output = u32
     fn index(self, _ i: u256) -> ref u32 {
         (self.words[i / 8] >> ((i % 8) * 32)).downcast_truncate()
     }
-}
 
-impl IndexMut<u256> for Scores {
-    fn index_mut(mut self, _ i: u256) -> mut u32 {
+    fn index(mut self, _ i: u256) -> mut u32 {
         let shift = (i % 8) * 32
         var tmp: u32 = (self.words[i / 8] >> shift).downcast_truncate()
         yield mut tmp

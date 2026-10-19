@@ -136,7 +136,7 @@ impl<'db> Place<'db> {
                 let binding = expr_binding(expr)?;
                 Some(Place::new(PlaceBase::Binding(binding)))
             }
-            Expr::Un(base, UnOp::Mut | UnOp::Ref) => {
+            Expr::Un(base, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref) => {
                 Place::from_expr_in_body_with(db, body, *base, expr_binding, expr_ty, is_entry)
             }
             Expr::Un(base, UnOp::Deref) => {

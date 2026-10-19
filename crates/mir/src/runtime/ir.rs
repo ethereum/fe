@@ -1276,6 +1276,11 @@ pub enum RuntimeBuiltin<'db> {
         dst: RValueId,
         len: RValueId,
     },
+    /// Writes `bytes` into memory from `dst` on, zero-padded to whole words.
+    StoreConstBytes {
+        dst: RValueId,
+        bytes: Box<[u8]>,
+    },
     Msize,
     Sload {
         slot: RValueId,
@@ -1701,7 +1706,8 @@ impl<'db> RuntimeBuiltin<'db> {
             Self::Mload { addr }
             | Self::ExtCodeSize { addr }
             | Self::ExtCodeHash { addr }
-            | Self::Balance { addr } => vec![addr],
+            | Self::Balance { addr }
+            | Self::StoreConstBytes { dst: addr, .. } => vec![addr],
             Self::Sload { slot: value }
             | Self::CallDataLoad { offset: value }
             | Self::LeadingZeros { value }

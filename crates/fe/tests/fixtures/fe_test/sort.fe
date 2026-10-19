@@ -94,7 +94,7 @@ fn sorts_a_user_type_by_its_own_order() {
 #[test]
 fn sorts_memory_slices_and_arrays() {
     var arr = MemArray<u256>::new_zeroed(4)
-    let slice = arr.as_mut_slice()
+    let slice = mut arr.as_slice()
     slice[0] = 40
     slice[1] = 10
     slice[2] = 30

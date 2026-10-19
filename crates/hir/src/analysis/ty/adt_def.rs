@@ -12,8 +12,7 @@ use super::{
     corelib::resolve_core_trait,
     fold::TyFoldable,
     normalize::normalize_ty,
-    provider::{AddressSpace, pinned_space},
-    result_space::{SpaceValue, impl_space_value},
+    provider::{AddressSpace, is_state_pin, pinned_space},
     trait_def::{ImplementorOrigin, impls_for_trait_def},
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitSolveCx, constraint::collect_constraints,
@@ -44,7 +43,7 @@ pub struct AdtDef<'db> {
 }
 
 /// Where a type is pinned: to the state space its `core::marker::Pinned`
-/// implementation names as `S`. Implementing the trait is the pinning
+/// implementation names as `Space`. Implementing the trait is the pinning
 /// declaration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum Pin {
@@ -85,14 +84,7 @@ pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
         .any(|implementor| {
             // A pin to another space is an error at the implementation.
             if let ImplementorOrigin::Hir(impl_trait) = implementor.origin(db)
-                && let Some(SpaceValue::Space(space)) = impl_trait
-                    .spaces(db)
-                    .first()
-                    .and_then(|space| space.value)
-                    .and_then(|(value, steps)| {
-                        impl_space_value(db, impl_trait, value.to_opt()?, steps)
-                    })
-                && !matches!(space, AddressSpace::Storage | AddressSpace::Transient)
+                && !is_state_pin(db, impl_trait)
             {
                 return false;
             }

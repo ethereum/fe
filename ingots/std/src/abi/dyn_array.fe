@@ -11,7 +11,7 @@ use core::abi::{
 }
 use ingot::abi::{Sol, StaticAbi}
 use core::ptr::{self, MemBuffer, MemSpan}
-use core::ops::{Index, IndexMut, Len}
+use core::ops::{Index, Len}
 use core::size_of
 use ingot::evm::panic::{PANIC_ASSERT, PANIC_INDEX_OUT_OF_BOUNDS, Panic}
 use ingot::evm::revert_error
@@ -55,15 +55,27 @@ impl<T> DynArrayAccess<T> for DynArray<T>
 
         // DynArray construction validates the element heads:
         // size >= 32 + len * head, without overflow, so index < len proves
-        // this head position is in bounds. Static elements decode in place;
-        // dynamic ones check their tail offset against the payload. Both keep
-        // the normal decode path to validate the canonical ABI representation.
-        decode_field_from_prechecked_head<Sol, T, MemSpan>(
-            self.encoded_span(),
-            base: 32,
-            head_pos: 32 + index * abi_field_head_size<T>(),
-            input_len: self.encoded_size(),
-        )
+        // this head position is in bounds. Dynamic elements check their tail
+        // offset against the payload. Both keep the normal decode path to
+        // validate the canonical ABI representation.
+        let head_pos = 32 + index * abi_field_head_size<T>()
+        if T::IS_DYNAMIC {
+            return decode_field_from_prechecked_head<Sol, T, MemSpan>(
+                self.encoded_span(),
+                base: 32,
+                head_pos,
+                input_len: self.encoded_size(),
+            )
+        }
+        // A static element decodes from its own head alone. As a span of its
+        // own, the head bounds each of the decoder's reads by constants.
+        let head = unsafe {
+            MemSpan::from_raw_parts(
+                ptr: ptr::offset_bytes(self.encoded_span().ptr(), head_pos),
+                len: abi_field_head_size<T>(),
+            )
+        }
+        T::decode_from(head, 0)
     }
 }
 
@@ -219,8 +231,11 @@ impl<T> MemVec<T>
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
 
-        let input = unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: self.len * T::HEAD_SIZE) }
-        T::decode_from(input, index * T::HEAD_SIZE)
+        // The element alone, as a span of its own, which bounds each of the
+        // decoder's reads by constants.
+        let at = ptr::offset_bytes(self.ptr, index * T::HEAD_SIZE)
+        let input = unsafe { MemSpan::from_raw_parts(ptr: at, len: T::HEAD_SIZE) }
+        T::decode_from(input, 0)
     }
 
     /// Write `value` at `index`. Reverts with Solidity `Panic(0x32)` if
@@ -424,21 +439,16 @@ fn assemble_dyn_array<T>(_ parts: *MemBuffer, count: u256, parts_size: u256) -> 
 impl<T> Index<usize> for MemVec<T>
     where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
 {
-    space S = memory
     type Output = T
 
     fn index(self, _ index: usize) -> ref T {
         self.get(index as u256)
     }
-}
 
-/// Lets `core::sort` order the copy of an ABI array in place:
-/// `sort(mut MemVec::from_dyn_array(signers))`. The element is a decoded
-/// temporary, encoded back when the access ends.
-impl<T> IndexMut<usize> for MemVec<T>
-    where T: StaticAbi + Decode<Sol> + Encode<Sol> + AbiSize + Copy
-{
-    fn index_mut(mut self, _ index: usize) -> mut T {
+    /// Lets `core::sort` order the copy of an ABI array in place:
+    /// `sort(mut MemVec::from_dyn_array(signers))`. The element is a decoded
+    /// temporary, encoded back when the access ends.
+    fn index(mut self, _ index: usize) -> mut T {
         var value = self.get(index as u256)
         yield mut value
         self.set(index: index as u256, value)

@@ -416,6 +416,7 @@ impl UnOp {
             ast::UnOp::Not(_) => Self::Not,
             ast::UnOp::BitNot(_) => Self::BitNot,
             ast::UnOp::Mut(_) => Self::Mut,
+            ast::UnOp::MaybeMut(_) => Self::MaybeMut,
             ast::UnOp::Ref(_) => Self::Ref,
             ast::UnOp::Deref(_) => Self::Deref,
         }

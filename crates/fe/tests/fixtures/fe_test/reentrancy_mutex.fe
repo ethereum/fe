@@ -65,7 +65,7 @@ pub contract B {
             if !guard.try_lock() {
                 return guard.peek()
             }
-            guard.value_mut() += 1
+            guard.value() += 1
             guard.unlock()
             guard.peek()
         }

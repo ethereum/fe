@@ -2226,13 +2226,13 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         index: usize,
         local: SLocalId,
     ) -> Option<ReadMode> {
-        let BodyOwner::Func(func) = callee.key.owner(self.db) else {
+        let BodyOwner::Func(func, mode) = callee.key.owner(self.db) else {
             return None;
         };
         matches!(
             func.params(self.db)
                 .nth(index)
-                .map(|param| param.mode(self.db)),
+                .map(|param| param.mode_at(self.db, mode)),
             Some(FuncParamMode::View)
         )
         .then(|| {
@@ -2959,7 +2959,7 @@ mod tests {
             .unwrap_or_else(|| panic!("missing function `{name}`"));
         let instance = get_or_build_semantic_instance(
             db,
-            identity_semantic_instance_key(db, BodyOwner::Func(func)),
+            identity_semantic_instance_key(db, BodyOwner::Func(func, None)),
         );
         let raw = instance
             .admitted_body(db)

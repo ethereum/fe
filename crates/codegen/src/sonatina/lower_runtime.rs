@@ -154,6 +154,11 @@ define_lowering_inst_set!(
     Xor,
 );
 
+/// The shortest constant byte string written to memory with one code copy
+/// rather than a store per word. Below three words, word stores are about as
+/// small, and smaller when the words are mostly zeros.
+const MIN_CODE_COPY_BYTES: usize = 96;
+
 pub(super) fn compile_runtime_package_sonatina(
     db: &DriverDataBase,
     package: &RuntimePackage<'_>,
@@ -225,6 +230,8 @@ struct ModuleLowerer<'db, 'a, I: 'static> {
     const_names: FxHashMap<ConstRegionId<'db>, String>,
     explicit_code_region_sections: FxHashSet<(String, mir::RuntimeSectionName)>,
     external_code: FxHashMap<(String, mir::RuntimeSectionName), GlobalVariableRef>,
+    /// The constant byte strings code copies, one global each.
+    const_bytes: FxHashMap<Box<[u8]>, GlobalVariableRef>,
 }
 
 impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
@@ -259,6 +266,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
             const_names: FxHashMap::default(),
             explicit_code_region_sections: FxHashSet::default(),
             external_code: FxHashMap::default(),
+            const_bytes: FxHashMap::default(),
         }
     }
 
@@ -492,25 +500,41 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
         external_code: &[((String, mir::RuntimeSectionName), Vec<u8>)],
     ) {
         for (idx, (key, bytes)) in external_code.iter().enumerate() {
-            let ty = self.builder.declare_array_type(Type::I8, bytes.len());
-            let init = sonatina_ir::global_variable::GvInitializer::make_array(
-                bytes
-                    .iter()
-                    .map(|byte| {
-                        sonatina_ir::global_variable::GvInitializer::make_imm(Immediate::I8(
-                            *byte as i8,
-                        ))
-                    })
-                    .collect(),
-            );
-            let gv = self.builder.declare_gv(GlobalVariableData::constant(
-                format!("external_code_{idx}"),
-                ty,
-                Linkage::Private,
-                init,
-            ));
+            let gv = self.declare_bytes_global(format!("external_code_{idx}"), bytes);
             self.external_code.insert(key.clone(), gv);
         }
+    }
+
+    /// The private constant global holding `bytes`, shared by every copy of
+    /// the same bytes.
+    fn const_bytes_global(&mut self, bytes: &[u8]) -> GlobalVariableRef {
+        if let Some(&gv) = self.const_bytes.get(bytes) {
+            return gv;
+        }
+        let gv =
+            self.declare_bytes_global(format!("const_bytes_{}", self.const_bytes.len()), bytes);
+        self.const_bytes.insert(bytes.into(), gv);
+        gv
+    }
+
+    fn declare_bytes_global(&mut self, name: String, bytes: &[u8]) -> GlobalVariableRef {
+        let ty = self.builder.declare_array_type(Type::I8, bytes.len());
+        let init = sonatina_ir::global_variable::GvInitializer::make_array(
+            bytes
+                .iter()
+                .map(|byte| {
+                    sonatina_ir::global_variable::GvInitializer::make_imm(Immediate::I8(
+                        *byte as i8,
+                    ))
+                })
+                .collect(),
+        );
+        self.builder.declare_gv(GlobalVariableData::constant(
+            name,
+            ty,
+            Linkage::Private,
+            init,
+        ))
     }
 
     fn external_code_symbol(&self, region: mir::RuntimeCodeRegion<'db>) -> Option<SymbolRef> {
@@ -694,7 +718,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
                 .key(self.db)
                 .semantic(self.db)
                 .and_then(|semantic| match semantic.key(self.db).owner(self.db) {
-                    BodyOwner::Func(func) => Some(func),
+                    BodyOwner::Func(func, _) => Some(func),
                     _ => None,
                 })
         } else {
@@ -867,7 +891,7 @@ fn assign_sonatina_function_symbols<'db>(
                 .map(|(_, symbol)| symbol.to_string())
                 .or_else(|| {
                     let semantic = function.instance(db).key(db).semantic(db)?;
-                    let BodyOwner::Func(func) = semantic.key(db).owner(db) else {
+                    let BodyOwner::Func(func, _) = semantic.key(db).owner(db) else {
                         return None;
                     };
                     func.is_extern(db).then(|| {
@@ -899,7 +923,7 @@ fn describe_runtime_instance<'db>(
         RuntimeInstanceSource::Semantic(semantic) => {
             let owner = semantic.key(db).owner(db);
             let owner_desc = match owner {
-                BodyOwner::Func(func) => func.name(db).to_opt().map_or_else(
+                BodyOwner::Func(func, _) => func.name(db).to_opt().map_or_else(
                     || format!("func {func:?}"),
                     |name| format!("func {}", name.data(db)),
                 ),
@@ -1038,6 +1062,9 @@ struct FunctionLowerer<'ctx, 'db, 'a, I: 'static> {
     shared_helper_index_by_block: FxHashMap<BlockId, usize>,
     /// Helpers requested while lowering the current statement.
     pending_shared_helpers: Vec<usize>,
+    /// Whether the block being lowered ends by returning or reverting with
+    /// memory data.
+    block_ends_with_payload: bool,
 }
 
 /// A bounds check of a runtime index: `block` ends with the branch to the
@@ -1125,6 +1152,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
             shared_helpers: Vec::new(),
             shared_helper_index_by_block: FxHashMap::default(),
             pending_shared_helpers: Vec::new(),
+            block_ends_with_payload: false,
         })
     }
 
@@ -1150,6 +1178,10 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 continue;
             }
             self.checked_indices.clear();
+            self.block_ends_with_payload = matches!(
+                block.terminator,
+                RTerminator::ReturnData { .. } | RTerminator::Revert { .. }
+            );
             self.fb
                 .switch_to_block(self.block_id(RBlockId::from_u32(idx as u32))?);
             let mut terminated = false;
@@ -2031,6 +2063,73 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                     value,
                     Type::I256,
                 ));
+                zero_for_type(&mut self.fb, Type::Unit)
+            }
+            RuntimeBuiltin::StoreConstBytes { dst, bytes } => {
+                let dst = self.local_value(*dst)?;
+                let code_copy = self.module.required_inst::<EvmCodeCopy>().ok();
+                match code_copy {
+                    // A payload the block then returns or reverts with stays
+                    // word stores: Sonatina keeps such stores out of the
+                    // memory plan, but not a copy, which also reads code.
+                    Some(code_copy)
+                        if bytes.len() >= MIN_CODE_COPY_BYTES && !self.block_ends_with_payload =>
+                    {
+                        // The copy writes the bytes alone; zero the last word
+                        // first for the padding after them.
+                        if bytes.len() % 32 != 0 {
+                            let last = self.index_value((bytes.len() / 32 * 32) as u64);
+                            let addr = self.fb.insert_inst(
+                                Add::new(self.module.inst_set(), dst, last),
+                                Type::I256,
+                            );
+                            let zero = self.fb.make_imm_value(I256::zero());
+                            self.fb.insert_inst_no_result(Mstore::new(
+                                self.module.inst_set(),
+                                addr,
+                                zero,
+                                Type::I256,
+                            ));
+                        }
+                        let gv = self.module.const_bytes_global(bytes);
+                        let offset = self.fb.insert_inst(
+                            SymAddr::new(self.module.inst_set(), SymbolRef::Global(gv)),
+                            Type::I256,
+                        );
+                        let len = self.index_value(bytes.len() as u64);
+                        self.fb
+                            .insert_inst_no_result(EvmCodeCopy::new(code_copy, dst, offset, len));
+                    }
+                    _ => {
+                        // A word store writes the word big-endian on the EVM,
+                        // and little-endian on the native targets.
+                        let native = self.module.is_native_target();
+                        for (idx, chunk) in bytes.chunks(32).enumerate() {
+                            let mut word = [0; 32];
+                            word[..chunk.len()].copy_from_slice(chunk);
+                            let value = self.fb.make_imm_value(if native {
+                                I256::from_le_bytes(&word)
+                            } else {
+                                I256::from_be_bytes(&word)
+                            });
+                            let addr = if idx == 0 {
+                                dst
+                            } else {
+                                let offset = self.index_value(32 * idx as u64);
+                                self.fb.insert_inst(
+                                    Add::new(self.module.inst_set(), dst, offset),
+                                    Type::I256,
+                                )
+                            };
+                            self.fb.insert_inst_no_result(Mstore::new(
+                                self.module.inst_set(),
+                                addr,
+                                value,
+                                Type::I256,
+                            ));
+                        }
+                    }
+                }
                 zero_for_type(&mut self.fb, Type::Unit)
             }
             RuntimeBuiltin::Mstore8 { addr, value } => {
@@ -5505,7 +5604,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 self.fb
                     .insert_inst(Not::new(self.module.inst_set(), value), ty)
             }
-            UnOp::Plus | UnOp::Mut | UnOp::Ref | UnOp::Deref => value,
+            UnOp::Plus | UnOp::Mut | UnOp::MaybeMut | UnOp::Ref | UnOp::Deref => value,
         })
     }
 

@@ -334,7 +334,7 @@ pub(crate) fn checker_name<'db>(
     instance: SemanticInstance<'db>,
 ) -> String {
     match instance.key(db).owner(db) {
-        BodyOwner::Func(func) => match func.name(db) {
+        BodyOwner::Func(func, _) => match func.name(db) {
             Partial::Present(name) => name.data(db).to_string(),
             Partial::Absent => "<fn>".to_string(),
         },

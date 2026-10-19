@@ -22,6 +22,8 @@ pub enum BindingMarker {
     Plain,
     /// `mut x`: a mutable access.
     Mut,
+    /// `mut? x`: an access at the item's mode.
+    MaybeMut,
     /// `ref x`: a read access.
     Ref,
     /// `var x`: a mutable value.

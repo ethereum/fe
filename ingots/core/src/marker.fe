@@ -18,16 +18,22 @@ pub trait Copy {}
 pub trait Snapshot: Copy {}
 
 /// A type pinned to a state space: a value of it, and every place in it,
-/// lies in `S` wherever it is held, so it and any type holding it are
-/// state-only. `S` is `storage` or `transient`, or the space of a type
-/// parameter bounded by `Pinned`, `P::S`. A state space starts zeroed: a slot no one wrote reads as
-/// zero, so state holds only types whose all-zero representation is a
-/// value, those without `unsafe` fields.
+/// lies in `Space` wherever it is held, so it and any type holding it are
+/// state-only. `Space` is `Storage` or `Transient`, or another pinned
+/// type's, `P::Space`. A state space starts zeroed: a slot no one wrote
+/// reads as zero, so state holds only types whose all-zero representation
+/// is a value, those without `unsafe` fields.
 /// A storage collection is pinned (`StateIndex`), and so is a cell such as
 /// `TSlot`.
 pub trait Pinned {
-    space S
+    type Space
 }
+
+/// Persistent storage, as the `Space` of a pinned type.
+pub struct Storage {}
+
+/// Transient storage, as the `Space` of a pinned type.
+pub struct Transient {}
 
 /// A type whose all-zero representation is a value, so a stored value is
 /// cleared by zeroing its slots and lanes: scalars, raw pointers and

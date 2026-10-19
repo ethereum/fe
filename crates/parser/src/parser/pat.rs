@@ -36,11 +36,11 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<
     Ok(())
 }
 
-/// Bumps a binding's `mut`, `ref` or `var` marker, reporting one in front of
-/// a pattern that binds nothing or a second marker.
+/// Bumps a binding's `mut`, `mut?`, `ref` or `var` marker, reporting one in
+/// front of a pattern that binds nothing or a second marker.
 fn bump_binding_marker<S: TokenStream>(parser: &mut Parser<S>) {
     use SyntaxKind::*;
-    let Some(marker) = [MutKw, RefKw, VarKw]
+    let Some(marker) = [MutKw, MaybeMutKw, RefKw, VarKw]
         .into_iter()
         .find(|kind| parser.bump_if(*kind))
     else {
@@ -52,7 +52,7 @@ fn bump_binding_marker<S: TokenStream>(parser: &mut Parser<S>) {
     match token.syntax_kind() {
         Underscore | Dot2 | LParen => {}
         kind if is_lit(kind) => {}
-        MutKw | RefKw | VarKw => {
+        MutKw | MaybeMutKw | RefKw | VarKw => {
             parser.error_msg_on_current_token(&format!(
                 "a binding takes one marker, not {} and {}",
                 marker.describe(),

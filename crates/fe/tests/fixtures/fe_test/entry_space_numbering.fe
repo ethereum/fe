@@ -2,14 +2,14 @@
 // the entries of `locks` are transient, so `locks` takes transient number 0
 // as well as storage number 0, and the transient map `pending` takes the
 // next transient number. Their entries never share a slot.
-use core::marker::Pinned
+use core::marker::{Pinned, Transient}
 use core::ops::{Location, StateIndex}
 use std::evm::{Evm, RawStorage, StorageMap, TSlot, keccak_words, read_transient_word}
 
 struct TMap {}
 
 impl Pinned for TMap {
-    space S = transient
+    type Space = Transient
 }
 
 unsafe impl StateIndex for TMap {
