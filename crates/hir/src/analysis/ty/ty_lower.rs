@@ -163,16 +163,6 @@ pub(crate) fn lower_hir_ty_in_mode<'db>(
     }
 }
 
-pub(crate) fn lower_opt_hir_ty_with_minter<'db>(
-    db: &'db dyn HirAnalysisDb,
-    ty: Partial<HirTyId<'db>>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    lowering_cx: &LoweringContext<'db>,
-) -> TyId<'db> {
-    lower_opt_hir_ty_impl(db, ty, scope, assumptions, lowering_cx)
-}
-
 pub fn lower_opt_hir_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: Partial<HirTyId<'db>>,

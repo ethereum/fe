@@ -429,16 +429,25 @@ impl<'db> PathResError<'db> {
                     .segment(failed_idx)
                     .generic_args()
                     .arg(arg_idx);
-                let (ty, ty_span) = match seg_path.generic_args(db).data(db).get(arg_idx)? {
-                    GenericArg::Type(ty_arg) => (ty_arg.ty, arg.into_type_arg().ty()),
-                    GenericArg::AssocType(binding) => (binding.ty, arg.into_assoc_type_arg().ty()),
-                    GenericArg::Const(_) => return None,
-                };
+                let (ty, ty_span, position) =
+                    match seg_path.generic_args(db).data(db).get(arg_idx)? {
+                        GenericArg::Type(ty_arg) => (
+                            ty_arg.ty,
+                            arg.into_type_arg().ty(),
+                            TypePosition::GenericArg,
+                        ),
+                        GenericArg::AssocType(binding) => (
+                            binding.ty,
+                            arg.into_assoc_type_arg().ty(),
+                            TypePosition::Type,
+                        ),
+                        GenericArg::Const(_) => return None,
+                    };
                 let mut visited = 0;
                 let (arg_path, span) = find_written_path(
                     db,
                     ty.to_opt()?,
-                    TypePosition::Type,
+                    position,
                     Some(ty_span),
                     &mut |arg_path, _, span| {
                         visited += 1;
@@ -2348,10 +2357,12 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                         // precise spans in the name-resolution phase. A path that does not
                         // resolve yet, such as `Q::T` in `Option<Q::T>` before `Q: Ty` is
                         // collected, fails the trait path, so its bound waits for the others.
+                        // An argument, unlike a binding, may name a constant, as a type's
+                        // generic argument may.
                         for (arg_idx, arg) in path.generic_args(db).data(db).iter().enumerate() {
-                            let ty = match arg {
-                                GenericArg::Type(ty_arg) => ty_arg.ty,
-                                GenericArg::AssocType(binding) => binding.ty,
+                            let (ty, position) = match arg {
+                                GenericArg::Type(ty_arg) => (ty_arg.ty, TypePosition::GenericArg),
+                                GenericArg::AssocType(binding) => (binding.ty, TypePosition::Type),
                                 GenericArg::Const(_) => continue,
                             };
                             let mut visited = 0;
@@ -2359,7 +2370,7 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                                 && let Some((nth, result)) = find_written_path(
                                     db,
                                     ty,
-                                    TypePosition::Type,
+                                    position,
                                     None,
                                     &mut |arg_path, position, _| {
                                         let nth = visited;
@@ -2373,7 +2384,7 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                                             lowering_cx,
                                         ) {
                                             Ok(PathRes::Ty(_) | PathRes::TyAlias(..)) => None,
-                                            // A type's generic argument may name a constant.
+                                            // A generic argument may name a constant.
                                             _ if position == TypePosition::GenericArg
                                                 && lower_type_position_path(
                                                     db,
