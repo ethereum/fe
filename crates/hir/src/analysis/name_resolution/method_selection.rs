@@ -5,7 +5,7 @@ use thin_vec::ThinVec;
 
 use crate::analysis::{
     HirAnalysisDb,
-    name_resolution::{available_traits_in_scope, is_scope_visible_from},
+    name_resolution::{is_scope_visible_from, traits_in_scope::traits_available_for_selection},
     ty::{
         canonical::{Canonical, Canonicalized, Solution},
         closure::{CallableShape, callable_shape_insts},
@@ -930,31 +930,17 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
     }
 
     fn available_traits(&self) -> IndexSet<Trait<'db>> {
-        let mut traits = IndexSet::default();
-
-        let mut insert_trait = |trait_def: Trait<'db>| {
-            traits.insert(trait_def);
-
-            for trait_ in trait_def.super_traits(self.db) {
-                traits.insert(trait_.skip_binder().def(self.db));
-            }
-        };
-
-        for &trait_ in available_traits_in_scope(self.db, self.scope) {
-            let trait_def = trait_;
-            insert_trait(trait_def);
-        }
-
-        for pred in self.assumptions.list(self.db) {
-            let trait_def = pred.def(self.db);
-            insert_trait(trait_def)
-        }
         // A callable value's shapes are intrinsic to its type.
-        for inst in callable_shape_insts(self.db, self.receiver.canonical().value()) {
-            insert_trait(inst.def(self.db));
-        }
-
-        traits
+        let shapes = callable_shape_insts(self.db, self.receiver.canonical().value());
+        traits_available_for_selection(
+            self.db,
+            self.scope,
+            self.assumptions
+                .list(self.db)
+                .iter()
+                .chain(&shapes)
+                .map(|inst| inst.def(self.db)),
+        )
     }
 }
 
