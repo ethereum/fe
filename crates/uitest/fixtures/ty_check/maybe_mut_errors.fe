@@ -1,3 +1,5 @@
+use core::option::Option
+
 struct Counter {
     count: u256,
 }
@@ -10,6 +12,14 @@ struct Pair {
 impl Pair {
     fn first(mut? self) -> mut? Counter {
         mut? self.first
+    }
+
+    fn both(mut? self) -> (mut? Counter, mut? Counter) {
+        (mut? self.first, mut? self.second)
+    }
+
+    fn maybe_first(mut? self) -> Option<mut? Counter> {
+        Option::Some(mut? self.first)
     }
 
     // The `ref` body cannot write through `self`.
@@ -39,6 +49,19 @@ fn immutable_base() {
     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
     let first = mut pair.first()
     first.count = 2
+}
+
+// `?` and a block's tail pass the demand on to the call.
+fn immutable_through_try(_ pair: Pair) -> Option<()> {
+    let first = mut pair.maybe_first()?
+    first.count = 2
+    Option::Some(())
+}
+
+fn immutable_through_block() {
+    let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+    let (mut a, b) = { pair.both() }
+    a.count = b.count
 }
 
 fn implicit_argument() {

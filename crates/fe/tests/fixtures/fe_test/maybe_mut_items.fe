@@ -1,5 +1,6 @@
 // A `mut?` function has one body per mode. Its callers take it at `ref`
 // unless a use of the result asks for `mut`.
+use core::option::Option
 
 struct Counter {
     count: u256,
@@ -36,6 +37,10 @@ impl Pair {
 
     fn both(mut? self) -> (mut? Counter, mut? Counter) {
         (mut? self.first, mut? self.second)
+    }
+
+    fn maybe_first(mut? self) -> Option<mut? Counter> {
+        Option::Some(mut? self.first)
     }
 }
 
@@ -96,4 +101,35 @@ fn a_mut_argument_passes_mut() {
     let first = mut first_of(mut pair)
     first.bump()
     assert(pair.first.count == 2)
+}
+
+fn bump_first(_ pair: mut Pair) -> Option<()> {
+    let first = mut pair.maybe_first()?
+    first.bump()
+    Option::Some(())
+}
+
+/// Yields the payload of a `mut?` call taken at `mut`.
+fn first_if_any(_ pair: mut Pair) -> Option<mut Counter> {
+    Option::Some(pair.maybe_first()?)
+}
+
+#[test]
+fn demand_reaches_through_try() {
+    var pair = new_pair()
+    assert(bump_first(mut pair).is_some())
+    match first_if_any(mut pair) {
+        Option::Some(mut first) => first.bump()
+        Option::None => {}
+    }
+    assert(pair.first.count == 3)
+}
+
+#[test]
+fn demand_reaches_through_a_block() {
+    var pair = new_pair()
+    let (mut a, mut b) = { pair.both() }
+    a.bump()
+    b.count = 9
+    assert(pair.first.count == 2 && pair.second.count == 9)
 }

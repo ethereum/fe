@@ -3018,19 +3018,12 @@ impl<'db> TyChecker<'db> {
         let Some(shape) = &prop.shape else {
             return;
         };
-        // A `mut` binding of an access component asks a `mut?` call for
-        // `mut`, as an earlier arm may have.
-        let selected = self
-            .env
-            .callable_expr(source)
-            .is_some_and(|callable| callable.mode().is_some())
-            .then(|| {
-                if self.pattern_asks_mut(pat, shape) {
-                    self.select_mut_place(source);
-                }
-                self.env.typed_expr(source)?.shape
-            })
-            .flatten();
+        // A `mut` binding of an access component asks the `mut?` call the
+        // source grants through for `mut`, as an earlier arm may have.
+        if self.pattern_asks_mut(pat, shape) {
+            self.select_mut_place(source);
+        }
+        let selected = self.env.typed_expr(source).and_then(|source| source.shape);
         let shape = selected.as_ref().unwrap_or(shape);
         self.consume_access(source);
         let authority = self.expr_has_authority(source);

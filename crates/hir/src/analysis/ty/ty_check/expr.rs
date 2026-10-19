@@ -1006,8 +1006,11 @@ impl<'db> TyChecker<'db> {
         }
         if let Some(Shape::Sum { payload, .. }) = prop.shape {
             self.consume_access(inner);
+            let shape = (!matches!(*payload, Shape::Owned(_))).then(|| (*payload).clone());
+            // The payload is mutable as a call's result is.
             return ExprProp {
-                shape: (!matches!(*payload, Shape::Owned(_))).then(|| (*payload).clone()),
+                is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
+                shape,
                 ..ExprProp::new(payload.erased_ty(self.db), true)
             };
         }

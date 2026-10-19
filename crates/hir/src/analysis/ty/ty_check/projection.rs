@@ -135,7 +135,8 @@ impl<'db> TyChecker<'db> {
     /// Makes `expr`, a place a `mut` context needs, mutable by calling the
     /// `mut?` callees along its place chain at `mut`: the trait-lowered
     /// indexes in `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a
-    /// `mut self` method, and calls such as `xs.at(i).bump()`. Returns
+    /// `mut self` method, and calls such as `xs.at(i).bump()`, also through
+    /// a block's tail (`{ xs.at(i) }`) and `?` (`xs.find(v)?`). Returns
     /// whether the place is mutable.
     pub(super) fn select_mut_place(&mut self, expr: ExprId) -> bool {
         let Some(prop) = self.env.typed_expr(expr) else {
@@ -151,27 +152,50 @@ impl<'db> TyChecker<'db> {
         {
             return self.select_mut_call(expr, prop);
         }
-        let selected = match self.env.expr_data(expr) {
-            Partial::Present(Expr::Field(base, _)) => self.select_mut_place(*base),
-            // An array element or a place entry is a place of its base.
-            Partial::Present(Expr::Bin(base, _, BinOp::Index)) => self.select_mut_place(*base),
-            _ => false,
+        let shape = match self.env.expr_data(expr) {
+            // A field, array element or place entry is a place of its base.
+            Partial::Present(Expr::Field(base, _) | Expr::Bin(base, _, BinOp::Index)) => {
+                if !self.select_mut_place(*base) {
+                    return false;
+                }
+                prop.shape.as_ref().map(|shape| match shape {
+                    Shape::Access(_, ty) => Shape::Access(BorrowKind::Mut, *ty),
+                    shape => shape.clone(),
+                })
+            }
+            // A block grants what its tail does.
+            Partial::Present(Expr::Block(stmts, _)) => {
+                let Some(Partial::Present(Stmt::Expr(tail))) =
+                    stmts.last().map(|stmt| stmt.data(self.db, self.body()))
+                else {
+                    return false;
+                };
+                if !self.select_mut_place(*tail) {
+                    return false;
+                }
+                self.env.typed_expr(*tail).and_then(|tail| tail.shape)
+            }
+            // `e?` grants the payload of what `e` does.
+            Partial::Present(Expr::Try(inner)) => {
+                if !self.select_mut_place(*inner) {
+                    return false;
+                }
+                match self.env.typed_expr(*inner).and_then(|inner| inner.shape) {
+                    Some(Shape::Sum { payload, .. }) => Some(*payload),
+                    _ => prop.shape.clone(),
+                }
+            }
+            _ => return false,
         };
-        if selected {
-            let shape = prop.shape.as_ref().map(|shape| match shape {
-                Shape::Access(_, ty) => Shape::Access(BorrowKind::Mut, *ty),
-                shape => shape.clone(),
-            });
-            self.env.type_expr(
-                expr,
-                ExprProp {
-                    is_mut: true,
-                    shape,
-                    ..prop
-                },
-            );
-        }
-        selected
+        self.env.type_expr(
+            expr,
+            ExprProp {
+                is_mut: true,
+                shape,
+                ..prop
+            },
+        );
+        true
     }
 
     /// Calls the `mut?` callee of the call `expr`, typed as `prop`, at `mut`,

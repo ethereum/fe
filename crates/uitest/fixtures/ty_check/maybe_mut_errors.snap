@@ -5,49 +5,65 @@ expression: diags
 input_file: fixtures/ty_check/maybe_mut_errors.fe
 ---
 error[8-0018]: left-hand side of assignment is immutable
-   ┌─ maybe_mut_errors.fe:17:9
+   ┌─ maybe_mut_errors.fe:27:9
    │
-16 │     fn reset(mut? self) -> mut? Counter {
+26 │     fn reset(mut? self) -> mut? Counter {
    │                   ---- `self` is `mut?`, which a `mut?` function's `ref` body only reads
-17 │         self.first.count = 0
+27 │         self.first.count = 0
    │         ^^^^^^^^^^^^^^^^ immutable assignment
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ maybe_mut_errors.fe:40:21
+   ┌─ maybe_mut_errors.fe:50:21
    │
-39 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+49 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
    │         ---- `pair` does not provide mutable access
-40 │     let first = mut pair.first()
+50 │     let first = mut pair.first()
    │                     ^^^^ cannot borrow as `mut`
 
-error[8-0069]: explicit borrow required
-   ┌─ maybe_mut_errors.fe:46:30
+error[8-0066]: mutable borrow requires a mutable place
+   ┌─ maybe_mut_errors.fe:56:21
    │
-46 │     let first = mut first_of(pair)
+55 │ fn immutable_through_try(_ pair: Pair) -> Option<()> {
+   │                            ---- `pair` does not provide mutable access
+56 │     let first = mut pair.maybe_first()?
+   │                     ^^^^ cannot borrow as `mut`
+
+error[8-0066]: mutable borrow requires a mutable place
+   ┌─ maybe_mut_errors.fe:63:24
+   │
+62 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+   │         ---- `pair` does not provide mutable access
+63 │     let (mut a, b) = { pair.both() }
+   │                        ^^^^ cannot borrow as `mut`
+
+error[8-0069]: explicit borrow required
+   ┌─ maybe_mut_errors.fe:69:30
+   │
+69 │     let first = mut first_of(pair)
    │                              ^^^^ this argument must be explicitly borrowed as `mut`
    │
    = help: try `mut pair`
 
 error[8-0130]: `mut?` outside a `mut?` function
-   ┌─ maybe_mut_errors.fe:23:21
+   ┌─ maybe_mut_errors.fe:33:21
    │
-23 │         let first = mut? self.first
+33 │         let first = mut? self.first
    │                     ^^^^^^^^^^^^^^^ `mut?` is the mode of the function it is in
    │
    = a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T` or `-> mut? T`
 
 error[8-0131]: a `mut?` function cannot define a closure
-   ┌─ maybe_mut_errors.fe:29:17
+   ┌─ maybe_mut_errors.fe:39:17
    │
-29 │         let f = |x: u256| x + 1
+39 │         let f = |x: u256| x + 1
    │                 ^^^^^^^^^^^^^^^ this closure is in a `mut?` function
    │
    = move the closure into a function without a mode
 
 error[8-0132]: a `mut?` effect is not supported yet
-   ┌─ maybe_mut_errors.fe:51:71
+   ┌─ maybe_mut_errors.fe:74:71
    │
-51 │ fn with_effect(_ pair: mut? Pair) -> mut? Counter uses (counter: mut? Counter) {
+74 │ fn with_effect(_ pair: mut? Pair) -> mut? Counter uses (counter: mut? Counter) {
    │                                                                       ^^^^^^^ this effect is required at the function's mode
    │
    = write `mut` or no mode on the effect
