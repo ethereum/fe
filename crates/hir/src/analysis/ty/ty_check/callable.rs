@@ -27,11 +27,11 @@ use crate::analysis::{
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
         trait_def::{
-            ImplementorOrigin, ResolvedImplInstance, ResolvedMethodInstance, TraitInstId,
-            resolve_trait_impl_instance,
+            ResolvedImplInstance, ResolvedMethodInstance, TraitInstId, checked_selection,
+            instantiated_selection,
         },
         trait_resolution::{
-            Selection, TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
+            TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
         ty_def::{BorrowKind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
         ty_error::emit_invalid_ty_error,
@@ -405,24 +405,15 @@ impl<'db> Callable<'db> {
     }
 
     /// Selects the implementation of the call's trait goal in the checked
-    /// body's context. A selection that still holds inference variables,
-    /// such as a generic function item's own, is left to the instance.
+    /// body's context.
     pub(super) fn record_selection(
         &mut self,
         db: &'db dyn HirAnalysisDb,
         solve_cx: TraitSolveCx<'db>,
     ) {
-        let settled = |flags: TyFlags| !flags.intersects(TyFlags::HAS_VAR | TyFlags::HAS_INVALID);
         self.selection = self
             .trait_inst
-            .filter(|&inst| settled(collect_flags(db, inst)))
-            .and_then(
-                |inst| match resolve_trait_impl_instance(db, solve_cx, inst) {
-                    Selection::Unique(resolved) => Some(resolved),
-                    Selection::Ambiguous(_) | Selection::NotFound => None,
-                },
-            )
-            .filter(|&resolved| settled(collect_flags(db, resolved)));
+            .and_then(|inst| checked_selection(db, solve_cx, inst));
     }
 
     /// The trait method the call runs, with its body: from the
@@ -439,32 +430,7 @@ impl<'db> Callable<'db> {
             return None;
         };
         let name = func.name(db).to_opt()?;
-        let resolved = match self.selection {
-            // An instantiated body can expose projections its checker could
-            // not resolve.
-            Some(resolved)
-                if !matches!(
-                    resolved.selected().origin(db),
-                    ImplementorOrigin::Assumption
-                ) =>
-            {
-                if collect_flags(db, resolved).contains(TyFlags::HAS_PROJECTION) {
-                    normalize_ty(
-                        db,
-                        resolved,
-                        solve_cx.normalization_scope_for_trait_inst(db, inst),
-                        solve_cx.assumptions(),
-                    )
-                } else {
-                    resolved
-                }
-            }
-            _ => match resolve_trait_impl_instance(db, solve_cx, inst) {
-                Selection::Unique(resolved) => resolved,
-                Selection::Ambiguous(_) | Selection::NotFound => return None,
-            },
-        };
-        resolved.method(db, name, self.mode)
+        instantiated_selection(db, self.selection, solve_cx, inst)?.method(db, name, self.mode)
     }
 
     /// The mode a `mut?` callee is called at; `None` for any other.

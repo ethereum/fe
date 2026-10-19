@@ -1,6 +1,6 @@
 use camino::Utf8PathBuf;
 use fe_hir::analysis::ty::trait_resolution::{PredicateListId, TraitSolveCx};
-use fe_hir::analysis::ty::ty_check::check_func_body;
+use fe_hir::analysis::ty::ty_check::{ConstRef, check_func_body};
 use fe_hir::hir_def::{Expr, Func, ItemKind, Partial, TopLevelMod};
 use fe_hir::test_db::HirAnalysisTestDb;
 
@@ -27,6 +27,22 @@ fn wrapped<T: Copy>(_ x: T) -> u256 {
 
 fn bound<T: Grow>(_ x: T) -> u256 {
     x.grow()
+}
+
+trait HasK {
+    const K: u256
+}
+
+impl<T: Copy> HasK for T {
+    const K: u256 = 1
+}
+
+fn wrapped_k<T: Copy>(_ x: T) -> u256 {
+    Wrap<T>::K
+}
+
+fn bound_k<T: HasK>(_ x: T) -> u256 {
+    T::K
 }
 "#;
 
@@ -74,6 +90,27 @@ fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option
     (without_assumptions, with_assumptions)
 }
 
+/// Whether `func`'s only trait-constant use reaches a defining body where
+/// nothing is assumed, and where the body's assumptions are.
+fn k_use_bodies(db: &HirAnalysisTestDb, func: Func<'_>) -> (bool, bool) {
+    let typed_body = check_func_body(db, func).1.clone();
+    let Some(ConstRef::TraitConst { use_, selection }) = typed_body.const_refs().next() else {
+        panic!("missing trait constant use");
+    };
+    let without_assumptions = ConstRef::TraitConst {
+        use_: use_.with_env(func.scope(), PredicateListId::empty_list(db)),
+        selection,
+    };
+    let with_assumptions = ConstRef::TraitConst {
+        use_: use_.with_env(func.scope(), typed_body.assumptions()),
+        selection,
+    };
+    (
+        without_assumptions.trait_const_body(db).is_some(),
+        with_assumptions.trait_const_body(db).is_some(),
+    )
+}
+
 #[test]
 fn checker_selection_answers_a_call_without_the_body_context() {
     let mut db = HirAnalysisTestDb::default();
@@ -111,4 +148,28 @@ fn bound_dispatch_is_selected_where_the_body_is_instantiated() {
         grow_call_bodies(&db, func(&db, top_mod, "bound"));
     assert_eq!(without_assumptions, None);
     assert!(!with_assumptions);
+}
+
+#[test]
+fn checker_selection_answers_a_constant_without_the_body_context() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("checker_selection_answers_a_constant_without_the_body_context.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // As for a call: the blanket implementation the checker selected
+    // defines `Wrap<T>::K` even where `T: Copy` is not assumed.
+    assert_eq!(
+        k_use_bodies(&db, func(&db, top_mod, "wrapped_k")),
+        (true, true)
+    );
+    // `T::K` holds by the body's bound: it has no defining body until `T` is
+    // known.
+    assert_eq!(
+        k_use_bodies(&db, func(&db, top_mod, "bound_k")),
+        (false, false)
+    );
 }

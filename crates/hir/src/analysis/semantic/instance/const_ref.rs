@@ -8,7 +8,7 @@ use crate::{
         HirAnalysisDb,
         semantic::{SemOrigin, SemanticConstRef},
         ty::{
-            assoc_const::{AssocConstUse, InherentConstUse},
+            assoc_const::InherentConstUse,
             binder::Binder,
             closure::{callee_closure, callee_function_item, closure_template_ty},
             const_ty::{
@@ -25,7 +25,7 @@ use crate::{
             normalize::normalize_ty,
             trait_def::{
                 ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId,
-                assoc_const_body_template_for_trait_inst, resolve_trait_impl_instance,
+                resolve_trait_impl_instance,
             },
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
@@ -1242,7 +1242,21 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
 ) -> Option<SemanticConstRef<'db>> {
     let instance = match const_ref {
         ConstRef::Const(const_) => semantic_const_key_for_const(db, const_),
-        ConstRef::TraitConst(assoc) => semantic_const_key_for_assoc_const(db, assoc),
+        ConstRef::TraitConst { use_, .. } => {
+            let (body, ty, subst) = const_ref.trait_const_body(db)?;
+            Some(SemanticInstanceKey::new(
+                db,
+                BodyOwner::AnonConstBody { body, expected: ty },
+                GenericSubst::complete(db, subst),
+                EffectProviderSubst::empty(db),
+                ImplEnv::new(
+                    db,
+                    use_.origin_scope(),
+                    use_.assumptions(),
+                    vec![use_.inst()],
+                ),
+            ))
+        }
         ConstRef::InherentConst(use_) => semantic_const_key_for_inherent_const(db, use_),
     }?;
     Some(SemanticConstRef::new(db, instance, ty, origin))
@@ -1275,30 +1289,6 @@ fn semantic_const_key_for_inherent_const<'db>(
         GenericSubst::for_owner(db, use_.impl_().into(), impl_args),
         EffectProviderSubst::empty(db),
         ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), vec![]),
-    ))
-}
-
-fn semantic_const_key_for_assoc_const<'db>(
-    db: &'db dyn HirAnalysisDb,
-    assoc: AssocConstUse<'db>,
-) -> Option<SemanticInstanceKey<'db>> {
-    let (body, ty, subst) = assoc_const_body_template_for_trait_inst(
-        db,
-        assoc.solve_cx(db),
-        assoc.inst(),
-        assoc.name(),
-    )?;
-    Some(SemanticInstanceKey::new(
-        db,
-        BodyOwner::AnonConstBody { body, expected: ty },
-        GenericSubst::complete(db, subst),
-        EffectProviderSubst::empty(db),
-        ImplEnv::new(
-            db,
-            assoc.origin_scope(),
-            assoc.assumptions(),
-            vec![assoc.inst()],
-        ),
     ))
 }
 

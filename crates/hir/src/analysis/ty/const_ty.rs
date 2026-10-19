@@ -2412,7 +2412,7 @@ pub(crate) fn const_body_resolution_reenters<'db>(
                     .body(db)
                     .to_opt()
                     .map(|next_body| (next_body, const_.ty(db), ConstCaptureEnv::Empty)),
-                ConstRef::TraitConst(assoc) => {
+                ConstRef::TraitConst { use_: assoc, .. } => {
                     // The recorded use is in the owning body's binder terms:
                     // `Self::B` in a trait default keeps `Self` as a param.
                     // Instantiate with the args this body is evaluated under

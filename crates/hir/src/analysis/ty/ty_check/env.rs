@@ -43,7 +43,7 @@ use crate::analysis::{
         fold::{TyFoldable, TyFolder},
         provider::AddressSpace,
         shape::Shape,
-        trait_def::TraitInstId,
+        trait_def::{TraitInstId, checked_selection},
         trait_resolution::{
             PredicateListId, TraitSolveCx, constraint::collect_func_effect_provider_constraints,
         },
@@ -1432,6 +1432,11 @@ impl<'db> TyCheckEnv<'db> {
         for plan in self.for_loop_plans.values_mut().flatten() {
             for call in &mut plan.calls {
                 call.callable.record_selection(self.db, solve_cx);
+            }
+        }
+        for const_ref in self.const_refs.values_mut().flatten() {
+            if let ConstRef::TraitConst { use_, selection } = const_ref {
+                *selection = checked_selection(self.db, use_.solve_cx(self.db), use_.inst());
             }
         }
         self.closure_infos

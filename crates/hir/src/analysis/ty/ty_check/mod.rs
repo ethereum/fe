@@ -86,7 +86,10 @@ use super::{
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     instantiate_trait_self,
-    trait_def::TraitInstId,
+    trait_def::{
+        ResolvedImplInstance, TraitInstId, instantiated_selection,
+        selected_assoc_const_body_template,
+    },
     trait_resolution::{
         CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx, WellFormedness,
         check_trait_inst_wf_without_self, check_ty_wf, goal_query_has_no_distinct_solution,
@@ -95,7 +98,7 @@ use super::{
     ty_def::{
         BorrowKind, InvalidCause, Kind, MAX_INLINE_STRING_BYTES, StringFallback, TyId, TyVarSort,
     },
-    ty_lower::{collect_generic_params, lower_hir_ty, lower_hir_ty_deferred},
+    ty_lower::{CompleteSubst, collect_generic_params, lower_hir_ty, lower_hir_ty_deferred},
     unify::{InferenceKey, Snapshot, UnificationError, UnificationTable},
     unsafe_check::check_unsafe_ops,
 };
@@ -4088,8 +4091,30 @@ pub enum RowArg {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum ConstRef<'db> {
     Const(Const<'db>),
-    TraitConst(AssocConstUse<'db>),
+    TraitConst {
+        use_: AssocConstUse<'db>,
+        /// The implementation the checker selected for the use's trait goal,
+        /// as for a call's [`Callable`].
+        selection: Option<ResolvedImplInstance<'db>>,
+    },
     InherentConst(InherentConstUse<'db>),
+}
+
+impl<'db> ConstRef<'db> {
+    /// A trait constant's defining body, its declared type and the
+    /// substitution over the body's owner: from the implementation the
+    /// checker selected, or, for a use the checker answered by an assumption,
+    /// the one the use's context selects.
+    pub fn trait_const_body(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>)> {
+        let ConstRef::TraitConst { use_, selection } = self else {
+            return None;
+        };
+        let resolved = instantiated_selection(db, selection, use_.solve_cx(db), use_.inst())?;
+        selected_assoc_const_body_template(db, resolved, use_.name())
+    }
 }
 
 impl<'db> TyVisitable<'db> for ConstRef<'db> {
@@ -4099,7 +4124,12 @@ impl<'db> TyVisitable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(_) => {}
-            ConstRef::TraitConst(assoc) => assoc.visit_with(visitor),
+            ConstRef::TraitConst { use_, selection } => {
+                use_.visit_with(visitor);
+                if let Some(selection) = selection {
+                    selection.visit_with(visitor);
+                }
+            }
             ConstRef::InherentConst(use_) => use_.visit_with(visitor),
         }
     }
@@ -4112,7 +4142,10 @@ impl<'db> TyFoldable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(const_def) => ConstRef::Const(const_def),
-            ConstRef::TraitConst(assoc) => ConstRef::TraitConst(assoc.fold_with(db, folder)),
+            ConstRef::TraitConst { use_, selection } => ConstRef::TraitConst {
+                use_: use_.fold_with(db, folder),
+                selection: selection.map(|selection| selection.fold_with(db, folder)),
+            },
             ConstRef::InherentConst(use_) => ConstRef::InherentConst(use_.fold_with(db, folder)),
         }
     }
