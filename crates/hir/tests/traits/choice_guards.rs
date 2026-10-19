@@ -128,6 +128,7 @@ fn choices_resolve_through_one_function() {
                 "src/analysis/ty/ty_check/mod.rs",
                 "src/analysis/ty/ty_check/callable.rs",
                 "src/analysis/ty/ty_check/stmt.rs",
+                "src/analysis/ty/ty_check/projection.rs",
             ]
         ),
         Vec::<String>::new()
@@ -383,7 +384,6 @@ fn ordinary_selection_names_its_reason() {
                     "fn declared_sol_compat_abi_type",
                 ),
                 (trait_def, "fn assoc_const_body_template_for_trait_inst"),
-                (trait_def, "fn trait_inst_selects_concrete_impl"),
             ],
         ),
         (
@@ -600,6 +600,207 @@ fn calls_are_decided_where_they_are_written() {
 }
 
 #[test]
+fn calls_are_recorded_in_one_place() {
+    // Every call form registers through `record_call`, which delivers its
+    // evidence operands or refuses them, so no form can register a call
+    // without delivery; a `for` loop's plan registers through
+    // `record_loop_plan`, which refuses evidence its protocol calls would
+    // receive with no choice.
+    for (needle, recorder) in [
+        (".register_semantic_call(", "fn record_call"),
+        (".register_code_region_intrinsic(", "fn record_call"),
+        (".register_const_intrinsic(", "fn record_call"),
+        (".deliver_evidence_args(", "fn record_call"),
+        (".refuse_evidence_value_call_args(", "fn record_call"),
+        (".register_for_loop_plan(", "fn record_loop_plan"),
+    ] {
+        for (path, text) in sources() {
+            for function in functions(&code(&text)) {
+                let head = function.lines().next().unwrap_or_default();
+                if function.contains(needle) {
+                    assert!(
+                        path == CHECKER && head.contains(recorder),
+                        "{path}: `{needle}` outside `{recorder}`, in {head}"
+                    );
+                }
+            }
+        }
+    }
+    // A callable registered for a path names a function value, not a call:
+    // apart from the three registrations above, only a path resolved to a
+    // function item registers one, recorded as that value next.
+    let env = "src/analysis/ty/ty_check/env.rs";
+    for (path, text) in sources() {
+        for function in functions(&code(&text)) {
+            let head = function.lines().next().unwrap_or_default();
+            let registration = path == env
+                && [
+                    "fn register_semantic_call",
+                    "fn register_code_region_intrinsic",
+                    "fn register_const_intrinsic",
+                ]
+                .iter()
+                .any(|name| head.contains(name));
+            if registration {
+                continue;
+            }
+            for (at, _) in function.match_indices(".register_callable(") {
+                let next = function[at..].lines().take(4).collect::<String>();
+                assert!(
+                    next.contains("ValuePathRef::FunctionItem"),
+                    "{path}: a callable registered outside `record_call`, in {head}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn every_call_form_reads_one_operand_list() {
+    // Evidence is delivered to, and its absence owed by, the operands one
+    // function lists for every call form: a call, a method call, an
+    // operator, an index and a compound assignment.
+    let checker = code(&text_of(CHECKER));
+    let checked = functions(&checker);
+    let function = |name: &str| {
+        checked
+            .iter()
+            .find(|function| function.lines().next().unwrap_or_default().contains(name))
+            .unwrap_or_else(|| panic!("{name} exists"))
+    };
+    let operands = function("fn call_operands");
+    for form in [
+        "Expr::Call(",
+        "Expr::MethodCall(",
+        "Expr::Bin(",
+        "Expr::AugAssign(",
+        "Expr::Un(",
+    ] {
+        assert!(operands.contains(form), "`call_operands` omits {form}");
+    }
+    assert!(function("fn record_call").contains("call_operands("));
+    let owed = code(&text_of("src/analysis/ty/ty_check/const_requirements.rs"));
+    let owed_calls = functions(&owed)
+        .into_iter()
+        .filter(|function| function.contains("OwedCheck::NoEvidence { param }"))
+        .filter(|function| function.contains(".callable_expr("))
+        .collect::<Vec<_>>();
+    assert_eq!(owed_calls.len(), 1, "one owed check reads calls");
+    assert!(owed_calls[0].contains("super::choice::call_operands("));
+    for form in ["Expr::Call(", "Expr::MethodCall("] {
+        assert!(
+            !owed_calls[0].contains(form),
+            "the owed check reads {form} itself"
+        );
+    }
+}
+
+#[test]
+fn reason_carrying_wrappers_have_listed_callers() {
+    // A wrapper that passes a selection reason inside it selects the
+    // ordinary implementation for whoever calls it, so each is called only
+    // from the sites listed for it: a new caller is a site to review, as a
+    // new use of a reason is (`ordinary_selection_names_its_reason`).
+    let const_ty = "src/analysis/ty/const_ty.rs";
+    let abi_ty = "src/analysis/ty/abi_ty.rs";
+    let wrappers: &[(&str, &[(&str, &str)])] = &[
+        (
+            "output_implementation(",
+            &[
+                ("src/analysis/ty/trait_def.rs", "fn output_implementation"),
+                ("src/analysis/ty/normalize.rs", "fn named_output_assoc_ty"),
+                ("src/analysis/ty/result_space.rs", "fn follow_space_key"),
+                (
+                    "src/analysis/ty/effects/rows.rs",
+                    "fn direct_row_components",
+                ),
+            ],
+        ),
+        (
+            "assoc_const_body_template_for_trait_inst(",
+            &[
+                (
+                    "src/analysis/ty/trait_def.rs",
+                    "fn assoc_const_body_template_for_trait_inst",
+                ),
+                (abi_ty, "fn declared_sol_compat_abi_type"),
+            ],
+        ),
+        (
+            "const_ty_from_trait_const(",
+            &[
+                (const_ty, "fn const_ty_from_trait_const"),
+                (const_ty, "fn eval_int_expr"),
+                (const_ty, "fn evaluate_const_ty"),
+            ],
+        ),
+        (
+            "ordinary_const_ty(",
+            &[
+                (const_ty, "fn ordinary_const_ty"),
+                (const_ty, "fn const_ty_from_trait_const"),
+                ("src/analysis/ty/provider.rs", "fn state_index_lanes"),
+            ],
+        ),
+        (
+            "declared_sol_compat_abi_type(",
+            &[
+                (abi_ty, "fn declared_sol_compat_abi_type"),
+                (abi_ty, "fn semantic_ty_to_abi_desc_with_source"),
+            ],
+        ),
+    ];
+    for (path, text) in sources() {
+        for function in functions(&code(&text)) {
+            let head = function.lines().next().unwrap_or_default();
+            for (wrapper, sites) in wrappers {
+                if function.contains(wrapper) {
+                    assert!(
+                        sites
+                            .iter()
+                            .any(|(file, name)| path == *file && head.contains(name)),
+                        "{path}: `{wrapper}` is called in {head}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn traits_lowering_resolves_have_no_named_implementations() {
+    // Generated code selects a core trait's implementation where no frame
+    // reaches it, so every core trait lowering names is one that takes no
+    // named implementation (`UNIQUE_CORE_TRAITS`).
+    let unique = code(&text_of("src/analysis/ty/trait_def.rs"));
+    let start = unique
+        .find("const UNIQUE_CORE_TRAITS")
+        .expect("the list exists");
+    let list = &unique[start..start + unique[start..].find("\n];").expect("the list ends")];
+    let mut named = Vec::new();
+    for (path, text) in sources() {
+        if !(path.starts_with("src/analysis/semantic/") || path.starts_with("../mir/src/")) {
+            continue;
+        }
+        let text = code(&text);
+        for (at, _) in text.match_indices("&[\"") {
+            let rest = &text[at..];
+            let literal = &rest[..rest.find(']').map_or(0, |end| end + 1)];
+            if literal.matches('"').count() == 4 {
+                named.push((path.clone(), literal.to_string()));
+            }
+        }
+    }
+    assert!(!named.is_empty(), "lowering names core traits");
+    for (path, literal) in named {
+        assert!(
+            list.contains(&literal),
+            "{path}: lowering resolves {literal}, which may have named implementations"
+        );
+    }
+}
+
+#[test]
 fn type_reach_reads_one_list() {
     // The types a body writes or names are listed once
     // (`body_type_reads`), with each call's declared types as the call
@@ -683,7 +884,7 @@ fn opened_condition_is_checked_from_every_route() {
     assert!(owed_checks.contains("owed_opened_conditions("));
     // The walk does not count a proof it cannot follow as reading nothing.
     let proof = function("fn ordinary_proof_reads");
-    assert!(proof.contains("_ => return true"));
+    assert!(proof.contains("_ => return ProofReads::Unfollowed"));
 }
 
 #[test]

@@ -760,17 +760,23 @@ pub(crate) enum NamedOutputMismatch<'db> {
     },
 }
 
-/// The traits whose implementation is chosen where no frame reaches it:
-/// storage locations (`StateIndex`, the storage map's `StorageKey`) and
-/// encodings (`AbiSize`, `Encode`, `Decode`, `ErrorVariant`). A named
-/// implementation of one would put a value at another location, or encode
-/// it another way, under a `with` than without it, so they have none.
-const UNIQUE_CORE_TRAITS: [&[&str]; 5] = [
+/// The traits whose implementation is chosen where no frame reaches it, in
+/// generated code: storage locations and their lanes (`StateIndex`,
+/// `LaneCodec`, the storage map's `StorageKey`), encodings (`Abi`, `AbiSize`,
+/// `Encode`, `Decode`, `ErrorVariant`) and the contract host
+/// (`ContractHost`). A named implementation of one would put a value at
+/// another location, or encode it another way, under a `with` than without
+/// it, so they have none. Every core trait lowering resolves is listed here
+/// (a guard checks it).
+const UNIQUE_CORE_TRAITS: [&[&str]; 8] = [
     &["ops", "StateIndex"],
+    &["ops", "LaneCodec"],
+    &["abi", "Abi"],
     &["abi", "AbiSize"],
     &["abi", "Encode"],
     &["abi", "Decode"],
     &["error", "ErrorVariant"],
+    &["contracts", "ContractHost"],
 ];
 
 /// Whether `trait_` may have no named implementation: one of
@@ -950,6 +956,12 @@ pub struct ResolvedMethodInstance<'db> {
 #[derive(Debug, Clone)]
 pub enum MethodArgMapError<'db> {
     MissingBody,
+    /// An evidence parameter of the body that runs, which its call did not
+    /// deliver.
+    UndeliveredEvidence {
+        func: Func<'db>,
+        param: usize,
+    },
     NominalArity {
         expected: usize,
         given: usize,
@@ -1519,18 +1531,6 @@ pub(crate) fn impls_for_ty<'db>(
         .collect()
 }
 
-/// Looks up the selected associated-const body, including an inherited trait
-/// default, if the trait impl is unique.
-pub fn assoc_const_body_for_trait_inst<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-    const_name: IdentId<'db>,
-) -> Option<Body<'db>> {
-    assoc_const_body_template_for_trait_inst(db, solve_cx, inst, const_name)
-        .map(|(body, _, _)| body)
-}
-
 /// Returns the selected body, its declared template type, and the checked
 /// substitution over the body's owner. Explicit impl bodies use impl
 /// arguments; inherited defaults use trait arguments.
@@ -1590,33 +1590,6 @@ fn selected_assoc_const_body_template<'db>(
             CompleteSubst::for_owner(db, trait_.into(), inst.args(db).to_vec()).ok()?,
         ))
     })
-}
-
-/// Whether `inst` is satisfied by a uniquely-selected concrete impl rather than
-/// only by an assumption (e.g. `T: Trait` inside a generic function).
-///
-/// This gates use of a trait associated const's default value: the default may
-/// stand in for the const only when a concrete impl is selected (and inherits
-/// it). For an assumption-satisfied instance the const must stay abstract, so a
-/// concrete impl that overrides it specializes correctly instead of being fixed
-/// to the default.
-pub fn trait_inst_selects_concrete_impl<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-) -> bool {
-    match resolve_trait_impl_instance(
-        db,
-        solve_cx,
-        inst,
-        super::trait_choice::OrdinarySelection::outermost_tier_only(),
-    ) {
-        Selection::Unique(resolved) => !matches!(
-            resolved.selected().origin(db),
-            ImplementorOrigin::Assumption
-        ),
-        Selection::Ambiguous(_) | Selection::NotFound => false,
-    }
 }
 
 /// Represents the trait environment of an ingot, which maintain all trait

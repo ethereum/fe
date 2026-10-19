@@ -19,6 +19,7 @@ use crate::span::{DynLazySpan, types::LazyTySpan};
 use super::{
     BodyOwner, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef, RecordLike, RowArg, Typeable,
     ValuePathRef,
+    choice::RecordedCall,
     effect_env::{
         FamilyKeyedEntry, FrameLookupResult, MatchedForwarder, MatchedKeyedEntry, MatchedWitness,
     },
@@ -255,10 +256,10 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_and_register_const_intrinsic(
+    fn check_const_intrinsic(
         &mut self,
         expr: ExprId,
-        mut callable: Callable<'db>,
+        callable: &mut Callable<'db>,
         kind: ConstIntrinsicKind,
     ) -> bool {
         let ty = match kind {
@@ -266,7 +267,7 @@ impl<'db> TyChecker<'db> {
                 callable.generic_args().first().copied()
             }
             ConstIntrinsicKind::Prove => {
-                if !self.decide_prove(expr, &mut callable) {
+                if !self.decide_prove(expr, callable) {
                     return false;
                 }
                 None
@@ -301,7 +302,6 @@ impl<'db> TyChecker<'db> {
                 _ => {}
             }
         }
-        self.env.register_const_intrinsic(expr, callable, kind);
         true
     }
 
@@ -1820,7 +1820,6 @@ impl<'db> TyChecker<'db> {
         }
 
         callable.check_args(self, args, call_span.clone().args(), None, false);
-        self.deliver_evidence_args(&mut callable, None, args);
         if self.env.written_refusals[*callee]
             || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
         {
@@ -1918,7 +1917,6 @@ impl<'db> TyChecker<'db> {
             Some((callee, callee_prop)),
             false,
         );
-        self.refuse_evidence_value_call_args(args);
         callable.process_constraints(self, expr, call_span.callee().into());
         self.check_callable_effects(expr, &mut callable);
         self.finish_call(expr, callable)
@@ -2123,8 +2121,11 @@ impl<'db> TyChecker<'db> {
             self.env
                 .type_expr(callee, ExprProp::new(callable.ty(self.db), true));
         }
-        self.env
-            .register_code_region_intrinsic(expr, callable.clone(), arg_expr, kind);
+        self.record_call(
+            expr,
+            callable.clone(),
+            RecordedCall::CodeRegion(arg_expr, kind),
+        );
         Some(ExprProp::new(TyId::u256(self.db), true))
     }
 
@@ -2181,6 +2182,22 @@ impl<'db> TyChecker<'db> {
                 EffectRequirementDecl::from_effect_requirement(self.db, &component.requirement)
             }))
             .collect();
+        // A trait provider reached through a component of one of the callee's
+        // rows is not delivered the choice a frame opens for its slot: the
+        // body that reads it would answer it the ordinary way, where the same
+        // provider named in the callee's own `uses` reads the opened one.
+        // Refused under a frame that opens its trait. A row the call forwards
+        // is the caller's, answered where the caller is called, as a generic
+        // provider named in `uses` is.
+        let frame = self.env.choice_frames.current();
+        let row_provider_refused = reqs.iter().any(|req| {
+            row_paths.contains_key(&req.binding_idx)
+                && matches!(
+                    &req.key,
+                    EffectRequirementKey::Trait(schema)
+                        if self.env.frame_opens_trait(frame, schema.def)
+                )
+        });
         for (param_idx, req) in reqs.iter().enumerate() {
             let key_ty = req.key_ty;
             let Some(query) = build_effect_query_for_call(self, callable, req) else {
@@ -2461,6 +2478,12 @@ impl<'db> TyChecker<'db> {
         let mut providers = specialized_providers.into_values().collect::<Vec<_>>();
         providers.sort_by_key(|provider| provider.provider.provider_idx);
         *callable.effect_providers_mut() = providers;
+        if row_provider_refused {
+            self.push_diag(BodyDiag::ObligationOpening {
+                primary: call_span,
+                reason: "a trait provider reached through an effect row does not receive the implementation a `with` opens for its trait yet; name the trait in the callee's `uses`",
+            });
+        }
 
         resolved_args
     }
@@ -3860,7 +3883,6 @@ impl<'db> TyChecker<'db> {
             Some((*receiver, receiver_prop)),
             false,
         );
-        self.deliver_evidence_args(&mut callable, Some(*receiver), args);
         if self.env.written_refusals[expr]
             || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
         {
@@ -3881,7 +3903,7 @@ impl<'db> TyChecker<'db> {
     /// Registers a checked call and types its result. A projection's result
     /// is a place granted by the call's session; its shape says which parts
     /// are accesses.
-    fn finish_call(&mut self, expr: ExprId, callable: Callable<'db>) -> ExprProp<'db> {
+    fn finish_call(&mut self, expr: ExprId, mut callable: Callable<'db>) -> ExprProp<'db> {
         let ret_ty = callable.ret_ty(self.db);
         let ret_ty = self.normalize_ty(ret_ty);
         self.report_instantiated_const_fault(&callable, ret_ty, expr);
@@ -3889,11 +3911,12 @@ impl<'db> TyChecker<'db> {
             .ret_shape(self.db)
             .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
         if let Some(kind) = self.const_intrinsic_kind(callable.callable_def()) {
-            if !self.check_and_register_const_intrinsic(expr, callable, kind) {
+            if !self.check_const_intrinsic(expr, &mut callable, kind) {
                 return ExprProp::invalid(self.db);
             }
+            self.record_call(expr, callable, RecordedCall::Const(kind));
         } else {
-            self.env.register_semantic_call(expr, callable);
+            self.record_call(expr, callable, RecordedCall::Call);
         }
         ExprProp {
             is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
@@ -5240,7 +5263,7 @@ impl<'db> TyChecker<'db> {
         let shape = callable
             .ret_shape(self.db)
             .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
-        self.env.register_semantic_call(expr, callable);
+        self.record_call(expr, callable, RecordedCall::Call);
         ExprProp {
             is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
             shape,

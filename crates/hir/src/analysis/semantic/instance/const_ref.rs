@@ -15,7 +15,7 @@ use crate::{
                 ConstCanonEnv, ConstCanonMode, canonicalize_ty_for_mode,
                 inherent_const_body_and_impl_args, inherent_const_decl_ty,
             },
-            corelib::resolve_core_trait,
+            corelib::{evidence_params, resolve_core_trait},
             effects::{
                 place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowPath, expand_rows},
@@ -23,7 +23,7 @@ use crate::{
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
-            trait_choice::{Resolved, SlotChoices, body_deliveries},
+            trait_choice::{Resolved, SlotChoices, SlotRef, body_deliveries},
             trait_def::{
                 ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId,
                 resolve_trait_method_instance,
@@ -914,6 +914,21 @@ fn semantic_callee_key_with_assumptions<'db>(
             .map(|(slot, choice)| (slot, caller_choices.resolve(Some(choice))))
             .collect(),
     );
+    // Every call form delivers each evidence operand (`record_call`). An
+    // evidence parameter a call left undelivered would make the instance
+    // pending, and a compile-time read of it would count as not yet known
+    // rather than as refused: it is an error here. A root (no caller) is
+    // pending by design.
+    if caller.is_some()
+        && let Some(param) = evidence_params(db, body_func)
+            .into_iter()
+            .find(|param| delivered.get(SlotRef::EvidenceParam(*param)).is_none())
+    {
+        return Err(MethodArgMapError::UndeliveredEvidence {
+            func: body_func,
+            param: param as usize,
+        });
+    }
     let owner = BodyOwner::func_at(db, body_func, callable.mode());
     // One meaning for the call: the body the checker read where the call is
     // written, recorded for a concrete goal, is the body the instance runs.

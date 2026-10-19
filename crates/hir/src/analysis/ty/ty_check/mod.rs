@@ -1453,6 +1453,7 @@ fn typed_body_for_bodyless_func<'db>(
         const_reaches: Vec::new(),
         effect_with_operands: Vec::new(),
         choice_refusals: Vec::new(),
+        expr_premises: SecondaryMap::new(),
     }
     .into()
 }
@@ -2655,16 +2656,6 @@ impl<'db> TyChecker<'db> {
                                     Some((receiver, receiver_prop)),
                                     true,
                                 );
-                                if self.env.is_value_call(pending.expr) {
-                                    self.refuse_evidence_value_call_args(call_args);
-                                } else {
-                                    self.deliver_evidence_args(
-                                        &mut callable,
-                                        Some(receiver),
-                                        call_args,
-                                    );
-                                }
-
                                 callable.process_constraints(
                                     self,
                                     pending.expr,
@@ -2701,14 +2692,17 @@ impl<'db> TyChecker<'db> {
                                         )
                                     })
                                 {
-                                    self.env.register_code_region_intrinsic(
+                                    self.record_call(
                                         pending.expr,
                                         callable,
-                                        call_args[0].expr,
-                                        kind,
+                                        choice::RecordedCall::CodeRegion(call_args[0].expr, kind),
                                     );
                                 } else {
-                                    self.env.register_semantic_call(pending.expr, callable);
+                                    self.record_call(
+                                        pending.expr,
+                                        callable,
+                                        choice::RecordedCall::Call,
+                                    );
                                 }
                             }
 
@@ -4237,6 +4231,9 @@ mod typed_body_tables {
         pub(super) effect_with_operands: Vec<ExprId>,
         /// Trait uses refused once their decisions are known.
         pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
+        /// The premises where an expression was typed, when a `with` added
+        /// goals to the body's own.
+        pub(super) expr_premises: SecondaryMap<ExprId, Option<PredicateListId<'db>>>,
     }
 }
 use typed_body_tables::TypedBodyTables;
@@ -4616,6 +4613,10 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
         this.path_applications
             .iter_mut()
             .for_each(|(_, ty)| *ty = ty.fold_with(db, folder));
+        this.expr_premises
+            .values_mut()
+            .flatten()
+            .for_each(|premises| *premises = premises.fold_with(db, folder));
         this.into()
     }
 }
@@ -4696,6 +4697,12 @@ impl<'db> TypedBody<'db> {
         &self,
     ) -> &[(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)] {
         &self.tables.choice_refusals
+    }
+
+    /// The premises where `expr` was typed, when a `with` added goals to the
+    /// body's own.
+    pub(crate) fn expr_premises(&self, expr: ExprId) -> Option<PredicateListId<'db>> {
+        self.tables.expr_premises.get(expr).copied().flatten()
     }
 
     /// Whether a `with` binding value opens a trait choice.
@@ -6362,6 +6369,7 @@ impl<'db> TypedBody<'db> {
             const_reaches: Vec::new(),
             effect_with_operands: Vec::new(),
             choice_refusals: Vec::new(),
+            expr_premises: SecondaryMap::new(),
         }
         .into()
     }
@@ -6675,7 +6683,10 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
             let is_direct_call_callee =
                 matches!(expr_data, Expr::Path(..)) && self.direct_call_callees.contains(&expr);
             if prop.binding.is_none() && !is_direct_call_callee {
-                self.check_wf(prop.ty, span.into());
+                // Under the premises where the expression was written: a
+                // `with` makes the goals it opens premises of its block.
+                let premises = self.body.expr_premises(expr).unwrap_or(self.assumptions);
+                self.check_wf(prop.ty, span.into(), premises);
             }
         }
 
@@ -7011,14 +7022,19 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
     }
 
-    fn check_wf(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) {
+    fn check_wf(
+        &mut self,
+        ty: TyId<'db>,
+        span: DynLazySpan<'db>,
+        assumptions: PredicateListId<'db>,
+    ) {
         let flags = ty.flags(self.db);
         if flags.contains(TyFlags::HAS_INVALID) || flags.contains(TyFlags::HAS_VAR) {
             return;
         }
 
         let solve_cx = TraitSolveCx::new(self.db, self.body.body().unwrap().scope());
-        if let Some(diag) = ty.emit_wf_diag(self.db, solve_cx, self.assumptions, span) {
+        if let Some(diag) = ty.emit_wf_diag(self.db, solve_cx, assumptions, span) {
             self.diags.push(diag.into());
         }
     }

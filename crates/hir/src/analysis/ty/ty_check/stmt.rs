@@ -305,7 +305,7 @@ impl<'db> TyChecker<'db> {
                         AccessBinding::Result,
                     );
                 }
-                self.env.register_for_loop_plan(stmt, plan);
+                self.record_loop_plan(stmt, plan);
             }
             None => {
                 self.check_pat(*pat, TyId::invalid(self.db, InvalidCause::Other));

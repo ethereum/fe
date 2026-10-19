@@ -42,6 +42,7 @@ fn request(_ subject: Subject) {}
         cx,
         goal,
         method_name,
+        None,
         fe_hir::analysis::ty::trait_choice::OrdinarySelection::for_tests(),
     ) else {
         panic!("named alternatives must not alter ordinary selection")

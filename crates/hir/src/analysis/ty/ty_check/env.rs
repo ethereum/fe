@@ -167,9 +167,13 @@ pub(crate) struct TyCheckEnv<'db> {
     pub(super) effect_with_operands: Vec<ExprId>,
     /// Trait uses refused once their decisions are known.
     pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
+    /// The premises where an expression was typed, when a `with` added
+    /// goals to the body's own (`add_opened_premise`).
+    pub(super) expr_premises: SecondaryMap<ExprId, Option<PredicateListId<'db>>>,
     /// Whether a goal's ordinary proof reads a slot a frame opened, as
     /// computed once per frame and goal (`conditions_read_frame`).
-    pub(super) conditions_read: std::cell::RefCell<FxHashMap<(FrameId, TraitInstId<'db>), bool>>,
+    pub(super) conditions_read:
+        std::cell::RefCell<FxHashMap<(FrameId, TraitInstId<'db>), super::choice::ProofReads>>,
     /// A constant body written under a `with` whose opened slot is not
     /// written down (`seed_written_frames`).
     pub(super) written_unknown: bool,
@@ -301,6 +305,7 @@ impl<'db> TyCheckEnv<'db> {
             const_reaches: Vec::new(),
             effect_with_operands: Vec::new(),
             choice_refusals: Vec::new(),
+            expr_premises: SecondaryMap::new(),
             conditions_read: Default::default(),
             written_unknown: false,
         };
@@ -1364,6 +1369,8 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn type_expr(&mut self, expr: ExprId, typed: ExprProp<'db>) {
         self.expr_ty[expr] = Some(typed);
+        self.expr_premises[expr] =
+            (self.assumptions != self.base_assumptions).then_some(self.assumptions);
     }
 
     pub(super) fn type_pat(&mut self, pat: PatId, ty: TyId<'db>) {
@@ -1530,6 +1537,10 @@ impl<'db> TyCheckEnv<'db> {
             .values_mut()
             .flatten()
             .for_each(|plan| *plan = plan.clone().fold_with(self.db, &mut prober));
+        self.expr_premises
+            .values_mut()
+            .flatten()
+            .for_each(|premises| *premises = premises.fold_with(self.db, &mut prober));
         self.record_choice_decisions();
         let assumptions = self.assumptions.fold_with(self.db, &mut prober);
         let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
@@ -1609,6 +1620,7 @@ impl<'db> TyCheckEnv<'db> {
             const_reaches: self.const_reaches,
             effect_with_operands: self.effect_with_operands,
             choice_refusals: self.choice_refusals,
+            expr_premises: self.expr_premises,
         }
         .into()
     }

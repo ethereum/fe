@@ -38,7 +38,7 @@ fn request(_ subject: Subject) {}
     assert_eq!(checked.associated_type(output), Some(TyId::u256(&db)));
     let mut bindings = IndexMap::new();
     bindings.insert(output, TyId::bool(&db));
-    let wrong = TraitInstId::new(&db, trait_, vec![subject], bindings);
+    let wrong = TraitInstId::new(&db, trait_, vec![subject], bindings, goal.mode(&db));
     assert_eq!(
         checked.revalidate(cx, wrong).unwrap_err(),
         CheckedApplicationError::NotProven

@@ -2849,15 +2849,9 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
         {
             continue;
         }
-        // A method call's receiver is its first argument.
-        let (receiver, args) = match expr.data(db, body) {
-            Partial::Present(Expr::Call(_, args)) => (None, args),
-            Partial::Present(Expr::MethodCall(receiver, _, _, args)) => (Some(*receiver), args),
-            _ => continue,
-        };
-        for param in receiver
+        // Every call form's operands, as evidence is delivered to them.
+        for param in super::choice::call_operands(db, body, expr)
             .into_iter()
-            .chain(args.iter().map(|arg| arg.expr))
             .filter_map(param_of)
         {
             push(OwedCheck::NoEvidence { param }, &mut owed);

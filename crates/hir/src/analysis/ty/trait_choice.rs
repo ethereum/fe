@@ -515,6 +515,10 @@ pub enum ChoiceRefusal {
     /// It passes ordinary evidence for a bound whose implementation has a
     /// condition on a slot opened here (a conditional implementation).
     OpenedCondition,
+    /// It passes ordinary evidence for a bound whose proof cannot be followed
+    /// while a slot is opened here (no single implementation, or a walk past
+    /// its limits), so it is not known to avoid the opened slot.
+    UnfollowedProof,
     /// A type its callee declares (an argument, the result, an effect's
     /// key) reads a constant of a slot opened here.
     DependentType,

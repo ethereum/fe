@@ -9,7 +9,7 @@
 use num_bigint::BigInt;
 
 use super::{
-    Callable, ConstRef, ExprProp, LocalBinding, SemanticExprLowering, TyChecker,
+    Callable, ConstRef, ExprProp, ForLoopPlan, LocalBinding, SemanticExprLowering, TyChecker,
     env::{ParamSite, TyCheckEnv},
     expr::resolve_ident_expr,
     path::ResolvedPathInBody,
@@ -26,7 +26,7 @@ use crate::{
         ty::{
             const_expr::ConstExpr,
             const_ty::{ConstTyData, ConstTyId, LoweringContext},
-            corelib::evidence_goal,
+            corelib::{evidence_goal, lib_func_matches},
             diagnostics::BodyDiag,
             fold::{TyFoldable, TyFolder},
             trait_choice::{
@@ -44,7 +44,7 @@ use crate::{
             visitor::{TyVisitable, TyVisitor, walk_const_ty},
         },
     },
-    hir_def::{BinOp, CallableDef, Expr, ExprId, LitKind, Partial, PatId},
+    hir_def::{BinOp, CallableDef, Expr, ExprId, LitKind, Partial, PatId, StmtId},
     span::DynLazySpan,
 };
 
@@ -367,6 +367,61 @@ pub(super) fn calls_directly<'db>(
     }
 }
 
+/// The goal `prove<G>` reads where it is written, whether it is called there
+/// or taken as a value: its generic argument `G`, read through `resolve`.
+/// The one statement of what `prove` reads, for its call (`decide_prove`)
+/// and for its value (`call_uses`).
+fn prove_goal<'db>(
+    db: &'db dyn HirAnalysisDb,
+    callable: &Callable<'db>,
+    mut resolve: impl FnMut(TyId<'db>) -> TyId<'db>,
+) -> Option<TraitInstId<'db>> {
+    let CallableDef::Func(func) = callable.callable_def() else {
+        return None;
+    };
+    if !lib_func_matches(db, func, "core::obligations::prove") {
+        return None;
+    }
+    match resolve(*callable.generic_args().first()?).data(db) {
+        TyData::ConstraintTerm(goal) => Some(*goal),
+        _ => None,
+    }
+}
+
+/// How a recorded call is lowered (`TyChecker::record_call`).
+pub(super) enum RecordedCall {
+    /// A call of its callable.
+    Call,
+    /// A code-region intrinsic, with its region argument.
+    CodeRegion(ExprId, super::CodeRegionIntrinsicKind),
+    /// A compile-time intrinsic: `size_of`, `storage_slots`, `prove`.
+    Const(super::ConstIntrinsicKind),
+}
+
+/// The operands of the call `expr`, in its callee's parameter order: a call's
+/// arguments, a method call's receiver and then its arguments, an operator's
+/// operands (an index's base and index, a compound assignment's target and
+/// value). The one statement of which expression fills which parameter, read
+/// where evidence is delivered (`record_call`) and where its absence is owed
+/// (`owed_checks`).
+pub(super) fn call_operands<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: crate::hir_def::Body<'db>,
+    expr: ExprId,
+) -> Vec<ExprId> {
+    match expr.data(db, body) {
+        Partial::Present(Expr::Call(_, args)) => args.iter().map(|arg| arg.expr).collect(),
+        Partial::Present(Expr::MethodCall(receiver, _, _, args)) => std::iter::once(*receiver)
+            .chain(args.iter().map(|arg| arg.expr))
+            .collect(),
+        Partial::Present(Expr::Bin(lhs, rhs, _) | Expr::AugAssign(lhs, rhs, _)) => {
+            vec![*lhs, *rhs]
+        }
+        Partial::Present(Expr::Un(operand, _)) => vec![*operand],
+        _ => Vec::new(),
+    }
+}
+
 /// A value whose call runs a function value's body: a closure or a function
 /// item, behind any capability.
 pub(super) fn is_function_value<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
@@ -474,7 +529,7 @@ pub(super) fn owed_opened_conditions<'db>(
         }
         seen.push(goal);
         let mut reads = Vec::new();
-        let unknown = ordinary_proof_reads(db, cx, goal, |condition| {
+        let proof = ordinary_proof_reads(db, cx, goal, |condition| {
             let condition = slot_goal(db, condition);
             if own.contains(&condition) && !reads.contains(&condition) {
                 reads.push(condition);
@@ -482,7 +537,11 @@ pub(super) fn owed_opened_conditions<'db>(
             false
         });
         // A proof that cannot be followed is not known to avoid any slot.
-        let reads = if unknown { own.clone() } else { reads };
+        let reads = if proof == ProofReads::Nothing {
+            reads
+        } else {
+            own.clone()
+        };
         for slot in reads {
             if !owed.contains(&slot) {
                 owed.push(slot);
@@ -490,6 +549,16 @@ pub(super) fn owed_opened_conditions<'db>(
         }
     }
     owed
+}
+
+/// What an ordinary proof reads (`ordinary_proof_reads`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ProofReads {
+    Nothing,
+    /// An implementation condition the caller's `reads` accepts.
+    Condition,
+    /// A step that cannot be followed, which is never "reads nothing".
+    Unfollowed,
 }
 
 /// Whether the ordinary proof of `goal` uses, at any depth, an implementation
@@ -503,7 +572,7 @@ fn ordinary_proof_reads<'db>(
     cx: TraitSolveCx<'db>,
     goal: TraitInstId<'db>,
     mut reads: impl FnMut(TraitInstId<'db>) -> bool,
-) -> bool {
+) -> ProofReads {
     let mut seen = rustc_hash::FxHashSet::default();
     let mut pending = vec![(goal, 0)];
     while let Some((goal, depth)) = pending.pop() {
@@ -527,7 +596,7 @@ fn ordinary_proof_reads<'db>(
         if goal.args(db).iter().any(|ty| ty.has_var(db))
             || !choice_walk_step_within_limits(db, WalkStep::Proof, depth)
         {
-            return true;
+            return ProofReads::Unfollowed;
         }
         let resolved = match resolve_trait_impl_instance(
             db,
@@ -536,7 +605,7 @@ fn ordinary_proof_reads<'db>(
             crate::analysis::ty::trait_choice::OrdinarySelection::decides_nothing(),
         ) {
             Selection::Unique(resolved) => resolved,
-            _ => return true,
+            _ => return ProofReads::Unfollowed,
         };
         let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(db) else {
             continue;
@@ -550,12 +619,12 @@ fn ordinary_proof_reads<'db>(
         .iter()
         {
             if reads(*condition) {
-                return true;
+                return ProofReads::Condition;
             }
             pending.push((*condition, depth + 1));
         }
     }
-    false
+    ProofReads::Nothing
 }
 
 /// The slots a constant use reads, each with its recorded decision: a trait
@@ -1688,43 +1757,73 @@ impl<'db> TyChecker<'db> {
             )
     }
 
+    /// Records the call `expr`. Every call form is recorded here and nowhere
+    /// else: a path, method or value call, a method chosen after the body is
+    /// checked, an operator, an index, a compound assignment and an
+    /// intrinsic. Its evidence operands (`call_operands`) are delivered in
+    /// parameter order, so no form can skip delivery; a call of a callable
+    /// value refuses them instead.
+    pub(super) fn record_call(
+        &mut self,
+        expr: ExprId,
+        mut callable: Callable<'db>,
+        form: RecordedCall,
+    ) {
+        let operands = call_operands(self.db, self.body(), expr);
+        if self.env.is_value_call(expr) {
+            self.refuse_evidence_value_call_args(&operands);
+        } else {
+            self.deliver_evidence_args(&mut callable, &operands);
+        }
+        match form {
+            RecordedCall::Call => self.env.register_semantic_call(expr, callable),
+            RecordedCall::CodeRegion(region_arg, kind) => self
+                .env
+                .register_code_region_intrinsic(expr, callable, region_arg, kind),
+            RecordedCall::Const(kind) => self.env.register_const_intrinsic(expr, callable, kind),
+        }
+    }
+
+    /// Records the `for` loop `stmt`'s plan, whose protocol calls are calls
+    /// written at the loop. They take the driver, the base and the loop's
+    /// state, which is a value the loop makes, not one written here: a state
+    /// that holds evidence would reach its calls with no choice, so it is
+    /// refused.
+    pub(super) fn record_loop_plan(&mut self, stmt: StmtId, plan: ForLoopPlan<'db>) {
+        if self.holds_evidence(plan.state_ty) {
+            self.push_diag(BodyDiag::ObligationOpening {
+                primary: plan.base.span(self.body()).into(),
+                reason: "a `for` loop whose state holds evidence is not supported yet; its protocol calls would receive it with no choice",
+            });
+        }
+        self.env.register_for_loop_plan(stmt, plan);
+    }
+
     /// A call of a callable value (a closure, or a function reached through
     /// a block) runs a body that receives no decisions from the call: an
     /// argument that holds evidence is refused, not delivered.
-    pub(super) fn refuse_evidence_value_call_args(
-        &mut self,
-        args: &[crate::hir_def::CallArg<'db>],
-    ) {
-        for arg in args {
-            let Some(prop) = self.env.typed_expr(arg.expr) else {
+    fn refuse_evidence_value_call_args(&mut self, args: &[ExprId]) {
+        for &arg in args {
+            let Some(prop) = self.env.typed_expr(arg) else {
                 continue;
             };
             let ty = self.resolved_ty(prop.ty);
             if self.holds_evidence(ty) {
                 self.push_diag(BodyDiag::ObligationOpening {
-                    primary: arg.expr.span(self.body()).into(),
+                    primary: arg.span(self.body()).into(),
                     reason: "evidence cannot be passed to a callable value yet; call the function by name",
                 });
             }
         }
     }
 
-    /// Denote the evidence arguments of a call, in parameter order. A method
+    /// Denote the evidence operands of a call, in parameter order. A method
     /// call's receiver is its parameter 0, whichever way the method is
     /// resolved: a receiver of evidence type is an evidence parameter of the
     /// method, as it is when the method is called by its path.
-    pub(super) fn deliver_evidence_args(
-        &mut self,
-        callable: &mut Callable<'db>,
-        receiver: Option<ExprId>,
-        args: &[crate::hir_def::CallArg<'db>],
-    ) {
-        let exprs: Vec<ExprId> = receiver
-            .into_iter()
-            .chain(args.iter().map(|arg| arg.expr))
-            .collect();
+    fn deliver_evidence_args(&mut self, callable: &mut Callable<'db>, operands: &[ExprId]) {
         let mut delivered = Vec::new();
-        for (param, expr) in exprs.into_iter().enumerate() {
+        for (param, &expr) in operands.iter().enumerate() {
             let Some(prop) = self.env.typed_expr(expr) else {
                 continue;
             };
@@ -1743,14 +1842,7 @@ impl<'db> TyChecker<'db> {
     /// `prove<G>()` answers `G` where it is written: from the frame in force,
     /// otherwise with the ordinary implementation of a concrete `G`.
     pub(super) fn decide_prove(&mut self, expr: ExprId, callable: &mut Callable<'db>) -> bool {
-        let goal = callable
-            .generic_args()
-            .first()
-            .map(|term| self.resolved_ty(*term))
-            .and_then(|term| match term.data(self.db) {
-                TyData::ConstraintTerm(goal) => Some(*goal),
-                _ => None,
-            });
+        let goal = prove_goal(self.db, callable, |term| self.resolved_ty(term));
         let result = match goal {
             None => Err("expected one trait goal"),
             Some(goal) => {
@@ -1764,21 +1856,30 @@ impl<'db> TyChecker<'db> {
                     None if slot.args(self.db).iter().any(|ty| ty.has_param(self.db)) => {
                         Err("a generic goal can be proved only under a `with` that opens it")
                     }
-                    // Proved through a condition on an opened slot: refused as the call
-                    // form of the same goal is.
-                    None if self.env.reads_opened_condition(
+                    // Proved through a condition on an opened slot, or by a
+                    // proof that cannot be followed: refused as the call form
+                    // of the same goal is.
+                    None => match self.env.reads_opened_condition(
                         self.env.choice_frames.current(),
                         [goal],
                         None,
-                    ) =>
-                    {
-                        self.push_diag(BodyDiag::ObligationOpening {
-                            primary: expr.span(self.body()).into(),
-                            reason: "the goal is proved through an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet",
-                        });
-                        return false;
-                    }
-                    None => self.ordinary_choice(goal).map(Choice::Known),
+                    ) {
+                        Some(refusal) => {
+                            self.push_diag(BodyDiag::ObligationOpening {
+                                primary: expr.span(self.body()).into(),
+                                reason: match refusal {
+                                    ChoiceRefusal::OpenedCondition => {
+                                        "the goal is proved through an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet"
+                                    }
+                                    _ => {
+                                        "the goal's proof cannot be followed to one implementation while a slot is opened here, so it is not known to avoid that slot; this is not supported yet"
+                                    }
+                                },
+                            });
+                            return false;
+                        }
+                        None => self.ordinary_choice(goal).map(Choice::Known),
+                    },
                 }
             }
         };
@@ -1875,6 +1976,15 @@ impl<'db> TyCheckEnv<'db> {
             return None;
         }
         self.choice_frames.lookup(frame, self.normalized_slot(inst))
+    }
+
+    /// Whether `frame` opens a slot of `trait_`.
+    pub(super) fn frame_opens_trait(
+        &self,
+        frame: Option<FrameId>,
+        trait_: crate::hir_def::Trait<'db>,
+    ) -> bool {
+        self.choice_frames.opens_trait(self.db(), frame, trait_)
     }
 
     /// Whether `frame` answers all of `goal`: inside the block that opened
@@ -2052,8 +2162,8 @@ impl<'db> TyCheckEnv<'db> {
             .filter(|(_, _, choice)| choice.is_none())
             .map(|(_, goal, _)| *goal)
             .chain(undecided_candidates);
-        if self.reads_opened_condition(frame, undecided, own_slot) {
-            return Err(ChoiceRefusal::OpenedCondition);
+        if let Some(refusal) = self.reads_opened_condition(frame, undecided, own_slot) {
+            return Err(refusal);
         }
         let mut delivered: Vec<(Delivery<'db>, Choice<'db>)> = Vec::new();
         for (bound, _, choice) in decided {
@@ -2122,27 +2232,38 @@ impl<'db> TyCheckEnv<'db> {
         bodies
     }
 
-    /// Whether a bound left to its callee's ordinary selection, other than
-    /// `exempt` (a use's own slot), is proved through a condition on a slot
-    /// `frame` opened.
+    /// The refusal of a bound left to its callee's ordinary selection, other
+    /// than `exempt` (a use's own slot), that is proved through a condition
+    /// on a slot `frame` opened, or whose proof cannot be followed there.
     fn reads_opened_condition(
         &self,
         frame: Option<FrameId>,
         undecided: impl IntoIterator<Item = TraitInstId<'db>>,
         exempt: Option<TraitInstId<'db>>,
-    ) -> bool {
-        has_frames(frame)
-            && undecided
-                .into_iter()
-                .any(|goal| Some(goal) != exempt && self.conditions_read_frame(frame, goal))
+    ) -> Option<ChoiceRefusal> {
+        if !has_frames(frame) {
+            return None;
+        }
+        let mut unfollowed = false;
+        for goal in undecided {
+            if Some(goal) == exempt {
+                continue;
+            }
+            match self.conditions_read_frame(frame, goal) {
+                ProofReads::Condition => return Some(ChoiceRefusal::OpenedCondition),
+                ProofReads::Unfollowed => unfollowed = true,
+                ProofReads::Nothing => {}
+            }
+        }
+        unfollowed.then_some(ChoiceRefusal::UnfollowedProof)
     }
 
     /// Whether the ordinary proof of `goal` uses, at any depth, an
     /// implementation condition whose slot `frame` opened. Computed once per
     /// frame and goal: a body's uses ask about the same proofs again.
-    fn conditions_read_frame(&self, frame: Option<FrameId>, goal: TraitInstId<'db>) -> bool {
+    fn conditions_read_frame(&self, frame: Option<FrameId>, goal: TraitInstId<'db>) -> ProofReads {
         let Some(frame_id) = frame else {
-            return false;
+            return ProofReads::Nothing;
         };
         if let Some(known) = self.conditions_read.borrow().get(&(frame_id, goal)) {
             return *known;
@@ -2157,7 +2278,7 @@ impl<'db> TyCheckEnv<'db> {
     /// The walk behind `conditions_read_frame`: the ordinary proof as it
     /// runs in `frame`, whose opened goals are premises there as they were
     /// while the block was checked (`add_premise_if_needed`).
-    fn walk_conditions(&self, frame: FrameId, goal: TraitInstId<'db>) -> bool {
+    fn walk_conditions(&self, frame: FrameId, goal: TraitInstId<'db>) -> ProofReads {
         let db = self.db();
         let mut premises = self.assumptions().list(db).to_vec();
         for opened in self.choice_frames.opened(Some(frame)) {
@@ -2181,6 +2302,7 @@ impl<'db> TyCheckEnv<'db> {
             return Vec::new();
         };
         let mut uses = callable.trait_inst.into_iter().collect::<Vec<_>>();
+        uses.extend(prove_goal(db, callable, |term| term));
         uses.extend(
             declared_goals(db, func, callable.generic_args())
                 .into_iter()
@@ -2357,9 +2479,8 @@ impl<'db> TyCheckEnv<'db> {
             // call's are, and refused as a call's are when proved through a
             // condition on an opened slot.
             let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
-            if self.reads_opened_condition(frame, undecided, own_slot) {
-                self.choice_refusals
-                    .push((expr, ChoiceRefusal::OpenedCondition));
+            if let Some(refusal) = self.reads_opened_condition(frame, undecided, own_slot) {
+                self.choice_refusals.push((expr, refusal));
             }
             if !captured.is_empty() {
                 self.function_value_choices.push((expr, captured));
@@ -2612,8 +2733,10 @@ impl<'db> TyCheckEnv<'db> {
                 items
             }
         };
-        if self.reads_opened_condition(frame, undecided, Some(slot_goal(db, use_.inst()))) {
-            return Err(ChoiceRefusal::OpenedCondition);
+        if let Some(refusal) =
+            self.reads_opened_condition(frame, undecided, Some(slot_goal(db, use_.inst())))
+        {
+            return Err(refusal);
         }
         Ok(use_.with_delivered((!items.is_empty()).then(|| DeliveryList::new(db, items))))
     }
@@ -2652,8 +2775,8 @@ impl<'db> TyCheckEnv<'db> {
         let mut undecided = Vec::new();
         let items =
             self.body_decisions(frame, (body, ty, subst), false, &mut undecided, reached)?;
-        if self.reads_opened_condition(frame, undecided, None) {
-            return Err(ChoiceRefusal::OpenedCondition);
+        if let Some(refusal) = self.reads_opened_condition(frame, undecided, None) {
+            return Err(refusal);
         }
         Ok(use_.with_delivered((!items.is_empty()).then(|| DeliveryList::new(db, items))))
     }
@@ -2926,6 +3049,11 @@ pub(super) fn check_choice_uses<'db>(
             ChoiceRefusal::OpenedCondition => BodyDiag::ObligationOpening {
                 primary,
                 reason: "a bound of this call is answered by an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet",
+            }
+            .into(),
+            ChoiceRefusal::UnfollowedProof => BodyDiag::ObligationOpening {
+                primary,
+                reason: "a bound of this call has a proof that cannot be followed to one implementation while a slot is opened here, so it is not known to avoid that slot; this is not supported yet",
             }
             .into(),
             ChoiceRefusal::DependentType => BodyDiag::ChoiceDependentType { primary }.into(),
