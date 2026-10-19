@@ -381,16 +381,19 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         key: &Self::Key,
     ) -> Result<CallbackOutcome<Vec<Self::Clause>, Self::StopReason>, Self::Error> {
         let prepared = self.prepare_query(*key);
+        // An impl lives in its self type's ingot or its trait's. The self type
+        // is the normalized one: `<Identity as Driver<[P; 2]>>::Item: Copy` is
+        // `P: Copy`, whose impl is in `P`'s ingot, not `Identity`'s.
         let (primary, secondary) = TraitSolveCx::search_ingots_for_trait_inst_with_origin(
             self.db,
             self.origin_ingot,
-            prepared.query.goal,
+            prepared.normalized_goal,
         );
         let implementors = impls_for_trait_in_ingots(
             self.db,
             primary,
             secondary,
-            Canonical::new(self.db, prepared.query.goal),
+            Canonical::new(self.db, prepared.normalized_goal),
         );
 
         let mut clauses =
