@@ -853,6 +853,31 @@ where
     )
 }
 
+/// The trait that the bare ident `path`, written where a trait is expected in
+/// `scope`, names although it resolves to `definition`, an associated type of
+/// an enclosing trait that lexically shadows a same-named trait
+/// (`trait Abi { type Decoder: Decoder<Self> }`). It is looked up from outside
+/// the shadowing trait.
+fn shadowed_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    definition: NameResKind<'db>,
+) -> Option<&'db NameRes<'db>> {
+    if let NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _)) = definition
+        && path.parent(db).is_none()
+        // The shadow can only come from a trait that encloses the use site.
+        && scope.is_transitive_child_of(db, shadowing_trait.scope())
+        && let Some(outer_scope) = shadowing_trait.scope().parent(db)
+        && let Ok(outer) = resolve_ident_to_bucket(db, path, outer_scope).pick(NameDomain::TYPE)
+        && matches!(outer.kind, NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))))
+    {
+        Some(outer)
+    } else {
+        None
+    }
+}
+
 /// Resolves `path` written where a trait is expected.
 ///
 /// What the path names is looked up before any generic args are lowered
@@ -877,13 +902,8 @@ where
 {
     let is_trait = |kind| matches!(kind, NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))));
     let definition = resolve_type_path_definition(db, path, scope);
-    if let Some(NameResKind::Scope(ScopeId::TraitType(shadowing_trait, _))) = definition
-        && path.parent(db).is_none()
-        // The shadow can only come from a trait that encloses the use site.
-        && scope.is_transitive_child_of(db, shadowing_trait.scope())
-        && let Some(outer_scope) = shadowing_trait.scope().parent(db)
-        && let Ok(outer) = resolve_ident_to_bucket(db, path, outer_scope).pick(NameDomain::TYPE)
-        && is_trait(outer.kind)
+    if let Some(outer) =
+        definition.and_then(|definition| shadowed_trait(db, path, scope, definition))
     {
         let res =
             resolve_name_res_with_minter(db, outer, None, path, scope, assumptions, lowering_cx)?;
@@ -2009,9 +2029,11 @@ fn select_assoc_const_candidate<'db>(
 /// The traits whose items a `Type::Item` path in `scope` may select: those in
 /// scope, the traits of `assumptions`, and all their super-traits.
 ///
-/// Super-traits are found from their paths alone. Lowering a super-trait
-/// reference could resolve the path being selected again, as `u8::N` in
-/// `trait Top: Parent<{ u8::N }>`, where `Top` is itself in scope.
+/// Super-traits are found from their paths alone, as lowering names them.
+/// Lowering a super-trait reference could resolve the path being selected
+/// again, as `u8::N` in `trait Top: Parent<{ u8::N }>`, where `Top` is itself
+/// in scope. Any super-trait missed here would silently make another candidate
+/// the only one in scope.
 fn traits_available_for_selection<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -2036,7 +2058,10 @@ fn traits_available_for_selection<'db>(
             .filter(|pred| pred.is_self_subject(db))
             .flat_map(|pred| pred.bounds(db).map(|bound| bound.trait_ref(db)));
         pending.extend(super_refs.chain(self_bounds).filter_map(|trait_ref| {
-            match resolve_type_path_definition(db, trait_ref.path(db).to_opt()?, trait_def.scope())?
+            let path = trait_ref.path(db).to_opt()?;
+            let scope = trait_def.scope();
+            let definition = resolve_type_path_definition(db, path, scope)?;
+            match shadowed_trait(db, path, scope, definition).map_or(definition, |outer| outer.kind)
             {
                 NameResKind::Scope(ScopeId::Item(ItemKind::Trait(super_trait))) => {
                     Some(super_trait)
