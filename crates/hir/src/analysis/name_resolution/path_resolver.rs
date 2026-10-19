@@ -3,16 +3,17 @@ use crate::hir_def::{CallableDef, Func};
 use crate::{
     core::hir_def::{
         Const, Enum, EnumVariant, GenericArgListId, GenericParamOwner, HirIngot, IdentId, Impl,
-        ImplTrait, ItemKind, Partial, PathId, PathKind, Trait, TypeBound, TypeKind, VariantKind,
-        scope_graph::ScopeId,
+        ImplTrait, ItemKind, Partial, PathId, PathKind, Trait, TypeBound, TypeId, TypeKind,
+        VariantKind, scope_graph::ScopeId,
     },
     core::semantic::trait_self_predicate,
-    span::{DynLazySpan, path::LazyPathSpan},
+    span::{DynLazySpan, path::LazyPathSpan, types::LazyTySpan},
 };
 use common::indexmap::{IndexMap, IndexSet};
 use either::Either;
 use rustc_hash::FxHashMap;
 use smallvec::{SmallVec, smallvec};
+use std::iter::successors;
 use thin_vec::ThinVec;
 
 use super::{
@@ -117,11 +118,13 @@ pub enum PathResErrorKind<'db> {
         expected: Option<TyId<'db>>,
         given: Option<TyId<'db>>,
     },
-    /// A type argument or associated type binding of a trait path names no
-    /// type: `Ok` with what it names instead, `Err` with why it does not
-    /// resolve.
+    /// A path written in a type argument or associated type binding of a
+    /// trait path, the `nth` that `find_written_path` visits there, names
+    /// no type where it is written: `Ok` with what it names instead, `Err`
+    /// with why it does not resolve.
     TraitGenericArgType {
         arg_idx: usize,
+        nth: usize,
         result: Box<PathResolutionResult<'db, PathRes<'db>>>,
     },
 
@@ -415,8 +418,12 @@ impl<'db> PathResError<'db> {
                 MethodSelectionError::NotFound => PathResDiag::NotFound(span, ident),
             },
 
-            // The argument's own diagnostic, at the argument.
-            PathResErrorKind::TraitGenericArgType { arg_idx, result } => {
+            // The path's own diagnostic, where the argument writes it.
+            PathResErrorKind::TraitGenericArgType {
+                arg_idx,
+                nth,
+                result,
+            } => {
                 let arg = path_span
                     .clone()
                     .segment(failed_idx)
@@ -427,21 +434,25 @@ impl<'db> PathResError<'db> {
                     GenericArg::AssocType(binding) => (binding.ty, arg.into_assoc_type_arg().ty()),
                     GenericArg::Const(_) => return None,
                 };
-                let TypeKind::Path(Partial::Present(arg_path)) = ty.to_opt()?.data(db) else {
-                    return None;
-                };
+                let mut visited = 0;
+                let (arg_path, span) = find_written_path(
+                    db,
+                    ty.to_opt()?,
+                    TypePosition::Type,
+                    Some(ty_span),
+                    &mut |arg_path, _, span| {
+                        visited += 1;
+                        (visited > nth).then_some((arg_path, span))
+                    },
+                )?;
+                let span = span?;
                 match *result {
                     Ok(res) => PathResDiag::ExpectedType(
-                        ty_span.into(),
+                        span.into(),
                         arg_path.ident(db).to_opt()?,
                         res.kind_name(),
                     ),
-                    Err(inner) => inner.into_diag(
-                        db,
-                        *arg_path,
-                        ty_span.into_path_type().path(),
-                        ExpectedPathKind::Type,
-                    )?,
+                    Err(inner) => inner.into_diag(db, arg_path, span, ExpectedPathKind::Type)?,
                 }
             }
         };
@@ -989,6 +1000,88 @@ pub(crate) fn resolve_type_position_path_with_minter<'db>(
                 if not_found(&ty) { value } else { ty }
             }
         }
+    }
+}
+
+/// Visits the paths written in `ty`, which is written at `position`, each
+/// before the types written in it, until `visit` returns a value. Each is
+/// visited with its position and, when `span` is `ty`'s span, its own.
+fn find_written_path<'db, R>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TypeId<'db>,
+    position: TypePosition,
+    span: Option<LazyTySpan<'db>>,
+    visit: &mut impl FnMut(PathId<'db>, TypePosition, Option<LazyPathSpan<'db>>) -> Option<R>,
+) -> Option<R> {
+    match ty.data(db) {
+        TypeKind::Ptr(inner) => find_written_path(
+            db,
+            inner.to_opt()?,
+            TypePosition::Type,
+            span.map(|span| span.into_ptr_type().pointee()),
+            visit,
+        ),
+        TypeKind::Mode(_, inner) => find_written_path(
+            db,
+            inner.to_opt()?,
+            TypePosition::Type,
+            span.map(|span| span.into_mode_type().inner()),
+            visit,
+        ),
+        TypeKind::Array(elem, _) => find_written_path(
+            db,
+            elem.to_opt()?,
+            TypePosition::Type,
+            span.map(|span| span.into_array_type().elem()),
+            visit,
+        ),
+        TypeKind::Tuple(elems) => elems.data(db).iter().enumerate().find_map(|(idx, elem)| {
+            find_written_path(
+                db,
+                elem.to_opt()?,
+                TypePosition::Type,
+                span.clone().map(|span| span.into_tuple_type().elem_ty(idx)),
+                visit,
+            )
+        }),
+        TypeKind::Path(path) => {
+            let path = path.to_opt()?;
+            let path_span = span.map(|span| span.into_path_type().path());
+            if let Some(found) = visit(path, position, path_span.clone()) {
+                return Some(found);
+            }
+            successors(Some(path), |segment| segment.parent(db)).find_map(|segment| {
+                let segment_span = path_span
+                    .clone()
+                    .map(|span| span.segment(segment.segment_index(db)));
+                match segment.kind(db) {
+                    PathKind::QualifiedType { type_, .. } => find_written_path(
+                        db,
+                        type_,
+                        TypePosition::Type,
+                        segment_span.map(|span| span.qualified_type().ty()),
+                        visit,
+                    ),
+                    PathKind::Ident { generic_args, .. } => generic_args
+                        .data(db)
+                        .iter()
+                        .enumerate()
+                        .find_map(|(idx, arg)| match arg {
+                            GenericArg::Type(ty_arg) => find_written_path(
+                                db,
+                                ty_arg.ty.to_opt()?,
+                                TypePosition::GenericArg,
+                                segment_span
+                                    .clone()
+                                    .map(|span| span.generic_args().arg(idx).into_type_arg().ty()),
+                                visit,
+                            ),
+                            GenericArg::Const(_) | GenericArg::AssocType(_) => None,
+                        }),
+                }
+            })
+        }
+        TypeKind::Never => None,
     }
 }
 
@@ -2249,42 +2342,64 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                         let ty = TyId::foldl(db, ty, &args());
                         PathRes::Ty(ty)
                     } else {
-                        // Pre-validate the type arguments and associated type bindings of the
-                        // trait path to surface domain errors (e.g., trait or value used where
-                        // a type is expected) with precise spans in the name-resolution phase.
-                        // A path that does not resolve yet, such as `Q::T` before `Q: Ty` is
+                        // Pre-validate the paths written in the type arguments and associated
+                        // type bindings of the trait path, at any depth, to surface domain
+                        // errors (e.g., trait or value used where a type is expected) with
+                        // precise spans in the name-resolution phase. A path that does not
+                        // resolve yet, such as `Q::T` in `Option<Q::T>` before `Q: Ty` is
                         // collected, fails the trait path, so its bound waits for the others.
-                        if !path.generic_args(db).is_empty(db) {
-                            let gen_args = path.generic_args(db).data(db);
-                            for (idx, ga) in gen_args.iter().enumerate() {
-                                let ty = match ga {
-                                    GenericArg::Type(ty_arg) => ty_arg.ty,
-                                    GenericArg::AssocType(binding) => binding.ty,
-                                    GenericArg::Const(_) => continue,
-                                };
-                                if let Some(hir_ty) = ty.to_opt()
-                                    && let TypeKind::Path(p) = hir_ty.data(db)
-                                    && let Some(arg_path) = p.to_opt()
-                                {
-                                    let result = match resolve_path_with_minter(
-                                        db,
-                                        arg_path,
-                                        scope,
-                                        assumptions,
-                                        false,
-                                        lowering_cx,
-                                    ) {
-                                        Ok(PathRes::Ty(_) | PathRes::TyAlias(..)) => continue,
-                                        result => result,
-                                    };
-                                    return Err(PathResError::new(
-                                        PathResErrorKind::TraitGenericArgType {
-                                            arg_idx: idx,
-                                            result: Box::new(result),
-                                        },
-                                        path,
-                                    ));
-                                }
+                        for (arg_idx, arg) in path.generic_args(db).data(db).iter().enumerate() {
+                            let ty = match arg {
+                                GenericArg::Type(ty_arg) => ty_arg.ty,
+                                GenericArg::AssocType(binding) => binding.ty,
+                                GenericArg::Const(_) => continue,
+                            };
+                            let mut visited = 0;
+                            if let Some(ty) = ty.to_opt()
+                                && let Some((nth, result)) = find_written_path(
+                                    db,
+                                    ty,
+                                    TypePosition::Type,
+                                    None,
+                                    &mut |arg_path, position, _| {
+                                        let nth = visited;
+                                        visited += 1;
+                                        match resolve_path_with_minter(
+                                            db,
+                                            arg_path,
+                                            scope,
+                                            assumptions,
+                                            false,
+                                            lowering_cx,
+                                        ) {
+                                            Ok(PathRes::Ty(_) | PathRes::TyAlias(..)) => None,
+                                            // A type's generic argument may name a constant.
+                                            _ if position == TypePosition::GenericArg
+                                                && lower_type_position_path(
+                                                    db,
+                                                    arg_path,
+                                                    scope,
+                                                    assumptions,
+                                                    position,
+                                                    lowering_cx,
+                                                )
+                                                .is_ok_and(|ty| ty.is_const_ty(db)) =>
+                                            {
+                                                None
+                                            }
+                                            result => Some((nth, result)),
+                                        }
+                                    },
+                                )
+                            {
+                                return Err(PathResError::new(
+                                    PathResErrorKind::TraitGenericArgType {
+                                        arg_idx,
+                                        nth,
+                                        result: Box::new(result),
+                                    },
+                                    path,
+                                ));
                             }
                         }
                         let lowered = lower_trait_ref_impl_with_minter(
