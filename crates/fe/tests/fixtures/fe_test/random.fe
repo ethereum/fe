@@ -113,7 +113,7 @@ fn shuffles_keep_every_element() {
         i += 1
     }
     with (Rng = rng) {
-        shuffle_slice(mut memory.as_mut_slice())
+        shuffle_slice(mut memory.as_slice())
     }
     var seen_memory: u256 = 0
     var k: usize = 0

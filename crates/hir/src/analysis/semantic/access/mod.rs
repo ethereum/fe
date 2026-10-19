@@ -202,7 +202,7 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
     {
         owners.extend(BodyOwner::const_predicates_of(db, *item));
         match item {
-            ItemKind::Func(func) => owners.push(BodyOwner::Func(*func)),
+            ItemKind::Func(func) => owners.extend(BodyOwner::func_bodies(db, *func)),
             ItemKind::Const(const_) => owners.push(BodyOwner::Const(*const_)),
             ItemKind::Contract(contract) => owners.extend(contract_bodies(db, *contract)),
             ItemKind::Mod(_)
@@ -423,7 +423,9 @@ fn generated_callees<'db>(
                 } = expr
                 {
                     let SemanticCodeRegionRef::ManualContractRoot { func } = region;
-                    callees.extend(root(BodyOwner::Func(*func)).map(|key| (key, statement.origin)));
+                    callees.extend(
+                        root(BodyOwner::Func(*func, None)).map(|key| (key, statement.origin)),
+                    );
                 }
             }
             NStatementKind::Store { destination, .. } => visit(destination),

@@ -31,13 +31,14 @@ impl Type {
 
 ast_node! {
     /// A mode type.
-    /// `ref T`, `mut T`, `own T`
+    /// `ref T`, `mut T`, `mut? T`, `own T`
     pub struct ModeType,
     SK::ModeType,
 }
 impl ModeType {
     pub fn mode_token(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::MutKw)
+            .or_else(|| support::token(self.syntax(), SK::MaybeMutKw))
             .or_else(|| support::token(self.syntax(), SK::RefKw))
             .or_else(|| support::token(self.syntax(), SK::OwnKw))
     }
@@ -46,6 +47,7 @@ impl ModeType {
         let token = self.mode_token()?;
         match token.kind() {
             SK::MutKw => Some(TypeMode::Mut(token)),
+            SK::MaybeMutKw => Some(TypeMode::MaybeMut(token)),
             SK::RefKw => Some(TypeMode::Ref(token)),
             SK::OwnKw => Some(TypeMode::Own(token)),
             _ => None,
@@ -120,6 +122,8 @@ pub enum SpacePathStep {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeMode {
     Mut(SyntaxToken),
+    /// `mut?`: the item's mode.
+    MaybeMut(SyntaxToken),
     Ref(SyntaxToken),
     Own(SyntaxToken),
 }

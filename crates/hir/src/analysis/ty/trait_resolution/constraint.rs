@@ -3,6 +3,7 @@ use crate::core::hir_def::{
     TraitRefId, TypeBound, WhereClauseOwner, scope_graph::ScopeId, types::TypeId as HirTypeId,
 };
 use crate::hir_def::CallableDef;
+use crate::hir_def::ModeMarker;
 use common::indexmap::{IndexMap, IndexSet};
 use either::Either;
 
@@ -86,6 +87,7 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
                     inst.def(db),
                     args,
                     inst.assoc_type_bindings(db).clone(),
+                    ModeMarker::None,
                 ));
             }
             (Some(target_ty), None) => {
@@ -109,19 +111,17 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
                         traits
                     });
 
-                out.push(TraitInstId::new(
+                out.push(TraitInstId::new_simple(
                     db,
                     effect_ref_trait,
                     vec![provider_ty, target_ty],
-                    IndexMap::new(),
                 ));
 
                 if identity.is_mut {
-                    out.push(TraitInstId::new(
+                    out.push(TraitInstId::new_simple(
                         db,
                         effect_ref_mut_trait,
                         vec![provider_ty, target_ty],
-                        IndexMap::new(),
                     ));
                 }
             }
@@ -431,10 +431,11 @@ fn collect_decl_constraint_pairs_impl<'db>(
             continue;
         };
         for (bound_idx, bound) in hir_param.bounds.iter().enumerate() {
-            if let TypeBound::Trait(trait_ref) = bound {
+            if let TypeBound::Trait(trait_ref, mode) = bound {
                 deferred.push(Deferred {
                     bound_ty: Either::Right(ty),
                     trait_ref: *trait_ref,
+                    mode: *mode,
                     scope: owner_scope,
                     source: PredicateSource::GenericParamBound {
                         owner,
@@ -467,10 +468,11 @@ fn collect_decl_constraint_pairs_impl<'db>(
             }
 
             for (bound_idx, bound) in pred.bounds.iter().enumerate() {
-                if let TypeBound::Trait(trait_ref) = *bound {
+                if let TypeBound::Trait(trait_ref, mode) = *bound {
                     deferred.push(Deferred {
                         bound_ty: Either::Left(hir_ty),
                         trait_ref,
+                        mode,
                         scope: owner_scope,
                         source: PredicateSource::WherePredicateBound {
                             owner: w_owner,
@@ -571,6 +573,8 @@ pub(crate) fn collect_candidate_constraints<'db>(
 struct Deferred<'db> {
     bound_ty: Either<HirTypeId<'db>, TyId<'db>>,
     trait_ref: TraitRefId<'db>,
+    /// The modes the bound grants the trait's `mut?` methods at.
+    mode: ModeMarker,
     scope: ScopeId<'db>,
     source: PredicateSource<'db>,
 }
@@ -695,6 +699,7 @@ fn try_resolve_type_bound<'db>(
         }
     }
     .ok()
+    .map(|inst| inst.with_mode(db, deferred.mode))
 }
 
 #[cfg(test)]

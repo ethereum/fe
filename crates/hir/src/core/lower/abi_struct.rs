@@ -15,9 +15,10 @@ use crate::{
     hir_def::{
         AccessItems, AssocConstDef, AttrListId, BindingMarker, Body, BodyKind, Expr, ExprId,
         FieldDefListId, FuncModifiers, FuncParam, FuncParamMode, FuncParamName, GenericArgListId,
-        GenericParamListId, IdentId, ImplTrait, LitKind, Partial, Pat, PathId, PathKind, Stmt,
-        StringId, Struct, TrackedItemVariant, TraitRefId, TupleTypeId, TypeBound, TypeId, TypeKind,
-        Visibility, WhereClauseId, WhereClausePredicate, WherePredicate, expr::CallArg,
+        GenericParamListId, IdentId, ImplTrait, LitKind, ModeMarker, Partial, Pat, PathId,
+        PathKind, Stmt, StringId, Struct, TrackedItemVariant, TraitRefId, TupleTypeId, TypeBound,
+        TypeId, TypeKind, Visibility, WhereClauseId, WhereClausePredicate, WherePredicate,
+        expr::CallArg,
     },
     span::{AbiStructDesugared, HirOrigin},
 };
@@ -148,7 +149,7 @@ fn field_bounds<'db>(
         .map(|(_, ty)| {
             WhereClausePredicate::Type(WherePredicate {
                 ty: Partial::Present(*ty),
-                bounds: vec![TypeBound::Trait(trait_ref)],
+                bounds: vec![TypeBound::Trait(trait_ref, ModeMarker::None)],
             })
         })
         .collect();

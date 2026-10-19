@@ -55,7 +55,7 @@ use crate::{
                 ForLoopStep, LocalBinding, ParamSite, ResolvedEffectArg, RowArg,
                 SemanticExprLowering, SmirLoweringIssue, TypedBody,
             },
-            ty_def::{InvalidCause, TyData, TyId},
+            ty_def::{BorrowKind, InvalidCause, TyData, TyId},
             ty_is_snapshot,
             ty_lower::{ParamSchemaId, SubstError},
         },
@@ -269,7 +269,7 @@ pub fn instantiated_typed_body<'db>(
     // A body's row provider parameters are the providers its call binds.
     let owner = match key.owner(db) {
         BodyOwner::Closure { def, .. } => (def.body.scope(), Some(def.expr)),
-        BodyOwner::Func(func)
+        BodyOwner::Func(func, _)
             if let Some(func_body) = func.body(db)
                 && func
                     .effect_requirements(db)
@@ -1241,7 +1241,7 @@ impl<'db> SemanticInstance<'db> {
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> Vec<Option<SpaceContract<'db>>> {
-        let BodyOwner::Func(func) = self.key(db).owner(db) else {
+        let BodyOwner::Func(func, _) = self.key(db).owner(db) else {
             return Vec::new();
         };
         // The trait method's contracts, as far as they mean the same here:
@@ -1447,7 +1447,7 @@ impl<'db> SemanticInstance<'db> {
         db: &'db dyn HirAnalysisDb,
     ) -> Option<(ContractMetadataKind, Contract<'db>)> {
         let key = self.key(db);
-        let BodyOwner::Func(func) = key.owner(db) else {
+        let BodyOwner::Func(func, _) = key.owner(db) else {
             return None;
         };
         let kind = contract_metadata_kind(db, func)?;
@@ -1460,7 +1460,7 @@ impl<'db> SemanticInstance<'db> {
     }
 
     pub fn is_projection(self, db: &'db dyn HirAnalysisDb) -> bool {
-        matches!(self.key(db).owner(db), BodyOwner::Func(func) if func.is_projection(db))
+        matches!(self.key(db).owner(db), BodyOwner::Func(func, _) if func.is_projection(db))
     }
 
     /// The address space of the place data parameter `param` names in this
@@ -1605,8 +1605,8 @@ impl<'db> SemanticInstance<'db> {
     /// The semantic-IR result type: a projection returns the carriers of its
     /// grants.
     pub fn normalized_result_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
-        if let BodyOwner::Func(func) = self.key(db).owner(db)
-            && let Some(shape) = func.return_shape(db)
+        if let BodyOwner::Func(func, mode) = self.key(db).owner(db)
+            && let Some(shape) = func.return_shape(db, mode)
             && let Ok(ty) = instantiate_normalized_ty(db, self.key(db), shape.carrier_ty(db))
         {
             return ty;
@@ -1824,7 +1824,7 @@ impl<'db> SemanticInstance<'db> {
     }
 
     fn is_nonreturning_builtin(self, db: &'db dyn HirAnalysisDb) -> bool {
-        let BodyOwner::Func(func) = self.key(db).owner(db) else {
+        let BodyOwner::Func(func, _) = self.key(db).owner(db) else {
             return false;
         };
         matches!(
@@ -1871,7 +1871,7 @@ fn instance_limit_violation<'db>(
     }
     // Growth a function's own calls make is visible in its identity instance,
     // where `{ N + 1 }` nests though concrete values do not grow.
-    if let BodyOwner::Func(_) = instance.key(db).owner(db) {
+    if let BodyOwner::Func(_, _) = instance.key(db).owner(db) {
         let identity = identity_semantic_instance_key(db, instance.key(db).owner(db));
         if identity != instance.key(db)
             && let Some(diag) =
@@ -2261,7 +2261,7 @@ pub fn root_semantic_instance_key<'db>(
     let generic_args = root_owner_generic_args(db, owner)?;
     let effect_providers = root_owner_effect_providers(db, owner);
     let subst = match owner {
-        BodyOwner::Func(func) => GenericSubst::for_owner(db, func.into(), generic_args),
+        BodyOwner::Func(func, _) => GenericSubst::for_owner(db, func.into(), generic_args),
         BodyOwner::Const(_)
         | BodyOwner::AnonConstBody { .. }
         | BodyOwner::ContractInit { .. }
@@ -2572,7 +2572,7 @@ fn root_owner_generic_args<'db>(
     owner: BodyOwner<'db>,
 ) -> Result<Vec<TyId<'db>>, RootSemanticInstanceError<'db>> {
     match owner {
-        BodyOwner::Func(func) => root_func_generic_args(db, func),
+        BodyOwner::Func(func, mode) => root_func_generic_args(db, func, mode),
         BodyOwner::Const(_)
         | BodyOwner::AnonConstBody { .. }
         | BodyOwner::ContractInit { .. }
@@ -2585,7 +2585,7 @@ fn root_owner_effect_providers<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> Vec<ProviderBinding<'db>> {
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return Vec::new();
     };
     let site = effect_param_site(owner).expect("function owners should always have an effect site");
@@ -2691,8 +2691,9 @@ fn root_provider_satisfies_effect_requirement<'db>(
 fn root_func_generic_args<'db>(
     db: &'db dyn HirAnalysisDb,
     func: crate::hir_def::Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Result<Vec<TyId<'db>>, RootSemanticInstanceError<'db>> {
-    let owner = BodyOwner::Func(func);
+    let owner = BodyOwner::Func(func, mode);
     let owner_scope = func.scope();
     let provider_param_idxs = place_effect_provider_param_index_map(db, func)
         .iter()
@@ -2882,6 +2883,7 @@ fn instantiate_normalized_trait_inst<'db>(
         trait_inst.def(db),
         args,
         assoc_type_bindings,
+        trait_inst.mode(db),
     ))
 }
 
@@ -2895,13 +2897,13 @@ where
     T: TyFoldable<'db>,
 {
     let Some(mapping) = subst.mapping(db).as_ref() else {
-        return if matches!(owner, BodyOwner::Func(_)) {
+        return if matches!(owner, BodyOwner::Func(_, _)) {
             Err(SemanticEffectEnvInstantiationError::MissingDomain { owner })
         } else {
             Ok(value)
         };
     };
-    if let BodyOwner::Func(func) = owner
+    if let BodyOwner::Func(func, _) = owner
         && mapping.domain().schema(db).owner(db) != func.into()
     {
         return Err(SemanticEffectEnvInstantiationError::WrongOwner {
@@ -2941,7 +2943,10 @@ mod tests {
         db.assert_no_diags(module);
         let instance = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(find_func(&db, module, "caller"))),
+            identity_semantic_instance_key(
+                &db,
+                BodyOwner::Func(find_func(&db, module, "caller"), None),
+            ),
         );
         assert_plain_call_plans(&db, instance);
     }
@@ -2998,7 +3003,10 @@ mod tests {
         db.assert_no_diags(module);
         let instance = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(find_func(&db, module, "caller"))),
+            identity_semantic_instance_key(
+                &db,
+                BodyOwner::Func(find_func(&db, module, "caller"), None),
+            ),
         );
         assert_trait_signature_validation(&db, instance);
     }
@@ -3066,7 +3074,10 @@ mod tests {
         db.assert_no_diags(module);
         let instance = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(find_func(&db, module, "caller"))),
+            identity_semantic_instance_key(
+                &db,
+                BodyOwner::Func(find_func(&db, module, "caller"), None),
+            ),
         );
         assert_effect_refinement(&db, instance);
     }

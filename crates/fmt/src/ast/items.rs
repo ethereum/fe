@@ -768,6 +768,7 @@ impl ToDoc for ast::FuncParam {
                             Some(piece.space_before())
                         }
                         SyntaxKind::MutKw
+                        | SyntaxKind::MaybeMutKw
                         | SyntaxKind::VarKw
                         | SyntaxKind::RefKw
                         | SyntaxKind::OwnKw
@@ -782,6 +783,9 @@ impl ToDoc for ast::FuncParam {
 
         if self.mut_token().is_some() {
             doc = doc.append(alloc.text("mut "));
+        }
+        if self.maybe_mut_token().is_some() {
+            doc = doc.append(alloc.text("mut? "));
         }
         if self.var_token().is_some() {
             doc = doc.append(alloc.text("var "));

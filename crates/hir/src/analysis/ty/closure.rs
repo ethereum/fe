@@ -9,6 +9,7 @@
 //! one. The trait solver, normalizer, method selection and callee resolution
 //! derive the relationship from here.
 
+use crate::hir_def::ModeMarker;
 use common::indexmap::IndexMap;
 use cranelift_entity::EntityRef;
 use salsa::Update;
@@ -111,14 +112,20 @@ impl<'db> CallableValue<'db> {
         let TyData::TyBase(TyBase::Func(CallableDef::Func(func))) = base.data(db) else {
             return None;
         };
-        (!func.is_unsafe(db) && !func.is_projection(db) && !func.is_raw_place(db))
-            .then_some(Self::Func(*func, args))
+        (!func.is_unsafe(db)
+            && !func.is_projection(db)
+            && !func.is_raw_place(db)
+            && !func.is_maybe_mut(db))
+        .then_some(Self::Func(*func, args))
     }
 
     fn modes(self, db: &'db dyn HirAnalysisDb) -> Vec<FuncParamMode> {
         match self {
             Self::Closure(closure) => closure.modes(db),
-            Self::Func(func, _) => func.params(db).map(|param| param.mode(db)).collect(),
+            Self::Func(func, _) => func
+                .params(db)
+                .map(|param| param.mode_at(db, None))
+                .collect(),
         }
     }
 
@@ -185,7 +192,13 @@ impl<'db> CallableValue<'db> {
         } else {
             bindings.insert(out_ident(db), self.ret_ty(db));
         }
-        Some(TraitInstId::new(db, trait_, args, bindings))
+        Some(TraitInstId::new(
+            db,
+            trait_,
+            args,
+            bindings,
+            ModeMarker::None,
+        ))
     }
 }
 

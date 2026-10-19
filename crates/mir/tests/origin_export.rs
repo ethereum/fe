@@ -39,7 +39,7 @@ fn runtime_instance_for_func<'db>(
     db: &'db DriverDataBase,
     func: Func<'db>,
 ) -> fe_mir::RuntimeInstance<'db> {
-    let semantic_key = root_semantic_instance_key(db, BodyOwner::Func(func))
+    let semantic_key = root_semantic_instance_key(db, BodyOwner::Func(func, None))
         .expect("fixture function should have a root semantic instance key");
     let semantic = get_or_build_semantic_instance(db, semantic_key);
     let runtime_key =

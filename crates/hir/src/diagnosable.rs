@@ -26,8 +26,8 @@ use crate::analysis::ty::ty_error::{collect_ty_lower_errors, emit_invalid_ty_err
 use crate::analysis::ty::ty_lower::generic_param_owner_assumptions;
 use crate::hir_def::{
     Contract, Enum, EnumVariant, FieldParent, Func, FuncParamMode, GenericParam, GenericParamOwner,
-    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, Partial, PathId, SpaceAnnotation, Struct,
-    Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
+    GenericParamView, IdentId, Impl, ImplTrait, ItemKind, ModeMarker, Partial, PathId,
+    SpaceAnnotation, Struct, Trait, TypeAlias, TypeBound, VariantKind, WhereClauseOwner,
 };
 use crate::span::DynLazySpan;
 
@@ -258,6 +258,14 @@ impl<'db> WherePredicateBoundView<'db> {
 
         let mut out = Vec::new();
         let owner_item = ItemKind::from(self.pred.clause.owner);
+        if self.mode(db) == ModeMarker::MaybeMut
+            && !matches!(
+                owner_item,
+                ItemKind::Func(_) | ItemKind::Impl(_) | ItemKind::ImplTrait(_)
+            )
+        {
+            out.push(TyLowerDiag::MaybeMutBound(self.span().into()).into());
+        }
         let scope = owner_item.scope();
         let assumptions = header_constraints_for(db, owner_item);
         let is_trait_self_subject =
@@ -416,41 +424,57 @@ impl<'db> Func<'db> {
     /// A `#[view]` type is taken only by view and `mut` parameters and
     /// access results. A `mut` view points into an owner its session holds
     /// mutably, so a projection yielding one holds a mutable input or
-    /// effect; an `unsafe` one leaves that to its caller.
+    /// effect; an `unsafe` one leaves that to its caller. A `mut?` function
+    /// is checked at both of its modes.
     pub fn diags_view_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let normalize =
             |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
-        let params = self.params(db).filter_map(|param| {
-            let (ty, position) =
-                ty::shape::view_param_misuse(db, param.mode(db), normalize(param.ty(db)))?;
-            Some((param.span().into(), ty, position))
-        });
-        let shape = self
-            .return_shape(db)
-            .cloned()
-            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))));
-        let ret = shape
-            .view_misuse(db)
-            .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
-        let holds_mutably = self
-            .params(db)
-            .any(|param| param.mode(db) == FuncParamMode::Mut)
-            || self.effects(db).data(db).iter().any(|effect| effect.is_mut);
-        let unheld_mut_view = shape
-            .mut_view(db)
-            .filter(|_| !holds_mutably && !self.is_unsafe(db))
-            .map(|ty| {
-                (
-                    self.span().ret_ty().into(),
-                    ty,
-                    "yielded by `mut` from a projection that holds nothing mutably",
-                )
+        let mut diags: Vec<TyDiagCollection<'db>> = Vec::new();
+        for &mode in self.modes(db) {
+            let params = self.params(db).filter_map(|param| {
+                let (ty, position) = ty::shape::view_param_misuse(
+                    db,
+                    param.mode_at(db, mode),
+                    normalize(param.ty(db)),
+                )?;
+                Some((param.span().into(), ty, position))
             });
-        params
-            .chain(ret)
-            .chain(unheld_mut_view)
-            .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
-            .collect()
+            let shape = self
+                .return_shape(db, mode)
+                .cloned()
+                .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))));
+            let ret = shape
+                .view_misuse(db)
+                .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
+            let holds_mutably = self
+                .params(db)
+                .any(|param| param.mode_at(db, mode) == FuncParamMode::Mut)
+                || self
+                    .effects(db)
+                    .data(db)
+                    .iter()
+                    .any(|effect| effect.is_mut());
+            let unheld_mut_view = shape
+                .mut_view(db)
+                .filter(|_| !holds_mutably && !self.is_unsafe(db))
+                .map(|ty| {
+                    (
+                        self.span().ret_ty().into(),
+                        ty,
+                        "yielded by `mut` from a projection that holds nothing mutably",
+                    )
+                });
+            for diag in params
+                .chain(ret)
+                .chain(unheld_mut_view)
+                .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
+            {
+                if !diags.contains(&diag) {
+                    diags.push(diag);
+                }
+            }
+        }
+        diags
     }
 
     /// A state-only type is never a value: no `own` parameter takes one
@@ -461,11 +485,12 @@ impl<'db> Func<'db> {
         let params = self.params(db).filter_map(|param| {
             let ty = normalize(param.ty(db));
             let collection =
-                (param.mode(db) == FuncParamMode::Own).then(|| ty.pinned_part(db))??;
+                (param.mode_at(db, None) == FuncParamMode::Own).then(|| ty.pinned_part(db))??;
             Some((param.span().into(), ty, collection, "an `own` parameter"))
         });
+        // The owned parts of a return are the same at every mode.
         let ret = self
-            .return_shape(db)
+            .return_shape(db, self.modes(db)[0])
             .cloned()
             .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))))
             .state_only_value(db)
@@ -554,8 +579,8 @@ impl<'db> Trait<'db> {
         diags
     }
 
-    /// Diagnostics for trait bounds on associated types whose path does not
-    /// name a trait, such as `type Out: Missing`.
+    /// Diagnostics for trait bounds on associated types that are `mut?`, or
+    /// whose path does not name a trait, such as `type Out: Missing`.
     pub fn diags_assoc_type_bounds(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
         let mut diags = Vec::new();
         let scope = self.scope();
@@ -563,6 +588,11 @@ impl<'db> Trait<'db> {
         let self_ty = self.self_param(db);
         for assoc in self.assoc_types(db) {
             for bound in assoc.bounds(db) {
+                // A trait has no mode for a `mut?` bound to be at.
+                if bound.mode(db) == ModeMarker::MaybeMut {
+                    let span = assoc.span().bounds().bound(bound.index());
+                    diags.push(TyLowerDiag::MaybeMutBound(span.into()).into());
+                }
                 let trait_ref = bound.trait_ref(db);
                 let Err(error) = ty::trait_lower::lower_trait_ref(
                     db,
@@ -1907,15 +1937,21 @@ impl<'db> GenericParamOwner<'db> {
             };
 
             for (i, bound) in tp.bounds.iter().enumerate() {
-                let TypeBound::Trait(tr) = bound else {
+                let TypeBound::Trait(tr, mode) = bound else {
                     continue;
                 };
-                let span = view
-                    .span()
-                    .into_type_param()
-                    .bounds()
-                    .bound(i)
-                    .trait_bound();
+                let bound_span = view.span().into_type_param().bounds().bound(i);
+                if *mode == ModeMarker::MaybeMut
+                    && !matches!(
+                        self,
+                        GenericParamOwner::Func(_)
+                            | GenericParamOwner::Impl(_)
+                            | GenericParamOwner::ImplTrait(_)
+                    )
+                {
+                    out.push(TyLowerDiag::MaybeMutBound(bound_span.clone().into()).into());
+                }
+                let span = bound_span.trait_bound();
                 match trait_lower::lower_trait_ref(db, subject, *tr, scope, assumptions, None) {
                     Ok(inst) => {
                         let expected = inst.def(db).self_param(db).kind(db);

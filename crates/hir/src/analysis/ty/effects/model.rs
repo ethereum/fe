@@ -1,3 +1,4 @@
+use crate::hir_def::ModeMarker;
 use crate::{
     analysis::{
         HirAnalysisDb,
@@ -242,7 +243,7 @@ impl<'db> TraitKeySchema<'db> {
             .chain(self.args_no_self)
             .collect::<Vec<_>>();
         let assoc = self.assoc_bindings.into_iter().collect::<IndexMap<_, _>>();
-        TraitInstId::new(db, self.def, args, assoc)
+        TraitInstId::new(db, self.def, args, assoc, ModeMarker::None)
     }
 }
 

@@ -225,9 +225,9 @@ impl super::Parse for UsesParamScope {
 
         // Cases to support inside parens:
         // - `Ctx`
-        // - `mut Storage`
+        // - `mut Storage`, `mut? Storage`
         // - `c: Ctx`
-        // - `f: mut Foo`
+        // - `f: mut Foo`, `f: mut? Foo`
         //
         // Legacy typed form `mut f: Foo` is rejected with a targeted parse error.
         let lookahead = parser.peek_n_non_trivia(3);
@@ -282,7 +282,7 @@ impl super::Parse for UsesParamScope {
 }
 
 fn parse_typed_uses_key<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
-    if parser.bump_if(SyntaxKind::MutKw) {
+    if parser.bump_if(SyntaxKind::MutKw) || parser.bump_if(SyntaxKind::MaybeMutKw) {
         parse_type(parser, None)?;
         return Ok(());
     }
@@ -297,7 +297,9 @@ fn parse_typed_uses_key<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Re
             _ => unreachable!(),
         };
         parser.add_error(ParseError::Msg(
-            format!("typed `uses` parameters only support `mut`; remove `{mode}` or use `mut`"),
+            format!(
+                "typed `uses` parameters only support `mut` and `mut?`; remove `{mode}` or use `mut`"
+            ),
             TextRange::empty(pos),
         ));
         return Ok(());

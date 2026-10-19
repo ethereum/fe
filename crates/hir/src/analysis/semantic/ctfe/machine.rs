@@ -1068,7 +1068,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 }
             }
         }
-        let value = if let BodyOwner::Func(func) = instance.key(self.db).owner(self.db)
+        let value = if let BodyOwner::Func(func, _) = instance.key(self.db).owner(self.db)
             && func.is_extern(self.db)
         {
             if !func.is_const(self.db) {
@@ -1241,7 +1241,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
 
         let mut locals = vec![CtfeSlot::Uninit; body.locals.len()];
         let mut arg_locals = match instance.key(self.db).owner(self.db) {
-            BodyOwner::Func(func) => body
+            BodyOwner::Func(func, _) => body
                 .entry_locals
                 .iter()
                 .filter_map(|local| match body.local(*local)?.source? {
@@ -1296,7 +1296,11 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     site: EffectParamSite::Func(func),
                     idx,
                     ..
-                } if instance.key(self.db).owner(self.db) == BodyOwner::Func(func) => {
+                } if matches!(
+                    instance.key(self.db).owner(self.db),
+                    BodyOwner::Func(owner, _) if owner == func
+                ) =>
+                {
                     Some((idx as u32, *local))
                 }
                 _ => None,
@@ -1390,17 +1394,18 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
         origin: SemOrigin<'db>,
     ) -> Result<&'body SemanticBody<'db>, CtfeError<'db>> {
         match instance.key(self.db).owner(self.db) {
-            BodyOwner::Func(func) if !func.is_const(self.db) => {
+            BodyOwner::Func(func, _) if !func.is_const(self.db) => {
                 Err(CtfeError::NonConstCall { origin })
             }
-            BodyOwner::Func(func) if !const_effects_supported(self.db, func) => {
+            BodyOwner::Func(func, _) if !const_effects_supported(self.db, func) => {
                 Err(CtfeError::NotConstEvaluable { origin })
             }
             BodyOwner::ContractInit { .. }
             | BodyOwner::ContractRecvArm { .. }
             | BodyOwner::Closure { .. } => Err(CtfeError::NotConstEvaluable { origin }),
-            owner
-            @ (BodyOwner::Func(_) | BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. }) => {
+            owner @ (BodyOwner::Func(_, _)
+            | BodyOwner::Const(_)
+            | BodyOwner::AnonConstBody { .. }) => {
                 if inference_met_lowering_cycle(self.db, infer_body(self.db, owner)) {
                     return Err(CtfeError::InvalidBody { origin });
                 }
@@ -1572,7 +1577,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     .collect::<Vec<_>>();
                 let instance = self.instance_for_key(callee.key);
                 if !effect_args.is_empty() {
-                    let BodyOwner::Func(func) = instance.key(self.db).owner(self.db) else {
+                    let BodyOwner::Func(func, _) = instance.key(self.db).owner(self.db) else {
                         return Err(CtfeError::NotConstEvaluable { origin }.into());
                     };
                     if !const_effects_supported(self.db, func) {
@@ -1584,7 +1589,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 )? {
                     return Ok(CtfeValue::Value(value));
                 }
-                if let BodyOwner::Func(func) = instance.key(self.db).owner(self.db)
+                if let BodyOwner::Func(func, _) = instance.key(self.db).owner(self.db)
                     && func.is_extern(self.db)
                 {
                     if !func.is_const(self.db) {
@@ -1595,7 +1600,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                         .eval_extern_const_fn(instance, func, result_ty, &value_args, origin)
                         .map(CtfeValue::Value);
                 }
-                if let BodyOwner::Func(func) = instance.key(self.db).owner(self.db)
+                if let BodyOwner::Func(func, _) = instance.key(self.db).owner(self.db)
                     && !func.is_const(self.db)
                 {
                     return Err(CtfeError::NonConstCall { origin }.into());
@@ -1843,7 +1848,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
         args: &[CtfeValue<'db>],
         origin: SemOrigin<'db>,
     ) -> Result<Option<CtfeConstValue<'db>>, CtfeError<'db>> {
-        let BodyOwner::Func(func) = instance.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = instance.key(self.db).owner(self.db) else {
             return Ok(None);
         };
         let Some(call) = core_primitive_wrapper_call_kind(self.db, func, result_ty) else {
@@ -2885,10 +2890,12 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     -int - BigInt::one(),
                 )))
             }
-            UnOp::Mut | UnOp::Ref | UnOp::Deref => Err(CtfeError::InvalidOperation {
-                origin,
-                message: "unexpected place operator in CTFE unary evaluation".into(),
-            }),
+            UnOp::Mut | UnOp::MaybeMut | UnOp::Ref | UnOp::Deref => {
+                Err(CtfeError::InvalidOperation {
+                    origin,
+                    message: "unexpected place operator in CTFE unary evaluation".into(),
+                })
+            }
         }
     }
 
@@ -3403,7 +3410,7 @@ mod tests {
         db.assert_no_diags(module);
         let instance = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(module.all_funcs(&db)[0])),
+            identity_semantic_instance_key(&db, BodyOwner::Func(module.all_funcs(&db)[0], None)),
         );
         let mut machine = CtfeMachine::new(&db, CtfeConfig::default());
         let live_reference = CtfeValue::Ref(CtfeRef {
@@ -3430,11 +3437,11 @@ mod tests {
         let funcs = module.all_funcs(&db);
         let read = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[0])),
+            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[0], None)),
         );
         let anchor = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[1])),
+            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[1], None)),
         );
         let read_body = read.body(&db);
         let anchor_body = anchor.body(&db);
@@ -3512,15 +3519,15 @@ mod tests {
         let funcs = module.all_funcs(&db);
         let read = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[0])),
+            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[0], None)),
         );
         let anchor = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[1])),
+            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[1], None)),
         );
         let dependent = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[2])),
+            identity_semantic_instance_key(&db, BodyOwner::Func(funcs[2], None)),
         );
         let read_body = read.body(&db);
         let anchor_body = anchor.body(&db);
@@ -3636,7 +3643,7 @@ mod tests {
         db.assert_no_diags(module);
         let instance = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(module.all_funcs(&db)[0])),
+            identity_semantic_instance_key(&db, BodyOwner::Func(module.all_funcs(&db)[0], None)),
         );
         let body = instance.body(&db);
         let (dst, expr, origin) = body
@@ -3683,7 +3690,7 @@ mod tests {
             "const fn anchor() -> u8 { 0 }",
         );
         let (module, _) = db.top_mod(file);
-        let origin = SemOrigin::Body(BodyOwner::Func(module.all_funcs(&db)[0]));
+        let origin = SemOrigin::Body(BodyOwner::Func(module.all_funcs(&db)[0], None));
         let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
         let machine = CtfeMachine::new(&db, CtfeConfig::default());
 

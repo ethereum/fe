@@ -228,7 +228,7 @@ fn invocation<'db>(
     generic_args: Vec<TyId<'db>>,
     args: Vec<TyId<'db>>,
 ) -> ConstExpr<'db> {
-    let owner = BodyOwner::Func(func);
+    let owner = BodyOwner::Func(func, None);
     ConstExpr::Invocation(ConstInvocation {
         key: SemanticInstanceKey::new(
             db,
@@ -258,7 +258,7 @@ type Alias<const N: usize> = [u8; nested<N>()]
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     for function_name in ["probe", "nested"] {
-        let owner = BodyOwner::Func(function(&db, module, function_name));
+        let owner = BodyOwner::Func(function(&db, module, function_name), None);
         let outcome =
             eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]));
         assert!(
@@ -277,10 +277,10 @@ type Alias<const N: usize> = [u8; nested<N>()]
     db.assert_no_diags(module);
     let value = ready(eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "concrete")),
+        BodyOwner::Func(function(&db, module, "concrete"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "concrete")),
+            BodyOwner::Func(function(&db, module, "concrete"), None),
             vec![],
         ),
     ));
@@ -297,10 +297,10 @@ type Alias<const N: usize> = [u8; nested<N>()]
     assert_eq!(value.to_u8(), Some(7), "{name}");
     let alias_value = ready(eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "concrete_alias")),
+        BodyOwner::Func(function(&db, module, "concrete_alias"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "concrete_alias")),
+            BodyOwner::Func(function(&db, module, "concrete_alias"), None),
             vec![],
         ),
     ));
@@ -362,7 +362,7 @@ const fn caller_arg<const N: u8>() -> u8 { plus1(value: N / 0) }
     let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
     let u16_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U16)));
     for (name, ty) in [("branch", u8_ty), ("matched", u8_ty), ("casted", u16_ty)] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let one = integer_const_arg(&db, usize_ty, 1);
         assert_integer_result(&db, assert_specialization_law(&db, owner, &[one]), ty, 7);
         let zero = integer_const_arg(&db, usize_ty, 0);
@@ -373,7 +373,7 @@ const fn caller_arg<const N: u8>() -> u8 { plus1(value: N / 0) }
                 if matches!(root_error(error), CtfeError::OutOfBounds { .. })
         ));
     }
-    let increment = BodyOwner::Func(function(&db, module, "increment"));
+    let increment = BodyOwner::Func(function(&db, module, "increment"), None);
     let seven = integer_const_arg(&db, u8_ty, 7);
     assert_integer_result(
         &db,
@@ -389,7 +389,7 @@ const fn caller_arg<const N: u8>() -> u8 { plus1(value: N / 0) }
             if matches!(root_error(error), CtfeError::ArithmeticOverflow { .. })
     ));
     for name in ["nested", "via_call"] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let one = integer_const_arg(&db, u8_ty, 1);
         assert_integer_result(&db, assert_specialization_law(&db, owner, &[one]), u8_ty, 4);
         for value in [127, 255] {
@@ -402,7 +402,7 @@ const fn caller_arg<const N: u8>() -> u8 { plus1(value: N / 0) }
             ));
         }
     }
-    let owner = BodyOwner::Func(function(&db, module, "via_call"));
+    let owner = BodyOwner::Func(function(&db, module, "via_call"), None);
     let request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     let description = describe_const_computation(&db, request, CtfeConfig::default())
@@ -464,7 +464,7 @@ const fn caller_arg<const N: u8>() -> u8 { plus1(value: N / 0) }
             panic!("expected nested call failures: {replayed:?} versus {direct:?}")
         }
     }
-    let owner = BodyOwner::Func(function(&db, module, "caller_arg"));
+    let owner = BodyOwner::Func(function(&db, module, "caller_arg"), None);
     let request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     let description = describe_const_computation(&db, request, CtfeConfig::default())
@@ -520,7 +520,7 @@ const fn relay<const N: usize>() -> u8 { selected<N>() }
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "relay"));
+    let owner = BodyOwner::Func(function(&db, module, "relay"), None);
     let usize_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::Usize)));
     let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
     let one = integer_const_arg(&db, usize_ty, 1);
@@ -622,7 +622,7 @@ const fn reversed<const N: u8>() -> u8 { Marker<N>::RESULT }
         let file = db.new_stand_alone("pure_term_order.fe".into(), source);
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let owner = BodyOwner::Func(function(&db, module, "reversed"));
+        let owner = BodyOwner::Func(function(&db, module, "reversed"), None);
         let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
         let max = integer_const_arg(&db, u8_ty, 255);
         let result = assert_specialization_law(&db, owner, &[max]);
@@ -655,7 +655,7 @@ const fn choose<const N: u8>() -> u8 { N }
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
 
-    let recursive = BodyOwner::Func(function(&db, module, "recursive"));
+    let recursive = BodyOwner::Func(function(&db, module, "recursive"), None);
     let request = const_computation_for_instance(
         &db,
         identity_semantic_instance_key(&db, recursive),
@@ -675,7 +675,7 @@ const fn choose<const N: u8>() -> u8 { N }
             if matches!(root_error(error), CtfeError::RecursionLimitExceeded { .. })
     ));
 
-    let count = BodyOwner::Func(function(&db, module, "count"));
+    let count = BodyOwner::Func(function(&db, module, "count"), None);
     let template =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, count), Vec::new());
     for _ in 0..2 {
@@ -718,7 +718,7 @@ const fn choose<const N: u8>() -> u8 { N }
     };
     assert_eq!(value.to_usize(), Some(1000));
 
-    let choose = BodyOwner::Func(function(&db, module, "choose"));
+    let choose = BodyOwner::Func(function(&db, module, "choose"), None);
     let template = const_computation_for_instance(
         &db,
         identity_semantic_instance_key(&db, choose),
@@ -824,7 +824,7 @@ const fn mutate<const N: usize>() -> u8 {
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "mutate"));
+    let owner = BodyOwner::Func(function(&db, module, "mutate"), None);
     let request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     let first = force_const_computation(&db, request, CtfeConfig::default());
@@ -888,7 +888,7 @@ const fn aggregate<const N: usize>() -> Marker<N> {
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "aggregate"));
+    let owner = BodyOwner::Func(function(&db, module, "aggregate"), None);
     let usize_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::Usize)));
     for count in [0, 2] {
         let arg = integer_const_arg(&db, usize_ty, count);
@@ -955,7 +955,7 @@ const fn saturating<const N: u8>() -> u8 { N.saturating_add(1) }
     let one = integer_const_arg(&db, u8_ty, 1);
     let max = integer_const_arg(&db, u8_ty, 255);
     for name in ["checked", "wrapping", "saturating"] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         assert_integer_result(&db, assert_specialization_law(&db, owner, &[one]), u8_ty, 2);
         let outcome = assert_specialization_law(&db, owner, &[max]);
         match name {
@@ -986,7 +986,7 @@ const fn narrow<const N: i16>() -> i8 { N.downcast_truncate() }
     let i8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::I8)));
     let i16_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::I16)));
     for (name, input_ty, output_ty) in [("widen", i8_ty, i16_ty), ("narrow", i16_ty, i8_ty)] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let negative = negative_const_arg(&db, input_ty, 7);
         assert_signed_integer_result(
             &db,
@@ -1017,7 +1017,7 @@ const fn left_shift<const N: u8>() -> u8 { (1 as u8) << N }
     let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
     let negative_seven = negative_const_arg(&db, i8_ty, 7);
     for (name, expected) in [("divide", -3), ("remainder", -1)] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         assert_signed_integer_result(
             &db,
             assert_specialization_law(&db, owner, &[negative_seven]),
@@ -1026,27 +1026,27 @@ const fn left_shift<const N: u8>() -> u8 { (1 as u8) << N }
         );
     }
     let zero = integer_const_arg(&db, i8_ty, 0);
-    let divide_by = BodyOwner::Func(function(&db, module, "divide_by"));
+    let divide_by = BodyOwner::Func(function(&db, module, "divide_by"), None);
     assert!(matches!(
         assert_specialization_law(&db, divide_by, &[zero]),
         EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
             if matches!(root_error(error), CtfeError::DivisionByZero { .. })
     ));
     let negative_one = negative_const_arg(&db, i8_ty, 1);
-    let power = BodyOwner::Func(function(&db, module, "power"));
+    let power = BodyOwner::Func(function(&db, module, "power"), None);
     assert!(matches!(
         assert_specialization_law(&db, power, &[negative_one]),
         EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
             if matches!(root_error(error), CtfeError::NegativeExponent { .. })
     ));
-    let right_shift = BodyOwner::Func(function(&db, module, "right_shift"));
+    let right_shift = BodyOwner::Func(function(&db, module, "right_shift"), None);
     assert_signed_integer_result(
         &db,
         assert_specialization_law(&db, right_shift, &[negative_one]),
         i8_ty,
         -1,
     );
-    let left_shift = BodyOwner::Func(function(&db, module, "left_shift"));
+    let left_shift = BodyOwner::Func(function(&db, module, "left_shift"), None);
     let eight = integer_const_arg(&db, u8_ty, 8);
     assert_integer_result(
         &db,
@@ -1116,7 +1116,7 @@ const fn unary_comparison<const N: usize>() -> bool {
     let one = integer_const_arg(&db, usize_ty, 1);
     let two = integer_const_arg(&db, usize_ty, 2);
     for name in ["overwritten", "ignored_field", "unused_call", "zero_repeat"] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let outcome = assert_specialization_law(&db, owner, &[zero]);
         assert!(
             matches!(
@@ -1128,7 +1128,7 @@ const fn unary_comparison<const N: usize>() -> bool {
         );
         assert_integer_result(&db, assert_specialization_law(&db, owner, &[one]), u8_ty, 9);
     }
-    let owner = BodyOwner::Func(function(&db, module, "element_fault_before_index"));
+    let owner = BodyOwner::Func(function(&db, module, "element_fault_before_index"), None);
     let generic_request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     assert!(matches!(
@@ -1143,7 +1143,7 @@ const fn unary_comparison<const N: usize>() -> bool {
                 if matches!(root_error(error), CtfeError::DivisionByZero { .. })
         ));
     }
-    let owner = BodyOwner::Func(function(&db, module, "blocked_before_fault"));
+    let owner = BodyOwner::Func(function(&db, module, "blocked_before_fault"), None);
     let generic_request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     assert!(matches!(
@@ -1164,13 +1164,13 @@ const fn unary_comparison<const N: usize>() -> bool {
         &db,
         assert_specialization_law(
             &db,
-            BodyOwner::Func(function(&db, module, "dead_branch")),
+            BodyOwner::Func(function(&db, module, "dead_branch"), None),
             &[zero],
         ),
         u8_ty,
         7,
     );
-    let selected = BodyOwner::Func(function(&db, module, "selected_branch"));
+    let selected = BodyOwner::Func(function(&db, module, "selected_branch"), None);
     assert_integer_result(
         &db,
         assert_specialization_law(&db, selected, &[one]),
@@ -1186,12 +1186,12 @@ const fn unary_comparison<const N: usize>() -> bool {
         &db,
         assert_specialization_law(
             &db,
-            BodyOwner::Func(function(&db, module, "short_circuit")),
+            BodyOwner::Func(function(&db, module, "short_circuit"), None),
             &[zero],
         ),
         false,
     );
-    let counted = BodyOwner::Func(function(&db, module, "counted"));
+    let counted = BodyOwner::Func(function(&db, module, "counted"), None);
     assert_integer_result(
         &db,
         assert_specialization_law(&db, counted, &[zero]),
@@ -1204,7 +1204,7 @@ const fn unary_comparison<const N: usize>() -> bool {
         usize_ty,
         2,
     );
-    let unary = BodyOwner::Func(function(&db, module, "unary_comparison"));
+    let unary = BodyOwner::Func(function(&db, module, "unary_comparison"), None);
     assert_bool_result(&db, assert_specialization_law(&db, unary, &[one]), true);
     assert!(matches!(
         assert_specialization_law(&db, unary, &[zero]),
@@ -1241,7 +1241,7 @@ const fn early_fault<const N: usize>() -> u8 {
     let zero = integer_const_arg(&db, usize_ty, 0);
     let one = integer_const_arg(&db, usize_ty, 1);
     for name in ["unsupported", "unused_generic"] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         for arg in [zero, one] {
             let outcome = assert_specialization_law(&db, owner, &[arg]);
             if name == "unsupported" {
@@ -1255,7 +1255,7 @@ const fn early_fault<const N: usize>() -> u8 {
             }
         }
     }
-    let owner = BodyOwner::Func(function(&db, module, "unsupported_arg"));
+    let owner = BodyOwner::Func(function(&db, module, "unsupported_arg"), None);
     let request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     let described = describe_const_computation(&db, request, CtfeConfig::default());
@@ -1279,7 +1279,7 @@ const fn early_fault<const N: usize>() -> u8 {
             panic!("expected argument faults: {described:?} versus {direct:?}")
         }
     }
-    let faulty_arg = BodyOwner::Func(function(&db, module, "faulty_arg"));
+    let faulty_arg = BodyOwner::Func(function(&db, module, "faulty_arg"), None);
     assert_integer_result(
         &db,
         assert_specialization_law(&db, faulty_arg, &[one]),
@@ -1291,7 +1291,7 @@ const fn early_fault<const N: usize>() -> u8 {
         EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
             if matches!(root_error(error), CtfeError::OutOfBounds { .. })
     ));
-    let equality = BodyOwner::Func(function(&db, module, "equality"));
+    let equality = BodyOwner::Func(function(&db, module, "equality"), None);
     let request = const_computation_for_instance(
         &db,
         identity_semantic_instance_key(&db, equality),
@@ -1307,7 +1307,7 @@ const fn early_fault<const N: usize>() -> u8 {
         EvalOutcome::Failed(EvalFailure::Ctfe(ref error))
             if matches!(root_error(error), CtfeError::OutOfBounds { .. })
     ));
-    let early = BodyOwner::Func(function(&db, module, "early_fault"));
+    let early = BodyOwner::Func(function(&db, module, "early_fault"), None);
     let request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, early), Vec::new());
     assert!(matches!(
@@ -1340,10 +1340,10 @@ const fn zero() -> u8 { discarded<0>() }
     db.assert_no_diags(module);
     let generic = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "discarded")),
+        BodyOwner::Func(function(&db, module, "discarded"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "discarded")),
+            BodyOwner::Func(function(&db, module, "discarded"), None),
             vec![],
         ),
     );
@@ -1354,8 +1354,12 @@ const fn zero() -> u8 { discarded<0>() }
 
     let one = ready(eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "one")),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, "one")), vec![]),
+        BodyOwner::Func(function(&db, module, "one"), None),
+        GenericSubst::for_body_owner(
+            &db,
+            BodyOwner::Func(function(&db, module, "one"), None),
+            vec![],
+        ),
     ));
     let SemConstValue::Scalar {
         value: SemConstScalar::Int { value },
@@ -1368,8 +1372,12 @@ const fn zero() -> u8 { discarded<0>() }
 
     let zero = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "zero")),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, "zero")), vec![]),
+        BodyOwner::Func(function(&db, module, "zero"), None),
+        GenericSubst::for_body_owner(
+            &db,
+            BodyOwner::Func(function(&db, module, "zero"), None),
+            vec![],
+        ),
     );
     assert!(
         matches!(zero, EvalOutcome::Failed(EvalFailure::Ctfe(ref error)) if matches!(root_error(error), CtfeError::OutOfBounds { .. })),
@@ -1402,8 +1410,12 @@ const fn through_type() -> usize { Marker<1>::VALUE }
     for name in ["direct", "through_type"] {
         let value = ready(eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, name)),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, name)), vec![]),
+            BodyOwner::Func(function(&db, module, name), None),
+            GenericSubst::for_body_owner(
+                &db,
+                BodyOwner::Func(function(&db, module, name), None),
+                vec![],
+            ),
         ));
         let SemConstValue::Scalar {
             value: SemConstScalar::Int { value },
@@ -1469,8 +1481,12 @@ impl<const N: usize> Selected<N> for TraitMarker<N> {}
     for name in ["direct_bad", "through_type_bad", "through_trait_bad"] {
         let outcome = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, name)),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, name)), vec![]),
+            BodyOwner::Func(function(&db, module, name), None),
+            GenericSubst::for_body_owner(
+                &db,
+                BodyOwner::Func(function(&db, module, name), None),
+                vec![],
+            ),
         );
         assert!(
             matches!(
@@ -1515,10 +1531,10 @@ fn user_extern_names_do_not_gain_core_intrinsic_semantics() {
 
         let outcome = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, "invoke")),
+            BodyOwner::Func(function(&db, module, "invoke"), None),
             GenericSubst::for_body_owner(
                 &db,
-                BodyOwner::Func(function(&db, module, "invoke")),
+                BodyOwner::Func(function(&db, module, "invoke"), None),
                 vec![],
             ),
         );
@@ -1527,7 +1543,7 @@ fn user_extern_names_do_not_gain_core_intrinsic_semantics() {
             "a user extern named {name} must be unsupported: {outcome:?}"
         );
 
-        let invoke_owner = BodyOwner::Func(function(&db, module, "invoke"));
+        let invoke_owner = BodyOwner::Func(function(&db, module, "invoke"), None);
         let request = const_computation_for_instance(
             &db,
             identity_semantic_instance_key(&db, invoke_owner),
@@ -1572,10 +1588,10 @@ fn user_extern_names_do_not_gain_core_intrinsic_semantics() {
     db.assert_no_diags(module);
     let outcome = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "invoke")),
+        BodyOwner::Func(function(&db, module, "invoke"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "invoke")),
+            BodyOwner::Func(function(&db, module, "invoke"), None),
             vec![],
         ),
     );
@@ -1602,10 +1618,10 @@ const fn checked() -> u8 { check<255>() }
     db.assert_no_diags(module);
     let wrapped = ready(eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "wrapped")),
+        BodyOwner::Func(function(&db, module, "wrapped"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "wrapped")),
+            BodyOwner::Func(function(&db, module, "wrapped"), None),
             vec![],
         ),
     ));
@@ -1619,10 +1635,10 @@ const fn checked() -> u8 { check<255>() }
     assert_eq!(value.to_u8(), Some(0));
     let checked = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "checked")),
+        BodyOwner::Func(function(&db, module, "checked"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "checked")),
+            BodyOwner::Func(function(&db, module, "checked"), None),
             vec![],
         ),
     );
@@ -1665,7 +1681,7 @@ fn immutable_request_replays_after_specialization() {
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "first"));
+    let owner = BodyOwner::Func(function(&db, module, "first"), None);
     let identity = identity_semantic_instance_key(&db, owner);
     let request = const_computation_for_instance(&db, identity, Vec::new());
     let description = describe_const_computation(&db, request, CtfeConfig::default())
@@ -1738,7 +1754,7 @@ fn closed_term_inputs_force_with_their_recorded_arithmetic_mode() {
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "identity"));
+    let owner = BodyOwner::Func(function(&db, module, "identity"), None);
     let key = identity_semantic_instance_key(&db, owner);
     let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
     let lhs = integer_const_arg(&db, u8_ty, 255);
@@ -1827,7 +1843,7 @@ const fn selected<const X: usize, const Y: usize>() -> usize { Selected<{ X + 0 
         ("inherited", 7),
         ("selected", 7),
     ] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         assert!(
             matches!(
                 eval_body_owner_const(
@@ -1854,9 +1870,9 @@ const fn selected<const X: usize, const Y: usize>() -> usize { Selected<{ X + 0 
         );
     }
 
-    let owner = BodyOwner::Func(function(&db, module, "first"));
+    let owner = BodyOwner::Func(function(&db, module, "first"), None);
     let identity = identity_semantic_instance_key(&db, owner);
-    let outer_owner = BodyOwner::Func(function(&db, module, "mixed"));
+    let outer_owner = BodyOwner::Func(function(&db, module, "mixed"), None);
     let outer = identity_semantic_instance_key(&db, outer_owner);
     let caller_y = outer.subst(&db).generic_args(&db)[1];
     let instance = get_or_build_semantic_instance(
@@ -1917,8 +1933,8 @@ fn outer<const X: usize, const Y: usize>() {}
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let code_owner = BodyOwner::Func(function(&db, module, "code"));
-    let outer_owner = BodyOwner::Func(function(&db, module, "outer"));
+    let code_owner = BodyOwner::Func(function(&db, module, "code"), None);
+    let outer_owner = BodyOwner::Func(function(&db, module, "outer"), None);
     let template = const_computation_for_instance(
         &db,
         identity_semantic_instance_key(&db, code_owner),
@@ -1970,7 +1986,7 @@ fn whole_expression_terms_preserve_generic_identity() {
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     for name in ["identity", "increment", "call"] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let key = identity_semantic_instance_key(&db, owner);
         let request = const_computation_for_instance(&db, key, Vec::new());
         let description = describe_const_computation(&db, request, CtfeConfig::default())
@@ -2008,11 +2024,11 @@ fn repeated_invocations_share_identity_after_scope_transfer() {
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let outer_owner = BodyOwner::Func(function(&db, module, "outer"));
+    let outer_owner = BodyOwner::Func(function(&db, module, "outer"), None);
     let outer_key = identity_semantic_instance_key(&db, outer_owner);
     let params = outer_key.subst(&db).generic_args(&db);
     let describe = |name, arg| {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let request = const_computation_for_instance(
             &db,
             identity_semantic_instance_key(&db, owner),
@@ -2034,7 +2050,7 @@ fn repeated_invocations_share_identity_after_scope_transfer() {
         };
         assert_eq!(
             invocation.key.owner(&db),
-            BodyOwner::Func(function(&db, module, "value"))
+            BodyOwner::Func(function(&db, module, "value"), None)
         );
         (*term, description)
     };
@@ -2080,7 +2096,7 @@ fn ctfe_typed_read_through_frame_local_borrow_evaluates() {
     let read = function(&db, module, "read");
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(read)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(read, None)),
     );
     let body = instance.body(&db);
     assert!(
@@ -2099,10 +2115,10 @@ fn ctfe_typed_read_through_frame_local_borrow_evaluates() {
     );
     let outcome = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "caller")),
+        BodyOwner::Func(function(&db, module, "caller"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "caller")),
+            BodyOwner::Func(function(&db, module, "caller"), None),
             vec![],
         ),
     );
@@ -2121,12 +2137,12 @@ fn runtime_reification_rejects_mismatched_scalar_and_array_element_types() {
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "anchor"));
+    let owner = BodyOwner::Func(function(&db, module, "anchor"), None);
     let key = identity_semantic_instance_key(&db, owner);
     let instance = get_or_build_semantic_instance(&db, key);
     let array_ty = key.typed_body(&db).result_ty();
     let zero_array_ty =
-        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, "zero")))
+        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, "zero"), None))
             .typed_body(&db)
             .result_ty();
     let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
@@ -2191,7 +2207,7 @@ fn term_extraction_bounds_expanding_recursion() {
         let file = db.new_stand_alone("expanding_recursion.fe".into(), source);
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let owner = BodyOwner::Func(function(&db, module, "recur"));
+        let owner = BodyOwner::Func(function(&db, module, "recur"), None);
         let request = const_computation_for_instance(
             &db,
             identity_semantic_instance_key(&db, owner),
@@ -2237,7 +2253,7 @@ fn term_extraction_bounds_expanding_recursion() {
     let file = db.new_stand_alone("finite_chain.fe".into(), &source);
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "f0"));
+    let owner = BodyOwner::Func(function(&db, module, "f0"), None);
     let request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     let config = CtfeConfig {
@@ -2378,11 +2394,11 @@ const fn pair() -> (u8, u8) { (1, 2) }
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "repeat"));
+    let owner = BodyOwner::Func(function(&db, module, "repeat"), None);
     let key = identity_semantic_instance_key(&db, owner);
     let array_ty = key.typed_body(&db).result_ty();
     let pair_ty =
-        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, "pair")))
+        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, "pair"), None))
             .typed_body(&db)
             .result_ty();
     let u8_ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::U8)));
@@ -2600,7 +2616,7 @@ fn retained_terms_obey_step_and_depth_limits() {
     let file = db.new_stand_alone("term_limits.fe".into(), "const fn anchor() -> usize { 0 }");
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "anchor"));
+    let owner = BodyOwner::Func(function(&db, module, "anchor"), None);
     let ty = identity_semantic_instance_key(&db, owner)
         .typed_body(&db)
         .result_ty();
@@ -2737,8 +2753,8 @@ const fn sum(x: usize, y: usize) -> usize { x + y }
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let work = BodyOwner::Func(function(&db, module, "work"));
-    let sum = BodyOwner::Func(function(&db, module, "sum"));
+    let work = BodyOwner::Func(function(&db, module, "work"), None);
+    let sum = BodyOwner::Func(function(&db, module, "sum"), None);
     let request =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, work), Vec::new());
     let force = |request, steps| {
@@ -2799,9 +2815,9 @@ const fn large() -> [u8; 1000] { [7; 1000] }
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let pair = BodyOwner::Func(function(&db, module, "pair"));
+    let pair = BodyOwner::Func(function(&db, module, "pair"), None);
     let result_ty = |name| {
-        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, name)))
+        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, name), None))
             .typed_body(&db)
             .result_ty()
     };
@@ -2916,7 +2932,7 @@ const fn projected() -> [u8; 3] { One { value: [5 as u8; 3] }.as_bytes() }
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     for (name, expected) in [("bare", 0), ("projected", 5)] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let value = ready(eval_body_owner_const(
             &db,
             owner,
@@ -2953,7 +2969,7 @@ extern { const fn extent() -> usize }
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "repeat"));
+    let owner = BodyOwner::Func(function(&db, module, "repeat"), None);
     let template =
         const_computation_for_instance(&db, identity_semantic_instance_key(&db, owner), Vec::new());
     assert!(matches!(
@@ -2975,7 +2991,7 @@ extern { const fn extent() -> usize }
         matches!(outcome, EvalOutcome::Failed(EvalFailure::Ctfe(ref error)) if matches!(root_error(error), CtfeError::NotConstEvaluable { .. })),
         "closed unsupported extent is not a dependency: {outcome:?}"
     );
-    let scalar_owner = BodyOwner::Func(function(&db, module, "scalar"));
+    let scalar_owner = BodyOwner::Func(function(&db, module, "scalar"), None);
     let scalar = const_computation_for_instance(
         &db,
         identity_semantic_instance_key(&db, scalar_owner),

@@ -9,8 +9,8 @@ use super::{
 use crate::{
     hir_def::{
         AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FieldIndex, FuncParamListId,
-        GenericArg, GenericArgListId, GenericParamListId, IdentId, IntegerId, Partial, PathId,
-        TraitRefId, TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
+        GenericArg, GenericArgListId, GenericParamListId, IdentId, IntegerId, ModeMarker, Partial,
+        PathId, TraitRefId, TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
     },
     lower::msg::lower_msg_as_mod,
     span::HirOrigin,
@@ -538,7 +538,9 @@ impl<'db> Func<'db> {
             .filter(|mode| {
                 matches!(
                     mode.mode(),
-                    Some(ast::TypeMode::Ref(_) | ast::TypeMode::Mut(_))
+                    Some(
+                        ast::TypeMode::Ref(_) | ast::TypeMode::Mut(_) | ast::TypeMode::MaybeMut(_)
+                    )
                 )
             })
             .map(|mode| {
@@ -655,7 +657,13 @@ fn lower_uses_params<'db>(
         .map(|p| EffectParam {
             name: p.name().map(|n| IdentId::lower_token(ctxt, n.syntax())),
             key_ty: TypeId::lower_ast_partial(ctxt, p.ty()),
-            is_mut: p.mut_token().is_some(),
+            mode: if p.mut_token().is_some() {
+                ModeMarker::Mut
+            } else if p.maybe_mut_token().is_some() {
+                ModeMarker::MaybeMut
+            } else {
+                ModeMarker::None
+            },
         })
         .collect();
     EffectParamListId::new(ctxt.db(), data)

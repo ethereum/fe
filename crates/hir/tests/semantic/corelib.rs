@@ -222,6 +222,7 @@ fn solver_proves_core_abi_traits_for_u256_and_sol() {
                 abi_trait,
                 vec![sol_ty],
                 IndexMap::default(),
+                fe_hir::hir_def::ModeMarker::None,
             ),
         ),
         (
@@ -231,6 +232,7 @@ fn solver_proves_core_abi_traits_for_u256_and_sol() {
                 encode_trait,
                 vec![u256_ty, sol_ty],
                 IndexMap::default(),
+                fe_hir::hir_def::ModeMarker::None,
             ),
         ),
         (
@@ -240,6 +242,7 @@ fn solver_proves_core_abi_traits_for_u256_and_sol() {
                 decode_trait,
                 vec![u256_ty, sol_ty],
                 IndexMap::default(),
+                fe_hir::hir_def::ModeMarker::None,
             ),
         ),
     ] {

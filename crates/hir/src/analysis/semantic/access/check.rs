@@ -784,8 +784,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 effect_args,
                 ..
             } => {
-                if let BodyOwner::Func(func) = callee.key.owner(self.db)
-                    && let Some(shape) = func.return_shape(self.db)
+                if let BodyOwner::Func(func, mode) = callee.key.owner(self.db)
+                    && let Some(shape) = func.return_shape(self.db, mode)
                 {
                     self.sessions
                         .insert(result, get_or_build_semantic_instance(self.db, callee.key));
@@ -835,12 +835,12 @@ impl<'a, 'db> Analysis<'a, 'db> {
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
     ) -> Held {
-        let BodyOwner::Func(func) = callee.owner(self.db) else {
+        let owner @ BodyOwner::Func(func, mode) = callee.owner(self.db) else {
             return Held::new();
         };
         let mut reservations = TokenSet::new();
         for (position, arg) in args.iter().enumerate() {
-            let param_mode = CallableDef::Func(func).param_mode(self.db, position);
+            let param_mode = CallableDef::Func(func).param_mode(self.db, position, mode);
             let direct = self.passed_to(arg.value, param_mode);
             if direct.is_empty() {
                 continue;
@@ -870,9 +870,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         let mut footprints: Vec<_> = args
             .iter()
             .enumerate()
-            .filter_map(|(position, arg)| {
-                self.capability_arg_footprint(BodyOwner::Func(func), position, arg)
-            })
+            .filter_map(|(position, arg)| self.capability_arg_footprint(owner, position, arg))
             .collect();
         for effect in effect_args {
             footprints.extend(self.effect_footprint(callee, effect));
@@ -947,7 +945,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         position: usize,
         arg: &NOperand,
     ) -> Option<Footprint> {
-        if let BodyOwner::Func(func) = owner
+        if let BodyOwner::Func(func, _) = owner
             && matches!(
                 func.top_mod(self.db).ingot(self.db).kind(self.db),
                 IngotKind::Core | IngotKind::Std
@@ -957,7 +955,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         }
         let mode = callee_param_mode(self.db, owner, position)?;
         let declared = match owner {
-            BodyOwner::Func(func) => func.params(self.db).nth(position).map(|p| p.ty(self.db)),
+            BodyOwner::Func(func, _) => func.params(self.db).nth(position).map(|p| p.ty(self.db)),
             _ => None,
         };
         let ty = self.body.values[arg.value.index()].ty;
@@ -986,7 +984,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         is_mut: bool,
     ) -> Option<MemoryAccessKind> {
         if let Some(declared) = declared
-            && let BodyOwner::Func(_) = owner
+            && let BodyOwner::Func(_, _) = owner
         {
             let assumptions = infer_body(self.db, owner).1.assumptions();
             if bounded_by_sealed_capabilities(self.db, owner.scope(), assumptions, declared) {
@@ -1265,7 +1263,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
     /// call's, and the place is not one of its own frame.
     fn check_raw_place(&self) -> Result<(), Diag<'db>> {
         let owner = self.instance.key(self.db).owner(self.db);
-        let BodyOwner::Func(func) = owner else {
+        let BodyOwner::Func(func, mode) = owner else {
             return Ok(());
         };
         if !func.is_raw_place(self.db) {
@@ -1278,7 +1276,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 message.into(),
             )
         };
-        if func.return_shape(self.db).is_none() {
+        if func.return_shape(self.db, mode).is_none() {
             return Err(violation(
                 SemOrigin::Body(owner),
                 "a `#[raw_place]` function must be a projection",
@@ -1322,7 +1320,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     let raw_session = match self.body.defining_expr(access) {
                         Some((_, NExpr::Call { callee, .. })) => matches!(
                             callee.key.owner(self.db),
-                            BodyOwner::Func(callee) if callee.is_raw_place(self.db)
+                            BodyOwner::Func(callee, _) if callee.is_raw_place(self.db)
                         ),
                         _ => true,
                     };
@@ -1394,10 +1392,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
     fn check_yield_paths(&self) -> Result<(), Diag<'db>> {
         const NOT_YET: u8 = 1;
         const YIELDED: u8 = 2;
-        let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, mode) = self.instance.key(self.db).owner(self.db) else {
             return Ok(());
         };
-        if func.body(self.db).is_none() || func.return_shape(self.db).is_none() {
+        if func.body(self.db).is_none() || func.return_shape(self.db, mode).is_none() {
             return Ok(());
         }
         let mut entry = vec![0; self.body.blocks.len()];
@@ -1448,10 +1446,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
     /// through them are discarded when the session finishes. A view
     /// descriptor is exempt, since its writes reach its owner.
     fn discarded_writes(&self) -> Vec<Diag<'db>> {
-        let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, mode) = self.instance.key(self.db).owner(self.db) else {
             return Vec::new();
         };
-        let Some(shape) = func.return_shape(self.db) else {
+        let Some(shape) = func.return_shape(self.db, mode) else {
             return Vec::new();
         };
         let components = access_components(shape);
@@ -2048,7 +2046,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         // environment.
         let owner = callee.owner(self.db);
         let func = match owner {
-            BodyOwner::Func(func) => Some(func),
+            BodyOwner::Func(func, mode) => Some((func, mode)),
             BodyOwner::Closure { .. } => None,
             _ => return Ok(()),
         };
@@ -2117,8 +2115,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
         for effect in effect_args {
             footprints.extend(self.effect_footprint(callee, effect));
         }
-        if let Some(func) = func
-            && let Some(access) = external_call_state_access(self.db, func)
+        if let Some((func, mode)) = func
+            && let Some(access) = external_call_state_access(self.db, func, mode)
         {
             footprints.push(Footprint {
                 regions: state_regions(),
@@ -2236,10 +2234,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
         state: &State,
         origin: SemOrigin<'db>,
     ) -> Result<(), Diag<'db>> {
-        let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, mode) = self.instance.key(self.db).owner(self.db) else {
             return Ok(());
         };
-        let Some(shape) = func.return_shape(self.db) else {
+        let Some(shape) = func.return_shape(self.db, mode) else {
             return Ok(());
         };
         let held = &self.values[value.value.index()];
@@ -2291,10 +2289,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
     /// place in one address space, its result-space contract, and the access
     /// components of a split are disjoint.
     fn check_yields(&self) -> Result<Vec<Option<AddressSpace>>, Diag<'db>> {
-        let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, mode) = self.instance.key(self.db).owner(self.db) else {
             return Ok(Vec::new());
         };
-        let Some(shape) = func.return_shape(self.db) else {
+        let Some(shape) = func.return_shape(self.db, mode) else {
             return Ok(Vec::new());
         };
         let components = access_components(shape);
@@ -2488,7 +2486,7 @@ fn callee_param_mode<'db>(
     position: usize,
 ) -> Option<FuncParamMode> {
     match owner {
-        BodyOwner::Func(func) => Some(CallableDef::Func(func).param_mode(db, position)),
+        BodyOwner::Func(func, mode) => Some(CallableDef::Func(func).param_mode(db, position, mode)),
         BodyOwner::Closure { ty, receiver, .. } => match position.checked_sub(1) {
             None => Some(receiver),
             Some(idx) => ty.modes(db).get(idx).copied(),

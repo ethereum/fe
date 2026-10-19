@@ -75,7 +75,7 @@ impl UnsafeTrust {
 /// or its first `unsafe` block.
 fn unsafe_site<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> Option<SemOrigin<'db>> {
     let body = owner.body(db)?;
-    if let BodyOwner::Func(func) = owner
+    if let BodyOwner::Func(func, _) = owner
         && (func.is_unsafe(db)
             || matches!(
                 func.scope().parent_item(db),

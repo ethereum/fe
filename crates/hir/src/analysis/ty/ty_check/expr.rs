@@ -1,3 +1,4 @@
+use crate::hir_def::ModeMarker;
 use either::Either;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::ToPrimitive;
@@ -408,7 +409,7 @@ impl<'db> TyChecker<'db> {
         // a place, so it grants none.
         if !matches!(
             expr_data,
-            Expr::Un(_, UnOp::Ref | UnOp::Mut)
+            Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut)
                 | Expr::Call(..)
                 | Expr::MethodCall(..)
                 | Expr::Bin(_, _, BinOp::Index)
@@ -520,7 +521,7 @@ impl<'db> TyChecker<'db> {
                 continue;
             }
             let mut call = *elem;
-            while let Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) =
+            while let Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref)) =
                 self.env.expr_data(call)
             {
                 call = *inner;
@@ -629,6 +630,11 @@ impl<'db> TyChecker<'db> {
                 primary: span.clone(),
             });
         }
+        // Each of a `mut?` function's bodies would define the closure.
+        if self.env.owner().mode().is_some() {
+            self.push_diag(BodyDiag::ClosureInMaybeMutFunc { primary: span });
+            return ExprProp::invalid(self.db);
+        }
 
         // The shape the callee the closure is passed to expects types its
         // unannotated parameters and its result in context. Against a shape
@@ -691,7 +697,7 @@ impl<'db> TyChecker<'db> {
         let (info, effects) = self.env.leave_closure(expr);
 
         let parent_args = match self.env.owner() {
-            BodyOwner::Func(func) => CallableDef::Func(func).params(self.db).to_vec(),
+            BodyOwner::Func(func, _) => CallableDef::Func(func).params(self.db).to_vec(),
             _ => Vec::new(),
         };
         let closure = ClosureTy::new(
@@ -819,6 +825,23 @@ impl<'db> TyChecker<'db> {
         }
     }
 
+    /// `op` with `mut?` taken at the body's mode. A body without a mode has
+    /// no `mut?`, which `expr` reports, taken as `ref`.
+    pub(super) fn access_op(&mut self, expr: ExprId, op: UnOp) -> UnOp {
+        if op != UnOp::MaybeMut {
+            return op;
+        }
+        if self.env.owner().mode().is_none() {
+            self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                primary: expr.span(self.body()).into(),
+            });
+        }
+        match self.maybe_mut_kind() {
+            BorrowKind::Mut => UnOp::Mut,
+            BorrowKind::Ref => UnOp::Ref,
+        }
+    }
+
     /// A closure parameter's mode and type: as annotated, else as the
     /// expected shape has them, else a view of an inferred type. A mode
     /// written without a type (`x: own`) keeps the mode and infers the type.
@@ -835,6 +858,13 @@ impl<'db> TyChecker<'db> {
                     TypeMode::Own => FuncParamMode::Own,
                     TypeMode::Mut => FuncParamMode::Mut,
                     TypeMode::Ref => FuncParamMode::View,
+                    // A `mut?` function has no closures.
+                    TypeMode::MaybeMut => {
+                        self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                            primary: span.clone().into(),
+                        });
+                        FuncParamMode::View
+                    }
                 }),
                 payload.to_opt(),
             ),
@@ -852,6 +882,7 @@ impl<'db> TyChecker<'db> {
         let Expr::Un(lhs, op) = expr_data else {
             unreachable!()
         };
+        let op = &self.access_op(expr, *op);
         let mut prop = self.check_expr_unknown(*lhs);
         if prop.ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
@@ -975,8 +1006,11 @@ impl<'db> TyChecker<'db> {
         }
         if let Some(Shape::Sum { payload, .. }) = prop.shape {
             self.consume_access(inner);
+            let shape = (!matches!(*payload, Shape::Owned(_))).then(|| (*payload).clone());
+            // The payload is mutable as a call's result is.
             return ExprProp {
-                shape: (!matches!(*payload, Shape::Owned(_))).then(|| (*payload).clone()),
+                is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
+                shape,
                 ..ExprProp::new(payload.erased_ty(self.db), true)
             };
         }
@@ -2426,7 +2460,7 @@ impl<'db> TyChecker<'db> {
             };
             return Some((binding, RowPath::entry(idx as u32)));
         }
-        let super::BodyOwner::Func(caller) = self.env.owner() else {
+        let super::BodyOwner::Func(caller, _) = self.env.owner() else {
             return None;
         };
         let (scope, assumptions) = (self.env.scope(), self.env.assumptions());
@@ -2729,6 +2763,7 @@ impl<'db> TyChecker<'db> {
             instantiated.def(self.db),
             args,
             instantiated.assoc_type_bindings(self.db).clone(),
+            ModeMarker::None,
         );
         let GoalSatisfiability::Satisfied(solution) =
             self.trait_effect_goal_satisfiability(trait_goal)
@@ -3181,6 +3216,7 @@ impl<'db> TyChecker<'db> {
                             .iter()
                             .copied()
                             .collect::<IndexMap<_, _>>(),
+                        ModeMarker::None,
                     ),
                     given: provider.ty,
                 });
@@ -3361,6 +3397,7 @@ impl<'db> TyChecker<'db> {
                             .iter()
                             .copied()
                             .collect::<IndexMap<_, _>>(),
+                        ModeMarker::None,
                     );
                     if emit_diag {
                         self.push_diag(BodyDiag::WithEffectTraitUnsatisfied {
@@ -3407,6 +3444,7 @@ impl<'db> TyChecker<'db> {
                     instantiated.def(self.db),
                     args,
                     instantiated.assoc_type_bindings(self.db).clone(),
+                    ModeMarker::None,
                 );
                 let GoalSatisfiability::Satisfied(solution) =
                     self.trait_effect_goal_satisfiability_in_scope(scope, assumptions, trait_goal)
@@ -3553,11 +3591,10 @@ impl<'db> TyChecker<'db> {
         }
 
         let Some(enclosing_inst) = (match current_func.scope().parent_item(self.db) {
-            Some(ItemKind::Trait(trait_)) => Some(TraitInstId::new(
+            Some(ItemKind::Trait(trait_)) => Some(TraitInstId::new_simple(
                 self.db,
                 trait_,
                 trait_.params(self.db).to_vec(),
-                IndexMap::new(),
             )),
             Some(ItemKind::ImplTrait(impl_trait)) => impl_trait.trait_inst_result(self.db).ok(),
             _ => None,
@@ -3596,6 +3633,7 @@ impl<'db> TyChecker<'db> {
             inst.def(self.db),
             args,
             enclosing_inst.assoc_type_bindings(self.db).clone(),
+            inst.mode(self.db),
         )
     }
 
@@ -4001,6 +4039,7 @@ impl<'db> TyChecker<'db> {
                                     inst.def(self.db),
                                     args,
                                     inst.assoc_type_bindings(self.db).clone(),
+                                    inst.mode(self.db),
                                 )
                             } else {
                                 inst
@@ -4098,6 +4137,7 @@ impl<'db> TyChecker<'db> {
                             trait_inst.def(self.db),
                             args,
                             assoc_type_bindings,
+                            trait_inst.mode(self.db),
                         )
                     } else {
                         trait_inst
@@ -4138,6 +4178,7 @@ impl<'db> TyChecker<'db> {
                         inst.def(self.db),
                         args,
                         inst.assoc_type_bindings(self.db).clone(),
+                        inst.mode(self.db),
                     );
 
                     if !super::trait_const_goal_has_foreign_params(self.db, inst, self.env.scope())
@@ -5162,6 +5203,17 @@ impl<'db> TyChecker<'db> {
                             MutabilityFix::Var
                         }
                     }
+                    LocalBinding::Param {
+                        site: ParamSite::Func(func),
+                        idx,
+                        ..
+                    } if func
+                        .params(self.db)
+                        .nth(idx)
+                        .is_some_and(|param| param.is_maybe_mut(self.db)) =>
+                    {
+                        MutabilityFix::MaybeMutParam
+                    }
                     LocalBinding::Param { mode, .. } => {
                         match (mode == FuncParamMode::Own, ident.is_self(self.db)) {
                             (true, true) => MutabilityFix::OwnSelf,
@@ -5527,6 +5579,7 @@ impl TraitOps for UnOp {
             UnOp::BitNot => ["BitNot", "bit_not", "~"],
             UnOp::Mut => ["MutBorrow", "mut_borrow", "mut"],
             UnOp::Ref => ["RefBorrow", "ref_borrow", "ref"],
+            UnOp::MaybeMut => unreachable!("`mut?` is the body's mode, never trait-lowered"),
             UnOp::Deref => unreachable!("pointer dereference is not trait-lowered"),
         }
     }
@@ -5600,14 +5653,5 @@ impl TraitOps for AugAssignOp {
             // Range doesn't have an augmented assignment form
             Range => unreachable!("Range operator cannot be used in augmented assignment"),
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(super) struct IndexMutOp;
-
-impl TraitOps for IndexMutOp {
-    fn triple(&self) -> [&str; 3] {
-        ["IndexMut", "index_mut", "[]="]
     }
 }

@@ -18,9 +18,9 @@ pub fn parse_type<S: TokenStream>(
         Some(SyntaxKind::Star | SyntaxKind::Star2) => {
             parser.parse_cp(PtrTypeScope::default(), checkpoint)
         }
-        Some(SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw) => {
-            parser.parse_cp(ModeTypeScope::new(false), checkpoint)
-        }
+        Some(
+            SyntaxKind::MutKw | SyntaxKind::MaybeMutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw,
+        ) => parser.parse_cp(ModeTypeScope::new(false), checkpoint),
         Some(SyntaxKind::LParen) => parser.parse_cp(TupleTypeScope::default(), checkpoint),
         Some(SyntaxKind::LBracket) => parser.parse_cp(ArrayTypeScope::default(), checkpoint),
         Some(SyntaxKind::Not) => parser
@@ -37,7 +37,7 @@ pub(crate) fn parse_closure_param_type<S: TokenStream>(
 ) -> Result<(), Recovery<ErrProof>> {
     if matches!(
         parser.current_kind(),
-        Some(SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw)
+        Some(SyntaxKind::MutKw | SyntaxKind::MaybeMutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw)
     ) {
         parser.parse(ModeTypeScope::new(true))
     } else {
@@ -52,7 +52,7 @@ pub(crate) fn is_type_start(kind: SyntaxKind) -> bool {
         | SyntaxKind::SelfTypeKw
         | SyntaxKind::LParen
         | SyntaxKind::LBracket => true,
-        SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw => true,
+        SyntaxKind::MutKw | SyntaxKind::MaybeMutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw => true,
         kind if is_path_segment(kind) => true,
         _ => false,
     }
@@ -80,7 +80,12 @@ impl super::Parse for ModeTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.expect(
-            &[SyntaxKind::MutKw, SyntaxKind::RefKw, SyntaxKind::OwnKw],
+            &[
+                SyntaxKind::MutKw,
+                SyntaxKind::MaybeMutKw,
+                SyntaxKind::RefKw,
+                SyntaxKind::OwnKw,
+            ],
             None,
         )?;
         parser.bump();

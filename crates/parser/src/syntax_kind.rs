@@ -233,6 +233,9 @@ pub enum SyntaxKind {
     /// `mut`
     #[token("mut")]
     MutKw,
+    /// `mut?`: the mode of a `mut?` item, `ref` or `mut` by its use.
+    #[token("mut?")]
+    MaybeMutKw,
     /// `ref`
     #[token("ref")]
     RefKw,
@@ -696,6 +699,7 @@ impl SyntaxKind {
             SyntaxKind::LetKw => "`let`",
             SyntaxKind::VarKw => "`var`",
             SyntaxKind::MutKw => "`mut`",
+            SyntaxKind::MaybeMutKw => "`mut?`",
             SyntaxKind::RefKw => "`ref`",
             SyntaxKind::OwnKw => "`own`",
             SyntaxKind::UseKw => "`use`",
@@ -929,6 +933,7 @@ impl SyntaxKind {
                 | SyntaxKind::LetKw
                 | SyntaxKind::VarKw
                 | SyntaxKind::MutKw
+                | SyntaxKind::MaybeMutKw
                 | SyntaxKind::RefKw
                 | SyntaxKind::OwnKw
                 | SyntaxKind::UseKw

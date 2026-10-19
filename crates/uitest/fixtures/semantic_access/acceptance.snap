@@ -96,7 +96,7 @@ error[16-0001]: access conflict in `fn Case33CopyArraySpace::__init__`
 error[16-0001]: access conflict in `fn Case33CopyArrayMutSpace::__init__`
     ┌─ acceptance.fe:446:9
     │
-445 │         let x = mut cells.at_mut(0)
+445 │         let x = mut cells.at(0)
     │                     ----- access opened here
 446 │         ping()
     │         ^^^^^^ this call may write storage while a `mut` access of it is open

@@ -1784,7 +1784,7 @@ fn select_assoc_const_candidate<'db>(
                     // owner trait's `Self` context, not the projected subject.
                     let owner_self = cx.materialize(assoc_ty.trait_.self_ty(db));
                     for bound in &decl.bounds {
-                        if let TypeBound::Trait(trait_ref) = *bound
+                        if let TypeBound::Trait(trait_ref, _) = *bound
                             && let Ok(inst) = cx.lower_trait_ref(
                                 receiver,
                                 trait_ref,
@@ -2083,7 +2083,7 @@ fn find_associated_type_in_mode<'db>(
                 // owner trait's `Self` environment.
                 let owner_self = cx.materialize(assoc_ty.trait_.self_ty(db));
                 for bound in &decl.bounds {
-                    let TypeBound::Trait(trait_ref) = *bound else {
+                    let TypeBound::Trait(trait_ref, _) = *bound else {
                         continue;
                     };
 

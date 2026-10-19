@@ -16,7 +16,8 @@ The loop's pattern binds each element as a `let` pattern binds a
 projection's result: a plain name copies a `Copy` element and is an error
 for any other (bind it `ref`), except that a `#[view]` or state-only one,
 which has no value to copy, binds its read access. The item pattern chooses
-the traversal: a `mut` item calls `at_mut` and opens the base mutably, as a
+the traversal: a `mut` item calls `at` at `mut` (see
+[`mut?` items](accesses.md#mut-items)) and opens the base mutably, as a
 `mut` binding opens a matched place, so the base needs no marker and
 `for x in mut xs` is an error. A method chain traverses mutably the same
 way: `for (i, mut x) in xs.enumerate()`.
@@ -26,12 +27,12 @@ cursor, `has` tests whether it names an element, and `at` projects the
 element at it. A loop tests each cursor with `has` before its body runs,
 calls `at` only on a cursor `has` holds for, and steps with `next` from a
 cursor `has` accepted; the position after the last element (or, in reverse,
-before the first) is a cursor that names none. `CollectionMut` adds
-`at_mut` with `mut` access for loops whose item is `mut`, and
-`Bidirectional` (`last`, `prev`) traverses in reverse. Arrays, `MemArray`,
-`MemSlice`, ranges, `SolArray` and `SolEnumerableSet` are collections; a
-collection declares the effects its methods need (`uses E`) and the space
-of the places it yields (`space S`).
+before the first) is a cursor that names none. `at` is `mut?`: a loop whose
+item is `mut` takes it at `mut`, which needs a `mut Collection` (or a
+`mut Driver<B>`), and `Bidirectional` (`last`, `prev`) traverses in reverse.
+Arrays, `MemArray`, `MemSlice`, ranges, `SolArray` and `SolEnumerableSet` are
+collections; a collection declares the effects its methods need (`uses E`)
+and the space of the places it yields (`space S`).
 
 A loop that copies each item (a `Copy` element bound by a plain name or
 `var`, or a producer's value) holds

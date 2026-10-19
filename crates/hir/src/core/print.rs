@@ -334,7 +334,9 @@ impl<'db> TypeBound<'db> {
     /// Pretty-prints a type bound.
     pub fn pretty_print(&self, db: &dyn HirDb) -> String {
         match self {
-            TypeBound::Trait(trait_ref) => trait_ref.pretty_print(db),
+            TypeBound::Trait(trait_ref, mode) => {
+                format!("{}{}", mode.prefix(), trait_ref.pretty_print(db))
+            }
             TypeBound::Kind(kind) => {
                 let kind = unwrap_partial_ref(kind, "TypeBound::Kind");
                 kind.pretty_print()
@@ -485,9 +487,7 @@ impl<'db> EffectParam<'db> {
             result.push_str(name.data(db));
             result.push_str(": ");
         }
-        if self.is_mut {
-            result.push_str("mut ");
-        }
+        result.push_str(self.mode.prefix());
         result.push_str(
             &self
                 .key_ty
@@ -528,6 +528,7 @@ impl<'db> Pat<'db> {
                 match marker {
                     BindingMarker::Plain => {}
                     BindingMarker::Mut => result.push_str("mut "),
+                    BindingMarker::MaybeMut => result.push_str("mut? "),
                     BindingMarker::Ref => result.push_str("ref "),
                     BindingMarker::Var => result.push_str("var "),
                 }
@@ -680,7 +681,7 @@ impl<'db> Expr<'db> {
             Expr::Un(expr, op) => {
                 let expr = unwrap_partial_ref(expr.data(db, body), "Un::expr");
                 let op_str = op.pretty_print();
-                if matches!(op, UnOp::Mut | UnOp::Ref) {
+                if matches!(op, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref) {
                     format!("{op_str} {}", expr.pretty_print(db, body, indent))
                 } else {
                     format!("{op_str}{}", expr.pretty_print(db, body, indent))
@@ -1022,6 +1023,7 @@ impl UnOp {
             UnOp::Not => "!",
             UnOp::BitNot => "~",
             UnOp::Mut => "mut",
+            UnOp::MaybeMut => "mut?",
             UnOp::Ref => "ref",
             UnOp::Deref => "*",
         }

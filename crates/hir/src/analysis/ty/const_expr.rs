@@ -109,7 +109,7 @@ impl<'db> ConstExprId<'db> {
     /// compiler has no implementation with which to force their values.
     pub(crate) fn is_opaque_extern(self, db: &'db dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), ConstExpr::Invocation(invocation)
-            if matches!(invocation.key.owner(db), BodyOwner::Func(func)
+            if matches!(invocation.key.owner(db), BodyOwner::Func(func, _)
                 if func.is_extern(db) && func.body(db).is_none()
                     && ctfe_extern_intrinsic_kind(db, func).is_none()))
     }
@@ -175,7 +175,7 @@ fn pretty_print_const_fn_call<'db>(
     invocation: &ConstInvocation<'db>,
 ) -> String {
     let name = match invocation.key.owner(db) {
-        BodyOwner::Func(func) => func
+        BodyOwner::Func(func, _) => func
             .name(db)
             .to_opt()
             .map_or("<unknown>", |n| n.data(db).as_str()),
@@ -211,7 +211,7 @@ pub(super) fn pretty_print_generic_args(args: &[String]) -> String {
 
 pub(super) fn pretty_print_un_op(op: UnOp, expr: String) -> String {
     let op_str = op.pretty_print();
-    if matches!(op, UnOp::Mut | UnOp::Ref) {
+    if matches!(op, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref) {
         format!("({op_str} {expr})")
     } else {
         format!("({op_str}{expr})")

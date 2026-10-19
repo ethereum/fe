@@ -50,7 +50,7 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
     let func = find_func(&db, top_mod, "answer");
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     let borrows_frame_local = instance
         .body(&db)
@@ -73,8 +73,8 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
     assert!(borrows_frame_local, "`answer` must borrow a frame local");
     let value = match eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(func), vec![]),
+        BodyOwner::Func(func, None),
+        GenericSubst::for_body_owner(&db, BodyOwner::Func(func, None), vec![]),
     ) {
         EvalOutcome::Ready(value) => value,
         outcome => panic!("{outcome:?}"),
@@ -91,8 +91,8 @@ fn semantic_ctfe_keeps_a_projection_frame_for_its_session() {
     let func = find_func(&db, top_mod, "use_counter");
     let value = match eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(func), vec![]),
+        BodyOwner::Func(func, None),
+        GenericSubst::for_body_owner(&db, BodyOwner::Func(func, None), vec![]),
     ) {
         EvalOutcome::Ready(value) => value,
         outcome => panic!("{outcome:?}"),
@@ -115,8 +115,8 @@ fn semantic_ctfe_projects_interned_constants_in_linear_time() {
         let func = find_func(&db, top_mod, "answer");
         let result = match eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(func), vec![]),
+            BodyOwner::Func(func, None),
+            GenericSubst::for_body_owner(&db, BodyOwner::Func(func, None), vec![]),
         ) {
             EvalOutcome::Ready(value) => Ok(value.pretty_print(&db)),
             outcome => Err(format!("{outcome:?}")),
@@ -188,7 +188,7 @@ fn semantic_const_operands_keep_formal_evidence_distinct() {
     let func = module.all_funcs(&db)[0];
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     assert!(
         instance
@@ -222,7 +222,7 @@ fn semantic_ctfe_defers_effectful_calls_like_pure_calls() {
         let file = db.new_stand_alone(path, &text);
         let (top_mod, _) = db.top_mod(file);
         db.assert_no_diags(top_mod);
-        let owner = BodyOwner::Func(find_func(&db, top_mod, "symbolic"));
+        let owner = BodyOwner::Func(find_func(&db, top_mod, "symbolic"), None);
         let generic =
             eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]));
         assert!(
@@ -265,8 +265,8 @@ fn semantic_ctfe_provider_edits_match_fresh_databases() {
         let func = find_func(db, top_mod, "answer");
         match eval_body_owner_const(
             db,
-            BodyOwner::Func(func),
-            GenericSubst::for_body_owner(db, BodyOwner::Func(func), vec![]),
+            BodyOwner::Func(func, None),
+            GenericSubst::for_body_owner(db, BodyOwner::Func(func, None), vec![]),
         ) {
             EvalOutcome::Ready(value) => value.pretty_print(db),
             outcome => panic!("{outcome:?}"),
@@ -321,7 +321,7 @@ fn wrap() {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     assert!(std::ptr::eq(semantic.body(&db), semantic.body(&db)));
     let body = canonicalize_semantic_consts(&db, semantic)
@@ -383,7 +383,7 @@ fn semantic_ctfe_evaluates_as_bytes_const_fns() {
 
         let value = match eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(&db, func.into(), Vec::new()),
         ) {
             EvalOutcome::Ready(value) => value,
@@ -532,7 +532,7 @@ const fn high_word_string_as_bytes() -> [u8; 4] {
     ) -> EvalOutcome<'db, SemConstId<'db>> {
         eval_body_owner_const(
             db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(db, func.into(), Vec::new()),
         )
     }
@@ -750,7 +750,7 @@ const fn truncated_concat() -> [u8; 6] {
 
     let value = eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
     )
     .into_ready()
@@ -833,7 +833,7 @@ const fn invalid_const() -> usize {
 
     let result = eval_body_owner_const_with_args(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
         Vec::new(),
     );
@@ -880,7 +880,7 @@ const fn invalid_call_like_expr() -> u256 {
 
     let result = eval_body_owner_const_with_args(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
         Vec::new(),
     );
@@ -953,7 +953,7 @@ type Direct = [u8; first<0>()]
 
 fn owner_name(db: &HirAnalysisTestDb, owner: BodyOwner<'_>) -> String {
     match owner {
-        BodyOwner::Func(func) => match func.name(db) {
+        BodyOwner::Func(func, _) => match func.name(db) {
             Partial::Present(name) => name.data(db).to_string(),
             Partial::Absent => "<fn>".to_string(),
         },
@@ -992,7 +992,7 @@ fn contract_init_fixed_array_arg_fixture_has_no_type_level_semantic_consts() {
         match item {
             ItemKind::Func(func) => pending.push_back(get_or_build_semantic_instance(
                 &db,
-                identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+                identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
             )),
             ItemKind::Contract(contract) => {
                 pending.push_back(get_or_build_semantic_instance(
@@ -1104,7 +1104,7 @@ fn test_add_overflow_u8() {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1144,7 +1144,7 @@ fn evaluate(x: u8) -> u8 {
     let func = module.all_funcs(&db)[0];
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     let body = canonicalize_semantic_consts(&db, instance).unwrap();
     let expressions = body
@@ -1200,7 +1200,7 @@ fn signed_mul_no_overflow_i8_neg_neg() {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1282,7 +1282,7 @@ fn entry() -> u256 {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1349,7 +1349,7 @@ fn wraps_after_aug_assign() -> bool {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1412,7 +1412,7 @@ fn negated_min_i8_compares_equal() -> bool {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1560,7 +1560,7 @@ fn probe(index: usize) -> bool {{
         }).unwrap();
         let instance = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+            identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
         );
         let body = canonicalize_semantic_consts(&db, instance).unwrap();
         let mut constant_true = false;
@@ -1632,7 +1632,7 @@ fn check_length() {
         let func = find_func(&db, top_mod, name);
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(&db, func.into(), Vec::new()),
         )
         .into_ready()
@@ -1680,7 +1680,7 @@ const fn inherent() -> u8 { Marker<3>::OTHER.value }
         let func = find_func(&db, top_mod, name);
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(&db, func.into(), Vec::new()),
         )
         .into_ready()
@@ -1744,7 +1744,7 @@ const fn answer() -> u32 {
     let func = find_func(&db, top_mod, "answer");
     let value = match eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
     ) {
         EvalOutcome::Ready(value) => value,

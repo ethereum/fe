@@ -2100,7 +2100,7 @@ pub fn walk_type_bound<'db, V>(
     V: Visitor<'db> + ?Sized,
 {
     match bound {
-        TypeBound::Trait(trait_ref) => ctxt.with_new_ctxt(
+        TypeBound::Trait(trait_ref, _) => ctxt.with_new_ctxt(
             |span| span.trait_bound(),
             |ctxt| visitor.visit_trait_ref(ctxt, *trait_ref),
         ),

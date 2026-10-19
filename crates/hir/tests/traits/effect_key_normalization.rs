@@ -2815,6 +2815,7 @@ fn impl_trait_method_typed_body_instantiation_substitutes_self() {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method.name(&db).to_opt().expect("missing method name"),
+        None,
     ) else {
         panic!("missing resolved impl method");
     };
@@ -2822,7 +2823,7 @@ fn impl_trait_method_typed_body_instantiation_substitutes_self() {
 
     let instantiated = instantiate_typed_body(
         &db,
-        typed_body_template(&db, BodyOwner::Func(method)),
+        typed_body_template(&db, BodyOwner::Func(method, None)),
         GenericSubst::for_owner(&db, method.into(), resolved.body_args().to_vec()),
     );
     let self_binding = instantiated.param_binding(0).expect("missing self binding");
@@ -2857,13 +2858,14 @@ fn impl_trait_method_self_paths_preserve_binding_ty_after_instantiation() {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method.name(&db).to_opt().expect("missing method name"),
+        None,
     ) else {
         panic!("missing resolved impl method");
     };
 
     let instantiated = instantiate_typed_body(
         &db,
-        typed_body_template(&db, BodyOwner::Func(method)),
+        typed_body_template(&db, BodyOwner::Func(method, None)),
         GenericSubst::for_owner(&db, method.into(), resolved.body_args().to_vec()),
     );
     let body = instantiated.body().expect("missing typed body");
@@ -2900,7 +2902,10 @@ fn use_ctx_semantic_body_keeps_receiver_as_effect_binding_local() {
     let use_ctx = find_func(&db, top_mod, "use_ctx");
     let instance = get_or_build_semantic_instance(
         &db,
-        fe_hir::analysis::semantic::identity_semantic_instance_key(&db, BodyOwner::Func(use_ctx)),
+        fe_hir::analysis::semantic::identity_semantic_instance_key(
+            &db,
+            BodyOwner::Func(use_ctx, None),
+        ),
     );
     let body = instance.body(&db);
     let args = body
@@ -3000,7 +3005,7 @@ fn zero_effect_arg_method_calls_finalize_under_forwarded_witnesses() {
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3015,7 +3020,7 @@ fn zero_effect_arg_method_calls_finalize_under_forwarded_witnesses() {
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3023,7 +3028,7 @@ fn zero_effect_arg_method_calls_finalize_under_forwarded_witnesses() {
             )
         })
         .expect("missing semantic sum callee");
-    let BodyOwner::Func(sum_owner) = sum.key(&db).owner(&db) else {
+    let BodyOwner::Func(sum_owner, _) = sum.key(&db).owner(&db) else {
         panic!("sum callee should be a function");
     };
     assert_eq!(
@@ -3063,6 +3068,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method.name(&db).to_opt().expect("missing method name"),
+        None,
     ) else {
         panic!("missing resolved impl method");
     };
@@ -3070,7 +3076,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
         &db,
         fe_hir::analysis::semantic::SemanticInstanceKey::new(
             &db,
-            BodyOwner::Func(method),
+            BodyOwner::Func(method, None),
             GenericSubst::for_owner(&db, method.into(), resolved.body_args().to_vec()),
             fe_hir::analysis::semantic::EffectProviderSubst::empty(&db),
             fe_hir::analysis::semantic::ImplEnv::empty(&db, impl_trait.scope()),
@@ -3207,7 +3213,7 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
             };
             let instance = get_or_build_semantic_instance(&db, callee.key);
             match instance.key(&db).owner(&db) {
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3215,7 +3221,7 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
                 {
                     Some(instance)
                 }
-                BodyOwner::Func(_)
+                BodyOwner::Func(_, _)
                 | BodyOwner::Const(_)
                 | BodyOwner::AnonConstBody { .. }
                 | BodyOwner::ContractInit { .. }
@@ -3287,7 +3293,7 @@ fn root_effect_bindings_specialize_raw_storage_to_evm() {
     let entry = find_func(&db, top_mod, "explicit_raw_boundaries");
     let root = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(entry))
+        root_semantic_instance_key(&db, BodyOwner::Func(entry, None))
             .expect("root semantic instance should exist"),
     );
     let root_effect_binding = root
@@ -3319,7 +3325,7 @@ fn root_effect_bindings_specialize_raw_storage_to_evm() {
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3365,7 +3371,7 @@ fn root_effect_bindings_specialize_raw_storage_to_evm() {
             let instance = get_or_build_semantic_instance(&db, callee.key);
             matches!(
                 instance.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3377,7 +3383,7 @@ fn root_effect_bindings_specialize_raw_storage_to_evm() {
         .expect("expected concrete sstore impl call");
     assert!(matches!(
         sstore.key(&db).owner(&db),
-        BodyOwner::Func(func) if func.body(&db).is_some()
+        BodyOwner::Func(func, _) if func.body(&db).is_some()
     ));
 }
 
@@ -3394,7 +3400,7 @@ fn root_trait_effect_bindings_specialize_call_to_concrete_evm() {
     let entry = find_func(&db, top_mod, "test_address_call_method");
     let root = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(entry))
+        root_semantic_instance_key(&db, BodyOwner::Func(entry, None))
             .expect("root semantic instance should exist"),
     );
     let address_call = root
@@ -3404,7 +3410,7 @@ fn root_trait_effect_bindings_specialize_call_to_concrete_evm() {
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3455,7 +3461,7 @@ fn with_bound_plain_effect_params_specialize_to_memory_capabilities() {
     let caller = find_func(&db, top_mod, "test_non_evm_effect_param");
     let instance = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(caller))
+        root_semantic_instance_key(&db, BodyOwner::Func(caller, None))
             .expect("caller root instance should exist"),
     );
     let callee = instance
@@ -3466,7 +3472,7 @@ fn with_bound_plain_effect_params_specialize_to_memory_capabilities() {
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3517,7 +3523,7 @@ fn free_function_effect_bindings_keep_explicit_memory_address_space() {
     let caller = find_func(&db, top_mod, "test_mut_array_effect_param");
     let instance = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(caller))
+        root_semantic_instance_key(&db, BodyOwner::Func(caller, None))
             .expect("caller root instance should exist"),
     );
     let write_effects_and_sum = instance
@@ -3528,7 +3534,7 @@ fn free_function_effect_bindings_keep_explicit_memory_address_space() {
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3544,7 +3550,7 @@ fn free_function_effect_bindings_keep_explicit_memory_address_space() {
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
-                BodyOwner::Func(func)
+                BodyOwner::Func(func, _)
                     if func
                         .name(&db)
                         .to_opt()
@@ -3697,7 +3703,7 @@ fn root_semantic_instance_keys_are_closed_under_root_provider_subst() {
     db.assert_no_diags(top_mod);
     for name in ["init", "runtime"] {
         let func = find_func(&db, top_mod, name);
-        let key = root_semantic_instance_key(&db, BodyOwner::Func(func))
+        let key = root_semantic_instance_key(&db, BodyOwner::Func(func, None))
             .unwrap_or_else(|err| panic!("manual root `{name}` should synthesize a closed root semantic instance key: {err:?}"));
         validate_instantiated_effect_env_key(&db, key).unwrap_or_else(|err| {
             panic!(
@@ -3713,9 +3719,10 @@ fn root_semantic_instance_keys_are_closed_under_root_provider_subst() {
     let (top_mod, _) = db.top_mod(test_file);
     db.assert_no_diags(top_mod);
     let test_func = find_func(&db, top_mod, "test_contract_init_fixed_array_arg");
-    let key = root_semantic_instance_key(&db, BodyOwner::Func(test_func)).unwrap_or_else(|err| {
-        panic!("test root should synthesize a closed root semantic instance key: {err:?}")
-    });
+    let key =
+        root_semantic_instance_key(&db, BodyOwner::Func(test_func, None)).unwrap_or_else(|err| {
+            panic!("test root should synthesize a closed root semantic instance key: {err:?}")
+        });
     validate_instantiated_effect_env_key(&db, key).unwrap_or_else(|err| {
         panic!("test root should have a closed effect env under synthesized root subst: {err:?}")
     });

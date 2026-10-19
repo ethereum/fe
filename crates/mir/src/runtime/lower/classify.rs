@@ -2701,7 +2701,7 @@ fn runtime_extern_builtin_return_class<'db>(
             AddressSpace::Memory,
         ));
     }
-    let hir::analysis::ty::ty_check::BodyOwner::Func(func) = semantic.key(db).owner(db) else {
+    let hir::analysis::ty::ty_check::BodyOwner::Func(func, _) = semantic.key(db).owner(db) else {
         return None;
     };
     if func.body(db).is_none()
@@ -2829,7 +2829,7 @@ pub(crate) fn semantic_return_ty<'db>(
     semantic: SemanticInstance<'db>,
 ) -> TyId<'db> {
     match semantic.key(db).owner(db) {
-        BodyOwner::Func(func) if func.is_projection(db) => semantic.normalized_result_ty(db),
+        BodyOwner::Func(func, _) if func.is_projection(db) => semantic.normalized_result_ty(db),
         _ => semantic.key(db).typed_body(db).result_ty(),
     }
 }
@@ -3014,9 +3014,10 @@ mod tests {
         name: &str,
     ) -> SemanticInstance<'db> {
         let func = func_by_name(db, top_mod, name);
-        let key = root_semantic_instance_key(db, BodyOwner::Func(func)).unwrap_or_else(|err| {
-            panic!("failed to build root semantic key for `{name}`: {err:?}")
-        });
+        let key =
+            root_semantic_instance_key(db, BodyOwner::Func(func, None)).unwrap_or_else(|err| {
+                panic!("failed to build root semantic key for `{name}`: {err:?}")
+            });
         get_or_build_semantic_instance(db, key)
     }
 
@@ -3119,7 +3120,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
         let trait_inst = TraitInstId::new_simple(&db, trait_, vec![TyId::bool(&db)]);
         let callee_key = SemanticInstanceKey::new(
             &db,
-            BodyOwner::Func(declaration),
+            BodyOwner::Func(declaration, None),
             GenericSubst::for_owner(&db, declaration.into(), trait_inst.args(&db).to_vec()),
             EffectProviderSubst::empty(&db),
             ImplEnv::new(
@@ -3495,7 +3496,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
             .find_map(|call| {
                 let semantic = call.callee.key(&db).semantic(&db)?;
                 match semantic.key(&db).owner(&db) {
-                    BodyOwner::Func(func)
+                    BodyOwner::Func(func, _)
                         if func
                             .name(&db)
                             .to_opt()
@@ -3793,7 +3794,7 @@ uses (slot: Slot<u256>)
                 else {
                     continue;
                 };
-                let BodyOwner::Func(func) = callee.key.owner(&db) else {
+                let BodyOwner::Func(func, _) = callee.key.owner(&db) else {
                     continue;
                 };
                 let Some(name) = func.name(&db).to_opt().map(|name| name.data(&db)) else {
@@ -3931,7 +3932,7 @@ fn caller() -> u256 {
         )
         .run();
         let callee_name = |owner: BodyOwner<'_>| match owner {
-            BodyOwner::Func(func) => func.name(&db).to_opt().map(|name| name.data(&db).clone()),
+            BodyOwner::Func(func, _) => func.name(&db).to_opt().map(|name| name.data(&db).clone()),
             _ => None,
         };
         // Inference selects a local provider before the local is given a
@@ -4055,7 +4056,7 @@ fn caller() -> u256 {
                         else {
                             return None;
                         };
-                        let BodyOwner::Func(func) = callee.key.owner(&db) else {
+                        let BodyOwner::Func(func, _) = callee.key.owner(&db) else {
                             return None;
                         };
                         if func
@@ -4090,7 +4091,7 @@ fn caller() -> u256 {
             .find_map(|call| {
                 let semantic = call.callee.key(&db).semantic(&db)?;
                 match semantic.key(&db).owner(&db) {
-                    BodyOwner::Func(func)
+                    BodyOwner::Func(func, _)
                         if func
                             .name(&db)
                             .to_opt()
