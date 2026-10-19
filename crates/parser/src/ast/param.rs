@@ -35,6 +35,12 @@ impl FuncParam {
         support::token(self.syntax(), SK::MutKw)
     }
 
+    /// Returns the `mut?` keyword for the shorthand receiver at the item's
+    /// mode (`mut? self`).
+    pub fn maybe_mut_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::MaybeMutKw)
+    }
+
     /// Returns the `var` keyword of a mutable owned parameter.
     pub fn var_token(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::VarKw)
@@ -378,7 +384,8 @@ ast_node! {
 
 ast_node! {
     /// A single `uses` parameter.
-    /// Supports: `Type`, `mut Type`, `name: Type`, `name: mut Type`.
+    /// Supports: `Type`, `mut Type`, `mut? Type`, `name: Type`,
+    /// `name: mut Type`, `name: mut? Type`.
     pub struct UsesParam,
     SK::UsesParam,
 }
@@ -386,6 +393,12 @@ impl UsesParam {
     /// Returns the `mut` keyword if present.
     pub fn mut_token(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::MutKw)
+    }
+
+    /// Returns the `mut?` keyword if present: the effect is required at the
+    /// item's mode.
+    pub fn maybe_mut_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::MaybeMutKw)
     }
 
     /// Returns the name if present (identifier or underscore).
@@ -466,6 +479,13 @@ impl TypeBound {
     /// A path of the type bound.
     pub fn trait_bound(&self) -> Option<TraitRef> {
         support::child(self.syntax())
+    }
+
+    /// The `mut` or `mut?` before a trait bound: the modes it grants the
+    /// trait's `mut?` methods at.
+    pub fn mode_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::MutKw)
+            .or_else(|| support::token(self.syntax(), SK::MaybeMutKw))
     }
 
     pub fn kind_bound(&self) -> Option<KindBound> {
@@ -949,11 +969,11 @@ mod tests {
         assert!(!errors.is_empty(), "expected parser errors");
         assert!(errors.iter().any(|err| {
             err.msg()
-                .contains("typed `uses` parameters only support `mut`; remove `ref`")
+                .contains("typed `uses` parameters only support `mut` and `mut?`; remove `ref`")
         }));
         assert!(errors.iter().any(|err| {
             err.msg()
-                .contains("typed `uses` parameters only support `mut`; remove `own`")
+                .contains("typed `uses` parameters only support `mut` and `mut?`; remove `own`")
         }));
     }
 }

@@ -8,7 +8,7 @@ use hir::analysis::{
             NExpr, NOperand, NPlace, NPlaceBase, NValueDefinition, NValueId, NormalizedBody,
             normalize_semantic_body,
         },
-        semantic_executable_control_flow, semantic_may_return,
+        projection_component_spaces, semantic_executable_control_flow, semantic_may_return,
     },
     ty::{
         AddressSpace,
@@ -23,8 +23,8 @@ use crate::{
     db::MirDb,
     instance::{RuntimeInstanceKey, RuntimeInstanceSource},
     runtime::{
-        EnumLayoutKey, EnumVariantLayout, Layout, LayoutId, LayoutKey, RawPointeeId, RefKind,
-        RuntimeClass, RuntimeExitBehavior, StructLayout,
+        EnumLayoutKey, EnumVariantLayout, Layout, LayoutId, LayoutKey, LowerError, RawPointeeId,
+        RefKind, RuntimeClass, RuntimeExitBehavior, StructLayout,
     },
 };
 
@@ -486,6 +486,51 @@ impl<'db> RawTransportTracer<'_, 'db> {
             self.record(projection, None);
         }
     }
+}
+
+/// Holds the access checker's result space of each access component of a
+/// projection, which instantiates its callers' callees, to the class lowering
+/// returns the component in. A component no yield grants, such as the payload
+/// of a variant the projection never returns, and one with no runtime class
+/// carry nothing; a native reference keeps its space at run time; constant
+/// data is a read-only memory value. Any other disagreement is an error
+/// rather than a miscompile.
+pub(crate) fn check_projection_result_spaces<'db>(
+    db: &'db dyn MirDb,
+    semantic: SemanticInstance<'db>,
+    ret: Option<&RuntimeClass<'db>>,
+) -> Result<(), LowerError> {
+    for (steps, space) in projection_component_spaces(db, semantic) {
+        let (Some(space), Some(class)) = (
+            space,
+            ret.and_then(|ret| project_declaration_return_source(db, ret.clone(), &steps)),
+        ) else {
+            continue;
+        };
+        let agrees = match &class {
+            RuntimeClass::Ref {
+                kind: RefKind::Native,
+                ..
+            } => true,
+            RuntimeClass::Ref {
+                kind: RefKind::Object | RefKind::Const,
+                ..
+            } => space == AddressSpace::Memory,
+            RuntimeClass::Ref {
+                kind: RefKind::Provider { space: actual, .. },
+                ..
+            }
+            | RuntimeClass::RawAddr { space: actual, .. } => *actual == space,
+            _ => false,
+        };
+        if !agrees {
+            return Err(LowerError::Unsupported(format!(
+                "internal error: the access checker places result component {steps:?} of {:?} in {space:?}, but lowering returns it as {class:?}",
+                semantic.key(db).owner(db),
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn project_declaration_return_source<'db>(
@@ -1114,7 +1159,7 @@ mod tests {
                     .is_some_and(|func_name| func_name.data(db) == name)
             })
             .unwrap_or_else(|| panic!("missing function `{name}`"));
-        let key = root_semantic_instance_key(db, BodyOwner::Func(func))
+        let key = root_semantic_instance_key(db, BodyOwner::Func(func, None))
             .unwrap_or_else(|err| panic!("failed to root semantic function instance: {err:?}"));
         get_or_build_semantic_instance(db, key)
     }
@@ -1769,6 +1814,41 @@ fn first(_ arr: [u8; 4]) -> u8 {
                 false
             ),
             Some(merged)
+        );
+    }
+
+    #[test]
+    fn projection_result_spaces_hold_the_lowered_return_class() {
+        let source = r#"
+fn first(_ a: mut [u256; 2]) -> mut u256 {
+    mut a[0]
+}
+"#;
+        let mut db = DriverDataBase::default();
+        let file_url = Url::parse("file:///projection_result_spaces.fe").unwrap();
+        db.workspace()
+            .touch(&mut db, file_url.clone(), Some(source.to_string()));
+        let file = db
+            .workspace()
+            .get(&db, &file_url)
+            .expect("file should be loaded");
+        let top_mod = db.top_mod(file);
+        let semantic = semantic_instance_for_named_func(&db, top_mod, "first");
+        let key = runtime_instance_for_semantic(&db, semantic).key(&db);
+        let ret = declaration_runtime_return_class(&db, key).expect("a projection's grant class");
+
+        assert_eq!(
+            check_projection_result_spaces(&db, semantic, Some(&ret)),
+            Ok(())
+        );
+        assert!(
+            check_projection_result_spaces(
+                &db,
+                semantic,
+                Some(&RuntimeClass::opaque_raw_addr(AddressSpace::Storage)),
+            )
+            .is_err(),
+            "a memory grant returned as a storage address is an error"
         );
     }
 }

@@ -3,7 +3,7 @@
 //! not initialize the proxy, validate implementation code, or impose ownership.
 use core::ptr::{self, MemSpan}
 use core::abi::store_word
-use super::effects::{Address, Create, revert, revert_error}
+use super::effects::{Address, Create, revert_error}
 use super::crypto::keccak256
 use super::packed::keccak_packed
 
@@ -11,11 +11,7 @@ use super::packed::keccak_packed
 pub struct ERC1167FailedCreateClone {}
 
 /// The standard 55-byte creation code for an ERC-1167 proxy.
-/// A noncanonical implementation address is rejected rather than truncated.
 pub fn clone_initcode(_ implementation: Address) -> ref MemSpan {
-    if implementation.inner >> 160 != 0 {
-        revert(())
-    }
     let p = ptr::alloc_bytes(64)
     unsafe {
         store_word(

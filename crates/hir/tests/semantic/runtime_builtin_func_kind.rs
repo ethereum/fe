@@ -96,6 +96,10 @@ fn external_executions_access_persistent_state() {
     ] {
         let func = resolve_lib_func_path(&db, scope, path)
             .unwrap_or_else(|| panic!("failed to resolve {path}"));
-        assert_eq!(external_call_state_access(&db, func), access, "{path}");
+        assert_eq!(
+            external_call_state_access(&db, func, None),
+            access,
+            "{path}"
+        );
     }
 }

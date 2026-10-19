@@ -272,6 +272,7 @@ pub(crate) enum CtfeExternIntrinsic {
     AddMod,
     MulMod,
     LeadingZeros,
+    PanicCode,
 }
 
 pub(crate) fn ctfe_extern_intrinsic_kind<'db>(
@@ -287,6 +288,7 @@ pub(crate) fn ctfe_extern_intrinsic_kind<'db>(
         Some(RuntimeBuiltinFuncKind::LeadingZeros) => {
             return Some(CtfeExternIntrinsic::LeadingZeros);
         }
+        Some(RuntimeBuiltinFuncKind::PanicCode) => return Some(CtfeExternIntrinsic::PanicCode),
         _ => {}
     }
     if lib_func_matches(db, func, "core::intrinsic::size_of") {
@@ -443,6 +445,7 @@ fn trait_reaches<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>, target: Tr
 pub fn external_call_state_access<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Option<MemoryAccessKind> {
     match runtime_builtin_func_kind(db, func) {
         Some(
@@ -464,7 +467,7 @@ pub fn external_call_state_access<'db>(
         return None;
     }
     Some(
-        if CallableDef::Func(func).param_mode(db, 0) == FuncParamMode::View {
+        if CallableDef::Func(func).param_mode(db, 0, mode) == FuncParamMode::View {
             MemoryAccessKind::Read
         } else {
             MemoryAccessKind::Write

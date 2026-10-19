@@ -277,6 +277,8 @@ pub fn callable_shape_name(mut_receiver: bool, modes: &[FuncParamMode]) -> Strin
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuncParam<'db> {
+    /// The mode at `ref`. A `mut?` parameter, whose `ty` is `mut? T`, is a
+    /// view at `ref` and `mut` at `mut`.
     pub mode: FuncParamMode,
     pub is_mut: bool,
     pub has_ref_prefix: bool,
@@ -349,8 +351,36 @@ impl<'db> FuncParamName<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum TypeBound<'db> {
-    Trait(TraitRefId<'db>),
+    /// A trait bound, with the modes it grants the trait's `mut?` methods
+    /// at.
+    Trait(TraitRefId<'db>, ModeMarker),
     Kind(Partial<KindBound>),
+}
+
+/// The mode written before an effect or a trait bound: none, `mut`, or
+/// `mut?`, the item's mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum ModeMarker {
+    /// `uses (c: Ctx)`, `T: Trait`: read only, or the `ref` modes of a
+    /// trait's `mut?` methods.
+    None,
+    /// `uses (s: mut Storage)`, `T: mut Trait`.
+    Mut,
+    /// `uses (s: mut? Storage)`, `T: mut? Trait`: `mut` where the item is
+    /// used at `mut`.
+    MaybeMut,
+}
+
+impl ModeMarker {
+    /// The marker as written before an effect key or a trait, with its
+    /// trailing space.
+    pub fn prefix(self) -> &'static str {
+        match self {
+            Self::None => "",
+            Self::Mut => "mut ",
+            Self::MaybeMut => "mut? ",
+        }
+    }
 }
 
 #[salsa::interned]

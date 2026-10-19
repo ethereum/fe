@@ -1,4 +1,4 @@
-use core::marker::Pinned
+use core::marker::{Pinned, Storage}
 use core::ops::{Location, StateIndex}
 use core::option::Option
 
@@ -52,7 +52,7 @@ pub struct StoragePackedArray<const BITS: u256> {
 struct PackedWords {}
 
 impl Pinned for PackedWords {
-    space S = storage
+    type Space = Storage
 }
 
 unsafe impl StateIndex for PackedWords {

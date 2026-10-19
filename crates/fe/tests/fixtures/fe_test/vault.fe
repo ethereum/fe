@@ -111,10 +111,10 @@ pub contract VaultUser uses (call: mut Call) {
 #[test]
 fn test_vault_multiuser() uses (evm: mut Evm) {
     let vault = evm.create2<Vault>(value: 0, args: (), salt: 0)
-    assert!(vault.inner != 0)
+    assert!(vault.word() != 0)
 
     let user2 = evm.create2<VaultUser>(value: 0, args: (), salt: 1)
-    assert!(user2.inner != 0)
+    assert!(user2.word() != 0)
 
     // User 1 (test runner) deposits 1000 -> 1000 shares (1:1 initial)
     let shares: u256 = evm.call(addr: vault, gas: 100000, value: 0, message: VaultMsg::Deposit { amount: 1000 })

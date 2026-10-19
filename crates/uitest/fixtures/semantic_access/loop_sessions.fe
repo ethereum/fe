@@ -1,6 +1,6 @@
 // Projected and `mut` traversal hold the element's session during the body,
 // so the body cannot change the base; by-value traversal does not.
-use core::iter::{Collection, CollectionMut}
+use core::iter::Collection
 
 struct Item { n: u256 }
 
@@ -22,7 +22,7 @@ fn mutable(_ xs: mut [u256; 2]) {
 // Rejected: a session the condition opens is held during the body.
 fn while_let(_ xs: mut MemArray<u256>) {
     var i: usize = 0
-    while let Option::Some(mut x) = xs.get_mut(i) {
+    while let Option::Some(mut x) = xs.get(i) {
         xs[0] = 7
         x += 1
         i += 1

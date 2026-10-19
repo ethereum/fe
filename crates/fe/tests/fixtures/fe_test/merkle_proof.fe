@@ -289,7 +289,7 @@ fn u256_array(_ words: MemSlice<u256>) -> DynArray<u256> {
 #[test]
 fn test_abi_array_proofs() uses (evm: mut Evm) {
     let verifier = evm.create2<MerkleVerifier>(value: 0, args: (), salt: 0)
-    assert!(verifier.inner != 0)
+    assert!(verifier.word() != 0)
     let proof = words([0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6, 0xc5fd106a8e5214837c622e5fdef112b1d83ad6de66beafb53451c77843c9d04e, 0x9687420ece112ec1bb7441fb691952a25e39a583bafbccedcbe2820ea484a425])
     let ok: bool = evm.call(addr: verifier, gas: 1000000, value: 0, message: MerkleMsg::Verify { proof: bytes32_array(proof), root: ROOT_8, leaf: LEAF_8_0 })
     assert!(ok)

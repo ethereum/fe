@@ -128,11 +128,11 @@ pub contract MalformedToken {
 }
 
 fn alice() -> Address {
-    Address { inner: 2 }
+    Address::new(2)
 }
 
 fn bob() -> Address {
-    Address { inner: 3 }
+    Address::new(3)
 }
 
 fn call_count(token: Address) -> u256 uses (evm: mut Evm) {
@@ -177,7 +177,7 @@ fn test_safe_transfer_reverts_on_malformed_returndata() uses (evm: mut Evm, ctx:
 #[test(should_revert)]
 fn test_safe_transfer_reverts_on_no_code_address() uses (evm: mut Evm, ctx: Ctx, call: mut Call) {
     // Unlike bare `call_with_default`, the codesize check catches this.
-    let eoa = Address { inner: 0xe0a }
+    let eoa = Address::new(0xe0a)
     erc20::safe_transfer(token: eoa, receiver: alice(), amount: 1)
 }
 

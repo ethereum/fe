@@ -323,7 +323,7 @@ fn runtime() uses (evm: mut Evm) {}"#,
 
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(init)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(init, None)),
     );
     let body = instance.body(&db);
     let exprs = body
@@ -458,7 +458,7 @@ fn runtime() uses (evm: mut Evm) {}"#,
 
     let init_instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(init)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(init, None)),
     );
     let mut pending = vec![init_instance];
     let mut seen = Vec::new();
@@ -527,7 +527,7 @@ fn array_repeat_lowering_preserves_repeat_expr_through_normalization() {
     };
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = instance.body(&db);
     body.blocks
@@ -578,7 +578,7 @@ fn generic_array_repeat_with_symbolic_len_normalizes_as_repeat() {
     };
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = instance.body(&db);
     body.blocks
@@ -646,7 +646,7 @@ impl Tower {
         .expect("expected add method");
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(add)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(add, None)),
     );
     let body = instance.body(&db);
 

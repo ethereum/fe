@@ -1,6 +1,5 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 388
 expression: output
 input_file: crates/codegen/tests/fixtures/erc20_low_level.fe
 ---
@@ -696,6 +695,29 @@ func private %ne(v0.@layout_1, v1.@layout_1) -> i1 {
         return v5;
 }
 
+func private %new(v0.i256) -> @layout_1 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i256 = shr 160.i256 v0;
+        v5.i1 = eq v3 0.i256;
+        v6.i1 = is_zero v5;
+        br v6 block2 block3;
+
+    block2:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 17.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block3:
+        jump block4;
+
+    block4:
+        v15.@layout_1 = insert_value undef.@layout_1 0.i256 v0;
+        return v15;
+}
+
 func private %prepare_copy_destination(v0.objref<@layout_0>, v1.i256, v2.i256) -> i256 {
     block0:
         jump block1;
@@ -836,18 +858,18 @@ func private %runtime() {
 
     block2:
         v8.i256 = call %calldataload 4.i256;
-        v10.@layout_1 = insert_value undef.@layout_1 0.i256 v8;
-        v12.i256 = call %balance_of__g7ab3 v10 0.i256;
-        call %abi_encode_u256 v12;
+        v9.@layout_1 = call %new v8;
+        v11.i256 = call %balance_of__g7ab3 v9 0.i256;
+        call %abi_encode_u256 v11;
         unreachable;
 
     block3:
-        v13.i256 = call %calldataload 4.i256;
-        v15.@layout_1 = insert_value undef.@layout_1 0.i256 v13;
-        v17.i256 = call %calldataload 36.i256;
-        v19.@layout_1 = insert_value undef.@layout_1 0.i256 v17;
-        v21.i256 = call %allowance__g7ab3 v15 v19 0.i256;
-        call %abi_encode_u256 v21;
+        v12.i256 = call %calldataload 4.i256;
+        v13.@layout_1 = call %new v12;
+        v15.i256 = call %calldataload 36.i256;
+        v16.@layout_1 = call %new v15;
+        v18.i256 = call %allowance__g7ab3 v13 v16 0.i256;
+        call %abi_encode_u256 v18;
         unreachable;
 
     block4:
@@ -863,73 +885,73 @@ func private %runtime() {
         unreachable;
 
     block7:
-        v27.i256 = call %calldataload 4.i256;
-        v29.@layout_1 = insert_value undef.@layout_1 0.i256 v27;
-        v30.i256 = call %calldataload 36.i256;
-        v32.i256 = call %transfer__gf15d v29 v30 0.i256;
-        call %abi_encode_u256 v32;
+        v24.i256 = call %calldataload 4.i256;
+        v25.@layout_1 = call %new v24;
+        v26.i256 = call %calldataload 36.i256;
+        v28.i256 = call %transfer__gf15d v25 v26 0.i256;
+        call %abi_encode_u256 v28;
         unreachable;
 
     block8:
-        v33.i256 = call %calldataload 4.i256;
-        v35.@layout_1 = insert_value undef.@layout_1 0.i256 v33;
-        v36.i256 = call %calldataload 36.i256;
-        v38.i256 = call %approve__g5bd7 v35 v36 0.i256;
-        call %abi_encode_u256 v38;
+        v29.i256 = call %calldataload 4.i256;
+        v30.@layout_1 = call %new v29;
+        v31.i256 = call %calldataload 36.i256;
+        v33.i256 = call %approve__g5bd7 v30 v31 0.i256;
+        call %abi_encode_u256 v33;
         unreachable;
 
     block9:
-        v39.i256 = call %calldataload 4.i256;
-        v41.@layout_1 = insert_value undef.@layout_1 0.i256 v39;
-        v42.i256 = call %calldataload 36.i256;
-        v44.@layout_1 = insert_value undef.@layout_1 0.i256 v42;
-        v46.i256 = call %calldataload 68.i256;
-        v48.i256 = call %transfer_from__gf15d v41 v44 v46 0.i256;
-        call %abi_encode_u256 v48;
+        v34.i256 = call %calldataload 4.i256;
+        v35.@layout_1 = call %new v34;
+        v36.i256 = call %calldataload 36.i256;
+        v37.@layout_1 = call %new v36;
+        v39.i256 = call %calldataload 68.i256;
+        v41.i256 = call %transfer_from__gf15d v35 v37 v39 0.i256;
+        call %abi_encode_u256 v41;
         unreachable;
 
     block10:
-        v49.i256 = call %calldataload 4.i256;
-        v51.@layout_1 = insert_value undef.@layout_1 0.i256 v49;
-        v52.i256 = call %calldataload 36.i256;
-        v54.i256 = call %mint__gf15d v51 v52 0.i256;
-        call %abi_encode_u256 v54;
+        v42.i256 = call %calldataload 4.i256;
+        v43.@layout_1 = call %new v42;
+        v44.i256 = call %calldataload 36.i256;
+        v46.i256 = call %mint__gf15d v43 v44 0.i256;
+        call %abi_encode_u256 v46;
         unreachable;
 
     block11:
         jump block22;
 
     block12:
-        v57.i1 = eq v4 3714247998.i256;
-        br v57 block3 block13;
+        v49.i1 = eq v4 3714247998.i256;
+        br v49 block3 block13;
 
     block13:
-        v60.i1 = eq v4 117300739.i256;
-        br v60 block4 block14;
+        v52.i1 = eq v4 117300739.i256;
+        br v52 block4 block14;
 
     block14:
-        v63.i1 = eq v4 2514000705.i256;
-        br v63 block5 block15;
+        v55.i1 = eq v4 2514000705.i256;
+        br v55 block5 block15;
 
     block15:
-        v66.i1 = eq v4 826074471.i256;
-        br v66 block6 block16;
+        v58.i1 = eq v4 826074471.i256;
+        br v58 block6 block16;
 
     block16:
-        v69.i1 = eq v4 2835717307.i256;
-        br v69 block7 block17;
+        v61.i1 = eq v4 2835717307.i256;
+        br v61 block7 block17;
 
     block17:
-        v72.i1 = eq v4 157198259.i256;
-        br v72 block8 block18;
+        v64.i1 = eq v4 157198259.i256;
+        br v64 block8 block18;
 
     block18:
-        v75.i1 = eq v4 599290589.i256;
-        br v75 block9 block19;
+        v67.i1 = eq v4 599290589.i256;
+        br v67 block9 block19;
 
     block19:
-        v78.i1 = eq v4 1086394137.i256;
-        br v78 block10 block20;
+        v70.i1 = eq v4 1086394137.i256;
+        br v70 block10 block20;
 
     block20:
         jump block11;
@@ -939,22 +961,22 @@ func private %runtime() {
         unreachable;
 
     block22:
-        v80.i256 = call %core__lib__ptr__alloc_bytes_4704 0.i256;
-        v81.i256 = call %cast__gf0ab v80;
+        v72.i256 = call %core__lib__ptr__alloc_bytes_4704 0.i256;
+        v73.i256 = call %cast__gf0ab v72;
         jump block24;
 
     block23:
         jump block21;
 
     block24:
-        v85.@layout_3 = insert_value undef.@layout_3 0.i256 v81;
-        v88.@layout_3 = insert_value v85 1.i256 0.i256;
-        v89.objref<i256> = obj.proj v0 0.i256;
-        v90.i256 = extract_value v88 0.i256;
-        obj.store v89 v90;
-        v91.objref<i256> = obj.proj v0 1.i256;
-        v92.i256 = extract_value v88 1.i256;
-        obj.store v91 v92;
+        v77.@layout_3 = insert_value undef.@layout_3 0.i256 v73;
+        v80.@layout_3 = insert_value v77 1.i256 0.i256;
+        v81.objref<i256> = obj.proj v0 0.i256;
+        v82.i256 = extract_value v80 0.i256;
+        obj.store v81 v82;
+        v83.objref<i256> = obj.proj v0 1.i256;
+        v84.i256 = extract_value v80 1.i256;
+        obj.store v83 v84;
         jump block23;
 }
 

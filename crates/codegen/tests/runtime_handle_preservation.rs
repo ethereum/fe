@@ -2752,7 +2752,7 @@ use std::evm::Mutex
 
 fn bump(_ m: mut Mutex<u256>) {
     assert!(m.try_lock())
-    m.value_mut() += 1
+    m.value() += 1
     m.unlock()
 }
 

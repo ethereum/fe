@@ -116,7 +116,7 @@ fn f() {
         .expect("missing destination binding");
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     let sem_body = instance.body(&db);
     let dst = local_for_binding(sem_body, dst_binding);

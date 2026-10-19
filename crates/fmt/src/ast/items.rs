@@ -481,13 +481,7 @@ fn func_sig_to_doc<'a>(
 
     let ret_doc = sig.ret_ty().map_or_else(
         || alloc.nil(),
-        |ty| {
-            let ret = alloc.text(" -> ").append(ty.to_doc(ctx));
-            match sig.ret_space() {
-                Some(space) => ret.append(alloc.text(" ")).append(space.to_doc(ctx)),
-                None => ret,
-            }
-        },
+        |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
     );
 
     let has_uses = sig.uses_clause().is_some();
@@ -768,6 +762,7 @@ impl ToDoc for ast::FuncParam {
                             Some(piece.space_before())
                         }
                         SyntaxKind::MutKw
+                        | SyntaxKind::MaybeMutKw
                         | SyntaxKind::VarKw
                         | SyntaxKind::RefKw
                         | SyntaxKind::OwnKw
@@ -782,6 +777,9 @@ impl ToDoc for ast::FuncParam {
 
         if self.mut_token().is_some() {
             doc = doc.append(alloc.text("mut "));
+        }
+        if self.maybe_mut_token().is_some() {
+            doc = doc.append(alloc.text("mut? "));
         }
         if self.var_token().is_some() {
             doc = doc.append(alloc.text("var "));
@@ -1233,7 +1231,17 @@ impl ToDoc for ast::VariantDef {
 
         let kind_doc = match self.kind() {
             ast::VariantKind::Unit => alloc.nil(),
-            ast::VariantKind::Tuple(tuple_type) => tuple_type.to_doc(ctx),
+            // A variant's one field takes no comma, unlike a one-element
+            // tuple type.
+            ast::VariantKind::Tuple(fields) => block_list_auto(
+                ctx,
+                fields.syntax(),
+                "(",
+                ")",
+                ast::Type::cast,
+                ctx.config.indent_width as isize,
+                true,
+            ),
             ast::VariantKind::Record(fields) => {
                 if has_comment_tokens(fields.syntax()) {
                     return attrs.append(name.clone()).append(alloc.text(" ")).append(
@@ -1320,37 +1328,7 @@ impl ToDoc for ast::TraitItem {
             TraitItemKind::Type(ty) => ty.to_doc(ctx),
             TraitItemKind::Const(c) => c.to_doc(ctx),
             TraitItemKind::Uses(row) => row.to_doc(ctx),
-            TraitItemKind::Space(space) => space.to_doc(ctx),
         }
-    }
-}
-
-impl ToDoc for ast::TraitSpaceItem {
-    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
-        let alloc = &ctx.alloc;
-
-        token_doc_item_like_if_comments!(self, ctx);
-
-        let name = self
-            .name()
-            .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
-        let value = self.value().map_or_else(
-            || alloc.nil(),
-            |value| {
-                let space_path = self
-                    .space_path()
-                    .map_or_else(|| alloc.nil(), |space_path| space_path.to_doc(ctx));
-                alloc
-                    .text(" = ")
-                    .append(value.to_doc(ctx))
-                    .append(space_path)
-            },
-        );
-
-        attrs_doc(self, ctx)
-            .append(alloc.text("space "))
-            .append(name)
-            .append(value)
     }
 }
 

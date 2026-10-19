@@ -125,15 +125,10 @@ uses (evm: mut Evm, create: mut Create)
     )
 }
 
-#[test(should_revert)]
-fn rejects_dirty_implementation() {
-    let _ = clones::clone_initcode(Address { inner: 1 << 160 })
-}
-
 // Independent CREATE2 vectors computed with cast from the standard byte sequence.
 #[test]
 fn initcode_and_prediction_vectors() {
-    let code = clones::clone_initcode(Address { inner: 0x0 })
+    let code = clones::clone_initcode(Address::new(0x0))
     assert!(code.len() == 55)
     assert!(
         std::evm::crypto::keccak256(code)
@@ -141,15 +136,15 @@ fn initcode_and_prediction_vectors() {
     )
     assert!(
         clones::predict_deterministic_address(
-                Address { inner: 0x0 },
+                Address::new(0x0),
                 salt: 0x0,
-                deployer: Address { inner: 0x0 },
+                deployer: Address::new(0x0),
             )
-                .inner
+                .word()
             == 0x581044648ac97323e1b73267e6efefc5e4df7296,
     )
     let code = clones::clone_initcode(
-        Address { inner: 0x1234567890123456789012345678901234567890 },
+        Address::new(0x1234567890123456789012345678901234567890),
     )
     assert!(code.len() == 55)
     assert!(
@@ -158,15 +153,15 @@ fn initcode_and_prediction_vectors() {
     )
     assert!(
         clones::predict_deterministic_address(
-                Address { inner: 0x1234567890123456789012345678901234567890 },
+                Address::new(0x1234567890123456789012345678901234567890),
                 salt: 0x2a,
-                deployer: Address { inner: 0xdeadbeef },
+                deployer: Address::new(0xdeadbeef),
             )
-                .inner
+                .word()
             == 0x941382bbe12b952f70c4a06171d222574c8ae0b5,
     )
     let code = clones::clone_initcode(
-        Address { inner: 0xffffffffffffffffffffffffffffffffffffffff },
+        Address::new(0xffffffffffffffffffffffffffffffffffffffff),
     )
     assert!(code.len() == 55)
     assert!(
@@ -175,11 +170,11 @@ fn initcode_and_prediction_vectors() {
     )
     assert!(
         clones::predict_deterministic_address(
-                Address { inner: 0xffffffffffffffffffffffffffffffffffffffff },
+                Address::new(0xffffffffffffffffffffffffffffffffffffffff),
                 salt: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
-                deployer: Address { inner: 0xffffffffffffffffffffffffffffffffffffffff },
+                deployer: Address::new(0xffffffffffffffffffffffffffffffffffffffff),
             )
-                .inner
+                .word()
             == 0x32384a86f842e859fdead08acc219b0cd0de23d9,
     )
 }

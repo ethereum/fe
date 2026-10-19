@@ -15,7 +15,7 @@ pub use functional::{Fn, Functor, Applicative, Monad}
 pub use effect_ref::{EffectRef, EffectRefMut}
 pub use contracts::{self, *}
 pub use range::{Bound, Known, Unknown, Range}
-pub use iter::{Bidirectional, Collection, CollectionMut, Driver, DriverMut, Producer}
+pub use iter::{Bidirectional, Collection, Driver, Producer}
 
 extern {
     pub fn panic() -> !

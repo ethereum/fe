@@ -76,9 +76,9 @@ fn build_bytes() -> Bytes {
 #[test]
 fn test_encode_msg_calldata_static_args() uses (evm: mut Evm, call: mut Call, ctx: Ctx) {
     let echo = evm.create2<Echo>(value: 0, args: (), salt: 0)
-    assert!(echo.inner != 0)
+    assert!(echo.word() != 0)
 
-    let addr_arg = Address { inner: 0xabcdef }
+    let addr_arg = Address::new(0xabcdef)
     let typed_digest: u256 = echo.call(EchoMsg::DigestStatic { a: 42, b: addr_arg })
 
     let data = encode_msg_calldata(EchoMsg::DigestStatic { a: 42, b: addr_arg })
@@ -93,7 +93,7 @@ fn test_encode_msg_calldata_static_args() uses (evm: mut Evm, call: mut Call, ct
 #[test]
 fn test_encode_msg_calldata_dynamic_bytes() uses (evm: mut Evm, call: mut Call, ctx: Ctx) {
     let echo = evm.create2<Echo>(value: 0, args: (), salt: 0)
-    assert!(echo.inner != 0)
+    assert!(echo.word() != 0)
 
     let typed_digest: u256 = echo.call(EchoMsg::DigestDynamic { data: build_bytes() })
 
@@ -111,14 +111,14 @@ fn test_raw_copy_apis_use_explicit_source_and_destination_ranges()
 uses (evm: mut Evm, call: mut Call, ctx: Ctx)
 {
     let echo = evm.create2<Echo>(value: 0, args: (), salt: 0)
-    assert!(echo.inner != 0)
+    assert!(echo.word() != 0)
 
     assert!(echo.call(EchoMsg::CopyCalldataWindow {}) == 0x0203)
     assert!(echo.call(EchoMsg::CopyCodeWindow {}) == 4)
 
     let data = encode_msg_calldata(EchoMsg::DigestStatic {
         a: 42,
-        b: Address { inner: 0xabcdef },
+        b: Address::new(0xabcdef),
     })
     var ignored = ptr::MemBuffer::empty()
     let outcome = call.raw_call(

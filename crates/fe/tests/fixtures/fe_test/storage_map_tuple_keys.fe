@@ -78,7 +78,7 @@ pub contract C {
 #[test]
 fn test_storage_map_tuple_keys() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: 0, args: (), salt: 0)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let v3: u256 = evm.call(
         addr: c,

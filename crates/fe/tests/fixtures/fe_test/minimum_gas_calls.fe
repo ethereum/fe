@@ -78,7 +78,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps, ctx: Ctx)
 
 #[test(balance = 1000)]
 fn value_forwarding_to_cold_new_account() uses (call: mut Call, ctx: Ctx) {
-    let target = Address { inner: 0x12345678 }
+    let target = Address::new(0x12345678)
     match call.call_with_min_gas(
         addr: target,
         minimum: 10000,

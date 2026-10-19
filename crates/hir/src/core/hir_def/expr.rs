@@ -219,6 +219,8 @@ pub enum UnOp {
     BitNot,
     /// `mut`
     Mut,
+    /// `mut?`: an access at the item's mode.
+    MaybeMut,
     /// `ref`
     Ref,
     /// `*`

@@ -101,7 +101,7 @@ pub contract StepDiary {
 #[test]
 fn test_struct_entries() uses (evm: mut Evm) {
     let diary = evm.create2<StepDiary>(value: 0, args: (), salt: 1)
-    assert(diary.inner != 0)
+    assert(diary.word() != 0)
 
     evm.call(addr: diary, gas: 10000000, value: 0, message: DiaryMsg::Record { day: 3, steps: 4000, distance_m: 3000, calories: 200 })
     evm.call(addr: diary, gas: 10000000, value: 0, message: DiaryMsg::Record { day: 4, steps: 8000, distance_m: 6000, calories: 400 })
@@ -124,7 +124,7 @@ fn test_struct_entries() uses (evm: mut Evm) {
 #[test]
 fn test_entry_layout_matches_solidity() uses (evm: mut Evm) {
     let diary = evm.create2<StepDiary>(value: 0, args: (), salt: 2)
-    assert(diary.inner != 0)
+    assert(diary.word() != 0)
 
     evm.call(addr: diary, gas: 10000000, value: 0, message: DiaryMsg::Record { day: 7, steps: 11, distance_m: 22, calories: 33 })
 
@@ -138,7 +138,7 @@ fn test_entry_layout_matches_solidity() uses (evm: mut Evm) {
 #[test]
 fn test_entries_stay_separate_from_fields() uses (evm: mut Evm) {
     let diary = evm.create2<StepDiary>(value: 0, args: (), salt: 3)
-    assert(diary.inner != 0)
+    assert(diary.word() != 0)
 
     assert(evm.call(addr: diary, gas: 10000000, value: 0, message: DiaryMsg::AddStepsCountingWalks { day: 1, steps: 10 }) == 1)
     assert(evm.call(addr: diary, gas: 10000000, value: 0, message: DiaryMsg::AddStepsCountingWalks { day: 1, steps: 5 }) == 2)

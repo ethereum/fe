@@ -339,7 +339,7 @@ fn build_standalone_main_package<'db>(
 ) -> Result<RuntimePackage<'db>, LowerError> {
     let mut roots = Vec::new();
     for &func in entry_funcs {
-        let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func))?;
+        let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func, None))?;
         let entry_args =
             entry_semantic_args_plan(db, EntryEffectContext::StandaloneFunc { func }, semantic)?;
         roots.push((
@@ -504,7 +504,7 @@ fn build_test_package<'db>(
                 continue;
             }
 
-            let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func))?;
+            let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func, None))?;
             let entry_args =
                 entry_semantic_args_plan(db, EntryEffectContext::TestFunc { func }, semantic)?;
             let runtime_root = runtime_instance_for_semantic(db, semantic);
@@ -581,7 +581,7 @@ pub fn build_native_executable_package<'db>(
             "native executable output requires `pub fn main() -> i32`".to_string(),
         )
     })?;
-    let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(main))?;
+    let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(main, None))?;
     let instance = runtime_instance_for_semantic(db, semantic);
     let package = build_sectioned_package(
         db,
@@ -751,7 +751,7 @@ pub(crate) fn manual_contract_root_instance<'db>(
     db: &'db dyn MirDb,
     func: Func<'db>,
 ) -> Result<RuntimeInstance<'db>, LowerError> {
-    let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func))?;
+    let semantic = semantic_instance_for_root_owner(db, BodyOwner::Func(func, None))?;
     let callee = runtime_instance_for_semantic(db, semantic);
     let entry_args = entry_semantic_args_plan(
         db,
@@ -1231,7 +1231,7 @@ fn resolved_section_region<'db>(
             Some((region, code_region_symbol(db, region)))
         }
         RuntimeFunctionOwner::Semantic(semantic) => {
-            let BodyOwner::Func(func) = semantic.key(db).owner(db) else {
+            let BodyOwner::Func(func, _) = semantic.key(db).owner(db) else {
                 return None;
             };
             let region = runtime_code_region_for_manual_root(db, func)?;
@@ -1420,7 +1420,7 @@ fn runtime_root_candidate<'db>(
     if func.is_associated_func(db) || func.params(db).next().is_some() {
         return Ok(RuntimeRootCandidate::NotRoot);
     }
-    let semantic = match root_semantic_instance_key(db, BodyOwner::Func(func)) {
+    let semantic = match root_semantic_instance_key(db, BodyOwner::Func(func, None)) {
         Ok(key) => get_or_build_semantic_instance(db, key),
         Err(err) => {
             return Ok(RuntimeRootCandidate::Rejected(RuntimeRootRejection {
@@ -1520,7 +1520,7 @@ pub(crate) fn runtime_instance_for_semantic_with_visible_param_overrides<'db>(
 ) -> RuntimeInstance<'db> {
     let typed_body = semantic.key(db).typed_body(db);
     let owner = semantic.key(db).owner(db);
-    if let BodyOwner::Func(func) = owner
+    if let BodyOwner::Func(func, _) = owner
         && func.body(db).is_none()
     {
         panic!(
@@ -2378,7 +2378,7 @@ fn symbol_base_for_semantic_instance<'db>(
 ) -> String {
     let owner = semantic.key(db).owner(db);
     match owner {
-        BodyOwner::Func(func) => func
+        BodyOwner::Func(func, _) => func
             .name(db)
             .to_opt()
             .map(|name| name.data(db).to_string())
@@ -2463,7 +2463,7 @@ fn inline_hint_for_semantic<'db>(
     semantic: SemanticInstance<'db>,
 ) -> RuntimeInlineHint {
     match semantic.key(db).owner(db) {
-        BodyOwner::Func(func) => match func.inline_hint(db) {
+        BodyOwner::Func(func, _) => match func.inline_hint(db) {
             Some(InlineHint::Hint) => RuntimeInlineHint::Hint,
             Some(InlineHint::Always) => RuntimeInlineHint::Always,
             Some(InlineHint::Never) => RuntimeInlineHint::Never,
@@ -2667,7 +2667,10 @@ fn invalid(result: mut u256) -> u256 {
             .expect("invalid function");
         let semantic = get_or_build_semantic_instance(
             &db,
-            hir::analysis::semantic::identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+            hir::analysis::semantic::identity_semantic_instance_key(
+                &db,
+                BodyOwner::Func(func, None),
+            ),
         );
         let runtime = runtime_instance_for_semantic(&db, semantic);
 
@@ -2755,7 +2758,7 @@ pub contract Unused {}
 #[test]
 fn selected() uses (evm: mut Evm) {
     let addr = evm.create2<Child>(value: 0, args: (), salt: 1)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 }
 "#,
             Some("selected"),

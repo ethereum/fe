@@ -10,7 +10,7 @@ struct Packed {
 }
 
 impl Packed {
-    fn a_mut(mut self) -> mut u8 @memory {
+    fn a_mut(mut self) -> mut u8 {
         mut self.a
     }
 

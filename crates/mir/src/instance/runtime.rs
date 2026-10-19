@@ -17,7 +17,7 @@ use crate::{
                 collect_runtime_calls as collect_runtime_calls_lowered,
             },
             inline::inline_projections,
-            returns::runtime_exit_behavior,
+            returns::{check_projection_result_spaces, runtime_exit_behavior},
         },
         synthetic::lower_synthetic_runtime_body,
     },
@@ -109,7 +109,7 @@ impl<'db> RuntimeInstance<'db> {
 impl<'db> RuntimeInstance<'db> {
     pub fn is_external_declaration(self, db: &'db dyn MirDb) -> bool {
         self.key(db).semantic(db).is_some_and(|semantic| {
-            matches!(semantic.key(db).owner(db), BodyOwner::Func(func) if func.is_extern(db))
+            matches!(semantic.key(db).owner(db), BodyOwner::Func(func, _) if func.is_extern(db))
         })
     }
 }
@@ -137,6 +137,9 @@ fn lower_runtime_body<'db>(
                 )));
             }
             let mut body = lower_to_rmir(db, instance)?;
+            if semantic.is_projection(db) {
+                check_projection_result_spaces(db, semantic, body.signature.ret.as_ref())?;
+            }
             inline_projections(db, &mut body)?;
             body.elide_proven_variant_asserts();
             body

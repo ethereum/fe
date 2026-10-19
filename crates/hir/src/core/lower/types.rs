@@ -23,6 +23,7 @@ impl<'db> TypeId<'db> {
             ast::TypeKind::Mode(ty) => {
                 let mode = match ty.mode() {
                     Some(ast::TypeMode::Mut(_)) => TypeMode::Mut,
+                    Some(ast::TypeMode::MaybeMut(_)) => TypeMode::MaybeMut,
                     Some(ast::TypeMode::Ref(_)) => TypeMode::Ref,
                     Some(ast::TypeMode::Own(_)) => TypeMode::Own,
                     None => TypeMode::Ref,

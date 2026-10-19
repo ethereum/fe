@@ -1505,7 +1505,7 @@ pub contract CanonicalHarness {
         }
 
         ReadAddress { value } -> u256 {
-            value.inner
+            value.word()
         }
     }
 }
@@ -2270,11 +2270,11 @@ pub contract DynamicChild {
 pub contract Create2Parent uses (create: mut Create) {
     recv ParentMsg {
         DeployStatic -> u256 uses (mut create) {
-            create.create2<StaticChild>(value: 0, args: (7,), salt: 1).inner
+            create.create2<StaticChild>(value: 0, args: (7,), salt: 1).word()
         }
 
         DeployDynamic { text, count } -> u256 uses (mut create) {
-            create.create2<DynamicChild>(value: 0, args: (text, count), salt: 2).inner
+            create.create2<DynamicChild>(value: 0, args: (text, count), salt: 2).word()
         }
     }
 }

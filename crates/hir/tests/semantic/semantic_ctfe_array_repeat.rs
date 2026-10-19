@@ -100,8 +100,12 @@ const fn unchanged_value() -> u8 { Marker<3, 1>::CHANGED[2] }
     ] {
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, name)),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, name)), vec![]),
+            BodyOwner::Func(function(&db, module, name), None),
+            GenericSubst::for_body_owner(
+                &db,
+                BodyOwner::Func(function(&db, module, name), None),
+                vec![],
+            ),
         )
         .into_ready()
         .unwrap();
@@ -200,7 +204,7 @@ const fn changed_fixed<const N: usize, const I: usize>() -> u8 { fixed_store<N, 
         "changed",
         "changed_fixed",
     ] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let symbolic =
             eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]));
         let identity = identity_semantic_instance_key(&db, owner);
@@ -274,8 +278,12 @@ const fn empty_nested() -> [[u8; 0]; 2] { Marker<0>::MATRIX }
     for (name, expected) in [("first", 7), ("last", 7), ("nested", 9)] {
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, name)),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, name)), vec![]),
+            BodyOwner::Func(function(&db, module, name), None),
+            GenericSubst::for_body_owner(
+                &db,
+                BodyOwner::Func(function(&db, module, name), None),
+                vec![],
+            ),
         )
         .into_ready()
         .unwrap();
@@ -283,18 +291,22 @@ const fn empty_nested() -> [[u8; 0]; 2] { Marker<0>::MATRIX }
     }
     let empty = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "empty")),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, "empty")), vec![]),
+        BodyOwner::Func(function(&db, module, "empty"), None),
+        GenericSubst::for_body_owner(
+            &db,
+            BodyOwner::Func(function(&db, module, "empty"), None),
+            vec![],
+        ),
     )
     .into_ready()
     .unwrap();
     assert!(matches!(empty.value(&db), SemConstValue::Array { elems, .. } if elems.is_empty()));
     let nested = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "empty_nested")),
+        BodyOwner::Func(function(&db, module, "empty_nested"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "empty_nested")),
+            BodyOwner::Func(function(&db, module, "empty_nested"), None),
             vec![],
         ),
     )
@@ -326,8 +338,12 @@ const fn value() -> u8 { Marker<3>::VALUE.values[2] }
     db.assert_no_diags(module);
     let value = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "value")),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, "value")), vec![]),
+        BodyOwner::Func(function(&db, module, "value"), None),
+        GenericSubst::for_body_owner(
+            &db,
+            BodyOwner::Func(function(&db, module, "value"), None),
+            vec![],
+        ),
     )
     .into_ready()
     .unwrap();
@@ -380,8 +396,12 @@ const fn empty_replacement() -> [u8; 0] { Marker<0>::REPLACED }
     ] {
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, name)),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, name)), vec![]),
+            BodyOwner::Func(function(&db, module, name), None),
+            GenericSubst::for_body_owner(
+                &db,
+                BodyOwner::Func(function(&db, module, name), None),
+                vec![],
+            ),
         )
         .into_ready()
         .unwrap();
@@ -389,10 +409,10 @@ const fn empty_replacement() -> [u8; 0] { Marker<0>::REPLACED }
     }
     let empty = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "empty_replacement")),
+        BodyOwner::Func(function(&db, module, "empty_replacement"), None),
         GenericSubst::for_body_owner(
             &db,
-            BodyOwner::Func(function(&db, module, "empty_replacement")),
+            BodyOwner::Func(function(&db, module, "empty_replacement"), None),
             vec![],
         ),
     )
@@ -430,10 +450,10 @@ const BAD: [u8; {len}] = Marker<{len}>::VALUES
         assert!(!rendered.contains("internal"), "{rendered}");
         let result = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, "bad")),
+            BodyOwner::Func(function(&db, module, "bad"), None),
             GenericSubst::for_body_owner(
                 &db,
-                BodyOwner::Func(function(&db, module, "bad")),
+                BodyOwner::Func(function(&db, module, "bad"), None),
                 vec![],
             ),
         );
@@ -482,7 +502,7 @@ const fn record<const N: usize, const X: u8>() -> Rows<N> { store_record<N>(X) }
         "checked_changed",
         "record",
     ] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let template =
             eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]));
         let identity = identity_semantic_instance_key(&db, owner);
@@ -590,8 +610,12 @@ const BAD: u8 = Marker<0>::FIRST
     let (module, _) = db.top_mod(file);
     let result = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "empty")),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, "empty")), vec![]),
+        BodyOwner::Func(function(&db, module, "empty"), None),
+        GenericSubst::for_body_owner(
+            &db,
+            BodyOwner::Func(function(&db, module, "empty"), None),
+            vec![],
+        ),
     );
     assert!(
         matches!(result, EvalOutcome::Failed(_)),
@@ -649,8 +673,12 @@ const fn value() -> u8 { Buffer<Large>::VALUES[3] }
     db.assert_no_diags(module);
     let value = eval_body_owner_const(
         &db,
-        BodyOwner::Func(function(&db, module, "value")),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, "value")), vec![]),
+        BodyOwner::Func(function(&db, module, "value"), None),
+        GenericSubst::for_body_owner(
+            &db,
+            BodyOwner::Func(function(&db, module, "value"), None),
+            vec![],
+        ),
     )
     .into_ready()
     .unwrap();
@@ -684,8 +712,12 @@ const fn empty() -> [Maybe<u8>; 0] { Marker<0>::VALUES }
     for (name, len) in [("values", 3), ("none", 2), ("nested", 2), ("empty", 0)] {
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, name)),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, name)), vec![]),
+            BodyOwner::Func(function(&db, module, name), None),
+            GenericSubst::for_body_owner(
+                &db,
+                BodyOwner::Func(function(&db, module, name), None),
+                vec![],
+            ),
         )
         .into_ready()
         .unwrap();
@@ -742,7 +774,7 @@ const fn checked<const N: usize, const X: u8>() -> [Wrapped; N] { [Wrapped { ite
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     for name in ["repeat", "checked"] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let symbolic =
             eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]));
         let identity = identity_semantic_instance_key(&db, owner);
@@ -823,8 +855,12 @@ const fn array() -> u8 { Marker<2>::ARRAY }
     for (name, expected) in [("field", 7), ("tuple", 11), ("nested", 13), ("array", 17)] {
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(function(&db, module, name)),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(function(&db, module, name)), vec![]),
+            BodyOwner::Func(function(&db, module, name), None),
+            GenericSubst::for_body_owner(
+                &db,
+                BodyOwner::Func(function(&db, module, name), None),
+                vec![],
+            ),
         )
         .into_ready()
         .unwrap();
@@ -874,7 +910,7 @@ const fn checked<const N: usize, const X: u8>() -> u8 { [(Pair { value: X }, [10
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     for name in ["project", "checked"] {
-        let owner = BodyOwner::Func(function(&db, module, name));
+        let owner = BodyOwner::Func(function(&db, module, name), None);
         let symbolic =
             eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]));
         let identity = identity_semantic_instance_key(&db, owner);
@@ -925,14 +961,14 @@ fn outer<const A: usize, const B: usize>() {}
     );
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
-    let owner = BodyOwner::Func(function(&db, module, "value"));
+    let owner = BodyOwner::Func(function(&db, module, "value"), None);
     let template_value =
         eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]))
             .into_ready()
             .unwrap();
     let identity = identity_semantic_instance_key(&db, owner);
     let outer =
-        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, "outer")));
+        identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, "outer"), None));
     let params = outer.subst(&db).generic_args(&db);
     for args in [[params[1], params[0]], [params[0], params[0]]] {
         let key = SemanticInstanceKey::new(
