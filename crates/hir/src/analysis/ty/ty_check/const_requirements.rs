@@ -126,7 +126,9 @@ impl<'db> PredicateKeyBuilder<'_, 'db> {
                     match typed.expr_const_ref(expr) {
                         None => return Ok(None),
                         Some(ConstRef::Const(constant)) => PredicateTerm::Const(constant),
-                        Some(ConstRef::TraitConst(reference)) => PredicateTerm::TraitConst(
+                        Some(ConstRef::TraitConst {
+                            use_: reference, ..
+                        }) => PredicateTerm::TraitConst(
                             self.instantiate(reference.inst())?,
                             reference.name(),
                         ),
@@ -1374,7 +1376,7 @@ fn const_ref_headers<'db>(
 ) -> Option<Vec<TyId<'db>>> {
     match typed.expr_const_ref(expr)? {
         ConstRef::Const(_) => None,
-        ConstRef::TraitConst(reference) => Some(reference.inst().args(db).to_vec()),
+        ConstRef::TraitConst { use_, .. } => Some(use_.inst().args(db).to_vec()),
         ConstRef::InherentConst(reference) => Some(vec![reference.receiver_ty()]),
     }
 }

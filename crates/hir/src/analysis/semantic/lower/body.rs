@@ -1303,9 +1303,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         // use was checked under, once substituted, may hold only by the bounds
         // of the context the instance was made for.
         let const_ref = match const_ref {
-            ConstRef::TraitConst(use_) => {
-                ConstRef::TraitConst(use_.with_env(use_.origin_scope(), self.assumptions))
-            }
+            ConstRef::TraitConst { use_, selection } => ConstRef::TraitConst {
+                use_: use_.with_env(use_.origin_scope(), self.assumptions),
+                selection,
+            },
             ConstRef::InherentConst(use_) => {
                 ConstRef::InherentConst(use_.with_env(use_.origin_scope(), self.assumptions))
             }
@@ -1324,7 +1325,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         // above retain their reference identity until the body is complete, so
         // evaluation can use the machine's const cycle detection.
         let symbolic_const_ty = match const_ref {
-            ConstRef::TraitConst(assoc) => {
+            ConstRef::TraitConst { use_: assoc, .. } => {
                 const_ty_or_abstract_from_assoc_const_use(self.db, assoc, ty)
             }
             ConstRef::InherentConst(use_) => {

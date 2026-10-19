@@ -916,7 +916,9 @@ pub(crate) fn normalize_compare_assoc_consts<'db>(
             }
 
             let typed_body = capture.specialize(db, typed_body.clone());
-            let ConstRef::TraitConst(assoc) = typed_body.expr_const_ref(body.expr(db))? else {
+            let ConstRef::TraitConst { use_: assoc, .. } =
+                typed_body.expr_const_ref(body.expr(db))?
+            else {
                 return None;
             };
 

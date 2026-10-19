@@ -4202,12 +4202,15 @@ impl<'db> TyChecker<'db> {
 
                     self.env.register_const_ref(
                         expr,
-                        ConstRef::TraitConst(AssocConstUse::new(
-                            self.env.scope(),
-                            self.env.assumptions(),
-                            inst,
-                            name,
-                        )),
+                        ConstRef::TraitConst {
+                            use_: AssocConstUse::new(
+                                self.env.scope(),
+                                self.env.assumptions(),
+                                inst,
+                                name,
+                            ),
+                            selection: None,
+                        },
                     );
                     // Look up the associated const's declared type in the trait and
                     // instantiate it with the trait instance's args (including Self).
