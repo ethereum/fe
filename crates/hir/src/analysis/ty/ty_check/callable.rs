@@ -22,14 +22,12 @@ use crate::analysis::{
         const_ty::LoweringContext,
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
+        evidence::{EvidenceId, instantiated_selection, prove},
         fold::{TyFoldable, TyFolder},
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
-        trait_def::{
-            ResolvedImplInstance, ResolvedMethodInstance, TraitInstId, checked_selection,
-            instantiated_selection,
-        },
+        trait_def::{ResolvedMethodInstance, TraitInstId},
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
@@ -256,10 +254,10 @@ pub struct Callable<'db> {
     /// The originating trait instance if this callable comes from a trait method
     /// (e.g., operator overloading, method call, indexing). None for inherent functions.
     pub trait_inst: Option<TraitInstId<'db>>,
-    /// The implementation the checker selected for `trait_inst` in the
-    /// checked body. One selected through an assumption, a bound of that
-    /// body, is selected again where the body is instantiated.
-    selection: Option<ResolvedImplInstance<'db>>,
+    /// The checker's proof of `trait_inst` in the checked body. A goal
+    /// proved by an assumption, a bound of that body, is selected again where
+    /// the body is instantiated.
+    evidence: Option<EvidenceId<'db>>,
     /// The mode a `mut?` callee is called at: `ref` unless a use of the
     /// call's result asks for `mut`.
     mode: Option<BorrowKind>,
@@ -278,8 +276,8 @@ impl<'db> TyVisitable<'db> for Callable<'db> {
         if let Some(inst) = self.trait_inst {
             inst.visit_with(visitor);
         }
-        if let Some(selection) = &self.selection {
-            selection.visit_with(visitor);
+        if let Some(evidence) = &self.evidence {
+            evidence.visit_with(visitor);
         }
     }
 }
@@ -298,9 +296,7 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
                 .checked_input_tys
                 .map(|inputs| inputs.fold_with(db, folder)),
             trait_inst: self.trait_inst.map(|i| i.fold_with(db, folder)),
-            selection: self
-                .selection
-                .map(|selection| selection.fold_with(db, folder)),
+            evidence: self.evidence.map(|evidence| evidence.fold_with(db, folder)),
             mode: self.mode,
         }
     }
@@ -352,7 +348,7 @@ impl<'db> Callable<'db> {
             effect_providers: Vec::new(),
             checked_input_tys: None,
             trait_inst,
-            selection: None,
+            evidence: None,
             mode: callable_def.modes(db)[0],
         })
     }
@@ -371,7 +367,7 @@ impl<'db> Callable<'db> {
             effect_providers: Vec::new(),
             checked_input_tys: None,
             trait_inst,
-            selection: None,
+            evidence: None,
             mode: callable_def.modes(db)[0],
         }
     }
@@ -404,16 +400,18 @@ impl<'db> Callable<'db> {
         self.trait_inst
     }
 
-    /// Selects the implementation of the call's trait goal in the checked
-    /// body's context.
-    pub(super) fn record_selection(
+    /// Proves the call's trait goal in the checked body's context.
+    pub(super) fn record_evidence(
         &mut self,
         db: &'db dyn HirAnalysisDb,
         solve_cx: TraitSolveCx<'db>,
     ) {
-        self.selection = self
-            .trait_inst
-            .and_then(|inst| checked_selection(db, solve_cx, inst));
+        self.evidence = self.trait_inst.and_then(|inst| prove(db, solve_cx, inst));
+    }
+
+    /// The checker's proof of the call's trait goal.
+    pub fn evidence(&self) -> Option<EvidenceId<'db>> {
+        self.evidence
     }
 
     /// The trait method the call runs, with its body: from the
@@ -430,7 +428,7 @@ impl<'db> Callable<'db> {
             return None;
         };
         let name = func.name(db).to_opt()?;
-        instantiated_selection(db, self.selection, solve_cx, inst)?.method(db, name, self.mode)
+        instantiated_selection(db, self.evidence, solve_cx, inst)?.method(db, name, self.mode)
     }
 
     /// The mode a `mut?` callee is called at; `None` for any other.

@@ -4209,7 +4209,7 @@ impl<'db> TyChecker<'db> {
                                 inst,
                                 name,
                             ),
-                            selection: None,
+                            evidence: None,
                         },
                     );
                     // Look up the associated const's declared type in the trait and

@@ -36,10 +36,11 @@ use crate::analysis::{
             model::EffectRequirementDecl,
             rows::{RowComponent, expand_rows},
         },
+        evidence::prove,
         fold::{TyFoldable, TyFolder},
         provider::AddressSpace,
         shape::Shape,
-        trait_def::{TraitInstId, checked_selection},
+        trait_def::TraitInstId,
         trait_resolution::{
             PredicateListId, TraitSolveCx, constraint::collect_func_effect_provider_constraints,
         },
@@ -1391,20 +1392,20 @@ impl<'db> TyCheckEnv<'db> {
             .values_mut()
             .flatten()
             .for_each(|plan| *plan = plan.clone().fold_with(self.db, &mut prober));
-        // Each call's trait goal is now final: select its implementation once,
+        // Each trait goal a call or constant uses is now final: prove it once,
         // here, for every later stage.
         let solve_cx = TraitSolveCx::new(self.db, prober.scope).with_assumptions(assumptions);
         for lowering in self.semantic_expr_lowering.values_mut().flatten() {
-            lowering.callable_mut().record_selection(self.db, solve_cx);
+            lowering.callable_mut().record_evidence(self.db, solve_cx);
         }
         for plan in self.for_loop_plans.values_mut().flatten() {
             for call in &mut plan.calls {
-                call.callable.record_selection(self.db, solve_cx);
+                call.callable.record_evidence(self.db, solve_cx);
             }
         }
         for const_ref in self.const_refs.values_mut().flatten() {
-            if let ConstRef::TraitConst { use_, selection } = const_ref {
-                *selection = checked_selection(self.db, use_.solve_cx(self.db), use_.inst());
+            if let ConstRef::TraitConst { use_, evidence } = const_ref {
+                *evidence = prove(self.db, use_.solve_cx(self.db), use_.inst());
             }
         }
         self.closure_infos
