@@ -305,9 +305,17 @@ impl<'db> FuncParam<'db> {
             })
     }
 
-    /// The name the parameter's binding has: its own, or the name a
-    /// destructured parameter's body binds its pattern from.
+    /// The parameter's name as written: none for `_` or a pattern.
     pub fn name(&self) -> Option<IdentId<'db>> {
+        match self.name.to_opt()? {
+            FuncParamName::Ident(name) => Some(name),
+            FuncParamName::Underscore | FuncParamName::Destructured(_) => None,
+        }
+    }
+
+    /// The name the parameter's binding has in its body: its own, or the
+    /// hidden name a destructured parameter's body binds its pattern from.
+    pub fn binding_name(&self) -> Option<IdentId<'db>> {
         match self.name.to_opt()? {
             FuncParamName::Ident(name) | FuncParamName::Destructured(name) => Some(name),
             FuncParamName::Underscore => None,
@@ -356,6 +364,13 @@ impl<'db> FuncParamName<'db> {
     /// The name of destructured parameter `idx`.
     pub fn destructured(db: &'db dyn HirDb, idx: usize) -> IdentId<'db> {
         IdentId::new(db, format!("%{idx}"))
+    }
+
+    /// Whether `path` reads a destructured parameter by its name, as the
+    /// `let` that destructures it does. Source cannot write such a path.
+    pub fn is_destructured_read(db: &'db dyn HirDb, path: PathId<'db>) -> bool {
+        path.as_ident(db)
+            .is_some_and(|name| name.data(db).starts_with('%'))
     }
 
     pub fn is_self(&self, db: &dyn HirDb) -> bool {

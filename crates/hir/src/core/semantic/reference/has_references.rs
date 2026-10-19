@@ -55,33 +55,6 @@ impl<'db> HasReferences<'db> for ScopeId<'db> {
     }
 }
 
-impl<'db> ScopeId<'db> {
-    /// Find the most specific reference at a cursor position within this scope.
-    ///
-    /// When references are nested (e.g. `C::InitArgs` inside
-    /// `C::InitArgs::ENCODED_SIZE`), selects the narrowest span containing
-    /// the cursor so that goto-definition resolves the inner type argument
-    /// rather than the outer function call.
-    pub fn reference_at(
-        self,
-        db: &'db dyn SpannedHirDb,
-        cursor: TextSize,
-    ) -> Option<&'db ReferenceView<'db>> {
-        self.references(db)
-            .iter()
-            .filter_map(|r| {
-                let span = r.span().resolve(db)?;
-                if span.range.contains(cursor) {
-                    Some((r, span.range.len()))
-                } else {
-                    None
-                }
-            })
-            .min_by_key(|(_, len)| *len)
-            .map(|(r, _)| r)
-    }
-}
-
 impl<'db> HasReferences<'db> for ItemKind<'db> {
     fn references(&self, db: &'db dyn HirDb) -> &'db [ReferenceView<'db>] {
         match self {
@@ -280,18 +253,39 @@ impl<'db> TopLevelMod<'db> {
         None
     }
 
-    /// Find the reference at a cursor position anywhere in this module.
+    /// Find the reference at a cursor position anywhere in this module: the
+    /// innermost item's reference with the narrowest span containing the
+    /// cursor.
+    ///
+    /// When references are nested (e.g. `C::InitArgs` inside
+    /// `C::InitArgs::ENCODED_SIZE`), the narrowest is the inner type argument
+    /// rather than the outer function call. A function's or `init`'s
+    /// parameter patterns are written in its signature, but the body that
+    /// binds them records their references, so that body's references count
+    /// as the item's.
     pub fn reference_at(
         self,
         db: &'db dyn SpannedHirDb,
         cursor: TextSize,
     ) -> Option<&'db ReferenceView<'db>> {
-        for item in self.find_enclosing_items(db, cursor) {
-            if let Some(reference) = ScopeId::from_item(item).reference_at(db, cursor) {
-                return Some(reference);
-            }
-        }
-        None
+        self.find_enclosing_items(db, cursor)
+            .into_iter()
+            .find_map(|item| {
+                let param_body = match item {
+                    ItemKind::Func(func) => func.body(db),
+                    ItemKind::Contract(contract) => contract.init(db).map(|init| init.body(db)),
+                    _ => None,
+                };
+                item.references(db)
+                    .iter()
+                    .chain(param_body.into_iter().flat_map(|body| body.references(db)))
+                    .filter_map(|r| {
+                        let range = r.span().resolve(db)?.range;
+                        range.contains(cursor).then_some((r, range.len()))
+                    })
+                    .min_by_key(|(_, len)| *len)
+                    .map(|(r, _)| r)
+            })
     }
 
     /// Find the item definition at cursor position (cursor on name token).

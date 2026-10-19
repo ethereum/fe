@@ -272,7 +272,7 @@ impl<'db> TyCheckEnv<'db> {
             BodyOwner::Func(func, mode) => {
                 let bindings = func_param_bindings(db, func, mode);
                 for (view, &var) in func.params(db).zip(&bindings.params) {
-                    if let Some(name) = view.name(db) {
+                    if let Some(name) = view.hir(db).and_then(FuncParam::binding_name) {
                         env.register_var_in_current_scope(name, var);
                     };
                 }
@@ -309,7 +309,7 @@ impl<'db> TyCheckEnv<'db> {
                     };
                     env.param_bindings.push(var);
                     env.input_bindings.push(var);
-                    if let Some(name) = param.name() {
+                    if let Some(name) = param.binding_name() {
                         env.register_var_in_current_scope(name, var);
                     }
                 }

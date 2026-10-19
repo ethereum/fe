@@ -672,7 +672,8 @@ impl<'db> TyChecker<'db> {
                 ty,
                 is_mut: param.is_mut,
             };
-            self.env.register_closure_param(param.name(), binding);
+            self.env
+                .register_closure_param(param.binding_name(), binding);
             param_tys.push((mode, ty));
         }
         let ret = match ret_ty {
