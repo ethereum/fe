@@ -1413,9 +1413,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 
     /// Projections are inlined into their callers, so a projection may not
-    /// reach itself through projection calls.
+    /// reach itself through projection calls. Another instance of its
+    /// function is another projection, as `Enumerate<Enumerate<D>>::at` calls
+    /// `Enumerate<D>::at`; instantiation limits keep their chains finite.
     fn check_projection_recursion(&self) -> Result<(), Diag<'db>> {
-        let owner = self.instance.key(self.db).owner(self.db);
         if !self.instance.is_projection(self.db) {
             return Ok(());
         }
@@ -1425,11 +1426,10 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 expr: NExpr::Call { callee, .. },
                 ..
             } = &statement.kind
-                && reaches_owner(
+                && reaches_instance(
                     self.db,
                     get_or_build_semantic_instance(self.db, callee.key),
-                    owner,
-                    &mut Vec::new(),
+                    self.instance,
                     &mut explored,
                 )
             {
@@ -2425,35 +2425,28 @@ impl<'a, 'db> Analysis<'a, 'db> {
     }
 }
 
-/// Whether `instance`, a callee, is a projection that reaches `owner` through
-/// projection calls. A function that recurs on the path is not explored
-/// further: its own check reports it, which also bounds polymorphic recursion.
-fn reaches_owner<'db>(
+/// Whether `instance`, a callee, is a projection that reaches `target`
+/// through projection calls. An instance is explored once, and an
+/// instantiation past the limit has no callee, which bounds polymorphic
+/// recursion.
+fn reaches_instance<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
-    owner: BodyOwner<'db>,
-    path: &mut Vec<BodyOwner<'db>>,
+    target: SemanticInstance<'db>,
     explored: &mut FxHashSet<SemanticInstance<'db>>,
 ) -> bool {
-    let instance_owner = instance.key(db).owner(db);
-    if !instance.is_projection(db) || path.contains(&instance_owner) || !explored.insert(instance) {
+    if !instance.is_projection(db) || !explored.insert(instance) {
         return false;
     }
-    if instance_owner == owner {
-        return true;
-    }
-    path.push(instance_owner);
-    let reaches = instance.callees(db).iter().any(|callee| {
-        reaches_owner(
-            db,
-            get_or_build_semantic_instance(db, callee.key),
-            owner,
-            path,
-            explored,
-        )
-    });
-    path.pop();
-    reaches
+    instance == target
+        || instance.callees(db).iter().any(|callee| {
+            reaches_instance(
+                db,
+                get_or_build_semantic_instance(db, callee.key),
+                target,
+                explored,
+            )
+        })
 }
 
 /// The access components of a shape, by their path in its carrier, with
