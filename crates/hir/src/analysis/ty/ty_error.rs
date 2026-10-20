@@ -1,5 +1,5 @@
 use crate::{
-    hir_def::{GenericArg, PathId, PathKind, TypeId, TypeKind, scope_graph::ScopeId},
+    hir_def::{GenericArg, PathId, PathKind, TraitRefId, TypeId, TypeKind, scope_graph::ScopeId},
     span::{params::LazyGenericArgSpan, path::LazyPathSpan, types::LazyTySpan},
     visitor::{Visitor, VisitorCtxt, prelude::DynLazySpan, walk_generic_arg, walk_path, walk_type},
 };
@@ -9,6 +9,7 @@ use crate::analysis::{
     name_resolution::{
         ExpectedPathKind, PathRes, diagnostics::PathResDiag, resolve_path_with_minter,
         resolve_path_with_observer_and_minter, resolve_trait_path_with_observer_and_minter,
+        trait_arg_path_diag,
     },
     ty::visitor::{TyVisitor, walk_ty},
 };
@@ -22,6 +23,82 @@ use super::{
     ty_lower::{lower_hir_ty, lower_hir_ty_in_mode},
 };
 use crate::visitor::prelude::LazyTraitRefSpan;
+
+/// The generic arguments written on `path`'s last segment, with their spans.
+pub(crate) fn path_generic_args<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    path_span: LazyPathSpan<'db>,
+) -> impl Iterator<Item = (&'db GenericArg<'db>, LazyGenericArgSpan<'db>)> {
+    let spans = path_span.segment(path.segment_index(db)).generic_args();
+    path.generic_args(db)
+        .data(db)
+        .iter()
+        .enumerate()
+        .map(move |(idx, arg)| (arg, spans.clone().arg(idx)))
+}
+
+/// Diagnostics for the types a trait reference writes as generic arguments,
+/// each at its own span. The reference's own checks cover the
+/// well-formedness of the arguments it lowers.
+pub(crate) fn trait_ref_arg_diags<'db>(
+    db: &'db dyn HirAnalysisDb,
+    tr: TraitRefId<'db>,
+    span: LazyTraitRefSpan<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TyDiagCollection<'db>> {
+    tr.path(db).to_opt().map_or_else(Vec::new, |path| {
+        path_arg_diags(db, path, span.path(), scope, assumptions)
+    })
+}
+
+/// Diagnostics for the types `path`'s last segment writes as generic
+/// arguments, each at its own span: a path in one that names no type as
+/// resolving the trait path reports it, and otherwise what lowering the
+/// argument finds, where a path may name a constant as in a type's generic
+/// arguments. An associated-type binding, which lowering never checks,
+/// reports any error.
+pub(crate) fn path_arg_diags<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    path_span: LazyPathSpan<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TyDiagCollection<'db>> {
+    path_generic_args(db, path, path_span.clone())
+        .enumerate()
+        .flat_map(|(idx, (arg, span))| {
+            if let Some(diag) =
+                trait_arg_path_diag(db, path, path_span.clone(), idx, scope, assumptions)
+            {
+                return vec![diag];
+            }
+            match arg {
+                GenericArg::Type(_) => {
+                    let mut vis = HirTyErrVisitor {
+                        db,
+                        assumptions,
+                        diags: Vec::new(),
+                        const_bodies: ConstBodyLowering::Eager,
+                    };
+                    vis.visit_generic_arg(&mut VisitorCtxt::new(db, scope, span), arg);
+                    vis.diags
+                }
+                GenericArg::AssocType(binding) => binding.ty.to_opt().map_or_else(Vec::new, |ty| {
+                    collect_hir_ty_diags(
+                        db,
+                        scope,
+                        ty,
+                        span.into_assoc_type_arg().ty(),
+                        assumptions,
+                    )
+                }),
+                GenericArg::Const(_) => Vec::new(),
+            }
+        })
+        .collect()
+}
 
 /// Collect all type-lowering diagnostics for a HIR type.
 ///
@@ -240,7 +317,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
                                 path_span.clone(),
                                 ExpectedPathKind::Value,
                             ) {
-                                self.diags.push(diag.into());
+                                self.diags.push(diag);
                             }
                         }
                     }
@@ -347,7 +424,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
                 if let Some(diag) =
                     err.into_diag(self.db, path, path_span.clone(), ExpectedPathKind::Type)
                 {
-                    self.diags.push(diag.into());
+                    self.diags.push(diag);
                 }
                 return;
             }
@@ -438,7 +515,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
                     span.clone().path(),
                     crate::analysis::name_resolution::ExpectedPathKind::Trait,
                 ) {
-                    self.diags.push(diag.into());
+                    self.diags.push(diag);
                 }
             }
         }

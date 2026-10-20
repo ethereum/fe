@@ -345,6 +345,7 @@ where
                     let new_ty = TyId::const_ty_var(
                         db,
                         *const_ty_ty,
+                        var.sort,
                         self.table.new_key(const_ty_ty.kind(db), var.sort),
                     );
                     self.subst.insert(ty, new_ty);
@@ -421,7 +422,7 @@ where
 
             match const_ty.data(self.db) {
                 ConstTyData::TyVar(var, const_ty_ty) => {
-                    let ty = TyId::const_ty_var(self.db, *const_ty_ty, var.key);
+                    let ty = TyId::const_ty_var(self.db, *const_ty_ty, var.sort, var.key);
                     self.is_valid &= self.subst.contains_key(&ty);
                 }
                 _ => walk_const_ty(self, const_ty),
@@ -531,6 +532,7 @@ mod tests {
         let const_arg = TyId::const_ty_var(
             &db,
             TyId::u256(&db),
+            TyVarSort::General,
             table.new_key(&Kind::Star, TyVarSort::General),
         );
         let original = RepeatedAndConstVars {

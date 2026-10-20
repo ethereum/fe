@@ -13,12 +13,13 @@ use super::{
     fold::{TyFoldable, TyFolder},
     trait_def::{ImplementorId, TraitInstId, TraitRefId},
     ty_def::{
-        ApplicableTyProp, ClosureTy, Kind, TyBase, TyData, TyId, TyVar, TyVarSort, inference_keys,
+        ApplicableTyProp, ClosureTy, Kind, MAX_INLINE_STRING_BYTES, TyBase, TyData, TyId, TyVar,
+        TyVarSort, inference_keys,
     },
 };
 use crate::analysis::{
     HirAnalysisDb,
-    ty::const_ty::{ConstCaptureEnv, ConstTyData, normalize_const_tys_for_comparison},
+    ty::const_ty::{ConstCaptureEnv, ConstTyData, ConstTyId, normalize_const_tys_for_comparison},
 };
 
 pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<InferenceKey<'db>>>;
@@ -432,7 +433,7 @@ where
             TyData::ConstTy(const_ty) => {
                 if let ConstTyData::TyParam(_, ty) = const_ty.data(self.db) {
                     let key = self.new_key(ty.kind(self.db), TyVarSort::General);
-                    TyId::const_ty_var(self.db, *ty, key)
+                    TyId::const_ty_var(self.db, *ty, TyVarSort::General, key)
                 } else {
                     panic!()
                 }
@@ -447,7 +448,7 @@ where
         let key = self.new_key(&kind, sort);
 
         match ty_prop.const_ty {
-            Some(const_ty) => TyId::const_ty_var(self.db, const_ty, key),
+            Some(const_ty) => TyId::const_ty_var(self.db, const_ty, sort, key),
             None => TyId::ty_var(self.db, TyVarSort::General, kind, key),
         }
     }
@@ -525,7 +526,8 @@ where
                 self.table.unify_var_var(var1.key, var2.key)
             }
 
-            (TyVarSort::String { .. }, TyVarSort::String { .. }) => {
+            (TyVarSort::String { .. }, TyVarSort::String { .. })
+            | (TyVarSort::StringLen { .. }, TyVarSort::StringLen { .. }) => {
                 self.table.unify_var_var(var1.key, var2.key)
             }
 
@@ -603,17 +605,84 @@ where
                     return Ok(());
                 };
 
-                let Some(n_value) = const_ty.integer_value(self.db) else {
-                    return Ok(());
-                };
+                // No `String<N>` holds more bytes than an inline string.
+                if min_len > MAX_INLINE_STRING_BYTES {
+                    return Err(UnificationError::TypeMismatch);
+                }
 
-                if BigInt::from(min_len) <= n_value {
+                // An inferred length, such as `N` of a generic `String<N>`
+                // parameter: it must hold the literal and defaults to its length.
+                if let ConstTyData::TyVar(len_var, _) = const_ty.data(self.db)
+                    && self.narrow_string_len(len_var.key, min_len)
+                {
+                    return self
+                        .table
+                        .unify_var_value(root_var.key, InferenceValue::Bound(value));
+                }
+
+                if self.literal_fits_len(*const_ty, min_len) {
                     self.table
                         .unify_var_value(root_var.key, InferenceValue::Bound(value))
                 } else {
                     Err(UnificationError::TypeMismatch)
                 }
             }
+
+            TyVarSort::StringLen { min_len } => {
+                if let TyData::ConstTy(const_ty) = value.data(self.db)
+                    && !self.literal_fits_len(*const_ty, min_len)
+                {
+                    return Err(UnificationError::TypeMismatch);
+                }
+                self.table
+                    .unify_var_value(root_var.key, InferenceValue::Bound(value))
+            }
+        }
+    }
+
+    /// Whether a string literal of `min_len` bytes fits the length `len`. Any
+    /// length holds an empty literal; otherwise the length must be an integer
+    /// of at least `min_len`, as a symbolic one, such as a generic `M` or
+    /// `{M + 1}`, may be instantiated shorter.
+    fn literal_fits_len(&self, len: ConstTyId<'db>, min_len: usize) -> bool {
+        if min_len == 0 {
+            return true;
+        }
+        // Compare the length as const unification does: evaluated if it can be.
+        let len = match normalize_const_tys_for_comparison(self.db, TyId::const_ty(self.db, len))
+            .data(self.db)
+        {
+            TyData::ConstTy(len) => *len,
+            _ => len,
+        };
+        len.integer_value(self.db)
+            .is_some_and(|n| n >= BigInt::from(min_len))
+    }
+
+    /// Require the unbound const variable `key` to be a string length of at
+    /// least `min_len`. Returns false if it is not such a variable.
+    fn narrow_string_len(&mut self, key: InferenceKey<'db>, min_len: usize) -> bool {
+        let InferenceValue::Unbound(kind, sort) = self.table.probe_value(key) else {
+            return false;
+        };
+        let min_len = match sort {
+            TyVarSort::General => min_len,
+            TyVarSort::StringLen { min_len: current } => current.max(min_len),
+            TyVarSort::Integral | TyVarSort::String { .. } => return false,
+        };
+        self.table
+            .unify_var_value(
+                key,
+                InferenceValue::Unbound(kind, TyVarSort::StringLen { min_len }),
+            )
+            .is_ok()
+    }
+
+    /// The sort of `key` if it is still unbound.
+    pub(crate) fn unbound_sort(&mut self, key: InferenceKey<'db>) -> Option<TyVarSort> {
+        match self.table.probe_value(key) {
+            InferenceValue::Unbound(_, sort) => Some(sort),
+            InferenceValue::Bound(_) => None,
         }
     }
 }
@@ -820,7 +889,7 @@ where
                     match self.table.probe_impl(var.key) {
                         Either::Left(ty) => (ty, var.key),
                         Either::Right(var) => {
-                            return TyId::const_ty_var(db, *ty, var.key);
+                            return TyId::const_ty_var(db, *ty, var.sort, var.key);
                         }
                     }
                 }
@@ -917,6 +986,7 @@ mod tests {
         let len = TyId::const_ty_var(
             &db,
             TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))),
+            TyVarSort::General,
             table.new_key(&Kind::Star, TyVarSort::General),
         );
         let array = TyId::app_structural(&db, TyId::array(&db, elem), len);
