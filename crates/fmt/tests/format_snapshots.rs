@@ -8,13 +8,43 @@ use test_utils::snap_test;
     glob: "*.fe"
 )]
 fn format_snap(fixture: Fixture<&str>) {
-    let config = Config::default();
+    let config = Config {
+        uses_new_line: fixture.content().lines().next() == Some("// fmt: uses_new_line = true"),
+        ..Config::default()
+    };
     let output = match format_str(fixture.content(), &config) {
         Ok(formatted) => formatted,
         Err(err) => format!("FORMAT ERROR: {err:?}"),
     };
 
     snap_test!(output, fixture.path());
+}
+
+#[test]
+fn comments_between_methods_format_in_one_pass() {
+    let config = Config::default();
+    for modifier in ["pub ", "unsafe ", "pub unsafe "] {
+        for newlines in [1, 2, 4] {
+            for comment in ["", "    // Clear state.\n    // Avoid another callback.\n"] {
+                let separator = "\n".repeat(newlines);
+                let source = format!(
+                    "impl Notifications {{\n    {modifier}fn unsubscribe(self) uses (log: mut Log) {{\n        log.emit(0)\n    }}{separator}{comment}    {modifier}fn detach(self) uses (log: mut Log) {{\n        log.emit(1)\n    }}\n}}\n"
+                );
+                let formatted = format_str(&source, &config).expect("format should succeed");
+                assert_eq!(
+                    formatted,
+                    format_str(&formatted, &config).expect("reformat should succeed"),
+                    "{source}",
+                );
+                let separator = "\n".repeat(newlines.min(2));
+                assert!(
+                    formatted.contains(&format!("}}{separator}{comment}    {modifier}fn detach")),
+                    "{formatted}",
+                );
+                assert!(formatted.starts_with("impl Notifications {\n    "));
+            }
+        }
+    }
 }
 
 #[test]
@@ -180,7 +210,7 @@ fn inner_and_loop_attributes_survive_formatting() {
     #![arithmetic(unchecked)]
 
     pub(ingot) fn sum() -> u256 {
-        let mut total: u256 = 0
+        var total: u256 = 0
         #[unroll]
         for i in 0..4 {
             total += i
@@ -216,7 +246,7 @@ mod strings {
     let expected = r#"mod inner {
     #![arithmetic(unchecked)]
     pub(ingot) fn sum() -> u256 {
-        let mut total: u256 = 0
+        var total: u256 = 0
         #[unroll]
         for i in 0 .. 4 {
             total += i

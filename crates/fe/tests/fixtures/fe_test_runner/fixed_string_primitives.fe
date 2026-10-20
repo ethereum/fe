@@ -28,7 +28,7 @@ fn test_string_as_bytes_param_runtime() {
     let encoded = encode_alloc<Sol, String<8>>("COOL")
     let input = encoded.span()
 
-    let mut padded: [u8; 8] = [0; 8]
+    var padded: [u8; 8] = [0; 8]
     padded[4] = input.byte_at(32)
     padded[5] = input.byte_at(33)
     padded[6] = input.byte_at(34)

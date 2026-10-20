@@ -40,7 +40,7 @@ fn semantic_ctfe_fixture(name: &str) -> (camino::Utf8PathBuf, String) {
     glob: "*.fe"
 )]
 fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>) {
-    use fe_hir::analysis::ty::provider::ProviderAddressSpace;
+    use fe_hir::analysis::ty::provider::AddressSpace;
     use fe_hir::projection::Projection;
 
     let mut db = HirAnalysisTestDb::default();
@@ -50,7 +50,7 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
     let func = find_func(&db, top_mod, "answer");
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     let borrows_frame_local = instance
         .body(&db)
@@ -62,7 +62,7 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
                 &stmt.kind,
                 SStmtKind::Assign {
                     expr: SExpr::Borrow {
-                        provider: Some(ProviderAddressSpace::Memory),
+                        provider: Some(AddressSpace::Memory),
                         place,
                         ..
                     },
@@ -73,8 +73,8 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
     assert!(borrows_frame_local, "`answer` must borrow a frame local");
     let value = match eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(func), vec![]),
+        BodyOwner::Func(func, None),
+        GenericSubst::for_body_owner(&db, BodyOwner::Func(func, None), vec![]),
     ) {
         EvalOutcome::Ready(value) => value,
         outcome => panic!("{outcome:?}"),
@@ -83,27 +83,21 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
 }
 
 #[test]
-fn semantic_ctfe_rejects_references_to_a_returning_frame() {
+fn semantic_ctfe_keeps_a_projection_frame_for_its_session() {
     let mut db = HirAnalysisTestDb::default();
-    let (path, text) = semantic_ctfe_fixture("returning_frame_borrow.fe");
+    let (path, text) = semantic_ctfe_fixture("session_owned_yield.fe");
     let file = db.new_stand_alone(path, &text);
     let (top_mod, _) = db.top_mod(file);
-    let func = find_func(&db, top_mod, "use_dangling");
-    // Even direct evaluator clients that omit borrow analysis must get an
-    // error, not a stale frame reference or a panic when that reference is read.
-    let EvalOutcome::Failed(EvalFailure::Ctfe(error)) = eval_body_owner_const(
+    let func = find_func(&db, top_mod, "use_counter");
+    let value = match eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
-        GenericSubst::for_body_owner(&db, BodyOwner::Func(func), vec![]),
-    ) else {
-        panic!("a dangling frame reference must fail evaluation");
+        BodyOwner::Func(func, None),
+        GenericSubst::for_body_owner(&db, BodyOwner::Func(func, None), vec![]),
+    ) {
+        EvalOutcome::Ready(value) => value,
+        outcome => panic!("{outcome:?}"),
     };
-    // The failure happens in the callee and reaches the caller wrapped.
-    let mut root = &error;
-    while let CtfeError::CalleeError { source, .. } = root {
-        root = &**source;
-    }
-    assert!(matches!(root, CtfeError::InvalidBorrow { .. }), "{error:?}");
+    assert_eq!(value.pretty_print(&db), "42");
 }
 
 /// Borrowing or reading one element of an interned constant must not copy
@@ -121,8 +115,8 @@ fn semantic_ctfe_projects_interned_constants_in_linear_time() {
         let func = find_func(&db, top_mod, "answer");
         let result = match eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
-            GenericSubst::for_body_owner(&db, BodyOwner::Func(func), vec![]),
+            BodyOwner::Func(func, None),
+            GenericSubst::for_body_owner(&db, BodyOwner::Func(func, None), vec![]),
         ) {
             EvalOutcome::Ready(value) => Ok(value.pretty_print(&db)),
             outcome => Err(format!("{outcome:?}")),
@@ -194,7 +188,7 @@ fn semantic_const_operands_keep_formal_evidence_distinct() {
     let func = module.all_funcs(&db)[0];
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     assert!(
         instance
@@ -228,7 +222,7 @@ fn semantic_ctfe_defers_effectful_calls_like_pure_calls() {
         let file = db.new_stand_alone(path, &text);
         let (top_mod, _) = db.top_mod(file);
         db.assert_no_diags(top_mod);
-        let owner = BodyOwner::Func(find_func(&db, top_mod, "symbolic"));
+        let owner = BodyOwner::Func(find_func(&db, top_mod, "symbolic"), None);
         let generic =
             eval_body_owner_const(&db, owner, GenericSubst::for_body_owner(&db, owner, vec![]));
         assert!(
@@ -271,8 +265,8 @@ fn semantic_ctfe_provider_edits_match_fresh_databases() {
         let func = find_func(db, top_mod, "answer");
         match eval_body_owner_const(
             db,
-            BodyOwner::Func(func),
-            GenericSubst::for_body_owner(db, BodyOwner::Func(func), vec![]),
+            BodyOwner::Func(func, None),
+            GenericSubst::for_body_owner(db, BodyOwner::Func(func, None), vec![]),
         ) {
             EvalOutcome::Ready(value) => value.pretty_print(db),
             outcome => panic!("{outcome:?}"),
@@ -327,7 +321,7 @@ fn wrap() {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     assert!(std::ptr::eq(semantic.body(&db), semantic.body(&db)));
     let body = canonicalize_semantic_consts(&db, semantic)
@@ -389,7 +383,7 @@ fn semantic_ctfe_evaluates_as_bytes_const_fns() {
 
         let value = match eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(&db, func.into(), Vec::new()),
         ) {
             EvalOutcome::Ready(value) => value,
@@ -538,7 +532,7 @@ const fn high_word_string_as_bytes() -> [u8; 4] {
     ) -> EvalOutcome<'db, SemConstId<'db>> {
         eval_body_owner_const(
             db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(db, func.into(), Vec::new()),
         )
     }
@@ -756,7 +750,7 @@ const fn truncated_concat() -> [u8; 6] {
 
     let value = eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
     )
     .into_ready()
@@ -839,7 +833,7 @@ const fn invalid_const() -> usize {
 
     let result = eval_body_owner_const_with_args(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
         Vec::new(),
     );
@@ -886,7 +880,7 @@ const fn invalid_call_like_expr() -> u256 {
 
     let result = eval_body_owner_const_with_args(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
         Vec::new(),
     );
@@ -959,7 +953,7 @@ type Direct = [u8; first<0>()]
 
 fn owner_name(db: &HirAnalysisTestDb, owner: BodyOwner<'_>) -> String {
     match owner {
-        BodyOwner::Func(func) => match func.name(db) {
+        BodyOwner::Func(func, _) => match func.name(db) {
             Partial::Present(name) => name.data(db).to_string(),
             Partial::Absent => "<fn>".to_string(),
         },
@@ -968,6 +962,7 @@ fn owner_name(db: &HirAnalysisTestDb, owner: BodyOwner<'_>) -> String {
             Partial::Absent => "<const>".to_string(),
         },
         BodyOwner::AnonConstBody { .. } => "<anon const>".to_string(),
+        BodyOwner::Closure { .. } => "<closure>".to_string(),
         BodyOwner::ContractInit { contract } => match contract.name(db) {
             Partial::Present(name) => format!("{}::__init__", name.data(db)),
             Partial::Absent => "<contract>::__init__".to_string(),
@@ -997,7 +992,7 @@ fn contract_init_fixed_array_arg_fixture_has_no_type_level_semantic_consts() {
         match item {
             ItemKind::Func(func) => pending.push_back(get_or_build_semantic_instance(
                 &db,
-                identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+                identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
             )),
             ItemKind::Contract(contract) => {
                 pending.push_back(get_or_build_semantic_instance(
@@ -1109,7 +1104,7 @@ fn test_add_overflow_u8() {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1149,7 +1144,7 @@ fn evaluate(x: u8) -> u8 {
     let func = module.all_funcs(&db)[0];
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     let body = canonicalize_semantic_consts(&db, instance).unwrap();
     let expressions = body
@@ -1205,7 +1200,7 @@ fn signed_mul_no_overflow_i8_neg_neg() {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1287,19 +1282,17 @@ fn entry() -> u256 {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
-    let expected_ty = top_mod
+    let array_expected_ty = top_mod
         .all_funcs(&db)
         .iter()
         .find(|func| matches!(func.name(&db), Partial::Present(name) if name.data(&db) == "first"))
         .and_then(|func| func.arg_tys(&db).first().copied())
         .map(|ty| ty.instantiate_identity())
         .expect("expected first(xs: ref [u256; 2]) parameter type");
-    let (_, args) = expected_ty.decompose_ty_app(&db);
-    let array_expected_ty = args.first().copied().expect("ref pointee type");
 
     let array_const = body
         .blocks
@@ -1339,7 +1332,7 @@ fn canonicalize_invalidates_const_facts_for_mutating_calls() {
         r#"
 #[arithmetic(unchecked)]
 fn wraps_after_aug_assign() -> bool {
-    let mut x: u8 = 255
+    var x: u8 = 255
     x += 1
     x == 0
 }
@@ -1356,7 +1349,7 @@ fn wraps_after_aug_assign() -> bool {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1419,7 +1412,7 @@ fn negated_min_i8_compares_equal() -> bool {
 
     let semantic = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(*func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
@@ -1468,78 +1461,89 @@ fn negated_min_i8_compares_equal() -> bool {
 }
 
 #[test]
-fn canonicalize_tracks_mutation_through_aggregate_capabilities() {
-    for (name, operation, folds) in [
-        ("field", "holder.handle = 1", false),
+fn canonicalize_tracks_mutation_through_accesses() {
+    for (name, operation, result, folds) in [
+        ("field", "holder.value = 1", "holder.value == 1", false),
         (
-            "reborrow",
-            "let alias = mut holder.handle\n alias = 1",
+            "access",
+            "let alias = mut holder.value\n alias = 1",
+            "holder.value == 1",
             false,
         ),
         (
             "array",
-            "let mut values = [holder]\n values[index].handle = 1",
+            "var values = [holder]\n values[index].value = 1",
+            "values[0].value == 1",
             false,
         ),
         (
-            "nested",
-            "let mut outer = Outer { inner: mut holder }\n outer.inner.handle = 1",
-            false,
-        ),
-        ("value_call", "write(holder)", false),
-        ("direct_effect", "with (counter) { write_direct() }", false),
-        ("mutable_effect", "with (holder) { write_effect() }", false),
-        ("borrowed_call", "write_borrowed(mut holder)", false),
-        (
-            "returned",
-            "let alias = returned(holder)\n alias = 1",
+            "mut_argument",
+            "write_mut(mut holder)",
+            "holder.value == 1",
             false,
         ),
         (
-            "stored",
-            "let mut values = [Wrap { handle: mut other }]\n values[0] = holder\n values[0].handle = 1",
+            "mut_field_argument",
+            "write_value(mut holder.value)",
+            "holder.value == 1",
             false,
         ),
         (
-            "call_stored",
-            "let mut values = [Wrap { handle: mut other }]\n replace(values: mut values, replacement: holder)\n values[0].handle = 1",
+            "direct_effect",
+            "with (counter) { write_direct() }",
+            "counter.value == 1",
+            false,
+        ),
+        (
+            "mutable_effect",
+            "with (holder) { write_effect() }",
+            "holder.value == 1",
+            false,
+        ),
+        (
+            "projection",
+            "let alias = mut holder.value_mut()\n alias = 1",
+            "holder.value == 1",
             false,
         ),
         (
             "loop",
-            "while index == 0 { holder.handle = 1\n break }",
+            "while index == 0 { holder.value = 1\n break }",
+            "holder.value == 1",
             false,
         ),
-        ("reassigned_control", "holder.handle = 1\n value = 1", true),
-        ("unrelated_control", "holder.handle = 1", true),
-        ("shared_control", "read(ref unrelated)", true),
+        (
+            "reassigned_control",
+            "holder.value = 1\n value = 1",
+            "value == 1",
+            true,
+        ),
+        (
+            "unrelated_control",
+            "holder.value = 1",
+            "unrelated == 7",
+            true,
+        ),
+        ("shared_control", "read(unrelated)", "unrelated == 7", true),
     ] {
         let mut db = HirAnalysisTestDb::default();
-        let result = if matches!(name, "unrelated_control" | "shared_control") {
-            "unrelated == 7"
-        } else if name == "direct_effect" {
-            "counter.value == 1"
-        } else {
-            "value == 1"
-        };
         let source = format!(
             r#"
 struct Counter {{ value: u256 }}
-struct Wrap {{ handle: mut u256 }}
+struct Holder {{ value: u256 }}
+impl Holder {{
+    fn value_mut(mut self) -> mut u256 {{ mut self.value }}
+}}
 fn write_direct() uses (counter: mut Counter) {{ counter.value = 1 }}
-fn write_effect() uses (holder: mut Wrap) {{ holder.handle = 1 }}
-struct Outer {{ inner: mut Wrap }}
-fn read(_ value: ref u256) -> u256 {{ value }}
-fn write(mut holder: own Wrap) {{ holder.handle = 1 }}
-fn write_borrowed(_ holder: mut Wrap) {{ holder.handle = 1 }}
-fn returned(holder: Wrap) -> mut u256 {{ holder.handle }}
-fn replace(values: mut [Wrap; 1], replacement: Wrap) {{ values[0] = replacement }}
+fn write_effect() uses (holder: mut Holder) {{ holder.value = 1 }}
+fn read(_ value: u256) -> u256 {{ value }}
+fn write_mut(_ holder: mut Holder) {{ holder.value = 1 }}
+fn write_value(_ value: mut u256) {{ value = 1 }}
 fn probe(index: usize) -> bool {{
     let unrelated: u256 = 7
-    let mut counter = Counter {{ value: 0 }}
-    let mut value: u256 = 0
-    let mut other: u256 = 0
-    let mut holder = Wrap {{ handle: mut value }}
+    var counter = Counter {{ value: 0 }}
+    var value: u256 = 0
+    var holder = Holder {{ value: 0 }}
     {operation}
     {result}
 }}
@@ -1556,7 +1560,7 @@ fn probe(index: usize) -> bool {{
         }).unwrap();
         let instance = get_or_build_semantic_instance(
             &db,
-            identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+            identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
         );
         let body = canonicalize_semantic_consts(&db, instance).unwrap();
         let mut constant_true = false;
@@ -1628,7 +1632,7 @@ fn check_length() {
         let func = find_func(&db, top_mod, name);
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(&db, func.into(), Vec::new()),
         )
         .into_ready()
@@ -1676,7 +1680,7 @@ const fn inherent() -> u8 { Marker<3>::OTHER.value }
         let func = find_func(&db, top_mod, name);
         let value = eval_body_owner_const(
             &db,
-            BodyOwner::Func(func),
+            BodyOwner::Func(func, None),
             GenericSubst::for_owner(&db, func.into(), Vec::new()),
         )
         .into_ready()
@@ -1740,7 +1744,7 @@ const fn answer() -> u32 {
     let func = find_func(&db, top_mod, "answer");
     let value = match eval_body_owner_const(
         &db,
-        BodyOwner::Func(func),
+        BodyOwner::Func(func, None),
         GenericSubst::for_owner(&db, func.into(), Vec::new()),
     ) {
         EvalOutcome::Ready(value) => value,

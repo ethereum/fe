@@ -1,7 +1,7 @@
 //! Const `where` requirements through the driver.
 //!
 //! Rejected programs are rendered uitest fixtures (`ty_check/const_where`,
-//! `semantic_borrowck/const_where`). This file covers accepted programs,
+//! `semantic_access/const_where`). This file covers accepted programs,
 //! whose `answer*` functions are evaluated and snapshotted, and relational
 //! checks that compare one program across edits, query orders or printing.
 
@@ -101,7 +101,7 @@ fn named<'db>(db: &'db DriverDataBase, file: File, name: &str) -> Func<'db> {
 }
 
 fn evaluate(db: &DriverDataBase, file: File, name: &str) -> String {
-    let owner = BodyOwner::Func(named(db, file, name));
+    let owner = BodyOwner::Func(named(db, file, name), None);
     match eval_body_owner_const_with_args(
         db,
         owner,
@@ -244,7 +244,7 @@ fn cached_evaluation_is_not_requirement_evidence() {
         fixture("relational/cached_evaluation_is_not_requirement_evidence/evaluation_first.fe");
     let mut db = database();
     let file = input(&mut db, &path, &source);
-    let owner = BodyOwner::Func(named(&db, file, "answer"));
+    let owner = BodyOwner::Func(named(&db, file, "answer"), None);
     let _ = eval_body_owner_const_with_args(
         &db,
         owner,

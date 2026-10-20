@@ -1,3 +1,4 @@
+use hir::analysis::ty::AddressSpace;
 use std::collections::HashSet;
 
 use hir::analysis::{
@@ -13,8 +14,8 @@ use hir::analysis::{
 use crate::{
     db::MirDb,
     runtime::{
-        AddressSpaceKind, ConstNode, ConstRegionId, ConstScalar, Layout, LayoutId, RuntimeClass,
-        ScalarClass, ScalarRepr,
+        ConstNode, ConstRegionId, ConstScalar, Layout, LayoutId, RuntimeClass, ScalarClass,
+        ScalarRepr,
     },
 };
 
@@ -93,7 +94,7 @@ pub(super) fn runtime_const_value_class<'db>(
     allow_const_ref_storage
         .then(|| aggregate_const_ref_class(db, env, value))
         .flatten()
-        .or_else(|| top_level_class_for_ty_in_env(db, env, ty, AddressSpaceKind::Memory))
+        .or_else(|| top_level_class_for_ty_in_env(db, env, ty, AddressSpace::Memory))
 }
 
 pub(crate) fn const_scalar_from_value<'db>(

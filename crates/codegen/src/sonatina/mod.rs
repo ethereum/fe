@@ -3,7 +3,7 @@ mod lower_runtime;
 mod native_tests;
 pub(crate) mod observability;
 #[cfg(feature = "cranelift")]
-pub use native_tests::{NativeTestEntry, NativeTestModule, emit_test_module_native};
+pub use native_tests::{NativeTestEntry, NativeTestSuite, emit_test_suite_native};
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
@@ -1940,7 +1940,7 @@ mod tests {
             "native_memzero.fe",
             r#"
 fn zero_buffer(ptr: *u8, len: u256) {
-    core::ptr::zero_bytes(ptr, len)
+    unsafe { core::ptr::zero_bytes(ptr, len) }
 }
 
 pub fn main(ptr: *u8, len: own u256) -> i32 {
@@ -1969,8 +1969,8 @@ pub fn main(ptr: *u8, len: own u256) -> i32 {
             "native_pointer_access.fe",
             r#"
 fn replace_byte(ptr: *u8, value: u8) -> u8 {
-    let previous = *ptr
-    *ptr = value
+    let previous = unsafe { *ptr }
+    unsafe { *ptr = value }
     previous
 }
 
@@ -2360,7 +2360,11 @@ pub contract C uses (evm: mut Evm) {
 
         // The arms' root providers, module scopes, and effect provenance
         // differ, but none of them changes a helper's body.
-        for helper in [&["bump"][..], &["store_word"], &["MemBuffer", "__alloc"]] {
+        for helper in [
+            &["bump"][..],
+            &["abi__store_word("],
+            &["MemBuffer", "__alloc("],
+        ] {
             let definitions = output
                 .lines()
                 .filter(|line| {

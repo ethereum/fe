@@ -4,8 +4,9 @@ use std::fmt;
 
 use crate::{
     hir_def::{
-        Body, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId,
+        Body, ClosureDef, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId, Struct,
         TypeAlias as HirTypeAlias, VariantKind,
+        params::FuncParamMode,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
     },
@@ -18,17 +19,20 @@ use common::{
 };
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use ruint::aliases::U256;
 use rustc_hash::FxHashSet;
 use salsa::Update;
 use smallvec::SmallVec;
 
 use super::{
-    adt_def::{AdtDef, instantiate_adt_field_shape},
+    adt_def::{AdtDef, Pin, instantiate_adt_field_shape},
     const_ty::{
-        ConstTyData, ConstTyId, TypePrintMode, UnevaluatedConstPolicy, const_ty_from_sem_const,
+        ConstCaptureEnv, ConstTyData, ConstTyId, TypePrintMode, UnevaluatedConstPolicy,
+        const_ty_from_sem_const,
     },
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
-    effects::place_effect_provider_param_index_map,
+    effects::{place_effect_provider_param_index_map, rows::RowComponent},
+    normalize::normalize_ty,
     trait_def::{TraitInstId, TraitRefId},
     trait_resolution::{PredicateListId, WellFormedness},
     ty_lower::collect_generic_params,
@@ -41,6 +45,7 @@ use crate::analysis::{
     semantic::int_const,
     ty::{
         adt_def::AdtRef,
+        provider::AddressSpace,
         trait_resolution::{TraitSolveCx, check_ty_wf},
         ty_error::emit_invalid_ty_error,
     },
@@ -70,6 +75,77 @@ impl<'db> TyId<'db> {
     pub fn generic_args(self, db: &'db dyn HirAnalysisDb) -> &'db [Self] {
         let (_, args) = self.decompose_ty_app(db);
         args
+    }
+
+    /// Whether this is a `#[view]` type, which exists only behind accesses.
+    pub fn is_view(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.base_ty(db)
+            .adt_ref(db)
+            .is_some_and(|adt| adt.is_view(db))
+    }
+
+    /// Whether this type has values apart from the places holding them. A
+    /// `#[view]` type and a state-only one have none, so a plain binding of
+    /// one is its access.
+    pub fn has_value_reading(self, db: &'db dyn HirAnalysisDb) -> bool {
+        !self.is_view(db) && self.pinned_part(db).is_none()
+    }
+
+    /// A `#[view]` type this type holds as a part: a type argument of an
+    /// ADT, a tuple, an array or a pointer, at any depth.
+    pub fn view_part(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
+        if let Some((_, target)) = self.as_capability(db) {
+            return target.view_part(db);
+        }
+        let holds_args = match self.base_ty(db).data(db) {
+            TyData::TyBase(TyBase::Adt(_)) => true,
+            TyData::TyBase(TyBase::Prim(prim)) => {
+                matches!(prim, PrimTy::Tuple(_) | PrimTy::Array | PrimTy::Ptr(_))
+            }
+            _ => false,
+        };
+        if !holds_args {
+            return None;
+        }
+        self.generic_args(db).iter().find_map(|arg| {
+            arg.is_view(db)
+                .then_some(*arg)
+                .or_else(|| arg.view_part(db))
+        })
+    }
+
+    /// The pinned type this type is or holds in a field, in a tuple or
+    /// array element, or as a memory pointer's target. Such a type is
+    /// state-only: it exists only at places in storage or transient storage,
+    /// never as a value in memory. A state pointer or handle does not hold
+    /// its target.
+    pub fn pinned_part(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
+        super::adt_def::ty_pinned_part(db, self)
+    }
+
+    /// The state space this type is pinned to, when its `Pinned`
+    /// implementation decides one; see `adt_def::Pin`.
+    pub fn pin(self, db: &'db dyn HirAnalysisDb) -> Option<AddressSpace> {
+        match super::adt_def::ty_pin(db, self) {
+            Pin::Pinned(space) => Some(space),
+            Pin::Unpinned | Pin::Undecided => None,
+        }
+    }
+
+    /// The space a place of this type lies in when no caller decides it: its
+    /// pin, storage for another state-only type, which never lives in
+    /// memory, and memory otherwise.
+    pub fn default_space(self, db: &'db dyn HirAnalysisDb) -> AddressSpace {
+        self.pin(db).unwrap_or(if self.pinned_part(db).is_some() {
+            AddressSpace::Storage
+        } else {
+            AddressSpace::Memory
+        })
+    }
+
+    /// Whether this type, or some instance of it, is pinned.
+    pub fn may_be_pinned(self, db: &'db dyn HirAnalysisDb) -> bool {
+        super::adt_def::ty_pin(db, self) != Pin::Unpinned
     }
 
     /// Returns teh base type of this type.
@@ -139,6 +215,7 @@ impl<'db> TyId<'db> {
                         return contract.top_mod(db).ingot(db).into();
                     }
                     TyData::TyBase(TyBase::Func(def)) => return def.ingot(db).into(),
+                    TyData::TyBase(TyBase::Closure(_)) => return None,
                     TyData::TyApp(lhs, _) => {
                         ty = *lhs;
                     }
@@ -151,6 +228,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
             TyData::TyBase(TyBase::Contract(contract)) => contract.top_mod(db).ingot(db).into(),
             TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
+            TyData::TyBase(TyBase::Closure(_)) => None,
             TyData::TyApp(lhs, _) => lhs.ingot(db),
             // Projection types don't have a single defining ingot, but we still want an ingot
             // that can be used to search for relevant trait impls. Using an ingot that is
@@ -180,6 +258,7 @@ impl<'db> TyId<'db> {
     pub fn flags(self, db: &dyn HirAnalysisDb) -> TyFlags {
         // Leaf types have fixed flags; only composite types need the cached walk.
         match self.data(db) {
+            TyData::TyBase(TyBase::Closure(_)) => ty_flags(db, self),
             TyData::TyBase(_) | TyData::Never => TyFlags::empty(),
             TyData::TyVar(_) => TyFlags::HAS_VAR,
             TyData::TyParam(_) => TyFlags::HAS_PARAM,
@@ -206,10 +285,6 @@ impl<'db> TyId<'db> {
     /// Returns whether this type contains an unresolved trait projection.
     pub fn has_projection(self, db: &dyn HirAnalysisDb) -> bool {
         self.flags(db).contains(TyFlags::HAS_PROJECTION)
-    }
-
-    pub fn has_hole(self, db: &dyn HirAnalysisDb) -> bool {
-        self.flags(db).contains(TyFlags::HAS_HOLE)
     }
 
     /// Returns `true` if the type has a `*` kind.
@@ -274,18 +349,28 @@ impl<'db> TyId<'db> {
         (*base, args)
     }
 
-    pub(super) fn ptr(db: &'db dyn HirAnalysisDb) -> TyId<'db> {
-        Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Ptr)))
+    pub(super) fn ptr(db: &'db dyn HirAnalysisDb, space: AddressSpace) -> TyId<'db> {
+        Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Ptr(space))))
     }
 
+    /// A memory pointer, `*inner`.
     pub fn ptr_to(db: &'db dyn HirAnalysisDb, inner: TyId<'db>) -> TyId<'db> {
-        Self::app(db, Self::ptr(db), inner)
+        Self::ptr_in(db, AddressSpace::Memory, inner)
     }
 
-    pub fn as_ptr(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+    /// A pointer to `inner` in `space`.
+    pub fn ptr_in(db: &'db dyn HirAnalysisDb, space: AddressSpace, inner: TyId<'db>) -> TyId<'db> {
+        Self::app(db, Self::ptr(db, space), inner)
+    }
+
+    /// A pointer's target and the space it points into.
+    pub fn as_ptr(self, db: &'db dyn HirAnalysisDb) -> Option<(TyId<'db>, AddressSpace)> {
         let (base, args) = self.decompose_ty_app(db);
         let inner = args.first().copied()?;
-        matches!(base.data(db), TyData::TyBase(TyBase::Prim(PrimTy::Ptr))).then_some(inner)
+        match base.data(db) {
+            TyData::TyBase(TyBase::Prim(PrimTy::Ptr(space))) => Some((inner, *space)),
+            _ => None,
+        }
     }
 
     pub fn borrow_mut_of(db: &'db dyn HirAnalysisDb, inner: TyId<'db>) -> TyId<'db> {
@@ -296,6 +381,13 @@ impl<'db> TyId<'db> {
     pub fn borrow_ref_of(db: &'db dyn HirAnalysisDb, inner: TyId<'db>) -> TyId<'db> {
         let ctor = Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::BorrowRef)));
         Self::app(db, ctor, inner)
+    }
+
+    pub fn borrow_of(db: &'db dyn HirAnalysisDb, kind: BorrowKind, inner: TyId<'db>) -> TyId<'db> {
+        match kind {
+            BorrowKind::Mut => Self::borrow_mut_of(db, inner),
+            BorrowKind::Ref => Self::borrow_ref_of(db, inner),
+        }
     }
 
     pub fn view_of(db: &'db dyn HirAnalysisDb, inner: TyId<'db>) -> TyId<'db> {
@@ -334,7 +426,7 @@ impl<'db> TyId<'db> {
         Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
-    pub(super) fn tuple_with_elems(db: &'db dyn HirAnalysisDb, elems: &[TyId<'db>]) -> Self {
+    pub(crate) fn tuple_with_elems(db: &'db dyn HirAnalysisDb, elems: &[TyId<'db>]) -> Self {
         let base = TyBase::tuple(elems.len());
         let mut ty = Self::new(db, TyData::TyBase(base));
         for &elem in elems {
@@ -428,6 +520,17 @@ impl<'db> TyId<'db> {
         matches!(self.base_ty(db).data(db), TyData::TyBase(TyBase::Func(_)))
     }
 
+    pub fn closure(db: &'db dyn HirAnalysisDb, closure: ClosureTy<'db>) -> Self {
+        Self::new(db, TyData::TyBase(TyBase::Closure(closure)))
+    }
+
+    pub fn as_closure(self, db: &'db dyn HirAnalysisDb) -> Option<ClosureTy<'db>> {
+        match self.base_ty(db).data(db) {
+            TyData::TyBase(TyBase::Closure(closure)) => Some(*closure),
+            _ => None,
+        }
+    }
+
     pub(crate) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
@@ -488,6 +591,7 @@ impl<'db> TyId<'db> {
     /// This is a structural check (not based on byte-size calculation):
     /// - `()` and empty structs are zero-sized
     /// - tuples/structs/arrays are zero-sized iff all elements/fields are zero-sized
+    /// - a pinned type never is: its root number identifies its region
     // Borrow checking asks about the same types repeatedly.
     #[salsa::tracked]
     pub fn is_zero_sized(self, db: &'db dyn HirAnalysisDb) -> bool {
@@ -504,7 +608,7 @@ impl<'db> TyId<'db> {
                 || matches!(ty.base_ty(db).data(db), TyData::TyBase(TyBase::Func(_)))
             {
                 true
-            } else if ty.is_tuple(db) {
+            } else if ty.is_tuple(db) || ty.as_closure(db).is_some() {
                 ty.field_types(db)
                     .into_iter()
                     .all(|field_ty| inner(db, field_ty, visiting))
@@ -517,9 +621,11 @@ impl<'db> TyId<'db> {
             } else if let Some(adt_def) = ty.adt_def(db)
                 && matches!(adt_def.adt_ref(db), AdtRef::Struct(_))
             {
-                ty.field_types(db)
-                    .into_iter()
-                    .all(|field_ty| inner(db, field_ty, visiting))
+                !ty.may_be_pinned(db)
+                    && ty
+                        .field_types(db)
+                        .into_iter()
+                        .all(|field_ty| inner(db, field_ty, visiting))
             } else {
                 false
             };
@@ -581,6 +687,12 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// Whether this is a product whose positional fields are its
+    /// `field_types`: a tuple, a struct, or a closure environment.
+    pub fn is_product(self, db: &dyn HirAnalysisDb) -> bool {
+        self.is_tuple(db) || self.is_struct(db) || self.as_closure(db).is_some()
+    }
+
     pub fn is_prim(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyBase(TyBase::Prim(_)))
     }
@@ -607,6 +719,27 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// Returns the tuple struct (`struct Month(pub u8)`) this type refers to.
+    pub fn as_tuple_struct(self, db: &'db dyn HirAnalysisDb) -> Option<Struct<'db>> {
+        match self.base_ty(db).adt_ref(db)? {
+            AdtRef::Struct(struct_) if struct_.is_tuple(db) => Some(struct_),
+            _ => None,
+        }
+    }
+
+    /// Returns the constructor function type of a tuple struct type, applied
+    /// to the type's generic arguments, e.g. `fn(u8) -> Month` for `Month`.
+    pub fn tuple_struct_ctor_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+        let struct_ = self.as_tuple_struct(db)?;
+        let mut ty = TyId::func(db, CallableDef::StructCtor(struct_));
+        for &arg in self.generic_args(db) {
+            if ty.applicable_ty(db).is_some() {
+                ty = TyId::app(db, ty, arg);
+            }
+        }
+        Some(ty)
+    }
+
     pub fn as_scope(self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         match self.base_ty(db).data(db) {
             TyData::TyParam(param) => Some(param.scope(db)),
@@ -615,11 +748,10 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.scope(db)),
             TyData::TyBase(TyBase::Contract(c)) => Some(c.scope()),
             TyData::TyBase(TyBase::Func(func)) => Some(func.scope()),
-            TyData::TyBase(TyBase::Prim(..)) => None,
+            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(..)) => None,
             TyData::ConstTy(const_ty) => match const_ty.data(db) {
                 ConstTyData::TyVar(..) => None,
                 ConstTyData::TyParam(ty_param, _) => Some(ty_param.scope(db)),
-                ConstTyData::Hole(..) => None,
                 ConstTyData::Value(..)
                 | ConstTyData::Description(..)
                 | ConstTyData::Invalid(..) => None,
@@ -643,7 +775,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
             TyData::TyBase(TyBase::Contract(c)) => c.scope().name_span(db),
             TyData::TyBase(TyBase::Func(func)) => Some(func.name_span()),
-            TyData::TyBase(TyBase::Prim(_)) => None,
+            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(_)) => None,
 
             TyData::ConstTy(ty) => match ty.data(db) {
                 ConstTyData::TyParam(param, _) => param.scope(db).name_span(db),
@@ -680,7 +812,6 @@ impl<'db> TyId<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             )
@@ -779,11 +910,6 @@ impl<'db> TyId<'db> {
                 if expected_const_ty.has_invalid(db) {
                     return Err(InvalidCause::Other);
                 }
-                if let Some(retyped) =
-                    super::const_ty::retype_hole_const_ty(db, *const_ty, expected_const_ty)
-                {
-                    return Ok(TyId::const_ty(db, retyped));
-                }
                 if matches!(
                     const_ty.data(db),
                     ConstTyData::UnEvaluated {
@@ -809,6 +935,8 @@ impl<'db> TyId<'db> {
                 )?;
                 Ok(TyId::const_ty(db, const_ty.with_ty(db, ty)))
             }
+            // An argument that is already invalid keeps its own cause.
+            (Some(_), TyData::Invalid(cause)) => Err(cause.clone()),
             (Some(expected_const_ty), _) => {
                 if expected_const_ty.has_invalid(db) {
                     Err(InvalidCause::Other)
@@ -912,6 +1040,9 @@ impl<'db> TyId<'db> {
                 }
             }
 
+            // An argument that is already invalid keeps its own cause.
+            (Some(_), TyData::Invalid(cause)) => Err(cause.clone()),
+
             (Some(expected_const_ty), _) => {
                 if expected_const_ty.has_invalid(db) {
                     Err(InvalidCause::Other)
@@ -995,6 +1126,8 @@ impl<'db> TyId<'db> {
         if self.is_tuple(db) {
             let (_, elems) = self.decompose_ty_app(db);
             elems.len()
+        } else if let Some(closure) = self.as_closure(db) {
+            closure.captures(db).len()
         } else if let Some(adt_def) = self.adt_def(db) {
             match adt_def.adt_ref(db) {
                 AdtRef::Struct(_) => adt_def.fields(db)[0].num_types(),
@@ -1018,12 +1151,23 @@ fn ty_field_types<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'d
     if ty.is_tuple(db) {
         let (_, elems) = ty.decompose_ty_app(db);
         elems.to_vec()
+    } else if let Some(closure) = ty.as_closure(db) {
+        closure.captures(db).to_vec()
     } else if let Some(adt_def) = ty.adt_def(db) {
         match adt_def.adt_ref(db) {
+            // A field's type normalized, as layouts see an associated type's
+            // field, `<K as Tr>::Out`, as the type it names.
             AdtRef::Struct(_) => {
                 let args = ty.generic_args(db);
                 (0..adt_def.fields(db)[0].num_types())
-                    .map(|idx| instantiate_adt_field_shape(db, adt_def, 0, idx, args))
+                    .map(|idx| {
+                        normalize_ty(
+                            db,
+                            instantiate_adt_field_shape(db, adt_def, 0, idx, args),
+                            adt_def.scope(db),
+                            PredicateListId::empty_list(db),
+                        )
+                    })
                     .collect()
             }
             _ => vec![],
@@ -1072,10 +1216,72 @@ pub enum TyData<'db> {
     Invalid(InvalidCause<'db>),
 }
 
+/// The type of a closure expression: an environment of captured values and a
+/// function of the closure's parameters. Closures are values of this type
+/// and implement the core callable shape traits of their parameter modes
+/// (see `ty::closure`).
+#[salsa::interned]
+#[derive(Debug)]
+pub struct ClosureTy<'db> {
+    pub def: ClosureDef<'db>,
+    /// Generic arguments of the item whose body defines the closure. The
+    /// closure's semantic instances substitute the parent's typed-body
+    /// template with these.
+    #[return_ref]
+    pub parent_args: Vec<TyId<'db>>,
+    /// Environment field types, one per captured binding, in capture order.
+    #[return_ref]
+    pub captures: Vec<TyId<'db>>,
+    /// The parameters' modes and types.
+    #[return_ref]
+    pub params: Vec<(FuncParamMode, TyId<'db>)>,
+    pub ret_ty: TyId<'db>,
+    /// The effects the body uses that its own `with` blocks do not provide:
+    /// its row `E`, which the caller of each call provides.
+    #[return_ref]
+    pub effects: Vec<RowComponent<'db>>,
+}
+
+impl<'db> ClosureTy<'db> {
+    pub fn modes(self, db: &'db dyn HirAnalysisDb) -> Vec<FuncParamMode> {
+        self.params(db).iter().map(|&(mode, _)| mode).collect()
+    }
+
+    pub fn param_tys(self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        self.params(db).iter().map(|&(_, ty)| ty).collect()
+    }
+
+    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
+        let params = self
+            .params(db)
+            .iter()
+            .map(|(mode, ty)| {
+                let mode = match mode {
+                    FuncParamMode::View => "",
+                    FuncParamMode::Mut => "mut ",
+                    FuncParamMode::Own => "own ",
+                };
+                format!("{mode}{}", ty.pretty_print(db))
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("|{params}| -> {}", self.ret_ty(db).pretty_print(db))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InvalidCause<'db> {
     /// Type is not fully applied where it is required.
     NotFullyApplied,
+
+    /// `ref T` or `mut T` written where a type is required. Modes appear only
+    /// on parameters and in projection return shapes.
+    ModeNotType,
+
+    /// A `#[view]` type held as part of another type.
+    ViewPart {
+        view: TyId<'db>,
+    },
 
     /// Kind mismatch between two types.
     KindMismatch {
@@ -1139,6 +1345,13 @@ pub enum InvalidCause<'db> {
         body: Body<'db>,
         expr: ExprId,
         message: Option<String>,
+    },
+
+    /// `core::panic_code(code)` was reached in const evaluation.
+    ConstEvalPanicked {
+        body: Body<'db>,
+        expr: ExprId,
+        code: U256,
     },
 
     ConstEvalNonConstCall {
@@ -1241,6 +1454,105 @@ pub enum InvalidCause<'db> {
     Other,
 }
 
+impl<'db> InvalidCause<'db> {
+    /// An evaluation fault with the expression it occurred at and its label.
+    /// Type checking reports faults in instantiated call return types and
+    /// leaves other specialized layouts to concrete demand; any other invalid
+    /// type has an upstream report.
+    pub(crate) fn const_eval_fault(&self) -> Option<(Body<'db>, ExprId, String)> {
+        match self {
+            InvalidCause::ConstEvalUnsupported { body, expr } => Some((
+                *body,
+                *expr,
+                "the expression cannot be evaluated at compile time".to_string(),
+            )),
+            InvalidCause::ConstEvalAssertionFailed { body, expr, .. } => Some((
+                *body,
+                *expr,
+                "assertion failed in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalPanicked { body, expr, .. } => {
+                Some((*body, *expr, "panic in const context".to_string()))
+            }
+            InvalidCause::ConstEvalNonConstCall { body, expr } => Some((
+                *body,
+                *expr,
+                "non-const function call in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalDivisionByZero { body, expr } => Some((
+                *body,
+                *expr,
+                "division by zero in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalOutOfBounds { body, expr } => Some((
+                *body,
+                *expr,
+                "index out of bounds in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalInvalidOperation {
+                body,
+                expr,
+                message,
+            } => Some((
+                *body,
+                *expr,
+                format!("invalid operation in const context: {message}"),
+            )),
+            InvalidCause::ConstEvalInvalidBorrow { body, expr } => {
+                Some((*body, *expr, "invalid borrow in const context".to_string()))
+            }
+            InvalidCause::ConstEvalInvalidProviderUse { body, expr } => Some((
+                *body,
+                *expr,
+                "invalid effect provider in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalVariantMismatch { body, expr } => Some((
+                *body,
+                *expr,
+                "variant mismatch in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalUninitializedLocal { body, expr } => Some((
+                *body,
+                *expr,
+                "uninitialized value in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalInvariant {
+                body,
+                expr,
+                message,
+            } => Some((
+                *body,
+                *expr,
+                format!("compiler invariant failed during const evaluation: {message}"),
+            )),
+            InvalidCause::ConstEvalArithmeticOverflow { body, expr } => Some((
+                *body,
+                *expr,
+                "arithmetic overflow in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalNegativeExponent { body, expr } => Some((
+                *body,
+                *expr,
+                "negative exponent in const context".to_string(),
+            )),
+            InvalidCause::ConstEvalStepLimitExceeded { body, expr } => Some((
+                *body,
+                *expr,
+                "const evaluation exceeded the step limit".to_string(),
+            )),
+            InvalidCause::ConstEvalRecursionLimitExceeded { body, expr } => Some((
+                *body,
+                *expr,
+                "const evaluation exceeded the recursion limit".to_string(),
+            )),
+            InvalidCause::ConstEvalRecursiveConst { body, expr } => {
+                Some((*body, *expr, "recursive constant definition".to_string()))
+            }
+            _ => None,
+        }
+    }
+}
+
 impl InvalidCause<'_> {
     pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
@@ -1281,7 +1593,9 @@ impl InvalidCause<'_> {
                 res.pretty_path(db)
                     .unwrap_or_else(|| res.kind_name().into())
             ),
+            InvalidCause::ViewPart { view } => format!("ViewPart({})", view.pretty_print(db)),
             InvalidCause::NotFullyApplied
+            | InvalidCause::ModeNotType
             | InvalidCause::TooManyGenericArgs { .. }
             | InvalidCause::InvalidConstParamTy
             | InvalidCause::RecursiveConstParamTy
@@ -1308,6 +1622,7 @@ impl InvalidCause<'_> {
                 "ConstEvalArithmeticOverflow".into()
             }
             InvalidCause::ConstEvalNegativeExponent { .. } => "ConstEvalNegativeExponent".into(),
+            InvalidCause::ConstEvalPanicked { code, .. } => format!("ConstEvalPanicked({code:#x})"),
             InvalidCause::ConstEvalStepLimitExceeded { .. } => "ConstEvalStepLimitExceeded".into(),
             InvalidCause::ConstEvalRecursionLimitExceeded { .. } => {
                 "ConstEvalRecursionLimitExceeded".into()
@@ -1550,7 +1865,10 @@ impl<'db> TyParam<'db> {
     }
 
     pub fn is_effect_provider(&self) -> bool {
-        matches!(self.variant, Variant::EffectProvider)
+        matches!(
+            self.variant,
+            Variant::EffectProvider | Variant::RowEffectProvider(_)
+        )
     }
 
     pub fn is_implicit(&self) -> bool {
@@ -1609,6 +1927,35 @@ impl<'db> TyParam<'db> {
         }
     }
 
+    /// The provider type of component `idx` of a row the body whose scope is
+    /// `owner` is generic over: the row of the closure at `closure`, or with
+    /// `None` a row the body's function's effects name. Each instance of the body takes it
+    /// from the provider its caller binds.
+    pub fn row_effect_provider(
+        name: IdentId<'db>,
+        idx: usize,
+        owner: ScopeId<'db>,
+        closure: Option<ExprId>,
+    ) -> Self {
+        Self {
+            name,
+            idx,
+            declared_index: None,
+            kind: Kind::Star,
+            variant: Variant::RowEffectProvider(closure),
+            owner,
+        }
+    }
+
+    /// The body whose row provider this is: its scope, and its closure if it
+    /// is a closure's.
+    pub fn row_effect_provider_of(&self) -> Option<(ScopeId<'db>, Option<ExprId>)> {
+        match self.variant {
+            Variant::RowEffectProvider(closure) => Some((self.owner, closure)),
+            _ => None,
+        }
+    }
+
     pub fn implicit_param(name: IdentId<'db>, idx: usize, kind: Kind, scope: ScopeId<'db>) -> Self {
         Self {
             name,
@@ -1633,9 +1980,10 @@ impl<'db> TyParam<'db> {
                 // TyParam.idx includes implicit params, subtract offset to get original idx
                 self.idx - offset
             }
-            Variant::Effect => self.idx,
-            Variant::EffectProvider => self.idx,
-            Variant::Implicit => self.idx,
+            Variant::Effect
+            | Variant::EffectProvider
+            | Variant::RowEffectProvider(_)
+            | Variant::Implicit => self.idx,
         }
     }
 
@@ -1646,8 +1994,9 @@ impl<'db> TyParam<'db> {
                 ScopeId::GenericParam(self.owner.item(), self.original_idx(db) as u16)
             }
             Variant::Effect => ScopeId::FuncParam(self.owner.item(), self.idx as u16),
-            Variant::EffectProvider => self.owner,
-            Variant::Implicit => self.owner,
+            Variant::EffectProvider | Variant::RowEffectProvider(_) | Variant::Implicit => {
+                self.owner
+            }
         }
     }
 }
@@ -1663,6 +2012,9 @@ enum Variant {
     /// These are inserted by type lowering for functions that have type effects so that
     /// monomorphization can treat effect domains as ordinary generic arguments.
     EffectProvider,
+    /// The provider type of a row component a body is generic over, of a
+    /// closure's row if it names the closure (`TyParam::row_effect_provider`).
+    RowEffectProvider(Option<ExprId>),
     /// Synthetic generic parameter that does not map to a source-level generic parameter.
     Implicit,
 }
@@ -1673,6 +2025,7 @@ pub enum TyBase<'db> {
     Adt(AdtDef<'db>),
     Contract(crate::hir_def::Contract<'db>),
     Func(CallableDef<'db>),
+    Closure(ClosureTy<'db>),
 }
 
 impl<'db> TyBase<'db> {
@@ -1715,7 +2068,11 @@ impl<'db> TyBase<'db> {
                 PrimTy::String => "String",
                 PrimTy::Array => "[]",
                 PrimTy::Tuple(_) => "()",
-                PrimTy::Ptr => "*",
+                PrimTy::Ptr(AddressSpace::Memory) => "*",
+                PrimTy::Ptr(AddressSpace::Storage) => "StorPtr",
+                PrimTy::Ptr(AddressSpace::Transient) => "TStorPtr",
+                PrimTy::Ptr(AddressSpace::Calldata) => "CalldataPtr",
+                PrimTy::Ptr(AddressSpace::Code) => "CodePtr",
                 PrimTy::View => "View",
                 PrimTy::BorrowMut => "BorrowMut",
                 PrimTy::BorrowRef => "BorrowRef",
@@ -1736,6 +2093,8 @@ impl<'db> TyBase<'db> {
                 func.name(db)
                     .map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string())
             ),
+
+            Self::Closure(closure) => closure.pretty_print(db),
         }
     }
 
@@ -1804,16 +2163,20 @@ pub enum PrimTy {
     String,
     Array,
     Tuple(usize),
-    Ptr,
+    /// A raw pointer into an address space: `*T` in memory, or `StorPtr<T>`,
+    /// `TStorPtr<T>` and `CalldataPtr<T>`.
+    Ptr(AddressSpace),
     View,
     BorrowMut,
     BorrowRef,
 }
 
+/// Access kinds, ordered by strength: a `mut` access can stand in for a
+/// `ref` one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BorrowKind {
-    Mut,
     Ref,
+    Mut,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1926,6 +2289,7 @@ impl HasKind for TyBase<'_> {
             TyBase::Adt(adt) => adt.kind(db),
             TyBase::Contract(_) => Kind::Star, // Contracts have no generic params
             TyBase::Func(func) => func.kind(db),
+            TyBase::Closure(_) => Kind::Star,
         }
     }
 }
@@ -1935,7 +2299,7 @@ impl HasKind for PrimTy {
         match self {
             Self::Array => (0..2).fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
             Self::Tuple(n) => (0..*n).fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
-            Self::Ptr => Kind::abs(Kind::Star, Kind::Star),
+            Self::Ptr(_) => Kind::abs(Kind::Star, Kind::Star),
             Self::String => Kind::abs(Kind::Star, Kind::Star),
             Self::View | Self::BorrowMut | Self::BorrowRef => Kind::abs(Kind::Star, Kind::Star),
             _ => Kind::Star,
@@ -2058,6 +2422,13 @@ fn pretty_print_ty_app<'db>(
             inner.pretty_print_with_mode(db, mode)
         }
 
+        TyData::TyBase(Prim(Ptr(AddressSpace::Memory))) => {
+            let Some(inner) = args.first() else {
+                return "*<missing>".to_string();
+            };
+            format!("*{}", inner.pretty_print_with_mode(db, mode))
+        }
+
         TyData::TyBase(Prim(Array)) => {
             let elem_ty = args[0].pretty_print_with_mode(db, mode);
             let len = args[1].pretty_print_with_mode(db, mode);
@@ -2088,15 +2459,11 @@ fn pretty_print_ty_app<'db>(
                         .copied()
                         .enumerate()
                         .filter_map(|(idx, arg)| {
-                            let is_hidden = params.get(idx).is_some_and(|param_ty| match param_ty
-                                .data(db)
-                            {
-                                TyData::TyParam(param) => param.is_effect_provider(),
-                                TyData::ConstTy(const_ty) => matches!(
-                                    const_ty.data(db),
-                                    ConstTyData::TyParam(param, _) if param.is_implicit()
-                                ),
-                                _ => false,
+                            let is_hidden = params.get(idx).is_some_and(|param_ty| {
+                                matches!(
+                                    param_ty.data(db),
+                                    TyData::TyParam(param) if param.is_effect_provider()
+                                )
                             });
                             (!is_hidden).then_some(arg)
                         })
@@ -2144,7 +2511,6 @@ bitflags! {
         const HAS_VAR = 0b0000_0010;
         const HAS_PARAM = 0b0000_0100;
         const HAS_PROJECTION = 0b0000_1000;
-        const HAS_HOLE = 0b0001_0000;
     }
 }
 
@@ -2183,8 +2549,17 @@ pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlag
         }
 
         fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
-            if matches!(const_ty.data(self.db), ConstTyData::Hole(..)) {
-                self.flags.insert(TyFlags::HAS_HOLE);
+            // An identity capture reads its owner's formals without
+            // spelling them, so the body still depends on parameters. A
+            // capture with no formals, such as the `4` in
+            // `type Bytes4 = FixedBytes<4>`, depends on none.
+            if let ConstTyData::UnEvaluated {
+                capture: ConstCaptureEnv::Identity(domain),
+                ..
+            } = const_ty.data(self.db)
+                && domain.has_formals(self.db)
+            {
+                self.flags.insert(TyFlags::HAS_PARAM);
             }
             walk_const_ty(self, const_ty);
         }

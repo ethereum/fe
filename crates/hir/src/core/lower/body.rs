@@ -1,10 +1,10 @@
-use parser::ast;
+use parser::ast::{self, SyntaxNodePtr, prelude::AstNode as _};
 
 use super::FileLowerCtxt;
 use crate::{
     hir_def::{
         Body, BodyKind, BodySourceMap, Cond, CondId, Expr, ExprId, NodeStore, Partial, Pat, PatId,
-        Stmt, StmtId, TrackedItemId, TrackedItemVariant,
+        PathId, Stmt, StmtId, TrackedItemId, TrackedItemVariant,
     },
     span::HirOrigin,
 };
@@ -26,6 +26,23 @@ impl<'db> Body<'db> {
             TrackedItemVariant::NamelessBody,
             BodyKind::Anonymous,
         )
+    }
+
+    /// A body whose expression is `path`, an attribute argument that names a
+    /// constant (`#[slot(BASE)]`).
+    pub(super) fn lower_attr_path(
+        f_ctxt: &mut FileLowerCtxt<'db>,
+        path: ast::Path,
+        arg: &ast::AttrArg,
+    ) -> Self {
+        let id = f_ctxt.joined_id(TrackedItemVariant::NamelessBody);
+        let mut ctxt = BodyCtxt::new(f_ctxt, id);
+        let path = PathId::lower_ast_partial(ctxt.f_ctxt, Some(path));
+        let expr = ctxt.push_expr(
+            Expr::Path(path),
+            HirOrigin::Expanded(SyntaxNodePtr::new(arg.syntax())),
+        );
+        ctxt.build(None, expr, BodyKind::Anonymous)
     }
 
     pub(super) fn lower_ast_with_variant(

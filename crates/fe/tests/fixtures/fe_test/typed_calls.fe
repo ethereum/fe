@@ -37,18 +37,18 @@ pub contract Plain {
 fn bounded_calls_copy_at_most_capacity() uses (evm: mut Evm) {
     let target = evm.create2<Target>(value: Wei::zero(), args: (), salt: 0)
     with (Call = evm, Ctx = evm) {
-        let mut ret = MemBuffer::with_capacity(0)
+        var ret = MemBuffer::with_capacity(0)
         let outcome = evm.try_call_into(addr: target, gas: 100000, value: Wei::zero(), message: TargetMsg::Words { n: 7 }, ret: mut ret)
         assert(outcome.success())
         assert(outcome.returndata_len() == 32)
         assert(ret.len() == 0)
 
-        let mut word = MemBuffer::with_capacity(32)
+        var word = MemBuffer::with_capacity(32)
         let outcome = evm.try_static_into(addr: target, gas: 100000, message: TargetMsg::Words { n: 9 }, ret: mut word)
         assert(outcome.success())
         assert(word.span().word_at(0) == 9)
 
-        let mut ignored = MemBuffer::with_capacity(0)
+        var ignored = MemBuffer::with_capacity(0)
         let failed = evm.try_call_into(addr: target, gas: 100000, value: Wei::zero(), message: TargetMsg::Fail {}, ret: mut ignored)
         assert(!failed.success())
 
@@ -64,7 +64,7 @@ fn bounded_calls_copy_at_most_capacity() uses (evm: mut Evm) {
 
 #[test]
 fn send_value_transfers_ether() uses (evm: mut Evm) {
-    let receiver = Address { inner: 0xbeef }
+    let receiver = Address::new(0xbeef)
     with (Call = evm, Ctx = evm) {
         let outcome = evm.send_value(addr: receiver, gas: 100000, value: Wei::zero())
         assert(outcome.success())
@@ -82,12 +82,12 @@ fn erc165_probes() uses (evm: mut Evm) {
         assert(!erc165::supports_interface(target, interface_id: 0xffffffff))
         assert(!erc165::supports_erc165(plain))
         assert(!erc165::supports_interface(plain, interface_id: 0x12345678))
-        assert(!erc165::supports_erc165(Address { inner: 0x1234 }))
+        assert(!erc165::supports_erc165(Address::new(0x1234)))
     }
 }
 
 #[test]
 fn address_from_word_truncates() {
-    assert(Address::from_word_truncate(u256::max()).inner == (1 << 160) - 1)
-    assert(Address::from_word_truncate((5 << 160) | 7).inner == 7)
+    assert(Address::from_word_truncate(u256::max()).word() == (1 << 160) - 1)
+    assert(Address::from_word_truncate((5 << 160) | 7).word() == 7)
 }

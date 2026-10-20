@@ -38,6 +38,7 @@ pub fn verify_semantic_body<'db>(body: &SemanticBody<'db>) -> Result<(), Semanti
                         return Err(SemanticVerifyError::MissingSemanticLocal(src.value));
                     }
                 }
+                SStmtKind::End { .. } => {}
             }
         }
 

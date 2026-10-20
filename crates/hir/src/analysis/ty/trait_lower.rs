@@ -1,10 +1,12 @@
 //! This module implements the trait and impl trait lowering process.
 
+use crate::hir_def::ModeMarker;
 use crate::{
     core::hir_def::{
-        AssocTypeGenericArg, ConstGenericArgValue, HirIngot, IdentId, ImplTrait, ItemKind, Partial,
-        PathId, Trait, TraitRefId, TypeId as HirTyId, TypeKind as HirTyKind, TypeMode,
-        params::GenericArg, scope_graph::ScopeId,
+        AssocTypeGenericArg, HirIngot, IdentId, ImplTrait, ItemKind, Partial, PathId, Trait,
+        TraitRefId, TypeId as HirTyId, TypeKind as HirTyKind, TypeMode,
+        params::{FuncParamMode, GenericArg},
+        scope_graph::ScopeId,
     },
     hir_def::Func,
 };
@@ -14,22 +16,21 @@ use salsa::Update;
 
 use super::{
     binder::Binder,
-    const_ty::{
-        ConstBodyLowering, ConstCaptureEnv, ConstTyId, HoleAnchor, LoweringContext,
-        UnevaluatedConstPolicy,
-    },
+    const_ty::{ConstBodyLowering, LoweringContext},
     fold::{TyFoldable, TyFolder},
     generic_defaults::DefaultApplication,
+    provider::AddressSpace,
+    shape::Shape,
     trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
     trait_resolution::PredicateListId,
-    ty_def::{InvalidCause, PrimTy, TyBase, TyId},
-    ty_lower::{lower_hir_ty_with_minter, lower_opt_hir_ty_with_minter},
+    ty_def::{BorrowKind, InvalidCause, PrimTy, TyBase, TyId},
+    ty_lower::{lower_generic_arg_list, lower_hir_ty_with_minter},
 };
 use crate::analysis::{
     HirAnalysisDb,
     name_resolution::{
-        NameDomain, NameResKind, PathRes, PathResError, resolve_ident_to_bucket,
-        resolve_name_res_with_minter, resolve_path_with_minter, resolve_type_path_definition,
+        NameResKind, PathRes, PathResError, PathResErrorKind,
+        resolve_trait_path_with_observer_and_minter, resolve_type_path_definition,
     },
     ty::ty_def::{Kind, TyData},
 };
@@ -68,15 +69,18 @@ fn raw_impl_self_key<'db>(
         scope: ScopeId<'db>,
     ) -> Option<ImplSelfKey<'db>> {
         match ty.data(db) {
-            HirTyKind::Ptr(_) => Some(ImplSelfKey::Prim(PrimTy::Ptr)),
+            HirTyKind::Ptr(_) => Some(ImplSelfKey::Prim(PrimTy::Ptr(AddressSpace::Memory))),
             HirTyKind::Mode(TypeMode::Mut, _) => Some(ImplSelfKey::Prim(PrimTy::BorrowMut)),
             HirTyKind::Mode(TypeMode::Ref, _) => Some(ImplSelfKey::Prim(PrimTy::BorrowRef)),
+            HirTyKind::Mode(TypeMode::MaybeMut, _) => None,
             HirTyKind::Mode(TypeMode::Own, inner) => lower(db, inner.to_opt()?, scope),
             HirTyKind::Path(path) => match resolve_type_path_definition(db, path.to_opt()?, scope)?
             {
                 NameResKind::Prim(prim) => match TyBase::from(prim) {
                     TyBase::Prim(prim) => Some(ImplSelfKey::Prim(prim)),
-                    TyBase::Adt(_) | TyBase::Contract(_) | TyBase::Func(_) => unreachable!(),
+                    TyBase::Adt(_) | TyBase::Contract(_) | TyBase::Func(_) | TyBase::Closure(_) => {
+                        unreachable!()
+                    }
                 },
                 NameResKind::Scope(
                     scope @ ScopeId::Item(
@@ -160,7 +164,10 @@ pub(crate) fn complete_selected_impl<'db>(
 ) -> Option<ImplementorId<'db>> {
     match selected.origin(db) {
         ImplementorOrigin::Hir(impl_trait) => lower_impl_trait(db, impl_trait),
-        ImplementorOrigin::VirtualContract(_) | ImplementorOrigin::Assumption => Some(selected),
+        ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Assumption
+        | ImplementorOrigin::Callable
+        | ImplementorOrigin::Structural => Some(selected),
     }
 }
 
@@ -290,7 +297,10 @@ pub(crate) fn complete_impl_trait<'db>(
     match implementor.origin(db) {
         ImplementorOrigin::Hir(impl_trait) => lower_impl_trait_candidate(db, impl_trait)
             .expect("a collected impl header must remain lowerable"),
-        ImplementorOrigin::VirtualContract(_) | ImplementorOrigin::Assumption => implementor,
+        ImplementorOrigin::VirtualContract(_)
+        | ImplementorOrigin::Assumption
+        | ImplementorOrigin::Callable
+        | ImplementorOrigin::Structural => implementor,
     }
 }
 
@@ -363,12 +373,14 @@ fn lower_impl_trait_header_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
-/// Lower a trait reference to a trait instance.
+/// Lower a trait reference to a trait instance implemented by `self_ty`.
 ///
-/// When `owner_self` is provided, it is used for substituting `Self` references in generic
-/// arguments and associated type bindings, while `self_ty` is used as the implementor (args[0]).
-/// This is needed for associated type bounds like `type Assoc: Encode<Self>` where `Self`
-/// refers to the owner trait's Self, not the associated type.
+/// `Self` in the written generic arguments and associated type bindings is the
+/// use site's `Self`. Inside a trait, that is the trait's own `Self`; when
+/// `owner_self` is provided, it is instantiated as `owner_self`, as when the
+/// bounds of `type Assoc: Encode<Self>` are read for an implementation.
+/// Defaults omitted from the reference, such as `Rhs = Self`, are completed
+/// against `self_ty`.
 #[salsa::tracked(
     cycle_fn=lower_trait_ref_cycle_recover,
     cycle_initial=lower_trait_ref_cycle_initial
@@ -420,18 +432,11 @@ fn lower_trait_ref_inner<'db>(
     owner_self: Option<TyId<'db>>,
     const_bodies: ConstBodyLowering,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
-    let Partial::Present(path) = trait_ref.path(db) else {
+    if !trait_ref.path(db).is_present() {
         return Err(TraitRefLowerError::Ignored);
-    };
+    }
 
-    let minter = LoweringContext::for_const_bodies(
-        HoleAnchor::TemplatePath {
-            path,
-            scope,
-            assumptions,
-        },
-        const_bodies,
-    );
+    let lowering_cx = LoweringContext::for_const_bodies(const_bodies);
 
     lower_trait_ref_with_minter(
         db,
@@ -440,7 +445,7 @@ fn lower_trait_ref_inner<'db>(
         scope,
         assumptions,
         owner_self,
-        &minter,
+        &lowering_cx,
     )
 }
 
@@ -451,110 +456,68 @@ pub(crate) fn lower_trait_ref_with_minter<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     owner_self: Option<TyId<'db>>,
-    minter: &LoweringContext<'db>,
+    lowering_cx: &LoweringContext<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
     let Partial::Present(path) = trait_ref.path(db) else {
         return Err(TraitRefLowerError::Ignored);
     };
-    let self_subst = owner_self.unwrap_or(self_ty);
-    let resolved = match resolve_path_with_minter(db, path, scope, assumptions, false, minter) {
-        Ok(res @ PathRes::Ty(_)) => {
-            match resolve_shadowed_trait_ref(db, &res, path, scope, assumptions, minter) {
-                Some(trait_res) => Ok(trait_res),
-                None => Ok(res),
-            }
-        }
-        other => other,
-    };
-
-    match resolved {
+    match resolve_trait_path_with_observer_and_minter(
+        db,
+        path,
+        scope,
+        assumptions,
+        &mut |_, _| {},
+        lowering_cx,
+    ) {
         Ok(PathRes::Trait(t)) => {
-            let mut args = t.args(db).clone();
-
-            // Substitute all occurrences of `Self` with `self_subst`
-            // TODO: this shouldn't be necessary; Self should resolve to self_ty in a later stage,
-            //  but something seems to be broken.
-            struct SelfSubst<'db> {
-                db: &'db dyn HirAnalysisDb,
-                self_subst: TyId<'db>,
-            }
-            impl<'db> TyFolder<'db> for SelfSubst<'db> {
+            // Instantiates the use site's trait `Self` as `owner_self`.
+            struct OwnerSelf<'db>(TyId<'db>);
+            impl<'db> TyFolder<'db> for OwnerSelf<'db> {
                 fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
-                    match ty.data(self.db) {
-                        TyData::TyParam(p) if p.is_trait_self() => self.self_subst,
+                    match ty.data(db) {
+                        TyData::TyParam(p) if p.is_trait_self() => self.0,
                         _ => ty.super_fold_with(db, self),
                     }
                 }
             }
+            let written_self = |ty: TyId<'db>| {
+                owner_self.map_or(ty, |owner| ty.fold_with(db, &mut OwnerSelf(owner)))
+            };
 
-            let mut folder = SelfSubst { db, self_subst };
-            args[0] = self_ty;
-            args.iter_mut()
-                .skip(1)
-                .for_each(|a| *a = a.fold_with(db, &mut folder));
+            // The resolved instance completes its defaults against the trait's
+            // own `Self`. Keep only the written arguments and complete the
+            // defaults again against the implementor.
+            let written = path
+                .generic_args(db)
+                .data(db)
+                .iter()
+                .filter(|arg| !matches!(arg, GenericArg::AssocType(_)))
+                .count();
+            let explicit: Vec<_> = t.args(db)[1..=written]
+                .iter()
+                .map(|&ty| written_self(ty))
+                .collect();
+            let args = complete_trait_args(db, t.def(db), self_ty, &explicit, lowering_cx)
+                .map_err(|err| {
+                    TraitRefLowerError::PathResError(PathResError::new(err.into(), path))
+                })?;
+            let assoc_bindings: IndexMap<_, _> = t
+                .assoc_type_bindings(db)
+                .iter()
+                .map(|(&name, &ty)| (name, written_self(ty)))
+                .collect();
 
-            let mut assoc_bindings = t.assoc_type_bindings(db).clone();
-            assoc_bindings
-                .iter_mut()
-                .for_each(|(_, ty)| *ty = (*ty).fold_with(db, &mut folder));
-
-            Ok(TraitInstId::new(db, t.key(db), args, assoc_bindings))
+            Ok(TraitInstId::new(
+                db,
+                t.def(db),
+                args,
+                assoc_bindings,
+                t.mode(db),
+            ))
         }
         Ok(res) => Err(TraitRefLowerError::InvalidDomain(res)),
         Err(e) => Err(TraitRefLowerError::PathResError(e)),
     }
-}
-
-/// A trait reference can never resolve to an associated type, but an
-/// associated type of an enclosing trait lexically shadows a same-named trait
-/// (`trait Abi { type Encoder: Encoder }`). When a bare trait-ref ident
-/// resolves to such an associated type, retry the ident lookup from outside
-/// the shadowing trait's scope, while still lowering the path's generic args
-/// in the original scope so they can reference the trait's generic params.
-fn resolve_shadowed_trait_ref<'db>(
-    db: &'db dyn HirAnalysisDb,
-    res: &PathRes<'db>,
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    minter: &LoweringContext<'db>,
-) -> Option<PathRes<'db>> {
-    if path.parent(db).is_some() {
-        return None;
-    }
-    let ident = path.ident(db).to_opt()?;
-    let PathRes::Ty(ty) = res else {
-        return None;
-    };
-    let TyData::AssocTy(assoc) = ty.data(db) else {
-        return None;
-    };
-    if assoc.name != ident {
-        return None;
-    }
-
-    // The shadow can only come from a trait that encloses the use site.
-    let shadowing_trait = assoc.trait_.def(db);
-    let mut item = Some(scope.item());
-    let enclosing = loop {
-        match item {
-            Some(ItemKind::Trait(trait_)) if trait_ == shadowing_trait => break trait_,
-            Some(current) => item = current.scope().parent_item(db),
-            None => return None,
-        }
-    };
-
-    let retry_scope = enclosing.scope().parent_item(db)?.scope();
-    let bucket = resolve_ident_to_bucket(db, path, retry_scope);
-    let nameres = bucket.pick(NameDomain::TYPE).as_ref().ok()?;
-    if !matches!(
-        nameres.kind,
-        NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_)))
-    ) {
-        return None;
-    }
-
-    resolve_name_res_with_minter(db, nameres, None, path, scope, assumptions, minter).ok()
 }
 
 fn lower_trait_ref_cycle_initial<'db>(
@@ -596,26 +559,24 @@ pub(crate) enum TraitArgError<'db> {
         expected: Option<TyId<'db>>,
         given: Option<TyId<'db>>,
     },
-    ConstHoleNotAllowed {
-        arg_idx: usize,
-    },
     Ignored,
 }
 
-#[cfg(test)]
-pub(crate) fn lower_trait_ref_impl<'db>(
-    db: &'db (dyn HirAnalysisDb + 'static),
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    t: Trait<'db>,
-) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
-    let minter = LoweringContext::new(HoleAnchor::TemplatePath {
-        path,
-        scope,
-        assumptions,
-    });
-    lower_trait_ref_impl_with_minter(db, path, scope, assumptions, t, &minter)
+impl<'db> From<TraitArgError<'db>> for PathResErrorKind<'db> {
+    fn from(err: TraitArgError<'db>) -> Self {
+        match err {
+            TraitArgError::ArgNumMismatch { expected, given } => {
+                PathResErrorKind::ArgNumMismatch { expected, given }
+            }
+            TraitArgError::ArgKindMisMatch { expected, given } => {
+                PathResErrorKind::ArgKindMisMatch { expected, given }
+            }
+            TraitArgError::ArgTypeMismatch { expected, given } => {
+                PathResErrorKind::ArgTypeMismatch { expected, given }
+            }
+            TraitArgError::Ignored => PathResErrorKind::ParseError,
+        }
+    }
 }
 
 pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
@@ -624,59 +585,55 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
     t: Trait<'db>,
-    minter: &LoweringContext<'db>,
+    lowering_cx: &LoweringContext<'db>,
 ) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
-    let trait_params: &[TyId<'db>] = t.params(db);
-    let args = path.generic_args(db).data(db);
-    // Lower provided explicit args (excluding Self)
+    let generic_args = path.generic_args(db);
+    // Lower provided explicit args (excluding Self) as a type's generic args
+    // are: a path among them is the constant it names, if it names one.
+    let lowered = lower_generic_arg_list(db, generic_args, scope, assumptions, lowering_cx);
     let mut provided_explicit = Vec::new();
     let mut assoc_bindings = IndexMap::new();
-    for (arg_idx, arg) in args.iter().enumerate() {
+    for (arg, lowered) in generic_args.data(db).iter().zip(lowered) {
         match arg {
-            GenericArg::Type(ty_arg) => {
-                let ty = lower_opt_hir_ty_with_minter(db, ty_arg.ty, scope, assumptions, minter);
-                provided_explicit.push(ty);
-            }
-            GenericArg::Const(const_arg) => match const_arg.value {
-                ConstGenericArgValue::Expr(body) => {
-                    let const_ty = match minter.const_bodies() {
-                        ConstBodyLowering::Eager => ConstTyId::from_opt_body(db, body),
-                        ConstBodyLowering::Deferred => ConstTyId::unevaluated(
-                            db,
-                            body,
-                            None,
-                            None,
-                            body.to_opt().map_or(ConstCaptureEnv::Empty, |body| {
-                                ConstCaptureEnv::identity_for_body(db, body, Some(minter))
-                            }),
-                            UnevaluatedConstPolicy::DeferValidation,
-                        ),
-                    };
-                    provided_explicit.push(TyId::const_ty(db, const_ty));
-                }
-                ConstGenericArgValue::Hole => {
-                    return Err(TraitArgError::ConstHoleNotAllowed { arg_idx });
-                }
-            },
+            GenericArg::Type(_) | GenericArg::Const(_) => provided_explicit.push(lowered),
             GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
                 if let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) {
-                    let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, minter);
+                    let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);
                     assoc_bindings.insert(name, ty);
                 }
             }
         }
     }
 
-    // Fill trailing defaults using the trait's param set. Bind Self (idx 0).
-    let non_self_completed = t
+    let args = complete_trait_args(db, t, t.self_param(db), &provided_explicit, lowering_cx)?;
+    Ok(TraitInstId::new(
+        db,
+        t,
+        args,
+        assoc_bindings,
+        ModeMarker::None,
+    ))
+}
+
+/// Completes the arguments of `trait_` implemented by `self_ty` from the
+/// `explicit` ones, filling omitted trailing parameters with their defaults.
+fn complete_trait_args<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: Trait<'db>,
+    self_ty: TyId<'db>,
+    explicit: &[TyId<'db>],
+    lowering_cx: &LoweringContext<'db>,
+) -> Result<Vec<TyId<'db>>, TraitArgError<'db>> {
+    let trait_params: &[TyId<'db>] = trait_.params(db);
+    let non_self_completed = trait_
         .param_set(db)
         .complete_args(
             db,
-            &[t.self_param(db)],
-            &provided_explicit,
-            match minter.const_bodies() {
-                ConstBodyLowering::Eager => DefaultApplication::Evaluate(minter),
-                ConstBodyLowering::Deferred => DefaultApplication::StructuralMetadata(minter),
+            &[self_ty],
+            explicit,
+            match lowering_cx.const_bodies() {
+                ConstBodyLowering::Eager => DefaultApplication::Evaluate(lowering_cx),
+                ConstBodyLowering::Deferred => DefaultApplication::StructuralMetadata(lowering_cx),
             },
         )
         .map_err(|error| match error.cause {
@@ -709,100 +666,39 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
         });
     }
 
-    let mut final_args: Vec<TyId<'db>> = Vec::with_capacity(trait_params.len());
-    final_args.push(t.self_param(db));
-    final_args.extend(non_self_completed);
-
-    Ok(TraitInstId::new(db, t, final_args, assoc_bindings))
+    let mut args = Vec::with_capacity(trait_params.len());
+    args.push(self_ty);
+    args.extend(non_self_completed);
+    Ok(args)
 }
 
-#[cfg(test)]
-mod layout_hole_tests {
-    use camino::Utf8PathBuf;
-
-    use super::lower_trait_ref_impl;
-    use crate::analysis::ty::{
-        const_ty::{ConstTyData, HoleId},
-        trait_resolution::PredicateListId,
-        ty_def::TyData,
-    };
-    use crate::hir_def::{ItemKind, PathId};
-    use crate::test_db::HirAnalysisTestDb;
-
-    #[test]
-    fn omitted_trait_hole_defaults_keep_distinct_path_arg_identity() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            Utf8PathBuf::from("omitted_trait_hole_defaults_keep_distinct_path_arg_identity.fe"),
-            r#"
-trait Cap<const LEFT: u256 = _, const RIGHT: u256 = _> {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-
-        let trait_ = top_mod
-            .children_non_nested(&db)
-            .find_map(|item| match item {
-                ItemKind::Trait(trait_)
-                    if trait_
-                        .name(&db)
-                        .to_opt()
-                        .is_some_and(|name| name.data(&db) == "Cap") =>
-                {
-                    Some(trait_)
-                }
-                _ => None,
-            })
-            .expect("missing `Cap` trait");
-        let name = trait_.name(&db).to_opt().expect("trait must have a name");
-        let path = PathId::from_ident(&db, name);
-        let inst = match lower_trait_ref_impl(
-            &db,
-            path,
-            trait_.scope(),
-            PredicateListId::empty_list(&db),
-            trait_,
-        ) {
-            Ok(inst) => inst,
-            Err(_) => panic!("failed to lower trait ref"),
-        };
-        let args = inst.args(&db);
-
-        assert_eq!(args.len(), 3);
-        let left = args[1];
-        let right = args[2];
-        assert_ne!(left, right);
-
-        let TyData::ConstTy(left) = left.data(&db) else {
-            panic!("expected left arg to be a const hole");
-        };
-        let TyData::ConstTy(right) = right.data(&db) else {
-            panic!("expected right arg to be a const hole");
-        };
-
-        assert!(matches!(
-            left.data(&db),
-            ConstTyData::Hole(_, HoleId::Structural(_),)
-        ));
-        assert!(matches!(
-            right.data(&db),
-            ConstTyData::Hole(_, HoleId::Structural(_),)
-        ));
-    }
+/// An implementation's methods, by name. A `mut?` trait method may have one
+/// body per mode: two methods of its name, the one that takes the `mut`
+/// mode where the trait method takes `mut?` being its `mut` body.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Update)]
+pub(crate) struct ImplementorMethods<'db> {
+    /// Each name's method, or its `ref` body.
+    pub methods: IndexMap<IdentId<'db>, Func<'db>>,
+    /// The `mut` bodies of the methods with one body per mode.
+    pub mut_bodies: IndexMap<IdentId<'db>, Func<'db>>,
+    /// Methods of a name taken, and the ones of that name left over.
+    pub conflicts: Vec<(Func<'db>, Func<'db>)>,
 }
 
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_implementor_methods<'db>(
     db: &'db dyn HirAnalysisDb,
     implementor: ImplementorId<'db>,
-) -> IndexMap<IdentId<'db>, Func<'db>> {
-    let mut methods = IndexMap::default();
+) -> ImplementorMethods<'db> {
+    let mut methods = ImplementorMethods::default();
     let impl_trait = match implementor.origin(db) {
         super::trait_def::ImplementorOrigin::Hir(impl_trait) => impl_trait,
         super::trait_def::ImplementorOrigin::VirtualContract(_)
-        | super::trait_def::ImplementorOrigin::Assumption => return methods,
+        | super::trait_def::ImplementorOrigin::Assumption
+        | super::trait_def::ImplementorOrigin::Callable
+        | super::trait_def::ImplementorOrigin::Structural => return methods,
     };
+    let trait_methods = implementor.trait_def(db).method_defs(db);
     let scope = impl_trait.scope();
     let graph = scope.scope_graph(db);
     for method in graph.child_items(scope).filter_map(|item| match item {
@@ -812,10 +708,73 @@ pub(crate) fn collect_implementor_methods<'db>(
         let Some(name) = method.name(db).to_opt() else {
             continue;
         };
-        methods.insert(name, method);
+        let Some(&first) = methods.methods.get(&name) else {
+            methods.methods.insert(name, method);
+            continue;
+        };
+        // A second method of a `mut?` trait method's name is its other body.
+        let is_mut_body = |func| {
+            trait_methods
+                .get(&name)
+                .is_some_and(|&trait_m| takes_mut_body(db, func, trait_m))
+        };
+        if methods.mut_bodies.contains_key(&name) || is_mut_body(first) == is_mut_body(method) {
+            methods.conflicts.push((first, method));
+        } else if is_mut_body(first) {
+            methods.methods.insert(name, method);
+            methods.mut_bodies.insert(name, first);
+        } else {
+            methods.mut_bodies.insert(name, method);
+        }
     }
 
     methods
+}
+
+/// Whether `func`, a method of a `mut?` trait method `trait_m`'s name, is
+/// its `mut` body: it takes `mut` where `trait_m` takes `mut?`, as a
+/// parameter or a result component.
+fn takes_mut_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>, trait_m: Func<'db>) -> bool {
+    /// Whether `shape` is `mut` where the trait method's result, `at_ref` and
+    /// `at_mut` at its two modes, is `mut?`.
+    fn mut_where_maybe_mut(shape: &Shape, at_ref: &Shape, at_mut: &Shape) -> bool {
+        match (shape, at_ref, at_mut) {
+            (Shape::Access(kind, _), Shape::Access(at_ref, _), Shape::Access(at_mut, _)) => {
+                at_ref != at_mut && *kind == BorrowKind::Mut
+            }
+            (Shape::Tuple(elems), Shape::Tuple(at_ref), Shape::Tuple(at_mut)) => elems
+                .iter()
+                .zip(at_ref)
+                .zip(at_mut)
+                .any(|((elem, at_ref), at_mut)| mut_where_maybe_mut(elem, at_ref, at_mut)),
+            (
+                Shape::Sum { payload, .. },
+                Shape::Sum {
+                    payload: at_ref, ..
+                },
+                Shape::Sum {
+                    payload: at_mut, ..
+                },
+            ) => mut_where_maybe_mut(payload, at_ref, at_mut),
+            _ => false,
+        }
+    }
+    trait_m.is_maybe_mut(db)
+        && (trait_m
+            .params(db)
+            .zip(func.params(db))
+            .any(|(trait_param, param)| {
+                trait_param.is_maybe_mut(db) && param.mode_at(db, None) == FuncParamMode::Mut
+            })
+            || matches!(
+                (
+                    func.return_shape(db, None),
+                    trait_m.return_shape(db, Some(BorrowKind::Ref)),
+                    trait_m.return_shape(db, Some(BorrowKind::Mut)),
+                ),
+                (Some(shape), Some(at_ref), Some(at_mut))
+                    if mut_where_maybe_mut(shape, at_ref, at_mut)
+            ))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]

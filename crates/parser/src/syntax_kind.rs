@@ -102,6 +102,9 @@ pub enum SyntaxKind {
     Tilde,
     #[token("!")]
     Not,
+    /// `?`
+    #[token("?")]
+    Question,
     #[token("^")]
     Hat,
     /// `&`
@@ -195,6 +198,9 @@ pub enum SyntaxKind {
     /// `return`
     #[token("return")]
     ReturnKw,
+    /// `yield`
+    #[token("yield")]
+    YieldKw,
     /// `self`
     #[token("self")]
     SelfKw,
@@ -218,9 +224,15 @@ pub enum SyntaxKind {
     /// `let`
     #[token("let")]
     LetKw,
+    /// `var`
+    #[token("var")]
+    VarKw,
     /// `mut`
     #[token("mut")]
     MutKw,
+    /// `mut?`: the mode of a `mut?` item, `ref` or `mut` by its use.
+    #[token("mut?")]
+    MaybeMutKw,
     /// `ref`
     #[token("ref")]
     RefKw,
@@ -258,12 +270,16 @@ pub enum SyntaxKind {
     // Expressions. These are non-leaf nodes.
     /// { statement-list }
     BlockExpr,
+    /// `|x: u8| -> u8 { x }`
+    ClosureExpr,
     /// `x + 1`
     BinExpr,
     /// `!x`
     UnExpr,
     /// `expr as Type`
     CastExpr,
+    /// `expr?`
+    TryExpr,
     /// `foo(x, y)`
     CallExpr,
     /// `foo!(x, y)`
@@ -314,6 +330,8 @@ pub enum SyntaxKind {
     MatchExpr,
     /// `with (Effect = value, ..) { Block }`
     WithExpr,
+    /// `unsafe { Block }`
+    UnsafeExpr,
     /// `(1 + 2)`
     ParenExpr,
     /// x = 1
@@ -335,6 +353,8 @@ pub enum SyntaxKind {
 
     /// `return 1`
     ReturnStmt,
+    /// `yield mut x`
+    YieldStmt,
     /// `1`
     ExprStmt,
 
@@ -403,6 +423,8 @@ pub enum SyntaxKind {
     TraitTypeItem,
     /// `const FOO: Ty` or `const FOO: Ty = expr`
     TraitConstItem,
+    /// `uses E` or `uses E = (storage: mut Store)`: an associated effect row
+    TraitUsesItem,
     /// `{ fn foo() {..} }`
     TraitItemList,
     /// `impl Trait for Foo { .. }`
@@ -476,6 +498,10 @@ pub enum SyntaxKind {
     RecordFieldDef,
     /// `{x: i32, y: u32}`
     RecordFieldDefList,
+    /// `pub u8` in `struct Month(pub u8)`
+    TupleFieldDef,
+    /// `(pub u8, u16)` in `struct Pair(pub u8, u16)`
+    TupleFieldDefList,
 
     VariantDef,
     VariantDefList,
@@ -502,6 +528,8 @@ pub enum SyntaxKind {
     UsesParamList,
     /// a single `uses` parameter
     UsesParam,
+    /// `Fn(own A, B) -> R`: the callable trait of a shape.
+    FnShape,
 
     /// `foo::Trait1 + Trait2`
     TypeBoundList,
@@ -619,6 +647,7 @@ impl SyntaxKind {
             SyntaxKind::Percent => "`%`",
             SyntaxKind::Tilde => "`~`",
             SyntaxKind::Not => "`!`",
+            SyntaxKind::Question => "`?`",
             SyntaxKind::Hat => "`^`",
             SyntaxKind::Amp => "`&`",
             SyntaxKind::Amp2 => "`&&`",
@@ -650,6 +679,7 @@ impl SyntaxKind {
             SyntaxKind::WhileKw => "`while`",
             SyntaxKind::PubKw => "`pub`",
             SyntaxKind::ReturnKw => "`return`",
+            SyntaxKind::YieldKw => "`yield`",
             SyntaxKind::SelfKw => "`self`",
             SyntaxKind::SelfTypeKw => "`Self`",
             SyntaxKind::StructKw => "`struct`",
@@ -658,7 +688,9 @@ impl SyntaxKind {
             SyntaxKind::ImplKw => "`impl`",
             SyntaxKind::TypeKw => "`type`",
             SyntaxKind::LetKw => "`let`",
+            SyntaxKind::VarKw => "`var`",
             SyntaxKind::MutKw => "`mut`",
+            SyntaxKind::MaybeMutKw => "`mut?`",
             SyntaxKind::RefKw => "`ref`",
             SyntaxKind::OwnKw => "`own`",
             SyntaxKind::UseKw => "`use`",
@@ -679,8 +711,10 @@ impl SyntaxKind {
 
             SyntaxKind::ArrayExpr => "array definition",
             SyntaxKind::RecordFieldDef => "field",
+            SyntaxKind::TupleFieldDef => "tuple field",
             SyntaxKind::IndexExpr => "index expression",
             SyntaxKind::BlockExpr => "block",
+            SyntaxKind::ClosureExpr => "closure expression",
             SyntaxKind::TypeBound => "type bound",
             SyntaxKind::CallArgList => "function call arguments",
 
@@ -693,6 +727,7 @@ impl SyntaxKind {
             SyntaxKind::BinExpr => "binary expression",
             SyntaxKind::UnExpr => "unary expression",
             SyntaxKind::CastExpr => "cast expression",
+            SyntaxKind::TryExpr => "`?` expression",
             SyntaxKind::CallExpr => "function call expression",
             SyntaxKind::MacroCallExpr => "macro call expression",
             SyntaxKind::CallArg => "function call argument",
@@ -715,6 +750,7 @@ impl SyntaxKind {
             SyntaxKind::IfExpr => "`if` expression",
             SyntaxKind::MatchExpr => "`match` expression",
             SyntaxKind::WithExpr => "`with` expression",
+            SyntaxKind::UnsafeExpr => "`unsafe` block",
             SyntaxKind::ParenExpr => "parenthesized expression",
             SyntaxKind::AssignExpr => "assignment expression",
             SyntaxKind::AugAssignExpr => "augmented assignment expression",
@@ -724,6 +760,7 @@ impl SyntaxKind {
             SyntaxKind::ContinueStmt => "`continue` statement",
             SyntaxKind::BreakStmt => "`break` statement",
             SyntaxKind::ReturnStmt => "`return` statement",
+            SyntaxKind::YieldStmt => "`yield` statement",
             SyntaxKind::ExprStmt => "`expr` statement",
             SyntaxKind::WildCardPat => "wildcard pattern",
             SyntaxKind::RestPat => "`..` pattern",
@@ -758,6 +795,7 @@ impl SyntaxKind {
             SyntaxKind::TraitItemList => "`trait` item list",
             SyntaxKind::TraitTypeItem => "`trait` type item",
             SyntaxKind::TraitConstItem => "`trait` const item",
+            SyntaxKind::TraitUsesItem => "`trait` effect row item",
             SyntaxKind::ImplTrait => "`impl` trait block",
             SyntaxKind::Const => "const definition",
             SyntaxKind::StaticAssert => "static assertion",
@@ -785,6 +823,7 @@ impl SyntaxKind {
             SyntaxKind::AttrList => "attribute list",
             SyntaxKind::Visibility => "visibility modifier",
             SyntaxKind::RecordFieldDefList => "record field list",
+            SyntaxKind::TupleFieldDefList => "tuple field list",
             SyntaxKind::VariantDef => "`enum` variant definition",
             SyntaxKind::VariantDefList => "`enum` variant list",
             SyntaxKind::TypeGenericParam => "generic type parameter",
@@ -802,6 +841,7 @@ impl SyntaxKind {
             SyntaxKind::UsesClause => "`uses` clause",
             SyntaxKind::UsesParamList => "`uses` parameter list",
             SyntaxKind::UsesParam => "`uses` parameter",
+            SyntaxKind::FnShape => "callable shape",
             SyntaxKind::RecvArmList => "recv arm list",
             SyntaxKind::RecvArm => "recv arm",
             SyntaxKind::VisRestriction => "visibility restriction",
@@ -871,6 +911,7 @@ impl SyntaxKind {
                 | SyntaxKind::WhileKw
                 | SyntaxKind::PubKw
                 | SyntaxKind::ReturnKw
+                | SyntaxKind::YieldKw
                 | SyntaxKind::SelfKw
                 | SyntaxKind::SelfTypeKw
                 | SyntaxKind::StructKw
@@ -879,7 +920,9 @@ impl SyntaxKind {
                 | SyntaxKind::ImplKw
                 | SyntaxKind::TypeKw
                 | SyntaxKind::LetKw
+                | SyntaxKind::VarKw
                 | SyntaxKind::MutKw
+                | SyntaxKind::MaybeMutKw
                 | SyntaxKind::RefKw
                 | SyntaxKind::OwnKw
                 | SyntaxKind::UseKw

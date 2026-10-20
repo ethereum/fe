@@ -1,0 +1,1 @@
+Native tests now share one runtime package, object and executable across all source modules in a suite, compiling reachable helpers once while running each test in its own process. Native IR artifacts use `<suite>.native.test.sona` and `<suite>.native.test.rmir`; report artifacts live directly under `artifacts/native/`, with distinct `test-<index>` directories.

@@ -25,7 +25,7 @@ impl Store {
         self.ver += 1
     }
 
-    fn close(mut own self) -> (u256, u8) {
+    fn close(var own self) -> (u256, u8) {
         self.ver += 1
         (self.value, self.ver)
     }
@@ -62,7 +62,7 @@ pub contract ModeContract {
 #[test]
 fn test_mode_receivers_contract() uses (evm: mut Evm) {
     let contract_addr = evm.create2<ModeContract>(value: Wei::zero(), args: (), salt: 0)
-    assert!(contract_addr.inner != 0)
+    assert!(contract_addr.word() != 0)
 
     let v: u256 = evm.call(
         addr: contract_addr,

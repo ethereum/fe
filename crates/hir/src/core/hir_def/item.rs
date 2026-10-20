@@ -339,6 +339,8 @@ impl<'db> GenericParamOwner<'db> {
 pub enum CallableDef<'db> {
     Func(Func<'db>),
     VariantCtor(EnumVariant<'db>),
+    /// The constructor of a tuple struct, e.g. `Month` in `Month(10)`.
+    StructCtor(Struct<'db>),
 }
 
 #[derive(
@@ -674,7 +676,7 @@ pub struct Func<'db> {
     pub(in crate::core) generic_params: GenericParamListId<'db>,
     pub(in crate::core) where_clause: WhereClauseId<'db>,
     pub(in crate::core) params_list: Partial<FuncParamListId<'db>>,
-    pub(crate) effects: EffectParamListId<'db>,
+    pub(crate) declared_effects: EffectParamListId<'db>,
     pub(in crate::core) ret_type_ref: Option<TypeId<'db>>,
     pub(in crate::core) modifiers: FuncModifiers,
     pub body: Option<Body<'db>>,
@@ -707,6 +709,20 @@ impl<'db> Func<'db> {
 
     pub fn is_must_use(self, db: &'db dyn HirDb) -> bool {
         self.attributes(db).is_must_use(db)
+    }
+
+    /// A `#[view]` type is only ever reached through accesses: it admits no
+    /// `own` parameter and no `mut` yield.
+    pub fn is_view(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "view")
+    }
+
+    /// A `#[raw_place]` projection yields a place computed from its inputs
+    /// with nothing to resume: no code after its yield and no access of its
+    /// own kept open there, so an unsafe split may take its call as a
+    /// component.
+    pub fn is_raw_place(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "raw_place")
     }
 
     fn inline_attr(self, db: &'db dyn HirDb) -> Option<InlineAttr> {
@@ -822,6 +838,9 @@ pub struct Struct<'db> {
     pub(in crate::core) generic_params: GenericParamListId<'db>,
     pub(in crate::core) where_clause: WhereClauseId<'db>,
     pub(in crate::core) fields: FieldDefListId<'db>,
+    /// `true` for a tuple struct such as `struct Month(pub u8)`, whose fields
+    /// are named `0`, `1`, ... by position.
+    pub is_tuple: bool,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -845,6 +864,12 @@ impl<'db> Struct<'db> {
         self.attributes(db).is_must_use(db)
     }
 
+    /// A `#[view]` type is only ever reached through accesses: it admits no
+    /// `own` parameter and no `mut` yield.
+    pub fn is_view(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "view")
+    }
+
     /// Returns the human readable string of the expected struct initializer.
     /// ## Example
     /// When `S` is a struct defined as below:
@@ -854,9 +879,15 @@ impl<'db> Struct<'db> {
     ///    y: i32,
     /// }
     /// ```
-    /// Then this method returns ` { x, y }`.
+    /// Then this method returns ` { x, y }`. For a tuple struct
+    /// `struct P(u64, i32)` it returns `(_, _)`.
     pub fn format_initializer_args(self, db: &dyn HirDb) -> String {
-        self.fields(db).format_initializer_args(db)
+        let fields = self.fields(db);
+        if self.is_tuple(db) {
+            let args = vec!["_"; fields.data(db).len()].join(", ");
+            return format!("({args})");
+        }
+        fields.format_initializer_args(db)
     }
 }
 
@@ -1025,6 +1056,12 @@ impl<'db> Enum<'db> {
     pub fn is_must_use(self, db: &'db dyn HirDb) -> bool {
         self.attributes(db).is_must_use(db)
     }
+
+    /// A `#[view]` type is only ever reached through accesses: it admits no
+    /// `own` parameter and no `mut` yield.
+    pub fn is_view(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "view")
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
@@ -1164,7 +1201,7 @@ pub struct Trait<'db> {
     pub name: Partial<IdentId<'db>>,
 
     pub(in crate::core) attributes: AttrListId<'db>,
-    pub vis: Visibility,
+    pub(in crate::core) modifiers: TraitModifiers,
     pub(in crate::core) generic_params: GenericParamListId<'db>,
     #[return_ref]
     pub(in crate::core) super_traits_refs: Vec<TraitRefId<'db>>,
@@ -1173,6 +1210,10 @@ pub struct Trait<'db> {
     pub(in crate::core) types: Vec<AssocTyDecl<'db>>,
     #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDecl<'db>>,
+    /// The effect rows: `uses E` in a trait, `uses E = ..` in an
+    /// implementation.
+    #[return_ref]
+    pub rows: Vec<AssocRow<'db>>,
 
     pub top_mod: TopLevelMod<'db>,
 
@@ -1180,9 +1221,26 @@ pub struct Trait<'db> {
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
 
+/// A trait's visibility, and whether it is an `unsafe trait`, one whose
+/// implementations assert a contract the compiler relies on without checking
+/// it, so each is written `unsafe impl`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub struct TraitModifiers {
+    pub vis: Visibility,
+    pub is_unsafe: bool,
+}
+
 impl<'db> Trait<'db> {
     pub fn span(self) -> LazyTraitSpan<'db> {
         LazyTraitSpan::new(self)
+    }
+
+    pub fn vis(self, db: &dyn HirDb) -> Visibility {
+        self.modifiers(db).vis
+    }
+
+    pub fn is_unsafe(self, db: &dyn HirDb) -> bool {
+        self.modifiers(db).is_unsafe
     }
 
     pub fn children_non_nested(
@@ -1227,6 +1285,15 @@ pub struct AssocTyDecl<'db> {
     pub default: Option<TypeId<'db>>,
 }
 
+/// An associated effect row: `uses E` in a trait, with an optional default
+/// `uses E = (..)`, or `uses E = (..)` in an implementation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct AssocRow<'db> {
+    pub name: Partial<IdentId<'db>>,
+    /// The row's effects, if given.
+    pub effects: Option<EffectParamListId<'db>>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct AssocConstDecl<'db> {
     pub attributes: AttrListId<'db>,
@@ -1250,6 +1317,12 @@ pub struct ImplTrait<'db> {
     pub(crate) types: Vec<AssocTyDef<'db>>,
     #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDef<'db>>,
+    /// The effect rows: `uses E` in a trait, `uses E = ..` in an
+    /// implementation.
+    #[return_ref]
+    pub rows: Vec<AssocRow<'db>>,
+    /// `unsafe impl`, of an `unsafe trait`.
+    pub is_unsafe: bool,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -1593,6 +1666,13 @@ pub struct FieldDef<'db> {
     pub(in crate::core) type_ref: Partial<TypeId<'db>>,
     pub vis: Visibility,
     pub is_mut: bool,
+    /// An `unsafe` field holds a value its type's safe methods trust:
+    /// initializing or writing it needs an `unsafe` context, and reading it
+    /// is safe.
+    pub is_unsafe: bool,
+    /// A contract field's `#[slot(e)]`: the constant `e`, the slot it starts
+    /// at instead of the next free one.
+    pub slot: Option<Body<'db>>,
 }
 
 impl<'db> FieldDef<'db> {
@@ -1611,6 +1691,8 @@ impl<'db> FieldDef<'db> {
             type_ref,
             vis,
             is_mut,
+            is_unsafe: false,
+            slot: None,
         }
     }
 

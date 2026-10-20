@@ -70,7 +70,7 @@ pub contract Voting {
 #[test]
 fn test_voting() uses (evm: mut Evm) {
     let voting = evm.create2<Voting>(value: Wei::zero(), args: (), salt: 0)
-    assert!(voting.inner != 0)
+    assert!(voting.word() != 0)
 
     // Create 3 proposals
     let p1: u256 = evm.call(addr: voting, gas: 100000, value: Wei::zero(), message: VotingMsg::CreateProposal {})

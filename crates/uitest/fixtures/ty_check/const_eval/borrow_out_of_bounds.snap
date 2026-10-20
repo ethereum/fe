@@ -20,7 +20,7 @@ error[3-0050]: index out of bounds in const context
    ┌─ borrow_out_of_bounds.fe:21:5
    │
 21 │     values[idx].get()
-   │     ^^^^^^^^^^^^^^^^^ index is outside the evaluated value
+   │     ^^^^^^^^^^^ index is outside the evaluated value
 
 error[3-0050]: index out of bounds in const context
    ┌─ borrow_out_of_bounds.fe:25:13

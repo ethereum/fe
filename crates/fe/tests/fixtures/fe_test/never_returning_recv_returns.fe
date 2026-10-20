@@ -28,7 +28,7 @@ fn test_never_returning_recv_bytes()
 uses (evm: mut Evm)
 {
     let aborter = evm.create2<Aborter>(value: Wei::zero(), args: (), salt: 0)
-    assert!(aborter.inner != 0)
+    assert!(aborter.word() != 0)
 
     let returned: Bytes = evm.call(
         addr: aborter,
@@ -44,7 +44,7 @@ fn test_never_returning_recv_scalar()
 uses (evm: mut Evm)
 {
     let aborter = evm.create2<Aborter>(value: Wei::zero(), args: (), salt: 1)
-    assert!(aborter.inner != 0)
+    assert!(aborter.word() != 0)
 
     let returned: u256 = evm.call(
         addr: aborter,

@@ -22,7 +22,7 @@ pub use mapping::SolMapping
 pub use merkle::{self}
 pub use multicall::{self}
 pub use sol_slot::{SolPacked, SolSlot}
-pub use sol_array::SolArray
+pub use sol_array::{SolArray, SolLanes}
 pub use sol_set::SolEnumerableSet
 pub use sol_slot::{SolPacked, SolSlot, SolWord}
 pub use packed::{self, *}
@@ -34,5 +34,4 @@ pub use storage_bytes::{self, *}
 pub use storage_map::{StorageKey, StorageMap}
 pub use storage_packed_array::{PackedBits, StoragePackedArray, ValidPackedBits}
 pub use units::{self, *}
-pub use word::{self, *}
 pub use calls::{self}

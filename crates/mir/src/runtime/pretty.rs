@@ -1,3 +1,4 @@
+use hir::analysis::ty::AddressSpace;
 use std::fmt::Write;
 
 use cranelift_entity::EntityRef;
@@ -8,12 +9,11 @@ use crate::{
     db::MirDb,
     instance::RuntimeInstance,
     runtime::{
-        AddressSpaceKind, ConstScalar, Layout, LayoutId, PlaceElem, PlaceRoot, RBlockId, RExpr,
-        RLocalId, RStmt, RTerminator, RValueId, RawPointeeId, RawPointeeKey, RefKind, RefView,
-        RuntimeBody, RuntimeBuiltin, RuntimeCarrier, RuntimeClass, RuntimeCodeRegion,
-        RuntimeFunction, RuntimeLinkage, RuntimeLocalRoot, RuntimeObject, RuntimePackage,
-        RuntimePlace, RuntimeSection, RuntimeSectionName, RuntimeSectionRef, ScalarClass,
-        ScalarRepr, ScalarRole, VariantId,
+        ConstScalar, Layout, LayoutId, PlaceElem, PlaceRoot, RBlockId, RExpr, RLocalId, RStmt,
+        RTerminator, RValueId, RawPointeeId, RefKind, RefView, RuntimeBody, RuntimeBuiltin,
+        RuntimeCarrier, RuntimeClass, RuntimeCodeRegion, RuntimeFunction, RuntimeLinkage,
+        RuntimeLocalRoot, RuntimeObject, RuntimePackage, RuntimePlace, RuntimeSection,
+        RuntimeSectionName, RuntimeSectionRef, ScalarClass, ScalarRepr, ScalarRole, VariantId,
     },
     verify::{RuntimeVerifyFailure, RuntimeVerifySite},
 };
@@ -398,6 +398,7 @@ fn format_stmt<'db>(db: &'db dyn MirDb, stmt: &RStmt<'db>) -> String {
                 format_variant(db, *variant)
             )
         }
+        RStmt::End { session } => format!("end {}", format_local_id(*session)),
         RStmt::EnumWriteVariant {
             root,
             variant,
@@ -625,6 +626,11 @@ fn format_terminator<'db>(db: &'db dyn MirDb, term: &RTerminator<'db>) -> String
         RTerminator::Return(value) => value
             .map(|value| format!("return {}", format_local_id(value)))
             .unwrap_or_else(|| "return".to_string()),
+        RTerminator::Yield { value, resume } => format!(
+            "yield {} resume bb{}",
+            value.map_or_else(|| "()".to_string(), format_local_id),
+            resume.index()
+        ),
         RTerminator::Stop => "stop".to_string(),
     }
 }
@@ -656,6 +662,11 @@ fn format_builtin<'db>(db: &'db dyn MirDb, builtin: &RuntimeBuiltin<'db>) -> Str
             "zero_mem {}, {}",
             format_local_id(*dst),
             format_local_id(*len)
+        ),
+        RuntimeBuiltin::StoreConstBytes { dst, bytes } => format!(
+            "store_const_bytes {}, 0x{}",
+            format_local_id(*dst),
+            format_bytes(bytes)
         ),
         RuntimeBuiltin::Msize => "msize".to_string(),
         RuntimeBuiltin::Sload { slot } => format!("sload {}", format_local_id(*slot)),
@@ -710,6 +721,14 @@ fn format_builtin<'db>(db: &'db dyn MirDb, builtin: &RuntimeBuiltin<'db>) -> Str
             format_local_id(*offset),
             format_local_id(*len)
         ),
+        RuntimeBuiltin::KeccakWords { words } => format!(
+            "keccak_words {}",
+            words
+                .iter()
+                .map(|word| format_local_id(*word))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
         RuntimeBuiltin::AddMod { lhs, rhs, modulus } => format!(
             "addmod {}, {}, {}",
             format_local_id(*lhs),
@@ -724,6 +743,9 @@ fn format_builtin<'db>(db: &'db dyn MirDb, builtin: &RuntimeBuiltin<'db>) -> Str
         ),
         RuntimeBuiltin::LeadingZeros { value } => {
             format!("leading_zeros {}", format_local_id(*value))
+        }
+        RuntimeBuiltin::BlackBox { value } => {
+            format!("black_box {}", format_local_id(*value))
         }
         RuntimeBuiltin::Byte { pos, value } => format!(
             "byte {}, {}",
@@ -970,10 +992,7 @@ fn format_class<'db>(db: &'db dyn MirDb, class: &RuntimeClass<'db>) -> String {
 }
 
 fn format_raw_pointee<'db>(db: &'db dyn MirDb, pointee: RawPointeeId<'db>) -> String {
-    match pointee.key(db) {
-        RawPointeeKey::Stored(ty) => ty.pretty_print(db).to_string(),
-        RawPointeeKey::Exact(class) => format_class(db, class),
-    }
+    format_class(db, pointee.target(db))
 }
 
 fn format_scalar_class<'db>(db: &'db dyn MirDb, class: &ScalarClass<'db>) -> String {
@@ -1070,7 +1089,7 @@ fn format_runtime_instance<'db>(db: &'db dyn MirDb, instance: RuntimeInstance<'d
         crate::instance::RuntimeInstanceSource::Semantic(semantic) => {
             let owner = semantic.key(db).owner(db);
             let owner_summary = match owner {
-                hir::analysis::ty::ty_check::BodyOwner::Func(func) => format!(
+                hir::analysis::ty::ty_check::BodyOwner::Func(func, _) => format!(
                     "func={} has_body={} trait={:?} impl_trait={:?} impl={:?} owner={owner:?}",
                     func.name(db)
                         .to_opt()
@@ -1099,13 +1118,13 @@ fn format_runtime_instance<'db>(db: &'db dyn MirDb, instance: RuntimeInstance<'d
     }
 }
 
-fn format_space(space: AddressSpaceKind) -> &'static str {
+fn format_space(space: AddressSpace) -> &'static str {
     match space {
-        AddressSpaceKind::Memory => "mem",
-        AddressSpaceKind::Storage => "storage",
-        AddressSpaceKind::Transient => "transient",
-        AddressSpaceKind::Calldata => "calldata",
-        AddressSpaceKind::Code => "code",
+        AddressSpace::Memory => "mem",
+        AddressSpace::Storage => "storage",
+        AddressSpace::Transient => "transient",
+        AddressSpace::Calldata => "calldata",
+        AddressSpace::Code => "code",
     }
 }
 

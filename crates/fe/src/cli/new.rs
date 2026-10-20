@@ -169,7 +169,7 @@ pub contract Counter {
 fn test_counter() uses (evm: mut Evm) {
     // Deploy the contract
     let addr = evm.create2<Counter>(value: Wei::zero(), args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     // Initially the counter is 0
     let val: u256 = evm.call(

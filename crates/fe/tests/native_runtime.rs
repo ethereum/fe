@@ -15,7 +15,7 @@ use std::{
         ffi::OsStringExt,
         process::{CommandExt, ExitStatusExt},
     },
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Output, Stdio},
     thread,
     time::{Duration, Instant},
@@ -48,6 +48,81 @@ fn build(source: &Path, out: &Path, level: &str, extra: &[&str]) -> Output {
         String::from_utf8_lossy(&result.stderr)
     );
     result
+}
+
+#[test]
+fn native_buffer_word_writes_preserve_unaligned_values_and_zero_gaps() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("word_writes.fe");
+    fs::write(
+        &source,
+        r#"
+use core::abi::ByteInput
+use core::ptr::MemBuffer
+
+pub fn main() -> i32 {
+    var buffer = MemBuffer::with_capacity(100)
+    buffer.write_word(offset: 4, value: 0x1234)
+    buffer.write_word(offset: 68, value: 0x5678)
+    assert!(buffer.len() == 100)
+    assert!(buffer.span().word_at(4) == 0x1234)
+    assert!(buffer.span().word_at(36) == 0)
+    assert!(buffer.span().word_at(68) == 0x5678)
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let result = Command::new(out.join("word_writes")).output().unwrap();
+        assert!(result.status.success(), "{result:?}");
+    }
+}
+
+#[test]
+fn native_long_string_literals_hold_their_bytes() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("long_strings.fe");
+    fs::write(
+        &source,
+        r#"
+fn check(_ text: std::abi::DynString) {
+    assert!(text.len() == 65)
+    assert!(text.byte_at(0) == 0x61 && text.byte_at(31) == 0x35)
+    assert!(text.byte_at(32) == 0x36 && text.byte_at(63) == 0x2d && text.byte_at(64) == 0x21)
+}
+
+pub fn main() -> i32 {
+    check("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-!")
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let result = Command::new(out.join("long_strings")).output().unwrap();
+        assert!(result.status.success(), "{result:?}");
+    }
+}
+
+#[test]
+fn native_const_generic_packed_writer_uses_runtime_inputs() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/fe_test/const_generic_packed_writer.fe");
+    let temp = tempdir().unwrap();
+    for level in ["1", "2"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let executable = out.join("const_generic_packed_writer");
+        for args in [&[][..], &["runtime"][..]] {
+            let result = Command::new(&executable).args(args).output().unwrap();
+            assert!(result.status.success(), "{result:?}");
+        }
+    }
 }
 
 #[test]
@@ -276,12 +351,12 @@ fn fail_assertion() { core::assert(false) }
                 .to_string_lossy()
                 .starts_with("fe-native-test-")
         }));
-        let ir = fs::read_to_string(temp.path().join("out/cases.native-0.test.sona")).unwrap();
+        let ir = fs::read_to_string(temp.path().join("out/cases.native.test.sona")).unwrap();
         assert!(
             !ir.contains("fail_assertion"),
             "filtered test must not be compiled"
         );
-        assert!(temp.path().join("out/cases.native-0.test.rmir").exists());
+        assert!(temp.path().join("out/cases.native.test.rmir").exists());
         let listing = Command::new("tar")
             .arg("-tzf")
             .arg(&report)
@@ -314,7 +389,7 @@ fn spin() { while true {} }
 #[test]
 fn noisy() {
     with (Write = host()) {
-        let mut i: u32 = 0
+        var i: u32 = 0
         while i < 2048 {
             write_char(65)
             i += 1
@@ -402,41 +477,40 @@ fn native_runner_rejects_evm_attributes_and_trace_options() {
 }
 
 #[test]
-fn native_reference_fields_and_slots_preserve_referent_identity() {
+fn native_effect_places_and_projection_grants_preserve_referent_identity() {
     let temp = tempdir().unwrap();
-    let source = temp.path().join("reference_identity.fe");
+    let source = temp.path().join("referent_identity.fe");
     fs::write(
         &source,
         r#"
-use core::ptr
-struct Handle { value: mut i32, calls: i32 }
+struct Handle { value: i32, calls: i32 }
+struct Pair { first: i32, second: i32 }
+impl Pair {
+    fn pick(mut self, _ first: bool) -> mut i32 {
+        if first { mut self.first } else { mut self.second }
+    }
+}
 fn step() uses (handle: mut Handle) {
     handle.value += 1
     handle.calls += 1
 }
-fn replace(slot: *mut i32, value: mut i32) { *slot = value }
-fn increment(slot: *mut i32) { *slot += 1 }
+fn increment(_ target: mut i32) { target += 1 }
 pub fn main() -> i32 {
-    let mut first: i32 = 20
-    let mut second: i32 = 40
-    let mut handle = Handle { value: mut first, calls: 0 }
+    var handle = Handle { value: 20, calls: 0 }
     with (handle) {
         step()
         step()
     }
     core::assert(handle.calls == 2)
     core::assert(handle.value == 22)
-    let slot = ptr::alloc<mut i32>()
-    *slot = mut first
-    increment(slot)
-    replace(slot, value: mut second)
-    increment(slot)
-    // The heap slot must not retain a reference to a local when main returns.
-    let retained = ptr::alloc<i32>()
-    *retained = 0
-    replace(slot, value: mut *retained)
-    core::assert(first == 23)
-    core::assert(second == 41)
+    var pair = Pair { first: 20, second: 40 }
+    increment(mut pair.pick(true))
+    increment(mut pair.pick(false))
+    increment(mut pair.pick(true))
+    let second = mut pair.pick(false)
+    second += 1
+    core::assert(pair.first == 22)
+    core::assert(pair.second == 42)
     0
 }
 "#,
@@ -446,12 +520,59 @@ pub fn main() -> i32 {
         let out = temp.path().join(format!("out-{level}"));
         build(&source, &out, level, &[]);
         assert!(
-            Command::new(out.join("reference_identity"))
+            Command::new(out.join("referent_identity"))
                 .status()
                 .unwrap()
                 .success(),
-            "reference identity at O{level}"
+            "referent identity at O{level}"
         );
+    }
+}
+
+#[test]
+fn native_code_after_partially_diverging_else_if_chain_runs() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("else_if_chain.fe");
+    fs::write(
+        &source,
+        r#"
+fn after_else_if(_ x: u64) -> u64 {
+    var r: u64 = 0
+    if x == 0 {
+        return 1
+    } else if x == 5 {
+        r = 3
+    } else {
+        return 2
+    }
+    r + 4
+}
+pub fn main() -> i32 {
+    var i: u64 = 0
+    while i < 4 {
+        if i != 1 {
+            i += 1
+            continue
+        } else if i == 1 {
+            i += 0
+        } else {
+            return 100
+        }
+        i += 2
+    }
+    core::assert(i == 4)
+    core::assert(after_else_if(5) == 7)
+    core::assert(after_else_if(6) == 2)
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1", "2"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let status = Command::new(out.join("else_if_chain")).status().unwrap();
+        assert_eq!(status.code(), Some(0), "O{level}: {status:?}");
     }
 }
 
@@ -468,8 +589,8 @@ fn next(_ value: Pair) -> Pair {
     Pair { low: value.low + 1, high: value.high + 3 }
 }
 pub fn main() -> i32 {
-    let mut value = Pair { low: 2, high: 7 }
-    let mut i: u64 = 0
+    var value = Pair { low: 2, high: 7 }
+    var i: u64 = 0
     while i < 17 {
         value = next(value)
         value.low = value.low + 1
@@ -508,9 +629,9 @@ fn native_process_clock_preserves_borrows_and_host_io() {
 use std::io::{HostIo, Read, Write, host}
 use std::native::cpu_clock_ticks
 pub fn main() -> i32 {
-    let mut input = host()
-    let mut output = host()
-    let mut value: i32 = 0
+    var input = host()
+    var output = host()
+    var value: i32 = 0
     let borrowed = mut value
     let start = cpu_clock_ticks()
     borrowed = input.read_char()
@@ -550,7 +671,7 @@ use std::native::Args
 fn __fe_native_main() -> i32 { 42 }
 pub fn main(argc: i32, argv: **u8) -> i32 {
     if argc == 0 { return __fe_native_main() }
-    let args = Args::new(argc, argv)
+    let args = unsafe { Args::new(argc, argv) }
     core::assert(args.len() == argc.downcast_unchecked())
     if argc == 1 { args.get(args.len()) }
     if argc == 2 {
@@ -559,10 +680,10 @@ pub fn main(argc: i32, argv: **u8) -> i32 {
     }
     core::assert(main(argc: 0, argv) == 42)
     with (Write = host()) {
-        let mut i: usize = 1
+        var i: usize = 1
         while i < args.len() {
             let arg = args.get(i)
-            let mut j: usize = 0
+            var j: usize = 0
             while j < arg.len() {
                 write_char(arg.byte_at(j) as i32)
                 j += 1
@@ -607,8 +728,8 @@ fn native_modular_arithmetic_matches_full_precision_runtime_inputs() {
 use std::io::{HostIo, Read, Write, host, read_char}
 use std::evm::crypto::{addmod, mulmod}
 fn read_word() -> u256 uses (input: mut Read) {
-    let mut value: u256 = 0
-    let mut i: u256 = 0
+    var value: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         let byte = read_char()
         core::assert(byte >= 0)
@@ -619,7 +740,7 @@ fn read_word() -> u256 uses (input: mut Read) {
     value
 }
 fn write_word(_ value: u256) uses (output: mut HostIo) {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         output.write_char(c: ((value >> (i * 8)) & 255).downcast_unchecked())
         core::assert(!output.failed())
@@ -628,7 +749,7 @@ fn write_word(_ value: u256) uses (output: mut HostIo) {
 }
 pub fn main() -> i32 {
     with (Read = host(), HostIo = host()) {
-        let mut marker = read_char()
+        var marker = read_char()
         while marker != -1 {
             core::assert(marker == 64)
             let lhs = read_word()
@@ -730,8 +851,8 @@ fn native_bit_counts_match_runtime_inputs() {
 use std::io::{HostIo, Read, Write, host, read_char}
 use core::num::{leading_zeros, trailing_zeros}
 fn read_word() -> u256 uses (input: mut Read) {
-    let mut value: u256 = 0
-    let mut i: u256 = 0
+    var value: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         let byte = read_char()
         core::assert(byte >= 0)
@@ -742,7 +863,7 @@ fn read_word() -> u256 uses (input: mut Read) {
     value
 }
 fn write_word(_ value: u256) uses (output: mut HostIo) {
-    let mut i: u256 = 0
+    var i: u256 = 0
     while i < 32 {
         output.write_char(c: ((value >> (i * 8)) & 255).downcast_unchecked())
         core::assert(!output.failed())
@@ -751,7 +872,7 @@ fn write_word(_ value: u256) uses (output: mut HostIo) {
 }
 pub fn main() -> i32 {
     with (Read = host(), HostIo = host()) {
-        let mut marker = read_char()
+        var marker = read_char()
         while marker != -1 {
             core::assert(marker == 64)
             let value = read_word()
@@ -873,7 +994,7 @@ fn native_memory_copy_checks_native_ranges_and_ignores_empty_addresses() {
             false,
         ),
     ] {
-        fs::write(&source, format!("use core::ptr\npub fn main() -> i32 {{\nlet data = ptr::alloc_bytes(8)\n*data = 42\n{operation}\ncore::assert(*data == 42)\n0\n}}\n")).unwrap();
+        fs::write(&source, format!("use core::ptr\npub fn main() -> i32 {{\nlet data = ptr::alloc_bytes(8)\nunsafe {{ *data = 42 }}\nunsafe {{ {operation} }}\nunsafe {{ core::assert(*data == 42) }}\n0\n}}\n")).unwrap();
         for level in ["0", "1", "2"] {
             let out = temp.path().join(format!("{name}-{level}"));
             build(&source, &out, level, &[]);
@@ -914,7 +1035,7 @@ fn or_zero(_ value: Option<u64>) -> u64 {
     }
 }
 pub fn main() -> i32 {
-    let mut slot = Slot { value: Option::Some(40) }
+    var slot = Slot { value: Option::Some(40) }
     let before = slot.value()
     slot.value = Option::None
     let total = or_zero(before) + or_zero(slot.value()) + 2
@@ -932,6 +1053,52 @@ pub fn main() -> i32 {
 }
 
 #[test]
+fn native_byte_buffer_copies_ranges_between_buffers() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("byte_buffer_copy.fe");
+    fs::write(
+        &source,
+        r#"
+use std::native::ByteBuffer
+pub fn main() -> i32 {
+    var from = ByteBuffer::new()
+    var into = ByteBuffer::new()
+    from.copy_from(dest: 0, source: into, offset: 0, len: 0)
+    core::assert(from.try_resize(100) && into.try_resize(70))
+    var i: u64 = 0
+    while i < 100 {
+        from.set_byte(index: i, value: (i + 1).downcast_truncate())
+        i += 1
+    }
+    into.copy_from(dest: 3, source: from, offset: 40, len: 60)
+    into.copy_from(dest: 70, source: from, offset: 100, len: 0)
+    i = 0
+    while i < 70 {
+        let expected: u8 = if i >= 3 && i < 63 { (i + 38).downcast_truncate() } else { 0 }
+        core::assert(into.byte_at(i) == expected)
+        i += 1
+    }
+    i = 0
+    while i < 100 {
+        core::assert(from.byte_at(i) == (i + 1).downcast_truncate())
+        i += 1
+    }
+    from.release()
+    into.release()
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let result = Command::new(out.join("byte_buffer_copy")).output().unwrap();
+        assert!(result.status.success(), "O{level}: {result:?}");
+    }
+}
+
+#[test]
 fn native_byte_buffer_preserves_contents_and_reuses_zeroed_storage() {
     let temp = tempdir().unwrap();
     let source = temp.path().join("byte_buffer.fe");
@@ -941,15 +1108,15 @@ fn native_byte_buffer_preserves_contents_and_reuses_zeroed_storage() {
 use std::native::ByteBuffer
 fn consume(buffer: own ByteBuffer) { buffer.release() }
 pub fn main() -> i32 {
-    let mut empty = ByteBuffer::new()
+    var empty = ByteBuffer::new()
     core::assert(empty.len() == 0 && empty.capacity() == 0)
     empty.copy_within(dest: 0, source: 0, len: 0)
     empty.release()
-    let mut round: u64 = 0
+    var round: u64 = 0
     while round < 8 {
-        let mut buffer = ByteBuffer::new()
+        var buffer = ByteBuffer::new()
         core::assert(buffer.try_resize(33))
-        let mut i: u64 = 0
+        var i: u64 = 0
         while i < 33 {
             core::assert(buffer.byte_at(i) == 0)
             buffer.set_byte(index: i, value: (i + 1).downcast_truncate())
@@ -1020,14 +1187,14 @@ fn native_byte_buffer_allocation_failure_is_atomic_and_storage_is_released() {
         r#"
 use std::native::ByteBuffer
 pub fn main() -> i32 {
-    let mut empty = ByteBuffer::new()
+    var empty = ByteBuffer::new()
     core::assert(!empty.try_resize(3000))
     core::assert(empty.len() == 0 && empty.capacity() == 0)
     empty.release()
-    let mut buffer = ByteBuffer::new()
+    var buffer = ByteBuffer::new()
     core::assert(buffer.try_resize(513))
     core::assert(buffer.capacity() == 1024)
-    let mut i: u64 = 0
+    var i: u64 = 0
     while i < 513 {
         core::assert(buffer.byte_at(i) == 0)
         buffer.set_byte(index: i, value: (i % 251).downcast_truncate())
@@ -1054,34 +1221,7 @@ pub fn main() -> i32 {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native/byte_buffer_allocator.c");
     for level in ["0", "1", "2"] {
         let out = temp.path().join(format!("out-{level}"));
-        let report = temp.path().join(format!("report-{level}.tar.gz"));
-        build(
-            &source,
-            &out,
-            level,
-            &["--report", "--report-out", report.to_str().unwrap()],
-        );
-        let listing = Command::new("tar")
-            .arg("-tzf")
-            .arg(&report)
-            .output()
-            .unwrap();
-        assert!(listing.status.success(), "{listing:?}");
-        let listing = String::from_utf8(listing.stdout).unwrap();
-        let objects: Vec<_> = listing
-            .lines()
-            .filter(|name| name.ends_with("/allocation_failure.o"))
-            .collect();
-        assert_eq!(objects.len(), 1, "{listing}");
-        let extracted = Command::new("tar")
-            .arg("-xOf")
-            .arg(&report)
-            .arg(objects[0])
-            .output()
-            .unwrap();
-        assert!(extracted.status.success(), "{extracted:?}");
-        let object = out.join("allocation_failure.o");
-        fs::write(&object, extracted.stdout).unwrap();
+        let object = build_native_object(&source, &out, level);
         let executable = out.join("controlled_allocator");
         let linked = Command::new("cc")
             .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-fno-builtin"])
@@ -1119,7 +1259,7 @@ fn forward(_ buffer: mut ByteBuffer, _ value: mut u256) {
 }
 fn run(_ frame: mut Frame) { forward(mut frame.data, mut frame.value) }
 pub fn main() -> i32 {
-    let mut frame = Frame { data: ByteBuffer::new(), value: 20 }
+    var frame = Frame { data: ByteBuffer::new(), value: 20 }
     run(mut frame)
     core::assert(frame.value == 42 && frame.data.byte_at(32) == 21)
     run(mut frame)
@@ -1158,7 +1298,7 @@ impl Frame {
         core::assert(self.data.bytes.try_resize(32))
         core::assert(state.data.bytes.try_resize(32))
         self.data.bytes.set_byte(index: 0, value: 2)
-        let mut i: u64 = 0
+        var i: u64 = 0
         while i < 32 {
             state.data.bytes.set_byte(index: i, value: 3)
             i += 1
@@ -1168,17 +1308,17 @@ impl Frame {
     fn release(own self) { self.data.bytes.release() }
 }
 fn execute(state: mut Frame) -> Frame {
-    let mut vm = Frame::new()
-    vm.run(state)
+    var vm = Frame::new()
+    vm.run(mut state)
     vm
 }
 fn finish(state: mut Frame) {
-    let mut vm = Frame::new()
-    vm.run(state)
+    var vm = Frame::new()
+    vm.run(mut state)
     vm.release()
 }
 pub fn main() -> i32 {
-    let mut state = Frame::new()
+    var state = Frame::new()
     let vm = execute(state: mut state)
     core::assert(vm.value == 1 && state.value == 1)
     core::assert(vm.data.bytes.byte_at(0) == 2 && state.data.bytes.byte_at(31) == 3)
@@ -1224,13 +1364,13 @@ fn write_alternating(_ first: mut ByteBuffer, _ second: mut ByteBuffer, depth: u
     }
 }
 pub fn main() -> i32 {
-    let mut buffer = ByteBuffer::new()
+    var buffer = ByteBuffer::new()
     core::assert(buffer.try_resize(32))
     write_at_depth(mut buffer, depth: 0, value: 19)
     core::assert(buffer.byte_at(31) == 19)
     write_at_depth(mut buffer, depth: 32, value: 42)
     core::assert(buffer.byte_at(31) == 42)
-    let mut other = ByteBuffer::new()
+    var other = ByteBuffer::new()
     core::assert(other.try_resize(32))
     other.set_byte(index: 31, value: 7)
     write_alternating(mut buffer, mut other, depth: 32, value: 19)
@@ -1264,7 +1404,7 @@ fn native_recursive_buffer_poststates_converge() {
 use std::native::ByteBuffer
 fn grow(_ buffer: mut ByteBuffer, depth: usize, length: u64, value: u8) {
     if depth == 0 {
-        let mut size: u64 = 1
+        var size: u64 = 1
         while size <= length {
             core::assert(buffer.try_resize(size))
             buffer.set_byte(index: size - 1, value)
@@ -1277,7 +1417,7 @@ fn clear(_ buffer: mut ByteBuffer, depth: usize) {
     else { clear(mut buffer, depth: depth - 1) }
 }
 pub fn main() -> i32 {
-    let mut buffer = ByteBuffer::new()
+    var buffer = ByteBuffer::new()
     grow(mut buffer, depth: 32, length: 32, value: 19)
     core::assert(buffer.len() == 32 && buffer.byte_at(31) == 19)
     clear(mut buffer, depth: 32)
@@ -1335,4 +1475,278 @@ fn native_returned_reference_projections_mutate_the_original_at_o1() {
         .output()
         .unwrap();
     assert!(result.status.success(), "{result:?}");
+}
+
+fn build_native_object(source: &Path, out: &Path, level: &str) -> PathBuf {
+    let stem = source.file_stem().unwrap().to_str().unwrap();
+    let object_name = format!("{stem}.o");
+    let report = out.with_extension("tar.gz");
+    build(
+        source,
+        out,
+        level,
+        &["--report", "--report-out", report.to_str().unwrap()],
+    );
+    let listing = Command::new("tar")
+        .arg("-tzf")
+        .arg(&report)
+        .output()
+        .unwrap();
+    assert!(listing.status.success(), "{listing:?}");
+    let listing = String::from_utf8(listing.stdout).unwrap();
+    let objects: Vec<_> = listing
+        .lines()
+        .filter(|name| name.rsplit('/').next() == Some(object_name.as_str()))
+        .collect();
+    assert_eq!(objects.len(), 1, "{listing}");
+    let extracted = Command::new("tar")
+        .arg("-xOf")
+        .arg(&report)
+        .arg(objects[0])
+        .output()
+        .unwrap();
+    assert!(extracted.status.success(), "{extracted:?}");
+    let object = out.join(object_name);
+    fs::write(&object, extracted.stdout).unwrap();
+    object
+}
+
+#[test]
+fn native_fixed_stack_owns_slots_and_reclaims_allocations() {
+    let temp = tempdir().unwrap();
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native");
+    for level in ["0", "1", "2"] {
+        let out = temp.path().join(format!("out-{level}"));
+        let object = build_native_object(&fixtures.join("fixed_stack.fe"), &out, level);
+        for (stack_failure, buffer_failure, mode) in [
+            (0, 0, "0"),
+            (1, 0, "1"),
+            (0, 1, "2"),
+            (0, 2, "2"),
+            (0, 3, "2"),
+            (0, 4, "2"),
+        ] {
+            let executable = out.join(format!("stack-{stack_failure}-{buffer_failure}"));
+            let linked = Command::new("cc")
+                .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-fno-builtin"])
+                .arg(format!("-DFAIL_STACK={stack_failure}"))
+                .arg(format!("-DFAIL_BUFFER={buffer_failure}"))
+                .arg(&object)
+                .arg(fixtures.join("stack_allocator.c"))
+                .arg("-o")
+                .arg(&executable)
+                .output()
+                .unwrap();
+            assert!(linked.status.success(), "{linked:?}");
+            let result = Command::new(&executable).arg(mode).output().unwrap();
+            assert!(
+                result.status.success(),
+                "O{level} {stack_failure}/{buffer_failure}: {result:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn native_fixed_stack_reserves_its_owner_while_top_is_used() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("stack_access.fe");
+    for operation in [
+        "let value = stack.pop()\ncore::assert(top == value)",
+        "stack.release()\ncore::assert(top == 1)",
+    ] {
+        fs::write(
+            &source,
+            format!(
+                r#"
+use core::Option
+use std::native::FixedStack
+pub fn main() -> i32 {{
+    var stack: FixedStack<u256, 1> = match FixedStack::try_new() {{
+        Option::Some(stack) => stack,
+        Option::None => core::panic(),
+    }}
+    stack.try_push(1).unwrap()
+    let top = mut stack.top()
+    {operation}
+    0
+}}
+"#
+            ),
+        )
+        .unwrap();
+        let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+            .arg("check")
+            .arg(&source)
+            .output()
+            .unwrap();
+        assert!(!result.status.success(), "{operation}: {result:?}");
+        assert!(
+            String::from_utf8_lossy(&result.stderr).contains("access conflict"),
+            "{operation}: {result:?}"
+        );
+    }
+}
+
+#[test]
+fn native_runner_shares_helpers_across_modules_and_keeps_test_identities() {
+    let temp = tempdir().unwrap();
+    let root = temp.path().join("shared_tests");
+    fs::create_dir_all(root.join("src")).unwrap();
+    let root = root.as_path();
+    fs::write(
+        root.join("fe.toml"),
+        "[ingot]\nname = \"shared_tests\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/lib.fe"),
+        "pub fn shared_answer() -> u256 { 42 }\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/alpha.fe"),
+        r#"
+use ingot::shared_answer
+extern {
+    fn abs(_ value: i32) -> i32
+}
+#[test]
+fn same_name() { core::assert(shared_answer() == 42) }
+#[test]
+fn keep_alpha() {
+    core::assert(shared_answer() == 42)
+    core::assert(abs(-42) == 42)
+}
+"#,
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/beta.fe"),
+        r#"
+use ingot::shared_answer
+extern {
+    fn abs(_ value: i32) -> i32
+}
+#[test]
+fn same_name() { core::assert(shared_answer() == 0) }
+#[test]
+fn keep_beta() {
+    core::assert(shared_answer() == 42)
+    core::assert(abs(-7) == 7)
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+            .args(["test", "--backend", "native", "--jobs", "2", "-O", level])
+            .arg(root)
+            .output()
+            .unwrap();
+        assert!(!result.status.success(), "{result:?}");
+        assert!(
+            String::from_utf8_lossy(&result.stdout).contains("3 passed; 1 failed"),
+            "{result:?}"
+        );
+
+        let report = root.join(format!("report-{level}.tar.gz"));
+        let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+            .args([
+                "test",
+                "--backend",
+                "native",
+                "--grouped",
+                "--filter",
+                "keep_",
+                "--emit",
+                "ir,rmir",
+                "--report",
+                "--report-out",
+            ])
+            .arg(&report)
+            .args(["-O", level])
+            .arg(root)
+            .output()
+            .unwrap();
+        assert!(result.status.success(), "{result:?}");
+        assert!(
+            String::from_utf8_lossy(&result.stdout).contains("2 passed; 0 failed"),
+            "{result:?}"
+        );
+        let rmir = fs::read_to_string(root.join("out/shared_tests.native.test.rmir")).unwrap();
+        assert_eq!(
+            rmir.lines()
+                .filter(|line| line.contains("inline=")
+                    && line.contains("owner=")
+                    && line.contains("shared_answer"))
+                .count(),
+            1,
+            "{rmir}"
+        );
+        let ir = fs::read_to_string(root.join("out/shared_tests.native.test.sona")).unwrap();
+        assert_eq!(
+            ir.lines()
+                .filter(|line| line.starts_with("declare external %abs("))
+                .count(),
+            1,
+            "{ir}"
+        );
+        assert!(
+            !ir.contains("same_name"),
+            "filtered tests must not enter the shared graph"
+        );
+        let listing = Command::new("tar")
+            .arg("-tzf")
+            .arg(report)
+            .output()
+            .unwrap();
+        assert!(listing.status.success(), "{listing:?}");
+        let listing = String::from_utf8_lossy(&listing.stdout);
+        assert_eq!(
+            listing
+                .lines()
+                .filter(|line| line.ends_with("/tests.o"))
+                .count(),
+            1,
+            "{listing}"
+        );
+        assert_eq!(
+            listing
+                .lines()
+                .filter(|line| line.ends_with("/status.txt"))
+                .count(),
+            2,
+            "{listing}"
+        );
+    }
+
+    let report = root.join("report-no-matches.tar.gz");
+    let result = Command::new(env!("CARGO_BIN_EXE_fe"))
+        .args([
+            "test",
+            "--backend",
+            "native",
+            "--filter",
+            "missing_test",
+            "--report",
+            "--report-out",
+        ])
+        .arg(&report)
+        .arg(root)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{result:?}");
+    let listing = Command::new("tar")
+        .arg("-tzf")
+        .arg(report)
+        .output()
+        .unwrap();
+    assert!(listing.status.success(), "{listing:?}");
+    assert!(
+        !String::from_utf8_lossy(&listing.stdout)
+            .lines()
+            .any(|line| line.ends_with("/tests.o")),
+        "no selected tests must not create a native object"
+    );
 }

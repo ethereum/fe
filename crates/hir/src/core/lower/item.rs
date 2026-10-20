@@ -1,3 +1,4 @@
+use common::ingot::IngotKind;
 use parser::ast::{self, WhereClauseOwner as _, prelude::*};
 use salsa::Accumulator as _;
 
@@ -7,9 +8,9 @@ use super::{
 };
 use crate::{
     hir_def::{
-        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId,
-        GenericParamListId, IdentId, TraitRefId, TupleTypeId, TypeBound, TypeId, WhereClauseId,
-        item::*,
+        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId, GenericArg,
+        GenericArgListId, GenericParamListId, IdentId, ModeMarker, Partial, PathId, TraitRefId,
+        TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
     },
     lower::msg::lower_msg_as_mod,
     span::HirOrigin,
@@ -104,18 +105,27 @@ const UNROLL_FORM: AttrForm = AttrForm::SingleArg {
     allowed_args: &["never"],
 };
 const BARE_FORM: AttrForm = AttrForm::Bare;
+const POINTER_FORM: AttrForm = AttrForm::SingleArg {
+    allow_bare: false,
+    allowed_args: &["storage", "transient", "calldata"],
+};
 
 const ARITHMETIC_EXPECTED: &str = "`#[arithmetic(checked)]` or `#[arithmetic(unchecked)]`";
 const INLINE_EXPECTED: &str = "`#[inline]`, `#[inline(always)]`, or `#[inline(never)]`";
 const MUST_USE_EXPECTED: &str = "`#[must_use]`";
+const POINTER_EXPECTED: &str =
+    "`#[pointer(storage)]`, `#[pointer(transient)]`, or `#[pointer(calldata)]`";
 
 const ARITHMETIC_TARGETS: &str = "functions and modules";
 const EVENT_TARGETS: &str = "structs";
 const ERROR_TARGETS: &str = "structs";
 const ABI_TARGETS: &str = "structs";
 const MUST_USE_TARGETS: &str = "functions, structs, and enums";
+const VIEW_TARGETS: &str = "structs and enums";
+const RAW_PLACE_TARGETS: &str = "functions";
 const PAYABLE_TARGETS: &str = "init blocks and recv arms";
 const INDEXED_TARGETS: &str = "event fields";
+const POINTER_TARGETS: &str = "type aliases in `core`";
 
 fn target(kind: &'static str, name: Option<String>) -> AttrTarget {
     AttrTarget::new(kind, name)
@@ -136,6 +146,7 @@ fn validate_mod_attrs<'db>(
             AttrRule::unsupported("error", ERROR_TARGETS),
             AttrRule::unsupported("abi", ABI_TARGETS),
             AttrRule::unsupported("must_use", MUST_USE_TARGETS),
+            AttrRule::unsupported("raw_place", RAW_PLACE_TARGETS),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );
@@ -178,6 +189,8 @@ fn validate_func_attrs<'db>(
             arithmetic,
             AttrRule::supported("inline", INLINE_FORM, INLINE_EXPECTED),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
+            AttrRule::supported("raw_place", BARE_FORM, "`#[raw_place]`"),
+            AttrRule::unsupported("view", VIEW_TARGETS),
             AttrRule::unsupported("event", EVENT_TARGETS),
             AttrRule::unsupported("error", ERROR_TARGETS),
             AttrRule::unsupported("abi", ABI_TARGETS),
@@ -201,6 +214,8 @@ fn validate_struct_attrs<'db>(
             AttrRule::supported("error", BARE_FORM, "`#[error]`"),
             AttrRule::supported("abi", BARE_FORM, "`#[abi]`"),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
+            AttrRule::supported("view", BARE_FORM, "`#[view]`"),
+            AttrRule::unsupported("raw_place", RAW_PLACE_TARGETS),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );
@@ -221,6 +236,37 @@ fn validate_enum_attrs<'db>(
             AttrRule::unsupported("error", ERROR_TARGETS),
             AttrRule::unsupported("abi", ABI_TARGETS),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
+            AttrRule::supported("view", BARE_FORM, "`#[view]`"),
+            AttrRule::unsupported("raw_place", RAW_PLACE_TARGETS),
+            AttrRule::unsupported("payable", PAYABLE_TARGETS),
+        ],
+    );
+}
+
+/// `#[pointer(space)]` names core's built-in pointer into `space`.
+fn validate_type_alias_attrs<'db>(
+    ctxt: &mut FileLowerCtxt<'db>,
+    attrs: Option<ast::AttrList>,
+    name: Option<String>,
+) {
+    let db = ctxt.db();
+    let pointer = if ctxt.top_mod().ingot(db).kind(db) == IngotKind::Core {
+        AttrRule::supported("pointer", POINTER_FORM, POINTER_EXPECTED)
+    } else {
+        AttrRule::unsupported("pointer", POINTER_TARGETS)
+    };
+    validate_attr_rules(
+        ctxt,
+        attrs,
+        target("type alias", name),
+        &[
+            pointer,
+            AttrRule::unsupported("arithmetic", ARITHMETIC_TARGETS),
+            AttrRule::unsupported("event", EVENT_TARGETS),
+            AttrRule::unsupported("error", ERROR_TARGETS),
+            AttrRule::unsupported("abi", ABI_TARGETS),
+            AttrRule::unsupported("must_use", MUST_USE_TARGETS),
+            AttrRule::unsupported("raw_place", RAW_PLACE_TARGETS),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );
@@ -242,6 +288,7 @@ fn validate_unsupported_item_attrs<'db>(
             AttrRule::unsupported("error", ERROR_TARGETS),
             AttrRule::unsupported("abi", ABI_TARGETS),
             AttrRule::unsupported("must_use", MUST_USE_TARGETS),
+            AttrRule::unsupported("raw_place", RAW_PLACE_TARGETS),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );
@@ -369,10 +416,9 @@ impl<'db> ItemKind<'db> {
                 lower_msg_as_mod(ctxt, msg);
             }
             ast::ItemKind::TypeAlias(alias) => {
-                validate_unsupported_item_attrs(
+                validate_type_alias_attrs(
                     ctxt,
                     alias.attr_list(),
-                    "type alias",
                     alias.alias().map(|name| name.text().to_string()),
                 );
                 TypeAlias::lower_ast(ctxt, alias);
@@ -515,6 +561,23 @@ impl<'db> Func<'db> {
 
 impl<'db> Struct<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Struct) -> Self {
+        let is_tuple = ast.fields().is_some_and(|fields| fields.is_tuple());
+        if is_tuple {
+            // Event, error and ABI structs derive their code from named fields.
+            let name = ast.name().map(|name| name.text().to_string());
+            for attr in ["event", "error", "abi"] {
+                report_unsupported_attr(
+                    ctxt,
+                    ast.attr_list(),
+                    attr,
+                    target("tuple struct", name.clone()),
+                    "record structs",
+                );
+            }
+            report_indexed_attrs_outside_event_struct(ctxt, &ast);
+            return Self::lower_plain(ctxt, ast, true);
+        }
+
         let is_event_struct = super::event::is_event_struct(&ast);
         let is_error_struct = super::error::is_error_struct(&ast);
         let is_abi_struct = super::abi_struct::is_abi_struct(&ast);
@@ -538,6 +601,10 @@ impl<'db> Struct<'db> {
             return super::abi_struct::lower_abi_struct(ctxt, ast);
         }
 
+        Self::lower_plain(ctxt, ast, false)
+    }
+
+    fn lower_plain(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Struct, is_tuple: bool) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemVariant::Struct(name));
         ctxt.enter_item_scope(id, false);
@@ -558,6 +625,7 @@ impl<'db> Struct<'db> {
             generic_params,
             where_clause,
             fields,
+            is_tuple,
             ctxt.top_mod(),
             origin,
         );
@@ -569,35 +637,52 @@ pub(super) fn lower_uses_clause_opt<'db>(
     ctxt: &mut FileLowerCtxt<'db>,
     uses: Option<ast::UsesClause>,
 ) -> EffectParamListId<'db> {
-    use crate::hir_def::{EffectParam, EffectParamListId};
+    let (list, param) = uses.map_or((None, None), |uses| (uses.param_list(), uses.param()));
+    lower_uses_params(ctxt, list, param)
+}
 
-    let mut data: Vec<EffectParam<'db>> = Vec::new();
+/// Lowers the effects of a `uses` clause or row: a list or a single entry.
+fn lower_uses_params<'db>(
+    ctxt: &mut FileLowerCtxt<'db>,
+    list: Option<ast::UsesParamList>,
+    param: Option<ast::UsesParam>,
+) -> EffectParamListId<'db> {
+    use crate::hir_def::EffectParam;
 
-    if let Some(uses) = uses {
-        if let Some(list) = uses.param_list() {
-            for p in list {
-                let name = p.name().map(|n| IdentId::lower_token(ctxt, n.syntax()));
-                let is_mut = p.mut_token().is_some();
-                let key_ty = TypeId::lower_ast_partial(ctxt, p.ty());
-                data.push(EffectParam {
-                    name,
-                    key_ty,
-                    is_mut,
-                });
-            }
-        } else if let Some(p) = uses.param() {
-            let name = p.name().map(|n| IdentId::lower_token(ctxt, n.syntax()));
-            let is_mut = p.mut_token().is_some();
-            let key_ty = TypeId::lower_ast_partial(ctxt, p.ty());
-            data.push(EffectParam {
-                name,
-                key_ty,
-                is_mut,
-            });
+    let data: Vec<_> = list
+        .into_iter()
+        .flatten()
+        .chain(param)
+        .map(|p| EffectParam {
+            name: p.name().map(|n| IdentId::lower_token(ctxt, n.syntax())),
+            key_ty: TypeId::lower_ast_partial(ctxt, p.ty()),
+            mode: if p.mut_token().is_some() {
+                ModeMarker::Mut
+            } else if p.maybe_mut_token().is_some() {
+                ModeMarker::MaybeMut
+            } else {
+                ModeMarker::None
+            },
+        })
+        .collect();
+    EffectParamListId::new(ctxt.db(), data)
+}
+
+impl<'db> AssocRow<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitUsesItem) -> Self {
+        validate_unsupported_item_attrs(
+            ctxt,
+            ast.attr_list(),
+            "uses",
+            ast.name().map(|name| name.text().to_string()),
+        );
+        AssocRow {
+            name: IdentId::lower_token_partial(ctxt, ast.name()),
+            effects: ast
+                .eq()
+                .map(|_| lower_uses_params(ctxt, ast.param_list(), ast.param())),
         }
     }
-
-    EffectParamListId::new(ctxt.db(), data)
 }
 
 impl<'db> Enum<'db> {
@@ -733,6 +818,7 @@ impl<'db> Trait<'db> {
 
         let mut types = vec![];
         let mut consts = vec![];
+        let mut rows = vec![];
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
@@ -765,6 +851,7 @@ impl<'db> Trait<'db> {
                         );
                         consts.push(AssocConstDecl::lower_ast(ctxt, c));
                     }
+                    ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
                 };
             }
         }
@@ -774,12 +861,16 @@ impl<'db> Trait<'db> {
             id,
             name,
             attributes,
-            vis,
+            TraitModifiers {
+                vis,
+                is_unsafe: ast.unsafe_kw().is_some(),
+            },
             generic_params,
             super_traits,
             where_clause,
             types,
             consts,
+            rows,
             ctxt.top_mod(),
             origin,
         );
@@ -823,12 +914,46 @@ impl<'db> ImplTrait<'db> {
         // Lower generic params first so they are in scope for trait-ref/type and where-clause lowering.
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
-        let trait_ref = TraitRefId::lower_ast_partial(ctxt, ast.trait_ref());
+        let mut trait_ref = TraitRefId::lower_ast_partial(ctxt, ast.trait_ref());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let origin = HirOrigin::raw(&ast);
 
+        // The `-> R` of a callable shape, `impl FnMut(u256) -> u256 for F`,
+        // is the implementation's `type Out = R`, not a binding of the trait.
+        let mut shape_types = vec![];
+        if ast
+            .trait_ref()
+            .is_some_and(|trait_ref| trait_ref.fn_shape().is_some())
+            && let Partial::Present(lowered) = trait_ref
+            && let Partial::Present(path) = lowered.path(ctxt.db())
+            && let Partial::Present(ident) = path.ident(ctxt.db())
+        {
+            let db = ctxt.db();
+            let (outs, args): (Vec<_>, Vec<_>) = path
+                .generic_args(db)
+                .data(db)
+                .iter()
+                .cloned()
+                .partition(|arg| matches!(arg, GenericArg::AssocType(_)));
+            shape_types.extend(outs.into_iter().filter_map(|out| match out {
+                GenericArg::AssocType(binding) => Some(AssocTyDef {
+                    attributes: AttrListId::new(db, Vec::new()),
+                    name: binding.name,
+                    type_ref: binding.ty,
+                }),
+                _ => None,
+            }));
+            let args = GenericArgListId::new(db, args, true);
+            let path = match path.parent(db) {
+                Some(parent) => parent.push_ident_args(db, ident, args),
+                None => PathId::from_ident(db, ident),
+            };
+            trait_ref = Partial::Present(TraitRefId::new(db, Partial::Present(path)));
+        }
+
         let mut types = vec![];
         let mut consts = vec![];
+        let mut rows = vec![];
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
                 match impl_item.kind() {
@@ -860,10 +985,15 @@ impl<'db> ImplTrait<'db> {
                         );
                         consts.push(AssocConstDef::lower_ast(ctxt, c));
                     }
+                    ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
                 };
             }
         }
 
+        shape_types.retain(|shape_type: &AssocTyDef| {
+            !types.iter().any(|defined| defined.name == shape_type.name)
+        });
+        types.extend(shape_types);
         let impl_trait = Self::new(
             ctxt.db(),
             id,
@@ -874,6 +1004,8 @@ impl<'db> ImplTrait<'db> {
             where_clause,
             types,
             consts,
+            rows,
+            ast.unsafe_kw().is_some(),
             ctxt.top_mod(),
             origin,
         );
@@ -1028,9 +1160,19 @@ impl<'db> FieldDefListId<'db> {
         ast: ast::RecordFieldDefList,
         field_kind: &'static str,
     ) -> Self {
+        let is_tuple = ast.is_tuple();
         let fields = ast
             .into_iter()
-            .map(|field| FieldDef::lower_ast_with_context(ctxt, field, field_kind))
+            .enumerate()
+            .map(|(idx, field)| {
+                let mut field = FieldDef::lower_ast_with_context(ctxt, field, field_kind);
+                if is_tuple {
+                    // Tuple fields are named by their position, which is what
+                    // `s.0` resolves against.
+                    field.name = Partial::Present(IdentId::new(ctxt.db(), idx.to_string()));
+                }
+                field
+            })
             .collect::<Vec<_>>();
         Self::new(ctxt.db(), fields)
     }
@@ -1053,13 +1195,23 @@ impl<'db> FieldDef<'db> {
         field_kind: &'static str,
     ) -> Self {
         report_payable_on_unsupported_target(ctxt, ast.attr_list(), "field", None);
+        report_unsupported_attr(
+            ctxt,
+            ast.attr_list(),
+            "slot",
+            target(field_kind, None),
+            super::contract::SLOT_TARGETS,
+        );
         report_unsupported_field_mut(ctxt, &ast, field_kind);
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let type_ref = TypeId::lower_ast_partial(ctxt, ast.ty());
         let vis = super::lower_field_visibility(&ast);
 
-        Self::new(attributes, name, type_ref, vis, false, false)
+        Self {
+            is_unsafe: ast.unsafe_kw().is_some(),
+            ..Self::new(attributes, name, type_ref, vis, false, false)
+        }
     }
 }
 

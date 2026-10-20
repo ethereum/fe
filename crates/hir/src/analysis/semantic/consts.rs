@@ -222,7 +222,6 @@ fn verify_sem_const_children<'db>(
         if !expected_ty.has_param(db)
             && !expected_ty.has_var(db)
             && !expected_ty.has_projection(db)
-            && !expected_ty.has_hole(db)
             && actual_ty != expected_ty
             && const_identity_ty(db, actual_ty) != const_identity_ty(db, expected_ty)
         {
@@ -308,7 +307,8 @@ fn verify_sem_const_shape_impl<'db>(
             if ty.is_func(db) && fields.is_empty() {
                 return Ok(());
             }
-            if !ty.is_struct(db) {
+            // A closure's value is the record of its captures.
+            if !ty.is_struct(db) && ty.as_closure(db).is_none() {
                 return Err("constant record payload has a non-record type");
             }
             verify_sem_const_children(db, fields, ty.field_types(db).into_iter(), allow_dependent)
@@ -561,24 +561,6 @@ pub(crate) fn instantiate_const_template<'db>(
     *const_ty
 }
 
-/// The synthetic contract entry has no semantic instance to reify against.
-/// Its static layout root is already closed and must become a concrete scalar
-/// before MIR scalar lowering; formal runtime evidence uses a separate path.
-pub fn prepare_static_layout_root_value<'db>(
-    db: &'db dyn HirAnalysisDb,
-    root: TyId<'db>,
-    scalar_ty: TyId<'db>,
-) -> Option<SemConstId<'db>> {
-    let TyData::ConstTy(term) = root.data(db) else {
-        return None;
-    };
-    let evaluated = evaluate_type_level_const_ty(db, *term, Some(scalar_ty));
-    let value = sem_const_from_ty(db, TyId::const_ty(db, evaluated))?;
-    (sem_const_ty(db, value) == scalar_ty
-        && matches!(value.value(db), SemConstValue::Scalar { .. }))
-    .then_some(value)
-}
-
 pub fn sem_const_from_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: TyId<'db>,
@@ -593,7 +575,6 @@ pub fn sem_const_from_ty<'db>(
         ConstTyData::Invalid(_) => None,
         ConstTyData::TyVar(..)
         | ConstTyData::TyParam(..)
-        | ConstTyData::Hole(..)
         | ConstTyData::Abstract(..)
         | ConstTyData::Computation { .. }
         | ConstTyData::UnEvaluated { ty: Some(..), .. } => {
@@ -710,7 +691,7 @@ fn reify_runtime_const_impl<'db>(
             if ty.is_func(db) && fields.is_empty() {
                 return Some(struct_const(db, ty, Box::new([])));
             }
-            if !ty.is_struct(db) {
+            if !ty.is_struct(db) && ty.as_closure(db).is_none() {
                 return None;
             }
             let field_tys = ty.field_types(db);
@@ -938,7 +919,7 @@ pub fn int_ty_shape<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<(u
         | PrimTy::String
         | PrimTy::Array
         | PrimTy::Tuple(_)
-        | PrimTy::Ptr
+        | PrimTy::Ptr(_)
         | PrimTy::View
         | PrimTy::BorrowMut
         | PrimTy::BorrowRef => return None,
@@ -1053,7 +1034,7 @@ pub(crate) fn runtime_size_bytes_with_source<'db>(
             Some(0)
         } else if ty.has_param(db) {
             None
-        } else if ty.is_tuple(db) {
+        } else if ty.is_tuple(db) || ty.as_closure(db).is_some() {
             let canonical_fields = ty.field_types(db);
             let source_fields = source.field_types(db);
             if canonical_fields.len() != source_fields.len() {
@@ -1091,7 +1072,7 @@ pub(crate) fn runtime_size_bytes_with_source<'db>(
             match prim {
                 PrimTy::Bool => Some(1),
                 PrimTy::String
-                | PrimTy::Ptr
+                | PrimTy::Ptr(_)
                 | PrimTy::View
                 | PrimTy::BorrowMut
                 | PrimTy::BorrowRef => Some(WORD_SIZE_BYTES),
@@ -1141,4 +1122,93 @@ pub(crate) fn runtime_size_bytes_with_source<'db>(
         return Err(RuntimeSizeError::UnavailableConcrete);
     }
     Ok(size)
+}
+
+/// The first evaluation fault in the layout of `ty`: in the type itself, in
+/// an array extent, or in a field instantiated for its application, walked as
+/// capability shapes walk it, with each part normalized by `normalize`.
+/// Unlike [`runtime_size_bytes`], it looks past generic components and
+/// sizes, so a known fault is found however the rest of the layout turns out.
+pub(crate) fn concrete_layout_fault<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    normalize: &dyn Fn(TyId<'db>) -> TyId<'db>,
+) -> Option<InvalidCause<'db>> {
+    // The walk stops at the first fault, so a view seen before is either on
+    // the current path or free of faults.
+    fn inner<'db>(
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+        source: TyId<'db>,
+        normalize: &dyn Fn(TyId<'db>) -> TyId<'db>,
+        seen: &mut FxHashSet<(TyId<'db>, TyId<'db>)>,
+    ) -> Option<InvalidCause<'db>> {
+        // An instantiated field may still be a projection. The source view
+        // keeps its anonymous const bodies for checked evaluation, so only a
+        // projection is resolved there.
+        let ty = normalize(ty);
+        let source = if source.has_projection(db) {
+            normalize(source)
+        } else {
+            source
+        };
+        if let Some(cause) = ty.invalid_cause(db) {
+            return Some(cause);
+        }
+        if ty.has_invalid(db) {
+            return Some(first_invalid_ty_cause(db, ty).unwrap_or(InvalidCause::Other));
+        }
+        if ty.has_var(db) || !seen.insert((ty, source)) {
+            return None;
+        }
+        let parts = if let Some(target) = ty.as_view(db) {
+            vec![ConcreteTypeView::new(
+                target,
+                source.as_view(db).unwrap_or(target),
+            )]
+        } else if ty.is_tuple(db) {
+            let source_fields = source.field_types(db);
+            ty.field_types(db)
+                .into_iter()
+                .enumerate()
+                .map(|(index, field)| {
+                    ConcreteTypeView::new(field, source_fields.get(index).copied().unwrap_or(field))
+                })
+                .collect()
+        } else if ty.is_array(db) {
+            let (_, args) = ty.decompose_ty_app(db);
+            let (_, source_args) = source.decompose_ty_app(db);
+            let source_args = if source.is_array(db) {
+                source_args
+            } else {
+                args
+            };
+            // An extent faults once the arguments it reads are concrete, even
+            // while other generic arguments its body captures are not.
+            if let (Some(&len), Some(&source_len)) = (args.get(1), source_args.get(1))
+                && let Err(ConcreteArrayLengthError::Invalid(cause)) =
+                    demand_concrete_array_length(db, len, source_len)
+            {
+                return Some(cause);
+            }
+            args.first()
+                .map(|&elem| {
+                    ConcreteTypeView::new(elem, source_args.first().copied().unwrap_or(elem))
+                })
+                .into_iter()
+                .collect()
+        } else if let Some(adt) = ty.adt_def(db) {
+            (0..adt.fields(db).len())
+                .filter_map(|variant| adt_variant_field_views(db, adt, variant, ty, source).ok())
+                .flatten()
+                .collect()
+        } else {
+            Vec::new()
+        };
+        parts
+            .into_iter()
+            .find_map(|part| inner(db, part.canonical, part.source, normalize, seen))
+    }
+
+    inner(db, ty, ty, normalize, &mut FxHashSet::default())
 }

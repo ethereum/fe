@@ -3,6 +3,7 @@
 /// outcome instead of reverting.
 
 use core::ptr
+use core::abi::store_word
 use std::evm::{RawOps, TokenCall, bubble_last_revert, erc20}
 
 msg TokenMsg {
@@ -46,24 +47,24 @@ pub contract RawReplyToken {
 const REVERT: u256 = 0xffffffff
 
 fn answer(word: u256, len: u256) -> ! uses (raw: mut RawOps) {
-    let alloc = if len < 32 { 32 } else { len }
-    let mut data = ptr::MemBuffer::alloc(alloc)
+    let alloc = if len < 32 || len == REVERT { 32 } else { len }
+    var data = ptr::MemBuffer::alloc(alloc as usize)
     if len == REVERT {
-        raw.mstore(addr: data.ptr(), value: 0xdeadbeefcafebabe << 192)
-        data.set_len(32)
+        unsafe { store_word(ptr: data.ptr(), value: 0xdeadbeefcafebabe << 192) }
+        unsafe { data.set_len(32) }
         raw.revert(data: data.span())
     }
-    raw.mstore(addr: data.ptr(), value: word)
-    data.set_len(len)
+    unsafe { store_word(ptr: data.ptr(), value: word) }
+    unsafe { data.set_len(len as usize) }
     raw.return_data(data: data.span())
 }
 
 fn alice() -> Address {
-    Address { inner: 2 }
+    Address::new(2)
 }
 
 fn bob() -> Address {
-    Address { inner: 3 }
+    Address::new(3)
 }
 
 fn code(_ outcome: TokenCall) -> u256 {
@@ -157,7 +158,7 @@ fn test_reverted_payload_can_be_bubbled() uses (evm: mut Evm, ctx: Ctx, call: mu
 
 #[test]
 fn test_codeless_token_is_no_code() uses (evm: mut Evm, ctx: Ctx, call: mut Call) {
-    let eoa = Address { inner: 0xe0a }
+    let eoa = Address::new(0xe0a)
     assert!(code(erc20::try_transfer(token: eoa, receiver: alice(), amount: 1)) == 3)
     assert!(code(erc20::try_transfer_from(token: eoa, owner: alice(), receiver: bob(), amount: 1)) == 3)
     assert!(code(erc20::try_approve(token: eoa, spender: alice(), amount: 1)) == 3)

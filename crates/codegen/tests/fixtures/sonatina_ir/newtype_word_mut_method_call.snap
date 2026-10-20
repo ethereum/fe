@@ -1,5 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
+assertion_line: 431
 expression: output
 input_file: crates/codegen/tests/fixtures/newtype_word_mut_method_call.fe
 ---
@@ -16,8 +17,8 @@ func private %bump(v0.@layout_0) -> @layout_0 {
         jump block1;
 
     block1:
-        v5.objref<i256> = obj.proj v1 0.i256;
-        v7.i256 = obj.load v5;
+        v6.objref<i256> = obj.proj v1 0.i256;
+        v7.i256 = obj.load v6;
         (v8.i256, v9.i1) = uaddo v7 1.i256;
         br v9 block2 block3;
 
@@ -27,7 +28,7 @@ func private %bump(v0.@layout_0) -> @layout_0 {
         evm_revert 0.i256 36.i256;
 
     block3:
-        obj.store v5 v8;
+        obj.store v6 v8;
         v15.@layout_0 = obj.load v1;
         return v15;
 }

@@ -7,10 +7,12 @@ use hir::{
             RootProviderScope,
             trait_def::{TraitInstId, TraitRefId},
             ty_check::{BodyOwner, EffectParamSite},
-            ty_def::{TyBase, TyData, TyId},
+            ty_def::{BorrowKind, ClosureTy, TyBase, TyData, TyId},
         },
     },
-    hir_def::{CallableDef, ItemKind, TopLevelMod, scope_graph::ScopeId},
+    hir_def::{
+        Body, CallableDef, ItemKind, TopLevelMod, params::FuncParamMode, scope_graph::ScopeId,
+    },
     semantic::{ProviderBinding, ProviderSource},
 };
 
@@ -56,9 +58,18 @@ pub fn semantic_instance_identity_in_mode<'db>(
 
 fn body_owner_identity<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> String {
     match owner {
-        BodyOwner::Func(func) => {
+        BodyOwner::Func(func, mode) => {
             let owner_context = semantic_owner_context_identity(db, owner).unwrap_or_default();
-            format!("func${}${owner_context}", item_identity(db, func.into()))
+            // A `mut?` function's bodies, one per mode, are distinct.
+            let mode = match mode {
+                None => "",
+                Some(BorrowKind::Ref) => "$ref",
+                Some(BorrowKind::Mut) => "$mut",
+            };
+            format!(
+                "func${}${owner_context}{mode}",
+                item_identity(db, func.into())
+            )
         }
         BodyOwner::Const(const_) => format!("const${}", item_identity(db, const_.into())),
         BodyOwner::AnonConstBody { body, expected } => format!(
@@ -77,6 +88,10 @@ fn body_owner_identity<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -
             "contract_recv${}${recv_idx}${arm_idx}",
             item_identity(db, contract.into())
         ),
+        BodyOwner::Closure { ty, receiver, .. } => format!(
+            "closure_body${}${receiver:?}",
+            type_identity(db, TyId::closure(db, ty))
+        ),
     }
 }
 
@@ -84,7 +99,7 @@ pub fn semantic_owner_context_identity<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> Option<String> {
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return None;
     };
     if let Some(trait_) = func.containing_trait(db) {
@@ -123,7 +138,7 @@ pub fn semantic_owner_context_trace_identity<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> Option<String> {
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return None;
     };
     if let Some(trait_) = func.containing_trait(db) {
@@ -153,7 +168,7 @@ pub fn semantic_owner_context_trace_identity<'db>(
 /// impl-environment components, and textual (fingerprint-free) impl context.
 /// Every instantiation of the same body maps to the same identity.
 pub fn body_owner_trace_identity<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> String {
-    if let BodyOwner::Func(func) = owner {
+    if let BodyOwner::Func(func, _) = owner {
         let owner_context = semantic_owner_context_trace_identity(db, owner).unwrap_or_default();
         format!("func${}${owner_context}", item_identity(db, func.into()))
     } else {
@@ -398,7 +413,20 @@ fn effect_param_site_identity<'db>(
             "contract_recv${}${recv_idx}${arm_idx}",
             item_identity(db, contract.into())
         ),
+        EffectParamSite::Closure(def) => format!(
+            "closure${}${}",
+            closure_owner_identity(db, def.body),
+            def.expr.as_u32()
+        ),
     }
+}
+
+/// The owner of the body a closure is in: closures are nameless.
+fn closure_owner_identity<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> String {
+    BodyOwner::from_body(db, body).map_or_else(
+        || module_path_components_for_scope(db, body.scope()).join("$"),
+        |owner| body_owner_identity(db, owner),
+    )
 }
 
 pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
@@ -427,7 +455,30 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
                     item_identity(db, variant.enum_.into()),
                     variant.name(db).unwrap_or("variant")
                 ),
+                CallableDef::StructCtor(struct_) => {
+                    format!("struct_ctor${}", item_identity(db, (*struct_).into()))
+                }
             },
+            TyBase::Closure(closure) => {
+                // Closures are nameless: the owner of the body defining one
+                // and its position there identify it.
+                let def = closure.def(db);
+                let owner = closure_owner_identity(db, def.body);
+                let tys = closure
+                    .parent_args(db)
+                    .iter()
+                    .chain(closure.captures(db))
+                    .chain(&closure.param_tys(db))
+                    .chain([closure.ret_ty(db)].iter())
+                    .map(|ty| type_identity(db, *ty))
+                    .collect::<Vec<_>>()
+                    .join("$");
+                format!(
+                    "closure${owner}${}${:?}${tys}",
+                    def.expr.as_u32(),
+                    closure.modes(db)
+                )
+            }
         },
         TyData::TyParam(param) => {
             format!(
@@ -560,6 +611,22 @@ fn ingot_logical_name<'db>(
             IngotKind::Local => format!("local${}", top_mod.name(db).data(db)),
             IngotKind::External => format!("external${}", top_mod.name(db).data(db)),
         })
+}
+
+/// The symbol name of a closure's body called with `receiver`.
+pub fn closure_symbol_component<'db>(
+    db: &'db dyn HirAnalysisDb,
+    closure: ClosureTy<'db>,
+    receiver: FuncParamMode,
+) -> String {
+    let kind = match receiver {
+        FuncParamMode::Mut => "closure_mut",
+        FuncParamMode::View | FuncParamMode::Own => "closure",
+    };
+    format!(
+        "__{kind}_{}",
+        stable_identity_fingerprint(&type_identity(db, TyId::closure(db, closure)))
+    )
 }
 
 pub fn stable_identity_fingerprint(value: &str) -> String {

@@ -28,6 +28,6 @@ pub fn struct_with_empty() -> u256 {
 
 pub fn empty_field_assign() {
     let e: Empty = Empty {}
-    let mut w: Wrap = Wrap { empty: e, value: 1 }
+    var w: Wrap = Wrap { empty: e, value: 1 }
     w.empty = Empty {}
 }

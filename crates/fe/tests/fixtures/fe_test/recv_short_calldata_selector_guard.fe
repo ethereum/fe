@@ -1,5 +1,5 @@
 use core::ptr
-use std::evm::{Address, Call, Create, Evm, RawMem}
+use std::evm::{Address, Call, Create, Evm}
 
 msg CountMsg {
     #[selector = 0x01020304]
@@ -49,14 +49,16 @@ pub contract NoFallback {
 fn raw_call(addr: Address, gas: u256, value: Wei, args_offset: *u8, args_len: u256) -> bool
 uses (evm: mut Evm)
 {
-    let mut ret = ptr::MemBuffer::empty()
-    evm.raw_call(
-        addr: addr,
-        gas: gas,
-        value: value,
-        args: ptr::MemSpan::from_raw_parts(ptr: args_offset, len: args_len),
-        ret: mut ret,
-    ).success()
+    var ret = ptr::MemBuffer::empty()
+    unsafe {
+        evm.raw_call(
+            addr: addr,
+            gas: gas,
+            value: value,
+            args: ptr::MemSpan::from_raw_parts(ptr: args_offset, len: args_len as usize),
+            ret: mut ret,
+        ).success()
+    }
 }
 
 #[test]
@@ -72,7 +74,7 @@ fn test_empty_calldata_uses_fallback_not_zero_selector() uses (evm: mut Evm) {
 fn test_short_prefix_calldata_uses_fallback_not_padded_selector() uses (evm: mut Evm) {
     let addr = evm.create2<GuardedFallback>(value: Wei::zero(), args: (), salt: 0)
     let ptr = ptr::alloc_bytes(1)
-    evm.mstore8(addr: ptr, value: 0xaa)
+    unsafe { *ptr = 0xaa }
     assert!(raw_call(addr: addr, gas: 100000, value: Wei::zero(), args_offset: ptr, args_len: 1))
 
     let count: u256 = evm.call(addr: addr, gas: 100000, value: Wei::zero(), message: CountMsg::Count {})

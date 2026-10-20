@@ -7,7 +7,7 @@
 
 use std::convert::Infallible;
 
-use common::indexmap::{IndexMap, IndexSet};
+use common::indexmap::IndexSet;
 use rustc_hash::FxHashMap;
 use tablesolve::{
     AnswerlessMode, CallbackOutcome, Canonical as TabledCanonical, CanonicalizeOutcome, Completion,
@@ -24,9 +24,13 @@ use crate::analysis::{
     HirAnalysisDb,
     ty::{
         canonical::{Canonical, Solution},
+        clearable::clearable_implementor,
+        closure::callable_implementor,
         fold::TyFoldable,
+        sol_codec::sol_codec_implementor,
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_in_ingots},
-        ty_def::{TyData, TyId},
+        trait_lower::complete_candidate_impl_assoc_ty,
+        ty_def::{BorrowKind, TyData, TyId},
         unify::{PersistentUnificationTable, UnificationError, UnificationResult},
         visitor::{TyVisitable, TyVisitor},
     },
@@ -43,8 +47,10 @@ type Query<'db> = Canonical<TraitSolverQuery<'db>>;
 type GoalSolution<'db> = Solution<TraitGoalSolution<'db>>;
 type UnsatSubgoal<'db> = Solution<TraitInstId<'db>>;
 
+/// The predicate's trait and arguments, without its associated equalities
+/// and mode, which unification compares on their own.
 fn trait_inst_head<'db>(db: &'db dyn HirAnalysisDb, inst: TraitInstId<'db>) -> TraitInstId<'db> {
-    TraitInstId::new(db, inst.def(db), inst.args(db).to_vec(), IndexMap::new())
+    TraitInstId::new_simple(db, inst.def(db), inst.args(db).to_vec())
 }
 
 /// Whether the impl `header` can match the normalized `goal`, checked before
@@ -149,6 +155,16 @@ pub(crate) enum TargetSolutionMatch {
 enum Clause<'db> {
     Implementor(ImplementorId<'db>),
     Assumption(usize),
+    /// The builtin implementation of the callable value, a closure or a
+    /// function item, that is the goal's self type (`ty::closure`), built
+    /// from the goal in its own table.
+    Callable,
+    /// The compiler's `Clearable` implementation for the goal's self type
+    /// (`ty::clearable`), proved through its component types.
+    Clearable,
+    /// The compiler's `LaneCodec<T>` implementation for std's Solidity codec
+    /// and a `T` without a `SolPacked` encoding (`ty::sol_codec`).
+    SolCodec,
 }
 
 #[derive(Clone)]
@@ -380,6 +396,22 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         let mut clauses =
             Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
         clauses.extend(implementors.iter().copied().map(Clause::Implementor));
+        if callable_implementor(self.db, prepared.normalized_goal).is_some() {
+            clauses.push(Clause::Callable);
+        }
+        if clearable_implementor(self.db, prepared.normalized_goal).is_some() {
+            clauses.push(Clause::Clearable);
+        }
+        if sol_codec_implementor(
+            self.db,
+            prepared.normalized_goal,
+            prepared.scope,
+            prepared.query.assumptions,
+        )
+        .is_some()
+        {
+            clauses.push(Clause::SolCodec);
+        }
         if !prepared.query.require_impl && self.goal_can_use_assumptions(prepared.normalized_goal) {
             clauses.extend(
                 (0..prepared.query.assumptions.list(self.db).len()).map(Clause::Assumption),
@@ -400,12 +432,32 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             normalized_goal,
         } = self.prepare_query(*key);
 
+        // A `mut` goal holds by an implementation that gives the `mut` modes,
+        // with its `mut?` bounds at `mut`, or by a `mut` assumption.
+        let goal_mode = Some(if normalized_goal.is_mut(self.db) {
+            BorrowKind::Mut
+        } else {
+            BorrowKind::Ref
+        });
         let selected_impl = match clause {
             Clause::Implementor(selected_impl) => {
-                if !impl_header_may_match(self.db, selected_impl, normalized_goal) {
+                if !impl_header_may_match(self.db, selected_impl, normalized_goal)
+                    || normalized_goal.is_mut(self.db) && !selected_impl.gives_mut(self.db)
+                {
                     return Ok(Transition::Reject);
                 }
-                let candidate = table.instantiate_with_fresh_vars(selected_impl);
+                // Candidates are headers; lower only the associated types
+                // the goal binds (see `impls_for_trait_def`).
+                let Some(candidate) = normalized_goal
+                    .assoc_type_bindings(self.db)
+                    .keys()
+                    .try_fold(selected_impl, |implementor, &name| {
+                        complete_candidate_impl_assoc_ty(self.db, implementor, name)
+                    })
+                else {
+                    return Ok(Transition::Reject);
+                };
+                let candidate = table.instantiate_with_fresh_vars(candidate);
                 let normalized_candidate = normalize_trait_inst_preserving_validity(
                     self.db,
                     candidate.trait_inst(self.db),
@@ -429,7 +481,11 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 let remaining_goals = constraints
                     .list(self.db)
                     .iter()
-                    .map(|constraint| constraint.fold_with(self.db, &mut table))
+                    .map(|constraint| {
+                        constraint
+                            .at_mode(self.db, goal_mode)
+                            .fold_with(self.db, &mut table)
+                    })
                     .collect();
                 let branch = Branch {
                     table,
@@ -443,6 +499,9 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 let Some(&assumption) = query.assumptions.list(self.db).get(index) else {
                     return Ok(Transition::Reject);
                 };
+                if normalized_goal.is_mut(self.db) && !assumption.is_mut(self.db) {
+                    return Ok(Transition::Reject);
+                }
                 if unify_trait_inst_with_normalized_assoc_bindings(
                     self.db,
                     &mut table,
@@ -456,6 +515,46 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     return Ok(Transition::Reject);
                 }
                 ImplementorId::assumption(self.db, query.goal.fold_with(self.db, &mut table))
+            }
+            Clause::Clearable => {
+                let Some((selected_impl, remaining_goals)) =
+                    clearable_implementor(self.db, normalized_goal)
+                else {
+                    return Ok(Transition::Reject);
+                };
+                let branch = Branch {
+                    table,
+                    root_goal: query.goal,
+                    remaining_goals,
+                    selected_impl,
+                };
+                return Ok(self.continue_branch(key, branch, query.assumptions));
+            }
+            Clause::SolCodec => {
+                let Some(implementor) =
+                    sol_codec_implementor(self.db, normalized_goal, scope, query.assumptions)
+                else {
+                    return Ok(Transition::Reject);
+                };
+                implementor
+            }
+            Clause::Callable => {
+                let Some(implementor) = callable_implementor(self.db, normalized_goal) else {
+                    return Ok(Transition::Reject);
+                };
+                if unify_trait_inst_with_normalized_assoc_bindings(
+                    self.db,
+                    &mut table,
+                    implementor.trait_inst(self.db),
+                    normalized_goal,
+                    scope,
+                    query.assumptions,
+                )
+                .is_err()
+                {
+                    return Ok(Transition::Reject);
+                }
+                implementor
             }
         };
 

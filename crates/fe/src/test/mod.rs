@@ -1723,11 +1723,11 @@ fn prepare_tests_single_file(
     let mut formatted = String::new();
     if !diagnostics.hir.is_empty() {
         formatted.push_str(&diagnostics.hir.format_diags(db));
-        has_errors = true;
+        has_errors = diagnostics.hir.has_errors(db);
     }
     if !diagnostics.mir.is_empty() {
         formatted.push_str(&db.format_complete_diagnostics(&diagnostics.mir));
-        has_errors = true;
+        has_errors |= diagnostics.mir_has_errors();
     }
     if has_errors {
         let _ = writeln!(output, "Compilation errors in {file_url}");
@@ -1744,6 +1744,10 @@ fn prepare_tests_single_file(
             ),
             single_jobs: Vec::new(),
         };
+    }
+    // Warnings do not stop the suite.
+    if !formatted.is_empty() {
+        let _ = writeln!(output, "{formatted}");
     }
 
     if !diagnostics.dependencies.is_empty() {
@@ -1923,11 +1927,11 @@ fn prepare_tests_ingot(
     let mut formatted = String::new();
     if !diagnostics.hir.is_empty() {
         formatted.push_str(&diagnostics.hir.format_diags(db));
-        has_errors = true;
+        has_errors = diagnostics.hir.has_errors(db);
     }
     if !diagnostics.mir.is_empty() {
         formatted.push_str(&db.format_complete_diagnostics(&diagnostics.mir));
-        has_errors = true;
+        has_errors |= diagnostics.mir_has_errors();
     }
     if has_errors {
         let _ = writeln!(output, "{formatted}");
@@ -1938,6 +1942,10 @@ fn prepare_tests_ingot(
             results: suite_error_result(suite, "compile", "Compilation errors".to_string()),
             single_jobs: Vec::new(),
         };
+    }
+    // Warnings do not stop the suite.
+    if !formatted.is_empty() {
+        let _ = writeln!(output, "{formatted}");
     }
 
     if !diagnostics.dependencies.is_empty() {

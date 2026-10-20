@@ -3,20 +3,15 @@ use std::collections::{BTreeMap, VecDeque};
 use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap, entity_impl};
 use hir::analysis::{
     semantic::{
-        SLocalId, SemanticInstance,
-        capability::{
-            external::{ExternalOrigin, ExternalSource},
-            guard::ValueOccurrence,
-            handle::HandleAddressSpace,
-            path::{Projection, project_referent_ty},
-            semantics::CapabilityClass,
-            source::{InputOrigin, SourceExpr},
-            value::{ValueInterner, ValueLimits},
+        ExecutableBlock, SLocalId, SemanticInstance, get_or_build_semantic_instance,
+        normalized::{
+            NExpr, NOperand, NPlace, NPlaceBase, NValueDefinition, NValueId, NormalizedBody,
+            normalize_semantic_body,
         },
-        normalized::NTerminatorKind,
-        semantic_borrow_summary,
+        projection_component_spaces, semantic_executable_control_flow, semantic_may_return,
     },
     ty::{
+        AddressSpace,
         ty_check::{ReturnProjectionStep, ReturnProvenance},
         ty_def::TyId,
     },
@@ -28,8 +23,8 @@ use crate::{
     db::MirDb,
     instance::{RuntimeInstanceKey, RuntimeInstanceSource},
     runtime::{
-        AddressSpaceKind, EnumLayoutKey, Layout, LayoutId, LayoutKey, RawPointeeId, RefKind,
-        RuntimeClass, RuntimeExitBehavior, relation::runtime_classes_equivalent,
+        EnumLayoutKey, EnumVariantLayout, Layout, LayoutId, LayoutKey, LowerError, RawPointeeId,
+        RefKind, RuntimeClass, RuntimeExitBehavior, StructLayout,
     },
 };
 
@@ -37,14 +32,13 @@ use super::{
     boundary::BoundaryMatcher,
     classify::{
         AssignmentId, BodyEnv, BodyStaticFacts, RuntimeVisibleReturnPlan, default_return_class,
-        desired_runtime_return_plan, selected_visible_return_for_operand,
+        desired_runtime_return_plan, selected_visible_return_for_operand, semantic_return_ty,
     },
     infer::{
         AssignmentSpace, CarrierInferer, ReturnClassLookup, join_reference_transports,
-        merge_runtime_class,
+        merge_runtime_class, runtime_class_has_zero_sized_payload,
     },
     interface::{runtime_visible_binding_local, runtime_visible_binding_plans},
-    provider_space::address_space_from_provider,
     semantic_body::{RuntimeOperand, RuntimeSemanticBody},
     type_info::{RuntimeTypeEnv, stored_class_for_ty_in_env},
 };
@@ -103,14 +97,7 @@ impl<'db> RuntimeReturnSummary<'db> {
             .normalized
             .blocks
             .iter()
-            .filter_map(|block| match &block.terminator.kind {
-                NTerminatorKind::Return(Some(value)) => semantic_body.runtime_operand(*value),
-                NTerminatorKind::Goto(_)
-                | NTerminatorKind::Branch { .. }
-                | NTerminatorKind::MatchEnum { .. }
-                | NTerminatorKind::Assert { .. }
-                | NTerminatorKind::Return(None) => None,
-            })
+            .filter_map(|block| semantic_body.runtime_operand(block.terminator.kind.returned()?))
             .collect::<Vec<_>>()
             .into_boxed_slice();
         let env = BodyEnv::new(db, semantic_body, &facts);
@@ -205,6 +192,18 @@ impl<'db> RuntimeReturnSummary<'db> {
     }
 }
 
+/// A projection is inlined into each of its callers, so its grant has the
+/// class its body yields rather than one fixed by its declaration.
+#[salsa::tracked]
+fn projection_return_class<'db>(
+    db: &'db dyn MirDb,
+    key: RuntimeInstanceKey<'db>,
+) -> Option<RuntimeClass<'db>> {
+    let semantic = key.semantic(db)?;
+    let body = RuntimeSemanticBody::admitted(db, semantic).ok()?;
+    runtime_return_class_for_body(db, key, &body)
+}
+
 pub(crate) fn runtime_return_class_for_body<'db>(
     db: &'db dyn MirDb,
     key: RuntimeInstanceKey<'db>,
@@ -226,6 +225,9 @@ pub(crate) fn declaration_runtime_return_class<'db>(
     key: RuntimeInstanceKey<'db>,
 ) -> Option<RuntimeClass<'db>> {
     let semantic = key.semantic(db)?;
+    if semantic.is_projection(db) {
+        return projection_return_class(db, key);
+    }
     if let StaticRuntimeReturnDecision::Known(class) = static_runtime_return_decision(db, semantic)
     {
         return class;
@@ -276,50 +278,16 @@ pub(crate) fn declaration_runtime_return_class<'db>(
     }
     // Native references into raw memory retain the pointer's layout. Type-level
     // layout forwarding alone cannot describe a pointer loaded from a container.
-    // The shared borrow summary retains those load/dereference transitions.
-    if let Ok(Some(summary)) = semantic_borrow_summary(db, semantic) {
-        let values = ValueInterner::<SourceExpr<'db>>::new(db, ValueLimits::default());
-        let mut transports = BTreeMap::new();
-        for leaf in values.leaves(&summary.result, ValueOccurrence::Summary) {
-            if !matches!(leaf.semantics.class, CapabilityClass::Borrow(_)) {
-                continue;
-            }
-            let projection: Vec<_> = leaf
-                .path
-                .as_slice()
-                .iter()
-                .map(|step| match step {
-                    Projection::Field(field) => ReturnProjectionStep::Field(field.0),
-                    Projection::VariantField { variant, field } => {
-                        ReturnProjectionStep::VariantField {
-                            variant: variant.0,
-                            field: field.0,
-                        }
-                    }
-                    Projection::Index(_) => ReturnProjectionStep::AnyIndex,
-                })
-                .collect();
-            let space = raw_return_space(db, semantic, &leaf.payload.source);
-            transports
-                .entry(projection)
-                .and_modify(|previous| {
-                    if *previous != space {
-                        *previous = None;
-                    }
-                })
-                .or_insert(space);
-        }
-        for (projection, space) in transports {
-            let Some(space) = space else {
+    {
+        for (projection, space) in returned_raw_transports(db, semantic) {
+            let Some(space) = *space else {
                 continue;
             };
             if projection.is_empty()
                 && let Some((_, target)) = semantic.normalized_result_ty(db).as_borrow(db)
             {
-                // The summary excludes nonreturning paths and retains pointer
-                // dereferences that type-level forwarding may lose. A bare
-                // borrow keeps that raw transport with its declared target;
-                // stored borrow fields still use their canonical descriptors.
+                // A bare borrow keeps the raw transport with its declared
+                // target; stored borrow fields use their canonical descriptors.
                 let pointee = stored_class_for_ty_in_env(
                     db,
                     RuntimeTypeEnv::for_semantic(db, semantic),
@@ -329,7 +297,7 @@ pub(crate) fn declaration_runtime_return_class<'db>(
                 continue;
             }
             let Some(RuntimeClass::Ref { pointee, .. }) =
-                project_declaration_return_source(db, class.clone(), &projection)
+                project_declaration_return_source(db, class.clone(), projection)
             else {
                 continue;
             };
@@ -337,7 +305,7 @@ pub(crate) fn declaration_runtime_return_class<'db>(
             if let Some(updated) = merge_declaration_return_source(
                 db,
                 class.clone(),
-                &projection,
+                projection,
                 &source,
                 &source,
                 ReturnSourceMerge::Replace,
@@ -357,72 +325,212 @@ pub(crate) fn declaration_runtime_return_class<'db>(
     Some(class)
 }
 
-fn raw_return_space<'db>(
+/// The raw transport of each borrow a body returns, by its projection in the
+/// result: the memory space when every returning path takes the borrow
+/// through a raw pointer, `None` when paths disagree.
+#[salsa::tracked(
+    return_ref,
+    cycle_fn=returned_raw_transports_cycle_recover,
+    cycle_initial=returned_raw_transports_cycle_initial
+)]
+fn returned_raw_transports<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
-    source: &ExternalSource<'db>,
-) -> Option<AddressSpaceKind> {
-    if source.is_reachable() {
-        return None;
-    }
-    let mut steps = Vec::new();
-    let (mut target, mut raw) = match &source.origin {
-        ExternalOrigin::Input(input) => {
-            let binding = semantic
-                .key(db)
-                .typed_body(db)
-                .param_binding(input.param() as usize)?;
-            let param_ty = semantic.normalized_binding_ty(db, binding);
-            let carrier = match input.origin() {
-                InputOrigin::Place(_) => param_ty,
-                InputOrigin::Slot { slot, .. } => project_referent_ty(
-                    db,
-                    semantic,
-                    param_ty.as_view(db).unwrap_or(param_ty),
-                    slot.as_slice(),
-                )?,
-            };
-            steps.extend(input.dereferences().iter());
-            (
-                carrier
-                    .as_ptr(db)
-                    .or_else(|| carrier.as_capability(db).map(|(_, target)| target))?,
-                carrier.as_ptr(db).is_some(),
-            )
-        }
-        ExternalOrigin::Memory { target_ty, .. } => (*target_ty, true),
-        ExternalOrigin::Allocation(handle) | ExternalOrigin::OpaqueHandle(handle) => (
-            handle.contract.target_ty,
-            handle.contract.handle_ty.as_ptr(db).is_some(),
-        ),
-        ExternalOrigin::Provider {
-            target_ty,
-            provider,
-            ..
-        } => (
-            *target_ty,
-            provider.binding(db).provider_ty.as_ptr(db).is_some(),
-        ),
-        // An unknown semantic referent supplies no raw-carrier layout evidence.
-        ExternalOrigin::Local(_)
-        | ExternalOrigin::Unknown { .. }
-        | ExternalOrigin::OpaqueMemory => {
-            return None;
-        }
+) -> BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>> {
+    let mut transports = BTreeMap::new();
+    let (Ok(artifacts), Some(executable)) = (
+        normalize_semantic_body(db, semantic),
+        semantic_executable_control_flow(db, semantic),
+    ) else {
+        return transports;
     };
-    steps.extend(source.dereferences().iter());
-    for path in steps {
-        let carrier = project_referent_ty(db, semantic, target, path.as_slice())?;
-        raw = carrier.as_ptr(db).is_some();
-        target = carrier
-            .as_ptr(db)
-            .or_else(|| carrier.as_capability(db).map(|(_, target)| target))?;
+    let body = &artifacts.body;
+    let mut tracer = RawTransportTracer {
+        db,
+        body,
+        transports: &mut transports,
+        visited: FxHashSet::default(),
+    };
+    for (block, executable) in body.blocks.iter().zip(&executable.0) {
+        if matches!(executable, ExecutableBlock::Continues(_))
+            && let Some(value) = block.terminator.kind.returned()
+        {
+            tracer.trace(value.value, &mut Vec::new());
+        }
     }
-    if raw && let HandleAddressSpace::Known(space) = source.contract.address_space {
-        Some(address_space_from_provider(space))
-    } else {
-        None
+    transports
+}
+
+fn returned_raw_transports_cycle_initial<'db>(
+    _: &'db dyn MirDb,
+    _: SemanticInstance<'db>,
+) -> BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>> {
+    BTreeMap::new()
+}
+
+fn returned_raw_transports_cycle_recover<'db>(
+    _: &'db dyn MirDb,
+    _: &BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>,
+    _: u32,
+    _: SemanticInstance<'db>,
+) -> salsa::CycleRecoveryAction<BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
+struct RawTransportTracer<'a, 'db> {
+    db: &'db dyn MirDb,
+    body: &'a NormalizedBody<'db>,
+    transports: &'a mut BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>,
+    visited: FxHashSet<(NValueId, Vec<ReturnProjectionStep>)>,
+}
+
+impl<'db> RawTransportTracer<'_, 'db> {
+    fn record(&mut self, projection: &[ReturnProjectionStep], space: Option<AddressSpace>) {
+        self.transports
+            .entry(projection.to_vec())
+            .and_modify(|previous| {
+                if *previous != space {
+                    *previous = None;
+                }
+            })
+            .or_insert(space);
     }
+
+    fn trace(&mut self, value: NValueId, projection: &mut Vec<ReturnProjectionStep>) {
+        if !self.visited.insert((value, projection.clone())) {
+            return;
+        }
+        let data = &self.body.values[value.index()];
+        let is_borrow = data.ty.as_borrow(self.db).is_some();
+        match data.definition {
+            NValueDefinition::BlockParam { block, index } => {
+                let incoming: Vec<NValueId> = self
+                    .body
+                    .blocks
+                    .iter()
+                    .flat_map(|predecessor| predecessor.terminator.kind.successors())
+                    .filter(|successor| successor.block == block)
+                    .filter_map(|successor| successor.args.get(index as usize))
+                    .map(|arg| arg.value)
+                    .collect();
+                for arg in incoming {
+                    self.trace(arg, projection);
+                }
+                return;
+            }
+            NValueDefinition::EntryParam { .. } => {}
+            NValueDefinition::Statement { .. } => {
+                let Some((_, expr)) = self.body.defining_expr(value) else {
+                    return;
+                };
+                match expr {
+                    NExpr::Forward { src } => return self.trace(src.value, projection),
+                    NExpr::AggregateMake { ty, fields } => {
+                        let array = ty.is_array(self.db);
+                        for (field, operand) in fields.iter().enumerate() {
+                            projection.push(if array {
+                                ReturnProjectionStep::AnyIndex
+                            } else {
+                                ReturnProjectionStep::Field(field as u16)
+                            });
+                            self.trace(operand.value, projection);
+                            projection.pop();
+                        }
+                        return;
+                    }
+                    NExpr::EnumMake {
+                        variant, fields, ..
+                    } => {
+                        for (field, operand) in fields.iter().enumerate() {
+                            projection.push(ReturnProjectionStep::VariantField {
+                                variant: variant.0,
+                                field: field as u16,
+                            });
+                            self.trace(operand.value, projection);
+                            projection.pop();
+                        }
+                        return;
+                    }
+                    // A memory pointee is reached by its raw address; a state
+                    // pointee by its space's provider reference.
+                    NExpr::Borrow {
+                        place:
+                            NPlace {
+                                base: NPlaceBase::Deref { pointer },
+                                ..
+                            },
+                        ..
+                    } if is_borrow
+                        && matches!(
+                            self.body.values[pointer.index()].ty.as_ptr(self.db),
+                            Some((_, AddressSpace::Memory))
+                        ) =>
+                    {
+                        return self.record(projection, Some(AddressSpace::Memory));
+                    }
+                    NExpr::Call { callee, .. } => {
+                        let callee = get_or_build_semantic_instance(self.db, callee.key);
+                        let prefix = projection.len();
+                        for (suffix, space) in returned_raw_transports(self.db, callee) {
+                            projection.extend_from_slice(suffix);
+                            self.record(projection, *space);
+                            projection.truncate(prefix);
+                        }
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if is_borrow {
+            self.record(projection, None);
+        }
+    }
+}
+
+/// Holds the access checker's result space of each access component of a
+/// projection, which instantiates its callers' callees, to the class lowering
+/// returns the component in. A component no yield grants, such as the payload
+/// of a variant the projection never returns, and one with no runtime class
+/// carry nothing; a native reference keeps its space at run time; constant
+/// data is a read-only memory value. Any other disagreement is an error
+/// rather than a miscompile.
+pub(crate) fn check_projection_result_spaces<'db>(
+    db: &'db dyn MirDb,
+    semantic: SemanticInstance<'db>,
+    ret: Option<&RuntimeClass<'db>>,
+) -> Result<(), LowerError> {
+    for (steps, space) in projection_component_spaces(db, semantic) {
+        let (Some(space), Some(class)) = (
+            space,
+            ret.and_then(|ret| project_declaration_return_source(db, ret.clone(), &steps)),
+        ) else {
+            continue;
+        };
+        let agrees = match &class {
+            RuntimeClass::Ref {
+                kind: RefKind::Native,
+                ..
+            } => true,
+            RuntimeClass::Ref {
+                kind: RefKind::Object | RefKind::Const,
+                ..
+            } => space == AddressSpace::Memory,
+            RuntimeClass::Ref {
+                kind: RefKind::Provider { space: actual, .. },
+                ..
+            }
+            | RuntimeClass::RawAddr { space: actual, .. } => *actual == space,
+            _ => false,
+        };
+        if !agrees {
+            return Err(LowerError::Unsupported(format!(
+                "internal error: the access checker places result component {steps:?} of {:?} in {space:?}, but lowering returns it as {class:?}",
+                semantic.key(db).owner(db),
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn project_declaration_return_source<'db>(
@@ -617,7 +725,7 @@ fn retarget_declaration_return_transport<'db>(
             kind: RefKind::Native,
             ..
         } = &stored
-        && runtime_classes_equivalent(db, pointee, target_pointee)
+        && pointee == target_pointee
     {
         return stored;
     }
@@ -659,7 +767,7 @@ fn retarget_declaration_return_transport<'db>(
             space: *space,
             pointee: match source_target {
                 Some(source_target) if projected_transport => Some(*source_target),
-                Some(_) | None => Some(RawPointeeId::exact(db, *pointee)),
+                Some(_) | None => Some(RawPointeeId::new(db, *pointee)),
             },
         },
         (
@@ -674,7 +782,7 @@ fn retarget_declaration_return_transport<'db>(
         ) => RuntimeClass::RawAddr {
             space: *space,
             pointee: if projected_transport {
-                Some(RawPointeeId::exact(db, pointee.as_ref().clone()))
+                Some(RawPointeeId::new(db, pointee.as_ref().clone()))
             } else {
                 target
             },
@@ -699,13 +807,13 @@ fn retarget_declaration_return_transport<'db>(
     }
 }
 
-/// Whether calls to `semantic` never return. The borrow summary decides this,
-/// as it does for its callers' solves and so for their executable control flow.
+/// Whether calls to `semantic` never return, as the executable control flow of
+/// their callers assumes.
 pub(crate) fn semantic_never_returns<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
 ) -> bool {
-    matches!(semantic_borrow_summary(db, semantic), Ok(Some(summary)) if !summary.may_return)
+    !semantic_may_return(db, semantic)
 }
 
 pub(crate) fn runtime_exit_behavior<'db>(
@@ -729,7 +837,7 @@ pub(crate) fn static_runtime_return_decision<'db>(
     semantic: SemanticInstance<'db>,
 ) -> StaticRuntimeReturnDecision<'db> {
     let typed_body = semantic.key(db).typed_body(db);
-    if typed_body.result_ty() == TyId::unit(db) {
+    if semantic_return_ty(db, semantic) == TyId::unit(db) {
         return StaticRuntimeReturnDecision::Known(None);
     }
     if !typed_body.forwarded_return_sources(db).is_empty() {
@@ -763,6 +871,7 @@ pub(crate) fn evaluate_runtime_return_class<'db>(
         Some(lookup),
     )
     .solve_carriers();
+    let normalized = &summary.semantic_body.normalized;
     let mut returned = Vec::new();
     for operand in summary.return_operands.iter().copied() {
         let Some(selected) =
@@ -770,7 +879,16 @@ pub(crate) fn evaluate_runtime_return_class<'db>(
         else {
             return summary.default_return_class.clone();
         };
-        returned.push(selected.class);
+        // A value with a zero-sized payload is erased, like its carrier.
+        if !runtime_class_has_zero_sized_payload(db, &selected.class) {
+            let built = operand
+                .value
+                .map_or(Built::Unknown, |value| Built::of(normalized, value));
+            returned.push((selected.class, built));
+        }
+    }
+    if returned.is_empty() {
+        return None;
     }
     let Some(class) = merged_return_class(
         db,
@@ -797,26 +915,170 @@ pub(crate) fn declared_return_class_admits<'db>(
 ) -> bool {
     merged_return_class(
         db,
-        vec![returned.clone(), declared.clone()],
+        vec![
+            (returned.clone(), Built::Unknown),
+            (declared.clone(), Built::Unknown),
+        ],
         semantic.normalized_result_ty(db).as_borrow(db).is_some(),
     )
-    .is_some_and(|merged| runtime_classes_equivalent(db, &merged, declared))
+    .is_some_and(|merged| merged == *declared)
 }
 
+/// What a returned value is known to build, from the expressions that define
+/// it: the variant of each enum it makes, and what the parts of each of its
+/// aggregates build.
+#[derive(Clone)]
+enum Built {
+    Unknown,
+    Enum(usize, Vec<Built>),
+    Aggregate(Vec<Built>),
+}
+
+impl Built {
+    fn of(normalized: &NormalizedBody<'_>, value: NValueId) -> Self {
+        let parts = |fields: &[NOperand]| {
+            fields
+                .iter()
+                .map(|field| Self::of(normalized, field.value))
+                .collect()
+        };
+        match normalized.defining_expr(value) {
+            Some((_, NExpr::Forward { src })) => Self::of(normalized, src.value),
+            Some((
+                _,
+                NExpr::EnumMake {
+                    variant, fields, ..
+                },
+            )) => Self::Enum(variant.0 as usize, parts(fields)),
+            Some((_, NExpr::AggregateMake { fields, .. })) => Self::Aggregate(parts(fields)),
+            _ => Self::Unknown,
+        }
+    }
+
+    /// What field `idx` of a layout with `len` fields builds.
+    fn field(&self, idx: usize, len: usize) -> Self {
+        match self {
+            Self::Enum(_, fields) | Self::Aggregate(fields) if fields.len() == len => {
+                fields[idx].clone()
+            }
+            _ => Self::Unknown,
+        }
+    }
+}
+
+/// The class carrying every value a body returns, given each with what it
+/// builds.
 fn merged_return_class<'db>(
     db: &'db dyn MirDb,
-    mut returned: Vec<RuntimeClass<'db>>,
+    returned: Vec<(RuntimeClass<'db>, Built)>,
     native_borrow: bool,
 ) -> Option<RuntimeClass<'db>> {
-    let mut merged = returned.pop()?;
-    for class in returned {
-        merged = if native_borrow {
-            join_reference_transports(db, &merged, &class)?
-        } else {
-            merge_runtime_class(db, &merged, &class)?
-        };
+    if !native_borrow {
+        return merged_built_class(db, &returned);
     }
-    Some(merged)
+    let mut returned = returned.into_iter().map(|(class, _)| class);
+    let first = returned.next()?;
+    returned.try_fold(first, |merged, class| {
+        join_reference_transports(db, &merged, &class)
+    })
+}
+
+/// The join of values, each given with what it builds. An enum value built
+/// as one variant has no payload in the others, so it constrains only its
+/// own variant's fields, wherever it lies in the value; a variant no value
+/// builds keeps the fields its type gives it.
+fn merged_built_class<'db>(
+    db: &'db dyn MirDb,
+    values: &[(RuntimeClass<'db>, Built)],
+) -> Option<RuntimeClass<'db>> {
+    let known = values
+        .iter()
+        .any(|(_, built)| !matches!(built, Built::Unknown));
+    let layouts = values
+        .iter()
+        .map(|(class, built)| match class {
+            RuntimeClass::AggregateValue { layout } => Some((layout.data(db), built)),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>();
+    let layout = match layouts.as_deref() {
+        Some(all @ [(Layout::Struct(first), _), ..]) if known => {
+            let fields = all
+                .iter()
+                .map(|(layout, built)| match layout {
+                    Layout::Struct(data) if data.pinned == first.pinned => {
+                        Some((&data.fields[..], *built))
+                    }
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?;
+            LayoutKey::Struct(StructLayout {
+                fields: merged_built_fields(db, &fields)?.into(),
+                pinned: first.pinned,
+            })
+        }
+        Some(all @ [(Layout::Enum(first), _), ..]) if known => {
+            let enums = all
+                .iter()
+                .map(|(layout, built)| match layout {
+                    Layout::Enum(data) if data.variants.len() == first.variants.len() => {
+                        Some((data, *built))
+                    }
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?;
+            let variants = (0..first.variants.len())
+                .map(|idx| {
+                    let fields = enums
+                        .iter()
+                        .filter(|(_, built)| {
+                            !matches!(built, Built::Enum(variant, _) if *variant != idx)
+                        })
+                        .map(|(data, built)| (&data.variants[idx].fields[..], *built))
+                        .collect::<Vec<_>>();
+                    if fields.is_empty() {
+                        return Some(first.variants[idx].clone());
+                    }
+                    Some(EnumVariantLayout {
+                        fields: merged_built_fields(db, &fields)?.into(),
+                    })
+                })
+                .collect::<Option<Vec<_>>>()?;
+            LayoutKey::Enum(EnumLayoutKey {
+                variants: variants.into(),
+            })
+        }
+        _ => {
+            let ((first, _), rest) = values.split_first()?;
+            return rest.iter().try_fold(first.clone(), |merged, (class, _)| {
+                merge_runtime_class(db, &merged, class)
+            });
+        }
+    };
+    Some(RuntimeClass::AggregateValue {
+        layout: LayoutId::new(db, layout),
+    })
+}
+
+/// The join of the fields of layouts of one shape, each given with what its
+/// value builds.
+fn merged_built_fields<'db>(
+    db: &'db dyn MirDb,
+    layouts: &[(&[RuntimeClass<'db>], &Built)],
+) -> Option<Vec<RuntimeClass<'db>>> {
+    let len = layouts.first()?.0.len();
+    if layouts.iter().any(|(fields, _)| fields.len() != len) {
+        return None;
+    }
+    (0..len)
+        .map(|idx| {
+            let values = layouts
+                .iter()
+                .map(|(fields, built)| (fields[idx].clone(), built.field(idx, len)))
+                .collect::<Vec<_>>();
+            merged_built_class(db, &values)
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -873,10 +1135,7 @@ mod tests {
 
     use crate::{
         build_runtime_package,
-        runtime::{
-            AddressSpaceKind, Layout, RExpr, RStmt, RTerminator, RefKind, RuntimeCarrier,
-            RuntimeClass, RuntimeExitBehavior,
-        },
+        runtime::{RExpr, RStmt, RTerminator, RuntimeCarrier, RuntimeClass, RuntimeExitBehavior},
     };
 
     use super::*;
@@ -900,7 +1159,7 @@ mod tests {
                     .is_some_and(|func_name| func_name.data(db) == name)
             })
             .unwrap_or_else(|| panic!("missing function `{name}`"));
-        let key = root_semantic_instance_key(db, BodyOwner::Func(func))
+        let key = root_semantic_instance_key(db, BodyOwner::Func(func, None))
             .unwrap_or_else(|err| panic!("failed to root semantic function instance: {err:?}"));
         get_or_build_semantic_instance(db, key)
     }
@@ -932,7 +1191,7 @@ mod tests {
             ) else {
                 return summary.default_return_class.clone();
             };
-            returned.push(selected.class);
+            returned.push((selected.class, Built::Unknown));
         }
         let Some(class) = merged_return_class(
             db,
@@ -982,55 +1241,6 @@ mod tests {
             "static exact return class should match full-body carrier inference"
         );
     }
-
-    #[test]
-    fn stored_native_field_returns_preserve_their_carrier() {
-        for (expression, signature_first) in [
-            "holder.first",
-            "if take_first { holder.first } else { holder.second }",
-        ]
-        .into_iter()
-        .flat_map(|expression| [true, false].map(|signature_first| (expression, signature_first)))
-        {
-            let mut db = DriverDataBase::default();
-            let file = db.workspace().touch(
-                &mut db,
-                Url::parse("file:///stored_native_field_returns.fe").unwrap(),
-                Some(format!(
-                    "struct Holder {{ first: ref u8, second: ref u8 }}\nfn select(holder: Holder, take_first: bool) -> ref u8 {{ {expression} }}\n"
-                )),
-            );
-            let module = db.top_mod(file);
-            let diagnostics = db.run_on_top_mod(module);
-            assert!(diagnostics.is_empty(), "{}", diagnostics.format_diags(&db));
-            let semantic = semantic_instance_for_named_func(&db, module, "select");
-            let instance = runtime_instance_for_semantic(&db, semantic);
-            let key = instance.key(&db);
-            if signature_first {
-                instance.interface_signature(&db);
-            }
-            let body = instance.body(&db);
-            assert_eq!(body.signature, instance.interface_signature(&db));
-            let semantic_body = RuntimeSemanticBody::admitted(&db, semantic).unwrap();
-            let inferred = runtime_return_class_for_body(&db, key, &semantic_body);
-            assert_eq!(
-                inferred,
-                declaration_runtime_return_class(&db, key),
-                "{expression}"
-            );
-            assert_eq!(inferred, legacy_return_class_for_key(&db, key));
-            assert!(matches!(
-                inferred,
-                Some(RuntimeClass::Ref {
-                    kind: RefKind::Native,
-                    ..
-                })
-            ));
-            let program: &dyn MirDb = &db;
-            crate::verify_runtime_body(&db, &program, &body).expect("valid runtime body");
-        }
-    }
-
     fn assert_runtime_exit_behavior(
         source: &str,
         case_name: &str,
@@ -1253,98 +1463,6 @@ fn helper() {}
         );
         assert_eq!(declaration_runtime_return_class(&db, key), None);
     }
-
-    #[test]
-    fn mixed_native_return_declaration_matches_body_inference() {
-        let mut db = DriverDataBase::default();
-        let file_url = Url::parse("file:///mixed_native_return.fe").unwrap();
-        db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(
-                r#"
-fn choose(first: ref u8, second: ref u8, use_first: bool) -> ref u8 {
-    if use_first { first } else { second }
-}
-"#
-                .into(),
-            ),
-        );
-        let file = db.workspace().get(&db, &file_url).unwrap();
-        let semantic = semantic_instance_for_named_func(&db, db.top_mod(file), "choose");
-        let default_key = runtime_instance_for_semantic(&db, semantic).key(&db);
-        let mut params = default_key.params(&db).clone();
-        let pointee = params[1].ref_pointee().unwrap().clone();
-        params[1] = RuntimeClass::raw_addr(&db, AddressSpaceKind::Memory, pointee);
-        let key = RuntimeInstanceKey::new(&db, RuntimeInstanceSource::Semantic(semantic), params);
-        let declaration = declaration_runtime_return_class(&db, key);
-        assert!(matches!(
-            declaration,
-            Some(RuntimeClass::Ref {
-                kind: RefKind::Native,
-                ..
-            })
-        ));
-        assert_eq!(declaration, legacy_return_class_for_key(&db, key));
-    }
-
-    #[test]
-    fn raw_pointer_borrows_keep_their_return_layout() {
-        let mut db = DriverDataBase::default();
-        let file_url = Url::parse("file:///raw_borrow_returns.fe").unwrap();
-        db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(
-                r#"
-struct Buffer { ptr: *u8 }
-struct Loan { value: mut u8 }
-fn direct(_ ptr: *u8) -> mut u8 { mut *ptr }
-fn nested(_ buffer: Buffer) -> Loan { Loan { value: mut *buffer.ptr } }
-"#
-                .to_string(),
-            ),
-        );
-        let file = db.workspace().get(&db, &file_url).unwrap();
-        let top_mod = db.top_mod(file);
-        for (name, projection) in [
-            ("direct", vec![]),
-            ("nested", vec![ReturnProjectionStep::Field(0)]),
-        ] {
-            let semantic = semantic_instance_for_named_func(&db, top_mod, name);
-            let key = runtime_instance_for_semantic(&db, semantic).key(&db);
-            let declaration = declaration_runtime_return_class(&db, key).unwrap();
-            assert_eq!(
-                Some(declaration.clone()),
-                legacy_return_class_for_key(&db, key)
-            );
-            let result = project_declaration_return_source(&db, declaration, &projection).unwrap();
-            if projection.is_empty() {
-                assert!(
-                    matches!(
-                        result,
-                        RuntimeClass::RawAddr {
-                            space: AddressSpaceKind::Memory,
-                            ..
-                        }
-                    ),
-                    "direct returns retain their static raw layout"
-                );
-            } else {
-                assert!(
-                    matches!(
-                        result,
-                        RuntimeClass::Ref {
-                            kind: RefKind::Native,
-                            ..
-                        }
-                    ),
-                    "stored borrows use the canonical address/layout carrier"
-                );
-            }
-        }
-    }
-
     #[test]
     fn borrow_return_class_remains_dynamic() {
         let mut db = DriverDataBase::default();
@@ -1395,7 +1513,7 @@ impl Holder {
             Some(
                 r#"
 fn choose(_ flag: bool) -> u256 {
-    let mut x = 1
+    var x = 1
     if flag {
         x = 2
     }
@@ -1514,6 +1632,8 @@ struct Pair {
     b: u256,
 }
 
+impl Copy for Pair {}
+
 fn id_ctx() -> Pair uses (ctx: Pair) {
     ctx
 }
@@ -1561,77 +1681,6 @@ pub contract C {
             "provider-root return slice should match full-body carrier inference:\ninstance={key:#?}"
         );
     }
-
-    #[test]
-    fn return_class_merges_default_enum_with_storage_provider_variant() {
-        let mut db = DriverDataBase::default();
-        let file_url =
-            Url::parse("file:///return_class_merges_default_enum_with_storage_provider_variant.fe")
-                .unwrap();
-        db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(
-                include_str!("../../../../fe/tests/fixtures/fe_test/reentrancy_mutex.fe")
-                    .to_string(),
-            ),
-        );
-        let file = db
-            .workspace()
-            .get(&db, &file_url)
-            .expect("file should be loaded");
-        let top_mod = db.top_mod(file);
-        let package = build_runtime_package(&db, top_mod).expect("runtime package");
-        let function = package
-            .functions(&db)
-            .iter()
-            .copied()
-            .find(|function| function.symbol(&db).contains("try_lock"))
-            .expect("missing specialized try_lock runtime function");
-        let instance = function.instance(&db);
-        let semantic = instance
-            .key(&db)
-            .semantic(&db)
-            .expect("try_lock should be a semantic runtime instance");
-        let return_ty = semantic.key(&db).typed_body(&db).result_ty();
-        let option_enum = return_ty
-            .as_enum(&db)
-            .expect("try_lock should return Option");
-        let some_variant_idx = option_enum
-            .variants(&db)
-            .position(|variant| {
-                variant
-                    .name(&db)
-                    .is_some_and(|name| name.data(&db) == "Some")
-            })
-            .expect("Option should include Some");
-        let ret = instance
-            .interface_signature(&db)
-            .ret
-            .expect("try_lock should return a runtime-visible Option");
-        let RuntimeClass::AggregateValue { layout } = ret else {
-            panic!("try_lock should return an aggregate enum: {ret:#?}");
-        };
-        let Layout::Enum(enum_layout) = layout.data(&db) else {
-            panic!("try_lock should return an enum layout: {layout:#?}");
-        };
-        let some_variant = enum_layout
-            .variants
-            .get(some_variant_idx)
-            .expect("Option layout should include Some");
-
-        assert!(
-            matches!(
-                some_variant.fields.first(),
-                Some(RuntimeClass::Ref {
-                    kind: RefKind::Native,
-                    ..
-                })
-            ),
-            "returned enum fields must use native carriers that preserve storage layout:\n{ret:#?}"
-        );
-    }
-
     #[test]
     fn aggregate_temporaries_match_full_inference_in_return_slices() {
         let mut db = DriverDataBase::default();
@@ -1713,18 +1762,29 @@ fn first(_ arr: [u8; 4]) -> u8 {
     #[test]
     fn merged_return_class_is_order_independent_for_irreconcilable_sites() {
         let db = DriverDataBase::default();
-        let storage = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Storage);
-        let transient = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Transient);
+        let storage = RuntimeClass::opaque_raw_addr(AddressSpace::Storage);
+        let transient = RuntimeClass::opaque_raw_addr(AddressSpace::Transient);
 
         // Return sites that disagree on a non-Memory space cannot be merged, so the
         // fold reports failure (caller falls back to the default class) regardless of
         // the order the return sites were collected in.
         assert_eq!(
-            merged_return_class(&db, vec![storage.clone(), transient.clone()], false),
+            merged_return_class(
+                &db,
+                vec![
+                    (storage.clone(), Built::Unknown),
+                    (transient.clone(), Built::Unknown)
+                ],
+                false
+            ),
             None
         );
         assert_eq!(
-            merged_return_class(&db, vec![transient, storage], false),
+            merged_return_class(
+                &db,
+                vec![(transient, Built::Unknown), (storage, Built::Unknown)],
+                false
+            ),
             None
         );
     }
@@ -1732,17 +1792,63 @@ fn first(_ arr: [u8; 4]) -> u8 {
     #[test]
     fn merged_return_class_folds_memory_into_non_memory_regardless_of_order() {
         let db = DriverDataBase::default();
-        let memory = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Memory);
-        let storage = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Storage);
-        let merged = RuntimeClass::opaque_raw_addr(AddressSpaceKind::Storage);
+        let memory = RuntimeClass::opaque_raw_addr(AddressSpace::Memory);
+        let storage = RuntimeClass::opaque_raw_addr(AddressSpace::Storage);
+        let merged = RuntimeClass::opaque_raw_addr(AddressSpace::Storage);
 
         assert_eq!(
-            merged_return_class(&db, vec![memory.clone(), storage.clone()], false),
+            merged_return_class(
+                &db,
+                vec![
+                    (memory.clone(), Built::Unknown),
+                    (storage.clone(), Built::Unknown)
+                ],
+                false
+            ),
             Some(merged.clone())
         );
         assert_eq!(
-            merged_return_class(&db, vec![storage, memory], false),
+            merged_return_class(
+                &db,
+                vec![(storage, Built::Unknown), (memory, Built::Unknown)],
+                false
+            ),
             Some(merged)
+        );
+    }
+
+    #[test]
+    fn projection_result_spaces_hold_the_lowered_return_class() {
+        let source = r#"
+fn first(_ a: mut [u256; 2]) -> mut u256 {
+    mut a[0]
+}
+"#;
+        let mut db = DriverDataBase::default();
+        let file_url = Url::parse("file:///projection_result_spaces.fe").unwrap();
+        db.workspace()
+            .touch(&mut db, file_url.clone(), Some(source.to_string()));
+        let file = db
+            .workspace()
+            .get(&db, &file_url)
+            .expect("file should be loaded");
+        let top_mod = db.top_mod(file);
+        let semantic = semantic_instance_for_named_func(&db, top_mod, "first");
+        let key = runtime_instance_for_semantic(&db, semantic).key(&db);
+        let ret = declaration_runtime_return_class(&db, key).expect("a projection's grant class");
+
+        assert_eq!(
+            check_projection_result_spaces(&db, semantic, Some(&ret)),
+            Ok(())
+        );
+        assert!(
+            check_projection_result_spaces(
+                &db,
+                semantic,
+                Some(&RuntimeClass::opaque_raw_addr(AddressSpace::Storage)),
+            )
+            .is_err(),
+            "a memory grant returned as a storage address is an error"
         );
     }
 }

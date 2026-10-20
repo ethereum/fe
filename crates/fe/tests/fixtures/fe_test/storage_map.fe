@@ -62,7 +62,7 @@ pub contract BalanceMap {
 #[test]
 fn test_storage_map() uses (evm: mut Evm) {
     let contract_addr = evm.create2<BalanceMap>(value: Wei::zero(), args: (), salt: 0)
-    assert!(contract_addr.inner != 0)
+    assert!(contract_addr.word() != 0)
 
     let alice: u256 = 0x1111
     let bob: u256 = 0x2222

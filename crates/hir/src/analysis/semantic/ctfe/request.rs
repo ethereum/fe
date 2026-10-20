@@ -330,7 +330,7 @@ impl<'db> TyFoldable<'db> for TermProvenance<'db> {
                 .into_iter()
                 .map(|frame| TermCallFrame {
                     origin: frame.origin,
-                    callee: frame.callee.fold_with(db, folder),
+                    callee: folder.fold_const_context_key(db, frame.callee),
                 })
                 .collect(),
             ..self
@@ -414,9 +414,13 @@ mod tests {
 
     use super::*;
     use crate::{
-        analysis::semantic::{
-            SemConstScalar, SemConstValue, array_const, bool_const, bytes_const, int_const,
+        analysis::{
+            semantic::{
+                SemConstScalar, SemConstValue, array_const, bool_const, bytes_const, int_const,
+            },
+            ty::ty_def::{Kind, TyParam},
         },
+        hir_def::IdentId,
         test_db::HirAnalysisTestDb,
     };
 
@@ -429,7 +433,7 @@ mod tests {
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let owner = crate::analysis::ty::ty_check::BodyOwner::Func(module.all_funcs(&db)[0]);
+        let owner = crate::analysis::ty::ty_check::BodyOwner::Func(module.all_funcs(&db)[0], None);
         let array_ty = crate::analysis::semantic::identity_semantic_instance_key(&db, owner)
             .typed_body(&db)
             .result_ty();
@@ -479,9 +483,16 @@ mod tests {
             vec![bool_const(&db, true), valid].into_boxed_slice(),
         );
         assert!(VerifiedConstValueId::from_complete_execution(&db, wrong_element).is_err());
+        // A constant only specialization knows.
+        let param = TyParam::implicit_param(
+            IdentId::new(&db, "N".to_string()),
+            0,
+            Kind::Star,
+            module.scope(),
+        );
         let symbolic = SemConstId::new(
             &db,
-            SemConstValue::Description(ConstTyId::hole_with_ty(&db, u8_ty)),
+            SemConstValue::Description(ConstTyId::new(&db, ConstTyData::TyParam(param, u8_ty))),
         );
         assert!(VerifiedConstValueId::from_complete_execution(&db, symbolic).is_err());
         assert!(matches!(

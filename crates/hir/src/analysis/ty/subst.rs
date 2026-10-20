@@ -221,7 +221,13 @@ mod tests {
         let item = IdentId::new(&db, "Item".to_string());
         let mut bindings = IndexMap::new();
         bindings.insert(item, params[0]);
-        let predicate = TraitInstId::new(&db, trait_, vec![params[0], params[1]], bindings);
+        let predicate = TraitInstId::new(
+            &db,
+            trait_,
+            vec![params[0], params[1]],
+            bindings,
+            crate::hir_def::ModeMarker::None,
+        );
         let mapped = substitute_complete(&db, predicate, &sigma).unwrap();
         assert_eq!(mapped.args(&db), &[params[1], params[0]]);
         assert_eq!(mapped.assoc_type_bindings(&db)[&item], params[1]);
@@ -267,7 +273,7 @@ mod tests {
         let mut db = HirAnalysisTestDb::default();
         let file = db.new_stand_alone(
             Utf8PathBuf::from("subst_basis.fe"),
-            "struct Slot<const ROOT: u256 = _> {}\ntrait T<X> { fn f<Y>(_ value: Slot, _ extra: Y) {} }",
+            "struct K {}\ntrait T<X> { fn f<Y>(_ extra: Y) uses (k: K) {} }",
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);

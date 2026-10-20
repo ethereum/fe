@@ -71,7 +71,7 @@ pub contract Reader {
 #[test]
 fn const_and_runtime_provider_borrows_in_contract_agree() uses (evm: mut Evm) {
     let reader = evm.create2<Reader>(value: Wei::zero(), args: (), salt: 0)
-    assert!(reader.inner != 0)
+    assert!(reader.word() != 0)
     let compiled: u256 = evm.call(addr: reader, gas: 100000, value: Wei::zero(), message: ReaderMsg::Compiled {})
     let runtime: u256 = evm.call(addr: reader, gas: 100000, value: Wei::zero(), message: ReaderMsg::Runtime {})
     let length: u256 = evm.call(addr: reader, gas: 100000, value: Wei::zero(), message: ReaderMsg::Length {})

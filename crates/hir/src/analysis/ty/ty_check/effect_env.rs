@@ -82,6 +82,16 @@ impl<'db> EffectEnv<'db> {
         }
     }
 
+    /// Adds `forwarder` to the outermost frame: an effect of the whole body
+    /// (a closure's row component), below the `with` blocks it opens.
+    pub fn insert_base_forwarder(&mut self, forwarder: EffectForwarder<'db, ProvidedEffect<'db>>) {
+        self.frames[0]
+            .keyed_by_family
+            .entry(forwarder.key.clone().family())
+            .or_default()
+            .push(KeyedEffectEntry::Forwarder(forwarder));
+    }
+
     fn current_frame_mut(&mut self) -> &mut EffectFrame<'db> {
         self.frames
             .last_mut()

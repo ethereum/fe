@@ -25,9 +25,6 @@ completions:
   - Decode (Interface)
   - Default (Interface)
   - Drawable (Interface)
-  - Duration (Struct)
-  - DynArrayAccess (Interface)
-  - DynVec (Struct)
   - Encode (Interface)
   - Err (EnumMember)
   - ErrorVariant (Interface)
@@ -51,25 +48,24 @@ completions:
   - Panic (Struct)
   - Point (Struct)
   - Result (Enum)
+  - Snapshot (Interface)
   - Sol (Struct)
   - Some (EnumMember)
   - StorageMap (Struct)
   - Text (Class)
-  - Timestamp (Struct)
   - UnsignedAbs (Interface)
   - Vec (Class)
-  - Wei (Struct)
   - another_func_with_args (Function) -> "another_func_with_args(${1:x}, ${2:y})$0" [fn another_func_with_args(x: i32, y: i32) -> i32]
   - assert (Function) -> "assert(${1:b})$0" [fn assert(b: bool)]
-  - byte_ptr (Function) -> "byte_ptr(${1:ptr})$0" [fn byte_ptr(ptr: *<T>) -> *<u8>]
-  - cast (Function) -> "cast(${1:ptr})$0" [fn cast(ptr: *<T>) -> *<U>]
+  - byte_ptr (Function) -> "byte_ptr(${1:ptr})$0" [fn byte_ptr(ptr: *T) -> *u8]
+  - cast (Function) -> "cast(${1:ptr})$0" [fn cast(ptr: *T) -> *U]
   - func_with_args (Function) -> "func_with_args(${1:x}, ${2:y})$0" [use utils::func_with_args [fn func_with_args(x: i32, y: i32) -> i32]] {+0:use utils::func_with_args}
   - help (Function) -> "help()$0" [use utils::help [fn help() -> i32]] {+0:use utils::help}
   - helper_func (Function) -> "helper_func()$0" [use utils::helper_func [fn helper_func() -> i32]] {+0:use utils::helper_func}
   - import_test (Module) -> "import_test::"
   - needs_import (Function) -> "needs_import()$0" [use import_test::needs_import [fn needs_import()]] {+0:use import_test::needs_import}
-  - offset (Function) -> "offset(${1:ptr}, ${2:count})$0" [fn offset(ptr: *<T>, count: u256) -> *<T>]
-  - offset_bytes (Function) -> "offset_bytes(${1:ptr}, ${2:offset})$0" [fn offset_bytes(ptr: *<T>, offset: u256) -> *<T>]
+  - offset (Function) -> "offset(${1:ptr}, ${2:count})$0" [fn offset(ptr: *T, count: u256) -> *T]
+  - offset_bytes (Function) -> "offset_bytes(${1:ptr}, ${2:offset})$0" [fn offset_bytes(ptr: *T, offset: u256) -> *T]
   - other_stuff (Module) -> "other_stuff::"
   - panic (Function) -> "panic()$0" [fn panic() -> !]
   - revert (Function) -> "revert(${1:value})$0" [fn revert(value: T) -> !]
@@ -109,8 +105,6 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
-  - Duration (Struct)
-  - DynVec (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helpable (Interface) [use utils::Helpable [Helpable]] {+0:use utils::Helpable}
@@ -129,9 +123,7 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
-  - Timestamp (Struct)
   - Vec (Class)
-  - Wei (Struct)
 
 note: 
    ┌─ completion.fe:63:18
@@ -146,14 +138,14 @@ completions:
   - Some (EnumMember)
   - another_func_with_args (Function) -> "another_func_with_args(${1:x}, ${2:y})$0" [fn another_func_with_args(x: i32, y: i32) -> i32]
   - assert (Function) -> "assert(${1:b})$0" [fn assert(b: bool)]
-  - byte_ptr (Function) -> "byte_ptr(${1:ptr})$0" [fn byte_ptr(ptr: *<T>) -> *<u8>]
-  - cast (Function) -> "cast(${1:ptr})$0" [fn cast(ptr: *<T>) -> *<U>]
+  - byte_ptr (Function) -> "byte_ptr(${1:ptr})$0" [fn byte_ptr(ptr: *T) -> *u8]
+  - cast (Function) -> "cast(${1:ptr})$0" [fn cast(ptr: *T) -> *U]
   - func_with_args (Function) -> "func_with_args(${1:x}, ${2:y})$0" [use utils::func_with_args [fn func_with_args(x: i32, y: i32) -> i32]] {+0:use utils::func_with_args}
   - help (Function) -> "help()$0" [use utils::help [fn help() -> i32]] {+0:use utils::help}
   - helper_func (Function) -> "helper_func()$0" [use utils::helper_func [fn helper_func() -> i32]] {+0:use utils::helper_func}
   - needs_import (Function) -> "needs_import()$0" [use import_test::needs_import [fn needs_import()]] {+0:use import_test::needs_import}
-  - offset (Function) -> "offset(${1:ptr}, ${2:count})$0" [fn offset(ptr: *<T>, count: u256) -> *<T>]
-  - offset_bytes (Function) -> "offset_bytes(${1:ptr}, ${2:offset})$0" [fn offset_bytes(ptr: *<T>, offset: u256) -> *<T>]
+  - offset (Function) -> "offset(${1:ptr}, ${2:count})$0" [fn offset(ptr: *T, count: u256) -> *T]
+  - offset_bytes (Function) -> "offset_bytes(${1:ptr}, ${2:offset})$0" [fn offset_bytes(ptr: *T, offset: u256) -> *T]
   - panic (Function) -> "panic()$0" [fn panic() -> !]
   - result (Variable) [result: _]
   - revert (Function) -> "revert(${1:value})$0" [fn revert(value: T) -> !]
@@ -189,8 +181,6 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
-  - Duration (Struct)
-  - DynVec (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helpable (Interface) [use utils::Helpable [Helpable]] {+0:use utils::Helpable}
@@ -209,9 +199,7 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
-  - Timestamp (Struct)
   - Vec (Class)
-  - Wei (Struct)
 
 note: 
    ┌─ completion.fe:78:13
@@ -226,15 +214,15 @@ completions:
   - Some (EnumMember)
   - another_func_with_args (Function) -> "another_func_with_args(${1:x}, ${2:y})$0" [fn another_func_with_args(x: i32, y: i32) -> i32]
   - assert (Function) -> "assert(${1:b})$0" [fn assert(b: bool)]
-  - byte_ptr (Function) -> "byte_ptr(${1:ptr})$0" [fn byte_ptr(ptr: *<T>) -> *<u8>]
-  - cast (Function) -> "cast(${1:ptr})$0" [fn cast(ptr: *<T>) -> *<U>]
+  - byte_ptr (Function) -> "byte_ptr(${1:ptr})$0" [fn byte_ptr(ptr: *T) -> *u8]
+  - cast (Function) -> "cast(${1:ptr})$0" [fn cast(ptr: *T) -> *U]
   - func_with_args (Function) -> "func_with_args(${1:x}, ${2:y})$0" [use utils::func_with_args [fn func_with_args(x: i32, y: i32) -> i32]] {+0:use utils::func_with_args}
   - help (Function) -> "help()$0" [use utils::help [fn help() -> i32]] {+0:use utils::help}
   - helper_func (Function) -> "helper_func()$0" [use utils::helper_func [fn helper_func() -> i32]] {+0:use utils::helper_func}
   - local_var (Variable) [local_var: {integer}]
   - needs_import (Function) -> "needs_import()$0" [use import_test::needs_import [fn needs_import()]] {+0:use import_test::needs_import}
-  - offset (Function) -> "offset(${1:ptr}, ${2:count})$0" [fn offset(ptr: *<T>, count: u256) -> *<T>]
-  - offset_bytes (Function) -> "offset_bytes(${1:ptr}, ${2:offset})$0" [fn offset_bytes(ptr: *<T>, offset: u256) -> *<T>]
+  - offset (Function) -> "offset(${1:ptr}, ${2:count})$0" [fn offset(ptr: *T, count: u256) -> *T]
+  - offset_bytes (Function) -> "offset_bytes(${1:ptr}, ${2:offset})$0" [fn offset_bytes(ptr: *T, offset: u256) -> *T]
   - panic (Function) -> "panic()$0" [fn panic() -> !]
   - param (Variable) [param: i32]
   - revert (Function) -> "revert(${1:value})$0" [fn revert(value: T) -> !]
@@ -259,8 +247,6 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
-  - Duration (Struct)
-  - DynVec (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helper (Struct)
@@ -277,9 +263,7 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
-  - Timestamp (Struct)
   - Vec (Class)
-  - Wei (Struct)
 
 note: 
     ┌─ completion.fe:107:16
@@ -290,8 +274,6 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
-  - Duration (Struct)
-  - DynVec (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helpable (Interface) [use utils::Helpable [Helpable]] {+104:use utils::Helpable}
@@ -310,6 +292,4 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
-  - Timestamp (Struct)
   - Vec (Class)
-  - Wei (Struct)

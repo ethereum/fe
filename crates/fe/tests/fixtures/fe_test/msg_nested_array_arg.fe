@@ -26,7 +26,7 @@ msg CallerMsg {
 pub contract Caller uses (call: mut Call) {
     recv CallerMsg {
         Check { target } -> bool uses (mut call) {
-            let mut pub_signals: [u256; 38] = [0; 38]
+            var pub_signals: [u256; 38] = [0; 38]
             pub_signals[37] = 4
             call.call(
                 addr: target,

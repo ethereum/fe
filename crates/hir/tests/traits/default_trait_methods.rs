@@ -63,6 +63,7 @@ fn run(evm: mut Evm) -> u256 {
         TraitSolveCx::new(&db, impl_trait.scope()),
         inst,
         method_name,
+        None,
     ) else {
         panic!("missing resolved method");
     };
@@ -73,12 +74,12 @@ fn run(evm: mut Evm) -> u256 {
 
     let instantiated = instantiate_typed_body(
         &db,
-        typed_body_template(&db, BodyOwner::Func(resolved_method)),
+        typed_body_template(&db, BodyOwner::Func(resolved_method, None)),
         GenericSubst::for_owner(&db, resolved_method.into(), resolved.body_args().to_vec()),
     );
     let self_binding = instantiated.param_binding(0).expect("missing self binding");
     let self_ty = instantiated.binding_ty(&db, self_binding);
-    assert_eq!(self_ty.pretty_print(&db).to_string(), "mut Evm");
+    assert_eq!(self_ty.pretty_print(&db).to_string(), "Evm");
 }
 
 #[test]
@@ -123,13 +124,14 @@ fn run() uses (evm: mut Evm) {
         .expect("missing callable for create2");
     let semantic = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(run)).expect("missing root semantic key"),
+        root_semantic_instance_key(&db, BodyOwner::Func(run, None))
+            .expect("missing root semantic key"),
     );
     let create2 = semantic
         .callees(&db)
         .iter()
         .find_map(|callee| match callee.key.owner(&db) {
-            BodyOwner::Func(func)
+            BodyOwner::Func(func, _)
                 if func
                     .name(&db)
                     .to_opt()
@@ -158,7 +160,7 @@ pub contract C {}
 fn test_large_by_value_array_args() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: Wei::zero(), args: (), salt: 0)
     let out: Address = c
-    assert!(out.inner == c.inner)
+    assert!(out.word() == c.word())
 }
 "#,
     );
@@ -205,14 +207,14 @@ fn test_large_by_value_array_args() uses (evm: mut Evm) {
     );
     let semantic = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(test_func))
+        root_semantic_instance_key(&db, BodyOwner::Func(test_func, None))
             .expect("missing root semantic key"),
     );
     let create2 = semantic
         .callees(&db)
         .iter()
         .filter_map(|callee| match callee.key.owner(&db) {
-            BodyOwner::Func(func)
+            BodyOwner::Func(func, _)
                 if func
                     .name(&db)
                     .to_opt()
@@ -266,13 +268,14 @@ fn run() uses (evm: mut Evm) {
         .expect("missing run function");
     let root = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(run)).expect("missing root semantic key"),
+        root_semantic_instance_key(&db, BodyOwner::Func(run, None))
+            .expect("missing root semantic key"),
     );
     let create2 = root
         .callees(&db)
         .iter()
         .find_map(|callee| match callee.key.owner(&db) {
-            BodyOwner::Func(func)
+            BodyOwner::Func(func, _)
                 if func
                     .name(&db)
                     .to_opt()
@@ -287,7 +290,7 @@ fn run() uses (evm: mut Evm) {
         .callees(&db)
         .iter()
         .find_map(|callee| match callee.key.owner(&db) {
-            BodyOwner::Func(func)
+            BodyOwner::Func(func, _)
                 if func
                     .name(&db)
                     .to_opt()
@@ -302,7 +305,7 @@ fn run() uses (evm: mut Evm) {
         .callees(&db)
         .iter()
         .find_map(|callee| match callee.key.owner(&db) {
-            BodyOwner::Func(func)
+            BodyOwner::Func(func, _)
                 if func
                     .name(&db)
                     .to_opt()
@@ -327,7 +330,9 @@ fn run() uses (evm: mut Evm) {
             fe_hir::analysis::semantic::SStmtKind::Assign {
                 expr: fe_hir::analysis::semantic::SExpr::Call { callee, args, .. },
                 ..
-            } if callee.key.owner(&db) == BodyOwner::Func(low_level_create2) => Some(args.len()),
+            } if callee.key.owner(&db) == BodyOwner::Func(low_level_create2, None) => {
+                Some(args.len())
+            }
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -404,14 +409,14 @@ fn test_large_by_value_array_args() uses (evm: mut Evm) {
         .expect("missing test function");
     let semantic = get_or_build_semantic_instance(
         &db,
-        root_semantic_instance_key(&db, BodyOwner::Func(test_func))
+        root_semantic_instance_key(&db, BodyOwner::Func(test_func, None))
             .expect("missing root semantic key"),
     );
     let create2 = semantic
         .callees(&db)
         .iter()
         .filter_map(|callee| match callee.key.owner(&db) {
-            BodyOwner::Func(func)
+            BodyOwner::Func(func, _)
                 if func
                     .name(&db)
                     .to_opt()

@@ -11,7 +11,7 @@ use super::{
     parse_list,
     path::PathScope,
     token_stream::TokenStream,
-    type_::{is_type_start, parse_type},
+    type_::{TupleTypeScope, is_type_start, parse_closure_param_type, parse_type},
 };
 
 define_scope! {
@@ -28,17 +28,78 @@ impl super::Parse for FuncParamListScope {
             false,
             SyntaxKind::FuncParamList,
             (SyntaxKind::LParen, SyntaxKind::RParen),
-            |parser| parser.parse(FnParamScope::new(self.allow_self)),
+            |parser| parser.parse(FnParamScope::new(self.allow_self, false)),
         )
     }
 }
 
-define_scope! { FnParamScope{allow_self: bool}, FnParam }
+define_scope! {
+    pub(crate) ClosureParamListScope,
+    FuncParamList,
+    (Pipe, Comma)
+}
+impl super::Parse for ClosureParamListScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            false,
+            SyntaxKind::FuncParamList,
+            (SyntaxKind::Pipe, SyntaxKind::Pipe),
+            |parser| parser.parse(FnParamScope::new(false, true)),
+        )
+    }
+}
+
+define_scope! {
+    FnParamScope {
+        allow_self: bool,
+        allow_inferred_type: bool
+    },
+    FnParam
+}
+impl FnParamScope {
+    /// Parses the `: Type` suffix. A closure parameter may omit it entirely, or
+    /// omit the payload type after a mode keyword (`own`, `ref`, `mut`).
+    fn parse_param_ty<S: TokenStream>(
+        &self,
+        parser: &mut Parser<S>,
+    ) -> Result<(), Recovery<ErrProof>> {
+        if self.allow_inferred_type {
+            if parser.bump_if(SyntaxKind::Colon) {
+                parse_closure_param_type(parser)?;
+            }
+        } else if parser.find(
+            SyntaxKind::Colon,
+            ExpectedKind::TypeSpecifier(SyntaxKind::FnParam),
+        )? {
+            parser.bump();
+            parse_type(parser, None)?;
+        }
+        Ok(())
+    }
+}
+/// `mut` before a parameter's name, where a mutable owned parameter writes
+/// `var`.
+fn mut_param_name_error<S: TokenStream>(parser: &mut Parser<S>) {
+    parser.error_msg_on_current_token(
+        "a mutable owned parameter is written `var x: own T`; `x: mut T` is a mutable borrow",
+    );
+}
+
+/// `mut?` before a parameter's name, which goes on its type.
+fn maybe_mut_param_name_error<S: TokenStream>(parser: &mut Parser<S>) {
+    parser.error_msg_on_current_token("a parameter's mode goes on its type: `x: mut? T`");
+}
+
 impl super::Parse for FnParamScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.bump_if(SyntaxKind::MutKw);
+        let has_mut = parser.bump_if(SyntaxKind::MutKw);
+        let has_maybe_mut = !has_mut && parser.bump_if(SyntaxKind::MaybeMutKw);
+        let has_var = !has_mut && !has_maybe_mut && parser.bump_if(SyntaxKind::VarKw);
         let lookahead = parser.peek_n_non_trivia(2);
         let allow_ref_self_shorthand = matches!(
             lookahead.as_slice(),
@@ -68,12 +129,35 @@ impl super::Parse for FnParamScope {
                 if !self.allow_self {
                     parser.error_msg_on_current_token("`self` is not allowed here");
                 }
+                let typed = matches!(
+                    parser.peek_n_non_trivia(2).as_slice(),
+                    [_, SyntaxKind::Colon]
+                );
+                if has_mut && allow_own_self_shorthand {
+                    parser.error_msg_on_current_token(
+                        "a mutable owned receiver is written `var own self`; `mut self` is a mutable borrow",
+                    );
+                } else if has_var && !allow_own_self_shorthand && !typed {
+                    parser.error_msg_on_current_token(
+                        "`var` makes an owned receiver mutable: `var own self`",
+                    );
+                }
                 parser.bump_expected(SyntaxKind::SelfKw);
                 if parser.bump_if(SyntaxKind::Colon) {
+                    if has_mut && parser.current_kind() == Some(SyntaxKind::OwnKw) {
+                        parser.error_msg_on_current_token(
+                            "a mutable owned receiver is written `var self: own T`; `mut self` is a mutable borrow",
+                        );
+                    }
                     parse_type(parser, None)?;
                 }
             }
             Some(SyntaxKind::Ident) => {
+                if has_mut {
+                    mut_param_name_error(parser);
+                } else if has_maybe_mut {
+                    maybe_mut_param_name_error(parser);
+                }
                 parser.bump();
 
                 if matches!(
@@ -85,31 +169,32 @@ impl super::Parse for FnParamScope {
                     );
                     parser.bump();
                 }
-                if parser.find(
-                    SyntaxKind::Colon,
-                    ExpectedKind::TypeSpecifier(SyntaxKind::FnParam),
-                )? {
-                    parser.bump();
-                    parse_type(parser, None)?;
-                }
+                self.parse_param_ty(parser)?;
             }
             Some(SyntaxKind::Underscore) => {
+                if has_mut {
+                    mut_param_name_error(parser);
+                } else if has_maybe_mut {
+                    maybe_mut_param_name_error(parser);
+                }
                 parser.bump();
 
-                parser.expect(
-                    &[SyntaxKind::Ident, SyntaxKind::Underscore, SyntaxKind::Colon],
-                    None,
-                )?;
-                if !parser.bump_if(SyntaxKind::Ident) {
-                    parser.bump_if(SyntaxKind::Underscore);
+                // A closure parameter may be a bare `_` with an inferred type.
+                if !self.allow_inferred_type
+                    || !matches!(
+                        parser.current_kind(),
+                        Some(SyntaxKind::Comma | SyntaxKind::Pipe)
+                    )
+                {
+                    parser.expect(
+                        &[SyntaxKind::Ident, SyntaxKind::Underscore, SyntaxKind::Colon],
+                        None,
+                    )?;
+                    if !parser.bump_if(SyntaxKind::Ident) {
+                        parser.bump_if(SyntaxKind::Underscore);
+                    }
                 }
-                if parser.find(
-                    SyntaxKind::Colon,
-                    ExpectedKind::TypeSpecifier(SyntaxKind::FnParam),
-                )? {
-                    parser.bump();
-                    parse_type(parser, None)?;
-                }
+                self.parse_param_ty(parser)?;
             }
             _ => unreachable!(), // only reachable if a recovery token is added
         };
@@ -180,11 +265,7 @@ impl super::Parse for ConstGenericParamScope {
         }
 
         if parser.bump_if(SyntaxKind::Eq) {
-            if parser.current_kind() == Some(SyntaxKind::Underscore) {
-                parser.bump_expected(SyntaxKind::Underscore);
-            } else {
-                parse_const_generic_expr(parser)?;
-            }
+            parse_const_generic_expr(parser)?;
         }
         Ok(())
     }
@@ -250,6 +331,11 @@ impl super::Parse for TypeBoundScope {
             if self.disallow_trait_bound {
                 return parser.error_and_recover("trait bounds are not allowed here");
             }
+            // The modes the bound grants a trait's `mut?` methods at:
+            // `mut Index<usize>`, or the item's mode with `mut? Collection`.
+            if !parser.bump_if(SyntaxKind::MutKw) {
+                parser.bump_if(SyntaxKind::MaybeMutKw);
+            }
             parser.parse_or_recover(TraitRefScope::default())
         }
     }
@@ -314,9 +400,34 @@ impl super::Parse for TraitRefScope {
     type Error = ParseError;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.parse(PathScope::default()).map_err(|_| {
+        let expected = |parser: &Parser<S>| {
             ParseError::expected(&[SyntaxKind::TraitRef], None, parser.end_of_prev_token)
-        })
+        };
+        // `Fn` and `FnMut` are keywords only before a parameter list.
+        if (parser.is_ident("Fn") || parser.is_ident("FnMut"))
+            && parser.peek_n_non_trivia(2).as_slice() == [SyntaxKind::Ident, SyntaxKind::LParen]
+        {
+            return parser
+                .parse(FnShapeScope::default())
+                .map_err(|_| expected(parser));
+        }
+        parser
+            .parse(PathScope::default())
+            .map_err(|_| expected(parser))
+    }
+}
+
+define_scope! { FnShapeScope, FnShape }
+impl super::Parse for FnShapeScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.bump_expected(SyntaxKind::Ident);
+        parser.parse(TupleTypeScope::default())?;
+        if parser.bump_if(SyntaxKind::Arrow) {
+            parse_type(parser, None)?;
+        }
+        Ok(())
     }
 }
 
@@ -407,10 +518,6 @@ impl super::Parse for GenericArgScope {
             }
 
             match parser.current_kind() {
-                Some(SyntaxKind::Underscore) => {
-                    self.set_kind(SyntaxKind::ConstGenericArg);
-                    parser.bump_expected(SyntaxKind::Underscore);
-                }
                 Some(SyntaxKind::LBrace) => {
                     self.set_kind(SyntaxKind::ConstGenericArg);
                     parser.parse(BlockExprScope::default())?;
@@ -601,9 +708,11 @@ fn skip_braces<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 /// Whether a `where` predicate can start with `kind`: a type bound starts
 /// with a type, and a const condition with an expression. A `{` is left out:
 /// whether it opens a condition or the item's block is decided by
-/// [`WhereClauseScope::brace_opens_predicate`].
+/// [`WhereClauseScope::brace_opens_predicate`]. An `unsafe` is left out too:
+/// it starts the next `unsafe fn` of a trait or `extern` block.
 fn starts_predicate(kind: SyntaxKind) -> bool {
-    kind != SyntaxKind::LBrace && (is_type_start(kind) || is_expr_start(kind))
+    !matches!(kind, SyntaxKind::LBrace | SyntaxKind::UnsafeKw)
+        && (is_type_start(kind) || is_expr_start(kind))
 }
 
 define_scope! { WhereConstPredicateScope, WhereConstPredicate }

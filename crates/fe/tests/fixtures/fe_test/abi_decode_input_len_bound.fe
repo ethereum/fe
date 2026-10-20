@@ -1,0 +1,57 @@
+// Decoders allocate a checked payload without the allocator's bound, so a
+// payload that would not fit it is a decode error (an empty revert), not an
+// allocation: byte data longer than `2**64 - 64` bytes, or an array in an
+// input longer than `2**64 - 32` bytes.
+use core::abi::{Bytes, Decode, DynString}
+use std::abi::DynArray
+use core::ptr::MemBuffer
+use std::abi::Sol
+use std::evm::Evm
+
+/// One byte past the longest input an array decodes from. `LONG - 32` bytes
+/// of data are one past the longest byte data.
+const LONG: u256 = 0xffffffffffffffe1
+
+/// A 32-byte input whose length word is `len`.
+fn input(_ len: u256) -> MemBuffer {
+    var input = MemBuffer::alloc(32)
+    input.write_word(offset: 0, value: len)
+    input
+}
+
+msg Probe {
+    #[selector = 1]
+    LongBytes {} -> u256,
+    #[selector = 2]
+    LongString {} -> u256,
+    #[selector = 3]
+    LongArray {} -> u256,
+}
+
+pub contract Decoder {
+    recv Probe {
+        LongBytes {} -> u256 {
+            let b: Bytes = <Bytes as Decode<Sol>>::decode_from_prechecked_head(input(LONG - 32).span(), 0, LONG)
+            b.len() as u256
+        }
+        LongString {} -> u256 {
+            let s: DynString = <DynString as Decode<Sol>>::decode_from_prechecked_head(input(LONG - 32).span(), 0, LONG)
+            s.len() as u256
+        }
+        LongArray {} -> u256 {
+            let a: DynArray<u256> = <DynArray<u256> as Decode<Sol>>::decode_from_prechecked_head(input(1 << 58).span(), 0, LONG)
+            a.len() as u256
+        }
+    }
+}
+
+#[test]
+fn long_inputs_are_decode_errors() uses (evm: mut Evm) {
+    let target = evm.create2<Decoder>(value: 0, args: (), salt: 0)
+    let bytes = evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::LongBytes {})
+    assert(!bytes.success() && bytes.returndata_len() == 0)
+    let string = evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::LongString {})
+    assert(!string.success() && string.returndata_len() == 0)
+    let array = evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::LongArray {})
+    assert(!array.success() && array.returndata_len() == 0)
+}

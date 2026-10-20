@@ -8,7 +8,6 @@ use crate::analysis::{
             stored_trait_key_is_rigid, stored_type_key_is_rigid,
         },
         fold::{TyFoldable, TyFolder},
-        layout_holes::layout_hole_fallback_ty,
         method_cmp::trait_effect_key_matches_with,
         trait_def::TraitInstId,
         ty_def::{InvalidCause, Kind, TyBase, TyData, TyId, TyVarSort},
@@ -16,6 +15,7 @@ use crate::analysis::{
         unify::UnificationTable,
     },
 };
+use crate::hir_def::ModeMarker;
 use crate::hir_def::{CallableDef, IdentId, Trait};
 use common::indexmap::IndexMap;
 use rustc_hash::FxHashMap;
@@ -227,7 +227,7 @@ fn instantiate_trait_pattern_with_replacements<'db>(
         .iter()
         .map(|(name, ty)| (*name, apply_slot_replacements(db, *ty, replacements)))
         .collect::<IndexMap<_, _>>();
-    TraitInstId::new(db, pattern.def, args, assoc)
+    TraitInstId::new(db, pattern.def, args, assoc, ModeMarker::None)
 }
 
 fn type_patterns_overlap<'db>(
@@ -326,6 +326,7 @@ fn trait_inst_from_parts<'db>(
             .chain(args_no_self)
             .collect::<Vec<_>>(),
         assoc_bindings.into_iter().collect::<IndexMap<_, _>>(),
+        ModeMarker::None,
     )
 }
 
@@ -519,11 +520,7 @@ where
         db,
         table,
         value,
-        EffectKeyIdentityInstantiationPolicy {
-            replace_ty_vars,
-            replace_holes: true,
-            replace_implicit_const_params: true,
-        },
+        EffectKeyIdentityInstantiationPolicy { replace_ty_vars },
     )
 }
 
@@ -550,8 +547,6 @@ where
 #[derive(Clone, Copy)]
 struct EffectKeyIdentityInstantiationPolicy {
     replace_ty_vars: bool,
-    replace_holes: bool,
-    replace_implicit_const_params: bool,
 }
 
 struct EffectKeyIdentityInstantiator<'a, 'db> {
@@ -568,7 +563,6 @@ impl<'a, 'db> EffectKeyIdentityInstantiator<'a, 'db> {
             TyData::ConstTy(const_ty) => {
                 let fallback_ty = match const_ty.data(self.db) {
                     ConstTyData::TyVar(_, const_ty_ty) => *const_ty_ty,
-                    ConstTyData::Hole(hole_ty, _) => layout_hole_fallback_ty(self.db, *hole_ty),
                     ConstTyData::TyParam(param, fallback_ty) if param.is_implicit() => *fallback_ty,
                     _ => unreachable!("unexpected non-placeholder in effect-key identity matcher"),
                 };
@@ -599,10 +593,7 @@ impl<'a, 'db> TyFolder<'db> for EffectKeyIdentityInstantiator<'a, 'db> {
             TyData::TyVar(_) => self.policy.replace_ty_vars,
             TyData::ConstTy(const_ty) => match const_ty.data(self.db) {
                 ConstTyData::TyVar(..) => self.policy.replace_ty_vars,
-                ConstTyData::Hole(..) => self.policy.replace_holes,
-                ConstTyData::TyParam(param, _) => {
-                    self.policy.replace_implicit_const_params && param.is_implicit()
-                }
+                ConstTyData::TyParam(param, _) => param.is_implicit(),
                 _ => false,
             },
             _ => false,
@@ -627,7 +618,7 @@ fn explicit_param_count_for_effect_identity_base<'db>(
             CallableDef::Func(def) => {
                 collect_generic_params(db, (*def).into()).explicit_param_count(db)
             }
-            CallableDef::VariantCtor(_) => 0,
+            CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
         },
         _ => 0,
     }

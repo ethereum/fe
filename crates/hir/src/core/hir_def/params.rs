@@ -68,7 +68,10 @@ impl<'db> GenericArgListId<'db> {
                 self.data(db)
                     .iter()
                     .map(|p| match p {
-                        GenericArg::Const(c) => c.value.pretty_print(db),
+                        GenericArg::Const(c) => c
+                            .value
+                            .to_opt()
+                            .map_or_else(|| "<missing>".into(), |b| b.pretty_print(db)),
                         GenericArg::Type(t) => {
                             t.ty.to_opt()
                                 .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db))
@@ -215,7 +218,7 @@ pub struct TypeGenericParam<'db> {
 pub struct ConstGenericParam<'db> {
     pub name: Partial<IdentId<'db>>,
     pub ty: Partial<TypeId<'db>>,
-    pub default: Option<ConstGenericArgValue<'db>>,
+    pub default: Option<Body<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
@@ -232,24 +235,7 @@ pub struct TypeGenericArg<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericArg<'db> {
-    pub value: ConstGenericArgValue<'db>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
-pub enum ConstGenericArgValue<'db> {
-    Expr(Partial<Body<'db>>),
-    Hole,
-}
-
-impl<'db> ConstGenericArgValue<'db> {
-    pub fn pretty_print(&self, db: &dyn HirDb) -> String {
-        match self {
-            Self::Expr(body) => body
-                .to_opt()
-                .map_or_else(|| "<missing>".into(), |b| b.pretty_print(db)),
-            Self::Hole => "_".to_string(),
-        }
-    }
+    pub value: Partial<Body<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -260,18 +246,45 @@ pub struct AssocTypeGenericArg<'db> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub enum FuncParamMode {
-    /// Default `x: T`: readable but cannot be moved-out.
+    /// Default `x: T` (or `x: ref T`): the caller's place is read-accessible
+    /// for the call.
     View,
+    /// `x: mut T`: the caller's place is exclusively accessible for the call.
+    Mut,
     /// `x: own T`: callee takes ownership of the argument.
     Own,
 }
 
+/// The name of the core callable shape trait `Fn(..)`, or `FnMut(..)` when
+/// `mut_receiver`, of parameters with `modes`: `Fn_ov` for `Fn(own A, B)`,
+/// `FnMut0` for `FnMut()`, and `Fn` (`Fn<T, U>`) for `Fn(own T)`.
+pub fn callable_shape_name(mut_receiver: bool, modes: &[FuncParamMode]) -> String {
+    let receiver = if mut_receiver { "FnMut" } else { "Fn" };
+    let letters: String = modes
+        .iter()
+        .map(|mode| match mode {
+            FuncParamMode::Own => 'o',
+            FuncParamMode::View => 'v',
+            FuncParamMode::Mut => 'm',
+        })
+        .collect();
+    match letters.as_str() {
+        "" => format!("{receiver}0"),
+        "o" if !mut_receiver => receiver.to_string(),
+        letters => format!("{receiver}_{letters}"),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuncParam<'db> {
+    /// The mode at `ref`. A `mut?` parameter, whose `ty` is `mut? T`, is a
+    /// view at `ref` and `mut` at `mut`.
     pub mode: FuncParamMode,
     pub is_mut: bool,
     pub has_ref_prefix: bool,
     pub has_own_prefix: bool,
+    /// `mut` before the name, which only `mut self` writes.
+    pub has_mut_prefix: bool,
     pub is_label_suppressed: bool,
     pub name: Partial<FuncParamName<'db>>,
     pub ty: Partial<TypeId<'db>>,
@@ -338,8 +351,36 @@ impl<'db> FuncParamName<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum TypeBound<'db> {
-    Trait(TraitRefId<'db>),
+    /// A trait bound, with the modes it grants the trait's `mut?` methods
+    /// at.
+    Trait(TraitRefId<'db>, ModeMarker),
     Kind(Partial<KindBound>),
+}
+
+/// The mode written before an effect or a trait bound: none, `mut`, or
+/// `mut?`, the item's mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum ModeMarker {
+    /// `uses (c: Ctx)`, `T: Trait`: read only, or the `ref` modes of a
+    /// trait's `mut?` methods.
+    None,
+    /// `uses (s: mut Storage)`, `T: mut Trait`.
+    Mut,
+    /// `uses (s: mut? Storage)`, `T: mut? Trait`: `mut` where the item is
+    /// used at `mut`.
+    MaybeMut,
+}
+
+impl ModeMarker {
+    /// The marker as written before an effect key or a trait, with its
+    /// trailing space.
+    pub fn prefix(self) -> &'static str {
+        match self {
+            Self::None => "",
+            Self::Mut => "mut ",
+            Self::MaybeMut => "mut? ",
+        }
+    }
 }
 
 #[salsa::interned]

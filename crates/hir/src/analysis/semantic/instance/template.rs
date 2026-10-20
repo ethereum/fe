@@ -3,6 +3,7 @@ use crate::{
         HirAnalysisDb,
         ty::{
             const_ty::lexical_const_body_owner,
+            provider::AddressSpace,
             subst::substitute_complete,
             trait_def::TraitInstId,
             trait_resolution::PredicateListId,
@@ -70,14 +71,21 @@ impl<'db> GenericSubst<'db> {
         args: Vec<TyId<'db>>,
     ) -> Self {
         let generic_owner = match owner {
-            BodyOwner::Func(func) if args.is_empty() => {
+            // A closure's body shares its parent's generic context.
+            BodyOwner::Closure { def, .. } => {
+                return BodyOwner::from_body(db, def.body).map_or_else(
+                    || Self::none(db),
+                    |parent| Self::for_body_owner(db, parent, args),
+                );
+            }
+            BodyOwner::Func(func, _) if args.is_empty() => {
                 return Self::for_owner(
                     db,
                     func.into(),
                     CallableDef::Func(func).params(db).to_vec(),
                 );
             }
-            BodyOwner::Func(func) => Some(func.into()),
+            BodyOwner::Func(func, _) => Some(func.into()),
             BodyOwner::AnonConstBody { body, .. } if !args.is_empty() => {
                 lexical_const_body_owner(db, body)
             }
@@ -119,16 +127,21 @@ impl<'db> ImplEnv<'db> {
     }
 }
 
+/// What an instance is specialized on beyond its generic arguments: the
+/// providers its effects are bound to, and the address spaces of the places
+/// its data parameters name (memory unless listed).
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EffectProviderSubst<'db> {
     #[return_ref]
     pub providers: Vec<ProviderBinding<'db>>,
+    #[return_ref]
+    pub param_spaces: Vec<(u32, AddressSpace)>,
 }
 
 impl<'db> EffectProviderSubst<'db> {
     pub fn empty(db: &'db dyn HirAnalysisDb) -> Self {
-        Self::new(db, Vec::new())
+        Self::new(db, Vec::new(), Vec::new())
     }
 }
 
@@ -137,7 +150,7 @@ pub fn instantiate_typed_body<'db>(
     template: TypedBodyTemplate<'db>,
     subst: GenericSubst<'db>,
 ) -> TypedBody<'db> {
-    if let BodyOwner::Func(func) = template.owner {
+    if let BodyOwner::Func(func, _) = template.owner {
         let mapping = subst
             .mapping(db)
             .as_ref()

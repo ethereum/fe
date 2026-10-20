@@ -75,7 +75,7 @@ pub contract Factory uses (create: mut Create) {
                 args: (store.child_count, store.creator_inner),
                 salt: store.child_count,
             )
-            child.inner
+            child.word()
         }
 
         GetChildCount -> u256 uses (store) {
@@ -87,20 +87,20 @@ pub contract Factory uses (create: mut Create) {
 #[test]
 fn test_factory() uses (evm: mut Evm) {
     let factory = evm.create2<Factory>(value: Wei::zero(), args: (0, 0), salt: 0)
-    assert!(factory.inner != 0)
+    assert!(factory.word() != 0)
 
     // Create child 1
     let child1_inner: u256 = evm.call(addr: factory, gas: 500000, value: Wei::zero(), message: FactoryMsg::CreateChild {})
     assert!(child1_inner != 0)
-    let child1 = Address { inner: child1_inner }
+    let child1 = Address::new(child1_inner)
 
     // Create child 2
     let child2_inner: u256 = evm.call(addr: factory, gas: 500000, value: Wei::zero(), message: FactoryMsg::CreateChild {})
     assert!(child2_inner != 0)
-    let child2 = Address { inner: child2_inner }
+    let child2 = Address::new(child2_inner)
 
     // Children are different contracts
-    assert!(child1.inner != child2.inner)
+    assert!(child1.word() != child2.word())
 
     // Factory tracks count
     let count: u256 = evm.call(addr: factory, gas: 100000, value: Wei::zero(), message: FactoryMsg::GetChildCount {})

@@ -21,7 +21,7 @@ pub contract C {
 
     recv Msg {
         Inc -> u256 uses (mut counter) {
-            let value = counter.value_mut()
+            let value = mut counter.value_mut()
             value += 1
             counter.value
         }
@@ -35,7 +35,7 @@ pub contract C {
 #[test]
 fn test_mut_self_storage_receiver() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: Wei::zero(), args: (), salt: 1)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let a = evm.call(addr: c, gas: 100000, value: Wei::zero(), message: Msg::Inc {})
     assert!(a == 1)

@@ -22,7 +22,7 @@ fn unwrap_or(_ value: Option<u64>, _ fallback: u64) -> u64 {
 
 #[test]
 fn reads_copy_options_from_views() {
-    let mut settings = Settings { limit: Option::Some(7), parsed: Result::Ok(9) }
+    var settings = Settings { limit: Option::Some(7), parsed: Result::Ok(9) }
     let first = settings.limit()
     settings.limit = Option::None
     assert(unwrap_or(first, 0) == 7)
@@ -39,7 +39,7 @@ fn reads_copy_options_from_views() {
 #[test]
 fn copies_are_independent() {
     let original: Option<u64> = Option::Some(1)
-    let mut copy = original
+    var copy = original
     copy = Option::Some(2)
     assert(unwrap_or(original, 0) == 1)
     assert(unwrap_or(copy, 0) == 2)

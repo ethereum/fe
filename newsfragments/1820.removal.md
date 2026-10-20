@@ -1,0 +1,1 @@
+`Address`'s `inner` field is private to std, and `std::evm::address_to_word` is removed. Build an address with `Address::new(word)`, which fails with `Panic(0x11)` if `word` has bits above the low 160 (at compile time for a constant), or `Address::from_word_truncate(word)`, and read its word with `address.word()`.
