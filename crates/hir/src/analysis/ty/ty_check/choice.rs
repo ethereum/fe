@@ -3354,6 +3354,93 @@ pub(super) fn check_choice_uses<'db>(
     diags
 }
 
+impl<'db> Callable<'db> {
+    /// Proves, in the checked body's context `solve_cx`, the bounds the
+    /// callee's body declares, instantiated for this call, as
+    /// `declared_bound_evidence_with_deliveries` records them.
+    pub(crate) fn record_bound_evidence(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) {
+        let CallableDef::Func(func) = self.callable_def() else {
+            return;
+        };
+        let mode = super::BodyOwner::func_at(db, func, self.mode()).mode();
+        let Ok(subst) = crate::analysis::ty::ty_lower::CompleteSubst::for_owner(
+            db,
+            func.into(),
+            self.generic_args().to_vec(),
+        ) else {
+            return;
+        };
+        let mut bound_deliveries = Vec::new();
+        let mut param_deliveries = Vec::new();
+        let body_func = self
+            .called_body(db, solve_cx.scope(), solve_cx.assumptions())
+            .map(|(body, _)| body);
+        let mapped = body_deliveries(
+            db,
+            self.choice().and_then(|c| c.known()),
+            self.delivered(),
+            func,
+            body_func.unwrap_or(func),
+        );
+        for (slot, choice) in mapped {
+            match slot {
+                SlotRef::EvidenceParam(idx) => param_deliveries.push((idx, choice)),
+                SlotRef::Bound(bound) => {
+                    bound_deliveries.push((bound, choice));
+                    if let Some(body) = body_func
+                        && body != func
+                    {
+                        for (in_nominal, in_body) in
+                            crate::analysis::ty::trait_choice::role_map(db, func, body)
+                        {
+                            if *in_body == bound
+                                || in_body
+                                    .at_mode(db, Some(crate::analysis::ty::ty_def::BorrowKind::Mut))
+                                    == bound
+                            {
+                                bound_deliveries.push((*in_nominal, choice));
+                            }
+                        }
+                    }
+                }
+                SlotRef::Unsupplied => {}
+            }
+        }
+        for &(delivery, choice) in self.delivered() {
+            if let Delivery::Bound(bound) | Delivery::Nominal(bound) = delivery {
+                bound_deliveries.push((bound, choice));
+            }
+        }
+        if let Some(choice) = self.choice()
+            && let Some(inst) = self.trait_inst()
+        {
+            let inst_slot = crate::analysis::ty::evidence::slot_goal(db, inst);
+            for (own, at_call) in
+                crate::analysis::ty::trait_choice::declared_goals(db, func, self.generic_args())
+            {
+                if at_call == inst_slot {
+                    bound_deliveries.push((own, choice));
+                }
+            }
+        }
+        self.set_bound_evidence(Some(
+            crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
+                db,
+                super::env::func_declared_bounds(db, func, mode),
+                super::env::func_signature(db, func, mode),
+                &subst,
+                solve_cx,
+                &bound_deliveries,
+                &param_deliveries,
+            ),
+        ));
+    }
+}
+
 impl<'db> super::ConstRef<'db> {
     /// Proves, in the use's context, the bounds the constant's value body
     /// declares, instantiated for the use, as
@@ -3394,7 +3481,7 @@ impl<'db> super::ConstRef<'db> {
                         }
                     }
                 }
-                *bound_evidence = Some(
+                let ev = Some(
                     crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
                         db,
                         declared,
@@ -3405,6 +3492,8 @@ impl<'db> super::ConstRef<'db> {
                         &[],
                     ),
                 );
+                *bound_evidence = ev;
+                *use_ = use_.with_bound_evidence(ev);
             }
             super::ConstRef::InherentConst(use_) => {
                 let Some((body, impl_args)) =

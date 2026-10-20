@@ -1759,9 +1759,17 @@ fn force_const_computation_in_context<'db>(
                 };
             };
             // The body receives the evidence the use delivers to its bounds.
-            let mut cref = crate::analysis::ty::ty_check::ConstRef::trait_const(use_);
-            cref.record_evidence(db);
-            cref.record_bound_evidence(db);
+            let mut cref = crate::analysis::ty::ty_check::ConstRef::TraitConst {
+                use_,
+                evidence: use_.evidence(),
+                bound_evidence: use_.bound_evidence(),
+            };
+            if use_.evidence().is_none() {
+                cref.record_evidence(db);
+            }
+            if use_.bound_evidence().is_none() {
+                cref.record_bound_evidence(db);
+            }
             let evidence = cref
                 .trait_const_body(db)
                 .map_or_else(|| EvidenceList::none(db), |(_, _, _, ev)| ev);
@@ -1800,7 +1808,9 @@ fn force_const_computation_in_context<'db>(
                 };
             };
             let mut cref = crate::analysis::ty::ty_check::ConstRef::InherentConst(use_);
-            cref.record_bound_evidence(db);
+            if use_.bound_evidence().is_none() {
+                cref.record_bound_evidence(db);
+            }
             let crate::analysis::ty::ty_check::ConstRef::InherentConst(use_with_ev) = cref else {
                 unreachable!()
             };

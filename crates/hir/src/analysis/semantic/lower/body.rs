@@ -1342,7 +1342,18 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         // above retain their reference identity until the body is complete, so
         // evaluation can use the machine's const cycle detection.
         let symbolic_const_ty = match const_ref {
-            ConstRef::TraitConst { use_: assoc, .. } => {
+            ConstRef::TraitConst {
+                use_: assoc,
+                evidence,
+                ..
+            } => {
+                let assoc = if evidence.is_some_and(|ev| ev.is_pending(self.db)) {
+                    assoc.with_choice(Some(crate::analysis::ty::trait_choice::Choice::Slot(
+                        crate::analysis::ty::trait_choice::SlotRef::Unsupplied,
+                    )))
+                } else {
+                    assoc
+                };
                 const_ty_or_abstract_from_assoc_const_use(self.db, assoc, ty)
             }
             ConstRef::InherentConst(use_) => {

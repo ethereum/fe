@@ -3025,22 +3025,34 @@ fn discharge_under_choices<'db>(
     }
     let owner = BodyOwner::const_predicate(db, predicate);
     let subst = GenericSubst::for_body_owner(db, owner, args.to_vec());
-    let evidence = if let Some(subst_map) = subst.mapping(db).as_ref() {
-        let declared = const_body_assumptions(db, predicate.scope());
-        let mut bound_deliveries = Vec::new();
-        let mut param_deliveries = Vec::new();
-        for (slot, choice) in choices.iter() {
-            let choice = match choice {
-                Some(known) => Choice::Known(known),
-                None => Choice::Slot(SlotRef::Unsupplied),
-            };
-            match slot {
-                SlotRef::Bound(bound) => bound_deliveries.push((bound, choice)),
-                SlotRef::EvidenceParam(idx) => param_deliveries.push((idx, choice)),
-                SlotRef::Unsupplied => {}
-            }
+    let subst_map = subst.mapping(db).clone().or_else(|| {
+        crate::analysis::ty::const_ty::lexical_const_body_owner(db, predicate).and_then(
+            |generic_owner| {
+                crate::analysis::ty::ty_lower::CompleteSubst::for_owner(
+                    db,
+                    generic_owner,
+                    Vec::new(),
+                )
+                .ok()
+            },
+        )
+    });
+    let declared = const_body_assumptions(db, predicate.scope());
+    let mut bound_deliveries = Vec::new();
+    let mut param_deliveries = Vec::new();
+    for (slot, choice) in choices.iter() {
+        let choice = match choice {
+            Some(known) => Choice::Known(known),
+            None => Choice::Slot(SlotRef::Unsupplied),
+        };
+        match slot {
+            SlotRef::Bound(bound) => bound_deliveries.push((bound, choice)),
+            SlotRef::EvidenceParam(idx) => param_deliveries.push((idx, choice)),
+            SlotRef::Unsupplied => {}
         }
-        crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
+    }
+    let evidence = match &subst_map {
+        Some(subst_map) => crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
             db,
             declared,
             declared.extend_all_bounds(db),
@@ -3048,11 +3060,10 @@ fn discharge_under_choices<'db>(
             TraitSolveCx::new(db, owner.scope()),
             &bound_deliveries,
             &param_deliveries,
-        )
-    } else {
-        EvidenceList::none(db)
+        ),
+        None => crate::analysis::ty::evidence::EvidenceList::none(db),
     };
-    let key = crate::analysis::semantic::SemanticInstanceKey::new(
+    let key = crate::analysis::semantic::SemanticInstanceKey::of(
         db,
         owner,
         subst,

@@ -13,7 +13,7 @@ use salsa::Update;
 
 use super::{
     BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker, ValuePathRef,
-    env::{ClosureExpectation, func_declared_bounds, func_signature},
+    env::ClosureExpectation,
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -34,7 +34,7 @@ use crate::analysis::{
         },
         ty_def::{BorrowKind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
         ty_error::emit_invalid_ty_error,
-        ty_lower::{CompleteSubst, collect_generic_params, lower_generic_arg_list},
+        ty_lower::{collect_generic_params, lower_generic_arg_list},
         visitor::{TyVisitable, TyVisitor, collect_flags},
     },
 };
@@ -553,76 +553,14 @@ impl<'db> Callable<'db> {
         self.evidence
     }
 
-    /// Proves, in the checked body's context `solve_cx`, the bounds the
-    /// callee's body declares, instantiated for this call, as
-    /// `declared_bound_evidence_with_deliveries` records them.
-    pub(crate) fn record_bound_evidence(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        solve_cx: TraitSolveCx<'db>,
-    ) {
-        let CallableDef::Func(func) = self.callable_def else {
-            return;
-        };
-        let mode = BodyOwner::func_at(db, func, self.mode).mode();
-        let Ok(subst) = CompleteSubst::for_owner(db, func.into(), self.generic_args.clone()) else {
-            return;
-        };
-        let mut bound_deliveries = Vec::new();
-        let mut param_deliveries = Vec::new();
-        let body_func = self
-            .called_body(db, solve_cx.scope(), solve_cx.assumptions())
-            .map(|(body, _)| body);
-        for &(delivery, choice) in &self.delivered {
-            match delivery {
-                Delivery::Param(idx) => param_deliveries.push((idx, choice)),
-                Delivery::Bound(bound) | Delivery::Nominal(bound) => {
-                    bound_deliveries.push((bound, choice));
-                    if let Some(body) = body_func
-                        && body != func
-                    {
-                        for (in_nominal, in_body) in
-                            crate::analysis::ty::trait_choice::role_map(db, func, body)
-                        {
-                            if *in_body == bound
-                                || in_body.at_mode(db, Some(BorrowKind::Mut)) == bound
-                            {
-                                bound_deliveries.push((*in_nominal, choice));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if let Some(choice) = self.choice
-            && let Some(inst) = self.trait_inst
-        {
-            let inst_slot = crate::analysis::ty::evidence::slot_goal(db, inst);
-            for (own, at_call) in
-                crate::analysis::ty::trait_choice::declared_goals(db, func, &self.generic_args)
-            {
-                if at_call == inst_slot {
-                    bound_deliveries.push((own, choice));
-                }
-            }
-        }
-        self.bound_evidence = Some(
-            crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
-                db,
-                func_declared_bounds(db, func, mode),
-                func_signature(db, func, mode),
-                &subst,
-                solve_cx,
-                &bound_deliveries,
-                &param_deliveries,
-            ),
-        );
-    }
-
     /// Proofs of the assumptions the callee's body is checked under, as the
     /// caller's checked body gives them.
     pub fn bound_evidence(&self) -> Option<EvidenceList<'db>> {
         self.bound_evidence
+    }
+
+    pub(crate) fn set_bound_evidence(&mut self, bound_evidence: Option<EvidenceList<'db>>) {
+        self.bound_evidence = bound_evidence;
     }
 
     /// Replaces the assumptions this call's evidence names, its caller's,

@@ -4154,13 +4154,12 @@ impl<'db> ConstRef<'db> {
             return;
         };
         let solve_cx = use_.solve_cx(db);
-        if let Some(choice) = use_.choice()
-            && let Some(ev) = choice.to_evidence(db, solve_cx, Some(use_.inst()))
-        {
-            *evidence = Some(ev);
-            return;
-        }
-        *evidence = super::evidence::prove(db, solve_cx, use_.inst());
+        let ev = use_
+            .choice()
+            .and_then(|choice| choice.to_evidence(db, solve_cx, Some(use_.inst())))
+            .or_else(|| super::evidence::prove(db, solve_cx, use_.inst()));
+        *evidence = ev;
+        *use_ = use_.with_evidence(ev);
     }
 }
 
@@ -4802,10 +4801,11 @@ impl<'db> TypedBody<'db> {
         for const_ref in tables.const_refs.values_mut().flatten() {
             match const_ref {
                 ConstRef::TraitConst {
+                    use_,
                     evidence,
                     bound_evidence,
-                    ..
                 } => {
+                    *use_ = use_.bind_evidence(db, bound);
                     *evidence = evidence.map(|evidence| evidence.bind(db, bound));
                     *bound_evidence =
                         bound_evidence.map(|bound_evidence| bound_evidence.bind(db, bound));

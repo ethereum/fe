@@ -1173,13 +1173,12 @@ pub(crate) fn chosen_method<'db>(
 /// selection when there is no decision or the decision is the reading body's
 /// own bound, and nothing for a pending choice, which is never answered the
 /// ordinary way. The body is the selected implementation's constant or
-/// the trait's default, absent for a built-in constant; its choices are the
-/// use's deliveries mapped to it (`DeliveryList::to_body`).
+/// the trait's default, absent for a built-in constant.
 pub(crate) fn chosen_constant<'db>(
     db: &'db dyn HirAnalysisDb,
     use_: super::assoc_const::AssocConstUse<'db>,
 ) -> Option<ChosenConstant<'db>> {
-    use super::trait_choice::{Choice, SlotChoices, SlotRef};
+    use super::trait_choice::{Choice, SlotRef};
     let chosen = match use_.choice() {
         Some(Choice::Known(known)) => Some(known),
         Some(Choice::Slot(SlotRef::Bound(_))) | None => None,
@@ -1206,18 +1205,8 @@ pub(crate) fn chosen_constant<'db>(
             Selection::Ambiguous(_) | Selection::NotFound => return None,
         },
     };
-    let body =
-        selected_assoc_const_body_template(db, resolved, use_.name()).map(|(body, ty, subst)| {
-            ConstantBody {
-                body,
-                ty,
-                subst,
-                choices: use_
-                    .delivered()
-                    .or_else(|| chosen.and_then(|known| known.bounds()))
-                    .map_or_else(SlotChoices::default, |list| list.to_body(db, chosen, body)),
-            }
-        });
+    let body = selected_assoc_const_body_template(db, resolved, use_.name())
+        .map(|(body, ty, subst)| ConstantBody { body, ty, subst });
     Some(ChosenConstant { resolved, body })
 }
 
@@ -1234,14 +1223,8 @@ pub(crate) fn ordinary_constant<'db>(
     let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst, why) else {
         return None;
     };
-    let body = selected_assoc_const_body_template(db, resolved, name).map(|(body, ty, subst)| {
-        ConstantBody {
-            body,
-            ty,
-            subst,
-            choices: super::trait_choice::SlotChoices::default(),
-        }
-    });
+    let body = selected_assoc_const_body_template(db, resolved, name)
+        .map(|(body, ty, subst)| ConstantBody { body, ty, subst });
     Some(ChosenConstant { resolved, body })
 }
 
@@ -1255,14 +1238,12 @@ pub(crate) struct ChosenConstant<'db> {
     pub body: Option<ConstantBody<'db>>,
 }
 
-/// A constant body with its declared type, the arguments of its owner, and
-/// what its bounds receive from the read.
+/// A constant body with its declared type and the arguments of its owner.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ConstantBody<'db> {
     pub body: Body<'db>,
     pub ty: TyId<'db>,
     pub subst: CompleteSubst<'db>,
-    pub choices: super::trait_choice::SlotChoices<'db>,
 }
 
 /// The method bodies a trait call whose implementation is chosen later could

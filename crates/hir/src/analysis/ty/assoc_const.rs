@@ -24,6 +24,10 @@ pub struct AssocConstUse<'db> {
     choice: Option<Choice<'db>>,
     /// The decisions for the bounds of the constant body that runs.
     delivered: Option<DeliveryList<'db>>,
+    /// The checker's proof of the constant use's trait goal.
+    evidence: Option<super::evidence::EvidenceId<'db>>,
+    /// Proofs of the assumptions the constant's value body is checked under.
+    bound_evidence: Option<super::evidence::EvidenceList<'db>>,
 }
 
 impl<'db> AssocConstUse<'db> {
@@ -40,6 +44,8 @@ impl<'db> AssocConstUse<'db> {
             name,
             choice: None,
             delivered: None,
+            evidence: None,
+            bound_evidence: None,
         }
     }
 
@@ -51,12 +57,56 @@ impl<'db> AssocConstUse<'db> {
         self.delivered
     }
 
+    pub fn evidence(self) -> Option<super::evidence::EvidenceId<'db>> {
+        self.evidence
+    }
+
+    pub fn bound_evidence(self) -> Option<super::evidence::EvidenceList<'db>> {
+        self.bound_evidence
+    }
+
     pub fn with_delivered(self, delivered: Option<DeliveryList<'db>>) -> Self {
         Self { delivered, ..self }
     }
 
     pub fn with_choice(self, choice: Option<Choice<'db>>) -> Self {
         Self { choice, ..self }
+    }
+
+    pub fn with_evidence(self, evidence: Option<super::evidence::EvidenceId<'db>>) -> Self {
+        Self { evidence, ..self }
+    }
+
+    pub fn with_bound_evidence(
+        self,
+        bound_evidence: Option<super::evidence::EvidenceList<'db>>,
+    ) -> Self {
+        Self {
+            bound_evidence,
+            ..self
+        }
+    }
+
+    pub(crate) fn bind_evidence(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        bound: super::evidence::EvidenceList<'db>,
+    ) -> Self {
+        let evidence = self.evidence.map(|ev| ev.bind(db, bound));
+        let bound_evidence = self.bound_evidence.map(|ev| ev.bind(db, bound));
+        let choice = match evidence {
+            Some(ev) if ev.is_pending(db) => Some(Choice::Slot(SlotRef::Unsupplied)),
+            Some(ev) => super::trait_choice::KnownChoice::from_evidence(db, ev, self.inst)
+                .map(Choice::Known)
+                .or(self.choice),
+            None => self.choice,
+        };
+        Self {
+            choice,
+            evidence,
+            bound_evidence,
+            ..self
+        }
     }
 
     pub fn origin_scope(self) -> ScopeId<'db> {
@@ -112,6 +162,8 @@ impl<'db> AssocConstUse<'db> {
         Self {
             choice: self.choice.filter(|choice| !choice.is_ordinary()),
             delivered: self.delivered.and_then(|list| list.without_ordinary(db)),
+            evidence: self.evidence.filter(|ev| !ev.is_ordinary(db)),
+            bound_evidence: self.bound_evidence.filter(|ev| !ev.is_ordinary(db)),
             ..self
         }
     }
@@ -184,6 +236,12 @@ impl<'db> TyVisitable<'db> for AssocConstUse<'db> {
         if let Some(list) = &self.delivered {
             list.visit_with(visitor);
         }
+        if let Some(evidence) = &self.evidence {
+            evidence.visit_with(visitor);
+        }
+        if let Some(bound_evidence) = &self.bound_evidence {
+            bound_evidence.visit_with(visitor);
+        }
     }
 }
 
@@ -199,6 +257,8 @@ impl<'db> TyFoldable<'db> for AssocConstUse<'db> {
             name: self.name,
             choice: self.choice.map(|choice| choice.fold_with(db, folder)),
             delivered: self.delivered.map(|list| list.fold_with(db, folder)),
+            evidence: self.evidence.map(|ev| ev.fold_with(db, folder)),
+            bound_evidence: self.bound_evidence.map(|ev| ev.fold_with(db, folder)),
         }
     }
 }
@@ -279,7 +339,7 @@ impl<'db> InherentConstUse<'db> {
     pub(crate) fn without_ordinary_choices(self, db: &'db dyn HirAnalysisDb) -> Self {
         Self {
             delivered: self.delivered.and_then(|list| list.without_ordinary(db)),
-            bound_evidence: None,
+            bound_evidence: self.bound_evidence.filter(|ev| !ev.is_ordinary(db)),
             ..self
         }
     }

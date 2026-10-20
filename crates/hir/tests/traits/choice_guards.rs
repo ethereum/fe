@@ -1181,12 +1181,7 @@ fn deliveries_reach_a_body_through_one_mapping() {
     assert_eq!(
         occurrences_outside(
             ".delivered()",
-            &[
-                CHECKER,
-                "src/analysis/ty/ty_check/const_requirements.rs",
-                "src/analysis/semantic/instance/const_ref.rs",
-                "src/analysis/ty/trait_def.rs",
-            ]
+            &[CHECKER, "src/analysis/ty/ty_check/const_requirements.rs",]
         ),
         Vec::<String>::new()
     );

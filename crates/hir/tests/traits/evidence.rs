@@ -1,7 +1,7 @@
 use camino::Utf8PathBuf;
 use fe_hir::analysis::semantic::{
-    get_or_build_semantic_instance, identity_semantic_instance_key, root_semantic_instance_key,
-    typed_body_template,
+    SConst, SExpr, SStmtKind, get_or_build_semantic_instance, identity_semantic_instance_key,
+    root_semantic_instance_key, typed_body_template,
 };
 use fe_hir::analysis::ty::evidence::{Evidence, EvidenceId};
 use fe_hir::analysis::ty::trait_resolution::{PredicateListId, TraitSolveCx};
@@ -808,4 +808,72 @@ fn verify(
     assert_eq!(params.len(), 1);
     assert_eq!(params[0].0, 0);
     assert_eq!(params[0].1, wholesale_ev);
+
+    // 5. Verify pending `Evidence::Param(0)` on `helper_ev`'s unspecialized callee `helper<u256>`
+    // keeps `T::BASE` and `T::DEF_BASE` abstract (`SymbolicTraitConst`) rather than falling back
+    // to the ordinary `impl Rate for u256` constant:
+    let helper_ev_root_inst = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(helper_ev_fn, None))
+            .expect("helper_ev root key"),
+    );
+    let helper_param_key = helper_ev_root_inst
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(helper_fn, None))
+        .expect("helper_ev root calls helper<u256>")
+        .key;
+    let param_ev = helper_param_key
+        .evidence(&db)
+        .entries(&db)
+        .iter()
+        .flatten()
+        .copied()
+        .next()
+        .expect("helper_param_key carries EvidenceId for T: Rate");
+    assert_eq!(param_ev.data(&db), &Evidence::Param(0));
+
+    let helper_param_body = helper_param_key.typed_body(&db);
+    let trait_const_refs: Vec<_> = helper_param_body.const_refs().collect();
+    assert_eq!(trait_const_refs.len(), 2, "T::BASE and T::DEF_BASE");
+    for cref in trait_const_refs {
+        match cref {
+            ConstRef::TraitConst { use_, evidence, .. } => {
+                assert_eq!(evidence, Some(param_ev));
+                assert_eq!(use_.evidence(), Some(param_ev));
+                assert!(
+                    cref.trait_const_body(&db).is_none(),
+                    "pending Evidence::Param(0) must not resolve to a concrete trait const body"
+                );
+            }
+            other => panic!("expected ConstRef::TraitConst, got {other:?}"),
+        }
+    }
+
+    let helper_param_inst = get_or_build_semantic_instance(&db, helper_param_key);
+    let mut folded_values = 0;
+    let mut symbolic_consts = 0;
+    for block in &helper_param_inst.body(&db).blocks {
+        for stmt in &block.stmts {
+            if let SStmtKind::Assign {
+                expr: SExpr::Const(sconst),
+                ..
+            } = &stmt.kind
+            {
+                match sconst {
+                    SConst::Value(_) | SConst::Ref(_) => folded_values += 1,
+                    SConst::Description(_) => symbolic_consts += 1,
+                    _ => {}
+                }
+            }
+        }
+    }
+    assert_eq!(
+        folded_values, 0,
+        "neither T::BASE nor T::DEF_BASE may fold to ordinary `u256: Rate` while Evidence::Param(0) is pending"
+    );
+    assert_eq!(
+        symbolic_consts, 2,
+        "both T::BASE and T::DEF_BASE must remain abstract in the unspecialized body"
+    );
 }
