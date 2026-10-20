@@ -328,7 +328,7 @@ fn trait_inst_is_effect_ref_marker<'db>(
         return false;
     };
     trait_def.top_mod(db).ingot(db).kind(db) == IngotKind::Core
-        && matches!(name.data(db).as_str(), "EffectRef" | "EffectRefMut")
+        && name.data(db) == "EffectRef"
         && module_path_components_for_scope(db, trait_def.scope())
             .iter()
             .any(|component| component == "effect_ref")
