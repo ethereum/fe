@@ -554,6 +554,19 @@ impl super::Parse for GenericArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
 
+        // `ref` or `mut` alone is the mode of an associated shape.
+        if matches!(
+            parser.peek_n_non_trivia(2).as_slice(),
+            [
+                SyntaxKind::RefKw | SyntaxKind::MutKw,
+                SyntaxKind::Gt | SyntaxKind::Comma
+            ]
+        ) {
+            self.set_kind(SyntaxKind::ModeGenericArg);
+            parser.bump();
+            return Ok(());
+        }
+
         // Check if this is an associated type argument (Ident = Type)
         let is_assoc_type = matches!(
             parser.peek_n_non_trivia(2).as_slice(),

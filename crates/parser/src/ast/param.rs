@@ -270,7 +270,7 @@ ast_node! {
     /// `lit`
     /// `Output = u64`
     pub struct GenericArg,
-    SK::TypeGenericArg | SK::ConstGenericArg | SK::AssocTypeGenericArg,
+    SK::TypeGenericArg | SK::ConstGenericArg | SK::AssocTypeGenericArg | SK::ModeGenericArg,
 }
 impl GenericArg {
     pub fn kind(&self) -> GenericArgKind {
@@ -283,6 +283,9 @@ impl GenericArg {
             }
             SK::AssocTypeGenericArg => {
                 GenericArgKind::AssocType(AstNode::cast(self.syntax().clone()).unwrap())
+            }
+            SK::ModeGenericArg => {
+                GenericArgKind::Mode(AstNode::cast(self.syntax().clone()).unwrap())
             }
             _ => unreachable!(),
         }
@@ -495,6 +498,20 @@ pub enum GenericArgKind {
     Type(TypeGenericArg),
     Const(ConstGenericArg),
     AssocType(AssocTypeGenericArg),
+    Mode(ModeGenericArg),
+}
+
+ast_node! {
+    /// `ref` or `mut`: the mode an associated shape is named at,
+    /// `D::Step<ref>`.
+    pub struct ModeGenericArg,
+    SK::ModeGenericArg,
+}
+impl ModeGenericArg {
+    /// Whether the mode is `mut`, rather than `ref`.
+    pub fn is_mut(&self) -> bool {
+        support::token(self.syntax(), SK::MutKw).is_some()
+    }
 }
 
 ast_node! {

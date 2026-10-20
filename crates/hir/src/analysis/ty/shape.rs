@@ -654,7 +654,7 @@ fn sum_type_args<'db>(db: &'db dyn HirAnalysisDb, path: PathId<'db>) -> Option<V
         .iter()
         .map(|arg| match arg {
             GenericArg::Type(arg) => arg.ty.to_opt(),
-            GenericArg::Const(_) | GenericArg::AssocType(_) => None,
+            GenericArg::Const(_) | GenericArg::AssocType(_) | GenericArg::Mode(_) => None,
         })
         .collect()
 }

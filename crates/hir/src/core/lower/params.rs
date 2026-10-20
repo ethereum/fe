@@ -131,6 +131,11 @@ impl<'db> GenericArg<'db> {
             ast::GenericArgKind::AssocType(assoc_type_param) => {
                 AssocTypeGenericArg::lower_ast(ctxt, assoc_type_param).into()
             }
+            ast::GenericArgKind::Mode(mode) => Self::Mode(if mode.is_mut() {
+                TypeMode::Mut
+            } else {
+                TypeMode::Ref
+            }),
         }
     }
 }

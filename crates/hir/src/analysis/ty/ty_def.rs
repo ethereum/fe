@@ -1317,6 +1317,10 @@ pub enum InvalidCause<'db> {
     /// on parameters and in projection return shapes.
     ModeNotType,
 
+    /// `ref` or `mut` as a generic argument of anything but an associated
+    /// shape.
+    ModeArgNotShape,
+
     /// A `#[view]` type held as part of another type.
     ViewPart {
         view: TyId<'db>,
@@ -1635,6 +1639,7 @@ impl InvalidCause<'_> {
             InvalidCause::ViewPart { view } => format!("ViewPart({})", view.pretty_print(db)),
             InvalidCause::NotFullyApplied
             | InvalidCause::ModeNotType
+            | InvalidCause::ModeArgNotShape
             | InvalidCause::TooManyGenericArgs { .. }
             | InvalidCause::InvalidConstParamTy
             | InvalidCause::RecursiveConstParamTy

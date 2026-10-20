@@ -1368,7 +1368,29 @@ impl ToDoc for ast::TraitItem {
             TraitItemKind::Type(ty) => ty.to_doc(ctx),
             TraitItemKind::Const(c) => c.to_doc(ctx),
             TraitItemKind::Uses(row) => row.to_doc(ctx),
+            TraitItemKind::Shape(shape) => shape.to_doc(ctx),
         }
+    }
+}
+
+impl ToDoc for ast::TraitShapeItem {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+
+        token_doc_item_like_if_comments!(self, ctx);
+
+        let name = self
+            .name()
+            .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
+        let ty_doc = self.ty().map_or_else(
+            || alloc.nil(),
+            |ty| alloc.text(" = ").append(ty.to_doc(ctx)),
+        );
+
+        attrs_doc(self, ctx)
+            .append(alloc.text("shape "))
+            .append(name)
+            .append(ty_doc)
     }
 }
 

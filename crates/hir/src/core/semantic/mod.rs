@@ -5234,6 +5234,11 @@ impl<'db> TraitAssocTypeView<'db> {
         self.owner.span().item_list().assoc_type(self.idx)
     }
 
+    /// Whether this is an associated shape, `shape Step`.
+    pub fn is_shape(self, db: &'db dyn HirDb) -> bool {
+        self.decl(db).is_shape()
+    }
+
     /// Raw bounds for this associated type (HIR). Prefer semantic checks where possible.
     pub(in crate::core) fn bounds_raw(self, db: &'db dyn HirDb) -> &'db [TypeBound<'db>] {
         &self.decl(db).bounds

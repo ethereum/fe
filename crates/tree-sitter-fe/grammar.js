@@ -475,8 +475,17 @@ module.exports = grammar({
         $.trait_type_item,
         $.trait_const_item,
         $.trait_uses_item,
+        $.trait_shape_item,
       )),
       '}',
+    ),
+
+    // Associated shape: `shape Step`, or `shape Step = (own usize, D::Step)`
+    trait_shape_item: $ => seq(
+      optional($.attribute_list),
+      'shape',
+      field('name', $.identifier),
+      optional(seq('=', $._type)),
     ),
 
     // Associated effect row: `uses E`, or `uses E = (store: mut Store)`
@@ -638,11 +647,15 @@ module.exports = grammar({
 
     _generic_arg: $ => choice(
       $.assoc_type_generic_arg,
+      $.mode_generic_arg,
       $._type,
       // Const generic args: block expressions like {3 + 4} and literals
       $.block,
       $.literal,
     ),
+
+    // `ref` or `mut`: the mode an associated shape is named at, `D::Step<ref>`
+    mode_generic_arg: $ => choice('ref', 'mut'),
 
     assoc_type_generic_arg: $ => prec(1, seq(
       field('name', $.identifier),

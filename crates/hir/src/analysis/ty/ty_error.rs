@@ -134,6 +134,7 @@ pub(crate) fn path_arg_diags<'db>(
                     }
                 }
                 GenericArg::Const(_) => Vec::new(),
+                GenericArg::Mode(_) => vec![TyLowerDiag::ModeArgNotShape(span.into()).into()],
             }
         })
         .collect()
@@ -782,6 +783,8 @@ pub(crate) fn diag_from_invalid_cause<'db>(
         InvalidCause::NotFullyApplied => TyLowerDiag::ExpectedStarKind(span).into(),
 
         InvalidCause::ModeNotType => TyLowerDiag::ModeNotType(span).into(),
+
+        InvalidCause::ModeArgNotShape => TyLowerDiag::ModeArgNotShape(span).into(),
 
         InvalidCause::ViewPart { view } => TyLowerDiag::ViewTypeMode {
             span,

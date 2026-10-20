@@ -86,6 +86,7 @@ impl<'db> GenericArgListId<'db> {
                                     .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db));
                             format!("{name} = {ty}")
                         }
+                        GenericArg::Mode(mode) => mode.keyword().to_string(),
                     })
                     .collect::<Vec<_>>()
                     .join(", ")
@@ -226,6 +227,9 @@ pub enum GenericArg<'db> {
     Type(TypeGenericArg<'db>),
     Const(ConstGenericArg<'db>),
     AssocType(AssocTypeGenericArg<'db>),
+    /// `ref` or `mut`: the mode an associated shape is named at,
+    /// `D::Step<ref>`.
+    Mode(TypeMode),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

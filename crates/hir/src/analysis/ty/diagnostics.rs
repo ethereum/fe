@@ -68,6 +68,9 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
+    /// `ref` or `mut` as a generic argument of anything but an associated
+    /// shape.
+    ModeArgNotShape(DynLazySpan<'db>),
     /// A parameter pattern of a function without a body to bind it.
     DestructuredParamWithoutBody(DynLazySpan<'db>),
     /// A mode on a product parameter's type, whose parts carry the modes.
@@ -335,6 +338,7 @@ impl TyLowerDiag<'_> {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
             Self::ModeOnProduct(_) => 82,
+            Self::ModeArgNotShape(_) => 83,
             Self::ProductReceiver(_) => 74,
             Self::ProductParamNotDestructured { .. } => 75,
             Self::DestructuredParamWithoutBody(_) => 76,
@@ -1689,6 +1693,16 @@ pub enum ImplDiag<'db> {
         trait_: Trait<'db>,
     },
 
+    /// An impl giving an associated shape with `type`, or an associated
+    /// type with `shape`.
+    AssocShapeMismatch {
+        primary: DynLazySpan<'db>,
+        trait_: Trait<'db>,
+        name: IdentId<'db>,
+        /// Whether the trait declares a shape.
+        is_shape: bool,
+    },
+
     MissingAssociatedConstValue {
         primary: DynLazySpan<'db>,
         const_name: IdentId<'db>,
@@ -1824,6 +1838,7 @@ impl ImplDiag<'_> {
             Self::CyclicEffectRow { .. } => 34,
             Self::MethodMaybeMutMismatch { .. } => 35,
             Self::PartialMutImpl { .. } => 36,
+            Self::AssocShapeMismatch { .. } => 38,
             Self::SpreadNotListed { .. } => 37,
         }
     }

@@ -1112,15 +1112,27 @@ impl<'db> ImplTrait<'db> {
             let Some(name) = assoc.name.to_opt() else {
                 continue;
             };
-            if trait_hir.assoc_ty(db, name).is_none() {
-                diags.push(
+            let primary = self.span().associated_type(idx).name().into();
+            match trait_hir.assoc_ty(db, name) {
+                None => diags.push(
                     ImplDiag::TypeNotDefinedInTrait {
-                        primary: self.span().associated_type(idx).name().into(),
+                        primary,
                         trait_: trait_hir,
                         type_name: name,
                     }
                     .into(),
-                );
+                ),
+                // A shape is given by `shape`, a type by `type`.
+                Some(decl) if decl.is_shape() != assoc.is_shape => diags.push(
+                    ImplDiag::AssocShapeMismatch {
+                        primary,
+                        trait_: trait_hir,
+                        name,
+                        is_shape: decl.is_shape(),
+                    }
+                    .into(),
+                ),
+                Some(_) => {}
             }
         }
 

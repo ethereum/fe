@@ -611,7 +611,9 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     let mut assoc_bindings = IndexMap::new();
     for (arg, lowered) in generic_args.data(db).iter().zip(lowered) {
         match arg {
-            GenericArg::Type(_) | GenericArg::Const(_) => provided_explicit.push(lowered),
+            GenericArg::Type(_) | GenericArg::Const(_) | GenericArg::Mode(_) => {
+                provided_explicit.push(lowered)
+            }
             GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
                 if let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) {
                     let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);
