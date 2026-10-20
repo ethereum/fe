@@ -63,6 +63,7 @@ pub const fn gwei(_ n: u256) -> Wei { Wei { amount: n * 1_000_000_000 } }
 pub const fn ether(_ n: u256) -> Wei { Wei { amount: n * 1_000_000_000_000_000_000 } }
 
 impl Copy for Wei {}
+impl Snapshot for Wei {}
 
 impl Default for Wei {
     fn default() -> Self { Wei::zero() }
@@ -166,6 +167,7 @@ pub const fn days(_ n: u256) -> Duration { Duration { secs: n * 86_400 } }
 pub const fn weeks(_ n: u256) -> Duration { Duration { secs: n * 604_800 } }
 
 impl Copy for Duration {}
+impl Snapshot for Duration {}
 
 impl Default for Duration {
     fn default() -> Self { Duration::zero() }
@@ -237,6 +239,7 @@ impl Timestamp {
 }
 
 impl Copy for Timestamp {}
+impl Snapshot for Timestamp {}
 
 impl Default for Timestamp {
     fn default() -> Self { Timestamp { secs: 0 } }

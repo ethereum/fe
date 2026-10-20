@@ -167,3 +167,11 @@ fn amounts_as_map_keys() uses (evm: mut Evm) {
     let none: u256 = evm.call(addr: bank, gas: 100000, value: Wei::zero(), message: BankMsg::Tier { min: gwei(1) })
     assert!(top == 2 && none == 0)
 }
+
+fn takes_snapshot<T: Snapshot>() {}
+
+// Like `Address`, an amount is passed to a view parameter by copy.
+#[test]
+fn wei_is_a_snapshot() {
+    takes_snapshot<Wei>()
+}

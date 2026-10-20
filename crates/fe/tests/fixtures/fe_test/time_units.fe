@@ -164,3 +164,13 @@ fn durations_and_timestamps_cross_the_abi() uses (evm: mut Evm) {
     let remaining: Duration = evm.call(addr: vesting, gas: 100000, value: Wei::zero(), message: VestingMsg::Remaining {})
     assert!(remaining == WEEK)
 }
+
+fn takes_snapshot<T: Snapshot>() {}
+
+// Like `Address`, points in time and durations are passed to view parameters
+// by copy.
+#[test]
+fn time_units_are_snapshots() {
+    takes_snapshot<Duration>()
+    takes_snapshot<Timestamp>()
+}
