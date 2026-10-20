@@ -33,8 +33,12 @@ fn bound<T: Grow>(_ x: T) -> u256 {
     x.grow()
 }
 
+fn outer<T: Copy>(_ x: T) -> u256 {
+    bound(Wrap { t: x })
+}
+
 fn root() -> u256 {
-    bound(Wrap { t: 1 as u256 })
+    outer(1 as u256)
 }
 
 trait HasD {
@@ -55,8 +59,12 @@ fn root_d() -> u256 {
     Wrap<u256>::D
 }
 
+fn generic_e<T: HasE>(_ x: T) -> u256 {
+    T::E
+}
+
 fn root_e() -> u256 {
-    u256::E
+    generic_e(1 as u256)
 }
 
 trait HasK {
@@ -281,20 +289,52 @@ fn an_instance_receives_its_callers_proofs_of_its_bounds() {
     let (top_mod, _) = db.top_mod(file);
     db.assert_no_diags(top_mod);
 
-    // `root` proves `Wrap<u256>: Grow` for `bound`'s `T: Grow`, so in that
-    // instance the call `x.grow()`, checked against the bound, carries the
-    // blanket implementation with its conditions proved.
+    // `outer` proves `bound`'s `T: Grow` for `Wrap<T>` from its own
+    // `T: Copy`: the call records that proof.
+    let outer_fn = func(&db, top_mod, "outer");
+    let outer_body = check_func_body(&db, outer_fn).1.clone();
+    let outer_call = outer_fn
+        .body(&db)
+        .and_then(|body| {
+            body.exprs(&db)
+                .keys()
+                .find(|expr| matches!(expr.data(&db, body), Partial::Present(Expr::Call(..))))
+        })
+        .expect("missing call");
+    let recorded = outer_body
+        .callable_expr(outer_call)
+        .and_then(Callable::bound_evidence)
+        .and_then(|bound| bound.entries(&db).iter().flatten().next().copied())
+        .expect("the call records its proof of `T: Grow`");
+    let [wrap_copy] = conds(&db, recorded) else {
+        panic!("the blanket implementation has one condition");
+    };
+    let [t_copy] = conds(&db, *wrap_copy) else {
+        panic!("`Copy for Wrap<T>` has one condition");
+    };
+    assert_eq!(assumption(&db, &outer_body, *t_copy), "T: Copy");
+
+    // In `outer<u256>`, which `root` makes, that proof names `u256: Copy`;
+    // `bound<Wrap<u256>>` receives it, so its call `x.grow()`, checked
+    // against the bound, carries the blanket implementation with its
+    // conditions proved.
     let root = get_or_build_semantic_instance(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(func(&db, top_mod, "root"), None))
             .expect("missing root key"),
     );
+    let outer = root
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(outer_fn, None))
+        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .expect("`root` calls `outer`");
     let bound_fn = func(&db, top_mod, "bound");
-    let bound = root
+    let bound = outer
         .callees(&db)
         .iter()
         .find(|callee| callee.key.owner(&db) == BodyOwner::Func(bound_fn, None))
-        .expect("`root` calls `bound`");
+        .expect("`outer` calls `bound`");
     let body = bound_fn.body(&db).expect("missing body");
     let call = body
         .exprs(&db)
@@ -316,12 +356,10 @@ fn an_instance_receives_its_callers_proofs_of_its_bounds() {
     assert!(conds(&db, *u256_copy).is_empty());
 }
 
-/// The evidence the body defining `func`'s only trait-constant use
-/// receives: a closed proof of each assumption the body is checked under.
-fn const_body_evidence(db: &HirAnalysisTestDb, func: Func<'_>) -> Vec<bool> {
-    let template = typed_body_template(db, BodyOwner::Func(func, None));
-    let const_ref = template
-        .body
+/// Whether the body defining the only trait-constant use in `body` receives
+/// a closed proof of each assumption it is checked under.
+fn const_body_evidence(db: &HirAnalysisTestDb, body: &TypedBody<'_>) -> Vec<bool> {
+    let const_ref = body
         .const_refs()
         .next()
         .expect("missing trait constant use");
@@ -348,11 +386,22 @@ fn a_constant_body_receives_proofs_of_its_assumptions() {
     // `Wrap<u256>::D` is the implementation's value, checked under its
     // condition `T: Copy`: the selection's proof of the condition supplies
     // it.
-    assert_eq!(
-        const_body_evidence(&db, func(&db, top_mod, "root_d")),
-        vec![true]
+    let root_d = typed_body_template(&db, BodyOwner::Func(func(&db, top_mod, "root_d"), None));
+    assert_eq!(const_body_evidence(&db, &root_d.body), vec![true]);
+
+    // `T::E` in `generic_e` is the trait's default once `T` is known: in
+    // `generic_e<u256>`, which `root_e` makes, the use's proof of
+    // `Self: HasE`, the instance's own `u256: HasE`, supplies it.
+    let root_e = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(func(&db, top_mod, "root_e"), None))
+            .expect("missing root key"),
     );
-    // `u256::E` is the trait's default, checked under `Self: HasE`: the
-    // use's proof supplies it.
-    assert!(const_body_evidence(&db, func(&db, top_mod, "root_e")).contains(&true));
+    let generic_e_fn = func(&db, top_mod, "generic_e");
+    let generic_e = root_e
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(generic_e_fn, None))
+        .expect("`root_e` calls `generic_e`");
+    assert!(const_body_evidence(&db, generic_e.key.typed_body(&db)).contains(&true));
 }

@@ -1124,15 +1124,16 @@ fn semantic_callee_key_with_assumptions<'db>(
     // An instance with closed arguments runs with closed proofs only: one
     // the call could not supply, or supplied naming its caller's own
     // unproved assumptions, is proved here.
-    let evidence = match subst.mapping(db) {
-        Some(mapping) if is_ground(collect_flags(db, subst.generic_args(db))) => closed_evidence(
+    let evidence = if is_ground(collect_flags(db, subst.generic_args(db))) {
+        closed_evidence(
             db,
             func_signature(db, body_func, owner.mode()),
-            mapping,
+            subst,
             evidence,
             TraitSolveCx::new(db, impl_env.normalization_scope(db)),
-        ),
-        _ => evidence,
+        )
+    } else {
+        evidence
     };
     Ok(Some(SemanticCallCallee {
         concrete_dispatch: callable.trait_inst().is_none() || selected_impl,
@@ -1292,11 +1293,13 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
             };
             // As for a call: an instance with closed arguments runs with
             // closed proofs only.
-            let evidence = if is_ground(collect_flags(db, subst.values())) {
+            let ground = is_ground(collect_flags(db, subst.values()));
+            let subst = GenericSubst::complete(db, subst);
+            let evidence = if ground {
                 closed_evidence(
                     db,
                     const_body_assumptions(db, body.scope()).extend_all_bounds(db),
-                    &subst,
+                    subst,
                     evidence,
                     use_.solve_cx(db),
                 )
@@ -1306,7 +1309,7 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
             Some(SemanticInstanceKey::new(
                 db,
                 BodyOwner::AnonConstBody { body, expected: ty },
-                GenericSubst::complete(db, subst),
+                subst,
                 EffectProviderSubst::empty(db),
                 ImplEnv::new(
                     db,

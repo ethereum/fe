@@ -19,7 +19,7 @@ pub use self::contract::{
     check_contract_recv_blocks, resolve_variant_bare, resolve_variant_in_msg,
 };
 pub(crate) use self::contract::{contract_field_slot, eval_msg_variant_selector};
-pub(crate) use self::env::func_signature;
+pub(crate) use self::env::{func_declared_bounds, func_signature};
 pub use self::path::RecordLike;
 use crate::analysis::name_resolution::{ResolvedVariant, is_scope_visible_from};
 pub use crate::analysis::ty::AddressSpace;
@@ -85,10 +85,10 @@ use super::{
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     evidence::{
-        EvidenceId, EvidenceList, impl_const_bound_evidence, instantiated_selection, prove,
+        EvidenceId, EvidenceList, declared_bound_evidence, impl_const_bound_evidence,
+        instantiated_selection,
     },
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
-    subst::substitute_complete,
     trait_def::{TraitInstId, selected_assoc_const_body_template},
     trait_resolution::{
         CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx,
@@ -918,27 +918,6 @@ pub(crate) fn infer_body<'db>(
 #[salsa::interned]
 struct BodyInferenceKey<'db> {
     owner: BodyOwner<'db>,
-}
-
-/// `owner`'s checked body with each call's proofs of the assumptions its
-/// callee's body is checked under: the evidence the callee's instance
-/// receives. Kept apart from checking, so a body that is only checked does
-/// not prove them.
-pub(crate) fn evidenced_body<'db>(
-    db: &'db dyn HirAnalysisDb,
-    owner: BodyOwner<'db>,
-) -> &'db TypedBody<'db> {
-    evidenced_body_query(db, BodyInferenceKey::new(db, owner))
-}
-
-#[salsa::tracked(return_ref)]
-fn evidenced_body_query<'db>(
-    db: &'db dyn HirAnalysisDb,
-    key: BodyInferenceKey<'db>,
-) -> TypedBody<'db> {
-    let mut body = infer_body(db, key.owner(db)).1.clone();
-    body.record_bound_evidence(db);
-    body
 }
 
 #[salsa::tracked(return_ref, cycle_initial=infer_body_cycle_initial, cycle_fn=infer_body_cycle_recover)]
@@ -4013,8 +3992,9 @@ impl<'db> ConstRef<'db> {
     }
 
     /// Proves, in the use's context, the bounds the trait's default value
-    /// body declares, instantiated for the use.
-    fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
+    /// body declares, instantiated for the use, as `declared_bound_evidence`
+    /// records them.
+    pub(super) fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
         let ConstRef::TraitConst {
             use_,
             bound_evidence,
@@ -4024,36 +4004,21 @@ impl<'db> ConstRef<'db> {
             return;
         };
         let trait_ = use_.inst().def(db);
-        let Some(body) = trait_
-            .const_(db, use_.name())
-            .and_then(|constant| constant.default_body(db))
-        else {
+        let (Some(body), Ok(subst)) = (
+            trait_
+                .const_(db, use_.name())
+                .and_then(|constant| constant.default_body(db)),
+            CompleteSubst::for_owner(db, trait_.into(), use_.inst().args(db).to_vec()),
+        ) else {
             return;
         };
         let declared = const_body_assumptions(db, body.scope());
-        let signature = declared.extend_all_bounds(db);
-        let Some(goals) =
-            CompleteSubst::for_owner(db, trait_.into(), use_.inst().args(db).to_vec())
-                .ok()
-                .and_then(|subst| substitute_complete(db, signature, &subst).ok())
-        else {
-            return;
-        };
-        let solve_cx = use_.solve_cx(db);
-        *bound_evidence = Some(EvidenceList::of(
+        *bound_evidence = Some(declared_bound_evidence(
             db,
-            signature
-                .list(db)
-                .iter()
-                .zip(goals.list(db))
-                .map(|(bound, &goal)| {
-                    declared
-                        .list(db)
-                        .contains(bound)
-                        .then(|| prove(db, solve_cx, goal))
-                        .flatten()
-                })
-                .collect(),
+            declared,
+            declared.extend_all_bounds(db),
+            &subst,
+            use_.solve_cx(db),
         ));
     }
 }
@@ -4646,27 +4611,6 @@ impl<'db> TypedBody<'db> {
     /// them.
     fn tables_mut(&mut self) -> &mut TypedBodyTables<'db> {
         Arc::make_mut(&mut self.tables)
-    }
-
-    /// Records, for each call, its proofs of the assumptions its callee's
-    /// body is checked under.
-    fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
-        let Some(body) = self.body() else {
-            return;
-        };
-        let solve_cx = TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions());
-        let tables = self.tables_mut();
-        for lowering in tables.semantic_expr_lowering.values_mut().flatten() {
-            lowering.callable_mut().record_bound_evidence(db, solve_cx);
-        }
-        for plan in tables.for_loop_plans.values_mut().flatten() {
-            for call in &mut plan.calls {
-                call.callable.record_bound_evidence(db, solve_cx);
-            }
-        }
-        for const_ref in tables.const_refs.values_mut().flatten() {
-            const_ref.record_bound_evidence(db);
-        }
     }
 
     /// Replaces the assumptions the body's evidence names with `bound`'s

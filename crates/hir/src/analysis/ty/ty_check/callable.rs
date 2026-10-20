@@ -22,12 +22,13 @@ use crate::analysis::{
         const_ty::LoweringContext,
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
-        evidence::{EvidenceId, EvidenceList, instantiated_selection, prove},
+        evidence::{
+            EvidenceId, EvidenceList, declared_bound_evidence, instantiated_selection, prove,
+        },
         fold::{TyFoldable, TyFolder},
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
-        subst::substitute_complete,
         trait_def::{ResolvedMethodInstance, TraitInstId},
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
@@ -35,7 +36,7 @@ use crate::analysis::{
         ty_def::{BorrowKind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
         ty_error::emit_invalid_ty_error,
         ty_lower::{CompleteSubst, collect_generic_params, lower_generic_arg_list},
-        visitor::{TyVisitable, TyVisitor, collect_flags, mentions_effect_provider},
+        visitor::{TyVisitable, TyVisitor, collect_flags},
     },
 };
 use crate::core::semantic::{ProviderBinding, ProviderSource, param_env};
@@ -428,10 +429,8 @@ impl<'db> Callable<'db> {
     }
 
     /// Proves, in the checked body's context `solve_cx`, the bounds the
-    /// callee's body declares, instantiated for this call, by their places
-    /// among the assumptions it is checked under. What they imply, and a
-    /// bound on an effect provider, which the call binds once its providers
-    /// are resolved, are left to the instance.
+    /// callee's body declares, instantiated for this call, as
+    /// `declared_bound_evidence` records them.
     pub(super) fn record_bound_evidence(
         &mut self,
         db: &'db dyn HirAnalysisDb,
@@ -441,28 +440,15 @@ impl<'db> Callable<'db> {
             return;
         };
         let mode = BodyOwner::func_at(db, func, self.mode).mode();
-        let (declared, signature) = (
-            func_declared_bounds(db, func, mode),
-            func_signature(db, func, mode),
-        );
         let Ok(subst) = CompleteSubst::for_owner(db, func.into(), self.generic_args.clone()) else {
             return;
         };
-        let Ok(goals) = substitute_complete(db, signature, &subst) else {
-            return;
-        };
-        self.bound_evidence = Some(EvidenceList::of(
+        self.bound_evidence = Some(declared_bound_evidence(
             db,
-            signature
-                .list(db)
-                .iter()
-                .zip(goals.list(db))
-                .map(|(&bound, &goal)| {
-                    (declared.list(db).contains(&bound) && !mentions_effect_provider(db, bound))
-                        .then(|| prove(db, solve_cx, goal))
-                        .flatten()
-                })
-                .collect::<Vec<_>>(),
+            func_declared_bounds(db, func, mode),
+            func_signature(db, func, mode),
+            &subst,
+            solve_cx,
         ));
     }
 
