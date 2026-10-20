@@ -4,7 +4,6 @@ use core::abi::{
     ByteInput,
     BytesView,
     Decode,
-    DynArray,
     DynString,
     StringView,
     abi_field_head_size,
@@ -12,7 +11,7 @@ use core::abi::{
     checked_tail,
     decode_field_from_prechecked_head,
 }
-use ingot::abi::{Bytes, Sol}
+use ingot::abi::{Bytes, DynArray, Sol}
 use ingot::abi::sol::{decode_bytes_view_at, decode_string_view_at}
 use ingot::evm::panic::{PANIC_INDEX_OUT_OF_BOUNDS, Panic}
 use ingot::evm::revert_error
@@ -35,7 +34,7 @@ use ingot::evm::revert_error
 pub struct ArrayView<I, T> {
     input: I,
     elems: u256,
-    len: u256,
+    len: usize,
 }
 
 impl<I, T> Copy for ArrayView<I, T>
@@ -92,7 +91,7 @@ pub fn decode_array_view_at<T, I>(_ input: own I, base: u256, head_pos: u256) ->
     if len >= 0x10000000000000000 || (stride != 0 && len > (input_len - elems) / stride) {
         Sol::decode_error()
     }
-    ArrayView { input, elems, len }
+    ArrayView { input, elems, len: len as usize }
 }
 
 /// An ABI offset word, rejecting values of `2**64` or more like Solidity.
@@ -108,7 +107,7 @@ impl<I, T> ArrayView<I, T>
     where I: ByteInput + Copy, T: AbiSize
 {
     /// Number of elements.
-    pub fn len(self) -> u256 {
+    pub fn len(self) -> usize {
         self.len
     }
 
@@ -145,13 +144,13 @@ impl<I, T> ArrayView<I, T>
     ///
     /// Reverts with `Panic(0x32)` if `index >= len()`.
     #[arithmetic(unchecked)]
-    pub fn head_word(self, _ index: u256) -> u256 {
+    pub fn head_word(self, _ index: usize) -> u256 {
         self.check_index(index)
         let stride = abi_field_head_size<T>()
         if stride == 0 {
             return 0
         }
-        self.input.word_at(self.elems + index * stride)
+        self.input.word_at(self.elems + index as u256 * stride)
     }
 
     /// Like `element_pos`, but without validating the tail of a dynamic
@@ -168,9 +167,9 @@ impl<I, T> ArrayView<I, T>
     ///
     /// Reverts with `Panic(0x32)` if `index >= len()`.
     #[arithmetic(unchecked)]
-    pub fn unchecked_element_pos(self, _ index: u256) -> u256 {
+    pub fn unchecked_element_pos(self, _ index: usize) -> u256 {
         self.check_index(index)
-        let head_at = self.elems + index * abi_field_head_size<T>()
+        let head_at = self.elems + index as u256 * abi_field_head_size<T>()
         if !T::IS_DYNAMIC {
             return head_at
         }
@@ -189,10 +188,10 @@ impl<I, T> ArrayView<I, T>
     ///
     /// Reverts with `Panic(0x32)` if `index >= len()`.
     #[arithmetic(unchecked)]
-    pub fn element_pos(self, _ index: u256) -> u256 {
+    pub fn element_pos(self, _ index: usize) -> u256 {
         self.check_index(index)
         // The construction check proves the element heads are in bounds.
-        let head_at = self.elems + index * abi_field_head_size<T>()
+        let head_at = self.elems + index as u256 * abi_field_head_size<T>()
         if !T::IS_DYNAMIC {
             return head_at
         }
@@ -216,11 +215,11 @@ impl<I, T> ArrayView<I, T>
     ///
     /// Reverts with `Panic(0x32)` if `index >= len()`.
     #[arithmetic(unchecked)]
-    pub fn get(self, _ index: u256) -> T
+    pub fn get(self, _ index: usize) -> T
         where T: Decode<Sol>
     {
         self.check_index(index)
-        let head_at = self.elems + index * abi_field_head_size<T>()
+        let head_at = self.elems + index as u256 * abi_field_head_size<T>()
         if T::IS_DYNAMIC {
             let _ = checked_offset(self.input.word_at(head_at))
         }
@@ -232,7 +231,7 @@ impl<I, T> ArrayView<I, T>
         )
     }
 
-    fn check_index(self, _ index: u256) {
+    fn check_index(self, _ index: usize) {
         if index >= self.len {
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
@@ -249,9 +248,9 @@ impl<I> ArrayView<I, Bytes>
     /// `bytes[] calldata` in Solidity. Reverts with `Panic(0x32)` if
     /// `index >= len()`.
     #[arithmetic(unchecked)]
-    pub fn bytes_at(self, _ index: u256) -> BytesView<I> {
+    pub fn bytes_at(self, _ index: usize) -> BytesView<I> {
         self.check_index(index)
-        decode_bytes_view_at(self.input, base: self.elems, head_pos: index * 32)
+        decode_bytes_view_at(self.input, base: self.elems, head_pos: index as u256 * 32)
     }
 }
 
@@ -263,9 +262,9 @@ impl<I> ArrayView<I, DynString>
     /// Same validation as `ArrayView<I, Bytes>::bytes_at`; the bytes are not
     /// checked for valid UTF-8, as in Solidity.
     #[arithmetic(unchecked)]
-    pub fn string_at(self, _ index: u256) -> StringView<I> {
+    pub fn string_at(self, _ index: usize) -> StringView<I> {
         self.check_index(index)
-        decode_string_view_at(self.input, base: self.elems, head_pos: index * 32)
+        decode_string_view_at(self.input, base: self.elems, head_pos: index as u256 * 32)
     }
 }
 
@@ -278,8 +277,8 @@ impl<I, U> ArrayView<I, DynArray<U>>
     /// with offsets relative to the start of this array's element heads.
     /// Reverts with `Panic(0x32)` if `index >= len()`.
     #[arithmetic(unchecked)]
-    pub fn array_at(self, _ index: u256) -> ArrayView<I, U> {
+    pub fn array_at(self, _ index: usize) -> ArrayView<I, U> {
         self.check_index(index)
-        decode_array_view_at(self.input, base: self.elems, head_pos: index * 32)
+        decode_array_view_at(self.input, base: self.elems, head_pos: index as u256 * 32)
     }
 }
