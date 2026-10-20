@@ -30,7 +30,7 @@ use crate::analysis::{
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
-        trait_def::{ResolvedMethodInstance, TraitInstId},
+        trait_def::{AssocBinding, ResolvedMethodInstance, TraitInstId},
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
@@ -1247,10 +1247,7 @@ impl<'db> Callable<'db> {
                 let shape = tc.normalize_ty(*constraint.args(db).get(1)?);
                 Some(ClosureExpectation {
                     params: shape.as_params_shape(db)?,
-                    ret: constraint
-                        .assoc_type_bindings(db)
-                        .get(&out_ident(db))
-                        .copied(),
+                    ret: constraint.bound_assoc_ty(db, AssocBinding::of(out_ident(db))),
                 })
             })
     }

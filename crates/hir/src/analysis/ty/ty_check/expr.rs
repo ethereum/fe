@@ -4354,7 +4354,7 @@ impl<'db> TyChecker<'db> {
                             .map(|&ty| ty.fold_with(self.db, &mut folder))
                             .collect::<Vec<_>>();
 
-                        let assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>> = trait_inst
+                        let assoc_type_bindings: IndexMap<_, _> = trait_inst
                             .assoc_type_bindings(self.db)
                             .iter()
                             .map(|(name, ty)| (*name, ty.fold_with(self.db, &mut folder)))

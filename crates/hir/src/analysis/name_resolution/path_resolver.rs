@@ -40,7 +40,8 @@ use crate::analysis::{
         method_table::{MethodProbe, probe_method},
         normalize::normalize_ty,
         trait_def::{
-            ImplementorId, ImplementorOrigin, TraitInstId, impls_for_ty_with_satisfied_constraints,
+            AssocBinding, ImplementorId, ImplementorOrigin, TraitInstId,
+            impls_for_ty_with_satisfied_constraints,
         },
         trait_lower::{
             TraitRefLowerError, complete_candidate_impl_assoc_ty, complete_impl_assoc_ty,
@@ -1645,11 +1646,17 @@ where
                 // with other candidates. Normalizing the binding-free
                 // projection under all assumptions can leave conflicting
                 // equalities unresolved and incorrectly merge them.
-                let candidate_ty = inst
-                    .assoc_type_bindings(db)
-                    .get(&ident)
-                    .copied()
-                    .map_or(applied, |bound| TyId::foldl(db, bound, &seg_args));
+                // A shape named at a mode takes the equality at that mode.
+                let mode = match applied.data(db) {
+                    TyData::AssocTy(assoc) => assoc.mode,
+                    _ => None,
+                };
+                let candidate_ty = match inst.bound_assoc_ty(db, AssocBinding { name: ident, mode })
+                {
+                    Some(bound) if mode.is_some() => bound,
+                    Some(bound) => TyId::foldl(db, bound, &seg_args),
+                    None => applied,
+                };
                 let norm = normalize_ty(db, candidate_ty, scope, evidence);
                 dedup.entry(norm).or_insert((inst, applied, norm));
             }

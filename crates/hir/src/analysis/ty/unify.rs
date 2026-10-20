@@ -832,20 +832,14 @@ impl<'db> Unifiable<'db> for TraitInstId<'db> {
         // (with bindings) should be able to satisfy a less specific constraint
         // (without bindings).
 
-        // First, unify all bindings that are present in both
-        for (name, &self_assoc_ty) in self.assoc_type_bindings(db) {
-            if let Some(&other_assoc_ty) = other.assoc_type_bindings(db).get(name) {
-                table.unify_ty(self_assoc_ty, other_assoc_ty)?;
-            }
-        }
-
-        // For bindings that are only in other, we need to check if self can satisfy them
-        for (name, &_other_assoc_ty) in other.assoc_type_bindings(db) {
-            if !self.assoc_type_bindings(db).contains_key(name) {
-                // other has a binding that self doesn't have
-                // This means other is more specific than self, so unification fails
-                return Err(UnificationError::TypeMismatch);
-            }
+        // Each of other's bindings must be one of self's, which may bind an
+        // associated shape at every mode where other names one. A binding
+        // other lacks makes it less specific.
+        for (&binding, &other_assoc_ty) in other.assoc_type_bindings(db) {
+            let self_assoc_ty = self
+                .bound_assoc_ty(db, binding)
+                .ok_or(UnificationError::TypeMismatch)?;
+            table.unify_ty(self_assoc_ty, other_assoc_ty)?;
         }
 
         Ok(())

@@ -905,7 +905,7 @@ pub(crate) fn normalize_predicate_for_comparison<'db>(
             )
         })
         .collect();
-    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.data(db).cmp(rhs.data(db)));
+    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.canonical_cmp(db, rhs));
     TraitInstId::new(
         db,
         pred.def(db),

@@ -324,7 +324,18 @@ value of it on whole: it returns it, alone or as part of a returned
 product, or passes it to a parameter of the same shape, `_ p: H::Part<ref>`,
 at most once. A `let`, a pattern, a field read or a copy of it is an error.
 A product's part, `(own usize, H::Part<ref>)`, a closure's parameter and a
-callable bound, `F: Fn(H::Part<ref>) -> bool`, take one the same way.
+callable bound, `F: Fn(H::Part<ref>) -> bool`, take one the same way. A
+bound that fixes the shape at a mode makes its parts known there, to bind,
+copy and destructure; each mode is fixed on its own:
+
+```fe
+fn bump<H: mut Holds<Part<ref> = (ref u256, ref u256), Part<mut> = (mut u256, mut u256)>>(
+    _ h: mut H,
+) {
+    let (mut a, _) = h.part()
+    a += 1
+}
+```
 
 ## Views
 

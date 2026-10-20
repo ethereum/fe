@@ -161,8 +161,15 @@ impl<'db> ConstGenericArg<'db> {
 impl<'db> AssocTypeGenericArg<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::AssocTypeGenericArg) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let mode = ast.mode().map(|mode| {
+            if mode.is_mut() {
+                TypeMode::Mut
+            } else {
+                TypeMode::Ref
+            }
+        });
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        Self { name, ty }
+        Self { name, mode, ty }
     }
 }
 

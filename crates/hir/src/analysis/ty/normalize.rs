@@ -16,7 +16,9 @@ use super::{
     closure::callable_out_ty,
     fold::{TyFoldable, TyFolder},
     shape::Shape,
-    trait_def::{TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints},
+    trait_def::{
+        AssocBinding, TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints,
+    },
     trait_lower::complete_impl_assoc_ty,
     trait_resolution::{PredicateListId, TraitSolveCx},
     ty_def::{
@@ -324,7 +326,11 @@ impl<'db> TypeNormalizer<'db> {
         let target = assoc.trait_.fold_with(self.db, self);
         let mut matching_bounds: IndexMap<TyId<'db>, ()> = IndexMap::new();
         for &pred in self.assumptions.list(self.db) {
-            let Some(bound) = pred.bound_assoc_ty(self.db, assoc.name) else {
+            let binding = AssocBinding {
+                name: assoc.name,
+                mode: assoc.mode,
+            };
+            let Some(bound) = pred.bound_assoc_ty(self.db, binding) else {
                 continue;
             };
             if self.trait_refs_match(target, pred.trait_ref(self.db)) {

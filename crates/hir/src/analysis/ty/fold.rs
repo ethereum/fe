@@ -1,6 +1,5 @@
 use std::hash::Hash;
 
-use crate::core::hir_def::IdentId;
 use crate::hir_def::scope_graph::ScopeId;
 use common::indexmap::{IndexMap, IndexSet};
 
@@ -461,7 +460,7 @@ impl<'db> TyFoldable<'db> for TraitInstId<'db> {
             .map(|ty| ty.fold_with(db, folder))
             .collect::<Vec<_>>();
 
-        let assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>> = self
+        let assoc_type_bindings: IndexMap<_, _> = self
             .assoc_type_bindings(db)
             .iter()
             .map(|(name, ty)| (*name, ty.fold_with(db, folder)))

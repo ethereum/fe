@@ -19,7 +19,7 @@ use super::{
     corelib::resolve_core_trait,
     effects::rows::RowComponent,
     shape::Shape,
-    trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
+    trait_def::{AssocBinding, ImplementorId, ImplementorOrigin, TraitInstId},
     ty_check::{BodyOwner, EffectParamSite, infer_body},
     ty_def::{ClosureDef, ClosureTy, TyBase, TyData, TyId},
 };
@@ -167,7 +167,7 @@ impl<'db> CallableValue<'db> {
             db,
             trait_,
             vec![self_ty, TyId::params_shape(db, &self.params(db))],
-            IndexMap::from_iter([(out_ident(db), self.ret_ty(db))]),
+            IndexMap::from_iter([(AssocBinding::of(out_ident(db)), self.ret_ty(db))]),
             ModeMarker::None,
         ))
     }
@@ -211,12 +211,13 @@ pub(crate) fn callable_implementor<'db>(
     goal: TraitInstId<'db>,
 ) -> Option<ImplementorId<'db>> {
     let self_ty = goal.self_ty(db);
-    let inst = CallableValue::of(db, self_ty)?.callable_inst(db, self_ty, goal.def(db))?;
+    let value = CallableValue::of(db, self_ty)?;
+    let inst = value.callable_inst(db, self_ty, goal.def(db))?;
     Some(ImplementorId::new(
         db,
         TraitInstId::new_simple(db, inst.def(db), inst.args(db).clone()),
         Vec::new(),
-        inst.assoc_type_bindings(db).clone(),
+        IndexMap::from_iter([(out_ident(db), value.ret_ty(db))]),
         ImplementorOrigin::Callable,
     ))
 }

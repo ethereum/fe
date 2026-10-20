@@ -1925,7 +1925,7 @@ pub struct AssocTy<'db> {
 
 /// The mode an associated shape is named at: its `mut?` parts and the shapes
 /// it names without a mode are at it.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
 pub enum ShapeMode {
     /// `D::Step<ref>`, or `D::Step` in an item used at `ref`.
     Ref,

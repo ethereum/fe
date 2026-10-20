@@ -18,7 +18,7 @@ use crate::{
                 stored_trait_key_is_rigid, stored_type_key_is_rigid,
             },
             fold::{TyFoldable, TyFolder},
-            trait_def::TraitInstId,
+            trait_def::{AssocBinding, TraitInstId},
             trait_resolution::PredicateListId,
             ty_check::{Callable, TyChecker},
             ty_def::{BorrowKind, InvalidCause, TyBase, TyData, TyId, TyParam, inference_keys},
@@ -598,7 +598,7 @@ fn normalize_stored_trait_key<'db>(
         .into_iter()
         .map(|ty| normalize_effect_identity_ty(db, ty, scope, assumptions, None))
         .collect();
-    let mut assoc_bindings: SmallVec<[(crate::hir_def::IdentId<'db>, TyId<'db>); 2]> = key
+    let mut assoc_bindings: SmallVec<[(AssocBinding<'db>, TyId<'db>); 2]> = key
         .assoc_bindings
         .into_iter()
         .map(|(name, ty)| {

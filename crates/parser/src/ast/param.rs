@@ -321,6 +321,21 @@ impl AssocTypeGenericArg {
         support::token(self.syntax(), SK::Ident)
     }
 
+    /// The `<ref>` or `<mut>` an associated shape is bound at:
+    /// `Step<ref> = ref u256`.
+    pub fn generic_args(&self) -> Option<GenericArgList> {
+        support::child(self.syntax())
+    }
+
+    /// The mode the generic arguments name, if they are one mode.
+    pub fn mode(&self) -> Option<ModeGenericArg> {
+        let mut args = self.generic_args()?.into_iter();
+        match (args.next()?.kind(), args.next()) {
+            (GenericArgKind::Mode(mode), None) => Some(mode),
+            _ => None,
+        }
+    }
+
     pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }

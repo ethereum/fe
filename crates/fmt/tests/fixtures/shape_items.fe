@@ -14,3 +14,5 @@ impl<D: Driver> Driver for Enumerate<D> {
 }
 
 fn first<D: Driver, P: Fn(D::Step<mut>) -> bool>(_ d: D, _ p: P) {}
+
+fn sum<D: Driver<Step< ref > =ref u256, Base = [u256; 3]>>(_ d: D) {}

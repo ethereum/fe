@@ -531,7 +531,7 @@ fn trait_identity<'db>(db: &'db dyn HirAnalysisDb, trait_inst: TraitInstId<'db>)
     let assoc_types = trait_inst
         .assoc_type_bindings(db)
         .iter()
-        .map(|(name, ty)| format!("{}${}", name.data(db), type_identity(db, *ty)))
+        .map(|(binding, ty)| format!("{}${}", binding.pretty_print(db), type_identity(db, *ty)))
         .collect::<Vec<_>>()
         .join("$");
     format!("{trait_ref}$assoc${assoc_types}")

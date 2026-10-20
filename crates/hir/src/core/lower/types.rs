@@ -90,6 +90,7 @@ impl<'db> TraitRefId<'db> {
                     );
                     args.push(GenericArg::AssocType(AssocTypeGenericArg {
                         name: Partial::Present(IdentId::new(db, "Out".to_string())),
+                        mode: None,
                         ty: Partial::Present(ret),
                     }));
                 }

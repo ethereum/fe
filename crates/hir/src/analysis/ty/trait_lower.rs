@@ -20,10 +20,10 @@ use super::{
     fold::{TyFoldable, TyFolder},
     generic_defaults::DefaultApplication,
     provider::AddressSpace,
-    shape::Shape,
-    trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
+    shape::{Shape, lower_shape_value},
+    trait_def::{AssocBinding, ImplementorId, ImplementorOrigin, TraitInstId},
     trait_resolution::PredicateListId,
-    ty_def::{BorrowKind, InvalidCause, PrimTy, TyBase, TyId},
+    ty_def::{BorrowKind, InvalidCause, PrimTy, ShapeMode, TyBase, TyId},
     ty_error::first_invalid_ty_cause,
     ty_lower::{lower_generic_arg_list, lower_hir_ty_with_minter},
 };
@@ -628,10 +628,21 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
             GenericArg::Type(_) | GenericArg::Const(_) => provided_explicit.push(lowered),
             // A trait takes no mode, which is reported where it is written.
             GenericArg::Mode(_) => return Err(TraitArgError::Ignored),
-            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
+            GenericArg::AssocType(AssocTypeGenericArg { name, mode, ty }) => {
                 if let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) {
-                    let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);
-                    assoc_bindings.insert(name, ty);
+                    // An associated shape is bound to a shape, at a mode.
+                    let ty = if mode.is_some()
+                        || t.assoc_ty(db, name).is_some_and(|decl| decl.is_shape())
+                    {
+                        lower_shape_value(db, ty, scope, assumptions, lowering_cx)
+                    } else {
+                        lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx)
+                    };
+                    let mode = mode.map(|mode| match mode {
+                        TypeMode::Mut => ShapeMode::Mut,
+                        _ => ShapeMode::Ref,
+                    });
+                    assoc_bindings.insert(AssocBinding { name, mode }, ty);
                 }
             }
         }

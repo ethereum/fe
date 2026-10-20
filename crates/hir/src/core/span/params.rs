@@ -248,7 +248,9 @@ define_lazy_span_node!(
     @token {
         (name, name),
     }
-    @node {}
+    @node {
+        (generic_args, generic_args, LazyGenericArgListSpan),
+    }
 );
 
 impl<'db> LazyAssocTypeGenericArgSpan<'db> {

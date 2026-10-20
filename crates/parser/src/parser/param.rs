@@ -567,16 +567,31 @@ impl super::Parse for GenericArgScope {
             return Ok(());
         }
 
-        // Check if this is an associated type argument (Ident = Type)
+        // Check if this is an associated type argument (`Ident = Type`), or
+        // an associated shape's at a mode (`Ident<ref> = Shape`).
         let is_assoc_type = matches!(
             parser.peek_n_non_trivia(2).as_slice(),
             [SyntaxKind::Ident, SyntaxKind::Eq]
+        ) || matches!(
+            parser.peek_n_non_trivia(5).as_slice(),
+            [
+                SyntaxKind::Ident,
+                SyntaxKind::Lt,
+                SyntaxKind::RefKw | SyntaxKind::MutKw,
+                SyntaxKind::Gt,
+                SyntaxKind::Eq
+            ]
         );
 
         if is_assoc_type {
             self.set_kind(SyntaxKind::AssocTypeGenericArg);
             // Parse the identifier name
             parser.bump_expected(SyntaxKind::Ident);
+
+            // The mode an associated shape is bound at
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericArgListScope::default())?;
+            }
 
             // Parse the equals sign
             parser.bump_expected(SyntaxKind::Eq);

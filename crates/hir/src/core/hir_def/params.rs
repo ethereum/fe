@@ -81,10 +81,13 @@ impl<'db> GenericArgListId<'db> {
                                 .name
                                 .to_opt()
                                 .map_or_else(|| "<missing>".into(), |n| n.data(db).to_string());
+                            let mode = a
+                                .mode
+                                .map_or_else(String::new, |mode| format!("<{}>", mode.keyword()));
                             let ty =
                                 a.ty.to_opt()
                                     .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db));
-                            format!("{name} = {ty}")
+                            format!("{name}{mode} = {ty}")
                         }
                         GenericArg::Mode(mode) => mode.keyword().to_string(),
                     })
@@ -245,6 +248,8 @@ pub struct ConstGenericArg<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocTypeGenericArg<'db> {
     pub name: Partial<IdentId<'db>>,
+    /// The mode an associated shape is bound at: `Step<ref> = ref u256`.
+    pub mode: Option<TypeMode>,
     pub ty: Partial<TypeId<'db>>,
 }
 

@@ -1334,7 +1334,7 @@ pub fn canonicalize_trait_inst_for_mode<'db>(
         .iter()
         .map(|(name, &ty)| (*name, canonicalize_ty_for_mode(db, ty, env, mode)))
         .collect();
-    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.data(db).cmp(rhs.data(db)));
+    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.canonical_cmp(db, rhs));
     TraitInstId::new(
         db,
         trait_inst.def(db),

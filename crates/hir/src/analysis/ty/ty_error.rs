@@ -20,7 +20,7 @@ use super::{
     const_ty::{ConstBodyLowering, ConstTyData, LoweringContext, ty_is_fully_ground},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     normalize::normalize_ty,
-    shape::{lower_shape_list, param_product_diags},
+    shape::{lower_shape_list, param_product_diags, shape_value_diags},
     trait_resolution::{PredicateListId, TraitSolveCx, WellFormedness, check_ty_wf},
     ty_def::{InvalidCause, Kind, TyData, TyId},
     ty_lower::{lower_hir_ty, lower_hir_ty_in_mode, lower_kind_in_bounds},
@@ -103,35 +103,49 @@ pub(crate) fn path_arg_diags<'db>(
                     let Some(ty) = binding.ty.to_opt() else {
                         return Vec::new();
                     };
-                    let span = span.into_assoc_type_arg().ty();
-                    let diags = collect_hir_ty_diags(db, scope, ty, span.clone(), assumptions);
-                    // A type is of its declaration's kind: `*`, unless a bound
-                    // gives another.
+                    let span = span.into_assoc_type_arg();
                     let decl = binding.name.to_opt().and_then(|name| {
                         match resolve_path(db, path, scope, assumptions, false) {
                             Ok(PathRes::Trait(inst)) => inst.def(db).assoc_ty(db, name),
                             _ => None,
                         }
                     });
-                    let expected = decl
-                        .and_then(|decl| lower_kind_in_bounds(&decl.bounds))
-                        .unwrap_or(Kind::Star);
-                    let given = lower_hir_ty(db, ty, scope, assumptions);
-                    if diags.is_empty()
-                        && !decl.is_some_and(|decl| decl.is_shape())
-                        && !given.has_invalid(db)
-                        && !given.kind(db).does_match(&expected)
-                    {
-                        vec![
-                            TyLowerDiag::InvalidTypeArgKind {
-                                span: span.into(),
-                                expected: Some(expected),
-                                given,
+                    // An associated shape is bound to a shape at a mode, and
+                    // nothing else is bound at one.
+                    match (decl.is_some_and(|decl| decl.is_shape()), binding.mode) {
+                        (true, Some(_)) => shape_value_diags(db, ty, scope, span.ty(), assumptions),
+                        (true, None) => {
+                            vec![TyLowerDiag::ShapeWithoutMode(span.name().into()).into()]
+                        }
+                        (false, Some(_)) => {
+                            vec![TyLowerDiag::ModeArgNotShape(span.generic_args().into()).into()]
+                        }
+                        (false, None) => {
+                            let span = span.ty();
+                            let diags =
+                                collect_hir_ty_diags(db, scope, ty, span.clone(), assumptions);
+                            // A type is of its declaration's kind: `*`, unless
+                            // a bound gives another.
+                            let expected = decl
+                                .and_then(|decl| lower_kind_in_bounds(&decl.bounds))
+                                .unwrap_or(Kind::Star);
+                            let given = lower_hir_ty(db, ty, scope, assumptions);
+                            if diags.is_empty()
+                                && !given.has_invalid(db)
+                                && !given.kind(db).does_match(&expected)
+                            {
+                                vec![
+                                    TyLowerDiag::InvalidTypeArgKind {
+                                        span: span.into(),
+                                        expected: Some(expected),
+                                        given,
+                                    }
+                                    .into(),
+                                ]
+                            } else {
+                                diags
                             }
-                            .into(),
-                        ]
-                    } else {
-                        diags
+                        }
                     }
                 }
                 GenericArg::Const(_) => Vec::new(),

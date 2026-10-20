@@ -60,6 +60,8 @@ module.exports = grammar({
     [$.self_type, $._expression, $.path_segment],
     // `Fn(..)` callable shape vs a path in a where-clause bound
     [$.fn_shape, $.path_segment],
+    // `Step<ref> = ..` vs a generic type argument `Step<T>`, until the `=`
+    [$.assoc_type_generic_arg, $.path_segment],
     // recv arm pattern
     [$.recv_arm_pattern],
     // _condition variants use the same terminals as expressions.
@@ -657,11 +659,13 @@ module.exports = grammar({
     // `ref` or `mut`: the mode an associated shape is named at, `D::Step<ref>`
     mode_generic_arg: $ => choice('ref', 'mut'),
 
-    assoc_type_generic_arg: $ => prec(1, seq(
+    // `Item = T`, or an associated shape at a mode, `Step<ref> = ref T`
+    assoc_type_generic_arg: $ => seq(
       field('name', $.identifier),
+      optional(field('mode', $.generic_arg_list)),
       '=',
       field('type', $._type),
-    )),
+    ),
 
     where_clause: $ => seq(
       'where',

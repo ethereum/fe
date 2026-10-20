@@ -1177,8 +1177,12 @@ impl ToDoc for ast::AssocTypeGenericArg {
             return alloc.nil();
         };
 
+        let args = self
+            .generic_args()
+            .map_or_else(|| alloc.nil(), |args| args.to_doc(ctx));
         alloc
             .text(ctx.token(&name))
+            .append(args)
             .append(alloc.text(" = "))
             .append(ty.to_doc(ctx))
     }
