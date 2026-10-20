@@ -459,6 +459,8 @@ fn an_instance_proves_the_bounds_its_arguments_close() {
                 Evidence::Impl { .. } if evidence.is_closed(&db) => "closed implementation",
                 Evidence::Impl { .. } => "implementation",
                 Evidence::Assumption(_) => "assumption",
+                Evidence::Param(_) => "param",
+                Evidence::Unsupplied => "unsupplied",
             }
         })
         .collect();
@@ -509,4 +511,301 @@ fn a_generic_instance_dispatches_through_the_bound_its_caller_proved() {
         )
         .expect("the bound answers the call");
     assert_eq!(method.body(), None);
+}
+
+#[test]
+fn named_choice_dispatches_through_generic_helper_via_evidence_id() {
+    use fe_hir::analysis::ty::trait_def::ImplementorOrigin;
+
+    const NAMED_SLICE_SOURCE: &str = r#"
+use core::obligations::{Evidence, prove}
+
+trait Rate {
+    const BASE: u256
+    const DEF_BASE: u256 = Self::BASE + 1
+    const fn rate(self) -> u256
+    const fn total(self) -> u256 {
+        self.rate() + Self::BASE + Self::DEF_BASE
+    }
+}
+
+impl Rate for u256 {
+    const BASE: u256 = 10
+    const fn rate(self) -> u256 { 100 }
+}
+
+impl Rate for u256 as Wholesale {
+    const BASE: u256 = 20
+    const fn rate(self) -> u256 { 200 }
+}
+
+const fn helper<T: Rate>(_ x: T) -> u256 {
+    x.rate() + x.total() + T::BASE + T::DEF_BASE
+}
+
+const fn helper_ev(_ ev: Evidence<Rate<u256>>, _ x: u256) -> u256 {
+    with (ev) {
+        helper(x)
+    }
+}
+
+struct Boxed<T> {
+    pub x: T,
+}
+
+trait Quote {
+    const Q: u256
+    const DEF_Q: u256 = Self::Q + 2
+    const fn quote(self) -> u256
+    const fn full_quote(self) -> u256 {
+        self.quote() + Self::Q + Self::DEF_Q
+    }
+}
+
+impl<T: Rate> Quote for Boxed<T> {
+    const Q: u256 = T::BASE
+    const fn quote(self) -> u256 {
+        (self.x).total()
+    }
+}
+
+const fn before_val() -> u256 {
+    helper(1 as u256)
+}
+
+const fn during_val() -> u256 {
+    with (Wholesale) {
+        helper(1 as u256)
+    }
+}
+
+const fn after_val() -> u256 {
+    helper(1 as u256)
+}
+
+const fn scoped_sequence() -> u256 {
+    let before = helper(1 as u256)
+    let during = with (Wholesale) {
+        helper(1 as u256)
+    }
+    let after = helper(1 as u256)
+    before * 1000000 + during * 1000 + after
+}
+
+const fn ev_ord_val() -> u256 {
+    let ev = prove<Rate<u256>>()
+    helper_ev(ev, 1 as u256)
+}
+
+const fn ev_alt_val() -> u256 {
+    let ev = with (Wholesale) {
+        prove<Rate<u256>>()
+    }
+    helper_ev(ev, 1 as u256)
+}
+
+const fn cond_alt_val() -> u256 {
+    let b = Boxed { x: 1 as u256 }
+    with (Wholesale) {
+        b.quote() + b.full_quote() + <Boxed<u256> as Quote>::Q + <Boxed<u256> as Quote>::DEF_Q
+    }
+}
+
+struct CheckBefore<const N: u256> where { N == 242 } {}
+struct CheckDuring<const N: u256> where { N == 482 } {}
+struct CheckAfter<const N: u256> where { N == 242 } {}
+struct CheckSeq<const N: u256> where { N == 242482242 } {}
+struct CheckEvOrd<const N: u256> where { N == 242 } {}
+struct CheckEvAlt<const N: u256> where { N == 482 } {}
+struct CheckCondAlt<const N: u256> where { N == 566 } {}
+
+fn verify(
+    _ a: CheckBefore<{ before_val() }>,
+    _ b: CheckDuring<{ during_val() }>,
+    _ c: CheckAfter<{ after_val() }>,
+    _ d: CheckSeq<{ scoped_sequence() }>,
+    _ e: CheckEvOrd<{ ev_ord_val() }>,
+    _ f: CheckEvAlt<{ ev_alt_val() }>,
+    _ g: CheckCondAlt<{ cond_alt_val() }>,
+) {}
+"#;
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("named_choice_dispatches_through_generic_helper_via_evidence_id.fe"),
+        NAMED_SLICE_SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    let impls = top_mod.all_impl_traits(&db);
+    let ord_rate_impl = impls[0];
+    let wholesale_impl = impls[1];
+
+    let helper_fn = func(&db, top_mod, "helper");
+    let before_fn = func(&db, top_mod, "before_val");
+    let during_fn = func(&db, top_mod, "during_val");
+    let after_fn = func(&db, top_mod, "after_val");
+    let seq_fn = func(&db, top_mod, "scoped_sequence");
+
+    let before_inst = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(before_fn, None)).expect("before root key"),
+    );
+    let during_inst = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(during_fn, None)).expect("during root key"),
+    );
+    let after_inst = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(after_fn, None)).expect("after root key"),
+    );
+    let seq_inst = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(seq_fn, None)).expect("seq root key"),
+    );
+
+    let before_key = before_inst
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(helper_fn, None))
+        .expect("before_val calls helper")
+        .key;
+    let during_key = during_inst
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(helper_fn, None))
+        .expect("during_val calls helper")
+        .key;
+    let after_key = after_inst
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(helper_fn, None))
+        .expect("after_val calls helper")
+        .key;
+
+    let helper_callees: Vec<_> = seq_inst
+        .callees(&db)
+        .iter()
+        .filter(|callee| callee.key.owner(&db) == BodyOwner::Func(helper_fn, None))
+        .map(|callee| callee.key)
+        .collect();
+    assert_eq!(
+        helper_callees,
+        vec![before_key, during_key],
+        "scoped_sequence's 3 calls (before, during `with (Wholesale)`, after) deduplicate to 2 distinct SemanticInstanceKeys"
+    );
+
+    // 1. Scope restoration and canonical key stability:
+    // `before` and `after` outside `with (Wholesale)` produce the exact same canonical
+    // `SemanticInstanceKey` with `EvidenceList::none`, whereas `during` inside `with (Wholesale)`
+    // has a distinct `SemanticInstanceKey` carrying the named `EvidenceId`.
+    assert_eq!(
+        before_key, after_key,
+        "ordinary calls before and after `with (Wholesale)` must share one canonical SemanticInstanceKey"
+    );
+    assert_ne!(
+        before_key, during_key,
+        "named choice call inside `with (Wholesale)` must have a distinct SemanticInstanceKey"
+    );
+    assert!(
+        before_key.evidence(&db).entries(&db).is_empty()
+            && before_key.evidence(&db).params(&db).is_empty(),
+        "ordinary concrete instance key carries EvidenceList::none"
+    );
+
+    // 2. Verify `during_key` carries `Evidence::Impl` for `Wholesale` (`!is_ordinary`) in `EvidenceList::entries`:
+    let during_entries = during_key.evidence(&db).entries(&db);
+    let wholesale_ev = during_entries
+        .iter()
+        .flatten()
+        .copied()
+        .next()
+        .expect("during_key must carry EvidenceId for T: Rate");
+    assert!(
+        !wholesale_ev.is_ordinary(&db),
+        "Wholesale EvidenceId must be marked non-ordinary"
+    );
+    match wholesale_ev.data(&db) {
+        Evidence::Impl {
+            selected, conds, ..
+        } => {
+            assert_eq!(
+                selected.origin(&db),
+                ImplementorOrigin::Hir(wholesale_impl),
+                "EvidenceId must directly select `impl Rate for u256 as Wholesale`"
+            );
+            assert!(conds.is_empty());
+        }
+        other => panic!("expected Evidence::Impl for Wholesale, got {other:?}"),
+    }
+
+    // 3. Inside `during_key.typed_body(&db)`, `x.rate()` has its `Assumption(T: Rate)` rebased
+    // to `wholesale_ev`, and `selected_method` dispatches to `Wholesale::rate`, while inside
+    // `before_key.typed_body(&db)`, `x.rate()` carries ordinary `ord_rate_impl` and dispatches
+    // to the ordinary `Rate::rate`:
+    let helper_body = helper_fn.body(&db).expect("helper body");
+    let first_method_call = helper_body
+        .exprs(&db)
+        .keys()
+        .find(|expr| {
+            matches!(
+                expr.data(&db, helper_body),
+                Partial::Present(Expr::MethodCall(..))
+            )
+        })
+        .expect("method call in helper");
+
+    let before_call_ev = before_key
+        .typed_body(&db)
+        .callable_expr(first_method_call)
+        .and_then(Callable::evidence)
+        .expect("before call evidence");
+    assert!(before_call_ev.is_ordinary(&db));
+    let before_method = before_key
+        .typed_body(&db)
+        .callable_expr(first_method_call)
+        .unwrap()
+        .selected_method(&db, TraitSolveCx::new(&db, helper_fn.scope()))
+        .and_then(|m| m.body())
+        .expect("before selected method body");
+    assert_eq!(
+        before_method.scope().parent_item(&db),
+        Some(ItemKind::ImplTrait(ord_rate_impl))
+    );
+
+    let during_call_ev = during_key
+        .typed_body(&db)
+        .callable_expr(first_method_call)
+        .and_then(Callable::evidence)
+        .expect("during call evidence");
+    assert_eq!(during_call_ev, wholesale_ev);
+    let during_method = during_key
+        .typed_body(&db)
+        .callable_expr(first_method_call)
+        .unwrap()
+        .selected_method(&db, TraitSolveCx::new(&db, helper_fn.scope()))
+        .and_then(|m| m.body())
+        .expect("during selected method body");
+    assert_eq!(
+        during_method.scope().parent_item(&db),
+        Some(ItemKind::ImplTrait(wholesale_impl))
+    );
+
+    // 4. Verify `Evidence<Rate<u256>>` parameter transport through `EvidenceList::params`:
+    let ev_alt_fn = func(&db, top_mod, "ev_alt_val");
+    let ev_alt_inst = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(ev_alt_fn, None)).expect("ev_alt root key"),
+    );
+    let helper_ev_fn = func(&db, top_mod, "helper_ev");
+    let helper_ev_callee = ev_alt_inst
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(helper_ev_fn, None))
+        .expect("ev_alt_val calls helper_ev");
+    let params = helper_ev_callee.key.evidence(&db).params(&db);
+    assert_eq!(params.len(), 1);
+    assert_eq!(params[0].0, 0);
+    assert_eq!(params[0].1, wholesale_ev);
 }

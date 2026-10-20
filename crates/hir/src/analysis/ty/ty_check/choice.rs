@@ -3353,3 +3353,97 @@ pub(super) fn check_choice_uses<'db>(
     }
     diags
 }
+
+impl<'db> super::ConstRef<'db> {
+    /// Proves, in the use's context, the bounds the constant's value body
+    /// declares, instantiated for the use, as
+    /// `declared_bound_evidence_with_deliveries` records them.
+    pub(crate) fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
+        match self {
+            super::ConstRef::TraitConst {
+                use_,
+                bound_evidence,
+                ..
+            } => {
+                let trait_ = use_.inst().def(db);
+                let (Some(body), Ok(subst)) = (
+                    trait_
+                        .const_(db, use_.name())
+                        .and_then(|constant| constant.default_body(db)),
+                    crate::analysis::ty::ty_lower::CompleteSubst::for_owner(
+                        db,
+                        trait_.into(),
+                        use_.inst().args(db).to_vec(),
+                    ),
+                ) else {
+                    return;
+                };
+                let declared = super::const_body_assumptions(db, body.scope());
+                let chosen = use_.choice().and_then(|c| c.known());
+                let mut bound_deliveries: Vec<_> = use_
+                    .delivered()
+                    .map(|list| list.const_body_deliveries(db, chosen, body))
+                    .unwrap_or_default();
+                if let Some(choice) = use_.choice() {
+                    let inst_slot = crate::analysis::ty::evidence::slot_goal(db, use_.inst());
+                    for (own, at_use) in
+                        crate::analysis::ty::trait_choice::const_declared_goals(db, body, &subst)
+                    {
+                        if at_use == inst_slot {
+                            bound_deliveries.push((own, choice));
+                        }
+                    }
+                }
+                *bound_evidence = Some(
+                    crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
+                        db,
+                        declared,
+                        declared.extend_all_bounds(db),
+                        &subst,
+                        use_.solve_cx(db),
+                        &bound_deliveries,
+                        &[],
+                    ),
+                );
+            }
+            super::ConstRef::InherentConst(use_) => {
+                let Some((body, impl_args)) =
+                    crate::analysis::ty::const_ty::inherent_const_body_and_impl_args(
+                        db,
+                        use_.impl_(),
+                        use_.receiver_ty(),
+                        use_.name(),
+                    )
+                else {
+                    return;
+                };
+                let Ok(subst) = crate::analysis::ty::ty_lower::CompleteSubst::for_owner(
+                    db,
+                    use_.impl_().into(),
+                    impl_args,
+                ) else {
+                    return;
+                };
+                let declared = super::const_body_assumptions(db, body.scope());
+                let bound_deliveries: Vec<_> = use_
+                    .delivered()
+                    .map(|list| list.const_body_deliveries(db, None, body))
+                    .unwrap_or_default();
+                let solve_cx =
+                    TraitSolveCx::new(db, use_.origin_scope()).with_assumptions(use_.assumptions());
+                *use_ = use_.with_bound_evidence(Some(
+                    crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
+                        db,
+                        declared,
+                        declared.extend_all_bounds(db),
+                        &subst,
+                        solve_cx,
+                        &bound_deliveries,
+                        &[],
+                    ),
+                ));
+            }
+            super::ConstRef::Const(_) => {}
+        }
+    }
+}

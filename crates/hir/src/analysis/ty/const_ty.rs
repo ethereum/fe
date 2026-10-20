@@ -3355,7 +3355,6 @@ mod tests {
         },
         analysis::ty::{
             generic_defaults::{GenericDefault, generic_default},
-            trait_choice::SlotChoices,
             ty_def::PrimTy,
         },
         test_db::{HirAnalysisTestDb, find_func},

@@ -1,5 +1,5 @@
 use common::ingot::{Ingot, IngotKind};
-use hir::analysis::ty::trait_choice::SlotRef;
+use hir::analysis::ty::evidence::{Evidence, EvidenceId, EvidenceList};
 use hir::{
     analysis::{
         HirAnalysisDb,
@@ -53,7 +53,7 @@ pub fn semantic_instance_identity_in_mode<'db>(
         body_owner_identity(db, key.owner(db)),
         generic_subst_identity(db, key.subst(db)),
         effect_provider_subst_identity(db, key.effect_providers(db), mode),
-        impl_env_identity(db, key.impl_env(db), key.evidence(db).choices(db), mode)
+        impl_env_identity(db, key.impl_env(db), key.evidence(db), mode)
     )
 }
 
@@ -279,7 +279,7 @@ fn provider_semantics_identity<'db>(
 fn impl_env_identity<'db>(
     db: &'db dyn HirAnalysisDb,
     env: ImplEnv<'db>,
-    choices: &hir::analysis::ty::trait_choice::SlotChoices<'db>,
+    evidence: EvidenceList<'db>,
     mode: IdentityMode,
 ) -> String {
     let assumptions = trait_list_identity(db, env.assumptions(db).list(db).iter().copied(), mode);
@@ -292,67 +292,67 @@ fn impl_env_identity<'db>(
         ingot_identity_for_top_mod(db, scope.top_mod(db)),
         module_path_components_for_scope(db, scope).join("$")
     );
-    if choices.is_ordinary() {
+    if evidence.is_ordinary(db) {
         return identity;
     }
-    // Instances that differ only in a delivered choice run different code.
-    let choices = choices
-        .iter()
-        .map(|(slot, choice)| {
-            let slot = slot_ref_identity(db, slot);
-            match choice {
-                Some(choice) => format!("{slot}={}", known_choice_identity(db, choice)),
-                None => format!("{slot}=pending"),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("$");
-    format!("{identity}$choices${choices}")
-}
-
-fn slot_ref_identity<'db>(db: &'db dyn HirAnalysisDb, slot: SlotRef<'db>) -> String {
-    match slot {
-        SlotRef::EvidenceParam(idx) => format!("param{idx}"),
-        SlotRef::Bound(goal) => format!("bound{}", trait_identity(db, goal)),
-        SlotRef::Unsupplied => "unsupplied".to_string(),
+    // Instances that differ only in non-ordinary evidence or evidence parameters
+    // run different code.
+    let mut parts = Vec::new();
+    for (idx, entry) in evidence.entries(db).iter().enumerate() {
+        if let Some(ev) = entry
+            && !ev.is_ordinary(db)
+        {
+            parts.push(format!("bound{idx}={}", evidence_id_identity(db, *ev)));
+        }
     }
+    for &(param, ev) in evidence.params(db) {
+        parts.push(format!("param{param}={}", evidence_id_identity(db, ev)));
+    }
+    format!("{identity}$evidence${}", parts.join("$"))
 }
 
-fn known_choice_identity<'db>(
-    db: &'db dyn HirAnalysisDb,
-    choice: hir::analysis::ty::trait_choice::KnownChoice<'db>,
-) -> String {
-    use hir::analysis::ty::trait_choice::{Choice, Delivery};
-    let name = choice
-        .implementation()
-        .selection_name(db)
-        .map_or_else(|| "ordinary".to_string(), |name| name.data(db).to_string());
-    let base = format!(
-        "impl${}${name}${}",
-        item_identity(db, ItemKind::ImplTrait(choice.implementation())),
-        trait_identity(db, choice.goal())
-    );
-    let Some(bounds) = choice.bounds() else {
-        return base;
-    };
-    let bounds = bounds
-        .items(db)
-        .iter()
-        .map(|(delivery, item)| {
-            let delivery = match delivery {
-                Delivery::Param(idx) => format!("param{idx}"),
-                Delivery::Bound(goal) => format!("bound{}", trait_identity(db, *goal)),
-                Delivery::Nominal(goal) => format!("nominal{}", trait_identity(db, *goal)),
+fn evidence_id_identity<'db>(db: &'db dyn HirAnalysisDb, ev: EvidenceId<'db>) -> String {
+    use hir::analysis::ty::trait_def::ImplementorOrigin;
+    match ev.data(db) {
+        Evidence::Assumption(idx) => format!("assumption{idx}"),
+        Evidence::Param(idx) => format!("param{idx}"),
+        Evidence::Unsupplied => "unsupplied".to_string(),
+        Evidence::Impl {
+            selected,
+            instantiated,
+            conds,
+        } => {
+            let origin = match selected.origin(db) {
+                ImplementorOrigin::Hir(impl_trait) => {
+                    let name = impl_trait
+                        .selection_name(db)
+                        .map_or_else(|| "ordinary".to_string(), |name| name.data(db).to_string());
+                    format!(
+                        "impl${}${name}",
+                        item_identity(db, ItemKind::ImplTrait(impl_trait))
+                    )
+                }
+                ImplementorOrigin::Assumption => "assumption".to_string(),
+                ImplementorOrigin::VirtualContract(_) => "virtual".to_string(),
+                ImplementorOrigin::Callable => "callable".to_string(),
+                ImplementorOrigin::Structural => "structural".to_string(),
             };
-            let item = match item {
-                Choice::Known(known) => known_choice_identity(db, *known),
-                Choice::Slot(slot) => slot_ref_identity(db, *slot),
-            };
-            format!("{delivery}={item}")
-        })
-        .collect::<Vec<_>>()
-        .join("$");
-    format!("{base}$bounds$[{bounds}]")
+            let base = format!(
+                "{origin}${}",
+                trait_identity(db, instantiated.trait_inst(db))
+            );
+            if conds.is_empty() {
+                base
+            } else {
+                let conds = conds
+                    .iter()
+                    .map(|c| evidence_id_identity(db, *c))
+                    .collect::<Vec<_>>()
+                    .join("$");
+                format!("{base}$conds$[{conds}]")
+            }
+        }
+    }
 }
 
 fn trait_list_identity<'db>(
@@ -697,4 +697,111 @@ pub fn stable_identity_fingerprint(value: &str) -> String {
         fingerprint = fingerprint.wrapping_mul(0x100000001b3);
     }
     format!("{fingerprint:016x}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::semantic_instance_identity;
+    use hir::{
+        analysis::{
+            semantic::{get_or_build_semantic_instance, root_semantic_instance_key},
+            ty::ty_check::BodyOwner,
+        },
+        hir_def::ItemKind,
+        test_db::HirAnalysisTestDb,
+    };
+
+    #[test]
+    fn stable_key_distinguishes_named_evidence_and_shares_ordinary_instances() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "stable_key_evidence_identity.fe".into(),
+            r#"
+trait Inner {
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner20 {
+    const fn inner() -> u256 { 20 }
+}
+impl Inner for u256 as AltInner30 {
+    const fn inner() -> u256 { 30 }
+}
+
+struct Boxed<T> {
+    pub x: T,
+}
+trait Outer {
+    const fn outer(self) -> u256
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const fn outer(self) -> u256 { T::inner() }
+}
+
+const fn helper<T: Inner>(_ m: Boxed<T>) -> u256 {
+    m.outer()
+}
+
+const fn call_before() -> u256 {
+    helper(Boxed { x: 1 as u256 })
+}
+const fn call_alt20() -> u256 {
+    with (AltInner20) {
+        helper(Boxed { x: 1 as u256 })
+    }
+}
+const fn call_alt30() -> u256 {
+    with (AltInner30) {
+        helper(Boxed { x: 1 as u256 })
+    }
+}
+const fn call_after() -> u256 {
+    helper(Boxed { x: 1 as u256 })
+}
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+
+        let func = |name: &str| {
+            top_mod
+                .children_non_nested(&db)
+                .find_map(|item| match item {
+                    ItemKind::Func(f)
+                        if f.name(&db).to_opt().is_some_and(|n| n.data(&db) == name) =>
+                    {
+                        Some(f)
+                    }
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let helper_fn = func("helper");
+        let helper_key_in = |caller_name: &str| {
+            let caller = func(caller_name);
+            let inst = get_or_build_semantic_instance(
+                &db,
+                root_semantic_instance_key(&db, BodyOwner::Func(caller, None)).unwrap(),
+            );
+            let key = inst
+                .callees(&db)
+                .iter()
+                .find(|c| c.key.owner(&db) == BodyOwner::Func(helper_fn, None))
+                .unwrap()
+                .key;
+            get_or_build_semantic_instance(&db, key)
+        };
+
+        let id_before = semantic_instance_identity(&db, helper_key_in("call_before"));
+        let id_alt20 = semantic_instance_identity(&db, helper_key_in("call_alt20"));
+        let id_alt30 = semantic_instance_identity(&db, helper_key_in("call_alt30"));
+        let id_after = semantic_instance_identity(&db, helper_key_in("call_after"));
+
+        assert_eq!(id_before, id_after);
+        assert_ne!(id_before, id_alt20);
+        assert_ne!(id_before, id_alt30);
+        assert_ne!(id_alt20, id_alt30);
+    }
 }

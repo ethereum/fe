@@ -37,7 +37,6 @@ use crate::analysis::{
             model::EffectRequirementDecl,
             rows::{RowComponent, expand_rows},
         },
-        evidence::prove,
         fold::{TyFoldable, TyFolder},
         provider::AddressSpace,
         shape::Shape,
@@ -1615,17 +1614,7 @@ impl<'db> TyCheckEnv<'db> {
             }
         }
         for const_ref in self.const_refs.values_mut().flatten() {
-            if let ConstRef::TraitConst { use_, evidence, .. } = const_ref {
-                *evidence = match use_.choice() {
-                    Some(crate::analysis::ty::trait_choice::Choice::Known(known))
-                        if !known.is_ordinary() =>
-                    {
-                        known.to_evidence(self.db)
-                    }
-                    Some(crate::analysis::ty::trait_choice::Choice::Slot(_)) => None,
-                    _ => prove(self.db, use_.solve_cx(self.db), use_.inst()),
-                };
-            }
+            const_ref.record_evidence(self.db);
             const_ref.record_bound_evidence(self.db);
         }
 

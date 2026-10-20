@@ -218,6 +218,8 @@ pub struct InherentConstUse<'db> {
     name: IdentId<'db>,
     /// The decisions for the bounds of the implementation the body is in.
     delivered: Option<DeliveryList<'db>>,
+    /// Proofs of the assumptions the inherent constant's body is checked under.
+    bound_evidence: Option<super::evidence::EvidenceList<'db>>,
 }
 
 impl<'db> InherentConstUse<'db> {
@@ -235,6 +237,7 @@ impl<'db> InherentConstUse<'db> {
             receiver_ty,
             name,
             delivered: None,
+            bound_evidence: None,
         }
     }
 
@@ -246,10 +249,27 @@ impl<'db> InherentConstUse<'db> {
         Self { delivered, ..self }
     }
 
-    /// This use read inside an instance that carries `choices`.
-    pub(crate) fn specialize(self, db: &'db dyn HirAnalysisDb, choices: &SlotChoices<'db>) -> Self {
+    pub fn bound_evidence(self) -> Option<super::evidence::EvidenceList<'db>> {
+        self.bound_evidence
+    }
+
+    pub fn with_bound_evidence(
+        self,
+        bound_evidence: Option<super::evidence::EvidenceList<'db>>,
+    ) -> Self {
         Self {
-            delivered: self.delivered.map(|list| list.specialize(db, choices)),
+            bound_evidence,
+            ..self
+        }
+    }
+
+    pub(crate) fn bind_evidence(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        bound: super::evidence::EvidenceList<'db>,
+    ) -> Self {
+        Self {
+            bound_evidence: self.bound_evidence.map(|ev| ev.bind(db, bound)),
             ..self
         }
     }
@@ -259,6 +279,7 @@ impl<'db> InherentConstUse<'db> {
     pub(crate) fn without_ordinary_choices(self, db: &'db dyn HirAnalysisDb) -> Self {
         Self {
             delivered: self.delivered.and_then(|list| list.without_ordinary(db)),
+            bound_evidence: None,
             ..self
         }
     }
@@ -302,6 +323,9 @@ impl<'db> TyVisitable<'db> for InherentConstUse<'db> {
         if let Some(list) = &self.delivered {
             list.visit_with(visitor);
         }
+        if let Some(bound_evidence) = &self.bound_evidence {
+            bound_evidence.visit_with(visitor);
+        }
     }
 }
 
@@ -317,6 +341,9 @@ impl<'db> TyFoldable<'db> for InherentConstUse<'db> {
             receiver_ty: self.receiver_ty.fold_with(db, folder),
             name: self.name,
             delivered: self.delivered.map(|list| list.fold_with(db, folder)),
+            bound_evidence: self
+                .bound_evidence
+                .map(|bound_evidence| bound_evidence.fold_with(db, folder)),
         }
     }
 }

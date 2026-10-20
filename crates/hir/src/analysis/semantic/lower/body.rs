@@ -1313,29 +1313,20 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let ty = self.expr_ty(expr);
         // A constant is selected in the instance's environment: the bounds its
         // use was checked under, once substituted, may hold only by the bounds
-        // of the context the instance was made for. Its decisions are read
-        // through the instance's choices.
-        let choices = self
-            .instance
-            .key(self.db)
-            .evidence(self.db)
-            .choices(self.db);
+        // of the context the instance was made for.
         let const_ref = match const_ref {
             ConstRef::TraitConst {
                 use_,
                 evidence,
                 bound_evidence,
             } => ConstRef::TraitConst {
-                use_: use_
-                    .with_env(use_.origin_scope(), self.assumptions)
-                    .specialize(self.db, choices),
+                use_: use_.with_env(use_.origin_scope(), self.assumptions),
                 evidence,
                 bound_evidence,
             },
-            ConstRef::InherentConst(use_) => ConstRef::InherentConst(
-                use_.with_env(use_.origin_scope(), self.assumptions)
-                    .specialize(self.db, choices),
-            ),
+            ConstRef::InherentConst(use_) => {
+                ConstRef::InherentConst(use_.with_env(use_.origin_scope(), self.assumptions))
+            }
             ConstRef::Const(_) => const_ref,
         };
         if let Some(const_ref) =
@@ -2084,14 +2075,22 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let choice = callable
             .choice()
             .expect("a checked `prove` call records its choice");
-        if let Some(known) = self
-            .instance
-            .key(self.db)
-            .evidence(self.db)
-            .choices(self.db)
-            .resolve(Some(choice))
-            .known()
-        {
+        let goal = callable
+            .generic_args()
+            .first()
+            .and_then(|arg| match arg.data(self.db) {
+                crate::analysis::ty::ty_def::TyData::ConstraintTerm(goal) => Some(*goal),
+                _ => None,
+            });
+        let known = callable
+            .evidence()
+            .and_then(|ev| {
+                goal.and_then(|g| {
+                    crate::analysis::ty::trait_choice::KnownChoice::from_evidence(self.db, ev, g)
+                })
+            })
+            .or_else(|| choice.known());
+        if let Some(known) = known {
             let value = SemConstId::new(
                 self.db,
                 SemConstValue::Evidence {
@@ -2105,8 +2104,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 SExpr::Const(SConst::from_trusted_source(self.db, value)),
             );
         }
-        let idx = choice
-            .evidence_param()
+        let idx = callable
+            .evidence()
+            .and_then(|ev| match ev.data(self.db) {
+                crate::analysis::ty::evidence::Evidence::Param(idx) => Some(*idx),
+                _ => None,
+            })
+            .or_else(|| choice.evidence_param())
             .expect("`prove` records a known choice or an evidence parameter");
         let local = self
             .binding_locals

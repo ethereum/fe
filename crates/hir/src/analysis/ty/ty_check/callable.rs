@@ -22,9 +22,7 @@ use crate::analysis::{
         const_ty::LoweringContext,
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
-        evidence::{
-            EvidenceId, EvidenceList, declared_bound_evidence, instantiated_selection, prove,
-        },
+        evidence::{EvidenceId, EvidenceList, instantiated_selection, prove},
         fold::{TyFoldable, TyFolder},
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
@@ -451,7 +449,7 @@ impl<'db> Callable<'db> {
         if inst.args(db).iter().any(|ty| ty.has_var(db)) {
             return None;
         }
-        if self.choice.is_none() && self.evidence.is_some() {
+        if self.evidence.is_some() {
             let method = self.selected_method(
                 db,
                 TraitSolveCx::new(db, scope).with_assumptions(assumptions),
@@ -541,10 +539,10 @@ impl<'db> Callable<'db> {
         db: &'db dyn HirAnalysisDb,
         solve_cx: TraitSolveCx<'db>,
     ) {
-        if let Some(Choice::Known(known)) = self.choice
-            && !known.is_ordinary()
+        if let Some(choice) = self.choice
+            && let Some(ev) = choice.to_evidence(db, solve_cx, self.trait_inst)
         {
-            self.evidence = known.to_evidence(db);
+            self.evidence = Some(ev);
             return;
         }
         self.evidence = self.trait_inst.and_then(|inst| prove(db, solve_cx, inst));
@@ -557,7 +555,7 @@ impl<'db> Callable<'db> {
 
     /// Proves, in the checked body's context `solve_cx`, the bounds the
     /// callee's body declares, instantiated for this call, as
-    /// `declared_bound_evidence` records them.
+    /// `declared_bound_evidence_with_deliveries` records them.
     pub(crate) fn record_bound_evidence(
         &mut self,
         db: &'db dyn HirAnalysisDb,
@@ -570,13 +568,55 @@ impl<'db> Callable<'db> {
         let Ok(subst) = CompleteSubst::for_owner(db, func.into(), self.generic_args.clone()) else {
             return;
         };
-        self.bound_evidence = Some(declared_bound_evidence(
-            db,
-            func_declared_bounds(db, func, mode),
-            func_signature(db, func, mode),
-            &subst,
-            solve_cx,
-        ));
+        let mut bound_deliveries = Vec::new();
+        let mut param_deliveries = Vec::new();
+        let body_func = self
+            .called_body(db, solve_cx.scope(), solve_cx.assumptions())
+            .map(|(body, _)| body);
+        for &(delivery, choice) in &self.delivered {
+            match delivery {
+                Delivery::Param(idx) => param_deliveries.push((idx, choice)),
+                Delivery::Bound(bound) | Delivery::Nominal(bound) => {
+                    bound_deliveries.push((bound, choice));
+                    if let Some(body) = body_func
+                        && body != func
+                    {
+                        for (in_nominal, in_body) in
+                            crate::analysis::ty::trait_choice::role_map(db, func, body)
+                        {
+                            if *in_body == bound
+                                || in_body.at_mode(db, Some(BorrowKind::Mut)) == bound
+                            {
+                                bound_deliveries.push((*in_nominal, choice));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(choice) = self.choice
+            && let Some(inst) = self.trait_inst
+        {
+            let inst_slot = crate::analysis::ty::evidence::slot_goal(db, inst);
+            for (own, at_call) in
+                crate::analysis::ty::trait_choice::declared_goals(db, func, &self.generic_args)
+            {
+                if at_call == inst_slot {
+                    bound_deliveries.push((own, choice));
+                }
+            }
+        }
+        self.bound_evidence = Some(
+            crate::analysis::ty::evidence::declared_bound_evidence_with_deliveries(
+                db,
+                func_declared_bounds(db, func, mode),
+                func_signature(db, func, mode),
+                &subst,
+                solve_cx,
+                &bound_deliveries,
+                &param_deliveries,
+            ),
+        );
     }
 
     /// Proofs of the assumptions the callee's body is checked under, as the
@@ -592,40 +632,6 @@ impl<'db> Callable<'db> {
         self.bound_evidence = self
             .bound_evidence
             .map(|bound_evidence| bound_evidence.bind(db, bound));
-        let choices = bound.choices(db);
-        if !choices.is_ordinary() {
-            self.delivered = self
-                .delivered
-                .iter()
-                .filter_map(
-                    |(delivery, choice)| match choices.resolve_in(db, Some(*choice)) {
-                        crate::analysis::ty::trait_choice::Resolved::Known(known) => {
-                            Some((*delivery, Choice::Known(known)))
-                        }
-                        crate::analysis::ty::trait_choice::Resolved::Pending => Some((
-                            *delivery,
-                            Choice::Slot(crate::analysis::ty::trait_choice::SlotRef::Unsupplied),
-                        )),
-                        crate::analysis::ty::trait_choice::Resolved::Ordinary => None,
-                    },
-                )
-                .collect();
-            if self.choice.is_some() {
-                match choices.resolve_in(db, self.choice) {
-                    crate::analysis::ty::trait_choice::Resolved::Known(known) => {
-                        self.choice = Some(Choice::Known(known));
-                        self.evidence = known.to_evidence(db);
-                    }
-                    crate::analysis::ty::trait_choice::Resolved::Pending => {
-                        self.choice = Some(Choice::Slot(
-                            crate::analysis::ty::trait_choice::SlotRef::Unsupplied,
-                        ));
-                        self.evidence = None;
-                    }
-                    crate::analysis::ty::trait_choice::Resolved::Ordinary => {}
-                }
-            }
-        }
     }
 
     /// The trait method the call runs, with its body: from the
@@ -638,33 +644,10 @@ impl<'db> Callable<'db> {
         solve_cx: TraitSolveCx<'db>,
     ) -> Option<ResolvedMethodInstance<'db>> {
         let inst = self.trait_inst?;
-        if self.choice
-            == Some(Choice::Slot(
-                crate::analysis::ty::trait_choice::SlotRef::Unsupplied,
-            ))
-        {
-            return None;
-        }
         let CallableDef::Func(func) = self.callable_def else {
             return None;
         };
         let name = func.name(db).to_opt()?;
-        if let Some(Choice::Known(known)) = self.choice
-            && !known.is_ordinary()
-        {
-            return match crate::analysis::ty::trait_def::chosen_method(
-                db,
-                crate::analysis::ty::trait_choice::Resolved::Known(known),
-                inst,
-                name,
-                solve_cx.scope(),
-                solve_cx.assumptions(),
-                self.mode,
-            ) {
-                crate::analysis::ty::trait_resolution::Selection::Unique(method) => Some(method),
-                _ => None,
-            };
-        }
         instantiated_selection(db, self.evidence, solve_cx, inst)?.method(db, name, self.mode)
     }
 

@@ -197,23 +197,37 @@ impl<'db> KnownChoice<'db> {
     pub fn to_evidence(
         self,
         db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+        goal_override: Option<TraitInstId<'db>>,
     ) -> Option<super::evidence::EvidenceId<'db>> {
-        let resolved = self.resolved_instance(db, self.goal)?;
-        let declared = self.impl_goals(db);
-        let conds = resolved
-            .instantiated_constraints(db)
+        let goal = goal_override.unwrap_or(self.goal);
+        let resolved = self.resolved_instance(db, goal)?;
+        let mode = Some(if goal.is_mut(db) {
+            super::ty_def::BorrowKind::Mut
+        } else {
+            super::ty_def::BorrowKind::Ref
+        });
+        let written_conds = super::trait_resolution::constraint::collect_candidate_constraints(
+            db,
+            self.implementation.into(),
+        )
+        .instantiate_identity();
+        let impl_solve_cx = TraitSolveCx::new(db, self.implementation.scope())
+            .with_assumptions(solve_cx.assumptions());
+        let conds = written_conds
             .list(db)
             .iter()
-            .zip(declared.iter())
-            .filter_map(|(&inst_cond, (written_slot, _))| {
-                if let Some(Choice::Known(known)) = self.bound_choice(db, *written_slot) {
-                    return known.to_evidence(db);
+            .zip(resolved.instantiated_constraints(db).list(db).iter())
+            .filter_map(|(&written_cond, &inst_cond)| {
+                let cond_goal = inst_cond.at_mode(db, mode);
+                if let Some(choice) = self
+                    .bound_choice(db, written_cond)
+                    .or_else(|| self.bound_choice(db, slot_goal(db, written_cond)))
+                {
+                    return choice.to_evidence(db, solve_cx, Some(cond_goal));
                 }
-                super::evidence::prove(
-                    db,
-                    TraitSolveCx::new(db, self.implementation.scope()),
-                    inst_cond,
-                )
+                super::evidence::prove(db, solve_cx, cond_goal)
+                    .or_else(|| super::evidence::prove(db, impl_solve_cx, cond_goal))
             })
             .collect();
         Some(super::evidence::EvidenceId::new(
@@ -224,6 +238,54 @@ impl<'db> KnownChoice<'db> {
                 conds,
             },
         ))
+    }
+
+    /// Reconstruct a `KnownChoice` from an `Evidence::Impl` proof for `goal`.
+    pub fn from_evidence(
+        db: &'db dyn HirAnalysisDb,
+        evidence: super::evidence::EvidenceId<'db>,
+        goal: TraitInstId<'db>,
+    ) -> Option<Self> {
+        let super::evidence::Evidence::Impl {
+            selected, conds, ..
+        } = evidence.data(db)
+        else {
+            return None;
+        };
+        let super::trait_def::ImplementorOrigin::Hir(impl_trait) = selected.origin(db) else {
+            return None;
+        };
+        let written_conds = super::trait_resolution::constraint::collect_candidate_constraints(
+            db,
+            impl_trait.into(),
+        )
+        .instantiate_identity();
+        let inst_conds = selected.constraints(db);
+        let items: Vec<(Delivery<'db>, Choice<'db>)> = written_conds
+            .list(db)
+            .iter()
+            .zip(inst_conds.list(db).iter())
+            .zip(conds.iter())
+            .filter_map(|((&written_cond, &inst_cond), &cond_ev)| {
+                let choice = match cond_ev.data(db) {
+                    super::evidence::Evidence::Impl { .. } => {
+                        Choice::Known(Self::from_evidence(db, cond_ev, inst_cond)?)
+                    }
+                    super::evidence::Evidence::Param(idx) => {
+                        Choice::Slot(SlotRef::EvidenceParam(*idx))
+                    }
+                    super::evidence::Evidence::Unsupplied => Choice::Slot(SlotRef::Unsupplied),
+                    super::evidence::Evidence::Assumption(_) => return None,
+                };
+                Some((Delivery::Bound(slot_goal(db, written_cond)), choice))
+            })
+            .collect();
+        let bounds = (!items.is_empty()).then(|| DeliveryList::new(db, items));
+        Some(if impl_trait.selection_name(db).is_some() {
+            Self::own(db, impl_trait, goal).with_bounds(db, bounds)
+        } else {
+            Self::ordinary(db, impl_trait, goal, bounds)
+        })
     }
 
     /// Whether this choice answers `goal`: the same slot, and the chosen
@@ -739,7 +801,7 @@ pub enum Choice<'db> {
 }
 
 impl<'db> Choice<'db> {
-    /// The evidence parameter this choice waits for, if it is one.
+    ///The evidence parameter this choice waits for, if it is one.
     pub fn evidence_param(self) -> Option<u16> {
         match self {
             Self::Slot(SlotRef::EvidenceParam(idx)) => Some(idx),
@@ -782,6 +844,48 @@ impl<'db> Choice<'db> {
             found |= matches!(choice, Self::Slot(_));
         });
         found
+    }
+
+    /// Convert this recorded checker decision into an `EvidenceId` proof in `solve_cx`.
+    pub fn to_evidence(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+        goal_override: Option<TraitInstId<'db>>,
+    ) -> Option<super::evidence::EvidenceId<'db>> {
+        match self {
+            Self::Known(known) => known.to_evidence(db, solve_cx, goal_override),
+            Self::Slot(SlotRef::EvidenceParam(idx)) => Some(super::evidence::EvidenceId::new(
+                db,
+                super::evidence::Evidence::Param(idx),
+            )),
+            Self::Slot(SlotRef::Unsupplied) => Some(super::evidence::EvidenceId::new(
+                db,
+                super::evidence::Evidence::Unsupplied,
+            )),
+            Self::Slot(SlotRef::Bound(bound)) => {
+                let assumptions = solve_cx.assumptions().extend_all_bounds(db);
+                let target = goal_override.unwrap_or(bound);
+                let target_slot = slot_goal(db, target);
+                let index = assumptions
+                    .list(db)
+                    .iter()
+                    .position(|&a| a == target || slot_goal(db, a) == target_slot)
+                    .or_else(|| {
+                        assumptions
+                            .list(db)
+                            .iter()
+                            .position(|&a| a == bound || slot_goal(db, a) == slot_goal(db, bound))
+                    });
+                match index {
+                    Some(idx) => Some(super::evidence::EvidenceId::new(
+                        db,
+                        super::evidence::Evidence::Assumption(idx as u32),
+                    )),
+                    None => goal_override.and_then(|g| super::evidence::prove(db, solve_cx, g)),
+                }
+            }
+        }
     }
 }
 

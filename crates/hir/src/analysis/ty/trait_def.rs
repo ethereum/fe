@@ -1781,7 +1781,7 @@ pub struct ImplementorId<'db> {
     #[return_ref]
     pub(crate) types: IndexMap<IdentId<'db>, TyId<'db>>,
 
-    pub(crate) origin: ImplementorOrigin<'db>,
+    pub origin: ImplementorOrigin<'db>,
 }
 
 impl<'db> ImplementorId<'db> {
@@ -1837,7 +1837,7 @@ impl<'db> ImplementorId<'db> {
     }
 
     /// Trait instance realized by this impl, including its associated type definitions.
-    pub(crate) fn trait_inst(self, db: &'db dyn HirAnalysisDb) -> TraitInstId<'db> {
+    pub fn trait_inst(self, db: &'db dyn HirAnalysisDb) -> TraitInstId<'db> {
         let trait_inst = self.trait_(db);
         if self.types(db).is_empty() {
             return trait_inst;

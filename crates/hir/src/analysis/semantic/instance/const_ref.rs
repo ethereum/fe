@@ -24,7 +24,6 @@ use crate::{
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
-            trait_choice::{Resolved, SlotChoices, SlotRef, body_deliveries},
             trait_def::{ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId},
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, TraitSolveCx,
@@ -764,58 +763,11 @@ fn semantic_callee_key_with_assumptions<'db>(
         })
         .collect::<Vec<_>>();
     let mut subst_args = callable.generic_args().to_vec();
-    // What the caller decided, read through the caller's own delivered
-    // choices. A known choice selects its implementation, no decision or an
-    // undelivered bound selects the ordinary one, and a pending choice
-    // selects nothing: the call stays symbolic.
-    let caller_choices = caller.map_or_else(SlotChoices::default, |inst| {
-        inst.key(db).evidence(db).choices(db).clone()
-    });
-    let chosen = caller_choices.resolve_in(db, callable.choice());
     let body_func = if let Some(inst) = callable.trait_inst()
-        && let Some(method) = {
-            if matches!(chosen, Resolved::Ordinary) && callable.delivered().is_empty() {
-                callable.selected_method(
-                    db,
-                    TraitSolveCx::new(db, impl_env.normalization_scope(db))
-                        .with_assumptions(assumptions),
-                )
-            } else if let Some(name) = nominal_func.name(db).to_opt() {
-                let delivered_goals = callable
-                    .delivered()
-                    .iter()
-                    .filter_map(
-                        |(_, choice)| match caller_choices.resolve_in(db, Some(*choice)) {
-                            Resolved::Known(known) => Some(known.goal()),
-                            _ => None,
-                        },
-                    )
-                    .collect::<Vec<_>>();
-                let assumptions = if delivered_goals.is_empty() {
-                    assumptions
-                } else {
-                    let mut premises = assumptions.list(db).to_vec();
-                    premises.extend(delivered_goals);
-                    crate::analysis::ty::trait_resolution::PredicateListId::new(db, premises)
-                };
-                match crate::analysis::ty::trait_def::chosen_method(
-                    db,
-                    chosen,
-                    inst,
-                    name,
-                    impl_env.normalization_scope(db),
-                    assumptions,
-                    callable.mode(),
-                ) {
-                    crate::analysis::ty::trait_resolution::Selection::Unique(method) => {
-                        Some(method)
-                    }
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        }
+        && let Some(method) = callable.selected_method(
+            db,
+            TraitSolveCx::new(db, impl_env.normalization_scope(db)).with_assumptions(assumptions),
+        )
         && let Some(impl_func) = method.body()
     {
         let scope = impl_env.normalization_scope(db);
@@ -926,30 +878,18 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else {
         nominal_func
     };
-    // What the body that runs receives: the goals it declares (its own and
-    // its implementation's bounds, a default body's `Self`) and its evidence
-    // parameters, from what the call delivers, resolved in the caller.
-    let delivered = SlotChoices::from_resolved(
-        body_deliveries(
-            db,
-            chosen.known(),
-            callable.delivered(),
-            nominal_func,
-            body_func,
-        )
-        .into_iter()
-        .map(|(slot, choice)| (slot, caller_choices.resolve_in(db, Some(choice))))
-        .collect(),
-    );
     // Every call form delivers each evidence operand (`record_call`). An
     // evidence parameter a call left undelivered would make the instance
     // pending, and a compile-time read of it would count as not yet known
     // rather than as refused: it is an error here. A root (no caller) is
     // pending by design.
     if caller.is_some()
-        && let Some(param) = evidence_params(db, body_func)
-            .into_iter()
-            .find(|param| delivered.get(SlotRef::EvidenceParam(*param)).is_none())
+        && let Some(param) = evidence_params(db, body_func).into_iter().find(|param| {
+            callable
+                .bound_evidence()
+                .and_then(|bound| bound.get_param(db, *param))
+                .is_none()
+        })
     {
         return Err(MethodArgMapError::UndeliveredEvidence {
             func: body_func,
@@ -1009,9 +949,8 @@ fn semantic_callee_key_with_assumptions<'db>(
                 | collect_flags(db, resolved.trait_inst()),
         );
         let original_ground = is_ground(collect_flags(db, inst));
-        let independent = body_ground
-            && (chosen.known().is_some()
-                || callable.evidence().is_some_and(|proof| proof.is_closed(db)));
+        let independent =
+            body_ground && callable.evidence().is_some_and(|proof| proof.is_closed(db));
         // A symbolic nominal receiver can be discarded after selection only if
         // it normalizes to the independent implementation and neither signature
         // has additional effects, method bounds, or layout slots to carry.
@@ -1161,9 +1100,18 @@ fn semantic_callee_key_with_assumptions<'db>(
         predicates.extend(impl_env.witnesses(db).iter().copied());
         predicates.extend(body_constraints.list(db).iter().copied());
         predicates.extend(
-            delivered
+            callable
+                .bound_evidence()
+                .map(|b| b.entries(db).as_slice())
+                .unwrap_or(&[])
                 .iter()
-                .filter_map(|(_, choice)| choice.map(|k| k.goal())),
+                .flatten()
+                .copied()
+                .chain(callable.evidence())
+                .filter_map(|ev| match ev.data(db) {
+                    Evidence::Impl { instantiated, .. } => Some(instantiated.trait_inst(db)),
+                    _ => None,
+                }),
         );
         let evidence = PredicateListId::new(db, predicates.into_iter().collect::<Vec<_>>())
             .extend_all_bounds(db);
@@ -1217,6 +1165,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 subst,
             )
         }
+        (Some(bound), _) => EvidenceList::none(db).with_params(db, bound.params(db).clone()),
         _ => EvidenceList::none(db),
     };
     let evidence = if collect_flags(db, evidence).contains(TyFlags::HAS_PROJECTION) {
@@ -1224,7 +1173,6 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else {
         evidence
     };
-    let evidence = evidence.with_choices(db, delivered);
     Ok(Some(SemanticCallCallee {
         concrete_dispatch: callable.trait_inst().is_none() || selected_impl,
         key: SemanticInstanceKey::of(
@@ -1423,16 +1371,16 @@ fn semantic_const_key_for_inherent_const<'db>(
     let (body, impl_args) =
         inherent_const_body_and_impl_args(db, use_.impl_(), use_.receiver_ty(), use_.name())?;
     let ty = inherent_const_decl_ty(db, use_.impl_(), use_.name())?;
-    let choices = use_
-        .delivered()
-        .map_or_else(SlotChoices::default, |list| list.to_body(db, None, body));
+    let evidence = use_
+        .bound_evidence()
+        .unwrap_or_else(|| EvidenceList::none(db));
     Some(SemanticInstanceKey::of(
         db,
         BodyOwner::AnonConstBody { body, expected: ty },
         GenericSubst::for_owner(db, use_.impl_().into(), impl_args),
         EffectProviderSubst::empty(db),
         ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), vec![]),
-        EvidenceList::none(db).with_choices(db, choices),
+        evidence,
     ))
 }
 

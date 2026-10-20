@@ -3,7 +3,6 @@ use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use rustc_hash::FxHashSet;
 
-use crate::analysis::ty::trait_choice::SlotChoices;
 use crate::analysis::{
     HirAnalysisDb,
     semantic::{
@@ -1759,11 +1758,13 @@ fn force_const_computation_in_context<'db>(
                     }))
                 };
             };
-            // The body receives the decisions the use delivers to its bounds,
-            // as the constant's instance key gives them (`chosen_constant`).
-            let choices = crate::analysis::ty::trait_def::chosen_constant(db, use_)
-                .and_then(|chosen| chosen.body)
-                .map_or_else(SlotChoices::default, |body| body.choices);
+            // The body receives the evidence the use delivers to its bounds.
+            let mut cref = crate::analysis::ty::ty_check::ConstRef::trait_const(use_);
+            cref.record_evidence(db);
+            cref.record_bound_evidence(db);
+            let evidence = cref
+                .trait_const_body(db)
+                .map_or_else(|| EvidenceList::none(db), |(_, _, _, ev)| ev);
             force_selected_const_ty(
                 db,
                 const_ty,
@@ -1774,7 +1775,7 @@ fn force_const_computation_in_context<'db>(
                     use_.assumptions(),
                     vec![use_.inst()],
                 ),
-                choices,
+                evidence,
                 cx,
                 origin,
             )
@@ -1798,12 +1799,19 @@ fn force_const_computation_in_context<'db>(
                     }))
                 };
             };
+            let mut cref = crate::analysis::ty::ty_check::ConstRef::InherentConst(use_);
+            cref.record_bound_evidence(db);
+            let crate::analysis::ty::ty_check::ConstRef::InherentConst(use_with_ev) = cref else {
+                unreachable!()
+            };
             force_selected_const_ty(
                 db,
                 const_ty,
                 computation.result_ty(db),
                 ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), Vec::new()),
-                SlotChoices::default(),
+                use_with_ev
+                    .bound_evidence()
+                    .unwrap_or_else(|| EvidenceList::none(db)),
                 cx,
                 origin,
             )
@@ -1865,7 +1873,7 @@ fn force_selected_const_ty<'db>(
     const_ty: ConstTyId<'db>,
     expected: TyId<'db>,
     impl_env: ImplEnv<'db>,
-    choices: SlotChoices<'db>,
+    evidence: EvidenceList<'db>,
     cx: &mut ForceContext,
     origin: SemOrigin<'db>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
@@ -1890,7 +1898,7 @@ fn force_selected_const_ty<'db>(
                 capture.generic_subst(db),
                 EffectProviderSubst::empty(db),
                 impl_env,
-                EvidenceList::none(db).with_choices(db, choices),
+                evidence,
             );
             cx.execute_body(db, key, Vec::new(), origin)
         }

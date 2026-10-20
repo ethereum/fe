@@ -89,8 +89,7 @@ use super::{
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     evidence::{
-        Evidence, EvidenceId, EvidenceList, declared_bound_evidence, impl_const_bound_evidence,
-        instantiated_selection,
+        Evidence, EvidenceId, EvidenceList, impl_const_bound_evidence, instantiated_selection,
     },
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     trait_def::{TraitInstId, selected_assoc_const_body_template},
@@ -4123,32 +4122,6 @@ impl<'db> ConstRef<'db> {
         else {
             return None;
         };
-        let chosen_choices = crate::analysis::ty::trait_def::chosen_constant(db, use_)
-            .and_then(|chosen| chosen.body.map(|b| (b.body, b.ty, b.subst, b.choices)));
-        if use_.choice().is_some() {
-            let (body, ty, subst, choices) = chosen_choices?;
-            let default = use_
-                .inst()
-                .def(db)
-                .const_(db, use_.name())
-                .and_then(|constant| constant.default_body(db));
-            let received = match (bound_evidence, evidence) {
-                (Some(bound), _) if default == Some(body) => bound,
-                (_, Some(selection))
-                    if default != Some(body)
-                        && matches!(selection.data(db), Evidence::Impl { .. }) =>
-                {
-                    impl_const_bound_evidence(
-                        db,
-                        body,
-                        selection,
-                        GenericSubst::complete(db, subst.clone()),
-                    )
-                }
-                _ => EvidenceList::none(db),
-            };
-            return Some((body, ty, subst, received.with_choices(db, choices)));
-        }
         let resolved = instantiated_selection(db, evidence, use_.solve_cx(db), use_.inst())?;
         let (body, ty, subst) = selected_assoc_const_body_template(db, resolved, use_.name())?;
         let default = use_
@@ -4172,43 +4145,22 @@ impl<'db> ConstRef<'db> {
             }
             _ => EvidenceList::none(db),
         };
-        let received = if let Some((_, _, _, choices)) = chosen_choices {
-            received.with_choices(db, choices)
-        } else {
-            received
-        };
         Some((body, ty, subst, received))
     }
 
-    /// Proves, in the use's context, the bounds the trait's default value
-    /// body declares, instantiated for the use, as `declared_bound_evidence`
-    /// records them.
-    pub(super) fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
-        let ConstRef::TraitConst {
-            use_,
-            bound_evidence,
-            ..
-        } = self
-        else {
+    /// Proves the constant use's trait goal in the checked body's context.
+    pub(crate) fn record_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
+        let ConstRef::TraitConst { use_, evidence, .. } = self else {
             return;
         };
-        let trait_ = use_.inst().def(db);
-        let (Some(body), Ok(subst)) = (
-            trait_
-                .const_(db, use_.name())
-                .and_then(|constant| constant.default_body(db)),
-            CompleteSubst::for_owner(db, trait_.into(), use_.inst().args(db).to_vec()),
-        ) else {
+        let solve_cx = use_.solve_cx(db);
+        if let Some(choice) = use_.choice()
+            && let Some(ev) = choice.to_evidence(db, solve_cx, Some(use_.inst()))
+        {
+            *evidence = Some(ev);
             return;
-        };
-        let declared = const_body_assumptions(db, body.scope());
-        *bound_evidence = Some(declared_bound_evidence(
-            db,
-            declared,
-            declared.extend_all_bounds(db),
-            &subst,
-            use_.solve_cx(db),
-        ));
+        }
+        *evidence = super::evidence::prove(db, solve_cx, use_.inst());
     }
 }
 
@@ -4835,8 +4787,7 @@ impl<'db> TypedBody<'db> {
     /// Replaces the assumptions the body's evidence names with `bound`'s
     /// proofs of them: an instance's own.
     pub(crate) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) {
-        let choices = bound.choices(db);
-        if bound.entries(db).is_empty() && choices.is_ordinary() {
+        if bound.entries(db).is_empty() && bound.params(db).is_empty() {
             return;
         }
         let tables = self.tables_mut();
@@ -4851,27 +4802,18 @@ impl<'db> TypedBody<'db> {
         for const_ref in tables.const_refs.values_mut().flatten() {
             match const_ref {
                 ConstRef::TraitConst {
-                    use_,
                     evidence,
                     bound_evidence,
+                    ..
                 } => {
                     *evidence = evidence.map(|evidence| evidence.bind(db, bound));
                     *bound_evidence =
                         bound_evidence.map(|bound_evidence| bound_evidence.bind(db, bound));
-                    if !choices.is_ordinary() {
-                        *use_ = use_.specialize(db, choices);
-                        if let Some(crate::analysis::ty::trait_choice::Choice::Known(known)) =
-                            use_.choice()
-                            && !known.is_ordinary()
-                        {
-                            *evidence = known.to_evidence(db);
-                        }
-                    }
                 }
-                ConstRef::InherentConst(use_) if !choices.is_ordinary() => {
-                    *use_ = use_.specialize(db, choices);
+                ConstRef::InherentConst(use_) => {
+                    *use_ = use_.bind_evidence(db, bound);
                 }
-                _ => {}
+                ConstRef::Const(_) => {}
             }
         }
     }

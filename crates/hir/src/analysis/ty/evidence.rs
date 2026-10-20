@@ -77,11 +77,18 @@ pub enum Evidence<'db> {
     /// The assumption at this position in the extended assumption list of
     /// the body the goal was proved in.
     Assumption(u32),
+    /// The `Evidence<G>` value parameter at this index in the body's
+    /// parameter list.
+    Param(u16),
+    /// A slot the caller had no proof for: it received it from an `Evidence<G>`
+    /// parameter that it was not given itself. Never answered the ordinary
+    /// way; only an instance's specialized uses carry it.
+    Unsupplied,
 }
 
 impl<'db> EvidenceId<'db> {
     /// The implementation this proof applies, answering `goal`; none for an
-    /// assumption.
+    /// assumption, an evidence parameter, or an unsupplied slot.
     pub fn answering(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -93,15 +100,17 @@ impl<'db> EvidenceId<'db> {
                 instantiated,
                 ..
             } => Some(ResolvedImplInstance::new(*selected, *instantiated, goal)),
-            Evidence::Assumption(_) => None,
+            Evidence::Assumption(_) | Evidence::Param(_) | Evidence::Unsupplied => None,
         }
     }
 
-    /// This proof with each assumption it names replaced by `bound`'s proof
-    /// of it; absent if `bound` has no proof of one.
+    /// This proof with each assumption or evidence parameter it names replaced
+    /// by `bound`'s proof of it; absent if `bound` has no proof of one.
     fn rebase(self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) -> Option<Self> {
         Some(match self.data(db) {
             Evidence::Assumption(index) => bound.get(db, *index as usize)?,
+            Evidence::Param(index) => bound.get_param(db, *index)?,
+            Evidence::Unsupplied => self,
             Evidence::Impl {
                 selected,
                 instantiated,
@@ -120,24 +129,42 @@ impl<'db> EvidenceId<'db> {
         })
     }
 
-    /// Whether this proof names no assumption: it holds in any body.
+    /// Whether this proof names no assumption or evidence parameter: it holds
+    /// in any body.
     pub fn is_closed(self, db: &'db dyn HirAnalysisDb) -> bool {
         evidence_is_closed(db, self)
+    }
+
+    /// Whether this proof is purely ordinary (uses no named `ImplTrait`,
+    /// `Evidence::Param`, or `Evidence::Unsupplied` at any depth).
+    pub fn is_ordinary(self, db: &'db dyn HirAnalysisDb) -> bool {
+        evidence_is_ordinary(db, self)
+    }
+
+    /// Whether this proof is pending (`Evidence::Param` or `Evidence::Unsupplied`).
+    pub fn is_pending(self, db: &'db dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), Evidence::Param(_) | Evidence::Unsupplied)
     }
 
     /// The proofs of an implementation's conditions; none for an assumption.
     pub fn conds(self, db: &'db dyn HirAnalysisDb) -> &'db [EvidenceId<'db>] {
         match self.data(db) {
             Evidence::Impl { conds, .. } => conds,
-            Evidence::Assumption(_) => &[],
+            Evidence::Assumption(_) | Evidence::Param(_) | Evidence::Unsupplied => &[],
         }
     }
 
-    /// This proof with each assumption it names replaced by `bound`'s proof
-    /// of that assumption, where `bound` has one.
+    /// This proof with each assumption or evidence parameter it names replaced
+    /// by `bound`'s proof of it, where `bound` has one. An undelivered
+    /// `Evidence::Param` becomes `Evidence::Unsupplied` so it never falls back
+    /// to ordinary selection.
     pub fn bind(self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) -> Self {
         match self.data(db) {
             Evidence::Assumption(index) => bound.get(db, *index as usize).unwrap_or(self),
+            Evidence::Param(index) => bound
+                .get_param(db, *index)
+                .unwrap_or_else(|| EvidenceId::new(db, Evidence::Unsupplied)),
+            Evidence::Unsupplied => self,
             Evidence::Impl {
                 selected,
                 instantiated,
@@ -157,65 +184,103 @@ impl<'db> EvidenceId<'db> {
 #[salsa::tracked]
 fn evidence_is_closed<'db>(db: &'db dyn HirAnalysisDb, evidence: EvidenceId<'db>) -> bool {
     match evidence.data(db) {
-        Evidence::Assumption(_) => false,
+        Evidence::Assumption(_) | Evidence::Param(_) | Evidence::Unsupplied => false,
         Evidence::Impl { conds, .. } => conds.iter().all(|cond| cond.is_closed(db)),
     }
 }
 
-/// Proofs of the assumptions a body is checked under, one per entry of its
-/// signature (`TypedBody::signature`), each absent where the body proves
-/// that assumption itself, together with any explicit `#1797` slot choices
-/// delivered to the instance.
+#[salsa::tracked]
+fn evidence_is_ordinary<'db>(db: &'db dyn HirAnalysisDb, evidence: EvidenceId<'db>) -> bool {
+    match evidence.data(db) {
+        Evidence::Assumption(_) => true,
+        Evidence::Param(_) | Evidence::Unsupplied => false,
+        Evidence::Impl {
+            selected, conds, ..
+        } => {
+            !matches!(
+                selected.origin(db),
+                ImplementorOrigin::Hir(impl_trait) if impl_trait.selection_name(db).is_some()
+            ) && conds.iter().all(|cond| cond.is_ordinary(db))
+        }
+    }
+}
+
+/// Proofs of the assumptions and `Evidence<G>` value parameters a body is
+/// checked under: `entries` has one entry per assumption in the body's
+/// signature (`TypedBody::signature`), absent where the body proves that
+/// assumption itself, and `params` has one `(param_index, EvidenceId)` per
+/// delivered `Evidence<G>` value parameter.
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EvidenceList<'db> {
     #[return_ref]
     pub entries: Vec<Option<EvidenceId<'db>>>,
     #[return_ref]
-    pub choices: super::trait_choice::SlotChoices<'db>,
+    pub params: Vec<(u16, EvidenceId<'db>)>,
 }
 
 impl<'db> EvidenceList<'db> {
     /// A list that supplies no proofs.
     pub fn none(db: &'db dyn HirAnalysisDb) -> Self {
-        Self::new(db, Vec::new(), super::trait_choice::SlotChoices::default())
+        Self::new(db, Vec::new(), Vec::new())
     }
 
     /// The list of `entries`, without the absent proofs that end it, so
     /// lists that supply the same proofs are equal.
-    pub fn of(db: &'db dyn HirAnalysisDb, mut entries: Vec<Option<EvidenceId<'db>>>) -> Self {
+    pub fn of(db: &'db dyn HirAnalysisDb, entries: Vec<Option<EvidenceId<'db>>>) -> Self {
+        Self::of_with_params(db, entries, Vec::new())
+    }
+
+    /// The list of `entries` and `params`, canonicalized so lists that supply
+    /// the same proofs are equal.
+    pub fn of_with_params(
+        db: &'db dyn HirAnalysisDb,
+        mut entries: Vec<Option<EvidenceId<'db>>>,
+        mut params: Vec<(u16, EvidenceId<'db>)>,
+    ) -> Self {
         while entries.last().is_some_and(Option::is_none) {
             entries.pop();
         }
-        Self::new(db, entries, super::trait_choice::SlotChoices::default())
+        params.sort_by_key(|(idx, _)| *idx);
+        params.dedup_by_key(|(idx, _)| *idx);
+        Self::new(db, entries, params)
     }
 
-    /// Attach explicit `#1797` slot choices to this evidence list.
-    pub fn with_choices(
+    /// Attach `Evidence<G>` parameter proofs to this evidence list.
+    pub fn with_params(
         self,
         db: &'db dyn HirAnalysisDb,
-        choices: super::trait_choice::SlotChoices<'db>,
+        params: Vec<(u16, EvidenceId<'db>)>,
     ) -> Self {
-        if choices.is_ordinary() && self.choices(db).is_ordinary() {
+        if params.is_empty() && self.params(db).is_empty() {
             return self;
         }
-        let choices = if choices.is_ordinary() {
-            super::trait_choice::SlotChoices::default()
-        } else {
-            choices
-        };
-        Self::new(db, self.entries(db).clone(), choices)
+        Self::of_with_params(db, self.entries(db).clone(), params)
     }
 
-    /// The evidence carried on a ground `SemanticInstanceKey`: empty when all
-    /// delivered choices are ordinary (`instance_evidence` proves every closed
-    /// assumption itself), or retaining non-ordinary `#1797` slot choices.
+    /// Whether every proof in this list is ordinary and no `Evidence<G>`
+    /// parameter proofs are carried.
+    pub fn is_ordinary(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.params(db).is_empty()
+            && self
+                .entries(db)
+                .iter()
+                .flatten()
+                .all(|ev| ev.is_ordinary(db))
+    }
+
+    /// The evidence carried on a ground `SemanticInstanceKey`: ordinary closed
+    /// assumption proofs are omitted (`instance_evidence` proves every closed
+    /// assumption itself), while non-ordinary assumption proofs (e.g. a named
+    /// implementation or a conditional implementation with a named condition)
+    /// and all `Evidence<G>` parameter proofs are retained.
     pub fn for_ground_instance(self, db: &'db dyn HirAnalysisDb) -> Self {
-        if self.choices(db).is_ordinary() {
-            Self::none(db)
-        } else {
-            Self::new(db, Vec::new(), self.choices(db).clone())
-        }
+        let entries: Vec<Option<EvidenceId<'db>>> = self
+            .entries(db)
+            .iter()
+            .map(|entry| entry.filter(|ev| !ev.is_ordinary(db)))
+            .collect();
+        Self::of_with_params(db, entries, self.params(db).clone())
     }
 
     /// The proof of the assumption at `index`, if the list supplies one.
@@ -223,18 +288,29 @@ impl<'db> EvidenceList<'db> {
         self.entries(db).get(index).copied().flatten()
     }
 
-    /// Each proof with the assumptions it names replaced by `bound`'s proofs.
+    /// The proof of the `Evidence<G>` parameter at `index`, if the list supplies one.
+    pub fn get_param(self, db: &'db dyn HirAnalysisDb, index: u16) -> Option<EvidenceId<'db>> {
+        self.params(db)
+            .iter()
+            .find_map(|&(idx, ev)| (idx == index).then_some(ev))
+    }
+
+    /// Each proof with the assumptions and `Evidence<G>` parameters it names
+    /// replaced by `bound`'s proofs.
     pub fn bind(self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) -> Self {
-        if bound.entries(db).is_empty() {
+        if bound.entries(db).is_empty() && bound.params(db).is_empty() {
             return self;
         }
-        Self::new(
+        Self::of_with_params(
             db,
             self.entries(db)
                 .iter()
                 .map(|entry| entry.map(|evidence| evidence.bind(db, bound)))
                 .collect::<Vec<_>>(),
-            self.choices(db).clone(),
+            self.params(db)
+                .iter()
+                .map(|&(idx, evidence)| (idx, evidence.bind(db, bound)))
+                .collect::<Vec<_>>(),
         )
     }
 }
@@ -244,13 +320,16 @@ impl<'db> TyFoldable<'db> for EvidenceList<'db> {
     where
         F: TyFolder<'db>,
     {
-        Self::new(
+        Self::of_with_params(
             db,
             self.entries(db)
                 .iter()
                 .map(|entry| entry.map(|evidence| evidence.fold_with(db, folder)))
                 .collect::<Vec<_>>(),
-            self.choices(db).clone().fold_with(db, folder),
+            self.params(db)
+                .iter()
+                .map(|&(idx, evidence)| (idx, evidence.fold_with(db, folder)))
+                .collect::<Vec<_>>(),
         )
     }
 }
@@ -263,7 +342,9 @@ impl<'db> TyVisitable<'db> for EvidenceList<'db> {
         for evidence in self.entries(visitor.db()).iter().flatten() {
             evidence.visit_with(visitor);
         }
-        self.choices(visitor.db()).visit_with(visitor);
+        for (_, evidence) in self.params(visitor.db()) {
+            evidence.visit_with(visitor);
+        }
     }
 }
 
@@ -288,7 +369,7 @@ impl<'db> TyFoldable<'db> for EvidenceId<'db> {
                         .collect(),
                 },
             ),
-            Evidence::Assumption(_) => self,
+            Evidence::Assumption(_) | Evidence::Param(_) | Evidence::Unsupplied => self,
         }
     }
 }
@@ -344,38 +425,52 @@ pub fn prove<'db>(
 /// only once its providers are resolved: the use records only proofs that
 /// name its own assumptions. A goal the use's body itself assumes is that
 /// assumption.
-pub(crate) fn declared_bound_evidence<'db>(
+pub(crate) fn declared_bound_evidence_with_deliveries<'db>(
     db: &'db dyn HirAnalysisDb,
     declared: PredicateListId<'db>,
     signature: PredicateListId<'db>,
     subst: &CompleteSubst<'db>,
     solve_cx: TraitSolveCx<'db>,
+    bound_deliveries: &[(TraitInstId<'db>, super::trait_choice::Choice<'db>)],
+    param_deliveries: &[(u16, super::trait_choice::Choice<'db>)],
 ) -> EvidenceList<'db> {
     let assumptions = solve_cx.assumptions().extend_all_bounds(db);
-    EvidenceList::of(
-        db,
-        signature
-            .list(db)
-            .iter()
-            .map(|&bound| {
-                if !declared.list(db).contains(&bound) || mentions_effect_provider(db, bound) {
-                    return None;
-                }
-                let goal = substitute_complete(db, bound, subst).ok()?;
-                if is_closed_goal(db, goal) {
-                    return None;
-                }
-                match assumptions
-                    .list(db)
-                    .iter()
-                    .position(|&assumption| assumption == goal)
-                {
-                    Some(index) => Some(EvidenceId::new(db, Evidence::Assumption(index as u32))),
-                    None => prove(db, solve_cx, goal),
-                }
-            })
-            .collect(),
-    )
+    let entries = signature
+        .list(db)
+        .iter()
+        .map(|&bound| {
+            let goal = substitute_complete(db, bound, subst).ok();
+            let bound_slot = slot_goal(db, bound);
+            if let Some((_, choice)) = bound_deliveries
+                .iter()
+                .find(|(slot, _)| *slot == bound || *slot == bound_slot)
+                && let Some(ev) = choice.to_evidence(db, solve_cx, goal)
+                && (!goal.is_some_and(|g| is_closed_goal(db, g)) || !ev.is_ordinary(db))
+            {
+                return Some(ev);
+            }
+            if !declared.list(db).contains(&bound) || mentions_effect_provider(db, bound) {
+                return None;
+            }
+            let goal = goal?;
+            if is_closed_goal(db, goal) {
+                return None;
+            }
+            match assumptions
+                .list(db)
+                .iter()
+                .position(|&assumption| assumption == goal)
+            {
+                Some(index) => Some(EvidenceId::new(db, Evidence::Assumption(index as u32))),
+                None => prove(db, solve_cx, goal),
+            }
+        })
+        .collect();
+    let params = param_deliveries
+        .iter()
+        .filter_map(|&(idx, choice)| Some((idx, choice.to_evidence(db, solve_cx, None)?)))
+        .collect();
+    EvidenceList::of_with_params(db, entries, params)
 }
 
 #[salsa::tracked(cycle_fn = prove_cycle_recover, cycle_initial = prove_cycle_initial)]
@@ -439,8 +534,10 @@ fn prove_in<'db>(
 /// instance: by the proof the instance's caller gave of it, or by the
 /// instance's own bound where the caller gave none, so it is dispatched
 /// through the bound, unless the instantiation closes it, when it holds by
-/// the implementation every body proves it with. A goal the checker did not
-/// prove is selected in `solve_cx`.
+/// the implementation every body proves it with. A goal proved by an
+/// undelivered evidence parameter or unsupplied slot never falls back to
+/// ordinary selection. A goal the checker did not prove is selected in
+/// `solve_cx`.
 pub(crate) fn instantiated_selection<'db>(
     db: &'db dyn HirAnalysisDb,
     evidence: Option<EvidenceId<'db>>,
@@ -475,6 +572,8 @@ pub(crate) fn instantiated_selection<'db>(
             let assumption = ImplementorId::assumption(db, goal);
             Some(ResolvedImplInstance::new(assumption, assumption, goal))
         }
+        // Pending or unsupplied evidence never falls back to ordinary selection.
+        Some(Evidence::Param(_) | Evidence::Unsupplied) => None,
         None => match resolve_trait_impl_instance(
             db,
             solve_cx,
@@ -640,7 +739,7 @@ pub(crate) fn impl_method_bound_evidence<'db>(
         impl_method_evidence(db, body, nominal, mode),
         subst.mapping(db).as_ref(),
     ) else {
-        return EvidenceList::none(db);
+        return EvidenceList::none(db).with_params(db, bound.params(db).clone());
     };
     let supplied = EvidenceList::of(
         db,
@@ -651,7 +750,7 @@ pub(crate) fn impl_method_bound_evidence<'db>(
             .chain(bound.entries(db).iter().copied())
             .collect::<Vec<_>>(),
     );
-    instantiate_proofs(db, proofs, subst, supplied)
+    instantiate_proofs(db, proofs, subst, supplied).with_params(db, bound.params(db).clone())
 }
 
 /// The proofs a use supplies to the value `body` of the implementation's
@@ -681,10 +780,10 @@ pub(crate) fn impl_const_bound_evidence<'db>(
 
 /// The evidence an instance runs with: its key's proofs, `supplied`, of the
 /// assumptions its body is checked under, instantiated as `goals`, with a
-/// proof in `solve_cx` of each closed goal `supplied` gives no closed proof
-/// of. A use leaves its callee's closed goals to the instance, and a proof
-/// of one naming the use's own assumptions names those of a body the
-/// instance does not run in.
+/// proof in `solve_cx` of each closed goal `supplied` gives no closed or
+/// non-ordinary proof of. A use leaves its callee's ordinary closed goals to
+/// the instance, and a proof of one naming the use's own assumptions names
+/// those of a body the instance does not run in.
 #[salsa::tracked]
 pub(crate) fn instance_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -692,8 +791,8 @@ pub(crate) fn instance_evidence<'db>(
     supplied: EvidenceList<'db>,
     solve_cx: TraitSolveCx<'db>,
 ) -> EvidenceList<'db> {
-    let choices = supplied.choices(db).clone();
-    EvidenceList::of(
+    let params = supplied.params(db).clone();
+    EvidenceList::of_with_params(
         db,
         goals
             .list(db)
@@ -701,15 +800,17 @@ pub(crate) fn instance_evidence<'db>(
             .enumerate()
             .map(|(index, &goal)| {
                 let supplied = supplied.get(db, index);
-                if is_closed_goal(db, goal) && !supplied.is_some_and(|proof| proof.is_closed(db)) {
+                if is_closed_goal(db, goal)
+                    && !supplied.is_some_and(|proof| proof.is_closed(db) || !proof.is_ordinary(db))
+                {
                     prove(db, solve_cx, goal)
                 } else {
                     supplied
                 }
             })
             .collect(),
+        params,
     )
-    .with_choices(db, choices)
 }
 
 fn prove_cycle_initial<'db>(
