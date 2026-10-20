@@ -11,11 +11,11 @@
 /// `seconds` / `minutes` / `hours` / `days` / `weeks` unit literals, so
 /// `ether(5)` reads like `5 ether` and `days(7)` like `7 days`. They are
 /// `const fn`s and work in constant initializers.
-use core::abi::{Abi, AbiDecoder, AbiSize, AbiSpan, ByteInput, Decode, Encode, store_word}
+use core::abi::{Abi, AbiDecoder, AbiFrame, AbiSize, AbiSpan, ByteInput, Decode, Encode}
 use core::num::mul_div
 use core::ops::{Add, AddAssign, Div, Eq, Mul, Ord, Rem, Sub, SubAssign}
 use ingot::abi::sol::types::{SolCompat, StaticAbiElement, StaticAbiElementSeal}
-use ingot::evm::{EncodePacked, Packed, RawMem, SolPacked, StorageKey, TopicValue, WordRepr}
+use ingot::evm::{EncodePacked, Packed, SolPacked, StorageKey, TopicValue}
 use ingot::evm::packed::write_word_prefix
 
 // -----------------------------------------------------------------------------
@@ -285,26 +285,21 @@ impl SubAssign<Duration> for Timestamp {
 // (e.g. for the `abi::sol` int wrappers) would otherwise make a failing bound
 // on an unrelated type ambiguous and hide which impl it is missing.
 
-impl WordRepr for Wei {
-    fn from_word(_ word: u256) -> Self { Wei { amount: word } }
-    fn to_word(own self) -> u256 { self.amount }
-}
-
 impl AbiSize for Wei {
     const HEAD_SIZE: u256 = 32
     const IS_DYNAMIC: bool = false
 }
 
 impl<A: Abi> Encode<A> for Wei {
-    fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.amount)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.amount)
     }
 }
 
 impl<A: Abi> Decode<A> for Wei {
     #[inline(always)]
-    fn decode_payload<D: AbiDecoder<A>>(_ d: mut D) -> Self {
-        Wei { amount: d.read_word() }
+    fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        Wei { amount: d.read_word(input) }
     }
 
     #[inline(always)]
@@ -331,21 +326,23 @@ impl TopicValue for Wei {
 
 impl StorageKey for Wei {
     fn encoded_len(self) -> u256 { 32 }
-    fn write_key(ptr: *u8, self) {
-        store_word(ptr: ptr, value: self.amount)
+
+    #[inline(always)]
+    unsafe fn write_key(ptr: *u8, self) {
+        u256::write_key(ptr: ptr, self.amount)
     }
 }
 
 impl EncodePacked for Wei {
     #[inline(always)]
     fn packed_width(self) -> u256 { 32 }
-    fn pack_into(own self, mut _ p: own Packed) -> Packed uses (mem: mut RawMem) {
+    fn pack_into(own self, var _ p: own Packed) -> Packed {
         p.u256(self.amount)
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
-        write_word_prefix(dest, self.amount, 32)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self.amount, 32, room)
     }
 }
 
@@ -355,26 +352,21 @@ impl SolPacked for Wei {
     fn from_packed(_ bits: u256) -> Self { Wei { amount: bits } }
 }
 
-impl WordRepr for Duration {
-    fn from_word(_ word: u256) -> Self { Duration { secs: word } }
-    fn to_word(own self) -> u256 { self.secs }
-}
-
 impl AbiSize for Duration {
     const HEAD_SIZE: u256 = 32
     const IS_DYNAMIC: bool = false
 }
 
 impl<A: Abi> Encode<A> for Duration {
-    fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.secs)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.secs)
     }
 }
 
 impl<A: Abi> Decode<A> for Duration {
     #[inline(always)]
-    fn decode_payload<D: AbiDecoder<A>>(_ d: mut D) -> Self {
-        Duration { secs: d.read_word() }
+    fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        Duration { secs: d.read_word(input) }
     }
 
     #[inline(always)]
@@ -401,21 +393,23 @@ impl TopicValue for Duration {
 
 impl StorageKey for Duration {
     fn encoded_len(self) -> u256 { 32 }
-    fn write_key(ptr: *u8, self) {
-        store_word(ptr: ptr, value: self.secs)
+
+    #[inline(always)]
+    unsafe fn write_key(ptr: *u8, self) {
+        u256::write_key(ptr: ptr, self.secs)
     }
 }
 
 impl EncodePacked for Duration {
     #[inline(always)]
     fn packed_width(self) -> u256 { 32 }
-    fn pack_into(own self, mut _ p: own Packed) -> Packed uses (mem: mut RawMem) {
+    fn pack_into(own self, var _ p: own Packed) -> Packed {
         p.u256(self.secs)
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
-        write_word_prefix(dest, self.secs, 32)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self.secs, 32, room)
     }
 }
 
@@ -425,26 +419,21 @@ impl SolPacked for Duration {
     fn from_packed(_ bits: u256) -> Self { Duration { secs: bits } }
 }
 
-impl WordRepr for Timestamp {
-    fn from_word(_ word: u256) -> Self { Timestamp { secs: word } }
-    fn to_word(own self) -> u256 { self.secs }
-}
-
 impl AbiSize for Timestamp {
     const HEAD_SIZE: u256 = 32
     const IS_DYNAMIC: bool = false
 }
 
 impl<A: Abi> Encode<A> for Timestamp {
-    fn encode(own self, _ ptr: *u8) {
-        store_word(ptr: ptr, value: self.secs)
+    fn encode(own self, _ out: AbiFrame) {
+        out.store_word(at: 0, value: self.secs)
     }
 }
 
 impl<A: Abi> Decode<A> for Timestamp {
     #[inline(always)]
-    fn decode_payload<D: AbiDecoder<A>>(_ d: mut D) -> Self {
-        Timestamp { secs: d.read_word() }
+    fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        Timestamp { secs: d.read_word(input) }
     }
 
     #[inline(always)]
@@ -471,21 +460,23 @@ impl TopicValue for Timestamp {
 
 impl StorageKey for Timestamp {
     fn encoded_len(self) -> u256 { 32 }
-    fn write_key(ptr: *u8, self) {
-        store_word(ptr: ptr, value: self.secs)
+
+    #[inline(always)]
+    unsafe fn write_key(ptr: *u8, self) {
+        u256::write_key(ptr: ptr, self.secs)
     }
 }
 
 impl EncodePacked for Timestamp {
     #[inline(always)]
     fn packed_width(self) -> u256 { 32 }
-    fn pack_into(own self, mut _ p: own Packed) -> Packed uses (mem: mut RawMem) {
+    fn pack_into(own self, var _ p: own Packed) -> Packed {
         p.u256(self.secs)
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
-        write_word_prefix(dest, self.secs, 32)
+    unsafe fn write_packed(own self, _ dest: *u8, room: u256) -> u256 {
+        write_word_prefix(dest, self.secs, 32, room)
     }
 }
 

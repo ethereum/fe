@@ -44,7 +44,7 @@ fn arithmetic() {
     assert!(wei(1_000_000_123) / GWEI == 1)
     assert!(wei(1_000_000_123) % GWEI == wei(123))
 
-    let mut balance = ether(1)
+    var balance = ether(1)
     balance += gwei(1)
     balance -= wei(1)
     assert!(balance == wei(1_000_000_000_999_999_999))
@@ -147,7 +147,7 @@ fn amounts_cross_the_abi_and_storage() uses (evm: mut Evm) {
     assert!(credited == ether(2))
     assert!(evm.balance(bank) == ether(2))
 
-    let payee = Address { inner: 0xbeef }
+    let payee = Address::new(0xbeef)
     evm.call(addr: bank, gas: 200000, value: Wei::zero(), message: BankMsg::Withdraw { to: payee, amount: ether(1) / 2 })
     assert!(evm.balance(payee) == ether(1) / 2)
     let left: Wei = evm.call(addr: bank, gas: 100000, value: Wei::zero(), message: BankMsg::BalanceOf { owner: me })

@@ -63,7 +63,7 @@ fn duration_arithmetic() {
     assert!(days(10) / WEEK == 1)
     assert!(days(10) % WEEK == days(3))
 
-    let mut d = DAY
+    var d = DAY
     d += HOUR
     d -= MINUTE
     assert!(d == days(1) + minutes(59))
@@ -87,7 +87,7 @@ fn timestamp_arithmetic() {
     assert!(deadline - start == days(3))
     assert!(deadline - DAY == start + days(2))
 
-    let mut t = start
+    var t = start
     t += HOUR
     t -= MINUTE
     assert!(t - start == minutes(59))
