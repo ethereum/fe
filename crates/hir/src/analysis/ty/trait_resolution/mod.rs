@@ -1006,7 +1006,19 @@ impl<'db> PredicateListId<'db> {
                         hir_trait.scope(),
                         evidence,
                     );
-                    if predicate_has_recursive_assoc_projection(db, trait_inst) {
+                    // An equality can make the bound a concrete one,
+                    // `[u256; 3]: Collection` from `H: Holds<Base = [u256; 3]>`.
+                    // An implementation proves that, so it is not assumed: as
+                    // a written bound on a concrete type would be (6-0005), it
+                    // would be a second candidate for every method of the impl.
+                    // A bound still generic in an argument or a binding,
+                    // `Reader: Read<T>`, is evidence no implementation gives.
+                    let concrete = |ty: &TyId<'db>| {
+                        !ty.has_invalid(db) && !ty.has_param(db) && !ty.has_projection(db)
+                    };
+                    let concrete = trait_inst.args(db).iter().all(concrete)
+                        && trait_inst.assoc_type_bindings(db).values().all(concrete);
+                    if concrete || predicate_has_recursive_assoc_projection(db, trait_inst) {
                         continue;
                     }
                     if all_predicates.insert(trait_inst) {
