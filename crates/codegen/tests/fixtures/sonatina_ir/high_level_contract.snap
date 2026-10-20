@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 462
+assertion_line: 523
 expression: output
 input_file: crates/codegen/tests/fixtures/high_level_contract.fe
 ---
@@ -489,7 +489,7 @@ func inline(always) private %impl_trait_Echo__decode_from__g8f43(v0.@layout_0, v
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.i256 = call %decode_msg_field_from v0 v1 v1 v3;
         v8.@layout_0 = insert_value undef.@layout_0 0.i256 v5;
         return v8;
@@ -603,7 +603,7 @@ func inline(always) private %decode_runtime_args__gf173(v0.objref<@layout_4>) {
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 0.i256;
         call %decode_from_prechecked_head__g5ec4 v1 4.i256 v3;
         return;
@@ -615,7 +615,7 @@ func inline(always) private %decode_runtime_args__g235a(v0.objref<@layout_4>) {
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 0.i256;
         call %decode_from_prechecked_head__gf38d v1 4.i256 v3;
         return;
@@ -627,7 +627,7 @@ func inline(always) private %decode_runtime_args__g9e33(v0.objref<@layout_4>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 32.i256;
         v6.@layout_0 = call %decode_from_prechecked_head__gc4b9 v1 4.i256 v3;
         return v6;
@@ -640,6 +640,52 @@ func private %decoder_new() -> @layout_2 {
     block1:
         v1.@layout_2 = call %with_base 0.i256;
         return v1;
+}
+
+func private %downcast_truncate__gaa81(v0.i256) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i256 = call %impl_trait_u256__to_word v0;
+        br 0.i1 block2 block3;
+
+    block2:
+        v7.i256 = call %sign_extend v2 18446744073709551615.i256 0.i256;
+        v8.i64 = call %impl_trait_u64__from_word v7;
+        jump block4;
+
+    block3:
+        v10.i256 = and v2 18446744073709551615.i256;
+        v11.i64 = call %impl_trait_u64__from_word v10;
+        jump block4;
+
+    block4:
+        v12.i64 = phi (v8 block2) (v11 block3);
+        return v12;
+}
+
+func private %downcast_truncate__g3ef4(v0.i256) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i256 = call %impl_trait_usize__to_word v0;
+        br 0.i1 block2 block3;
+
+    block2:
+        v7.i256 = call %sign_extend v2 18446744073709551615.i256 0.i256;
+        v8.i64 = call %impl_trait_u64__from_word v7;
+        jump block4;
+
+    block3:
+        v10.i256 = and v2 18446744073709551615.i256;
+        v11.i64 = call %impl_trait_u64__from_word v10;
+        jump block4;
+
+    block4:
+        v12.i64 = phi (v8 block2) (v11 block3);
+        return v12;
 }
 
 func private %encode(v0.i256, v1.@layout_2) {
@@ -734,7 +780,16 @@ func inline(always) private %from_raw_parts(v0.i256, v1.i256) -> @layout_2 {
         return v8;
 }
 
-func private %from_word(v0.i256) -> i256 {
+func private %impl_trait_u64__from_word(v0.i256) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i64 = trunc v0 i64;
+        return v2;
+}
+
+func private %impl_trait_i256__from_word(v0.i256) -> i256 {
     block0:
         jump block1;
 
@@ -780,44 +835,24 @@ func private %len__g79ff(v0.objref<@layout_2>) -> i256 {
         return v4;
 }
 
-func private %impl_trait_MemSlice__len(v0.objref<@layout_2>) -> i256 {
+func inline(always) private %len__g140d(v0.objref<@layout_2>) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v2.i256 = call %len__g79ff v0;
-        return v2;
+        v2.i64 = call %impl_trait_MemSlice__size v0;
+        v3.i256 = zext v2 i256;
+        return v3;
 }
 
-func inline(always) private %impl_trait_CallData__len(v0.@layout_0) -> i256 {
+func inline(always) private %len__g8f43(v0.@layout_0) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v1.i256 = evm_calldata_size;
-        v4.i256 = extract_value v0 0.i256;
-        v5.i1 = gt v4 v1;
-        br v5 block2 block3;
-
-    block2:
-        jump block4;
-
-    block3:
-        v7.i256 = extract_value v0 0.i256;
-        (v9.i256, v10.i1) = usubo v1 v7;
-        br v10 block5 block6;
-
-    block4:
-        v15.i256 = phi (0.i256 block2) (v9 block6);
-        return v15;
-
-    block5:
-        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
-        mstore 4.i256 17.i256 i256;
-        evm_revert 0.i256 36.i256;
-
-    block6:
-        jump block4;
+        v2.i64 = call %impl_trait_CallData__size v0;
+        v3.i256 = zext v2 i256;
+        return v3;
 }
 
 func inline(always) private %mem_word_at(v0.i256, v1.i256) -> i256 {
@@ -929,7 +964,7 @@ func inline(always) private %read_word(v0.objref<@layout_2>, v1.objref<@layout_2
         return v21;
 
     block5:
-        v25.i256 = call %impl_trait_MemSlice__len v1;
+        v25.i256 = call %len__g140d v1;
         v27.i1 = gt v7 v25;
         br v27 block2 block3;
 
@@ -1105,6 +1140,72 @@ func private %set_pos(v0.objref<@layout_2>, v1.i256) {
         return;
 }
 
+func private %sign_extend(v0.i256, v1.i256, v2.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v5.i256 = and v0 v1;
+        v7.i256 = and v5 v2;
+        v9.i1 = eq v7 0.i256;
+        v10.i1 = is_zero v9;
+        br v10 block2 block3;
+
+    block2:
+        v13.i256 = xor -1.i256 v1;
+        v15.i256 = or v5 v13;
+        jump block4;
+
+    block3:
+        jump block4;
+
+    block4:
+        v17.i256 = phi (v15 block2) (v5 block3);
+        return v17;
+}
+
+func private %impl_trait_MemSlice__size(v0.objref<@layout_2>) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i256 = call %len__g79ff v0;
+        v3.i64 = call %downcast_truncate__g3ef4 v2;
+        return v3;
+}
+
+func inline(always) private %impl_trait_CallData__size(v0.@layout_0) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v1.i256 = evm_calldata_size;
+        v4.i256 = extract_value v0 0.i256;
+        v5.i1 = gt v4 v1;
+        br v5 block2 block3;
+
+    block2:
+        jump block4;
+
+    block3:
+        v8.i256 = extract_value v0 0.i256;
+        (v10.i256, v11.i1) = usubo v1 v8;
+        br v11 block5 block6;
+
+    block4:
+        v17.i64 = phi (0.i64 block2) (v16 block6);
+        return v17;
+
+    block5:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 17.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block6:
+        v16.i64 = call %downcast_truncate__gaa81 v10;
+        jump block4;
+}
+
 func inline(always) private %slice(v0.@layout_2, v1.i256, v2.i256) -> @layout_2 {
     block0:
         jump block1;
@@ -1182,6 +1283,22 @@ func inline(always) private %tail(v0.@layout_2, v1.i256) -> @layout_2 {
         return v16;
 }
 
+func private %impl_trait_usize__to_word(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        return v0;
+}
+
+func private %impl_trait_u256__to_word(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        return v0;
+}
+
 func inline(always) private %validate_runtime_head(v0.i256, v1.i256, v2.i256) {
     block0:
         jump block1;
@@ -1193,8 +1310,8 @@ func inline(always) private %validate_runtime_head(v0.i256, v1.i256, v2.i256) {
 
     block2:
         v9.i256 = sub v0 v1;
-        v10.i256 = call %from_word v9;
-        v12.i256 = call %from_word v2;
+        v10.i256 = call %impl_trait_i256__from_word v9;
+        v12.i256 = call %impl_trait_i256__from_word v2;
         v13.i1 = slt v10 v12;
         br v13 block5 block6;
 
