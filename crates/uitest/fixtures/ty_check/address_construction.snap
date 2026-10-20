@@ -25,11 +25,16 @@ error[2-0003]: `inner` is not visible
 46 │ pub struct Address { pub(ingot) inner: u256 }
    │                                 ----- `inner` is defined here
 
-error[3-0072]: panic in const context
+error[3-0073]: panic in const context
+   ┌─ address_construction.fe:8:24
+   │
+ 8 │ const DIRTY: Address = Address::new((1 << 160) | 1)
+   │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ while evaluating this
+   │
    ┌─ src/evm/effects.fe:53:13
    │
 53 │             core::panic_code(PANIC_OVERFLOW)
-   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ panics with code 0x11
+   │             -------------------------------- panics with code 0x11
 
 error[8-0055]: cast is not provably lossless
    ┌─ address_construction.fe:19:6

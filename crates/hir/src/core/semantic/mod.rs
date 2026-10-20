@@ -4729,7 +4729,9 @@ impl<'db> ImplTrait<'db> {
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> (Option<ImplementorId<'db>>, Vec<TyDiagCollection<'db>>) {
-        use crate::analysis::name_resolution::{ExpectedPathKind, diagnostics::PathResDiag};
+        use crate::analysis::name_resolution::{
+            ExpectedPathKind, PathResErrorKind, diagnostics::PathResDiag,
+        };
         use crate::analysis::ty::diagnostics::TraitLowerDiag;
 
         // First check implementor type
@@ -4838,17 +4840,21 @@ impl<'db> ImplTrait<'db> {
                 match err {
                     ImplTraitLowerError::ParseError => {}
                     ImplTraitLowerError::TraitRef(lower_err) => match lower_err {
+                        // The header's argument diagnostics report a path
+                        // written in an argument that names no type.
                         TraitRefLowerError::PathResError(err) => {
-                            if let Some(trait_ref) = self.trait_ref(db).to_opt() {
-                                let path = trait_ref.path(db).unwrap();
-                                if let Some(diag) = err.into_diag(
+                            if !matches!(err.kind, PathResErrorKind::TraitGenericArgType { .. })
+                                && let Some(path) = self
+                                    .trait_ref(db)
+                                    .to_opt()
+                                    .and_then(|tr| tr.path(db).to_opt())
+                            {
+                                diags.extend(err.into_diag(
                                     db,
                                     path,
                                     self.span().trait_ref().path(),
                                     ExpectedPathKind::Trait,
-                                ) {
-                                    diags.push(diag.into());
-                                }
+                                ));
                             }
                         }
                         TraitRefLowerError::InvalidDomain(res) => {

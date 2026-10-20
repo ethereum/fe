@@ -2100,6 +2100,22 @@ impl<'db> TraitInstId<'db> {
         )
     }
 
+    /// The predicate with `self_ty` as its `Self` argument.
+    pub fn with_self_ty(self, db: &'db dyn HirAnalysisDb, self_ty: TyId<'db>) -> Self {
+        let mut args = self.args(db).clone();
+        match args.first_mut() {
+            Some(arg) => *arg = self_ty,
+            None => args.push(self_ty),
+        }
+        Self::new(
+            db,
+            self.def(db),
+            args,
+            self.assoc_type_bindings(db).clone(),
+            self.mode(db),
+        )
+    }
+
     /// The predicate a bound of an item used at `mode` is: a `mut?` bound is
     /// `mut` at `mut`, and plain otherwise.
     pub fn at_mode(self, db: &'db dyn HirAnalysisDb, mode: Option<BorrowKind>) -> Self {

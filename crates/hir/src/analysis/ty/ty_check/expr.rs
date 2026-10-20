@@ -1,4 +1,3 @@
-use crate::hir_def::ModeMarker;
 use either::Either;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::ToPrimitive;
@@ -69,6 +68,7 @@ use crate::analysis::ty::{
         stored_value_contains_implicit_layout_params, stored_value_contains_out_of_scope_params,
     },
     fold::{TyFoldable as _, TyFolder},
+    instantiate_trait_self,
     normalize::normalize_with_trait_evidence,
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
     shape::{Shape, SumKind, sum_kind},
@@ -2723,7 +2723,8 @@ impl<'db> TyChecker<'db> {
     ) -> Option<MatchedKeyedEntry<'db>> {
         match entry {
             FamilyKeyedEntry::Witness(witness) => {
-                let key_commit = query_matches_witness(self, query, &witness.key)?;
+                let key_commit =
+                    query_matches_witness(self, query, &witness.key, witness.provider.ty)?;
                 Some(MatchedKeyedEntry::Witness(MatchedWitness {
                     witness,
                     key_commit,
@@ -2875,16 +2876,7 @@ impl<'db> TyChecker<'db> {
             return None;
         }
         let instantiated = instantiate_trait_pattern_in(self.db, &mut self.table, query);
-        let args = std::iter::once(provider_ty)
-            .chain(instantiated.args(self.db).iter().skip(1).copied())
-            .collect::<Vec<_>>();
-        let trait_goal = TraitInstId::new(
-            self.db,
-            instantiated.def(self.db),
-            args,
-            instantiated.assoc_type_bindings(self.db).clone(),
-            ModeMarker::None,
-        );
+        let trait_goal = instantiate_trait_self(self.db, instantiated, provider_ty);
         let GoalSatisfiability::Satisfied(solution) =
             self.trait_effect_goal_satisfiability(trait_goal)
         else {
@@ -3325,18 +3317,15 @@ impl<'db> TyChecker<'db> {
                 self.push_diag(BodyDiag::WithEffectTraitUnsatisfied {
                     primary: span.clone(),
                     key: key_path,
-                    trait_req: TraitInstId::new(
+                    trait_req: instantiate_trait_self(
                         self.db,
-                        pattern.def,
-                        std::iter::once(provider.ty)
-                            .chain(pattern.args_no_self.iter().copied())
-                            .collect::<Vec<_>>(),
-                        pattern
-                            .assoc_bindings
-                            .iter()
-                            .copied()
-                            .collect::<IndexMap<_, _>>(),
-                        ModeMarker::None,
+                        TraitKeySchema {
+                            def: pattern.def,
+                            args_no_self: pattern.args_no_self.clone(),
+                            assoc_bindings: pattern.assoc_bindings.clone(),
+                        }
+                        .into_trait_inst(self.db),
+                        provider.ty,
                     ),
                     given: provider.ty,
                 });
@@ -3506,18 +3495,15 @@ impl<'db> TyChecker<'db> {
                         .iter()
                         .any(|slot| slot.kind == PatternSlotKind::OmittedExplicitArg)
                 {
-                    let trait_req = TraitInstId::new(
+                    let trait_req = instantiate_trait_self(
                         self.db,
-                        pattern.def,
-                        std::iter::once(provider.ty)
-                            .chain(pattern.args_no_self.iter().copied())
-                            .collect::<Vec<_>>(),
-                        pattern
-                            .assoc_bindings
-                            .iter()
-                            .copied()
-                            .collect::<IndexMap<_, _>>(),
-                        ModeMarker::None,
+                        TraitKeySchema {
+                            def: pattern.def,
+                            args_no_self: pattern.args_no_self.clone(),
+                            assoc_bindings: pattern.assoc_bindings.clone(),
+                        }
+                        .into_trait_inst(self.db),
+                        provider.ty,
                     );
                     if emit_diag {
                         self.push_diag(BodyDiag::WithEffectTraitUnsatisfied {
@@ -3556,16 +3542,7 @@ impl<'db> TyChecker<'db> {
                     &mut table,
                     pattern.clone(),
                 );
-                let args = std::iter::once(provider.ty)
-                    .chain(instantiated.args(self.db).iter().skip(1).copied())
-                    .collect::<Vec<_>>();
-                let trait_goal = TraitInstId::new(
-                    self.db,
-                    instantiated.def(self.db),
-                    args,
-                    instantiated.assoc_type_bindings(self.db).clone(),
-                    ModeMarker::None,
-                );
+                let trait_goal = instantiate_trait_self(self.db, instantiated, provider.ty);
                 let GoalSatisfiability::Satisfied(solution) =
                     self.trait_effect_goal_satisfiability_in_scope(scope, assumptions, trait_goal)
                 else {

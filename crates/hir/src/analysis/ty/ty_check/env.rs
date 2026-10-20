@@ -1186,10 +1186,15 @@ impl<'db> TyCheckEnv<'db> {
             requirement,
         };
         let provider_ty = info.provider.provider_ty;
+        // The body assumes its provider meets the key. The key keeps the
+        // trait's own `Self` for its provider, for the row's to fill.
+        let bound = info
+            .requirement
+            .key
+            .key_trait()
+            .map(|key| super::super::instantiate_trait_self(db, key, provider_ty));
         if let EffectRequirementKey::Trait(inst) = info.requirement.key {
-            info.requirement.key = EffectRequirementKey::Trait(
-                super::super::instantiate_trait_self(db, inst, provider_ty),
-            );
+            info.requirement.key = EffectRequirementKey::Trait(inst.with_self_ty(db, provider_ty));
         }
         let binding = LocalBinding::effect_param(&info);
         // A row is forwarded whole, never provided.
@@ -1207,7 +1212,6 @@ impl<'db> TyCheckEnv<'db> {
             is_mut: true,
             binding: Some(binding),
         });
-        let bound = info.requirement.key.key_trait();
         active.effects.push(info);
         if let Some(bound) = bound {
             let mut preds = self.assumptions.list(db).to_vec();
