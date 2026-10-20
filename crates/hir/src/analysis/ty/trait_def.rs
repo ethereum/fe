@@ -634,24 +634,6 @@ impl<'db> ResolvedMethodInstance<'db> {
     }
 }
 
-/// Selects a trait method while retaining implementation versus generic-bound
-/// origin. `body` is absent when only a declaration is available.
-pub fn resolve_trait_method_instance<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-    method: IdentId<'db>,
-    mode: Option<BorrowKind>,
-) -> Selection<ResolvedMethodInstance<'db>> {
-    match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved) => resolved
-            .method(db, method, mode)
-            .map_or(Selection::NotFound, Selection::Unique),
-        Selection::Ambiguous(_) => Selection::Ambiguous(IndexSet::new()),
-        Selection::NotFound => Selection::NotFound,
-    }
-}
-
 /// Returns all implementors for the given `ty` whose constraints are fully proven.
 pub(crate) fn impls_for_ty_with_satisfied_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -796,18 +778,6 @@ pub(crate) fn impls_for_ty<'db>(
         .collect()
 }
 
-/// Looks up the selected associated-const body, including an inherited trait
-/// default, if the trait impl is unique.
-pub fn assoc_const_body_for_trait_inst<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-    const_name: IdentId<'db>,
-) -> Option<Body<'db>> {
-    assoc_const_body_template_for_trait_inst(db, solve_cx, inst, const_name)
-        .map(|(body, _, _)| body)
-}
-
 /// Returns the selected body, its declared template type, and the checked
 /// substitution over the body's owner. Explicit impl bodies use impl
 /// arguments; inherited defaults use trait arguments.
@@ -862,28 +832,6 @@ pub(crate) fn selected_assoc_const_body_template<'db>(
             CompleteSubst::for_owner(db, trait_.into(), inst.args(db).to_vec()).ok()?,
         ))
     })
-}
-
-/// Whether `inst` is satisfied by a uniquely-selected concrete impl rather than
-/// only by an assumption (e.g. `T: Trait` inside a generic function).
-///
-/// This gates use of a trait associated const's default value: the default may
-/// stand in for the const only when a concrete impl is selected (and inherits
-/// it). For an assumption-satisfied instance the const must stay abstract, so a
-/// concrete impl that overrides it specializes correctly instead of being fixed
-/// to the default.
-pub fn trait_inst_selects_concrete_impl<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-) -> bool {
-    match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved) => !matches!(
-            resolved.selected().origin(db),
-            ImplementorOrigin::Assumption
-        ),
-        Selection::Ambiguous(_) | Selection::NotFound => false,
-    }
 }
 
 /// Represents the trait environment of an ingot, which maintain all trait
