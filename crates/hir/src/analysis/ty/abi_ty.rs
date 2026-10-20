@@ -6,13 +6,14 @@
 use std::fmt;
 
 use common::ingot::IngotKind;
+use ruint::aliases::U256;
 
 use crate::analysis::HirAnalysisDb;
 use crate::analysis::semantic::{
     EvalOutcome, GenericSubst, SemConstScalar, SemConstValue, eval_body_owner_const,
     eval_body_owner_const_with_args, sem_const_ty,
 };
-use crate::analysis::ty::corelib::resolve_lib_trait_path;
+use crate::analysis::ty::corelib::{concrete_usize, resolve_lib_trait_path};
 use crate::analysis::ty::normalize::normalize_ty;
 use crate::analysis::ty::trait_def::{
     TraitInstId, assoc_const_body_template_for_trait_inst, resolve_trait_method_instance,
@@ -540,24 +541,29 @@ fn declared_sol_compat_abi_type<'db>(
     ) else {
         return None;
     };
-    let bytes = match bytes.value(db) {
-        SemConstValue::Scalar {
-            value: SemConstScalar::Bytes(bytes),
-            ..
-        } => bytes.clone(),
-        // A `[u8; N]` value the conversion returns unchanged.
-        SemConstValue::Array { elems, .. } => elems
-            .iter()
-            .map(|elem| match elem.value(db) {
-                SemConstValue::Scalar {
-                    value: SemConstScalar::Int { value },
-                    ..
-                } => u8::try_from(value).ok(),
-                _ => None,
-            })
-            .collect::<Option<_>>()?,
-        _ => return None,
+    // The result is a `PackedBytes<N>`: its first `N` bytes, big-endian
+    // across its `u256` words.
+    let len = concrete_usize(db, *sem_const_ty(db, bytes).generic_args(db).first()?)?;
+    let SemConstValue::Struct { fields, .. } = bytes.value(db) else {
+        return None;
     };
+    let SemConstValue::Array { elems: words, .. } = fields.first()?.value(db) else {
+        return None;
+    };
+    let mut bytes = words
+        .iter()
+        .map(|word| match word.value(db) {
+            SemConstValue::Scalar {
+                value: SemConstScalar::Int { value },
+                ..
+            } => Some(
+                U256::try_from_be_slice(&value.to_biguint()?.to_bytes_be())?.to_be_bytes::<32>(),
+            ),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?
+        .concat();
+    bytes.truncate(len);
     String::from_utf8(bytes).ok()
 }
 
