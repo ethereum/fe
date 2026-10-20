@@ -34,6 +34,7 @@ use crate::analysis::{
         binder::Binder,
         canonical::Canonicalized,
         const_ty::{ConstBodyLowering, LoweringContext},
+        diagnostics::{RevealedBy, TyDiagCollection, TyLowerDiag},
         fold::TyFoldable as _,
         generic_defaults::DefaultApplication,
         method_table::{MethodProbe, probe_method},
@@ -51,6 +52,7 @@ use crate::analysis::{
             is_goal_satisfiable,
         },
         ty_def::{InvalidCause, Kind, TyBase, TyData, TyId},
+        ty_error::emit_invalid_ty_error,
         ty_lower::{
             TyAlias, collect_generic_params, lower_generic_arg_list, lower_hir_ty_with_minter,
             lower_type_alias, lower_type_alias_deferred, lower_type_position_path,
@@ -121,6 +123,13 @@ pub enum PathResErrorKind<'db> {
         expected: Option<TyId<'db>>,
         given: Option<TyId<'db>>,
     },
+    /// A trait argument failed compile-time evaluation; it is reported as
+    /// that fault, from the reference when only an applied default reveals it.
+    InvalidTraitArg {
+        arg: TyId<'db>,
+        applied_default: bool,
+    },
+
     /// A path written in a type argument or associated type binding of a
     /// trait path, the `nth` that `find_written_path` visits there, names
     /// no type where it is written: `Ok` with what it names instead, `Err`
@@ -165,6 +174,9 @@ impl<'db> PathResError<'db> {
         match &self.kind {
             PathResErrorKind::NotFound { .. } => "Not found".to_string(),
             PathResErrorKind::ParseError => "Parse error".to_string(),
+            PathResErrorKind::InvalidTraitArg { .. } => {
+                "Trait argument failed compile-time evaluation".to_string()
+            }
             PathResErrorKind::Ambiguous(v) => format!("Ambiguous; {} options.", v.len()),
             PathResErrorKind::AmbiguousAssociatedType {
                 name: _,
@@ -249,13 +261,16 @@ impl<'db> PathResError<'db> {
         }
     }
 
+    /// The diagnostic for an error in a path written where `expected` is. A
+    /// fault in a trait argument, which a path resolution diagnostic cannot
+    /// describe, is reported as that fault at the trait path.
     pub fn into_diag(
         self,
         db: &'db dyn HirAnalysisDb,
         path: PathId<'db>,
         path_span: LazyPathSpan<'db>,
         expected: ExpectedPathKind,
-    ) -> Option<PathResDiag<'db>> {
+    ) -> Option<TyDiagCollection<'db>> {
         let kind = self.kind;
         let failed_idx = self.failed_at.segment_index(db);
         let seg_span = path_span.clone().segment(failed_idx);
@@ -272,6 +287,22 @@ impl<'db> PathResError<'db> {
 
         let diag = match kind {
             PathResErrorKind::ParseError => return None,
+            PathResErrorKind::InvalidTraitArg {
+                arg,
+                applied_default,
+            } => {
+                let fault = emit_invalid_ty_error(db, arg, path_span.clone().into())?;
+                return Some(if applied_default {
+                    TyLowerDiag::RevealedConstFault {
+                        site: path_span.into(),
+                        revealed_by: RevealedBy::AppliedDefault,
+                        fault: Box::new(fault),
+                    }
+                    .into()
+                } else {
+                    fault
+                });
+            }
             PathResErrorKind::NotFound { parent, bucket } => {
                 if let Some(nr) = bucket.iter_ok().next() {
                     if path != self.failed_at {
@@ -372,7 +403,7 @@ impl<'db> PathResError<'db> {
                 Err(inner) => {
                     let failed = inner.failed_at;
                     let ty_span = seg_span.qualified_type().ty().into_path_type().path();
-                    inner.into_diag(db, failed, ty_span, ExpectedPathKind::Type)?
+                    return inner.into_diag(db, failed, ty_span, ExpectedPathKind::Type);
                 }
             },
             PathResErrorKind::QualifiedTypeTrait(result) => match *result {
@@ -389,7 +420,7 @@ impl<'db> PathResError<'db> {
                 Err(inner) => {
                     let failed = inner.failed_at;
                     let trait_span = seg_span.qualified_type().trait_qualifier().path();
-                    inner.into_diag(db, failed, trait_span, ExpectedPathKind::Trait)?
+                    return inner.into_diag(db, failed, trait_span, ExpectedPathKind::Trait);
                 }
             },
 
@@ -464,11 +495,13 @@ impl<'db> PathResError<'db> {
                         arg_path.ident(db).to_opt()?,
                         res.kind_name(),
                     ),
-                    Err(inner) => inner.into_diag(db, arg_path, span, ExpectedPathKind::Type)?,
+                    Err(inner) => {
+                        return inner.into_diag(db, arg_path, span, ExpectedPathKind::Type);
+                    }
                 }
             }
         };
-        Some(diag)
+        Some(diag.into())
     }
 }
 
@@ -1115,6 +1148,77 @@ fn find_written_path<'db, R>(
         }
         TypeKind::Never => None,
     }
+}
+
+/// The first path written in `arg`, a type argument or associated type
+/// binding of a trait path, that names no type where it is written: the
+/// `nth` that `find_written_path` visits there, with what it names instead or
+/// why it does not resolve. An argument, unlike a binding, may name a
+/// constant, as a type's generic argument may.
+fn trait_arg_path_error<'db>(
+    db: &'db dyn HirAnalysisDb,
+    arg: &GenericArg<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    lowering_cx: &LoweringContext<'db>,
+) -> Option<(usize, PathResolutionResult<'db, PathRes<'db>>)> {
+    let (ty, position) = match arg {
+        GenericArg::Type(ty_arg) => (ty_arg.ty, TypePosition::GenericArg),
+        GenericArg::AssocType(binding) => (binding.ty, TypePosition::Type),
+        GenericArg::Const(_) => return None,
+    };
+    let mut visited = 0;
+    find_written_path(
+        db,
+        ty.to_opt()?,
+        position,
+        None,
+        &mut |arg_path, position, _| {
+            let nth = visited;
+            visited += 1;
+            match resolve_path_with_minter(db, arg_path, scope, assumptions, false, lowering_cx) {
+                Ok(PathRes::Ty(_) | PathRes::TyAlias(..)) => None,
+                _ if position == TypePosition::GenericArg
+                    && lower_type_position_path(
+                        db,
+                        arg_path,
+                        scope,
+                        assumptions,
+                        position,
+                        lowering_cx,
+                    )
+                    .is_ok_and(|ty| ty.is_const_ty(db)) =>
+                {
+                    None
+                }
+                result => Some((nth, result)),
+            }
+        },
+    )
+}
+
+/// The diagnostic for the first path written in the `arg_idx`th generic
+/// argument of trait path `path` that names no type, as resolving the trait
+/// path reports it.
+pub(crate) fn trait_arg_path_diag<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    path_span: LazyPathSpan<'db>,
+    arg_idx: usize,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Option<TyDiagCollection<'db>> {
+    let arg = path.generic_args(db).data(db).get(arg_idx)?;
+    let (nth, result) = trait_arg_path_error(db, arg, scope, assumptions, &LoweringContext::new())?;
+    PathResError::new(
+        PathResErrorKind::TraitGenericArgType {
+            arg_idx,
+            nth,
+            result: Box::new(result),
+        },
+        path,
+    )
+    .into_diag(db, path, path_span, ExpectedPathKind::Trait)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2442,51 +2546,9 @@ pub(crate) fn resolve_name_res_with_minter<'db>(
                         // precise spans in the name-resolution phase. A path that does not
                         // resolve yet, such as `Q::T` in `Option<Q::T>` before `Q: Ty` is
                         // collected, fails the trait path, so its bound waits for the others.
-                        // An argument, unlike a binding, may name a constant, as a type's
-                        // generic argument may.
                         for (arg_idx, arg) in path.generic_args(db).data(db).iter().enumerate() {
-                            let (ty, position) = match arg {
-                                GenericArg::Type(ty_arg) => (ty_arg.ty, TypePosition::GenericArg),
-                                GenericArg::AssocType(binding) => (binding.ty, TypePosition::Type),
-                                GenericArg::Const(_) => continue,
-                            };
-                            let mut visited = 0;
-                            if let Some(ty) = ty.to_opt()
-                                && let Some((nth, result)) = find_written_path(
-                                    db,
-                                    ty,
-                                    position,
-                                    None,
-                                    &mut |arg_path, position, _| {
-                                        let nth = visited;
-                                        visited += 1;
-                                        match resolve_path_with_minter(
-                                            db,
-                                            arg_path,
-                                            scope,
-                                            assumptions,
-                                            false,
-                                            lowering_cx,
-                                        ) {
-                                            Ok(PathRes::Ty(_) | PathRes::TyAlias(..)) => None,
-                                            // A generic argument may name a constant.
-                                            _ if position == TypePosition::GenericArg
-                                                && lower_type_position_path(
-                                                    db,
-                                                    arg_path,
-                                                    scope,
-                                                    assumptions,
-                                                    position,
-                                                    lowering_cx,
-                                                )
-                                                .is_ok_and(|ty| ty.is_const_ty(db)) =>
-                                            {
-                                                None
-                                            }
-                                            result => Some((nth, result)),
-                                        }
-                                    },
-                                )
+                            if let Some((nth, result)) =
+                                trait_arg_path_error(db, arg, scope, assumptions, lowering_cx)
                             {
                                 return Err(PathResError::new(
                                     PathResErrorKind::TraitGenericArgType {

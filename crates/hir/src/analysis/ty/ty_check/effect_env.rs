@@ -188,9 +188,12 @@ impl<'db> EffectEnv<'db> {
                 for entry in family_entries.iter().cloned() {
                     match entry {
                         KeyedEffectEntry::Witness(witness) => {
-                            if let Some(key_commit) =
-                                query_matches_witness(tc, &query.key, &witness.key)
-                            {
+                            if let Some(key_commit) = query_matches_witness(
+                                tc,
+                                &query.key,
+                                &witness.key,
+                                witness.provider.ty,
+                            ) {
                                 entries.push(MatchedKeyedEntry::Witness(MatchedWitness {
                                     witness,
                                     key_commit,
