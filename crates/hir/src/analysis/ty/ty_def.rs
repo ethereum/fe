@@ -832,10 +832,11 @@ impl<'db> TyId<'db> {
     pub(super) fn const_ty_var(
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
+        sort: TyVarSort,
         key: InferenceKey<'db>,
     ) -> Self {
         let ty_var = TyVar {
-            sort: TyVarSort::General,
+            sort,
             kind: ty.kind(db).clone(),
             key,
         };

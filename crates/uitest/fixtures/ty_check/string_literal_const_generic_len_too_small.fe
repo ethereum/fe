@@ -39,3 +39,28 @@ fn empty_as_generic<const M: usize>() -> String<M> {
 fn empty_with_generic_bytes<const M: usize>(_ bytes: [u8; M]) -> usize {
     width_and_bytes("", bytes)
 }
+
+// A computed length may be instantiated shorter than the literal too.
+fn literal_as_computed<const M: usize>() -> String<{ M + 1 }> {
+    "abc"
+}
+
+fn computed_bytes<const M: usize>(_ bytes: [u8; { M + 1 }]) -> usize {
+    width_and_bytes("abc", bytes)
+}
+
+// No `String<N>` holds more than 31 bytes.
+fn too_long() -> usize {
+    width("abcdefghijklmnopqrstuvwxyz123456")
+}
+
+// The length a trait bound selects must hold the literal as well.
+trait Fits<const K: usize> {}
+
+impl Fits<2> for u8 {}
+
+fn fits<T: Fits<N>, const N: usize>(_ t: T, _ s: String<N>) -> usize { N }
+
+fn bound_too_short() -> usize {
+    fits(1 as u8, "abc")
+}

@@ -501,7 +501,7 @@ fn fresh_slot_value<'db>(
     let is_const_slot = matches!(slot.placeholder.data(db), TyData::ConstTy(..));
     let key = table.new_key(slot.fallback_ty.kind(db), TyVarSort::General);
     if is_const_slot {
-        TyId::const_ty_var(db, slot.fallback_ty, key)
+        TyId::const_ty_var(db, slot.fallback_ty, TyVarSort::General, key)
     } else {
         TyId::ty_var(db, TyVarSort::General, Kind::Star, key)
     }
@@ -569,7 +569,7 @@ impl<'a, 'db> EffectKeyIdentityInstantiator<'a, 'db> {
                 let key = self
                     .table
                     .new_key(fallback_ty.kind(self.db), TyVarSort::General);
-                TyId::const_ty_var(self.db, fallback_ty, key)
+                TyId::const_ty_var(self.db, fallback_ty, TyVarSort::General, key)
             }
             _ => unreachable!("unexpected non-inference type in effect-key identity matcher"),
         }
@@ -582,7 +582,7 @@ impl<'a, 'db> TyFolder<'db> for EffectKeyIdentityInstantiator<'a, 'db> {
             let key = self
                 .table
                 .new_key(expected.kind(self.db), TyVarSort::General);
-            return TyId::const_ty_var(self.db, expected, key);
+            return TyId::const_ty_var(self.db, expected, TyVarSort::General, key);
         }
 
         if let Some(replacement) = self.replacements.get(&ty).copied() {
