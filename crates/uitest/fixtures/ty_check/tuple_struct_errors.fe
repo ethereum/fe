@@ -1,4 +1,4 @@
-use core::marker::Pinned
+use core::marker::{Pinned, Storage}
 
 mod time {
     pub struct Month(pub u8)
@@ -84,7 +84,7 @@ fn view_outside_its_module() {
 struct Slots(u256)
 
 impl Pinned for Slots {
-    space S = storage
+    type Space = Storage
 }
 
 fn state_only_as_value() {
