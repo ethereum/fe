@@ -526,6 +526,7 @@ impl<'db> TyChecker<'db> {
                             name,
                         ),
                         evidence: None,
+                        bound_evidence: None,
                     };
                     (
                         ty,

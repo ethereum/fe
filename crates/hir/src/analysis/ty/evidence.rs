@@ -14,6 +14,7 @@
 use salsa::Update;
 
 use super::{
+    const_ty::const_body_assumptions,
     fold::{TyFoldable, TyFolder},
     method_cmp::trait_to_impl_param_subst,
     normalize::normalize_ty,
@@ -27,13 +28,13 @@ use super::{
         constraint::collect_candidate_constraints, normalize_trait_inst_preserving_validity,
     },
     ty_check::{BodyOwner, func_signature},
-    ty_def::{BorrowKind, TyFlags, TyId},
+    ty_def::{BorrowKind, TyFlags},
     ty_lower::CompleteSubst,
     visitor::{TyVisitable, TyVisitor, collect_flags},
 };
 use crate::{
     analysis::{HirAnalysisDb, semantic::GenericSubst},
-    hir_def::{CallableDef, Func, ItemKind},
+    hir_def::{Body, CallableDef, Func, ItemKind, scope_graph::ScopeId},
 };
 
 #[salsa::interned]
@@ -335,8 +336,7 @@ pub(crate) fn instantiated_selection<'db>(
 /// trait's method `nominal` supplies. Each proof names as its assumptions the
 /// implementation's conditions, as a proof selecting the implementation
 /// proves them, followed by the assumptions `nominal`'s body is checked
-/// under, as the call proves them. An assumption that only follows from
-/// these leaves its proof absent. Absent for a method of no implementation.
+/// under, as the call proves them. Absent for a method of no implementation.
 #[salsa::tracked(return_ref)]
 pub(crate) fn impl_method_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -370,11 +370,48 @@ pub(crate) fn impl_method_evidence<'db>(
             .copied()
             .collect::<Vec<_>>(),
     );
+    Some(basis_proofs(
+        db,
+        body.scope(),
+        basis,
+        func_signature(db, body, BodyOwner::func_at(db, body, mode).mode()),
+    ))
+}
+
+/// How the value `body` of an implementation's constant proves the
+/// assumptions it is checked under from the implementation's conditions, as
+/// a proof selecting the implementation proves them. Absent for a body of no
+/// implementation.
+#[salsa::tracked(return_ref)]
+pub(crate) fn impl_const_evidence<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+) -> Option<Vec<Option<EvidenceId<'db>>>> {
+    let Some(ItemKind::ImplTrait(impl_trait)) = body.scope().parent_item(db) else {
+        return None;
+    };
+    Some(basis_proofs(
+        db,
+        body.scope(),
+        collect_candidate_constraints(db, impl_trait.into()).instantiate_identity(),
+        const_body_assumptions(db, body.scope()).extend_all_bounds(db),
+    ))
+}
+
+/// Proofs, in `scope`, of each of `goals` from the assumptions `basis`, each
+/// naming the assumptions it uses by their positions in `basis` itself. A
+/// goal that needs an assumption `basis` only implies has none.
+fn basis_proofs<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    basis: PredicateListId<'db>,
+    goals: PredicateListId<'db>,
+) -> Vec<Option<EvidenceId<'db>>> {
     // A proof names its assumptions by position in the extended basis.
-    let extended = basis.extend_all_bounds(db);
     let to_basis = EvidenceList::of(
         db,
-        extended
+        basis
+            .extend_all_bounds(db)
             .list(db)
             .iter()
             .map(|assumption| {
@@ -383,41 +420,44 @@ pub(crate) fn impl_method_evidence<'db>(
             })
             .collect::<Vec<_>>(),
     );
-    let solve_cx = TraitSolveCx::new(db, body.scope()).with_assumptions(basis);
-    Some(
-        func_signature(db, body, BodyOwner::func_at(db, body, mode).mode())
-            .list(db)
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(basis);
+    goals
+        .list(db)
+        .iter()
+        .map(|&goal| prove(db, solve_cx, goal)?.rebase(db, to_basis))
+        .collect()
+}
+
+/// `proofs` of a body's assumptions, in its own terms, instantiated by
+/// `subst`, with each basis assumption they name replaced by `supplied`'s
+/// proof of it.
+fn instantiate_proofs<'db>(
+    db: &'db dyn HirAnalysisDb,
+    proofs: &[Option<EvidenceId<'db>>],
+    subst: &CompleteSubst<'db>,
+    supplied: EvidenceList<'db>,
+) -> EvidenceList<'db> {
+    EvidenceList::of(
+        db,
+        proofs
             .iter()
-            .map(|&goal| prove(db, solve_cx, goal)?.rebase(db, to_basis))
-            .collect(),
+            .map(|proof| {
+                substitute_complete(db, (*proof)?, subst)
+                    .ok()?
+                    .rebase(db, supplied)
+            })
+            .collect::<Vec<_>>(),
     )
 }
 
 /// The proofs a call supplies to the method `body`, of the implementation
 /// its `selection` proof selects, of the assumptions `body` is checked under
 /// at `mode`: from the selection's proofs of the implementation's conditions
-/// and the call's proofs of `nominal`'s assumptions, `bound`. `args`
-/// instantiates `body`.
-pub(crate) fn impl_method_bound_evidence<'db>(
-    db: &'db dyn HirAnalysisDb,
-    (body, nominal, mode): (Func<'db>, Func<'db>, Option<BorrowKind>),
-    selection: EvidenceId<'db>,
-    bound: EvidenceList<'db>,
-    args: &[TyId<'db>],
-) -> EvidenceList<'db> {
-    impl_method_bound_evidence_query(
-        db,
-        (body, nominal, mode),
-        selection,
-        bound,
-        GenericSubst::for_owner(db, body.into(), args.to_vec()),
-    )
-}
-
-// Calls of one implementation's method with one substitution and one
-// selection share their instance's evidence.
+/// and the call's proofs of `nominal`'s assumptions, `bound`. `subst`
+/// instantiates `body`. Calls of one method with one substitution and one
+/// selection share them.
 #[salsa::tracked]
-fn impl_method_bound_evidence_query<'db>(
+pub(crate) fn impl_method_bound_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     (body, nominal, mode): (Func<'db>, Func<'db>, Option<BorrowKind>),
     selection: EvidenceId<'db>,
@@ -439,32 +479,47 @@ fn impl_method_bound_evidence_query<'db>(
             .chain(bound.entries(db).iter().copied())
             .collect::<Vec<_>>(),
     );
-    EvidenceList::of(
-        db,
-        proofs
-            .iter()
-            .map(|proof| {
-                substitute_complete(db, (*proof)?, subst)
-                    .ok()?
-                    .rebase(db, supplied)
-            })
-            .collect::<Vec<_>>(),
-    )
+    instantiate_proofs(db, proofs, subst, supplied)
 }
 
-/// The evidence an instance of `func` at `mode` with the closed arguments
-/// `args` runs with: `supplied`'s closed proofs, and a proof in `solve_cx`
-/// of each assumption it gives none of, or gives one naming an assumption of
-/// a body the instance does not run in. Instances of one body with one
-/// substitution so share their evidence.
+/// The proofs a use supplies to the value `body` of the implementation's
+/// constant its `selection` proof selects: from the selection's proofs of
+/// the implementation's conditions. `subst` instantiates `body`'s owner.
+#[salsa::tracked]
+pub(crate) fn impl_const_bound_evidence<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+    selection: EvidenceId<'db>,
+    subst: GenericSubst<'db>,
+) -> EvidenceList<'db> {
+    let (Some(proofs), Some(subst)) = (impl_const_evidence(db, body), subst.mapping(db).as_ref())
+    else {
+        return EvidenceList::none(db);
+    };
+    let supplied = EvidenceList::of(
+        db,
+        selection
+            .conds(db)
+            .iter()
+            .map(|&cond| Some(cond))
+            .collect::<Vec<_>>(),
+    );
+    instantiate_proofs(db, proofs, subst, supplied)
+}
+
+/// The evidence an instance whose body is checked under `signature` runs
+/// with, when `subst` instantiates the body with closed arguments:
+/// `supplied`'s closed proofs, and a proof in `solve_cx` of each assumption
+/// it gives none of, or gives one naming an assumption of a body the instance
+/// does not run in. Instances of one body with one substitution so share
+/// their evidence.
 pub(crate) fn closed_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
-    (func, mode): (Func<'db>, Option<BorrowKind>),
-    args: &[TyId<'db>],
+    signature: PredicateListId<'db>,
+    subst: &CompleteSubst<'db>,
     supplied: EvidenceList<'db>,
     solve_cx: TraitSolveCx<'db>,
 ) -> EvidenceList<'db> {
-    let signature = func_signature(db, func, mode);
     let closed = |index| {
         supplied
             .get(db, index)
@@ -473,10 +528,7 @@ pub(crate) fn closed_evidence<'db>(
     if (0..signature.list(db).len()).all(|index| closed(index).is_some()) {
         return supplied;
     }
-    let Some(goals) = CompleteSubst::for_owner(db, func.into(), args.to_vec())
-        .ok()
-        .and_then(|subst| substitute_complete(db, signature, &subst).ok())
-    else {
+    let Ok(goals) = substitute_complete(db, signature, subst) else {
         return EvidenceList::none(db);
     };
     EvidenceList::of(

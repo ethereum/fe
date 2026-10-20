@@ -50,7 +50,7 @@ use crate::{
                 BodyOwner, Callable, ConstIntrinsicKind, EffectArg, EffectParamSite,
                 EffectPassMode, EffectProviderProvenance, EffectProviderSpecialization,
                 ForLoopStep, LocalBinding, ParamSite, ResolvedEffectArg, RowArg,
-                SemanticExprLowering, SmirLoweringIssue, TypedBody,
+                SemanticExprLowering, SmirLoweringIssue, TypedBody, func_signature,
             },
             ty_def::{BorrowKind, InvalidCause, TyData, TyId},
             ty_is_snapshot,
@@ -2140,11 +2140,11 @@ pub fn root_semantic_instance_key<'db>(
         subst,
         EffectProviderSubst::new(db, effect_providers, Vec::new()),
         root_impl_env(db, owner, subst),
-        match owner {
-            BodyOwner::Func(func, mode) => closed_evidence(
+        match (owner, subst.mapping(db)) {
+            (BodyOwner::Func(func, mode), Some(mapping)) => closed_evidence(
                 db,
-                (func, mode),
-                subst.generic_args(db),
+                func_signature(db, func, mode),
+                mapping,
                 EvidenceList::none(db),
                 TraitSolveCx::new(db, owner.scope()),
             ),
