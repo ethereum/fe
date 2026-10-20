@@ -842,10 +842,11 @@ impl<'db> TyId<'db> {
     pub(super) fn const_ty_var(
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
+        sort: TyVarSort,
         key: InferenceKey<'db>,
     ) -> Self {
         let ty_var = TyVar {
-            sort: TyVarSort::General,
+            sort,
             kind: ty.kind(db).clone(),
             key,
         };
@@ -1747,6 +1748,11 @@ pub enum TyVarSort {
 
     /// Type variable that can be unified with only integral types.
     Integral,
+
+    /// Const variable for the length of a string literal's `String<N>` type.
+    /// It can be unified with integer constants of at least `min_len`, and
+    /// defaults to `min_len` like the literal's own type would.
+    StringLen { min_len: usize },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -1775,6 +1781,10 @@ impl PartialOrd for TyVarSort {
                 other => other,
             },
             (Self::String { .. }, _) | (_, Self::String { .. }) => None,
+            (Self::StringLen { min_len: min_len1 }, Self::StringLen { min_len: min_len2 }) => {
+                min_len1.partial_cmp(min_len2)
+            }
+            (Self::StringLen { .. }, _) | (_, Self::StringLen { .. }) => None,
             (Self::Integral, Self::Integral) => Some(std::cmp::Ordering::Equal),
         }
     }
@@ -1783,7 +1793,7 @@ impl PartialOrd for TyVarSort {
 impl TyVar<'_> {
     pub(super) fn pretty_print(&self) -> String {
         match self.sort {
-            TyVarSort::General => ("_").to_string(),
+            TyVarSort::General | TyVarSort::StringLen { .. } => ("_").to_string(),
             TyVarSort::Integral => "{integer}".to_string(),
             TyVarSort::String { min_len, fallback } => match fallback {
                 StringFallback::Dynamic => format!("DynString({min_len})"),

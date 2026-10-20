@@ -288,7 +288,7 @@ fn test_cli_check_assoc_item_ignores_traits_of_dependencies_not_in_scope() {
         format!(
             "pub trait {name} {{\n    const SIZE: usize\n    fn bytes(self) -> [u8; Self::SIZE]\n}}\n\
              impl<const LEN: usize> {name} for String<LEN> {{\n    const SIZE: usize = LEN\n    \
-             fn bytes(self) -> [u8; Self::SIZE] {{ self.as_bytes() }}\n}}\n"
+             fn bytes(self) -> [u8; Self::SIZE] {{ self.as_bytes().to_array() }}\n}}\n"
         )
     };
     fs::write(root.join("dep/src/lib.fe"), trait_src("Key")).unwrap();

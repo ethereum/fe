@@ -319,7 +319,7 @@ where
             TyData::ConstTy(const_ty) => {
                 if let ConstTyData::TyVar(var, const_ty_ty) = const_ty.data(db) {
                     let new_key = self.table.new_key(&var.kind, var.sort);
-                    let new_ty = TyId::const_ty_var(db, *const_ty_ty, new_key);
+                    let new_ty = TyId::const_ty_var(db, *const_ty_ty, var.sort, new_key);
                     self.subst.insert(ty, new_ty);
                     new_ty
                 } else {
@@ -349,6 +349,7 @@ mod tests {
         let len = TyId::const_ty_var(
             &db,
             TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::Usize))),
+            TyVarSort::General,
             table.new_key(&Kind::Star, TyVarSort::General),
         );
         let array = TyId::app_structural(&db, TyId::array(&db, elem), len);
