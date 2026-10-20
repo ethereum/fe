@@ -244,7 +244,14 @@ impl<'db> KnownChoice<'db> {
         ))
     }
 
-    /// Reconstruct a `KnownChoice` from an `Evidence::Impl` proof for `goal`.
+    /// Reconstruct a `KnownChoice` from an `Evidence::Impl` proof for `goal`
+    /// after caller specialization (`EvidenceId::bind`).
+    ///
+    /// Contract: `evidence` is a concrete HIR implementation proof tree whose
+    /// non-ordinary prerequisite choices have been bound to `Evidence::Impl`
+    /// or `Evidence::Param` leaves; any remaining `Evidence::Assumption` leaf
+    /// represents an ordinary declaration-bound obligation (not an overridden
+    /// `KnownChoice.bounds` entry).
     pub fn from_evidence(
         db: &'db dyn HirAnalysisDb,
         evidence: super::evidence::EvidenceId<'db>,

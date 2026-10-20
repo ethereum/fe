@@ -546,13 +546,10 @@ impl<'db> Callable<'db> {
         db: &'db dyn HirAnalysisDb,
         solve_cx: TraitSolveCx<'db>,
     ) {
-        if let Some(choice) = self.choice
-            && let Some(ev) = choice.to_evidence(db, solve_cx, self.trait_inst)
-        {
-            self.evidence = Some(ev);
-            return;
-        }
-        self.evidence = self.trait_inst.and_then(|inst| prove(db, solve_cx, inst));
+        self.evidence = match self.choice {
+            Some(choice) => choice.to_evidence(db, solve_cx, self.trait_inst),
+            None => self.trait_inst.and_then(|inst| prove(db, solve_cx, inst)),
+        };
     }
 
     /// The checker's proof of the call's trait goal.

@@ -444,10 +444,12 @@ pub(crate) fn declared_bound_evidence_with_deliveries<'db>(
             if let Some((_, choice)) = bound_deliveries
                 .iter()
                 .find(|(slot, _)| *slot == bound || *slot == bound_slot)
-                && let Some(ev) = choice.to_evidence(db, solve_cx, goal)
-                && (!goal.is_some_and(|g| is_closed_goal(db, g)) || !ev.is_ordinary(db))
             {
-                return Some(ev);
+                let ev = choice.to_evidence(db, solve_cx, goal)?;
+                if !goal.is_some_and(|g| is_closed_goal(db, g)) || !ev.is_ordinary(db) {
+                    return Some(ev);
+                }
+                return None;
             }
             if !declared.list(db).contains(&bound) || mentions_effect_provider(db, bound) {
                 return None;

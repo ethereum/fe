@@ -1832,3 +1832,272 @@ pub fn bad_factory(_ ev: Evidence<Inner<u256>>) -> u256 {
         "expected 8-0098 refusal for factory call capturing pending evidence sub-choice, got {codes_neg:?}"
     );
 }
+
+#[test]
+fn generic_helper_prove_outer_boxed_transports_subchoices_and_refuses_pending_evidence() {
+    let diag_codes_and_msgs = |name: &str, src: &str| -> (Vec<String>, Vec<String>) {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(name.into(), src);
+        let (top_mod, _) = db.top_mod(file);
+        let diags = fe_hir::analysis::initialize_analysis_pass().run_on_module(&db, top_mod);
+        let codes = diags
+            .iter()
+            .map(|d| d.to_complete(&db).error_code.to_string())
+            .collect();
+        let msgs = diags
+            .iter()
+            .map(|d| {
+                let c = d.to_complete(&db);
+                format!("{}: {}", c.error_code, c.message)
+            })
+            .collect();
+        (codes, msgs)
+    };
+
+    let positive = r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const C: u256
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner {
+    const C: u256 = 20
+    const fn inner() -> u256 { 20 }
+}
+
+struct Boxed<T> { pub x: T }
+trait Outer {
+    const K: u256
+    const fn outer(self) -> u256
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const K: u256 = T::C
+    const fn outer(self) -> u256 { T::inner() }
+}
+
+const fn make_outer<T: Inner>() -> Evidence<Outer<Boxed<T>>> {
+    prove<Outer<Boxed<T>>>()
+}
+
+const fn repack<T>(_ ev: Evidence<Inner<T>>) -> Evidence<Outer<Boxed<T>>> {
+    with (ev) {
+        prove<Outer<Boxed<T>>>()
+    }
+}
+
+const EV_ALT: Evidence<Inner<u256>> = with (AltInner) {
+    prove<Inner<u256>>()
+}
+
+const FROM_GENERIC_BOUND: u256 = {
+    let ev = with (AltInner) {
+        make_outer<u256>()
+    }
+    with (ev) {
+        (Boxed { x: 1 as u256 }).outer() + <Boxed<u256> as Outer>::K
+    }
+}
+
+const FROM_GENERIC_REPACK: u256 = {
+    let ev = repack(EV_ALT)
+    with (ev) {
+        (Boxed { x: 1 as u256 }).outer() + <Boxed<u256> as Outer>::K
+    }
+}
+
+const FROM_GENERIC_ORDINARY: u256 = with (make_outer<u256>()) {
+    (Boxed { x: 1 as u256 }).outer() + <Boxed<u256> as Outer>::K
+}
+
+// (d) Direct concrete read in generic helper stays ordinary (10 + 10 = 20)
+// while the declared bound `T: Inner` receives `AltInner` (20 + 20 = 40).
+const fn bound_vs_concrete_helper<T: Inner>() -> u256 {
+    (T::inner() + T::C) * 100 + (<u256 as Inner>::inner() + <u256 as Inner>::C)
+}
+const BOUND_VS_CONCRETE: u256 = with (AltInner) {
+    bound_vs_concrete_helper<u256>()
+}
+
+// (c) MB3 12-vs-22 slot-collision case: declared slots retain their checked
+// answers when substitution later merges goals, both directly and through
+// `prove<G>()` proof materialization.
+trait Read<T> {
+    const R_CONST: u256
+    const fn read() -> u256
+}
+struct S {}
+impl<T> Read<T> for S {
+    const R_CONST: u256 = 1
+    const fn read() -> u256 { 1 }
+}
+impl Read<u8> for S as Alternative {
+    const R_CONST: u256 = 2
+    const fn read() -> u256 { 2 }
+}
+
+const fn consume<A, T>() -> u256
+where
+    A: Read<T>,
+    A: Read<u8>,
+{
+    <A as Read<T>>::read() * 10 + <A as Read<u8>>::read()
+}
+
+const fn run_slot_collision<T>() -> u256 {
+    with (Alternative) {
+        consume<S, T>()
+    }
+}
+
+const SLOT_COLLISION_SEPARATE: u256 = run_slot_collision<u8>()
+const SLOT_COLLISION_CONCRETE: u256 = with (Alternative) {
+    consume<S, u8>()
+}
+
+struct Pair<A, T> { pub x: u256 }
+trait OuterPair {
+    const PK: u256
+    const fn pair_read(self) -> u256
+}
+impl<A, T> OuterPair for Pair<A, T>
+where
+    A: Read<T>,
+    A: Read<u8>,
+{
+    const PK: u256 = <A as Read<T>>::R_CONST * 10 + <A as Read<u8>>::R_CONST
+    const fn pair_read(self) -> u256 {
+        <A as Read<T>>::read() * 10 + <A as Read<u8>>::read()
+    }
+}
+
+const fn prove_slot_collision<T>() -> Evidence<OuterPair<Pair<S, T>>> {
+    with (Alternative) {
+        prove<OuterPair<Pair<S, T>>>()
+    }
+}
+
+const PROVED_COLLISION_SEPARATE: u256 = {
+    let ev = prove_slot_collision<u8>()
+    with (ev) {
+        let p: Pair<S, u8> = Pair { x: 0 }
+        p.pair_read() * 100 + <Pair<S, u8> as OuterPair>::PK
+    }
+}
+
+const PROVED_COLLISION_CONCRETE: u256 = {
+    let ev = with (Alternative) {
+        prove<OuterPair<Pair<S, u8>>>()
+    }
+    with (ev) {
+        let p: Pair<S, u8> = Pair { x: 0 }
+        p.pair_read() * 100 + <Pair<S, u8> as OuterPair>::PK
+    }
+}
+
+struct Verify<const N: u256, const EXPECTED: u256> where { N == EXPECTED } {}
+fn verify_generic_helper_prove(
+    _ a: Verify<FROM_GENERIC_BOUND, 40>,
+    _ b: Verify<FROM_GENERIC_REPACK, 40>,
+    _ c: Verify<FROM_GENERIC_ORDINARY, 20>,
+    _ d: Verify<BOUND_VS_CONCRETE, 4020>,
+    _ e: Verify<SLOT_COLLISION_SEPARATE, 12>,
+    _ f: Verify<SLOT_COLLISION_CONCRETE, 22>,
+    _ g: Verify<PROVED_COLLISION_SEPARATE, 1212>,
+    _ h: Verify<PROVED_COLLISION_CONCRETE, 2222>,
+) {}
+"#;
+    let (codes_pos, msgs_pos) = diag_codes_and_msgs("generic_helper_prove_pos.fe", positive);
+    assert!(
+        codes_pos.is_empty(),
+        "expected no diagnostics for generic helper prove<Outer<Boxed<T>>>(), got {msgs_pos:?}"
+    );
+
+    let negative_pending_bound = r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const C: u256
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn inner() -> u256 { 10 }
+}
+
+struct Boxed<T> { pub x: T }
+trait Outer {
+    const K: u256
+    const fn outer(self) -> u256
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const K: u256 = T::C
+    const fn outer(self) -> u256 { T::inner() }
+}
+
+const fn make_outer<T: Inner>() -> Evidence<Outer<Boxed<T>>> {
+    prove<Outer<Boxed<T>>>()
+}
+
+pub fn bad_pending_bound(_ ev: Evidence<Inner<u256>>) -> u256 {
+    with (ev) {
+        with (make_outer<u256>()) {
+            (Boxed { x: 1 as u256 }).outer()
+        }
+    }
+}
+"#;
+    let (codes_neg_bound, msgs_neg_bound) =
+        diag_codes_and_msgs("generic_helper_prove_neg_bound.fe", negative_pending_bound);
+    assert_eq!(
+        codes_neg_bound,
+        vec!["8-0098".to_string()],
+        "expected exactly 8-0098 refusal for make_outer<u256>() under pending evidence parameter, got {msgs_neg_bound:?}"
+    );
+
+    let negative_pending_param = r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const C: u256
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn inner() -> u256 { 10 }
+}
+
+struct Boxed<T> { pub x: T }
+trait Outer {
+    const K: u256
+    const fn outer(self) -> u256
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const K: u256 = T::C
+    const fn outer(self) -> u256 { T::inner() }
+}
+
+const fn repack<T>(_ ev: Evidence<Inner<T>>) -> Evidence<Outer<Boxed<T>>> {
+    with (ev) {
+        prove<Outer<Boxed<T>>>()
+    }
+}
+
+pub fn bad_pending_param(_ ev: Evidence<Inner<u256>>) -> u256 {
+    with (repack(ev)) {
+        (Boxed { x: 1 as u256 }).outer()
+    }
+}
+"#;
+    let (codes_neg_param, msgs_neg_param) =
+        diag_codes_and_msgs("generic_helper_prove_neg_param.fe", negative_pending_param);
+    assert_eq!(
+        codes_neg_param,
+        vec!["8-0098".to_string()],
+        "expected exactly 8-0098 refusal for repack(ev) with pending evidence parameter, got {msgs_neg_param:?}"
+    );
+}

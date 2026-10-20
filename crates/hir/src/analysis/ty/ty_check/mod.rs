@@ -4283,10 +4283,10 @@ impl<'db> ConstRef<'db> {
             return;
         };
         let solve_cx = use_.solve_cx(db);
-        let ev = use_
-            .choice()
-            .and_then(|choice| choice.to_evidence(db, solve_cx, Some(use_.inst())))
-            .or_else(|| super::evidence::prove(db, solve_cx, use_.inst()));
+        let ev = match use_.choice() {
+            Some(choice) => choice.to_evidence(db, solve_cx, Some(use_.inst())),
+            None => super::evidence::prove(db, solve_cx, use_.inst()),
+        };
         *use_ = use_.with_evidence(ev);
     }
 }

@@ -1961,9 +1961,6 @@ impl<'db> TyChecker<'db> {
                 {
                     Some(choice) if self.choice_answers(choice, goal) => Ok(choice),
                     Some(_) => Err("the opened implementation does not prove the requested goal"),
-                    None if slot.args(self.db).iter().any(|ty| ty.has_param(self.db)) => {
-                        Err("a generic goal can be proved only under a `with` that opens it")
-                    }
                     // Proved through a condition on an opened slot, or by a
                     // proof that cannot be followed: refused as the call form
                     // of the same goal is.
@@ -1991,6 +1988,12 @@ impl<'db> TyChecker<'db> {
                                 undecided.push(goal);
                                 "the requested trait goal was not proved"
                             }),
+                            _ if slot.args(self.db).iter().any(|ty| ty.has_param(self.db)) => {
+                                undecided.push(goal);
+                                Err(
+                                    "a generic goal can be proved only under a `with` that opens it",
+                                )
+                            }
                             _ => {
                                 undecided.push(goal);
                                 Err("the requested trait goal was not proved")
