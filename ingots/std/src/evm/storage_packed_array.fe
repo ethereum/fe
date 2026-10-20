@@ -3,7 +3,7 @@ use core::ops::{Location, StateIndex}
 use core::option::Option
 
 use super::effects::{RawStorage, storage_at_mut}
-use super::sol_slot::data_slot
+use super::layout::array_data_slot
 
 const U256_MASK: u256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
@@ -62,7 +62,7 @@ unsafe impl StateIndex for PackedWords {
     #[arithmetic(unchecked)]
     #[inline(always)]
     fn locate(self, _ root: u256, _ word: u256) -> Location {
-        Location { slot: data_slot(root) + word, offset: 0 }
+        Location { slot: array_data_slot(root) + word, offset: 0 }
     }
 }
 

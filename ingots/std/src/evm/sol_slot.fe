@@ -34,8 +34,8 @@ use core::num::IntDowncast
 use core::marker::{Pinned, Storage}
 use core::ops::{Location, StateIndex, WrappingAdd}
 use core::ptr::{self, MemSpan}
-use super::crypto::keccak_words
 use super::effects::{Address, RawStorage, revert_error, storage_at_mut}
+use super::layout::array_data_slot
 use super::ops::{revert_empty, signextend}
 use super::panic::{PANIC_STORAGE_ENCODING, Panic}
 
@@ -68,7 +68,7 @@ unsafe impl StateIndex for Payload {
     type Entry = u256
 
     fn locate(self, _ root: u256, _ word: u256) -> Location {
-        Location { slot: data_slot(root).wrapping_add(word), offset: 0 }
+        Location { slot: array_data_slot(root).wrapping_add(word), offset: 0 }
     }
 }
 
@@ -223,12 +223,6 @@ impl SolSlot {
             i += 1
         }
     }
-}
-
-// First data slot of a long value (or of a dynamic array):
-// `keccak256(abi.encode(slot))`.
-pub(ingot) fn data_slot(_ slot: u256) -> u256 {
-    keccak_words([slot])
 }
 
 // Panics like Solidity (0x22) on a head whose length contradicts its
