@@ -830,7 +830,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     panic!("unexpected access expression: {expr:?}")
                 };
                 let place = match data {
-                    Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) => *inner,
+                    Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref)) => {
+                        *inner
+                    }
                     _ => expr,
                 };
                 let place = self.lower_place(place);
@@ -891,7 +893,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             ))
         });
         let exit_ty = match self.template_owner {
-            BodyOwner::Func(func) if let Some(shape) = func.return_shape(self.db) => {
+            BodyOwner::Func(func, mode) if let Some(shape) = func.return_shape(self.db, mode) => {
                 shape.carrier_ty(self.db)
             }
             _ => self.typed_body.result_ty(),
@@ -1100,7 +1102,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let index = self.lower_expr_operand(*index);
                 self.emit_expr_with_origin(origin, ty, SExpr::Index { base, index })
             }
-            Expr::Un(_, UnOp::Mut | UnOp::Ref) => self.lower_access(expr),
+            Expr::Un(_, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref) => self.lower_access(expr),
             Expr::Un(_, UnOp::Deref) => {
                 let place = self.lower_place(expr);
                 self.emit_expr_with_origin(origin, ty, SExpr::ReadPlace { place })
@@ -1735,7 +1737,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         receiver: bool,
     ) -> SValueId {
         let ty = self.expr_ty(expr);
-        let mode = callable.callable_def().param_mode(self.db, param);
+        let mode = callable
+            .callable_def()
+            .param_mode(self.db, param, callable.mode());
         if mode == FuncParamMode::Own {
             let value = self.lower_expr(expr);
             return self.take_operand(expr, value);
@@ -1816,7 +1820,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         if let Some(&base) = self.loop_bases.get(&receiver) {
             return Receiver::Value(base);
         }
-        let mode = callable.callable_def().param_mode(self.db, 0);
+        let mode = callable
+            .callable_def()
+            .param_mode(self.db, 0, callable.mode());
         if mode != FuncParamMode::Own
             && self.typed_body.expr_prop(self.db, receiver).shape.is_some()
         {
@@ -1913,7 +1919,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         match prepared {
             Receiver::Value(value) => value,
             Receiver::Place(None)
-                if callable.callable_def().param_mode(self.db, 0) != FuncParamMode::Mut =>
+                if callable
+                    .callable_def()
+                    .param_mode(self.db, 0, callable.mode())
+                    != FuncParamMode::Mut =>
             {
                 self.lower_callable_argument(receiver, callable, 0, true)
             }
@@ -2021,11 +2030,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             .flatten()
             .expect("const intrinsic should resolve to a function")
             .key;
-            let const_expr = ConstExpr::Invocation(ConstInvocation {
-                key,
-                args: Vec::new(),
-                parameter_owner: caller.owner(self.db).scope(),
-            });
+            let const_expr = ConstExpr::Invocation(ConstInvocation::new(self.db, key, Vec::new()));
             let const_ty = ConstTyId::new(
                 self.db,
                 ConstTyData::Abstract(ConstExprId::new(self.db, const_expr), result_ty),
@@ -2099,7 +2104,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 }
             }
             Stmt::While(cond, body_expr) => self.lower_while(*cond, *body_expr),
-            Stmt::For(pat, _, _, body_expr, _) => self.lower_for(stmt, *pat, *body_expr),
+            Stmt::For(pat, _, body_expr, _) => self.lower_for(stmt, *pat, *body_expr),
             Stmt::Continue => {
                 let is_reachable = !self.is_terminated(self.current);
                 let scope = self.loop_stack.last_mut().expect("continue outside loop");
@@ -2206,12 +2211,15 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
     }
 
-    /// Lowers `for pat in base by d { body }` to the protocol its plan
-    /// selects: the collection's own, or the driver's. Each state is tested
-    /// where it is produced, so only the state itself is carried around the
-    /// loop. The next state is taken at the latch, after the body and its
-    /// element's cleanup, which is where `continue` goes; `break` leaves
-    /// without advancing.
+    /// Lowers `for pat in base { body }` to the protocol its plan selects:
+    /// the collection's own, or that of the method chain driving it. The
+    /// header tests the state the body then projects from with `has`, so only
+    /// the state is carried around the loop. The next state is taken at the
+    /// latch, after the body and its element's cleanup, which is where
+    /// `continue` goes; `break` leaves without advancing. The latch does not
+    /// test the state again: a body over copied items may change the base,
+    /// and `produce` the producer, so `next` accepts a state that may name no
+    /// element by now, and the header tests what it returns.
     fn lower_for(&mut self, stmt: StmtId, pat: PatId, body_expr: ExprId) {
         let sites = self
             .for_loop_call_sites
@@ -2222,20 +2230,15 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             .typed_body
             .for_loop_plan(stmt)
             .unwrap_or_else(|| panic!("missing loop protocol for for-loop {stmt:?}"));
-        let bases: Vec<_> = plan
-            .bases
-            .iter()
-            .map(|&base| (base, self.lower_loop_base(base)))
-            .collect();
-        // A method chain rooted at a base views it for its own calls.
-        for (expr, base) in &bases {
-            let value = self.loop_base_operand(*expr, base).value;
-            self.loop_bases.insert(*expr, value);
-        }
+        let base_expr = plan.base;
+        let base = self.lower_loop_base(base_expr);
+        // A method chain rooted at the base views it for its own calls.
+        let value = self.loop_base_operand(base_expr, &base).value;
+        self.loop_bases.insert(base_expr, value);
         // The driver is evaluated once, so the body cannot retarget it. A
-        // producer advances its own copy, which the loop takes; any other
-        // driver the loop holds as it does a base, by a view of its place for
-        // the whole loop, unless it is `Copy` or a fresh value.
+        // producer advances its own copy, which the loop takes; a driver that
+        // a projection yields is held as a base is, by a view of its place for
+        // the whole loop, unless it is `Copy`.
         let driver = plan.driver.map(|driver| {
             let ty = self.expr_ty(driver);
             if plan.item != ForLoopItem::Produced
@@ -2257,15 +2260,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             });
             SOperand::synthetic(temp)
         });
-        // The calls take the driver first, then the bases, then the state.
+        // The calls take the driver first, then the base, then the state.
         let inputs = |this: &mut Self| -> Vec<SOperand> {
             driver
                 .into_iter()
-                .chain(
-                    bases
-                        .iter()
-                        .map(|(expr, base)| this.loop_base_operand(*expr, base)),
-                )
+                .chain([this.loop_base_operand(base_expr, &base)])
                 .collect()
         };
         let with_state = |this: &mut Self, state| {
@@ -2276,7 +2275,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let call = |this: &mut Self, step, args: Vec<SOperand>, ty| {
             let site = sites.site(step);
             let effect_args = this.lower_effect_arg_slice(&site.effect_args);
-            this.emit_expr(
+            // Protocol calls belong to the loop, including when CTFE reports
+            // a failure in a generated call rather than a written expression.
+            this.emit_expr_with_origin(
+                SemOrigin::Stmt(stmt),
                 ty,
                 SExpr::Call {
                     call_site: CallSiteId::ForLoop(stmt, step),
@@ -2288,49 +2290,35 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 },
             )
         };
-        let option_ty = plan.call(ForLoopStep::Start).callable.ret_ty(self.db);
         let shape = &plan.shape;
-        let some = VariantIndex(
-            sum_kind(self.db, self.body.scope(), option_ty)
-                .expect("a loop state is an `Option`")
-                .payload_variant(),
-        );
         let state = self.alloc_temp(plan.state_ty);
+        let header_bb = self.new_block();
         let body_bb = self.new_block();
         let latch_bb = self.new_block();
         let exit_bb = self.new_block();
-        // Enters the body with the state `next` holds, or leaves the loop.
-        let test = |this: &mut Self, next| {
-            let is_some = this.emit_expr(
-                TyId::bool(this.db),
-                SExpr::IsEnumVariant {
-                    value: SOperand::synthetic(next),
-                    variant: some,
-                },
-            );
-            let load_bb = this.new_block();
-            this.set_synthetic_terminator(
-                this.current,
-                STerminatorKind::Branch {
-                    cond: SOperand::synthetic(is_some),
-                    then_bb: load_bb,
-                    else_bb: exit_bb,
-                },
-            );
-            this.switch_to(load_bb);
+        // Holds the state `start` or `next` makes, and goes to the header.
+        let advance = |this: &mut Self, value| {
             this.push_synthetic_stmt(SStmtKind::Assign {
                 dst: state,
-                expr: SExpr::ExtractEnumField {
-                    value: SOperand::synthetic(next),
-                    variant: some,
-                    field: FieldIndex(0),
-                },
+                expr: SExpr::Forward(SOperand::synthetic(value)),
             });
-            this.set_synthetic_terminator(this.current, STerminatorKind::Goto(body_bb));
+            this.set_synthetic_terminator(this.current, STerminatorKind::Goto(header_bb));
         };
         let args = inputs(self);
-        let first = call(self, ForLoopStep::Start, args, option_ty);
-        test(self, first);
+        let first = call(self, ForLoopStep::Start, args, plan.state_ty);
+        advance(self, first);
+
+        self.switch_to(header_bb);
+        let args = with_state(self, state);
+        let has = call(self, ForLoopStep::Has, args, TyId::bool(self.db));
+        self.set_synthetic_terminator(
+            self.current,
+            STerminatorKind::Branch {
+                cond: SOperand::synthetic(has),
+                then_bb: body_bb,
+                else_bb: exit_bb,
+            },
+        );
 
         self.loop_stack.push(LoopScope {
             continue_bb: latch_bb,
@@ -2409,8 +2397,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         if falls_through || scope.has_reachable_continue {
             self.switch_to(latch_bb);
             let args = with_state(self, state);
-            let next = call(self, ForLoopStep::Next, args, option_ty);
-            test(self, next);
+            let next = call(self, ForLoopStep::Next, args, plan.state_ty);
+            advance(self, next);
         } else {
             // Every body path leaves the loop, so nothing reaches the latch.
             // Close it like a dead `if`/`match` join.

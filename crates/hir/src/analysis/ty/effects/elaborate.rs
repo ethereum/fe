@@ -1,3 +1,4 @@
+use crate::hir_def::ModeMarker;
 use smallvec1::SmallVec;
 
 use crate::{
@@ -247,6 +248,7 @@ fn build_conservative_invalid_trait_key_barrier_pattern_in_scope<'db>(
                 .chain(args_no_self.iter().copied())
                 .collect::<Vec<_>>(),
             IndexMap::new(),
+            ModeMarker::None,
         ),
         slots,
     )))

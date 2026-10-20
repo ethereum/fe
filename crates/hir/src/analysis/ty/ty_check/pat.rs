@@ -368,6 +368,11 @@ impl<'db> TyChecker<'db> {
         let Pat::Path(path, marker) = pat_data else {
             unreachable!()
         };
+        if *marker == BindingMarker::MaybeMut && self.env.owner().mode().is_none() {
+            self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                primary: pat.span(self.body()).into(),
+            });
+        }
 
         let Partial::Present(path) = path else {
             return self.finish_pat_check(
@@ -483,6 +488,7 @@ impl<'db> TyChecker<'db> {
                     inst.def(self.db),
                     args,
                     inst.assoc_type_bindings(self.db).clone(),
+                    inst.mode(self.db),
                 );
 
                 let trait_ = inst.def(self.db);

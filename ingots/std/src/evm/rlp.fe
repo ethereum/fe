@@ -24,7 +24,7 @@ use core::abi::Bytes
 use core::num::IntDowncast
 use core::option::Option
 use core::ptr::{self, MemArray, MemSpan}
-use super::effects::{Address, revert}
+use super::effects::Address
 
 /// Encodes a byte string.
 pub fn encode_bytes(_ data: MemSpan) -> Bytes {
@@ -54,12 +54,8 @@ pub fn encode_uint(_ value: u256) -> Bytes {
     unsafe { Bytes::from_payload(source: MemSpan::from_raw_parts(ptr: out, len: 1 + len)) }
 }
 
-/// Encodes an address as a 20-byte string. Reverts for a noncanonical
-/// `Address` with high bits set.
+/// Encodes an address as a 20-byte string.
 pub fn encode_address(_ address: Address) -> Bytes {
-    if address.inner >> 160 != 0 {
-        revert(())
-    }
     Bytes::from_word_prefix(word: (0x94 << 248) | (address.inner << 88), len: 21)
 }
 

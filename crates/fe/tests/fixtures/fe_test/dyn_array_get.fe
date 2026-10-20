@@ -26,7 +26,7 @@ pub contract Arr {
         }
 
         AddrAt { addrs, index } -> u256 {
-            addrs.get(index).inner
+            addrs.get(index).word()
         }
 
         AddrLen { addrs } -> u256 {
@@ -49,7 +49,7 @@ fn test_get_from_decoded_param()
 uses (evm: mut Evm)
 {
     let arr = evm.create2<Arr>(value: 0, args: (), salt: 0)
-    assert!(arr.inner != 0)
+    assert!(arr.word() != 0)
 
     let v0: u256 = evm.call(addr: arr, gas: 1000000, value: 0, message: ArrMsg::GetAt { values: make_arr(a: 11, b: 22, c: 33), index: 0 })
     let v1: u256 = evm.call(addr: arr, gas: 1000000, value: 0, message: ArrMsg::GetAt { values: make_arr(a: 11, b: 22, c: 33), index: 1 })
@@ -108,10 +108,10 @@ fn test_dirty_address_element_reverts_on_get()
 uses (evm: mut Evm, call: mut Call, ctx: Ctx)
 {
     let arr = evm.create2<Arr>(value: 0, args: (), salt: 0)
-    assert!(arr.inner != 0)
+    assert!(arr.word() != 0)
 
     var v: MemVec<Address> = MemVec::zeroed(1)
-    v.set(index: 0, value: Address { inner: 0xabc })
+    v.set(index: 0, value: Address::new(0xabc))
 
     // Canonical element decodes fine.
     let got: u256 = evm.call(addr: arr, gas: 1000000, value: 0, message: ArrMsg::AddrAt { addrs: v.to_dyn_array(), index: 0 })

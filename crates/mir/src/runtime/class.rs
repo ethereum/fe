@@ -399,6 +399,10 @@ fn builtin_result_class<'db>(
             verify_word_value(body, *len)?;
             Ok(None)
         }
+        RuntimeBuiltin::StoreConstBytes { dst, .. } => {
+            verify_address_operand(body, *dst, AddressSpace::Memory)?;
+            Ok(None)
+        }
         RuntimeBuiltin::Msize
         | RuntimeBuiltin::CallValue
         | RuntimeBuiltin::ReturnDataSize

@@ -48,7 +48,7 @@ pub contract ShapeDispatcher {
 #[test]
 fn test_shape() uses (evm: mut Evm) {
     let contract_addr = evm.create2<ShapeDispatcher>(value: 0, args: (), salt: 0)
-    assert!(contract_addr.inner != 0)
+    assert!(contract_addr.word() != 0)
 
     // Test point(3, 4)
     // p.x = 3 + 1 = 4

@@ -521,16 +521,20 @@ fn declared_sol_compat_abi_type<'db>(
     // event `TOPIC0` hash does: through its `as_bytes` method.
     let as_bytes = resolve_lib_trait_path(db, scope, "core::AsBytes")?;
     let inst = TraitInstId::new_simple(db, as_bytes, vec![sem_const_ty(db, value)]);
-    let Selection::Unique(method) =
-        resolve_trait_method_instance(db, solve_cx, inst, IdentId::new(db, "as_bytes".to_string()))
-    else {
+    let Selection::Unique(method) = resolve_trait_method_instance(
+        db,
+        solve_cx,
+        inst,
+        IdentId::new(db, "as_bytes".to_string()),
+        None,
+    ) else {
         return None;
     };
     let func = method.body()?;
     let subst = method.complete_body_args(db, inst.args(db)).ok()?;
     let EvalOutcome::Ready(bytes) = eval_body_owner_const_with_args(
         db,
-        BodyOwner::Func(func),
+        BodyOwner::func(db, func),
         GenericSubst::complete(db, subst),
         vec![value],
     ) else {

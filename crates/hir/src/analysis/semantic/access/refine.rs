@@ -67,12 +67,12 @@ pub(crate) fn provisional_call_site_provider_refinements<'db>(
             else {
                 continue;
             };
-            let BodyOwner::Func(func) = callee.key.owner(db) else {
+            let BodyOwner::Func(func, mode) = callee.key.owner(db) else {
                 continue;
             };
             let mut inputs = Vec::new();
             for (position, arg) in args.iter().enumerate() {
-                if CallableDef::Func(func).param_mode(db, position) != FuncParamMode::Own {
+                if CallableDef::Func(func).param_mode(db, position, mode) != FuncParamMode::Own {
                     let regions = analysis.passed_regions(arg.value);
                     inputs.push((
                         RefinedInput::Param(position as u32),

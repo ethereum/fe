@@ -884,7 +884,7 @@ fn shapes(_ a: *A, _ b: *B, _ odd: *Odd) {}
                     .is_some_and(|name| name.data(db) == func)
             })
             .unwrap_or_else(|| panic!("missing function `{func}`"));
-        let key = root_semantic_instance_key(db, BodyOwner::Func(func)).expect("root key");
+        let key = root_semantic_instance_key(db, BodyOwner::Func(func, None)).expect("root key");
         let semantic = get_or_build_semantic_instance(db, key);
         let typed_body = semantic.key(db).typed_body(db);
         let binding = typed_body.param_binding(idx).expect("parameter binding");

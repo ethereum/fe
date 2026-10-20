@@ -19,6 +19,7 @@ use crate::{
     hir_def::TypeAlias,
 };
 use either::Either;
+use ruint::aliases::U256;
 use salsa::Update;
 use smallvec1::SmallVec;
 use thin_vec::ThinVec;
@@ -66,12 +67,9 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
-    /// A result-space annotation, or an implementation's associated space,
-    /// that names no space.
-    UnknownResultSpace(DynLazySpan<'db>),
-    /// A result-space contract's path, `@p.f[_]`, that names no part of its
-    /// root's type, or follows a root that is not a parameter or effect.
-    InvalidResultSpacePath(DynLazySpan<'db>),
+    /// A `T: mut? Trait` bound of an item without a mode: one that is not a
+    /// function or an implementation.
+    MaybeMutBound(DynLazySpan<'db>),
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -185,6 +183,10 @@ pub enum TyLowerDiag<'db> {
         span: DynLazySpan<'db>,
         message: Option<String>,
     },
+    ConstEvalPanicked {
+        span: DynLazySpan<'db>,
+        code: U256,
+    },
     ConstEvalNonConstCall(DynLazySpan<'db>),
     ConstEvalDivisionByZero(DynLazySpan<'db>),
     ConstEvalOutOfBounds(DynLazySpan<'db>),
@@ -283,10 +285,9 @@ impl TyLowerDiag<'_> {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
+            Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
-            Self::UnknownResultSpace(_) => 60,
-            Self::InvalidResultSpacePath(_) => 67,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
             Self::GrowingRecursiveType(_) => 57,
@@ -306,6 +307,7 @@ impl TyLowerDiag<'_> {
             Self::InvalidConstTyExpr(_) => 15,
             Self::ConstEvalUnsupported(_) => 23,
             Self::ConstEvalAssertionFailed { .. } => 36,
+            Self::ConstEvalPanicked { .. } => 72,
             Self::ConstEvalNonConstCall(_) => 24,
             Self::ConstEvalDivisionByZero(_) => 25,
             Self::ConstEvalOutOfBounds(_) => 50,
@@ -380,6 +382,8 @@ pub enum MutabilityFix {
     ViewParam,
     /// A view receiver: `mut self`.
     ViewSelf,
+    /// A `mut?` parameter, which the `ref` body of its function only reads.
+    MaybeMutParam,
     /// An owned receiver: `var own self`.
     OwnSelf,
     /// An effect binding: `uses (mut x)`.
@@ -709,6 +713,25 @@ pub enum BodyDiag<'db> {
     /// `mut x` on a read component, which has no mutable place behind it.
     MutBindingOfRead {
         primary: DynLazySpan<'db>,
+    },
+
+    /// `mut?` in a body whose function has no mode: its signature writes no
+    /// `mut?`.
+    MaybeMutWithoutMode {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A closure in a `mut?` function, whose two bodies would each define
+    /// it.
+    ClosureInMaybeMutFunc {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// An effect required at the function's mode, `uses (x: mut? T)`, which
+    /// is not supported yet.
+    MaybeMutEffect {
+        owner: EffectParamOwner<'db>,
+        idx: usize,
     },
 
     /// `var x` binding a type with no value reading (`#[view]` or
@@ -1098,11 +1121,6 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         name: IdentId<'db>,
     },
-
-    /// A two-base loop binding one item `mut` and the other not.
-    MixedLoopBases {
-        primary: DynLazySpan<'db>,
-    },
 }
 
 impl<'db> BodyDiag<'db> {
@@ -1247,7 +1265,6 @@ impl<'db> BodyDiag<'db> {
             Self::ClosureArityMismatch { .. } => 109,
             Self::WriteToCapture { .. } => 110,
             Self::AccessCapture { .. } => 111,
-            Self::MixedLoopBases { .. } => 114,
             Self::TupleOfAccesses { .. } => 115,
             Self::UnsafeSplitOperand { .. } => 118,
             Self::RefBindingRequired { .. } => 119,
@@ -1256,6 +1273,9 @@ impl<'db> BodyDiag<'db> {
             Self::MutAccessCopied { .. } => 121,
             Self::VarOfAccess { .. } => 122,
             Self::MutBindingOfRead { .. } => 123,
+            Self::MaybeMutWithoutMode { .. } => 130,
+            Self::ClosureInMaybeMutFunc { .. } => 131,
+            Self::MaybeMutEffect { .. } => 132,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,
             Self::UnsafeFieldRequiresUnsafe { .. } => 126,
@@ -1322,11 +1342,10 @@ pub enum TraitLowerDiag<'db> {
     UnsafeLocalBoundBlanketImpl(ImplTrait<'db>),
     CyclicTraitRef(ImplTrait<'db>),
     CyclicSuperTraits(Vec<Trait<'db>>),
-    /// A trait's effect row or result space with a value: each
-    /// implementation gives its own.
+    /// A trait's effect row with a value: each implementation gives its
+    /// own.
     AccessItemDefault {
         primary: DynLazySpan<'db>,
-        kind: &'static str,
         name: IdentId<'db>,
     },
 }
@@ -1444,6 +1463,23 @@ pub enum ImplDiag<'db> {
         impl_m: CallableDef<'db>,
         trait_ty: TyId<'db>,
         impl_ty: TyId<'db>,
+        /// The modes the two were compared at.
+        trait_mode: Option<BorrowKind>,
+        impl_mode: Option<BorrowKind>,
+    },
+
+    /// A `mut?` method implementing a trait method that is not `mut?`.
+    MethodMaybeMutMismatch {
+        trait_m: CallableDef<'db>,
+        impl_m: CallableDef<'db>,
+    },
+
+    /// An implementation giving one of the trait's `mut?` methods its `mut`
+    /// mode and not another, so `T: mut Trait` holds by it for neither.
+    PartialMutImpl {
+        primary: DynLazySpan<'db>,
+        given: IdentId<'db>,
+        missing: IdentId<'db>,
     },
 
     MethodEffectMismatch {
@@ -1539,15 +1575,8 @@ pub enum ImplDiag<'db> {
         const_name: IdentId<'db>,
     },
 
-    /// An effect row or result space the trait does not declare.
+    /// An effect row the trait does not declare.
     AccessItemNotDefinedInTrait {
-        primary: DynLazySpan<'db>,
-        trait_: Trait<'db>,
-        kind: &'static str,
-        name: IdentId<'db>,
-    },
-
-    MissingAssociatedSpace {
         primary: DynLazySpan<'db>,
         trait_: Trait<'db>,
         name: IdentId<'db>,
@@ -1581,13 +1610,6 @@ pub enum ImplDiag<'db> {
     /// A `Copy` implementation for a bare type parameter, which covers types
     /// whose fields, views and state the checks of a `Copy` type never see.
     BlanketCopy { primary: DynLazySpan<'db> },
-
-    /// An associated space whose value, followed through the spaces it names,
-    /// comes back to itself.
-    CyclicAssociatedSpace {
-        primary: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    },
 
     /// An effect row whose components, expanded through the rows they name,
     /// come back to it.
@@ -1626,14 +1648,14 @@ impl ImplDiag<'_> {
             Self::InherentConstShadowsFn { .. } => 21,
             Self::TypeNotDefinedInTrait { .. } => 23,
             Self::AccessItemNotDefinedInTrait { .. } => 26,
-            Self::MissingAssociatedSpace { .. } => 27,
             Self::CompilerImplementedTrait { .. } => 28,
             Self::PinNotStateSpace { .. } => 29,
             Self::UnsafeImplMismatch { .. } => 30,
             Self::CopyFieldNotCopy { .. } => 31,
             Self::BlanketCopy { .. } => 32,
-            Self::CyclicAssociatedSpace { .. } => 33,
             Self::CyclicEffectRow { .. } => 34,
+            Self::MethodMaybeMutMismatch { .. } => 35,
+            Self::PartialMutImpl { .. } => 36,
         }
     }
 }

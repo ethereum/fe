@@ -1621,7 +1621,7 @@ pub contract ReturnContract {
             .semantic(&db)
             .expect("ContractHost::return_value should be semantic");
         let return_value_key = return_value_semantic.key(&db);
-        let BodyOwner::Func(return_value_func) = return_value_key.owner(&db) else {
+        let BodyOwner::Func(return_value_func, _) = return_value_key.owner(&db) else {
             panic!("ContractHost::return_value should be a function")
         };
         assert_eq!(

@@ -261,6 +261,51 @@ fn test_cli_check_ingot_nested_in_its_dependency() {
 }
 
 #[test]
+fn test_cli_check_assoc_item_ignores_traits_of_dependencies_not_in_scope() {
+    // A dependency implements its own trait with an associated const of the
+    // same name for `String<N>`. Without importing it, `Self::SIZE` in the
+    // root ingot's impl must not become ambiguous.
+    let temp = tempdir().expect("tempdir");
+    let root = temp.path();
+    fs::create_dir_all(root.join("app/src")).unwrap();
+    fs::create_dir_all(root.join("dep/src")).unwrap();
+    fs::write(
+        root.join("fe.toml"),
+        "[workspace]\nname = \"scope\"\nversion = \"0.1.0\"\nmembers = [{ path = \"app\", name = \"app\" }, { path = \"dep\", name = \"dep\" }]\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("app/fe.toml"),
+        "[ingot]\nname = \"app\"\nversion = \"0.1.0\"\n[dependencies]\ndep = true\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("dep/fe.toml"),
+        "[ingot]\nname = \"dep\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap();
+    let trait_src = |name: &str| {
+        format!(
+            "pub trait {name} {{\n    const SIZE: usize\n    fn bytes(self) -> [u8; Self::SIZE]\n}}\n\
+             impl<const LEN: usize> {name} for String<LEN> {{\n    const SIZE: usize = LEN\n    \
+             fn bytes(self) -> [u8; Self::SIZE] {{ self.as_bytes() }}\n}}\n"
+        )
+    };
+    fs::write(root.join("dep/src/lib.fe"), trait_src("Key")).unwrap();
+    fs::write(
+        root.join("app/src/lib.fe"),
+        format!(
+            "{}pub fn first() -> u8 {{ dep::Key::bytes(\"ab\")[0] }}\n",
+            trait_src("Literal")
+        ),
+    )
+    .unwrap();
+
+    let (output, exit_code) = run_fe_check(root.to_str().expect("utf8 path"));
+    assert_eq!(exit_code, 0, "expected a clean check:\n{output}");
+}
+
+#[test]
 fn test_cli_check_unresolved_record_init_path_reports_error_instead_of_panicking() {
     let temp = tempdir().expect("tempdir");
     let file = temp.path().join("unresolved_record_init_path.fe");
@@ -1227,6 +1272,45 @@ fn test_cli_build_emit_abi_follows_inherent_const_selector() {
         .expect("function entry derived from inherent-const selector");
     assert_eq!(function["name"], "ping");
     assert_eq!(function["inputs"][0]["type"], "uint256");
+}
+
+#[test]
+fn test_cli_build_emit_abi_follows_the_called_mode() {
+    let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/cli_output/emit_abi/abi_mut_body_events.fe");
+    let fixture_path_str = fixture_path.to_str().expect("fixture path utf8");
+
+    let temp = tempdir().expect("tempdir");
+    let out_dir = temp.path().join("out");
+    let out_dir_str = out_dir.to_string_lossy().to_string();
+
+    let (output, exit_code) = run_fe_main(&[
+        "build",
+        "--emit",
+        "abi",
+        "--contract",
+        "Foo",
+        "--out-dir",
+        out_dir_str.as_str(),
+        fixture_path_str,
+    ]);
+    assert_eq!(exit_code, 0, "fe build failed:\n{output}");
+
+    let abi_path = out_dir.join("Foo.abi.json");
+    let abi: Value = serde_json::from_str(&fs::read_to_string(&abi_path).expect("read ABI"))
+        .expect("parse ABI JSON");
+
+    // The recv arm calls `slot` at `mut`, through a `mut?` function: the
+    // event and the error of its `mut` body are the contract's.
+    let entries = abi.as_array().expect("abi array");
+    for (kind, name) in [("event", "Wrote"), ("error", "Overflow")] {
+        assert!(
+            entries
+                .iter()
+                .any(|entry| entry["type"] == kind && entry["name"] == name),
+            "missing {kind} `{name}`: {abi}"
+        );
+    }
 }
 
 #[test]

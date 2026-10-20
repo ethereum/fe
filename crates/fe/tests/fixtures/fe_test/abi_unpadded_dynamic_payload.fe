@@ -269,7 +269,7 @@ pub contract PayloadEcho {
 #[test]
 fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
     let echo = evm.create2<PayloadEcho>(value: 0, args: (), salt: 0)
-    assert!(echo.inner != 0)
+    assert!(echo.word() != 0)
     let data = ptr::alloc_bytes(164)
     var ret = ptr::MemBuffer::with_capacity(160)
     for selector in [1, 2] {

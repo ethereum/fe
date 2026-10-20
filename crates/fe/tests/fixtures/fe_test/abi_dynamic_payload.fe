@@ -162,7 +162,7 @@ fn test_bytes_from_words_prefix_uses_canonical_tail_size() uses (evm: mut Evm) {
 #[test]
 fn test_msg_dynamic_payload_tail_encoding() uses (evm: mut Evm) {
     let receiver = evm.create2<DynamicPayloadReceiver>(value: 0, args: (), salt: 0)
-    assert!(receiver.inner != 0)
+    assert!(receiver.word() != 0)
 
     let result: u256 = evm.call(
         addr: receiver,

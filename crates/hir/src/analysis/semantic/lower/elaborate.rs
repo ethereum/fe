@@ -199,7 +199,7 @@ fn opens_session<'db>(db: &'db dyn HirAnalysisDb, expr: &SExpr<'db>) -> bool {
     matches!(
         expr,
         SExpr::Call { callee, .. }
-            if matches!(callee.key.owner(db), BodyOwner::Func(func) if func.is_projection(db))
+            if matches!(callee.key.owner(db), BodyOwner::Func(func, _) if func.is_projection(db))
     )
 }
 

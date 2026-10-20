@@ -88,7 +88,7 @@ fn cached_answers(
         if func.body(db).is_some() {
             let instance = get_or_build_semantic_instance(
                 db,
-                identity_semantic_instance_key(db, BodyOwner::Func(func)),
+                identity_semantic_instance_key(db, BodyOwner::Func(func, None)),
             );
             for callee in instance
                 .call_sites(db)

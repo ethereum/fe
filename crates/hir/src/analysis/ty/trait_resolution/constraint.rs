@@ -3,6 +3,7 @@ use crate::core::hir_def::{
     TraitRefId, TypeBound, WhereClauseOwner, scope_graph::ScopeId, types::TypeId as HirTypeId,
 };
 use crate::hir_def::CallableDef;
+use crate::hir_def::ModeMarker;
 use common::indexmap::{IndexMap, IndexSet};
 use either::Either;
 
@@ -11,12 +12,13 @@ use crate::analysis::{
     name_resolution::{PathRes, resolve_path},
     ty::{
         binder::Binder,
-        const_ty::{ConstBodyLowering, LoweringContext},
+        const_ty::{ConstBodyLowering, LoweringContext, RebaseConstUseEnv},
         corelib::resolve_core_trait,
         effects::{
             EffectKeyCanonMode, EffectKeyKind, canonical_effect_identity_for_binding,
             place_effect_provider_param_index_map,
         },
+        fold::TyFoldable,
         trait_def::TraitInstId,
         trait_lower::{lower_impl_trait, lower_trait_ref, lower_trait_ref_with_minter},
         trait_resolution::PredicateListId,
@@ -85,6 +87,7 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
                     inst.def(db),
                     args,
                     inst.assoc_type_bindings(db).clone(),
+                    ModeMarker::None,
                 ));
             }
             (Some(target_ty), None) => {
@@ -108,19 +111,17 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
                         traits
                     });
 
-                out.push(TraitInstId::new(
+                out.push(TraitInstId::new_simple(
                     db,
                     effect_ref_trait,
                     vec![provider_ty, target_ty],
-                    IndexMap::new(),
                 ));
 
                 if identity.is_mut {
-                    out.push(TraitInstId::new(
+                    out.push(TraitInstId::new_simple(
                         db,
                         effect_ref_mut_trait,
                         vec![provider_ty, target_ty],
-                        IndexMap::new(),
                     ));
                 }
             }
@@ -223,17 +224,25 @@ pub(crate) fn collect_func_decl_constraints<'db>(
         }
     };
 
-    if !include_parent {
-        let func_constraints = collect_decl_constraints(db, hir_func.into());
-        return func_constraints;
-    }
-
+    // A method's own bounds resolve under its parent's, so without the parent
+    // they are the entries of the full list that the method itself declares.
     Binder::bind(
         hir_func.into(),
         PredicateListId::new(
             db,
             collect_func_decl_constraint_pairs(db, func)
                 .into_iter()
+                .filter(|(_, source)| {
+                    include_parent
+                        || match source {
+                            PredicateSource::GenericParamBound { owner, .. } => {
+                                *owner == GenericParamOwner::Func(hir_func)
+                            }
+                            PredicateSource::WherePredicateBound { owner, .. } => {
+                                *owner == WhereClauseOwner::Func(hir_func)
+                            }
+                        }
+                })
                 .map(|(inst, _)| inst)
                 .collect::<Vec<_>>(),
         ),
@@ -431,10 +440,11 @@ fn collect_decl_constraint_pairs_impl<'db>(
             continue;
         };
         for (bound_idx, bound) in hir_param.bounds.iter().enumerate() {
-            if let TypeBound::Trait(trait_ref) = bound {
+            if let TypeBound::Trait(trait_ref, mode) = bound {
                 deferred.push(Deferred {
                     bound_ty: Either::Right(ty),
                     trait_ref: *trait_ref,
+                    mode: *mode,
                     scope: owner_scope,
                     source: PredicateSource::GenericParamBound {
                         owner,
@@ -467,10 +477,11 @@ fn collect_decl_constraint_pairs_impl<'db>(
             }
 
             for (bound_idx, bound) in pred.bounds.iter().enumerate() {
-                if let TypeBound::Trait(trait_ref) = *bound {
+                if let TypeBound::Trait(trait_ref, mode) = *bound {
                     deferred.push(Deferred {
                         bound_ty: Either::Left(hir_ty),
                         trait_ref,
+                        mode,
                         scope: owner_scope,
                         source: PredicateSource::WherePredicateBound {
                             owner: w_owner,
@@ -506,7 +517,22 @@ fn collect_decl_constraint_pairs_impl<'db>(
         }
     }
 
-    all_predicates.into_iter().collect()
+    // A const use in a bound records the constraints it was solved under,
+    // which include this very list while a cycle computes it, so recording
+    // them makes every iteration differ from the last and the cycle never
+    // settles. A use keeps the list's predicates its parameters reach, with
+    // the uses inside them in their comparison form instead: that cannot
+    // refer back to the list, and it holds the bounds, such as an enclosing
+    // item's `T: Gate<{ T::W }>`, that select the use's implementation once
+    // the list is instantiated.
+    let mut rebase = RebaseConstUseEnv::stored(db, all_predicates.keys().copied());
+    let mut rebased = IndexMap::new();
+    for (inst, source) in all_predicates {
+        rebased
+            .entry(inst.fold_with(db, &mut rebase))
+            .or_insert(source);
+    }
+    rebased.into_iter().collect()
 }
 
 fn collect_constraints_cycle_initial<'db>(
@@ -556,6 +582,8 @@ pub(crate) fn collect_candidate_constraints<'db>(
 struct Deferred<'db> {
     bound_ty: Either<HirTypeId<'db>, TyId<'db>>,
     trait_ref: TraitRefId<'db>,
+    /// The modes the bound grants the trait's `mut?` methods at.
+    mode: ModeMarker,
     scope: ScopeId<'db>,
     source: PredicateSource<'db>,
 }
@@ -563,7 +591,8 @@ struct Deferred<'db> {
 /// The trait instance and item a path names, among the items `item` finds
 /// in a trait by name: `I` or `Self::I` in a trait or an implementation of
 /// one (or one of its supertraits), and `X::I` for a type `X` the scope
-/// bounds by a trait with item `I`.
+/// bounds by a trait with item `I`, else the scope's own `I` when `X` is its
+/// self type.
 pub(crate) fn resolve_assoc_item_path<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
@@ -585,10 +614,21 @@ pub(crate) fn resolve_assoc_item_path<'db>(
             _ => return None,
         },
     };
-    own.filter(|inst| inst.self_ty(db) == self_ty)
-        .map(|inst| PredicateListId::new(db, vec![inst]).extend_all_bounds(db))
+    let own = own
+        .filter(|inst| inst.self_ty(db) == self_ty)
+        .map(|inst| PredicateListId::new(db, vec![inst]).extend_all_bounds(db));
+    let bounds = Some(assumptions.extend_all_bounds(db));
+    // `I` and `Self::I` name the scope's own items first, and `X::I` those of
+    // the bounds on `X`, as an associated type's path does: in a blanket
+    // `impl Tr for F`, `F::E` is the row of a bound on `F`.
+    let lists = if path.parent(db).is_none_or(|parent| parent.is_self_ty(db)) {
+        [own, bounds]
+    } else {
+        [bounds, own]
+    };
+    lists
         .into_iter()
-        .chain([assumptions.extend_all_bounds(db)])
+        .flatten()
         .flat_map(|list| list.list(db).iter().copied())
         .filter(|inst| inst.self_ty(db) == self_ty)
         .find_map(|inst| Some((inst, item(inst.def(db), name)?)))
@@ -668,6 +708,7 @@ fn try_resolve_type_bound<'db>(
         }
     }
     .ok()
+    .map(|inst| inst.with_mode(db, deferred.mode))
 }
 
 #[cfg(test)]

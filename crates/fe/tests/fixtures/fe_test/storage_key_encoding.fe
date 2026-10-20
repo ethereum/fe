@@ -117,7 +117,7 @@ fn signed_keys_are_sign_extended() {
 fn bool_and_address_keys_keep_their_words() {
     assert_word(false, 0)
     assert_word(true, 1)
-    assert_word(Address { inner: 0x1234 }, 0x1234)
+    assert_word(Address::new(0x1234), 0x1234)
 }
 
 #[test]

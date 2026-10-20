@@ -783,29 +783,6 @@ impl super::Parse for TraitUsesItemScope {
     }
 }
 
-define_scope! { TraitSpaceItemScope, TraitSpaceItem }
-impl super::Parse for TraitSpaceItemScope {
-    type Error = Recovery<ErrProof>;
-
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.set_newline_as_trivia(false);
-        // `space` is a keyword only here.
-        parser.bump_expected(SyntaxKind::Ident);
-        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Eq]);
-        if parser.find_and_pop(
-            SyntaxKind::Ident,
-            ExpectedKind::Name(SyntaxKind::TraitSpaceItem),
-        )? {
-            parser.bump();
-        }
-        if parser.bump_if(SyntaxKind::Eq) {
-            parser.or_recover(|p| p.parse(PathScope::default()))?;
-            super::type_::parse_space_path_opt(parser)?;
-        }
-        Ok(())
-    }
-}
-
 define_scope! { TraitConstItemScope, TraitConstItem }
 impl super::Parse for TraitConstItemScope {
     type Error = Recovery<ErrProof>;
@@ -1125,12 +1102,9 @@ fn parse_trait_item_block<S: TokenStream>(
             Some(SyntaxKind::UsesKw) => {
                 parser.parse_cp(TraitUsesItemScope::default(), checkpoint)?;
             }
-            Some(SyntaxKind::Ident) if parser.is_ident("space") => {
-                parser.parse_cp(TraitSpaceItemScope::default(), checkpoint)?;
-            }
             _ => {
                 let proof = parser.error_msg_on_current_token(
-                    "only `fn`, `type`, `const`, `uses`, or `space` is allowed in this block",
+                    "only `fn`, `type`, `const`, or `uses` is allowed in this block",
                 );
                 parser.try_recover().map_err(|r| r.add_err_proof(proof))?;
             }

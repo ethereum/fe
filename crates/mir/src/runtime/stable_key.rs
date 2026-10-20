@@ -7,7 +7,7 @@ use hir::{
             RootProviderScope,
             trait_def::{TraitInstId, TraitRefId},
             ty_check::{BodyOwner, EffectParamSite},
-            ty_def::{ClosureTy, TyBase, TyData, TyId},
+            ty_def::{BorrowKind, ClosureTy, TyBase, TyData, TyId},
         },
     },
     hir_def::{
@@ -58,9 +58,18 @@ pub fn semantic_instance_identity_in_mode<'db>(
 
 fn body_owner_identity<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> String {
     match owner {
-        BodyOwner::Func(func) => {
+        BodyOwner::Func(func, mode) => {
             let owner_context = semantic_owner_context_identity(db, owner).unwrap_or_default();
-            format!("func${}${owner_context}", item_identity(db, func.into()))
+            // A `mut?` function's bodies, one per mode, are distinct.
+            let mode = match mode {
+                None => "",
+                Some(BorrowKind::Ref) => "$ref",
+                Some(BorrowKind::Mut) => "$mut",
+            };
+            format!(
+                "func${}${owner_context}{mode}",
+                item_identity(db, func.into())
+            )
         }
         BodyOwner::Const(const_) => format!("const${}", item_identity(db, const_.into())),
         BodyOwner::AnonConstBody { body, expected } => format!(
@@ -90,7 +99,7 @@ pub fn semantic_owner_context_identity<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> Option<String> {
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return None;
     };
     if let Some(trait_) = func.containing_trait(db) {
@@ -129,7 +138,7 @@ pub fn semantic_owner_context_trace_identity<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> Option<String> {
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return None;
     };
     if let Some(trait_) = func.containing_trait(db) {
@@ -159,7 +168,7 @@ pub fn semantic_owner_context_trace_identity<'db>(
 /// impl-environment components, and textual (fingerprint-free) impl context.
 /// Every instantiation of the same body maps to the same identity.
 pub fn body_owner_trace_identity<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> String {
-    if let BodyOwner::Func(func) = owner {
+    if let BodyOwner::Func(func, _) = owner {
         let owner_context = semantic_owner_context_trace_identity(db, owner).unwrap_or_default();
         format!("func${}${owner_context}", item_identity(db, func.into()))
     } else {

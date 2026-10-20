@@ -19,7 +19,7 @@ struct S<T: Tr> {
 }
 
 impl S<K> {
-    fn a_mem(mut self) -> mut u8 @memory {
+    fn a_mem(mut self) -> mut u8 {
         mut self.a
     }
 }

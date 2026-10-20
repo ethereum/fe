@@ -72,7 +72,7 @@ fn test_storage_bytes_encode_return_one_word_control()
 uses (evm: mut Evm)
 {
     let blob = evm.create2<Blob>(value: 0, args: (), salt: 0)
-    assert!(blob.inner != 0)
+    assert!(blob.word() != 0)
 
     let payload = one_word_payload()
     evm.call(addr: blob, gas: 1000000, value: 0, message: BlobMsg::Set { data: payload })
@@ -88,7 +88,7 @@ fn test_storage_bytes_encode_return_two_words_repro()
 uses (evm: mut Evm)
 {
     let blob = evm.create2<Blob>(value: 0, args: (), salt: 0)
-    assert!(blob.inner != 0)
+    assert!(blob.word() != 0)
 
     let payload = two_word_payload()
     evm.call(addr: blob, gas: 1000000, value: 0, message: BlobMsg::Set { data: payload })

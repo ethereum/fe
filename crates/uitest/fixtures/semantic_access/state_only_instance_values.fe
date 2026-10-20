@@ -1,4 +1,4 @@
-use core::marker::Pinned
+use core::marker::{Pinned, Storage}
 use core::ptr::MemArray
 
 // A generic body may hold its type parameter in memory; an instance whose
@@ -10,7 +10,7 @@ struct SCell {
 }
 
 impl Pinned for SCell {
-    space S = storage
+    type Space = Storage
 }
 
 fn zeroed_one<T>() -> u256 {

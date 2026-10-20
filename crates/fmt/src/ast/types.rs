@@ -815,7 +815,13 @@ impl ToDoc for ast::TypeBound {
         let alloc = &ctx.alloc;
 
         if let Some(trait_bound) = self.trait_bound() {
-            trait_bound.to_doc(ctx)
+            match self.mode_token() {
+                Some(mode) => alloc
+                    .text(ctx.token(&mode))
+                    .append(alloc.text(" "))
+                    .append(trait_bound.to_doc(ctx)),
+                None => trait_bound.to_doc(ctx),
+            }
         } else if let Some(kind_bound) = self.kind_bound() {
             alloc.text(ctx.snippet_trimmed(&kind_bound))
         } else {
@@ -894,16 +900,12 @@ impl ToDoc for ast::ModeType {
                 ctx,
                 self.syntax(),
                 indent,
-                |node| {
-                    ast::Type::cast(node.clone())
-                        .map(|ty| TokenPiece::new(ty.to_doc(ctx)))
-                        .or_else(|| {
-                            ast::SpaceAnnotation::cast(node)
-                                .map(|space| TokenPiece::new(space.to_doc(ctx)).space_before())
-                        })
-                },
+                |node| ast::Type::cast(node).map(|ty| TokenPiece::new(ty.to_doc(ctx))),
                 |token| match token.kind() {
-                    SyntaxKind::MutKw | SyntaxKind::RefKw | SyntaxKind::OwnKw => {
+                    SyntaxKind::MutKw
+                    | SyntaxKind::MaybeMutKw
+                    | SyntaxKind::RefKw
+                    | SyntaxKind::OwnKw => {
                         Some(TokenPiece::new(alloc.text(ctx.token(&token))).space_after())
                     }
                     _ => None,
@@ -917,56 +919,11 @@ impl ToDoc for ast::ModeType {
                 .map_or_else(|| alloc.nil(), |inner| inner.to_doc(ctx));
         };
         let mode = alloc.text(ctx.token(&mode));
-        let mode = if let Some(inner) = self.inner() {
+        if let Some(inner) = self.inner() {
             mode.append(alloc.text(" ")).append(inner.to_doc(ctx))
         } else {
             mode
-        };
-        match self.space() {
-            Some(space) => mode.append(alloc.text(" ")).append(space.to_doc(ctx)),
-            None => mode,
         }
-    }
-}
-
-impl ToDoc for ast::SpaceAnnotation {
-    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
-        let alloc = &ctx.alloc;
-        let path = self
-            .path()
-            .map_or_else(|| alloc.nil(), |path| path.to_doc(ctx));
-        let target = self.target().map_or_else(
-            || alloc.nil(),
-            |target| {
-                alloc
-                    .text("(")
-                    .append(target.to_doc(ctx))
-                    .append(alloc.text(")"))
-            },
-        );
-        let space_path = self
-            .space_path()
-            .map_or_else(|| alloc.nil(), |space_path| space_path.to_doc(ctx));
-        alloc
-            .text("@")
-            .append(path)
-            .append(target)
-            .append(space_path)
-    }
-}
-
-impl ToDoc for ast::SpacePath {
-    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
-        let alloc = &ctx.alloc;
-        alloc.concat(self.steps().map(|step| match step {
-            ast::SpacePathStep::Field(token) => {
-                alloc.text(".").append(alloc.text(ctx.token(&token)))
-            }
-            ast::SpacePathStep::Index(index) => {
-                alloc.text(".").append(alloc.text(ctx.token(index.token())))
-            }
-            ast::SpacePathStep::Element => alloc.text("[_]"),
-        }))
     }
 }
 

@@ -60,11 +60,11 @@ fn answer(word: u256, len: u256) -> ! uses (raw: mut RawOps) {
 }
 
 fn alice() -> Address {
-    Address { inner: 2 }
+    Address::new(2)
 }
 
 fn bob() -> Address {
-    Address { inner: 3 }
+    Address::new(3)
 }
 
 fn code(_ outcome: TokenCall) -> u256 {
@@ -158,7 +158,7 @@ fn test_reverted_payload_can_be_bubbled() uses (evm: mut Evm, ctx: Ctx, call: mu
 
 #[test]
 fn test_codeless_token_is_no_code() uses (evm: mut Evm, ctx: Ctx, call: mut Call) {
-    let eoa = Address { inner: 0xe0a }
+    let eoa = Address::new(0xe0a)
     assert!(code(erc20::try_transfer(token: eoa, receiver: alice(), amount: 1)) == 3)
     assert!(code(erc20::try_transfer_from(token: eoa, owner: alice(), receiver: bob(), amount: 1)) == 3)
     assert!(code(erc20::try_approve(token: eoa, spender: alice(), amount: 1)) == 3)

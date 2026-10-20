@@ -360,7 +360,7 @@ fn direct_row_components<'db>(
                     .name
                     .or_else(|| key_syntax.as_path(db)?.ident(db).to_opt())?,
                 key,
-                is_mut: effect.is_mut,
+                is_mut: effect.is_mut(),
                 key_syntax,
             })
         })
