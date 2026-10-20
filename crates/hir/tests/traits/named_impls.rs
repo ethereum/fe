@@ -438,3 +438,42 @@ fn run(_ tag: Tag) -> usize {
         diag_codes(unit_variant_pat)
     );
 }
+
+#[test]
+fn named_only_assoc_const_under_with_ignores_out_of_scope_trait_with_same_const_name() {
+    let src = r#"
+pub struct Item {}
+
+mod hidden {
+    use super::Item
+    pub trait Hidden {
+        const PRICE: u32
+    }
+    impl Hidden for Item {
+        const PRICE: u32 = 999
+    }
+}
+
+trait Price {
+    const PRICE: u32
+}
+
+impl Price for Item as Wholesale {
+    const PRICE: u32 = 70
+}
+
+const fn check() -> u32 {
+    with (Wholesale) {
+        Item::PRICE
+    }
+}
+
+struct Verify<const N: u32> where { N == 70 } {}
+fn verify(_ v: Verify<{ check() }>) {}
+"#;
+    assert!(
+        diag_codes(src).is_empty(),
+        "expected `Item::PRICE` inside `with (Wholesale)` to select in-scope `Price` (70) despite out-of-scope `hidden::Hidden`, got {:?}",
+        diag_codes(src)
+    );
+}

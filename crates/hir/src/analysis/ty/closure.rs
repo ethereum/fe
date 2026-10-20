@@ -370,13 +370,9 @@ impl<'db> RegionWalk<'db> {
                     self.expr(*expr, region);
                 }
             }
-            Stmt::For(_, iterable, driver, body, _) => {
-                for expr in [Some(iterable), driver.as_ref(), Some(body)]
-                    .into_iter()
-                    .flatten()
-                {
-                    self.expr(*expr, region);
-                }
+            Stmt::For(_, iterable, body, _) => {
+                self.expr(*iterable, region);
+                self.expr(*body, region);
             }
             Stmt::While(cond, body) => {
                 self.cond(*cond, region);

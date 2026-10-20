@@ -62,14 +62,14 @@ pub struct ForLoopCall<'db> {
 }
 
 /// How a `for` loop reaches its elements: the base it holds, the driver its
-/// calls take first if it has one, the calls it selects and what its body
-/// receives.
+/// calls take first if a method chain drives the base, the calls it selects
+/// and what its body receives.
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct ForLoopPlan<'db> {
     /// The base the loop holds.
     pub base: ExprId,
-    /// The driver of `for .. by d`, or the method chain `for x in xs.reversed()`
-    /// stands for `for x in xs by xs.reversed()`.
+    /// The method chain that drives the base: all of `xs.reversed()` in
+    /// `for x in xs.reversed()`, whose base is `xs`.
     pub driver: Option<ExprId>,
     pub state_ty: TyId<'db>,
     /// What an `at` or `produce` call yields: the element's access, beside
@@ -244,7 +244,7 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_for(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
-        let Stmt::For(pat, base, driver, body, _unroll) = stmt_data else {
+        let Stmt::For(pat, base, body, _unroll) = stmt_data else {
             unreachable!()
         };
 
@@ -256,16 +256,9 @@ impl<'db> TyChecker<'db> {
             self.consume_access(*base);
         }
         let base = (*base, prop.ty);
-        let driver = driver.map(|driver| {
-            let driver_ty = self
-                .check_expr_unknown(driver)
-                .ty
-                .fold_with(self.db, &mut self.table);
-            (driver, driver_ty)
-        });
         // The item pattern chooses the traversal: a read one, unless the item
         // is bound `mut`, which opens the base mutably.
-        let mut plan = self.plan_for_loop(base, driver, false);
+        let mut plan = self.plan_for_loop(base, false);
         if let Some(read) = &plan {
             let item = self.loop_item_pat(*pat, read);
             // A method chain's plan holds the receiver it drives.
@@ -281,7 +274,7 @@ impl<'db> TyChecker<'db> {
                 item.and_then(|item| self.first_marked_binding(item, BindingMarker::Mut))
                 && self.open_loop_base(held, mut_pat)
             {
-                plan = self.plan_for_loop(base, driver, true);
+                plan = self.plan_for_loop(base, true);
             }
         }
         match plan {
@@ -381,39 +374,32 @@ impl<'db> TyChecker<'db> {
         true
     }
 
-    /// The protocol a loop over `expr`, of type `ty`, runs: its driver's, or
-    /// the collection's own. Without a driver, a method chain that drives a
-    /// collection it passes through, `for x in xs.reversed()`, is a driver
-    /// over it.
+    /// The protocol a loop over `expr`, of type `ty`, runs: the collection's
+    /// own, or, for a method chain that drives a collection it passes
+    /// through (`for x in xs.reversed()`, `for x in xs.by(d)`), the chain's
+    /// driver over it.
     fn plan_for_loop(
         &mut self,
         base: (ExprId, TyId<'db>),
-        driver: Option<(ExprId, TyId<'db>)>,
         mutates: bool,
     ) -> Option<ForLoopPlan<'db>> {
         let (expr, ty) = base;
-        for (expr, ty) in [base].into_iter().chain(driver) {
-            if ty.has_invalid(self.db) {
-                return None;
-            }
-            if ty.is_never(self.db) || ty.base_ty(self.db).is_ty_var(self.db) {
-                self.push_diag(BodyDiag::TypeMustBeKnown(expr.span(self.body()).into()));
-                return None;
-            }
+        if ty.has_invalid(self.db) {
+            return None;
         }
-        let plan = match (driver, self.chain_base(expr, ty)) {
-            (None, Some(chain_base)) => self.plan_protocol(chain_base, Some(base), mutates),
-            _ => self.plan_protocol(base, driver, mutates),
+        if ty.is_never(self.db) || ty.base_ty(self.db).is_ty_var(self.db) {
+            self.push_diag(BodyDiag::TypeMustBeKnown(expr.span(self.body()).into()));
+            return None;
+        }
+        let plan = match self.chain_base(expr, ty) {
+            Some(chain_base) => self.plan_protocol(chain_base, Some(base), mutates),
+            None => self.plan_protocol(base, None, mutates),
         };
         if plan.is_none() {
-            let (expr, ty, name) = match driver {
-                Some((driver, driver_ty)) => (driver, driver_ty, "Driver"),
-                None => (expr, ty, "Collection"),
-            };
             self.push_diag(BodyDiag::TraitNotImplemented {
                 primary: expr.span(self.body()).into(),
                 ty: ty.pretty_print(self.db).to_string(),
-                trait_name: IdentId::new(self.db, name.to_string()),
+                trait_name: IdentId::new(self.db, "Collection".to_string()),
             });
         }
         plan
@@ -450,11 +436,11 @@ impl<'db> TyChecker<'db> {
         None
     }
 
-    /// The protocol of a loop over `base`, of type `base_ty`, run by `driver`
-    /// or by the collection itself. A loop that mutates its elements selects
-    /// the `mut` form of `at`; otherwise a producer's owned values come
-    /// before a driver's elements, which the body sees as copies when they
-    /// are `Copy` and as `ref` accesses otherwise.
+    /// The protocol of a loop over `base`, of type `base_ty`, run by the
+    /// method chain `driver` or by the collection itself. A loop that mutates
+    /// its elements selects the `mut` form of `at`; otherwise a producer's
+    /// owned values come before a driver's elements, which the body sees as
+    /// copies when they are `Copy` and as `ref` accesses otherwise.
     fn plan_protocol(
         &mut self,
         base: (ExprId, TyId<'db>),

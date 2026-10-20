@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{
     hir_def::{
-        Body, ClosureDef, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId,
+        Body, ClosureDef, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId, Struct,
         TypeAlias as HirTypeAlias, VariantKind,
         params::FuncParamMode,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
@@ -19,6 +19,7 @@ use common::{
 };
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
+use ruint::aliases::U256;
 use rustc_hash::FxHashSet;
 use salsa::Update;
 use smallvec::SmallVec;
@@ -724,6 +725,27 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// Returns the tuple struct (`struct Month(pub u8)`) this type refers to.
+    pub fn as_tuple_struct(self, db: &'db dyn HirAnalysisDb) -> Option<Struct<'db>> {
+        match self.base_ty(db).adt_ref(db)? {
+            AdtRef::Struct(struct_) if struct_.is_tuple(db) => Some(struct_),
+            _ => None,
+        }
+    }
+
+    /// Returns the constructor function type of a tuple struct type, applied
+    /// to the type's generic arguments, e.g. `fn(u8) -> Month` for `Month`.
+    pub fn tuple_struct_ctor_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+        let struct_ = self.as_tuple_struct(db)?;
+        let mut ty = TyId::func(db, CallableDef::StructCtor(struct_));
+        for &arg in self.generic_args(db) {
+            if ty.applicable_ty(db).is_some() {
+                ty = TyId::app(db, ty, arg);
+            }
+        }
+        Some(ty)
+    }
+
     pub fn as_scope(self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         match self.base_ty(db).data(db) {
             TyData::TyParam(param) => Some(param.scope(db)),
@@ -1338,6 +1360,13 @@ pub enum InvalidCause<'db> {
         message: Option<String>,
     },
 
+    /// `core::panic_code(code)` was reached in const evaluation.
+    ConstEvalPanicked {
+        body: Body<'db>,
+        expr: ExprId,
+        code: U256,
+    },
+
     ConstEvalNonConstCall {
         body: Body<'db>,
         expr: ExprId,
@@ -1465,6 +1494,9 @@ impl<'db> InvalidCause<'db> {
                 *expr,
                 "assertion failed in const context".to_string(),
             )),
+            InvalidCause::ConstEvalPanicked { body, expr, .. } => {
+                Some((*body, *expr, "panic in const context".to_string()))
+            }
             InvalidCause::ConstEvalNonConstCall { body, expr } => Some((
                 *body,
                 *expr,
@@ -1613,6 +1645,7 @@ impl InvalidCause<'_> {
                 "ConstEvalArithmeticOverflow".into()
             }
             InvalidCause::ConstEvalNegativeExponent { .. } => "ConstEvalNegativeExponent".into(),
+            InvalidCause::ConstEvalPanicked { code, .. } => format!("ConstEvalPanicked({code:#x})"),
             InvalidCause::ConstEvalStepLimitExceeded { .. } => "ConstEvalStepLimitExceeded".into(),
             InvalidCause::ConstEvalRecursionLimitExceeded { .. } => {
                 "ConstEvalRecursionLimitExceeded".into()
@@ -2553,11 +2586,14 @@ pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlag
 
         fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
             // An identity capture reads its owner's formals without
-            // spelling them, so the body still depends on parameters.
+            // spelling them, so the body still depends on parameters. A
+            // capture with no formals, such as the `4` in
+            // `type Bytes4 = FixedBytes<4>`, depends on none.
             if let ConstTyData::UnEvaluated {
-                capture: ConstCaptureEnv::Identity(_),
+                capture: ConstCaptureEnv::Identity(domain),
                 ..
             } = const_ty.data(self.db)
+                && domain.has_formals(self.db)
             {
                 self.flags.insert(TyFlags::HAS_PARAM);
             }

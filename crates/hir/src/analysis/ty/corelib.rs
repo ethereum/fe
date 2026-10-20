@@ -321,6 +321,7 @@ pub(crate) enum CtfeExternIntrinsic {
     AddMod,
     MulMod,
     LeadingZeros,
+    PanicCode,
 }
 
 pub(crate) fn ctfe_extern_intrinsic_kind<'db>(
@@ -336,6 +337,7 @@ pub(crate) fn ctfe_extern_intrinsic_kind<'db>(
         Some(RuntimeBuiltinFuncKind::LeadingZeros) => {
             return Some(CtfeExternIntrinsic::LeadingZeros);
         }
+        Some(RuntimeBuiltinFuncKind::PanicCode) => return Some(CtfeExternIntrinsic::PanicCode),
         _ => {}
     }
     if lib_func_matches(db, func, "core::intrinsic::size_of") {

@@ -2,14 +2,14 @@
 // lists it, for the cases the access/session checker decides. Type-level
 // cases are in `ty_check/acceptance.fe` and run-time results in
 // `fe_test/acceptance.fe`.
-use core::iter::{Collection, Identity, reversed}
+use core::iter::{Collection, Identity}
 use core::ptr::{MemBuffer, MemSpan}
 use std::evm::{Address, Call, Evm, RawStorage, StorageMap}
 
 fn ping() uses (call: mut Call) {
     var output = MemBuffer::empty()
     let outcome = call.raw_call(
-        addr: Address { inner: 1 }, gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
     )
 }
@@ -137,7 +137,7 @@ fn case05_out_of_order() -> u256 {
 fn ping_evm() uses (evm: mut Evm) {
     var output = MemBuffer::empty()
     let outcome = evm.raw_call(
-        addr: Address { inner: 1 }, gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: 0,
         args: MemSpan::empty(), ret: mut output,
     )
 }
@@ -303,7 +303,7 @@ impl Collection for Keyed {
 fn case19_identity(_ xs: Keyed) -> u256 uses (key: Key) {
     let d = Identity {}
     var sum = 0
-    for x in xs by d {
+    for x in xs.by(d) {
         sum += x
     }
     sum
@@ -365,11 +365,11 @@ pub contract Case22OutstandingAccess {
 pub contract Case23StorageBase {
     mut words: [u256; 3],
     init() uses (mut words) {
-        for mut word in words by reversed() {
+        for mut word in words.reversed() {
             word += 1
         }
         let d = Identity {}
-        for mut word in words by d {
+        for mut word in words.by(d) {
             word *= 2
         }
     }
@@ -644,7 +644,7 @@ impl Book {
 pub contract Case41TwoMaps {
     mut book: Book,
     init() uses (mut book) {
-        book.list(1, Address { inner: 2 }, 3)
+        book.list(1, Address::new(2), 3)
     }
 }
 
@@ -653,7 +653,7 @@ pub contract Case41TwoMaps {
 pub contract Case44Credit {
     mut ledger: Ledger,
     init() uses (mut ledger) {
-        credit(mut ledger.balances, Address { inner: 1 }, 5)
+        credit(mut ledger.balances, Address::new(1), 5)
         ledger.total += 5
     }
 }
@@ -663,7 +663,7 @@ pub contract Case44Credit {
 pub contract Case44WriteDuringCall {
     mut ledger: Ledger,
     init() uses (mut ledger) {
-        let who = Address { inner: 1 }
+        let who = Address::new(1)
         credit(mut ledger.balances, who, {
             ledger.balances[who] = 0
             5
@@ -675,7 +675,7 @@ pub contract Case44EffectDuringCall {
     mut ledger: Ledger,
     init() uses (mut ledger) {
         with (mut ledger) {
-            credit_and_reset(mut ledger.balances, Address { inner: 1 })
+            credit_and_reset(mut ledger.balances, Address::new(1))
         }
     }
 }

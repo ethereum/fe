@@ -1609,7 +1609,7 @@ msg InfoMsg {
 pub contract Info {
     recv InfoMsg {
         Information {} -> (DynString, Bytes32, Address) {
-            (DynString::empty(), Bytes32 { val: 0 }, Address { inner: 0 })
+            (DynString::empty(), Bytes32 { val: 0 }, Address::new(0))
         }
         Nested {} -> (u256, (DynString, bool)) {
             (0, (DynString::empty(), false))
@@ -1684,7 +1684,7 @@ msg BarMsg {
 pub contract Foo uses (ctx: Ctx, call: mut Call) {
     recv FooMsg {
         Who -> u256 uses (ctx) {
-            ctx.caller().inner
+            ctx.caller().word()
         }
 
         Ping { b } uses (call) {
@@ -2242,7 +2242,7 @@ pub contract EncodeMsgAbiProbe {
     recv ProbeMsg {
         Probe {} {
             let encoded = encode_msg_calldata(
-                TokenMsg::Transfer { to: Address { inner: 1 }, amount: 1 },
+                TokenMsg::Transfer { to: Address::new(1), amount: 1 },
             )
         }
     }

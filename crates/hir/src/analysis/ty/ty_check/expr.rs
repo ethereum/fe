@@ -73,6 +73,7 @@ use crate::analysis::ty::{
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
     shape::{Shape, SumKind, sum_kind},
     trait_def::TraitInstId,
+    trait_lower::complete_impl_trait,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
     },
@@ -106,7 +107,7 @@ use crate::analysis::{
     },
 };
 use crate::core::semantic::storage_slot_span;
-use crate::hir_def::{BlockKind, ItemKind, scope_graph::ScopeId};
+use crate::hir_def::{BlockKind, FieldParent, ItemKind, scope_graph::ScopeId};
 use crate::semantic::{ProviderBinding, ProviderSource};
 use common::indexmap::IndexMap;
 
@@ -1218,6 +1219,31 @@ impl<'db> TyChecker<'db> {
             ty.base_ty(self.db).data(self.db),
             TyData::TyBase(TyBase::Prim(PrimTy::U256))
         )
+    }
+
+    /// Constructing or destructuring a tuple struct requires all of its fields
+    /// to be visible. Reports the first invisible field at `span` and returns
+    /// `false` if one exists.
+    pub(super) fn check_tuple_struct_fields_visible(
+        &mut self,
+        ty: TyId<'db>,
+        span: DynLazySpan<'db>,
+    ) -> bool {
+        let Some(struct_) = ty.as_tuple_struct(self.db) else {
+            return true;
+        };
+        let parent = FieldParent::Struct(struct_);
+        for (idx, field) in parent.fields(self.db).enumerate() {
+            let scope = ScopeId::Field(parent, idx as u16);
+            if !is_scope_visible_from(self.db, scope, self.env.scope()) {
+                let Some(name) = field.name(self.db) else {
+                    continue;
+                };
+                self.push_diag(PathResDiag::Invisible(span, name, scope.name_span(self.db)));
+                return false;
+            }
+        }
+        true
     }
 
     fn peel_transparent_newtypes(&self, mut ty: TyId<'db>) -> TyId<'db> {
@@ -3561,8 +3587,7 @@ impl<'db> TyChecker<'db> {
                 };
                 let canonical_goal = Canonicalized::new(self.db, trait_goal);
                 let solved = canonical_goal.extract_solution(&mut table, solution);
-                let solved_inst = solved
-                    .implementor
+                let solved_inst = complete_impl_trait(self.db, solved.implementor)
                     .trait_inst(self.db)
                     .fold_with(self.db, &mut table);
                 let instantiated = reify_unresolved_pattern_slots(
@@ -4045,6 +4070,17 @@ impl<'db> TyChecker<'db> {
                         self.env
                             .register_value_path_ref(expr, ValuePathRef::TypeConst(ty));
                         ExprProp::new(self.table.instantiate_to_term(const_ty_ty), true)
+                    } else if matches!(reso, PathRes::Ty(_))
+                        && let Some(ctor_ty) = ty.tuple_struct_ctor_ty(self.db)
+                    {
+                        if !self
+                            .check_tuple_struct_fields_visible(ty, path_expr_span.clone().into())
+                        {
+                            return ExprProp::invalid(self.db);
+                        }
+                        self.env
+                            .register_value_path_ref(expr, ValuePathRef::FunctionItem);
+                        ExprProp::new(self.instantiate_to_term(ctor_ty), true)
                     } else {
                         let diag = if ty.is_struct(self.db) {
                             let record_like = RecordLike::from_ty(ty);
@@ -4574,17 +4610,27 @@ impl<'db> TyChecker<'db> {
             let (ty_base, ty_args) = resolved_field.base_ty.decompose_ty_app(self.db);
             let is_mut = typed_lhs.is_mut || resolved_field.implicit_deref_ty.is_some();
 
-            match field {
-                FieldIndex::Ident(label) => {
+            // Tuple struct fields are named by their position.
+            let label = match field {
+                FieldIndex::Ident(label) => Some(*label),
+                FieldIndex::Index(index)
+                    if resolved_field.base_ty.as_tuple_struct(self.db).is_some() =>
+                {
+                    Some(IdentId::new(self.db, index.data(self.db).to_string()))
+                }
+                FieldIndex::Index(_) => None,
+            };
+            match label {
+                Some(label) => {
                     let record_like = RecordLike::from_ty(resolved_field.base_ty);
-                    if let Some(field_ty) = record_like.record_field_ty(self.db, *label) {
-                        if let Some(scope) = record_like.record_field_scope(self.db, *label)
+                    if let Some(field_ty) = record_like.record_field_ty(self.db, label) {
+                        if let Some(scope) = record_like.record_field_scope(self.db, label)
                             && !is_scope_visible_from(self.db, scope, self.env.scope())
                         {
                             // Check the visibility of the field.
                             let diag = PathResDiag::Invisible(
                                 expr.span(self.body()).into_field_expr().accessor().into(),
-                                *label,
+                                label,
                                 scope.name_span(self.db),
                             );
 
@@ -4597,7 +4643,7 @@ impl<'db> TyChecker<'db> {
                     }
                 }
 
-                FieldIndex::Index(_) => {
+                None => {
                     if ty_base.is_tuple(self.db) {
                         self.env
                             .register_resolved_field_index(expr, resolved_field.index);
@@ -4787,9 +4833,17 @@ impl<'db> TyChecker<'db> {
             let else_prop = self.check_expr_in_new_scope(*else_, expected, result_discarded);
             let borrow_provider =
                 merged_borrow_provider(then_prop.borrow_provider, else_prop.borrow_provider);
+            // The conditional only diverges if both branches do.
+            let else_ty = else_prop.ty.fold_with(self.db, &mut self.table);
+            let then_ty = then_prop.ty.fold_with(self.db, &mut self.table);
+            let ty = if else_ty.is_never(self.db) && !then_ty.is_never(self.db) {
+                then_prop.ty
+            } else {
+                else_prop.ty
+            };
             ExprProp {
                 borrow_provider,
-                ..ExprProp::new(else_prop.ty, true)
+                ..ExprProp::new(ty, true)
             }
         } else {
             let if_ty = self.fresh_ty();
@@ -4827,6 +4881,7 @@ impl<'db> TyChecker<'db> {
         let scrutinee_prop = self.open_matched_place(*scrutinee, scrutinee_prop, arm_pats);
 
         let mut match_ty = expected;
+        let mut diverging_arms = 0;
         let mut first_provider: Option<AddressSpace> = None;
         let mut provider_unknown = false;
         let mut provider_conflict = false;
@@ -4844,7 +4899,17 @@ impl<'db> TyChecker<'db> {
             } else {
                 self.check_expr(arm.body, match_ty)
             };
-            match_ty = arm_prop.ty;
+            // A diverging arm doesn't determine the type of the match, which
+            // only diverges if every arm does.
+            if arm_prop
+                .ty
+                .fold_with(self.db, &mut self.table)
+                .is_never(self.db)
+            {
+                diverging_arms += 1;
+            } else {
+                match_ty = arm_prop.ty;
+            }
             self.env.leave_scope();
 
             if arm_prop.shape.is_some() {
@@ -4911,6 +4976,10 @@ impl<'db> TyChecker<'db> {
                     self.push_diag(diag);
                 }
             }
+        }
+
+        if !arms.is_empty() && diverging_arms == arms.len() {
+            match_ty = TyId::never(self.db);
         }
 
         ExprProp {

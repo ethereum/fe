@@ -201,8 +201,8 @@ pub(crate) fn semantic_ty_to_abi_desc_with_source<'db>(
         return Ok(elem_desc.array(&len));
     }
 
-    if let Some(elem_ty) = core_dyn_array_elem_ty(db, ty) {
-        let source_elem = core_dyn_array_elem_ty(db, source).ok_or_else(|| {
+    if let Some(elem_ty) = std_dyn_array_elem_ty(db, ty) {
+        let source_elem = std_dyn_array_elem_ty(db, source).ok_or_else(|| {
             AbiTypeError::unsupported("ABI source and canonical dynamic arrays differ")
         })?;
         let elem_desc =
@@ -289,9 +289,13 @@ pub(crate) fn semantic_ty_to_abi_desc_with_source<'db>(
                                 ty.generic_args(db),
                                 source.generic_args(db),
                             );
+                            // Tuple struct fields are named by position only
+                            // for `.0` lookups; in the ABI they are unnamed,
+                            // like tuple components.
                             let name = field
                                 .name
                                 .to_opt()
+                                .filter(|_| !struct_.is_tuple(db))
                                 .map(|ident| ident.data(db).to_string())
                                 .unwrap_or_default();
                             Ok((name, semantic_ty_to_abi_desc_with_source(db, field_ty)?))
@@ -375,9 +379,9 @@ fn is_std_address_ty(db: &dyn HirAnalysisDb, ty: TyId<'_>, adt_ref: AdtRef<'_>) 
         .is_some_and(|ingot| ingot.kind(db) == IngotKind::Std)
 }
 
-fn core_dyn_array_elem_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
+fn std_dyn_array_elem_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
     if let Some((_, inner)) = ty.as_capability(db) {
-        return core_dyn_array_elem_ty(db, inner);
+        return std_dyn_array_elem_ty(db, inner);
     }
 
     let (base, args) = ty.decompose_ty_app(db);
@@ -391,7 +395,7 @@ fn core_dyn_array_elem_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Opt
     }
     if !base
         .ingot(db)
-        .is_some_and(|ingot| ingot.kind(db) == IngotKind::Core)
+        .is_some_and(|ingot| ingot.kind(db) == IngotKind::Std)
     {
         return None;
     }
@@ -438,9 +442,9 @@ pub(crate) fn is_dynamic_event_ty(db: &dyn HirAnalysisDb, ty: TyId<'_>) -> bool 
             .is_some_and(|&elem_ty| is_dynamic_event_ty(db, elem_ty));
     }
     ty.is_string(db)
-        || ["Bytes", "DynString", "DynArray"]
-            .into_iter()
-            .any(|name| is_core_adt_named(db, ty, name))
+        || is_core_bytes_ty(db, ty)
+        || is_core_dyn_string_ty(db, ty)
+        || std_dyn_array_elem_ty(db, ty).is_some()
 }
 
 /// Fixed arrays, tuples and `#[abi]` structs. Solidity hashes the encoding
@@ -481,7 +485,7 @@ pub(crate) fn non_copy_fixed_array_elem<'db>(
             .iter()
             .find_map(|&elem| non_copy_fixed_array_elem(db, scope, elem, assumptions));
     }
-    core_dyn_array_elem_ty(db, ty)
+    std_dyn_array_elem_ty(db, ty)
         .and_then(|elem| non_copy_fixed_array_elem(db, scope, elem, assumptions))
 }
 

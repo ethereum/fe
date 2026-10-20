@@ -240,6 +240,12 @@ pub(crate) fn collect_func_decl_constraints<'db>(
         CallableDef::VariantCtor(var) => {
             return Binder::bind(var.enum_.into(), PredicateListId::empty_list(db));
         }
+        CallableDef::StructCtor(s) if include_parent => {
+            return collect_constraints(db, s.into());
+        }
+        CallableDef::StructCtor(s) => {
+            return Binder::bind(s.into(), PredicateListId::empty_list(db));
+        }
     };
 
     // A method's own bounds resolve under its parent's, so without the parent
@@ -279,6 +285,9 @@ pub(crate) fn collect_func_decl_constraint_pairs<'db>(
         CallableDef::Func(func) => func,
         CallableDef::VariantCtor(var) => {
             return decl_constraint_pairs(db, var.enum_.into()).clone();
+        }
+        CallableDef::StructCtor(s) => {
+            return decl_constraint_pairs(db, s.into()).clone();
         }
     };
 

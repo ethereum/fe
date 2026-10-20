@@ -25,7 +25,7 @@ error[3-0059]: `Span` is a `#[view]` type
 error[8-0036]: missing effect `Key` required by `start`
    ┌─ acceptance.fe:63:14
    │
-63 │     for x in xs by d {
+63 │     for x in xs.by(d) {
    │              ^^ `start` requires effect `Key` to be in scope
    │
    = require it in this function's signature with `uses Key`, so that its callers provide it
@@ -34,7 +34,7 @@ error[8-0036]: missing effect `Key` required by `start`
 error[8-0036]: missing effect `Key` required by `has`
    ┌─ acceptance.fe:63:14
    │
-63 │     for x in xs by d {
+63 │     for x in xs.by(d) {
    │              ^^ `has` requires effect `Key` to be in scope
    │
    = require it in this function's signature with `uses Key`, so that its callers provide it
@@ -43,7 +43,7 @@ error[8-0036]: missing effect `Key` required by `has`
 error[8-0036]: missing effect `Key` required by `next`
    ┌─ acceptance.fe:63:14
    │
-63 │     for x in xs by d {
+63 │     for x in xs.by(d) {
    │              ^^ `next` requires effect `Key` to be in scope
    │
    = require it in this function's signature with `uses Key`, so that its callers provide it
@@ -52,7 +52,7 @@ error[8-0036]: missing effect `Key` required by `next`
 error[8-0036]: missing effect `Key` required by `at`
    ┌─ acceptance.fe:63:14
    │
-63 │     for x in xs by d {
+63 │     for x in xs.by(d) {
    │              ^^ `at` requires effect `Key` to be in scope
    │
    = require it in this function's signature with `uses Key`, so that its callers provide it

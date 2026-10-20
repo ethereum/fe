@@ -181,12 +181,9 @@ impl<'db, 'a> ConstFnChecker<'db, 'a> {
                     self.check_expr(*expr);
                 }
             }
-            Stmt::For(pat, iter, driver, body, _) => {
+            Stmt::For(pat, iter, body, _) => {
                 self.check_let_pat(*pat);
                 self.check_expr(*iter);
-                if let Some(driver) = driver {
-                    self.check_expr(*driver);
-                }
                 if let Some(plan) = self.typed_body.for_loop_plan(stmt) {
                     let span: DynLazySpan<'db> = stmt.span(self.body).into();
                     for call in &plan.calls {

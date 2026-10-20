@@ -2738,11 +2738,8 @@ pub(crate) fn body_lexical_env<'db>(
                     }
                     self.flush_pending();
                 }
-                Stmt::For(pat, iterable, driver, body, _) => {
+                Stmt::For(pat, iterable, body, _) => {
                     self.walk_expr(*iterable);
-                    if let Some(driver) = driver {
-                        self.walk_expr(*driver);
-                    }
                     self.clear_pending();
                     self.walk_pat(*pat);
                     self.enter_scope(*body);

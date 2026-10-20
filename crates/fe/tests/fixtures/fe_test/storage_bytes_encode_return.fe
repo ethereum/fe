@@ -52,7 +52,7 @@ uses (evm: mut Evm)
         )
     }
 
-    unsafe { Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size) }
+    unsafe { Bytes::from_abi_tail(data: data_ptr, len: payload_len as usize, size: payload_size) }
 }
 
 fn raw_get(addr: Address) -> Bytes
@@ -81,7 +81,7 @@ fn test_storage_bytes_encode_return_multi_word()
 uses (evm: mut Evm)
 {
     let blob = evm.create2<Blob>(value: 0, args: (), salt: 0)
-    assert!(blob.inner != 0)
+    assert!(blob.word() != 0)
 
     evm.call(
         addr: blob,

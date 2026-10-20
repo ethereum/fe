@@ -280,7 +280,7 @@ fn format_method_param_ty<'db>(
     let ty = ty.pretty_print(db).to_string();
     let Some(param) = (match callable {
         CallableDef::Func(func) => func.params(db).nth(param_idx),
-        CallableDef::VariantCtor(_) => None,
+        CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => None,
     }) else {
         return ty;
     };
@@ -2406,6 +2406,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
+            Self::ConstEvalPanicked { span, code } => primary_diag(
+                Severity::Error,
+                "panic in const context",
+                format!("panics with code {code:#x}"),
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ConstEvalNonConstCall(span) => primary_diag(
                 Severity::Error,
                 "non-const function call in const context",
@@ -3367,7 +3375,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 if let Some(func) = func {
                     let has_explicit = match func {
                         CallableDef::Func(f) => f.has_explicit_return_ty(db),
-                        CallableDef::VariantCtor(_) => false,
+                        CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => false,
                     };
 
                     // For explicit return types, point at the return type span;
@@ -4788,7 +4796,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                             "this function is marked `#[must_use]`".to_string(),
                         )
                     }
-                    MustUseSubject::Function(CallableDef::VariantCtor(_)) => unreachable!(),
+                    MustUseSubject::Function(CallableDef::VariantCtor(_) | CallableDef::StructCtor(_)) => unreachable!(),
                 };
 
                 CompleteDiagnostic {
@@ -5896,11 +5904,11 @@ impl DiagnosticVoucher for ImplDiag<'_> {
             Self::MethodEffectMismatch { trait_m, impl_m } => {
                 let trait_count = match trait_m {
                     CallableDef::Func(func) => func.effect_requirements(db).len(),
-                    CallableDef::VariantCtor(_) => 0,
+                    CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
                 };
                 let impl_count = match impl_m {
                     CallableDef::Func(func) => func.effect_requirements(db).len(),
-                    CallableDef::VariantCtor(_) => 0,
+                    CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
                 };
                 let detail = if trait_count == impl_count {
                     "effect keys or mutability differ from the trait method".to_string()

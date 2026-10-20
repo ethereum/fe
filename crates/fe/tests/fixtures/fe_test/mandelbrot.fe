@@ -222,7 +222,7 @@ pub contract Mandelbrot {
 #[test]
 fn test_mandelbrot_known_points() uses (evm: mut Evm) {
     let addr = evm.create2<Mandelbrot>(value: 0, args: (), salt: 0)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     // (0, 0) is in the Mandelbrot set: z stays at 0 forever.
     let res: u256 = evm.call(
@@ -310,7 +310,7 @@ fn test_mandelbrot_known_points() uses (evm: mut Evm) {
 #[test]
 fn test_mandelbrot_row() uses (evm: mut Evm) {
     let addr = evm.create2<Mandelbrot>(value: 0, args: (), salt: 1)
-    assert!(addr.inner != 0)
+    assert!(addr.word() != 0)
 
     // Row along real axis (im=0) from re=-2 to re=2, 5 pixels (step=1.0).
     // Pixels at re = -2, -1, 0, 1, 2.

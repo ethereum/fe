@@ -161,7 +161,7 @@ pub contract C {}
 fn test_large_by_value_array_args() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: 0, args: (), salt: 0)
     let out: Address = c
-    assert!(out.inner == c.inner)
+    assert!(out.word() == c.word())
 }
 "#,
     );

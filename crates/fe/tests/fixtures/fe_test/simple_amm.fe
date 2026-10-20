@@ -85,7 +85,7 @@ pub contract SimpleAmm {
 #[test]
 fn test_amm_basic() uses (evm: mut Evm) {
     let pool = evm.create2<SimpleAmm>(value: 0, args: (), salt: 0)
-    assert!(pool.inner != 0)
+    assert!(pool.word() != 0)
 
     // Add initial liquidity: 1000 A, 2000 B
     evm.call(addr: pool, gas: 100000, value: 0, message: AmmMsg::AddLiquidity { amount_a: 1000, amount_b: 2000 })
@@ -118,7 +118,7 @@ fn test_amm_basic() uses (evm: mut Evm) {
 #[test]
 fn test_amm_edge_cases() uses (evm: mut Evm) {
     let pool = evm.create2<SimpleAmm>(value: 0, args: (), salt: 1)
-    assert!(pool.inner != 0)
+    assert!(pool.word() != 0)
 
     // Swap with no liquidity
     let out: u256 = evm.call(addr: pool, gas: 100000, value: 0, message: AmmMsg::SwapAForB { amount_in: 100 })

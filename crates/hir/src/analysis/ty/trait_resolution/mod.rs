@@ -1678,6 +1678,7 @@ fn unsupported<T>() {}
                     parameter,
                 )],
                 IndexMap::new(),
+                crate::hir_def::ModeMarker::None,
             );
             let premises =
                 collect_func_def_constraints(&db, func.into(), true).instantiate_identity();
@@ -1736,6 +1737,7 @@ impl Picks for Subject { type Output = u256 }
             named_trait(&db, top_mod, "Picks"),
             vec![named_struct_ty(&db, top_mod, "Subject")],
             bindings,
+            crate::hir_def::ModeMarker::None,
         );
         let cx = TraitSolveCx::new(&db, top_mod.scope());
         assert!(matches!(
@@ -1772,6 +1774,7 @@ impl Proof for Dead where Dead: Proof {}
                 named_trait(&db, top_mod, "Proof"),
                 vec![named_struct_ty(&db, top_mod, name)],
                 IndexMap::new(),
+                crate::hir_def::ModeMarker::None,
             );
             let candidate = lower_impl_trait(&db, items[index]).unwrap();
             let result = cx.restricted_goal(&db, goal, candidate);
@@ -1805,6 +1808,7 @@ impl<T> Grow for T where Wrap<T>: Grow {}
             named_trait(&db, top_mod, "Grow"),
             vec![named_struct_ty(&db, top_mod, "Dead")],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let candidate = lower_impl_trait(&db, top_mod.all_impl_traits(&db)[0]).unwrap();
         let result = TraitSolveCx::new(&db, top_mod.scope()).restricted_goal(&db, goal, candidate);
@@ -1843,6 +1847,7 @@ fn probe<const N: usize>() {}
             named_trait(&db, top_mod, "Twice"),
             vec![subject],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let items = top_mod.all_impl_traits(&db);
         let candidate = lower_impl_trait(&db, items[2]).unwrap();
@@ -1865,6 +1870,7 @@ fn probe<const N: usize>() {}
             named_trait(&db, top_mod, "Marker"),
             vec![subject],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         assert_eq!(conditions.trait_goals(&db), &[marker]);
     }
@@ -1895,6 +1901,7 @@ impl<T: Left + Right> Top for T {}
             named_trait(&db, top_mod, "Top"),
             vec![subject],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let items = top_mod.all_impl_traits(&db);
         let candidate = lower_impl_trait(&db, items[3]).unwrap();
@@ -1996,6 +2003,7 @@ impl Pick for Key where Other: Lift {}
             named_trait(&db, top_mod, "Pick"),
             vec![named_struct_ty(&db, top_mod, "Key")],
             IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
         );
         let candidate = lower_impl_trait(&db, top_mod.all_impl_traits(&db)[2]).unwrap();
         let result = TraitSolveCx::new(&db, top_mod.scope()).restricted_goal(&db, goal, candidate);

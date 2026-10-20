@@ -1067,13 +1067,9 @@ impl<'db> Stmt<'db> {
                 result
             }
 
-            Stmt::For(pat, iter, driver, body_expr, unroll) => {
+            Stmt::For(pat, iter, body_expr, unroll) => {
                 let pat = unwrap_partial_ref(pat.data(db, body), "For::pat");
                 let iter_expr = unwrap_partial_ref(iter.data(db, body), "For::iter");
-                let driver = driver.map_or_else(String::new, |driver| {
-                    let driver = unwrap_partial_ref(driver.data(db, body), "For::driver");
-                    format!(" by {}", driver.pretty_print(db, body, indent))
-                });
                 let body_block = unwrap_partial_ref(body_expr.data(db, body), "For::body");
 
                 let prefix = match unroll {
@@ -1082,11 +1078,10 @@ impl<'db> Stmt<'db> {
                     None => "",
                 };
                 format!(
-                    "{}for {} in {}{} {}",
+                    "{}for {} in {} {}",
                     prefix,
                     pat.pretty_print(db, body),
                     iter_expr.pretty_print(db, body, indent),
-                    driver,
                     body_block.pretty_print(db, body, indent)
                 )
             }
@@ -1276,6 +1271,36 @@ impl<'db> Struct<'db> {
 
         // Generic parameters
         result.push_str(&self.generic_params(db).pretty_print_params(db));
+
+        if self.is_tuple(db) {
+            let fields = self.fields(db).data(db);
+            // Attributes need their own lines, so attributed fields are
+            // printed one per line.
+            let multiline = fields
+                .iter()
+                .any(|field| !field.attributes.data(db).is_empty());
+            let indent_level = usize::from(multiline);
+            let fields = fields
+                .iter()
+                .map(|field| {
+                    let mut result = String::new();
+                    write_attrs(&mut result, field.attributes, db, indent_level);
+                    let ty = unwrap_partial(field.type_ref, "FieldDef::type_ref");
+                    result.push_str(&indent_text(
+                        &format!("{}{}", field.vis.pretty_print(), ty.pretty_print(db)),
+                        indent_level,
+                    ));
+                    result
+                })
+                .collect::<Vec<_>>();
+            if multiline {
+                result.push_str(&format!("(\n{},\n)", fields.join(",\n")));
+            } else {
+                result.push_str(&format!("({})", fields.join(", ")));
+            }
+            result.push_str(&self.where_clause(db).pretty_print(db));
+            return result;
+        }
 
         // Where clause
         result.push_str(&self.where_clause(db).pretty_print(db));

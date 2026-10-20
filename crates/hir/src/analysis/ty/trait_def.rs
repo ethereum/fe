@@ -125,6 +125,11 @@ pub(crate) fn ingot_trait_env<'db>(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>
 /// projections) often only become unifiable after normalization, and unification
 /// rejects unresolved associated types. The solver normalizes before unifying
 /// candidates, so any filtering here must be an over-approximation.
+///
+/// The implementors are headers; their associated types are not lowered.
+/// Lowering `type Space = Inner<P>::Space` proves the bounds of `Inner`'s
+/// impl, `P: Pinned`, which looks up this trait's impls again. Consumers lower
+/// the associated types they read, one binding at a time.
 #[salsa::tracked(return_ref)]
 pub(crate) fn impls_for_trait_def<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -138,9 +143,7 @@ pub(crate) fn impls_for_trait_def<'db>(
         out.extend(contract_virtual_impls(db, ingot).iter().copied());
     }
 
-    out.into_iter()
-        .map(|implementor| complete_impl_trait(db, implementor))
-        .collect()
+    out
 }
 
 /// Different nominal heads cannot unify after freshening or saturation.
@@ -2521,6 +2524,7 @@ impl<T> Pick<bool> for Wrap<T> {
             g.def(&db),
             g.args(&db).to_vec(),
             [(out(&db), u32_)].into_iter().collect::<IndexMap<_, _>>(),
+            ModeMarker::None,
         );
         assert_eq!(
             checked
@@ -2534,6 +2538,7 @@ impl<T> Pick<bool> for Wrap<T> {
             g.def(&db),
             g.args(&db).to_vec(),
             [(out(&db), bool_)].into_iter().collect::<IndexMap<_, _>>(),
+            ModeMarker::None,
         );
         assert!(
             checked.revalidate(cx, wrong).is_err(),

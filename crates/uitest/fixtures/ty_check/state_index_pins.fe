@@ -49,7 +49,7 @@ unsafe impl StateIndex for Noisy {
     type Entry = u256
 
     fn locate(self, _ root: u256, _ key: u256) -> Location uses (ctx: Ctx) {
-        Location { slot: root + key + ctx.address().inner, offset: 0 }
+        Location { slot: root + key + ctx.address().word(), offset: 0 }
     }
 }
 

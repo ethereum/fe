@@ -183,11 +183,11 @@ or at `mut`, and `mut?` is `ref` or `mut` accordingly, wherever `ref` and
 `mut` may be written.
 
 ```fe
-pub fn at(mut? self, _ index: u256) -> mut? T {
+pub fn at(mut? self, _ index: usize) -> mut? T {
     unsafe { mut? *self.ptr_at(index) }
 }
 
-pub fn split_at(mut? self, _ mid: u256) -> (mut? Self, mut? Self) { .. }
+pub fn split_at(mut? self, _ mid: usize) -> (mut? Self, mut? Self) { .. }
 ```
 
 Its body is checked once per mode: the `ref` body cannot write through a
@@ -207,15 +207,22 @@ same name that takes `mut` where the trait method takes `mut?`, for an
 element its two modes compute differently:
 
 ```fe
-impl<T> Index<usize> for MemVec<T> where .. {
-    fn index(self, _ index: usize) -> ref T {
-        self.get(index as u256)
+/// Stores each element doubled.
+struct Doubled {
+    words: [u256; 4],
+}
+
+impl Index<usize> for Doubled {
+    type Output = u256
+
+    fn index(self, _ index: usize) -> ref u256 {
+        self.words[index] / 2
     }
 
-    fn index(mut self, _ index: usize) -> mut T {
-        var value = self.get(index as u256)
+    fn index(mut self, _ index: usize) -> mut u256 {
+        var value = self.words[index] / 2
         yield mut value
-        self.set(index: index as u256, value)
+        self.words[index] = value * 2
     }
 }
 ```
