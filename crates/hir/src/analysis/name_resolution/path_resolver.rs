@@ -4,7 +4,7 @@ use crate::{
     core::hir_def::{
         Const, Enum, EnumVariant, GenericArgListId, GenericParamOwner, HirIngot, IdentId, Impl,
         ImplTrait, ItemKind, Partial, PathId, PathKind, Trait, TypeBound, TypeId, TypeKind,
-        VariantKind, WhereClauseOwner, scope_graph::ScopeId,
+        VariantKind, scope_graph::ScopeId,
     },
     core::semantic::trait_self_predicate,
     span::{DynLazySpan, path::LazyPathSpan, types::LazyTySpan},
@@ -17,12 +17,13 @@ use std::iter::successors;
 use thin_vec::ThinVec;
 
 use super::{
-    EarlyNameQueryId, ExpectedPathKind, NameDomain, available_traits_in_scope,
+    EarlyNameQueryId, ExpectedPathKind, NameDomain,
     diagnostics::PathResDiag,
     is_scope_visible_from,
     method_selection::{MethodCandidate, MethodSelectionError, select_method_candidate},
     name_resolver::{NameRes, NameResBucket, NameResKind, NameResolutionError},
     resolve_query,
+    traits_in_scope::traits_available_for_selection,
     visibility_checker::is_ty_visible_from,
 };
 use crate::analysis::{
@@ -858,7 +859,7 @@ where
 /// an enclosing trait that lexically shadows a same-named trait
 /// (`trait Abi { type Decoder: Decoder<Self> }`). It is looked up from outside
 /// the shadowing trait.
-fn shadowed_trait<'db>(
+pub(crate) fn shadowed_trait<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
@@ -2006,7 +2007,11 @@ fn select_assoc_const_candidate<'db>(
     // unrelated trait elsewhere (even in another ingot) can't make the path
     // ambiguous.
     let candidates = if matches.len() > 1 {
-        let available = traits_available_for_selection(db, scope, assumptions);
+        let available = traits_available_for_selection(
+            db,
+            scope,
+            assumptions.list(db).iter().map(|pred| pred.def(db)),
+        );
         let visible: IndexSet<TraitInstId<'db>> = matches
             .iter()
             .copied()
@@ -2024,53 +2029,6 @@ fn select_assoc_const_candidate<'db>(
         }
         Some(_) => AssocConstSelection::Ambiguous(candidates.into_iter().collect()),
     }
-}
-
-/// The traits whose items a `Type::Item` path in `scope` may select: those in
-/// scope, the traits of `assumptions`, and all their super-traits.
-///
-/// Super-traits are found from their paths alone, as lowering names them.
-/// Lowering a super-trait reference could resolve the path being selected
-/// again, as `u8::N` in `trait Top: Parent<{ u8::N }>`, where `Top` is itself
-/// in scope. Any super-trait missed here would silently make another candidate
-/// the only one in scope.
-fn traits_available_for_selection<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> IndexSet<Trait<'db>> {
-    let mut pending: Vec<Trait<'db>> = available_traits_in_scope(db, scope)
-        .iter()
-        .copied()
-        .chain(assumptions.list(db).iter().map(|pred| pred.def(db)))
-        .collect();
-    let mut traits = IndexSet::default();
-    while let Some(trait_def) = pending.pop() {
-        if !traits.insert(trait_def) {
-            continue;
-        }
-        let super_refs = trait_def
-            .super_trait_refs(db)
-            .map(|super_ref| super_ref.trait_ref(db));
-        let self_bounds = WhereClauseOwner::Trait(trait_def)
-            .clause(db)
-            .predicates(db)
-            .filter(|pred| pred.is_self_subject(db))
-            .flat_map(|pred| pred.bounds(db).map(|bound| bound.trait_ref(db)));
-        pending.extend(super_refs.chain(self_bounds).filter_map(|trait_ref| {
-            let path = trait_ref.path(db).to_opt()?;
-            let scope = trait_def.scope();
-            let definition = resolve_type_path_definition(db, path, scope)?;
-            match shadowed_trait(db, path, scope, definition).map_or(definition, |outer| outer.kind)
-            {
-                NameResKind::Scope(ScopeId::Item(ItemKind::Trait(super_trait))) => {
-                    Some(super_trait)
-                }
-                NameResKind::Scope(_) | NameResKind::Prim(_) => None,
-            }
-        }));
-    }
-    traits
 }
 
 /// Whether `implementor` is the trait impl that `scope` is in. Its items are
@@ -2357,7 +2315,11 @@ fn find_associated_type_in_mode<'db>(
             TyData::TyParam(_) | TyData::AssocTy(_)
         )
     {
-        let available = traits_available_for_selection(db, scope, assumptions);
+        let available = traits_available_for_selection(
+            db,
+            scope,
+            assumptions.list(db).iter().map(|pred| pred.def(db)),
+        );
         let visible =
             |inst: &TraitInstId<'db>| enclosing.contains(inst) || available.contains(&inst.def(db));
         if candidates.iter().any(|(inst, _)| visible(inst)) {
