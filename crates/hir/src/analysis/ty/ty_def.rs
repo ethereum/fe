@@ -1269,7 +1269,7 @@ pub struct ClosureDef<'db> {
 
 /// The type of a closure expression: an environment of captured values and a
 /// function of the closure's parameters. Closures are values of this type
-/// and implement the core callable shape traits of their parameter modes
+/// and implement the core callable traits at the shape of their parameters
 /// (see `ty::closure`).
 #[salsa::interned]
 #[derive(Debug)]

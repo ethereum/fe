@@ -852,10 +852,11 @@ impl ToDoc for ast::TraitRef {
                 .text("(")
                 .append(intersperse(alloc, params, alloc.text(", ")))
                 .append(alloc.text(")"));
-            let ret = shape.ret_ty().map_or_else(
-                || alloc.nil(),
-                |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
-            );
+            let ret = match shape.ret_ty() {
+                _ if shape.infers_ret() => alloc.text(" -> _"),
+                Some(ty) => alloc.text(" -> ").append(ty.to_doc(ctx)),
+                None => alloc.nil(),
+            };
             return name.append(params).append(ret);
         }
         match self.path() {

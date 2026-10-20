@@ -115,7 +115,7 @@ use crate::analysis::semantic::{
 };
 use crate::analysis::ty::ty_def::{ClosureDef, ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
-    closure::{CallableShape, CallableValue},
+    closure::{CallableTrait, CallableValue},
     const_ty::{
         CallableInputOrigin, ConstTyData, ConstTyId, LoweringContext, const_body_assumptions,
         invalid_cause_from_eval_failure, origin_expr_for_const_eval_diag, root_ctfe_error,
@@ -2300,7 +2300,7 @@ impl<'db> TyChecker<'db> {
                 // the function is known, so solving does not invent it.
                 let self_ty = goal.self_ty(db);
                 if self_ty.has_var(db)
-                    && !(CallableShape::of(db, goal.def(db)).is_some()
+                    && !(CallableTrait::of(db, goal.def(db)).is_some()
                         && CallableValue::of(db, self_ty).is_some())
                 {
                     let outcome = if final_pass {
@@ -4362,7 +4362,7 @@ mod typed_body_tables {
         /// The tuples passed to product parameters, a part each.
         pub(super) product_args: FxHashSet<ExprId>,
         /// The calls `f(..)` of callable values: the callee is the receiver
-        /// of a callable shape trait's method.
+        /// of a callable trait's method.
         pub(super) value_calls: FxHashSet<ExprId>,
         /// The places a pattern is matched against, which bind each
         /// component where it lies.
@@ -5153,7 +5153,7 @@ impl<'db> TypedBody<'db> {
 
     /// The receiver of the call `expr`: a method call's receiver, or the
     /// callee of a call `f(..)` of a callable value, which runs a callable
-    /// shape trait's method on it.
+    /// callable trait's method on it.
     pub fn call_receiver(&self, db: &'db dyn HirAnalysisDb, expr: ExprId) -> Option<ExprId> {
         match expr.data(db, self.body()?) {
             Partial::Present(Expr::MethodCall(receiver, ..)) => Some(*receiver),

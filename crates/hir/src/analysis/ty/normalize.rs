@@ -309,12 +309,15 @@ impl<'db> TypeNormalizer<'db> {
             return None;
         }
 
-        if let Some(out) = callable_out_ty(
-            self.db,
-            self.fold_ty(self.db, assoc.trait_.self_ty(self.db)),
-            assoc.trait_.def(self.db),
-            assoc.name,
-        ) {
+        if let Some(&shape) = assoc.trait_.args(self.db).get(1)
+            && let Some(out) = callable_out_ty(
+                self.db,
+                self.fold_ty(self.db, assoc.trait_.self_ty(self.db)),
+                assoc.trait_.def(self.db),
+                self.fold_ty(self.db, shape),
+                assoc.name,
+            )
+        {
             return Some(out);
         }
 

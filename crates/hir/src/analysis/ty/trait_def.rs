@@ -12,7 +12,6 @@ use crate::{
     },
     hir_def::{
         Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, ModeMarker, Trait,
-        params::FuncParamMode,
     },
 };
 use common::{
@@ -24,9 +23,10 @@ use salsa::Update;
 
 use super::{
     canonical::Canonical,
-    closure::CallableShape,
+    closure::{CallableTrait, callable_params},
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
+    shape::Shape,
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         TraitSolveCx, constraint::collect_candidate_constraints, is_goal_satisfiable,
@@ -245,7 +245,7 @@ pub enum ImplementorOrigin<'db> {
     Hir(ImplTrait<'db>),
     VirtualContract(Contract<'db>),
     Assumption,
-    /// A callable value's implementation of its callable shape traits: a
+    /// A callable value's implementation of its callable traits: a
     /// closure's or a function item's (`ty::closure`).
     Callable,
     /// The compiler's structural implementation of a marker trait
@@ -1413,33 +1413,24 @@ impl<'db> TraitInstId<'db> {
             let inst = self.pretty_print(db, false);
             let self_ty = self.self_ty(db);
             format!("{}: {}", self_ty.pretty_print(db), inst)
-        } else if let Some(shape) = CallableShape::of(db, self.def(db)) {
-            // A callable shape prints as the sugar that names it,
-            // `Fn(own A, B) -> R`; `-> _` when the result is left open.
-            let args = &self.args(db)[1..];
-            let (params, ret) = match args.split_last() {
-                Some((ret, params)) if shape.result_is_arg() => (params, Some(*ret)),
-                _ => (
-                    args,
-                    self.assoc_type_bindings(db)
-                        .get(&IdentId::new(db, "Out".to_string()))
-                        .copied(),
-                ),
-            };
-            let params: Vec<_> = shape
-                .modes
+        } else if let Some(callable) = CallableTrait::of(db, self.def(db))
+            && let Some(params) = callable_params(db, self)
+        {
+            // A callable trait whose shape lists its parameters prints as the
+            // sugar that names it, `Fn(own A, B) -> R`; `-> _` when the
+            // result is left open.
+            let ret = self
+                .assoc_type_bindings(db)
+                .get(&IdentId::new(db, "Out".to_string()))
+                .copied();
+            let params: Vec<_> = params
                 .iter()
-                .zip(params)
-                .map(|(mode, ty)| {
-                    let ty = ty.pretty_print(db);
-                    match mode {
-                        FuncParamMode::Own => format!("own {ty}"),
-                        FuncParamMode::Mut => format!("mut {ty}"),
-                        FuncParamMode::View => ty.clone(),
-                    }
+                .map(|param| match param {
+                    Shape::Access(BorrowKind::Ref, ty) => ty.pretty_print(db).to_string(),
+                    _ => param.pretty_print_product(db),
                 })
                 .collect();
-            let name = if shape.mut_receiver { "FnMut" } else { "Fn" };
+            let name = if callable.mut_receiver { "FnMut" } else { "Fn" };
             let ret = match ret {
                 Some(ret) if ret == TyId::unit(db) => String::new(),
                 Some(ret) => format!(" -> {}", ret.pretty_print(db)),

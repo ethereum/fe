@@ -180,7 +180,7 @@ pub struct CallSiteLowering<'db> {
     pub effect_pairs: Box<[(usize, usize)]>,
     pub provider_pairs: Box<[(u32, u32)]>,
     /// Whether the callee takes the operands after the call's receiver (a
-    /// function item called through a callable shape).
+    /// function item called through a callable trait).
     pub drops_receiver: bool,
 }
 

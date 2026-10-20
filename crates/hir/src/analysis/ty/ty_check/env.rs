@@ -2359,7 +2359,7 @@ impl<'db> LocalBinding<'db> {
     }
 
     /// The first parameter of a closure body: the closure value itself, its
-    /// environment of captures, viewed or `mut` as the callable shape trait's
+    /// environment of captures, viewed or `mut` as the callable trait's
     /// receiver is. The body's lowering and its callers must agree on it, so
     /// it is constructed only here.
     pub fn closure_env(

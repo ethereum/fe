@@ -29,11 +29,34 @@ fn fold<A, F: FnMut(own A, Self::Item) -> A>(self, _ init: own A, _ f: mut F) ->
     uses (E, F::E)
 ```
 
-`Fn(own A, B) -> R` is the core trait `Fn_ov<A, B, Out = R>`, whose
-`call(self, ..)` views the callable; `FnMut(..)` is `FnMut_ov`, whose
-`call_mut(mut self, ..)` mutates it; `Fn(own T) -> U` is `Fn<T, U>`. A closure
-implements the `Fn` and `FnMut` shapes of its parameter modes, with `Out` its
-result.
+`Fn(own A, B) -> R` is the core trait `Fn<(own A, B), Out = R>`, whose
+`call(self, ..A)` views the callable; `FnMut(..)` is `FnMut<(..)>`, whose
+`call_mut(mut self, ..A)` mutates it. The trait's argument is the shape of
+the parameter list, of kind `shape`, and `..A` spreads it into the method's
+parameters. `-> _` leaves `Out` open, as `Fn(A, B) -> _`. A closure
+implements `Fn` and `FnMut` at the shape of its own parameters, with `Out`
+its result.
+
+A trait of your own can take a parameter list the same way:
+
+```fe
+trait Apply<shape A> {
+    type Out
+
+    fn apply(self, ..A) -> Self::Out
+}
+
+impl Apply<(own u256, ref u256)> for Adder {
+    type Out = u256
+
+    fn apply(self, _ a: own u256, _ b: u256) -> u256 {
+        self.bias + a + b
+    }
+}
+```
+
+A spread is last, only in a trait method without a body; an impl writes the
+parameters out, unlabeled, and a call passes one argument for each.
 
 Unannotated parameters take their modes and types from the shape bound of
 the parameter the closure is passed to, after the arguments before it: in
@@ -46,11 +69,11 @@ function named by its path, may be passed to a `mut` parameter directly.
 ## Calls
 
 A callable value is called like a function, `f(x)`. The call runs the
-value's `Fn` shape's `call`, or `call_mut` when only an `FnMut` shape is
+value's `Fn` `call`, or `call_mut` when only an `FnMut` bound is
 known, which takes `f` as `mut`. This calls a closure, a parameter bound by
-a shape, and a value of any type that implements a shape trait; another
-method named `call` does not make a type callable. `f.call(x)` and
-`f.call_mut(x)` name the shape's methods explicitly. A field holding a
+`Fn` or `FnMut`, and a value of any type that implements one; another method
+named `call` does not make a type callable. `f.call(x)` and `f.call_mut(x)`
+name the methods explicitly. A field holding a
 callable is called as `(h.f)(x)`, since `h.f(x)` calls a method `f`.
 
 ```fe
@@ -64,13 +87,14 @@ fn apply<F: Fn(u256) -> u256>(_ f: F, _ x: u256) -> u256 uses F::E {
 
 ## Functions as callable values
 
-A function item implements the shapes of its parameters' modes too, so a
+A function item implements `Fn` and `FnMut` at the shape of its parameters
+too, so a
 named function, associated function or trait method can be passed where a
 closure can: `xs.fold(0, add)` with `fn add(_ acc: own u256, _ x: u256) ->
 u256`. Its row is the function's own effects. A generic function's arguments
 are inferred from the bound, as in `apply(identity, 9)`. An `unsafe fn`, a
-projection, a function with a product parameter and a variant constructor
-are not callable values.
+projection, a function with a product parameter or a spread, and a variant
+constructor are not callable values.
 
 ## Captures
 

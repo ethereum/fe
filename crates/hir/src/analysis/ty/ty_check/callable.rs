@@ -19,7 +19,7 @@ use super::{
 use crate::analysis::{
     HirAnalysisDb,
     ty::{
-        closure::{CallableShape, out_ident},
+        closure::{CallableTrait, out_ident},
         const_ty::LoweringContext,
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
@@ -1190,7 +1190,8 @@ impl<'db> TyChecker<'db> {
 
 impl<'db> Callable<'db> {
     /// The callable shape expected of a closure literal passed to a
-    /// parameter of type `param_ty`: a shape bound on that type.
+    /// parameter of type `param_ty`: a callable trait bound on that type
+    /// whose shape lists its parameters.
     fn closure_arg_expectation(
         &self,
         tc: &mut TyChecker<'db>,
@@ -1204,29 +1205,25 @@ impl<'db> Callable<'db> {
             .iter()
             .find_map(|&constraint| {
                 let constraint = self.normalize_with_trait_evidence(db, constraint);
-                let shape = CallableShape::of(db, constraint.def(db))?;
-                let (&self_ty, args) = constraint.args(db).split_first()?;
-                if tc.normalize_ty(self_ty) != param_ty {
+                CallableTrait::of(db, constraint.def(db))?;
+                if tc.normalize_ty(constraint.self_ty(db)) != param_ty {
                     return None;
                 }
-                let arity = shape.modes.len();
-                let params = args
-                    .get(..arity)?
+                let shape = tc.normalize_ty(*constraint.args(db).get(1)?);
+                let (modes, params) = shape
+                    .as_params_shape(db)?
                     .iter()
-                    .map(|&ty| tc.normalize_ty(ty))
-                    .collect();
-                let ret = if shape.result_is_arg() {
-                    args.get(arity).copied()
-                } else {
-                    constraint
+                    .map(|param| Some((param.param_mode()?, param.erased_ty(db))))
+                    .collect::<Option<Vec<_>>>()?
+                    .into_iter()
+                    .unzip();
+                Some(ClosureExpectation {
+                    modes,
+                    params,
+                    ret: constraint
                         .assoc_type_bindings(db)
                         .get(&out_ident(db))
-                        .copied()
-                };
-                Some(ClosureExpectation {
-                    modes: shape.modes,
-                    params,
-                    ret,
+                        .copied(),
                 })
             })
     }

@@ -1179,11 +1179,7 @@ impl<'db> CallableDef<'db> {
             return None;
         }
         let param_mode = self.param_mode(db, idx, mode);
-        Some(self.arg_ty(db, idx)?.map(|ty| match param_mode {
-            FuncParamMode::Own => Shape::Owned(ty),
-            FuncParamMode::View => Shape::Access(BorrowKind::Ref, ty),
-            FuncParamMode::Mut => Shape::Access(BorrowKind::Mut, ty),
-        }))
+        Some(self.arg_ty(db, idx)?.map(|ty| Shape::param(param_mode, ty)))
     }
 
     /// The callee's parameters in a call at `mode`: the shape of each before

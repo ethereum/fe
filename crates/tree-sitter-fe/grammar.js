@@ -460,11 +460,12 @@ module.exports = grammar({
       $.fn_shape,
     ),
 
-    // `Fn(own A, B) -> R`: the callable trait of a shape
+    // `Fn(own A, B) -> R`: the callable trait of a parameter list; `-> _`
+    // leaves the result open
     fn_shape: $ => prec.right(seq(
       field('name', $.identifier),
       field('params', $.tuple_type),
-      optional(seq('->', field('return_type', $._type))),
+      optional(seq('->', field('return_type', choice($._type, '_')))),
     )),
 
     trait_item_list: $ => seq(

@@ -924,8 +924,9 @@ impl<'db> ImplTrait<'db> {
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let origin = HirOrigin::raw(&ast);
 
-        // The `-> R` of a callable shape, `impl FnMut(u256) -> u256 for F`,
-        // is the implementation's `type Out = R`, not a binding of the trait.
+        // The `-> R` of a callable trait's sugar,
+        // `impl FnMut(u256) -> u256 for F`, is the implementation's
+        // `type Out = R`, not a binding of the trait.
         let mut shape_types = vec![];
         if ast
             .trait_ref()

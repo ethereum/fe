@@ -29,7 +29,7 @@ pub enum BodyOwner<'db> {
         recv_idx: u32,
         arm_idx: u32,
     },
-    /// The body of a closure called through a callable shape trait whose
+    /// The body of a closure called through a callable trait whose
     /// receiver, `self` or `mut self`, is `receiver`: one body per receiver
     /// mode it is called with.
     Closure {

@@ -553,9 +553,9 @@ impl TraitRef {
 }
 
 ast_node! {
-    /// `Fn(own A, B) -> R`: the callable trait of the shape whose receiver
-    /// mode the name gives (`Fn` views, `FnMut` mutates) and whose parameter
-    /// modes the list gives.
+    /// `Fn(own A, B) -> R`: the callable trait, `Fn` or `FnMut`, of the
+    /// parameter list `(own A, B)`, with the result `R` (or `-> _`, left
+    /// open).
     pub struct FnShape,
     SK::FnShape
 }
@@ -576,6 +576,11 @@ impl FnShape {
             .children()
             .filter_map(super::Type::cast)
             .nth(1)
+    }
+
+    /// Whether the result is `-> _`, left open.
+    pub fn infers_ret(&self) -> bool {
+        support::token(self.syntax(), SK::Underscore).is_some()
     }
 }
 

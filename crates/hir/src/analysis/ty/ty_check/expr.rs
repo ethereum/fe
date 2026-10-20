@@ -1819,7 +1819,7 @@ impl<'db> TyChecker<'db> {
     }
 
     /// Checks a call `f(..)` of a callable value as the call `f.call(..)` of
-    /// the callable shape trait it implements, or `f.call_mut(..)` of an
+    /// the callable trait it implements, or `f.call_mut(..)` of an
     /// `FnMut` shape: the callee is the method's receiver.
     fn check_value_call(
         &mut self,

@@ -316,7 +316,7 @@ pub(crate) struct SemanticCallCallee<'db> {
     pub effect_pairs: Vec<(usize, usize)>,
     pub provider_pairs: Vec<(u32, u32)>,
     /// Whether the callee takes the call's operands after its receiver: a
-    /// callable shape's method called on a function item runs the function,
+    /// callable trait's method called on a function item runs the function,
     /// and the item holds nothing.
     pub drops_receiver: bool,
 }
@@ -493,7 +493,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     let CallableDef::Func(nominal_func) = callable.callable_def() else {
         return Ok(None);
     };
-    // A callable shape's method called on a closure runs the closure's body.
+    // A callable trait's method called on a closure runs the closure's body.
     if let Some(inst) = callable.trait_inst()
         && let Some((closure, receiver)) = callee_closure(
             db,
@@ -580,7 +580,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             drops_receiver: false,
         }));
     }
-    // A callable shape's method called on a function item runs the function,
+    // A callable trait's method called on a function item runs the function,
     // with the call's operands after the receiver. The components of `call`'s
     // row are the function's effects, in order.
     if let Some(inst) = callable.trait_inst()

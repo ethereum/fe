@@ -131,6 +131,15 @@ impl<'db> Shape<'db> {
             .collect()
     }
 
+    /// The shape of a parameter of `mode` and type `ty`.
+    pub fn param(mode: FuncParamMode, ty: TyId<'db>) -> Self {
+        match mode {
+            FuncParamMode::Own => Self::Owned(ty),
+            FuncParamMode::View => Self::Access(BorrowKind::Ref, ty),
+            FuncParamMode::Mut => Self::Access(BorrowKind::Mut, ty),
+        }
+    }
+
     /// The mode a parameter of this shape takes its argument at: `own`, a
     /// view or `mut`. `None` for a product.
     pub fn param_mode(&self) -> Option<FuncParamMode> {

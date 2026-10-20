@@ -489,7 +489,8 @@ impl super::Parse for FnShapeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Ident);
         parser.parse(TupleTypeScope::default())?;
-        if parser.bump_if(SyntaxKind::Arrow) {
+        // `-> _` leaves the result open.
+        if parser.bump_if(SyntaxKind::Arrow) && !parser.bump_if(SyntaxKind::Underscore) {
             parse_type(parser, None)?;
         }
         Ok(())
