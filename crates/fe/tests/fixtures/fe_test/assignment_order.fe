@@ -80,8 +80,8 @@ pub contract C {
 
 #[test]
 fn map_value_first() uses (evm: mut Evm) {
-    let c = evm.create2<C>(value: 0, args: (), salt: 1)
-    let v: u256 = evm.call(addr: c, gas: 300000, value: 0, message: Msg::Run {})
+    let c = evm.create2<C>(value: Wei::zero(), args: (), salt: 1)
+    let v: u256 = evm.call(addr: c, gas: 300000, value: Wei::zero(), message: Msg::Run {})
     assert(v == 905)
 }
 

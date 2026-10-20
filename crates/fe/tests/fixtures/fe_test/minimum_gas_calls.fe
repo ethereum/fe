@@ -41,7 +41,7 @@ uses (create: mut Create)
     let target = unsafe {
         create
             .create2_raw(
-                value: 0,
+                value: Wei::zero(),
                 init_code: ptr::MemSpan::from_raw_parts(ptr: p, len: (12 + length) as usize),
                 salt,
             )

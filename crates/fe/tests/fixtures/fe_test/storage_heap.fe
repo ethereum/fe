@@ -370,43 +370,43 @@ fn orders_come_out_best_first() uses (evm: mut Evm) {
 
 #[test]
 fn orders_preserve_full_width_fields() uses (evm: mut Evm) {
-    let heap = evm.create2<Heaps>(value: 0, args: (), salt: 1)
+    let heap = evm.create2<Heaps>(value: Wei::zero(), args: (), salt: 1)
     // Both fields exceed the old custom encoding's 128-bit lanes.
     let large: u256 = 1 << 200
     evm.call(
         addr: heap,
         gas: 1000000,
-        value: 0,
+        value: Wei::zero(),
         message: HeapMsg::OrderPush { price: large, id: large + 2 },
     )
     evm.call(
         addr: heap,
         gas: 1000000,
-        value: 0,
+        value: Wei::zero(),
         message: HeapMsg::OrderPush { price: large + 1, id: large + 3 },
     )
     evm.call(
         addr: heap,
         gas: 1000000,
-        value: 0,
+        value: Wei::zero(),
         message: HeapMsg::OrderPush { price: large, id: large + 1 },
     )
     let first = evm.call(
             addr: heap,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: HeapMsg::OrderPop {},
         )
     let second = evm.call(
             addr: heap,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: HeapMsg::OrderPop {},
         )
     let third = evm.call(
             addr: heap,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: HeapMsg::OrderPop {},
         )
     assert(first.0 == large + 1 && first.1 == large + 3)

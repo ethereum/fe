@@ -100,12 +100,12 @@ pub contract Decoder {
 
 #[test]
 fn inflated_input_lengths_fail() uses (evm: mut Evm) {
-    let target = evm.create2<Decoder>(value: 0, args: (), salt: 0)
-    assert(!evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::PrecheckedHeadBytes {}).success())
-    assert(!evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::PrecheckedHeadString {}).success())
-    assert(!evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::FrameBytes {}).success())
-    assert(!evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::FieldFromPrecheckedHead {}).success())
-    assert(!evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::MsgField {}).success())
-    assert(!evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::BoundedDynArray {}).success())
-    assert(evm.call(addr: target, gas: 300000, value: 0, message: Probe::Honest {}) == 3)
+    let target = evm.create2<Decoder>(value: Wei::zero(), args: (), salt: 0)
+    assert(!evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::PrecheckedHeadBytes {}).success())
+    assert(!evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::PrecheckedHeadString {}).success())
+    assert(!evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::FrameBytes {}).success())
+    assert(!evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::FieldFromPrecheckedHead {}).success())
+    assert(!evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::MsgField {}).success())
+    assert(!evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::BoundedDynArray {}).success())
+    assert(evm.call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::Honest {}) == 3)
 }

@@ -168,7 +168,7 @@ uses (evm: mut Evm)
         .raw_call(
             addr: addr,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             args: unsafe { MemSpan::from_raw_parts(ptr: data.ptr(), len: len as usize) },
             ret: mut ret,
         )
@@ -217,7 +217,7 @@ uses (evm: mut Evm)
 }
 
 fn deploy() -> Address uses (evm: mut Evm) {
-    evm.create2<Viewer>(value: 0, args: (), salt: 0)
+    evm.create2<Viewer>(value: Wei::zero(), args: (), salt: 0)
 }
 
 const MAX: u256 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
@@ -244,7 +244,7 @@ fn test_typed_caller_encoding() uses (evm: mut Evm) {
         .call(
             addr: v,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: TypedMsg::Sum { values },
         )
     assert!(sum == 100)
