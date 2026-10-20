@@ -91,6 +91,10 @@ fn pair<T: Grow, U: Grow>(_ x: T, _ y: U) -> u256 {
 fn half<U: Grow>(_ y: U) -> u256 {
     pair(1 as u256, y)
 }
+
+fn relay<U: Grow + Copy>(_ x: U) -> u256 {
+    bound(x)
+}
 "#;
 
 fn func<'db>(db: &'db HirAnalysisTestDb, top_mod: TopLevelMod<'db>, name: &str) -> Func<'db> {
@@ -460,4 +464,49 @@ fn an_instance_proves_the_bounds_its_arguments_close() {
         .collect();
     proofs.sort();
     assert_eq!(proofs, ["assumption", "closed implementation"]);
+}
+
+#[test]
+fn a_generic_instance_dispatches_through_the_bound_its_caller_proved() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("a_generic_instance_dispatches_through_the_bound_its_caller_proved.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // `relay` proves `bound`'s `T: Grow` for `U` by its own bound. In
+    // `bound<U>`, which `relay`'s body makes, `x.grow()` is dispatched
+    // through that bound, although the blanket implementation also applies
+    // where `U: Copy` is assumed: no body is chosen until `U` is known.
+    let relay_fn = func(&db, top_mod, "relay");
+    let relay = get_or_build_semantic_instance(
+        &db,
+        identity_semantic_instance_key(&db, BodyOwner::Func(relay_fn, None)),
+    );
+    let bound_fn = func(&db, top_mod, "bound");
+    let bound = relay
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(bound_fn, None))
+        .expect("`relay` calls `bound`");
+    let body = bound_fn.body(&db).expect("missing body");
+    let call = body
+        .exprs(&db)
+        .keys()
+        .find(|expr| matches!(expr.data(&db, body), Partial::Present(Expr::MethodCall(..))))
+        .expect("missing method call");
+    let relay_assumptions = check_func_body(&db, relay_fn).1.assumptions();
+    let method = bound
+        .key
+        .typed_body(&db)
+        .callable_expr(call)
+        .expect("missing callable")
+        .selected_method(
+            &db,
+            TraitSolveCx::new(&db, relay_fn.scope()).with_assumptions(relay_assumptions),
+        )
+        .expect("the bound answers the call");
+    assert_eq!(method.body(), None);
 }
