@@ -22,7 +22,7 @@ use crate::analysis::{
             BindingRef, ConstructorKind, PatternAnalysisStatus, ValidatedPat, ValidatedPatKind,
         },
         trait_def::TraitInstId,
-        trait_resolution::{GoalSatisfiability, TraitSolveCx, is_goal_satisfiable},
+        trait_resolution::{GoalSatisfiability, is_goal_satisfiable},
         ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     },
 };
@@ -54,6 +54,7 @@ impl<'db> TyChecker<'db> {
                 PatternAnalysisStatus::Invalid,
             );
         };
+        self.refuse_written_const_args(super::choice::WrittenNode::Pat(pat));
 
         match pat_data {
             Pat::WildCard => {
@@ -215,6 +216,26 @@ impl<'db> TyChecker<'db> {
         self.ready_constructor(ty, ConstructorKind::Literal(lit, ty), Vec::new())
     }
 
+    /// The status of a constant pattern, read through its decisions
+    /// (`pattern_constant`); one whose choice is not known here is refused.
+    fn constant_pattern_status(
+        &mut self,
+        cref: ConstRef<'db>,
+        expected: TyId<'db>,
+        span: impl Into<crate::span::DynLazySpan<'db>>,
+    ) -> PatternAnalysisStatus {
+        let Some(decided) = self.pattern_constant(cref) else {
+            self.push_diag(BodyDiag::ChoiceDependentType {
+                primary: span.into(),
+            });
+            return PatternAnalysisStatus::Invalid;
+        };
+        self.eval_const_pattern_literal(decided, expected)
+            .map_or(PatternAnalysisStatus::Unsupported, |lit| {
+                self.literal_constructor_status(expected, lit)
+            })
+    }
+
     fn eval_const_pattern_literal(
         &self,
         cref: ConstRef<'db>,
@@ -239,7 +260,8 @@ impl<'db> TyChecker<'db> {
                 value: SemConstScalar::Bool(flag),
                 ..
             } => Some(LitKind::Bool(*flag)),
-            SemConstValue::Unit
+            SemConstValue::Evidence { .. }
+            | SemConstValue::Unit
             | SemConstValue::Description(..)
             | SemConstValue::Tuple { .. }
             | SemConstValue::Struct { .. }
@@ -398,29 +420,11 @@ impl<'db> TyChecker<'db> {
         }
 
         let span = pat.span(self.body()).into_path_pat();
-        let lowering_cx = LoweringContext::new();
-        let res = self.resolve_path(
-            *path,
-            true,
-            span.clone().path(),
-            span.clone().into(),
-            &lowering_cx,
-        );
-
         // Bare identifiers that don't resolve to a type/variant are local bindings,
         // unless the expected type is a msg type, in which case we try to resolve
         // the identifier as a msg variant first.
         if let Some(name) = path.as_ident(self.db)
-            && matches!(
-                res,
-                Err(_)
-                    | Ok(PathRes::Trait(_)
-                        | PathRes::Mod(_)
-                        | PathRes::Func(_)
-                        | PathRes::TraitMethod(..)
-                        | PathRes::Method(..)
-                        | PathRes::FuncParam(..))
-            )
+            && self.env.is_pat_local_binding(name)
         {
             let binding = LocalBinding::local(
                 pat,
@@ -450,6 +454,15 @@ impl<'db> TyChecker<'db> {
             };
             return self.finish_pat_check(pat, expected, actual, analysis);
         }
+
+        let lowering_cx = LoweringContext::new();
+        let res = self.resolve_path(
+            *path,
+            true,
+            span.clone().path(),
+            span.clone().into(),
+            &lowering_cx,
+        );
 
         let (actual, analysis) = match res {
             Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => {
@@ -490,12 +503,8 @@ impl<'db> TyChecker<'db> {
 
                 let trait_ = inst.def(self.db);
                 if !super::trait_const_goal_has_foreign_params(self.db, inst, self.env.scope())
-                    && let GoalSatisfiability::UnSat(_) = is_goal_satisfiable(
-                        self.db,
-                        TraitSolveCx::new(self.db, self.env.scope())
-                            .with_assumptions(self.env.assumptions()),
-                        inst,
-                    )
+                    && let GoalSatisfiability::UnSat(_) =
+                        is_goal_satisfiable(self.db, self.env.proof_context(), inst)
                 {
                     self.push_diag(TyDiagCollection::from(
                         TraitConstraintDiag::TraitBoundNotSat {
@@ -518,23 +527,13 @@ impl<'db> TyChecker<'db> {
                 {
                     let instantiated = ty_binder.instantiate(self.db, inst.args(self.db));
                     let ty = self.table.instantiate_to_term(instantiated);
-                    let cref = ConstRef::TraitConst {
-                        use_: AssocConstUse::new(
-                            self.env.scope(),
-                            self.env.assumptions(),
-                            inst,
-                            name,
-                        ),
-                        evidence: None,
-                        bound_evidence: None,
-                    };
-                    (
-                        ty,
-                        self.eval_const_pattern_literal(cref, expected)
-                            .map_or(PatternAnalysisStatus::Unsupported, |lit| {
-                                self.literal_constructor_status(expected, lit)
-                            }),
-                    )
+                    let cref = ConstRef::trait_const(AssocConstUse::new(
+                        self.env.scope(),
+                        self.env.assumptions(),
+                        inst,
+                        name,
+                    ));
+                    (ty, self.constant_pattern_status(cref, expected, span))
                 } else {
                     (
                         TyId::invalid(self.db, InvalidCause::Other),
@@ -558,13 +557,7 @@ impl<'db> TyChecker<'db> {
                         recv_ty,
                         name,
                     ));
-                    (
-                        ty,
-                        self.eval_const_pattern_literal(cref, expected)
-                            .map_or(PatternAnalysisStatus::Unsupported, |lit| {
-                                self.literal_constructor_status(expected, lit)
-                            }),
-                    )
+                    (ty, self.constant_pattern_status(cref, expected, span))
                 } else {
                     (
                         TyId::invalid(self.db, InvalidCause::Other),

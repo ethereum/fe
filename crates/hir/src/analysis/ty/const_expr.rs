@@ -87,6 +87,7 @@ impl<'db> ConstInvocation<'db> {
         let scope = env.normalization_scope(db);
         let key = if env.assumptions(db).is_empty(db)
             && env.witnesses(db).is_empty()
+            && key.evidence(db).choices(db).is_ordinary()
             && scope == scope.ingot(db).root_mod(db).scope()
         {
             let owner = key.owner(db);

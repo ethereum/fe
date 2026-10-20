@@ -33,8 +33,8 @@ use crate::{
             fold::{TyFoldable, TyFolder},
             instantiate_trait_self,
             normalize::{
-                PROJECTION_DEPTH_LIMIT, PROJECTION_WORK_LIMIT, normalize_ty, tree_depth_within,
-                tree_size_within,
+                PROJECTION_DEPTH_LIMIT, PROJECTION_WORK_LIMIT, instance_args_within_limits,
+                normalize_ty,
             },
             provider::{
                 AddressSpace, ProviderKind, ProviderTransport, RootProviderRegistration,
@@ -106,7 +106,7 @@ impl<'db> SemanticInstanceKey<'db> {
         supplied: EvidenceList<'db>,
     ) -> Self {
         let evidence = if is_ground(collect_flags(db, subst.generic_args(db))) {
-            EvidenceList::none(db)
+            supplied.for_ground_instance(db)
         } else {
             supplied
         };
@@ -1680,6 +1680,9 @@ impl<'db> SemanticInstance<'db> {
                             ));
                         }
                     }
+                    // A proof's choice is decided while checking; it admits no
+                    // concrete demand here.
+                    ConstIntrinsicKind::Prove => {}
                 }
             }
         }
@@ -1798,17 +1801,7 @@ fn instance_limit_violation<'db>(
     let calls: Vec<_> = calls.chain(loops).collect();
     for &(origin, callee) in &calls {
         let args = callee.key.subst(db).generic_args(db);
-        let within = args
-            .iter()
-            .all(|&arg| tree_depth_within(db, arg, PROJECTION_DEPTH_LIMIT))
-            && args
-                .iter()
-                .try_fold(0usize, |total, &arg| {
-                    let size = tree_size_within(db, arg, PROJECTION_WORK_LIMIT - total)?;
-                    Some(total + size)
-                })
-                .is_some();
-        if !within {
+        if !instance_args_within_limits(db, args) {
             let callee = checker_name(db, get_or_build_semantic_instance(db, callee.key));
             return Some(SemanticDiagnosticId::new(
                 db,

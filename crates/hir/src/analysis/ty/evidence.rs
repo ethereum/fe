@@ -164,18 +164,21 @@ fn evidence_is_closed<'db>(db: &'db dyn HirAnalysisDb, evidence: EvidenceId<'db>
 
 /// Proofs of the assumptions a body is checked under, one per entry of its
 /// signature (`TypedBody::signature`), each absent where the body proves
-/// that assumption itself.
+/// that assumption itself, together with any explicit `#1797` slot choices
+/// delivered to the instance.
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EvidenceList<'db> {
     #[return_ref]
     pub entries: Vec<Option<EvidenceId<'db>>>,
+    #[return_ref]
+    pub choices: super::trait_choice::SlotChoices<'db>,
 }
 
 impl<'db> EvidenceList<'db> {
     /// A list that supplies no proofs.
     pub fn none(db: &'db dyn HirAnalysisDb) -> Self {
-        Self::new(db, Vec::new())
+        Self::new(db, Vec::new(), super::trait_choice::SlotChoices::default())
     }
 
     /// The list of `entries`, without the absent proofs that end it, so
@@ -184,7 +187,35 @@ impl<'db> EvidenceList<'db> {
         while entries.last().is_some_and(Option::is_none) {
             entries.pop();
         }
-        Self::new(db, entries)
+        Self::new(db, entries, super::trait_choice::SlotChoices::default())
+    }
+
+    /// Attach explicit `#1797` slot choices to this evidence list.
+    pub fn with_choices(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        choices: super::trait_choice::SlotChoices<'db>,
+    ) -> Self {
+        if choices.is_ordinary() && self.choices(db).is_ordinary() {
+            return self;
+        }
+        let choices = if choices.is_ordinary() {
+            super::trait_choice::SlotChoices::default()
+        } else {
+            choices
+        };
+        Self::new(db, self.entries(db).clone(), choices)
+    }
+
+    /// The evidence carried on a ground `SemanticInstanceKey`: empty when all
+    /// delivered choices are ordinary (`instance_evidence` proves every closed
+    /// assumption itself), or retaining non-ordinary `#1797` slot choices.
+    pub fn for_ground_instance(self, db: &'db dyn HirAnalysisDb) -> Self {
+        if self.choices(db).is_ordinary() {
+            Self::none(db)
+        } else {
+            Self::new(db, Vec::new(), self.choices(db).clone())
+        }
     }
 
     /// The proof of the assumption at `index`, if the list supplies one.
@@ -203,6 +234,7 @@ impl<'db> EvidenceList<'db> {
                 .iter()
                 .map(|entry| entry.map(|evidence| evidence.bind(db, bound)))
                 .collect::<Vec<_>>(),
+            self.choices(db).clone(),
         )
     }
 }
@@ -218,6 +250,7 @@ impl<'db> TyFoldable<'db> for EvidenceList<'db> {
                 .iter()
                 .map(|entry| entry.map(|evidence| evidence.fold_with(db, folder)))
                 .collect::<Vec<_>>(),
+            self.choices(db).clone().fold_with(db, folder),
         )
     }
 }
@@ -230,6 +263,7 @@ impl<'db> TyVisitable<'db> for EvidenceList<'db> {
         for evidence in self.entries(visitor.db()).iter().flatten() {
             evidence.visit_with(visitor);
         }
+        self.choices(visitor.db()).visit_with(visitor);
     }
 }
 
@@ -354,7 +388,12 @@ fn prove_in<'db>(
     if !settled(collect_flags(db, goal)) {
         return None;
     }
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, goal) else {
+    let Selection::Unique(resolved) = resolve_trait_impl_instance(
+        db,
+        solve_cx,
+        goal,
+        super::trait_choice::OrdinarySelection::no_recorded_choice(),
+    ) else {
         return None;
     };
     if !settled(collect_flags(db, resolved)) {
@@ -436,7 +475,12 @@ pub(crate) fn instantiated_selection<'db>(
             let assumption = ImplementorId::assumption(db, goal);
             Some(ResolvedImplInstance::new(assumption, assumption, goal))
         }
-        None => match resolve_trait_impl_instance(db, solve_cx, inst) {
+        None => match resolve_trait_impl_instance(
+            db,
+            solve_cx,
+            inst,
+            super::trait_choice::OrdinarySelection::no_recorded_choice(),
+        ) {
             Selection::Unique(resolved) => Some(resolved),
             Selection::Ambiguous(_) | Selection::NotFound => None,
         },
@@ -648,6 +692,7 @@ pub(crate) fn instance_evidence<'db>(
     supplied: EvidenceList<'db>,
     solve_cx: TraitSolveCx<'db>,
 ) -> EvidenceList<'db> {
+    let choices = supplied.choices(db).clone();
     EvidenceList::of(
         db,
         goals
@@ -664,6 +709,7 @@ pub(crate) fn instance_evidence<'db>(
             })
             .collect(),
     )
+    .with_choices(db, choices)
 }
 
 fn prove_cycle_initial<'db>(

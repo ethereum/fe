@@ -1,4 +1,5 @@
 use common::ingot::{Ingot, IngotKind};
+use hir::analysis::ty::trait_choice::SlotRef;
 use hir::{
     analysis::{
         HirAnalysisDb,
@@ -52,7 +53,7 @@ pub fn semantic_instance_identity_in_mode<'db>(
         body_owner_identity(db, key.owner(db)),
         generic_subst_identity(db, key.subst(db)),
         effect_provider_subst_identity(db, key.effect_providers(db), mode),
-        impl_env_identity(db, key.impl_env(db), mode)
+        impl_env_identity(db, key.impl_env(db), key.evidence(db).choices(db), mode)
     )
 }
 
@@ -278,6 +279,7 @@ fn provider_semantics_identity<'db>(
 fn impl_env_identity<'db>(
     db: &'db dyn HirAnalysisDb,
     env: ImplEnv<'db>,
+    choices: &hir::analysis::ty::trait_choice::SlotChoices<'db>,
     mode: IdentityMode,
 ) -> String {
     let assumptions = trait_list_identity(db, env.assumptions(db).list(db).iter().copied(), mode);
@@ -285,11 +287,72 @@ fn impl_env_identity<'db>(
     // Callees normalize at an ingot root, and every ingot's root module has
     // the same name, so the scope must name its ingot.
     let scope = env.normalization_scope(db);
-    format!(
+    let identity = format!(
         "scope${}${}$assumptions${assumptions}$witnesses${witnesses}",
         ingot_identity_for_top_mod(db, scope.top_mod(db)),
         module_path_components_for_scope(db, scope).join("$")
-    )
+    );
+    if choices.is_ordinary() {
+        return identity;
+    }
+    // Instances that differ only in a delivered choice run different code.
+    let choices = choices
+        .iter()
+        .map(|(slot, choice)| {
+            let slot = slot_ref_identity(db, slot);
+            match choice {
+                Some(choice) => format!("{slot}={}", known_choice_identity(db, choice)),
+                None => format!("{slot}=pending"),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("$");
+    format!("{identity}$choices${choices}")
+}
+
+fn slot_ref_identity<'db>(db: &'db dyn HirAnalysisDb, slot: SlotRef<'db>) -> String {
+    match slot {
+        SlotRef::EvidenceParam(idx) => format!("param{idx}"),
+        SlotRef::Bound(goal) => format!("bound{}", trait_identity(db, goal)),
+        SlotRef::Unsupplied => "unsupplied".to_string(),
+    }
+}
+
+fn known_choice_identity<'db>(
+    db: &'db dyn HirAnalysisDb,
+    choice: hir::analysis::ty::trait_choice::KnownChoice<'db>,
+) -> String {
+    use hir::analysis::ty::trait_choice::{Choice, Delivery};
+    let name = choice
+        .implementation()
+        .selection_name(db)
+        .map_or_else(|| "ordinary".to_string(), |name| name.data(db).to_string());
+    let base = format!(
+        "impl${}${name}${}",
+        item_identity(db, ItemKind::ImplTrait(choice.implementation())),
+        trait_identity(db, choice.goal())
+    );
+    let Some(bounds) = choice.bounds() else {
+        return base;
+    };
+    let bounds = bounds
+        .items(db)
+        .iter()
+        .map(|(delivery, item)| {
+            let delivery = match delivery {
+                Delivery::Param(idx) => format!("param{idx}"),
+                Delivery::Bound(goal) => format!("bound{}", trait_identity(db, *goal)),
+                Delivery::Nominal(goal) => format!("nominal{}", trait_identity(db, *goal)),
+            };
+            let item = match item {
+                Choice::Known(known) => known_choice_identity(db, *known),
+                Choice::Slot(slot) => slot_ref_identity(db, *slot),
+            };
+            format!("{delivery}={item}")
+        })
+        .collect::<Vec<_>>()
+        .join("$");
+    format!("{base}$bounds$[{bounds}]")
 }
 
 fn trait_list_identity<'db>(
@@ -369,7 +432,7 @@ fn ty_mentions_effect_provider_param<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'
     match ty.data(db) {
         TyData::TyParam(param) => param.is_effect_provider(),
         TyData::AssocTy(assoc) => trait_ref_mentions_effect_provider_param(db, assoc.trait_),
-        TyData::QualifiedTy(trait_inst) => {
+        TyData::QualifiedTy(trait_inst) | TyData::ConstraintTerm(trait_inst) => {
             trait_inst_mentions_effect_provider_param(db, *trait_inst)
         }
         TyData::TyVar(_)
@@ -490,6 +553,7 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
             assoc.name.data(db)
         ),
         TyData::QualifiedTy(trait_inst) => format!("qualified${}", trait_identity(db, *trait_inst)),
+        TyData::ConstraintTerm(goal) => format!("constraint${}", trait_identity(db, *goal)),
         TyData::ConstTy(const_ty) => {
             format!(
                 "const_ty${}",

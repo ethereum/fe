@@ -7,14 +7,15 @@ use crate::{
     span::DynLazySpan,
 };
 
-use crate::hir_def::CallableDef;
 use crate::hir_def::params::FuncParamMode;
+use crate::hir_def::{CallableDef, ItemKind};
 use common::indexmap::IndexMap;
 use cranelift_entity::{PrimaryMap, SecondaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 use thin_vec::ThinVec;
 
+use super::choice::{ChoiceFrames, FrameId, SourceError};
 use super::effect_env as keyed_effect_env;
 use super::owner::BodyOwner;
 use super::{
@@ -40,6 +41,7 @@ use crate::analysis::{
         fold::{TyFoldable, TyFolder},
         provider::AddressSpace,
         shape::Shape,
+        trait_choice::Choice,
         trait_def::TraitInstId,
         trait_resolution::{
             PredicateListId, TraitSolveCx, constraint::collect_func_effect_provider_constraints,
@@ -116,10 +118,10 @@ pub(crate) struct TyCheckEnv<'db> {
 
     pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
     expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
-    const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
+    pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
     value_path_refs: SecondaryMap<ExprId, Option<ValuePathRef<'db>>>,
-    callables: SecondaryMap<ExprId, Option<Callable<'db>>>,
-    semantic_expr_lowering: SecondaryMap<ExprId, Option<SemanticExprLowering<'db>>>,
+    pub(super) callables: SecondaryMap<ExprId, Option<Callable<'db>>>,
+    pub(super) semantic_expr_lowering: SecondaryMap<ExprId, Option<SemanticExprLowering<'db>>>,
     record_init_lowering: SecondaryMap<ExprId, Option<super::RecordInitLowering<'db>>>,
     closure_infos: SecondaryMap<ExprId, Option<ClosureInfo<'db>>>,
     resolved_field_index: SecondaryMap<ExprId, Option<u16>>,
@@ -187,12 +189,52 @@ pub(crate) struct TyCheckEnv<'db> {
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
 
     /// The Collection protocol plan of each for loop, keyed by its statement.
-    for_loop_plans: SecondaryMap<StmtId, Option<ForLoopPlan<'db>>>,
+    pub(super) for_loop_plans: SecondaryMap<StmtId, Option<ForLoopPlan<'db>>>,
 
     /// The constrained type applications that resolving the body's paths
     /// passed through, each with the span of the expression or pattern whose
     /// path it is.
     path_applications: Vec<(DynLazySpan<'db>, TyId<'db>)>,
+
+    /// The trait choices of the enclosing `with` blocks.
+    pub(super) choice_frames: ChoiceFrames<'db>,
+    /// The choice frame each expression was checked in, when one was open.
+    pub(super) use_frames: SecondaryMap<ExprId, Option<FrameId>>,
+    /// What each evidence-typed `let` binding denotes.
+    binding_choices: SecondaryMap<PatId, Option<Result<Choice<'db>, SourceError>>>,
+    /// `with` binding values that opened a trait choice.
+    pub(super) with_choice_bindings: Vec<ExprId>,
+    /// Function values and the non-ordinary choices they would carry.
+    pub(super) function_value_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
+    /// Expressions checked inside a closure's body.
+    pub(super) closure_exprs: SecondaryMap<ExprId, bool>,
+    /// The innermost closure each expression checked inside one is in.
+    pub(super) closure_of: SecondaryMap<ExprId, Option<ExprId>>,
+    /// Expressions whose written constant arguments were refused
+    /// (`refuse_written_const_args`).
+    pub(super) written_refusals: SecondaryMap<ExprId, bool>,
+    /// Uses inside closure bodies and the slot choices they read.
+    pub(super) closure_choices: Vec<(ExprId, Vec<Choice<'db>>)>,
+    /// Paths naming a function that reach only the callees of calls
+    /// (`callee_only_values`).
+    pub(super) callee_only_values: Vec<ExprId>,
+    /// The calls those values reach.
+    pub(super) callee_only_calls: Vec<ExprId>,
+    pub(super) const_reaches: Vec<TraitInstId<'db>>,
+    /// `with` operands taken as effect values.
+    pub(super) effect_with_operands: Vec<ExprId>,
+    /// Trait uses refused once their decisions are known.
+    pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
+    /// The premises where an expression was typed, when a `with` added
+    /// goals to the body's own (`add_opened_premise`).
+    pub(super) expr_premises: SecondaryMap<ExprId, Option<PredicateListId<'db>>>,
+    /// Whether a goal's ordinary proof reads a slot a frame opened, as
+    /// computed once per frame and goal (`conditions_read_frame`).
+    pub(super) conditions_read:
+        std::cell::RefCell<FxHashMap<(FrameId, TraitInstId<'db>), super::choice::ProofReads>>,
+    /// A constant body written under a `with` whose opened slot is not
+    /// written down (`seed_written_frames`).
+    pub(super) written_unknown: bool,
 }
 
 /// A closure expression's parameters and captured bindings, in the order of
@@ -308,6 +350,23 @@ impl<'db> TyCheckEnv<'db> {
             yield_shapes: SecondaryMap::new(),
             for_loop_plans: SecondaryMap::new(),
             path_applications: Vec::new(),
+            choice_frames: ChoiceFrames::default(),
+            use_frames: SecondaryMap::new(),
+            binding_choices: SecondaryMap::new(),
+            with_choice_bindings: Vec::new(),
+            function_value_choices: Vec::new(),
+            closure_exprs: SecondaryMap::new(),
+            closure_of: SecondaryMap::new(),
+            written_refusals: SecondaryMap::new(),
+            closure_choices: Vec::new(),
+            callee_only_values: Vec::new(),
+            callee_only_calls: Vec::new(),
+            const_reaches: Vec::new(),
+            effect_with_operands: Vec::new(),
+            choice_refusals: Vec::new(),
+            expr_premises: SecondaryMap::new(),
+            conditions_read: Default::default(),
+            written_unknown: false,
         };
 
         env.enter_scope(body.expr(db));
@@ -386,6 +445,21 @@ impl<'db> TyCheckEnv<'db> {
             PredicateListId::new(db, preds).extend_all_bounds(db)
         };
         env.signature = env.assumptions;
+
+        // A named implementation's own body sees itself for its own slot,
+        // keyed in the assumptions its uses are read in. Its `where`
+        // conditions do not: they read the environment where it is declared,
+        // in every spelling, `Self` included, or the condition would prove
+        // itself.
+        if let Some(ItemKind::ImplTrait(implementation)) = owner_scope.parent_item(db)
+            && implementation.selection_name(db).is_some()
+            && !owner.is_const_predicate(db)
+        {
+            env.seed_own_choice(implementation);
+        }
+        if let BodyOwner::AnonConstBody { body, .. } = owner {
+            env.seed_written_frames(body);
+        }
 
         Ok(env)
     }
@@ -806,14 +880,39 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
+    /// Add the goal an enclosing `with` opened as a premise of its body. The
+    /// caller restores the previous premises when the block ends.
+    pub(super) fn add_opened_premise(&mut self, goal: TraitInstId<'db>) {
+        let mut preds = self.assumptions.list(self.db).to_vec();
+        if !preds.contains(&goal) {
+            preds.push(goal);
+            self.assumptions = PredicateListId::new(self.db, preds).extend_all_bounds(self.db);
+        }
+    }
+
+    pub(super) fn restore_assumptions(&mut self, assumptions: PredicateListId<'db>) {
+        self.assumptions = assumptions;
+    }
+
     pub(crate) fn assumptions(&self) -> PredicateListId<'db> {
         // Return the assumptions we computed in new, which includes
         // both generic bounds (if any) AND the effect parameter bounds.
         self.assumptions
     }
 
+    /// Project the context owned by the checker at its current lexical position.
+    /// Root/effect premises are formed once in this environment, not by readers.
+    pub(crate) fn proof_context(&self) -> TraitSolveCx<'db> {
+        TraitSolveCx::new(self.db, self.scope()).with_assumptions(self.assumptions())
+    }
+
     pub(crate) fn base_assumptions(&self) -> PredicateListId<'db> {
         self.base_assumptions
+    }
+
+    /// The owner's value parameters, in order.
+    pub(super) fn params(&self) -> &[LocalBinding<'db>] {
+        &self.param_bindings
     }
 
     pub(super) fn body(&self) -> Body<'db> {
@@ -1263,6 +1362,55 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn enter_expr(&mut self, expr: ExprId) {
         self.expr_stack.push(expr);
+        if let Some(frame) = self.choice_frames.current() {
+            self.use_frames[expr] = Some(frame);
+        }
+        if let Some(closure) = self.closure_stack.last() {
+            self.closure_exprs[expr] = true;
+            self.closure_of[expr] = Some(closure.def.expr);
+        }
+    }
+
+    /// Whether the closure `expr` needs an effect provider where it is
+    /// called: its row has a component.
+    pub(super) fn closure_needs_provider(&self, expr: ExprId) -> bool {
+        self.closure_effects
+            .get(&expr)
+            .is_some_and(|effects| !effects.is_empty())
+    }
+
+    pub(super) fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.db
+    }
+
+    pub(super) fn binding_choice(&self, pat: PatId) -> Option<Result<Choice<'db>, SourceError>> {
+        self.binding_choices[pat]
+    }
+
+    pub(super) fn set_binding_choice(
+        &mut self,
+        pat: PatId,
+        choice: Result<Choice<'db>, SourceError>,
+    ) {
+        self.binding_choices[pat] = Some(choice);
+    }
+
+    /// The choice a checked `prove<G>()` call produced.
+    pub(super) fn prove_choice(&self, expr: ExprId) -> Option<Choice<'db>> {
+        match self.semantic_expr_lowering[expr].as_ref()? {
+            SemanticExprLowering::ConstIntrinsic {
+                callable,
+                kind: ConstIntrinsicKind::Prove,
+            } => callable.choice(),
+            _ => None,
+        }
+    }
+
+    pub(super) fn semantic_call(&self, expr: ExprId) -> Option<&Callable<'db>> {
+        match self.semantic_expr_lowering[expr].as_ref()? {
+            SemanticExprLowering::Call { callable } => Some(callable),
+            _ => None,
+        }
     }
 
     pub(super) fn leave_expr(&mut self) {
@@ -1275,6 +1423,8 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn type_expr(&mut self, expr: ExprId, typed: ExprProp<'db>) {
         self.expr_ty[expr] = Some(typed);
+        self.expr_premises[expr] =
+            (self.assumptions != self.base_assumptions).then_some(self.assumptions);
     }
 
     pub(super) fn type_pat(&mut self, pat: PatId, ty: TyId<'db>) {
@@ -1429,23 +1579,27 @@ impl<'db> TyCheckEnv<'db> {
                         .map(|ty| ty.fold_with(self.db, &mut prober));
                 }
             });
-        let assumptions = self.assumptions.fold_with(self.db, &mut prober);
-        let signature = self.signature.fold_with(self.db, &mut prober);
-        let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
-
         self.semantic_expr_lowering
             .values_mut()
             .flatten()
             .for_each(|lowering| *lowering = lowering.clone().fold_with(self.db, &mut prober));
-        self.record_init_lowering
+        self.callables
             .values_mut()
             .flatten()
-            .for_each(|lowering| *lowering = (*lowering).fold_with(self.db, &mut prober));
-
+            .for_each(|callable| *callable = callable.clone().fold_with(self.db, &mut prober));
         self.for_loop_plans
             .values_mut()
             .flatten()
             .for_each(|plan| *plan = plan.clone().fold_with(self.db, &mut prober));
+        self.expr_premises
+            .values_mut()
+            .flatten()
+            .for_each(|premises| *premises = premises.fold_with(self.db, &mut prober));
+        self.record_choice_decisions();
+        let assumptions = self.assumptions.fold_with(self.db, &mut prober);
+        let signature = self.signature.fold_with(self.db, &mut prober);
+        let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
+
         // Each trait goal a call or constant uses is now final: prove it once,
         // here, for every later stage.
         let solve_cx = TraitSolveCx::new(self.db, prober.scope).with_assumptions(assumptions);
@@ -1462,10 +1616,23 @@ impl<'db> TyCheckEnv<'db> {
         }
         for const_ref in self.const_refs.values_mut().flatten() {
             if let ConstRef::TraitConst { use_, evidence, .. } = const_ref {
-                *evidence = prove(self.db, use_.solve_cx(self.db), use_.inst());
+                *evidence = match use_.choice() {
+                    Some(crate::analysis::ty::trait_choice::Choice::Known(known))
+                        if !known.is_ordinary() =>
+                    {
+                        known.to_evidence(self.db)
+                    }
+                    Some(crate::analysis::ty::trait_choice::Choice::Slot(_)) => None,
+                    _ => prove(self.db, use_.solve_cx(self.db), use_.inst()),
+                };
             }
             const_ref.record_bound_evidence(self.db);
         }
+
+        self.record_init_lowering
+            .values_mut()
+            .flatten()
+            .for_each(|lowering| *lowering = (*lowering).fold_with(self.db, &mut prober));
         self.closure_infos
             .values_mut()
             .flatten()
@@ -1529,6 +1696,15 @@ impl<'db> TyCheckEnv<'db> {
             expr_place,
             expr_places,
             path_applications: self.path_applications,
+            with_choice_bindings: self.with_choice_bindings,
+            function_value_choices: self.function_value_choices,
+            closure_choices: self.closure_choices,
+            callee_only_values: self.callee_only_values,
+            callee_only_calls: self.callee_only_calls,
+            const_reaches: self.const_reaches,
+            effect_with_operands: self.effect_with_operands,
+            choice_refusals: self.choice_refusals,
+            expr_premises: self.expr_premises,
         }
         .into()
     }
@@ -1725,14 +1901,14 @@ impl<'db> TyChecker<'db> {
     }
 }
 
-pub(super) struct BlockEnv<'db> {
+pub(super) struct BlockEnv<'db, B = LocalBinding<'db>> {
     pub(super) scope: ScopeId<'db>,
-    pub(super) vars: FxHashMap<IdentId<'db>, LocalBinding<'db>>,
+    pub(super) vars: FxHashMap<IdentId<'db>, B>,
     idx: usize,
 }
 
-impl<'db> BlockEnv<'db> {
-    pub(super) fn lookup_var(&self, var: IdentId<'db>) -> Option<LocalBinding<'db>> {
+impl<'db, B: Copy> BlockEnv<'db, B> {
+    pub(super) fn lookup_var(&self, var: IdentId<'db>) -> Option<B> {
         self.vars.get(&var).copied()
     }
 
@@ -1744,7 +1920,7 @@ impl<'db> BlockEnv<'db> {
         }
     }
 
-    fn register_var(&mut self, name: IdentId<'db>, var: LocalBinding<'db>) {
+    fn register_var(&mut self, name: IdentId<'db>, var: B) {
         self.vars.insert(name, var);
     }
 }
@@ -2233,6 +2409,10 @@ pub(super) struct PendingMethod<'db> {
     pub method_name: crate::core::hir_def::IdentId<'db>,
     pub candidates: Vec<PendingMethodCandidate<'db>>,
     pub span: DynLazySpan<'db>,
+    /// The frame and premises where the call is written: it is resolved
+    /// under them, however late.
+    pub frame: Option<FrameId>,
+    pub premises: PredicateListId<'db>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2278,6 +2458,10 @@ pub(super) struct TypeEquality<'db> {
     pub actual: TyId<'db>,
     pub expected: TyId<'db>,
     pub span: DynLazySpan<'db>,
+    /// The premises and choice frame where the equality is written; it is
+    /// decided under them even when deferred, as an obligation is.
+    pub premises: PredicateListId<'db>,
+    pub frame: Option<super::choice::FrameId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2295,6 +2479,620 @@ pub(super) struct TraitObligation<'db> {
     pub goal: TraitInstId<'db>,
     pub origin: TraitObligationOrigin<'db>,
     pub span: DynLazySpan<'db>,
+    /// The premises in force where the obligation arose, including goals an
+    /// enclosing `with` opened; it is solved under them even when deferred.
+    pub premises: PredicateListId<'db>,
+    /// The choice frame where it arose: a goal the frame answers with a known
+    /// choice was proved when that choice was opened.
+    pub frame: Option<super::choice::FrameId>,
 }
 
-impl<'db> TyCheckEnv<'db> {}
+pub(super) enum IdentInBlocks<B, R> {
+    Binding(B),
+    Scope(R),
+    Unresolved,
+}
+
+/// Resolves a bare identifier against a stack of active lexical blocks from
+/// innermost to outermost (checking block-local variables first, then
+/// block-scoped items via `disallow_lex()`), falling back to lexical
+/// scope-graph resolution from `body_scope`. Shared by `TyChecker`
+/// (`expr::resolve_ident_expr`) and `body_lexical_env`.
+pub(super) fn resolve_ident_in_blocks<'db, B: Copy, R>(
+    db: &'db dyn HirAnalysisDb,
+    blocks: &[BlockEnv<'db, B>],
+    body_scope: ScopeId<'db>,
+    current_scope: ScopeId<'db>,
+    ident: IdentId<'db>,
+    mut resolve_bucket: impl FnMut(
+        &'db crate::analysis::name_resolution::NameResBucket<'db>,
+        ScopeId<'db>,
+    ) -> Option<R>,
+) -> IdentInBlocks<B, R> {
+    use crate::analysis::name_resolution::{EarlyNameQueryId, QueryDirective, resolve_query};
+    for block in blocks.iter().rev() {
+        if let Some(binding) = block.lookup_var(ident) {
+            return IdentInBlocks::Binding(binding);
+        }
+        let directive = QueryDirective::for_scope(db, block.scope).disallow_lex();
+        let query = EarlyNameQueryId::new(db, ident, block.scope, directive);
+        let bucket = resolve_query(db, query);
+        if let Some(resolved) = resolve_bucket(bucket, block.scope) {
+            return IdentInBlocks::Scope(resolved);
+        }
+    }
+    let directive = QueryDirective::for_scope(db, body_scope);
+    let query = EarlyNameQueryId::new(db, ident, body_scope, directive);
+    let bucket = resolve_query(db, query);
+    match resolve_bucket(bucket, current_scope) {
+        Some(resolved) => IdentInBlocks::Scope(resolved),
+        None => IdentInBlocks::Unresolved,
+    }
+}
+
+/// Returns `true` when a bare-identifier pattern `name` in `scope` introduces a
+/// local variable binding rather than naming a type, constructor, constant, or
+/// enum variant. Shared by `TyChecker::check_path_pat` and `body_lexical_env`.
+pub(super) fn is_pat_local_binding<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    name: IdentId<'db>,
+) -> bool {
+    use crate::analysis::name_resolution::{
+        EarlyNameQueryId, NameDomain, NameResKind, QueryDirective, resolve_query,
+    };
+    let directive = QueryDirective::for_scope(db, scope);
+    let query = EarlyNameQueryId::new(db, name, scope, directive);
+    let bucket = resolve_query(db, query);
+    let Ok(res) = bucket
+        .pick(NameDomain::VALUE)
+        .as_ref()
+        .or_else(|_| bucket.pick(NameDomain::TYPE).as_ref())
+    else {
+        return true;
+    };
+    match res.kind {
+        NameResKind::Prim(_) => false,
+        NameResKind::Scope(scope_id) => match scope_id {
+            ScopeId::Item(
+                ItemKind::Struct(_)
+                | ItemKind::Enum(_)
+                | ItemKind::Contract(_)
+                | ItemKind::Const(_)
+                | ItemKind::TypeAlias(_)
+                | ItemKind::Impl(_)
+                | ItemKind::ImplTrait(_),
+            )
+            | ScopeId::GenericParam(..)
+            | ScopeId::TraitType(..)
+            | ScopeId::TraitConst(..)
+            | ScopeId::ImplConst(..)
+            | ScopeId::Variant(..) => false,
+            ScopeId::Item(ItemKind::Trait(_)) => name.data(db) != "Self",
+            ScopeId::Item(
+                ItemKind::TopMod(_)
+                | ItemKind::Mod(_)
+                | ItemKind::Func(_)
+                | ItemKind::Body(_)
+                | ItemKind::Use(_)
+                | ItemKind::StaticAssert(_),
+            )
+            | ScopeId::FuncParam(..)
+            | ScopeId::Field(..)
+            | ScopeId::Block(..) => true,
+        },
+    }
+}
+
+impl<'db> TyCheckEnv<'db> {
+    pub(super) fn is_pat_local_binding(&self, name: IdentId<'db>) -> bool {
+        is_pat_local_binding(self.db, self.scope(), name)
+    }
+
+    pub(super) fn resolve_ident_in_blocks<R>(
+        &self,
+        ident: IdentId<'db>,
+        resolve_bucket: impl FnMut(
+            &'db crate::analysis::name_resolution::NameResBucket<'db>,
+            ScopeId<'db>,
+        ) -> Option<R>,
+    ) -> IdentInBlocks<LocalBinding<'db>, R> {
+        resolve_ident_in_blocks(
+            self.db,
+            &self.var_env,
+            self.body.scope(),
+            self.scope(),
+            ident,
+            resolve_bucket,
+        )
+    }
+}
+
+/// Pre-inference lexical binding identity resolved for a bare identifier or
+/// pattern inside a function body, sharing `BlockEnv`, `is_pat_local_binding`,
+/// and `resolve_ident_in_blocks` with `TyChecker` without triggering type
+/// lowering.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+pub(crate) enum LexicalBinding<'db> {
+    Param { idx: usize },
+    EffectParam,
+    Local { pat: PatId },
+    ClosureParam { closure: ExprId, idx: usize },
+    Item(ScopeId<'db>),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+pub(crate) struct LetBinding<'db> {
+    pub(crate) pat: PatId,
+    pub(crate) annotation: Option<HirTypeId<'db>>,
+    pub(crate) init: Option<ExprId>,
+    pub(crate) init_scope: ScopeId<'db>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Update)]
+pub(crate) struct BodyLexicalEnv<'db> {
+    expr_scopes: Vec<(ExprId, ScopeId<'db>)>,
+    expr_bindings: Vec<(ExprId, LexicalBinding<'db>)>,
+    pat_bindings: Vec<(PatId, LexicalBinding<'db>)>,
+    let_bindings: Vec<LetBinding<'db>>,
+}
+
+impl<'db> BodyLexicalEnv<'db> {
+    pub(crate) fn expr_scope(&self, expr: ExprId) -> Option<ScopeId<'db>> {
+        self.expr_scopes
+            .iter()
+            .find_map(|(e, scope)| (*e == expr).then_some(*scope))
+    }
+
+    pub(crate) fn expr_binding(&self, expr: ExprId) -> Option<LexicalBinding<'db>> {
+        self.expr_bindings
+            .iter()
+            .find_map(|(e, binding)| (*e == expr).then_some(*binding))
+    }
+
+    pub(crate) fn let_binding(&self, pat: PatId) -> Option<LetBinding<'db>> {
+        self.let_bindings
+            .iter()
+            .find_map(|binding| (binding.pat == pat).then_some(*binding))
+    }
+}
+
+#[salsa::tracked(return_ref)]
+pub(crate) fn body_lexical_env<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func_body: Body<'db>,
+) -> BodyLexicalEnv<'db> {
+    use crate::{
+        analysis::name_resolution::NameDomain,
+        hir_def::{Cond, CondId, EffectParamListId, LogicalBinOp},
+    };
+
+    struct LexicalCollector<'db> {
+        db: &'db dyn HirAnalysisDb,
+        func_body: Body<'db>,
+        blocks: Vec<BlockEnv<'db, LexicalBinding<'db>>>,
+        pending_vars: FxHashMap<IdentId<'db>, LexicalBinding<'db>>,
+        in_or_pat: bool,
+        out: BodyLexicalEnv<'db>,
+    }
+
+    impl<'db> LexicalCollector<'db> {
+        fn current_scope(&self) -> ScopeId<'db> {
+            self.blocks
+                .last()
+                .map_or_else(|| self.func_body.scope(), |b| b.scope)
+        }
+
+        fn enter_scope(&mut self, block: ExprId) {
+            let scope = match block.data(self.db, self.func_body) {
+                Partial::Present(Expr::Block(..)) => ScopeId::Block(self.func_body, block),
+                _ => self.current_scope(),
+            };
+            let idx = self.blocks.len();
+            self.blocks.push(BlockEnv::new(scope, idx));
+        }
+
+        fn enter_lexical_scope(&mut self) {
+            let scope = self.current_scope();
+            let idx = self.blocks.len();
+            self.blocks.push(BlockEnv::new(scope, idx));
+        }
+
+        fn leave_scope(&mut self) {
+            self.blocks.pop();
+        }
+
+        fn register_var(&mut self, name: IdentId<'db>, binding: LexicalBinding<'db>) {
+            if let Some(block) = self.blocks.last_mut() {
+                block.register_var(name, binding);
+            }
+        }
+
+        fn register_pending(&mut self, name: IdentId<'db>, binding: LexicalBinding<'db>) {
+            if !self.in_or_pat {
+                self.pending_vars.entry(name).or_insert(binding);
+            }
+        }
+
+        fn flush_pending(&mut self) {
+            if let Some(block) = self.blocks.last_mut() {
+                for (name, binding) in self.pending_vars.drain() {
+                    block.register_var(name, binding);
+                }
+            } else {
+                self.pending_vars.clear();
+            }
+        }
+
+        fn clear_pending(&mut self) {
+            self.pending_vars.clear();
+        }
+
+        fn register_effects(&mut self, effects: EffectParamListId<'db>) {
+            for effect in effects.data(self.db) {
+                let binding_name = effect.name.or_else(|| {
+                    let path = effect.key_ty.to_opt()?.as_path(self.db)?;
+                    path.ident(self.db).to_opt()
+                });
+                if let Some(name) = binding_name {
+                    self.register_var(name, LexicalBinding::EffectParam);
+                }
+            }
+        }
+
+        fn walk_pat(&mut self, pat: PatId) {
+            let Partial::Present(pat_data) = pat.data(self.db, self.func_body) else {
+                return;
+            };
+            match pat_data {
+                Pat::WildCard | Pat::Rest | Pat::Lit(..) => {}
+                Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
+                    for &elem in pats {
+                        self.walk_pat(elem);
+                    }
+                }
+                Pat::Record(_, fields) => {
+                    for field in fields {
+                        self.walk_pat(field.pat);
+                    }
+                }
+                Pat::Or(lhs, rhs) => {
+                    let prev = self.in_or_pat;
+                    self.in_or_pat = true;
+                    self.walk_pat(*lhs);
+                    self.walk_pat(*rhs);
+                    self.in_or_pat = prev;
+                }
+                Pat::Path(Partial::Present(path), _) => {
+                    if let Some(name) = path.as_ident(self.db)
+                        && is_pat_local_binding(self.db, self.current_scope(), name)
+                    {
+                        let binding = LexicalBinding::Local { pat };
+                        if !self.in_or_pat {
+                            self.out.pat_bindings.push((pat, binding));
+                        }
+                        self.register_pending(name, binding);
+                    }
+                }
+                Pat::Path(Partial::Absent, _) => {}
+            }
+        }
+
+        fn walk_cond(&mut self, cond: CondId) {
+            let Partial::Present(cond_data) = cond.data(self.db, self.func_body) else {
+                return;
+            };
+            match cond_data {
+                Cond::Expr(expr) => self.walk_expr(*expr),
+                Cond::Let(pat, scrutinee) => {
+                    self.walk_expr(*scrutinee);
+                    self.walk_pat(*pat);
+                }
+                Cond::Bin(lhs, rhs, op) => {
+                    self.walk_cond(*lhs);
+                    match op {
+                        LogicalBinOp::And => self.flush_pending(),
+                        LogicalBinOp::Or => self.clear_pending(),
+                    }
+                    self.walk_cond(*rhs);
+                }
+            }
+        }
+
+        fn walk_stmt(&mut self, stmt: StmtId) {
+            let Partial::Present(stmt_data) = stmt.data(self.db, self.func_body) else {
+                return;
+            };
+            match stmt_data {
+                Stmt::Let(pat, annotation, init, else_) => {
+                    let init_scope = self.current_scope();
+                    if let Some(init) = init {
+                        self.walk_expr(*init);
+                    }
+                    self.clear_pending();
+                    self.walk_pat(*pat);
+                    self.out.let_bindings.push(LetBinding {
+                        pat: *pat,
+                        annotation: *annotation,
+                        init: *init,
+                        init_scope,
+                    });
+                    if let Some(else_) = else_ {
+                        self.walk_expr(*else_);
+                    }
+                    self.flush_pending();
+                }
+                Stmt::For(pat, iterable, body, _) => {
+                    self.walk_expr(*iterable);
+                    self.clear_pending();
+                    self.walk_pat(*pat);
+                    self.enter_scope(*body);
+                    self.flush_pending();
+                    self.walk_expr(*body);
+                    self.leave_scope();
+                }
+                Stmt::While(cond, body) => {
+                    self.enter_lexical_scope();
+                    self.walk_cond(*cond);
+                    self.enter_scope(*body);
+                    self.flush_pending();
+                    self.walk_expr(*body);
+                    self.leave_scope();
+                    self.clear_pending();
+                    self.leave_scope();
+                }
+                Stmt::Continue | Stmt::Break => {}
+                Stmt::Return(expr) => {
+                    if let Some(expr) = expr {
+                        self.walk_expr(*expr);
+                    }
+                }
+                Stmt::Yield(expr) | Stmt::Expr(expr) => self.walk_expr(*expr),
+            }
+        }
+
+        fn walk_expr(&mut self, expr: ExprId) {
+            self.out.expr_scopes.push((expr, self.current_scope()));
+            let Partial::Present(expr_data) = expr.data(self.db, self.func_body) else {
+                return;
+            };
+            match expr_data {
+                Expr::Lit(_) | Expr::UnsupportedMacroCall | Expr::Path(Partial::Absent) => {}
+                Expr::Path(Partial::Present(path)) => {
+                    if path.is_bare_ident(self.db)
+                        && let Some(ident) = path.ident(self.db).to_opt()
+                    {
+                        let resolved = match resolve_ident_in_blocks(
+                            self.db,
+                            &self.blocks,
+                            self.func_body.scope(),
+                            self.current_scope(),
+                            ident,
+                            |bucket, _| {
+                                bucket
+                                    .pick_any(&[NameDomain::VALUE, NameDomain::TYPE])
+                                    .as_ref()
+                                    .ok()
+                                    .and_then(|res| res.scope())
+                            },
+                        ) {
+                            IdentInBlocks::Binding(binding) => Some(binding),
+                            IdentInBlocks::Scope(scope) => Some(LexicalBinding::Item(scope)),
+                            IdentInBlocks::Unresolved => None,
+                        };
+                        if let Some(binding) = resolved {
+                            self.out.expr_bindings.push((expr, binding));
+                        }
+                    }
+                }
+                Expr::Block(stmts, _) => {
+                    if !stmts.is_empty() {
+                        self.enter_scope(expr);
+                        for &stmt in stmts {
+                            self.walk_stmt(stmt);
+                        }
+                        self.leave_scope();
+                    }
+                }
+                Expr::Closure {
+                    params,
+                    ret_ty: _,
+                    body,
+                } => {
+                    self.enter_lexical_scope();
+                    for (idx, param) in params.data(self.db).iter().enumerate() {
+                        if let Some(name) = param.name() {
+                            self.register_var(
+                                name,
+                                LexicalBinding::ClosureParam { closure: expr, idx },
+                            );
+                        }
+                    }
+                    self.walk_expr(*body);
+                    self.leave_scope();
+                }
+                Expr::Bin(lhs, rhs, _) | Expr::Assign(lhs, rhs) | Expr::AugAssign(lhs, rhs, _) => {
+                    self.walk_expr(*lhs);
+                    self.walk_expr(*rhs);
+                }
+                Expr::Un(inner, _)
+                | Expr::Cast(inner, _)
+                | Expr::Try(inner)
+                | Expr::Field(inner, _)
+                | Expr::ArrayRep(inner, _) => {
+                    self.walk_expr(*inner);
+                }
+                Expr::Call(callee, args) => {
+                    self.walk_expr(*callee);
+                    for arg in args {
+                        self.walk_expr(arg.expr);
+                    }
+                }
+                Expr::Assert(args) => {
+                    for arg in args {
+                        self.walk_expr(arg.expr);
+                    }
+                }
+                Expr::MethodCall(receiver, _, _, args) => {
+                    self.walk_expr(*receiver);
+                    for arg in args {
+                        self.walk_expr(arg.expr);
+                    }
+                }
+                Expr::RecordInit(_, fields) => {
+                    for field in fields {
+                        self.walk_expr(field.expr);
+                    }
+                }
+                Expr::Tuple(exprs) | Expr::Array(exprs) => {
+                    for &elem in exprs {
+                        self.walk_expr(elem);
+                    }
+                }
+                Expr::If(cond, then, else_) => {
+                    self.enter_lexical_scope();
+                    self.walk_cond(*cond);
+                    self.enter_scope(*then);
+                    self.flush_pending();
+                    self.walk_expr(*then);
+                    self.leave_scope();
+                    self.clear_pending();
+                    self.leave_scope();
+                    if let Some(else_) = else_ {
+                        self.enter_scope(*else_);
+                        self.walk_expr(*else_);
+                        self.leave_scope();
+                    }
+                }
+                Expr::Match(scrutinee, arms) => {
+                    self.walk_expr(*scrutinee);
+                    if let Partial::Present(arms) = arms {
+                        for arm in arms {
+                            self.clear_pending();
+                            self.walk_pat(arm.pat);
+                            self.enter_scope(arm.body);
+                            self.flush_pending();
+                            self.walk_expr(arm.body);
+                            self.leave_scope();
+                        }
+                    }
+                }
+                Expr::With(bindings, body) => {
+                    for binding in bindings {
+                        self.walk_expr(binding.value);
+                    }
+                    self.walk_expr(*body);
+                }
+            }
+        }
+    }
+
+    let owner = BodyOwner::from_body(db, func_body);
+    let root_scope = owner.map_or_else(|| func_body.scope(), |o| o.scope());
+    let mut collector = LexicalCollector {
+        db,
+        func_body,
+        blocks: vec![BlockEnv::new(root_scope, 0)],
+        pending_vars: FxHashMap::default(),
+        in_or_pat: false,
+        out: BodyLexicalEnv::default(),
+    };
+    let root_expr = func_body.expr(db);
+    collector.enter_scope(root_expr);
+    if let Some(owner) = owner {
+        match owner {
+            BodyOwner::Func(func, _) => {
+                for (idx, param) in func.params(db).enumerate() {
+                    if let Some(name) = param.name(db) {
+                        collector.register_var(name, LexicalBinding::Param { idx });
+                    }
+                }
+                collector.register_effects(func.declared_effects(db));
+            }
+            BodyOwner::ContractInit { contract } => {
+                let contract_effects = contract.effects(db);
+                collector.register_effects(contract_effects);
+                if let Some(init) = contract.init(db) {
+                    for (idx, param) in init.params(db).data(db).iter().enumerate() {
+                        if let Some(name) = param.name() {
+                            collector.register_var(name, LexicalBinding::Param { idx });
+                        }
+                    }
+                    collector.register_effects(init.effects(db));
+                }
+            }
+            BodyOwner::ContractRecvArm {
+                contract,
+                recv_idx,
+                arm_idx,
+            } => {
+                let contract_effects = contract.effects(db);
+                collector.register_effects(contract_effects);
+                if let Some(arm) = contract.recv_arm(db, recv_idx as usize, arm_idx as usize) {
+                    collector.clear_pending();
+                    if !matches!(arm.pat.data(db, func_body), Partial::Present(Pat::Path(..))) {
+                        collector.walk_pat(arm.pat);
+                    }
+                    collector.flush_pending();
+                    collector.register_effects(arm.effects);
+                }
+            }
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
+        }
+    }
+    collector.walk_expr(root_expr);
+    collector.leave_scope();
+    collector.out
+}
+
+/// Verifies that the pre-inference lexical bindings recorded by
+/// `body_lexical_env` agree with `TypedBody::expr_binding` and
+/// `TypedBody::pat_binding`.
+#[cfg(debug_assertions)]
+pub(crate) fn verify_lexical_bindings_match_typed_body<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func_body: Body<'db>,
+    typed: &TypedBody<'db>,
+) {
+    let lex = body_lexical_env(db, func_body);
+    let to_lexical = |binding: LocalBinding<'db>| match binding {
+        LocalBinding::Param { site, idx, .. } => match site {
+            ParamSite::Closure(def) => LexicalBinding::ClosureParam {
+                closure: def.expr,
+                idx,
+            },
+            ParamSite::EffectField(_) => LexicalBinding::EffectParam,
+            ParamSite::Func(_) | ParamSite::ContractInit(_) | ParamSite::ClosureEnv(_) => {
+                LexicalBinding::Param { idx }
+            }
+        },
+        LocalBinding::EffectParam { .. } => LexicalBinding::EffectParam,
+        LocalBinding::Local { pat, .. } => LexicalBinding::Local { pat },
+    };
+    for pat in func_body.pats(db).keys() {
+        let expected = typed.pat_binding(pat).map(to_lexical);
+        let actual = lex
+            .pat_bindings
+            .iter()
+            .find_map(|(p, b)| (*p == pat).then_some(*b));
+        debug_assert_eq!(
+            actual, expected,
+            "pre-inference pat_binding mismatch in {:?} at {:?}",
+            func_body, pat
+        );
+    }
+    for expr in func_body.exprs(db).keys() {
+        if !matches!(expr.data(db, func_body), Partial::Present(Expr::Path(..))) {
+            continue;
+        }
+        let expected = typed.expr_binding(expr).map(to_lexical);
+        let actual = lex
+            .expr_binding(expr)
+            .filter(|b| !matches!(b, LexicalBinding::Item(_)));
+        debug_assert_eq!(
+            actual, expected,
+            "pre-inference expr_binding mismatch in {:?} at {:?}",
+            func_body, expr
+        );
+    }
+}

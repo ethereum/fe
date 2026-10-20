@@ -1,4 +1,5 @@
 mod callable;
+mod choice;
 mod const_requirements;
 pub use const_requirements::{EvaluationStop, RequirementFailure};
 pub(crate) use const_requirements::{
@@ -13,6 +14,7 @@ mod pat;
 mod path;
 mod projection;
 mod stmt;
+pub(crate) mod written_frames;
 
 pub use self::contract::{
     ResolvedRecvVariant, VariantResError, check_contract_field_address_spaces,
@@ -893,11 +895,84 @@ pub(super) fn checked_body<'db>(
     owner: BodyOwner<'db>,
 ) -> CheckedBody<'db> {
     let (mut diags, typed) = infer_body(db, owner).clone();
+    // A `const` item written inside `with` that reads a slot a frame around
+    // it answers is refused for now; later, items read the
+    // frames around them.
+    if let BodyOwner::Const(constant) = owner
+        && let Some(body) = constant.body(db).to_opt()
+        && written_frames::refuses_read(db, body, None)
+    {
+        diags.push(
+            BodyDiag::ObligationOpening {
+                primary: body.expr(db).span(body).into(),
+                reason: "a `const` item written inside `with` cannot read a slot the `with` answers yet",
+            }
+            .into(),
+        );
+    }
+    // Any other item written there, or a `const` item's declared type, that
+    // reads such a slot is refused the same way.
+    if matches!(
+        owner,
+        BodyOwner::Func(_, _) | BodyOwner::ContractInit { .. } | BodyOwner::ContractRecvArm { .. }
+    ) && let Some(body) = typed.body()
+    {
+        for (item, slot) in written_frames::refused_items(db, body) {
+            let kind = match item {
+                crate::hir_def::ItemKind::ImplTrait(_) => "impl",
+                _ => item.kind_name(),
+            };
+            let item_name = match item.name(db) {
+                Some(name) => format!("`{kind} {}`", name.data(db)),
+                None => format!("this `{kind}`"),
+            };
+            // An implementation has no name of its own; its header names it.
+            let primary = match item {
+                crate::hir_def::ItemKind::ImplTrait(implementation) => {
+                    implementation.span().trait_ref().into()
+                }
+                crate::hir_def::ItemKind::Impl(implementation) => {
+                    implementation.span().target_ty().into()
+                }
+                _ => item.name_span().unwrap_or_else(|| item.span().into()),
+            };
+            diags.push(
+                BodyDiag::ItemReadsChoice {
+                    primary,
+                    item: item_name,
+                    slot,
+                }
+                .into(),
+            );
+        }
+    }
     let mut recursive = false;
     if diags_allow_evaluation(db, &diags) {
+        #[cfg(debug_assertions)]
+        if matches!(
+            owner,
+            BodyOwner::Func(_, _)
+                | BodyOwner::ContractInit { .. }
+                | BodyOwner::ContractRecvArm { .. }
+        ) && let Some(body) = typed.body()
+        {
+            env::verify_lexical_bindings_match_typed_body(db, body, &typed);
+        }
         let requirements = const_requirements::check_body_requirements(db, owner, &typed);
         recursive = requirements.recursive;
         diags.extend(requirements.diags);
+        diags.extend(choice::check_choice_uses(db, &typed, owner.scope()));
+    }
+    let reported = diags.iter().any(|diag| {
+        matches!(
+            diag,
+            FuncBodyDiag::Body(
+                BodyDiag::ChoiceDependentType { .. } | BodyDiag::ChoiceCarried { .. }
+            )
+        )
+    });
+    if !reported && let Some(diag) = choice::unreported_choice_dependent_consts(db, &typed) {
+        diags.push(diag);
     }
     CheckedBody {
         diags,
@@ -1015,6 +1090,24 @@ fn infer_body_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
+/// Whether inference refused a trait choice the body depends on. Such a body
+/// must not be evaluated: its uses have no choice, and a value computed from it
+/// could let an evidence cycle converge on an arbitrary choice.
+pub(crate) fn inference_refused_a_choice<'db>(
+    (diags, _): &(Vec<FuncBodyDiag<'db>>, TypedBody<'db>),
+) -> bool {
+    diags.iter().any(|diag| {
+        matches!(
+            diag,
+            FuncBodyDiag::Body(
+                BodyDiag::ObligationOpening { .. }
+                    | BodyDiag::ObligationIntroduction { .. }
+                    | BodyDiag::EvidenceChoiceNotCompileTime { .. }
+            )
+        )
+    })
+}
+
 /// Whether inference met a type lowering cycle, in the body or in the
 /// result type it checks the body against. Its typed body is then a
 /// provisional fixpoint value, which compile-time evaluation must not run:
@@ -1093,6 +1186,11 @@ fn const_body_ctfe_diags_with_context<'db>(
     context: Option<ConstDiagContext>,
 ) -> Vec<FuncBodyDiag<'db>> {
     if expected.has_invalid(db) {
+        return Vec::new();
+    }
+    // A constant refused where it is read is not evaluated; the body it is
+    // written in reports the refusal.
+    if written_frames::refuses_read(db, body, Some(expected)) {
         return Vec::new();
     }
     let owner = BodyOwner::AnonConstBody { body, expected };
@@ -1373,6 +1471,15 @@ fn typed_body_for_bodyless_func<'db>(
         expr_place: SecondaryMap::new(),
         expr_places: PrimaryMap::new(),
         path_applications: Vec::new(),
+        with_choice_bindings: Vec::new(),
+        function_value_choices: Vec::new(),
+        closure_choices: Vec::new(),
+        callee_only_values: Vec::new(),
+        callee_only_calls: Vec::new(),
+        const_reaches: Vec::new(),
+        effect_with_operands: Vec::new(),
+        choice_refusals: Vec::new(),
+        expr_premises: SecondaryMap::new(),
     }
     .into()
 }
@@ -1463,6 +1570,7 @@ impl<'db> TyChecker<'db> {
     fn run(&mut self) {
         self.check_effect_param_keys_resolve();
         self.check_own_param_types();
+        self.refuse_evidence_params();
 
         if let BodyOwner::ContractRecvArm {
             contract,
@@ -2095,7 +2203,7 @@ impl<'db> TyChecker<'db> {
     ) -> TraitObligationOutcome<'db> {
         let db = self.db;
         let scope = self.env.scope();
-        let assumptions = self.env.assumptions();
+        let assumptions = obligation.premises;
 
         if self.has_dead_inference_keys(&obligation.goal) {
             return TraitObligationOutcome::Discharged;
@@ -2117,6 +2225,9 @@ impl<'db> TyChecker<'db> {
         let goal = obligation.goal;
         let flags = collect_flags(db, goal);
         if flags.contains(TyFlags::HAS_INVALID) || self.has_dead_inference_keys(&goal) {
+            return TraitObligationOutcome::Discharged;
+        }
+        if self.env.frame_proves(obligation.frame, goal) {
             return TraitObligationOutcome::Discharged;
         }
 
@@ -2251,7 +2362,19 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn process_type_equality(&mut self, mut equality: env::TypeEquality<'db>) -> bool {
+    /// A retained equality is decided under the frame and premises where it
+    /// is written, as a deferred obligation or method call is.
+    fn process_type_equality(&mut self, equality: env::TypeEquality<'db>) -> bool {
+        let (frame, premises) = (self.env.choice_frames.current(), self.env.assumptions());
+        self.env.choice_frames.restore(equality.frame);
+        self.env.restore_assumptions(equality.premises);
+        let progressed = self.decide_type_equality(equality);
+        self.env.choice_frames.restore(frame);
+        self.env.restore_assumptions(premises);
+        progressed
+    }
+
+    fn decide_type_equality(&mut self, mut equality: env::TypeEquality<'db>) -> bool {
         if self.final_pass {
             let mut prober = env::Prober::new(&mut self.table, self.env.scope());
             equality.actual = equality.actual.fold_with(self.db, &mut prober);
@@ -2418,12 +2541,17 @@ impl<'db> TyChecker<'db> {
                 viability
             };
 
-        // Fixed-point pass over deferred tasks.
+        // Fixed-point pass over deferred tasks. A deferred method call is
+        // resolved under the frame and premises where it is written.
+        let (outer_frame, outer_premises) =
+            (self.env.choice_frames.current(), self.env.assumptions());
         let mut progressed = true;
         while progressed {
             progressed = false;
             let tasks = self.env.take_deferred_tasks();
             for task in tasks {
+                self.env.choice_frames.restore(outer_frame);
+                self.env.restore_assumptions(outer_premises);
                 match task {
                     env::DeferredTask::TypeEquality(equality) => {
                         progressed |= self.process_type_equality(equality);
@@ -2438,6 +2566,8 @@ impl<'db> TyChecker<'db> {
                         }
                     }
                     env::DeferredTask::Method(pending) => {
+                        self.env.choice_frames.restore(pending.frame);
+                        self.env.restore_assumptions(pending.premises);
                         let Some((receiver, generic_args, call_args)) =
                             pending_call_parts(db, body, &self.env, pending.expr)
                         else {
@@ -2523,6 +2653,8 @@ impl<'db> TyChecker<'db> {
                                         goal: inst,
                                         origin: env::TraitObligationOrigin::GenericConfirmation,
                                         span: call_span.clone().into(),
+                                        premises: self.env.assumptions(),
+                                        frame: self.env.choice_frames.current(),
                                     });
                                 }
 
@@ -2550,7 +2682,6 @@ impl<'db> TyChecker<'db> {
                                     Some((receiver, receiver_prop)),
                                     true,
                                 );
-
                                 callable.process_constraints(
                                     self,
                                     pending.expr,
@@ -2587,14 +2718,17 @@ impl<'db> TyChecker<'db> {
                                         )
                                     })
                                 {
-                                    self.env.register_code_region_intrinsic(
+                                    self.record_call(
                                         pending.expr,
                                         callable,
-                                        call_args[0].expr,
-                                        kind,
+                                        choice::RecordedCall::CodeRegion(call_args[0].expr, kind),
                                     );
                                 } else {
-                                    self.env.register_semantic_call(pending.expr, callable);
+                                    self.record_call(
+                                        pending.expr,
+                                        callable,
+                                        choice::RecordedCall::Call,
+                                    );
                                 }
                             }
 
@@ -2617,6 +2751,9 @@ impl<'db> TyChecker<'db> {
                 }
             }
         }
+
+        self.env.choice_frames.restore(outer_frame);
+        self.env.restore_assumptions(outer_premises);
 
         // Final trait solving can still bind types after literal fallback.
         // Check retained equalities after those constraints have settled.
@@ -2955,7 +3092,7 @@ impl<'db> TyChecker<'db> {
             hir_ty,
             span.clone(),
             self.env.assumptions(),
-            TraitSolveCx::new(self.db, self.env.scope()).with_assumptions(self.env.assumptions()),
+            self.env.proof_context(),
         ) {
             self.push_diag(diag);
         }
@@ -2970,6 +3107,13 @@ impl<'db> TyChecker<'db> {
             )
         }) {
             self.push_diag(diag)
+        }
+
+        if self.refuse_choice_dependent_ty(ty, ty, span.clone().into())
+            || self.refuse_choice_dependent_hir_ty(hir_ty, span.clone().into())
+        {
+            // Keep the type's shape so the refusal is the only diagnostic.
+            return super::trait_choice::invalidate_consts(self.db, ty);
         }
 
         if star_kind_required && ty.is_star_kind(self.db) {
@@ -3702,6 +3846,8 @@ impl<'db> TyChecker<'db> {
                     actual,
                     expected,
                     span,
+                    premises: self.env.assumptions(),
+                    frame: self.env.choice_frames.current(),
                 }) {
                     expected
                 } else {
@@ -3953,6 +4099,14 @@ pub enum ConstRef<'db> {
 }
 
 impl<'db> ConstRef<'db> {
+    pub fn trait_const(use_: AssocConstUse<'db>) -> Self {
+        Self::TraitConst {
+            use_,
+            evidence: None,
+            bound_evidence: None,
+        }
+    }
+
     /// A trait constant's defining body, its declared type, the substitution
     /// over the body's owner, and the evidence the body's instance receives:
     /// from the implementation the checker selected, or, for a use the
@@ -3969,6 +4123,32 @@ impl<'db> ConstRef<'db> {
         else {
             return None;
         };
+        let chosen_choices = crate::analysis::ty::trait_def::chosen_constant(db, use_)
+            .and_then(|chosen| chosen.body.map(|b| (b.body, b.ty, b.subst, b.choices)));
+        if use_.choice().is_some() {
+            let (body, ty, subst, choices) = chosen_choices?;
+            let default = use_
+                .inst()
+                .def(db)
+                .const_(db, use_.name())
+                .and_then(|constant| constant.default_body(db));
+            let received = match (bound_evidence, evidence) {
+                (Some(bound), _) if default == Some(body) => bound,
+                (_, Some(selection))
+                    if default != Some(body)
+                        && matches!(selection.data(db), Evidence::Impl { .. }) =>
+                {
+                    impl_const_bound_evidence(
+                        db,
+                        body,
+                        selection,
+                        GenericSubst::complete(db, subst.clone()),
+                    )
+                }
+                _ => EvidenceList::none(db),
+            };
+            return Some((body, ty, subst, received.with_choices(db, choices)));
+        }
         let resolved = instantiated_selection(db, evidence, use_.solve_cx(db), use_.inst())?;
         let (body, ty, subst) = selected_assoc_const_body_template(db, resolved, use_.name())?;
         let default = use_
@@ -3991,6 +4171,11 @@ impl<'db> ConstRef<'db> {
                 )
             }
             _ => EvidenceList::none(db),
+        };
+        let received = if let Some((_, _, _, choices)) = chosen_choices {
+            received.with_choices(db, choices)
+        } else {
+            received
         };
         Some((body, ty, subst, received))
     }
@@ -4198,6 +4383,30 @@ mod typed_body_tables {
         /// expression or pattern whose path it is. Const requirements check
         /// them there (`check_body_requirements`).
         pub(super) path_applications: Vec<(DynLazySpan<'db>, TyId<'db>)>,
+        /// `with` binding values that open a trait choice rather than provide
+        /// an effect. Their meaning is compile-time only.
+        pub(super) with_choice_bindings: Vec<ExprId>,
+        /// Function values and the non-ordinary choices they would carry.
+        pub(super) function_value_choices:
+            Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
+        /// Uses inside closure bodies and the slot choices they read.
+        pub(super) closure_choices:
+            Vec<(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)>,
+        /// Paths naming a function that reach only the callees of calls,
+        /// where a frame is in force at the value or one of its calls.
+        pub(super) callee_only_values: Vec<ExprId>,
+        /// The calls those values reach, which check them.
+        pub(super) callee_only_calls: Vec<ExprId>,
+        /// The body's own slots that its constant uses pass on to a constant
+        /// body whose types read them (`const_type_reads`).
+        pub(super) const_reaches: Vec<crate::analysis::ty::trait_def::TraitInstId<'db>>,
+        /// `with` operands taken as effect values.
+        pub(super) effect_with_operands: Vec<ExprId>,
+        /// Trait uses refused once their decisions are known.
+        pub(super) choice_refusals: Vec<(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)>,
+        /// The premises where an expression was typed, when a `with` added
+        /// goals to the body's own.
+        pub(super) expr_premises: SecondaryMap<ExprId, Option<PredicateListId<'db>>>,
     }
 }
 use typed_body_tables::TypedBodyTables;
@@ -4322,6 +4531,8 @@ pub enum CodeRegionIntrinsicKind {
 pub enum ConstIntrinsicKind {
     SizeOf,
     StorageSlots,
+    /// `core::obligations::prove`: the callable carries the decided choice.
+    Prove,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
@@ -4586,6 +4797,10 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
         this.path_applications
             .iter_mut()
             .for_each(|(_, ty)| *ty = ty.fold_with(db, folder));
+        this.expr_premises
+            .values_mut()
+            .flatten()
+            .for_each(|premises| *premises = premises.fold_with(db, folder));
         this.into()
     }
 }
@@ -4620,7 +4835,8 @@ impl<'db> TypedBody<'db> {
     /// Replaces the assumptions the body's evidence names with `bound`'s
     /// proofs of them: an instance's own.
     pub(crate) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) {
-        if bound.entries(db).is_empty() {
+        let choices = bound.choices(db);
+        if bound.entries(db).is_empty() && choices.is_ordinary() {
             return;
         }
         let tables = self.tables_mut();
@@ -4633,15 +4849,29 @@ impl<'db> TypedBody<'db> {
             }
         }
         for const_ref in tables.const_refs.values_mut().flatten() {
-            if let ConstRef::TraitConst {
-                evidence,
-                bound_evidence,
-                ..
-            } = const_ref
-            {
-                *evidence = evidence.map(|evidence| evidence.bind(db, bound));
-                *bound_evidence =
-                    bound_evidence.map(|bound_evidence| bound_evidence.bind(db, bound));
+            match const_ref {
+                ConstRef::TraitConst {
+                    use_,
+                    evidence,
+                    bound_evidence,
+                } => {
+                    *evidence = evidence.map(|evidence| evidence.bind(db, bound));
+                    *bound_evidence =
+                        bound_evidence.map(|bound_evidence| bound_evidence.bind(db, bound));
+                    if !choices.is_ordinary() {
+                        *use_ = use_.specialize(db, choices);
+                        if let Some(crate::analysis::ty::trait_choice::Choice::Known(known)) =
+                            use_.choice()
+                            && !known.is_ordinary()
+                        {
+                            *evidence = known.to_evidence(db);
+                        }
+                    }
+                }
+                ConstRef::InherentConst(use_) if !choices.is_ordinary() => {
+                    *use_ = use_.specialize(db, choices);
+                }
+                _ => {}
             }
         }
     }
@@ -4651,6 +4881,61 @@ impl<'db> TypedBody<'db> {
     /// path it is.
     pub(super) fn path_applications(&self) -> &[(DynLazySpan<'db>, TyId<'db>)] {
         &self.tables.path_applications
+    }
+
+    /// Function values and the non-ordinary choices they would carry.
+    pub(crate) fn function_value_choices(
+        &self,
+    ) -> &[(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)] {
+        &self.tables.function_value_choices
+    }
+
+    /// The paths naming a function that reach only the callees of calls,
+    /// which decide for it, where a frame is in force at the value or
+    /// one of its calls: such a path is checked at those calls.
+    pub(crate) fn callee_only_values(&self) -> &[ExprId] {
+        &self.tables.callee_only_values
+    }
+
+    /// The calls that check a callee-only value (`callee_only_values`).
+    pub(crate) fn callee_only_calls(&self) -> &[ExprId] {
+        &self.tables.callee_only_calls
+    }
+
+    /// Uses inside closure bodies and the slot choices they read.
+    pub(crate) fn closure_choices(
+        &self,
+    ) -> &[(ExprId, Vec<crate::analysis::ty::trait_choice::Choice<'db>>)] {
+        &self.tables.closure_choices
+    }
+
+    /// The body's own slots that its constant uses pass on to a constant
+    /// body whose types read them.
+    pub(crate) fn const_reaches(&self) -> &[crate::analysis::ty::trait_def::TraitInstId<'db>] {
+        &self.tables.const_reaches
+    }
+
+    /// `with` operands taken as effect values.
+    pub(crate) fn effect_with_operands(&self) -> &[ExprId] {
+        &self.tables.effect_with_operands
+    }
+
+    /// Trait uses refused once their decisions are known.
+    pub(crate) fn choice_refusals(
+        &self,
+    ) -> &[(ExprId, crate::analysis::ty::trait_choice::ChoiceRefusal)] {
+        &self.tables.choice_refusals
+    }
+
+    /// The premises where `expr` was typed, when a `with` added goals to the
+    /// body's own.
+    pub(crate) fn expr_premises(&self, expr: ExprId) -> Option<PredicateListId<'db>> {
+        self.tables.expr_premises.get(expr).copied().flatten()
+    }
+
+    /// Whether a `with` binding value opens a trait choice.
+    pub fn is_with_choice_binding(&self, value: ExprId) -> bool {
+        self.tables.with_choice_bindings.contains(&value)
     }
 
     pub fn body(&self) -> Option<Body<'db>> {
@@ -5130,6 +5415,39 @@ impl<'db> TypedBody<'db> {
         self.tables.for_loop_plans[stmt].as_ref()
     }
 
+    /// Every call a checked body records: each expression call and each
+    /// `for` loop's protocol calls, with the expression where it is written
+    /// and whether its callee body receives the call's decisions.
+    pub(crate) fn recorded_calls<'a>(
+        &'a self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Vec<(ExprId, &'a Callable<'db>, bool)> {
+        let Some(body) = self.body() else {
+            return Vec::new();
+        };
+        let expr_calls = body.exprs(db).keys().filter_map(|expr| {
+            let callable = self.callable_expr(expr)?;
+            let direct = choice::calls_directly(
+                db,
+                body,
+                expr,
+                |callee| self.expr_binding(callee).is_some(),
+                |callee| Some(self.expr_ty(db, callee)),
+            );
+            Some((expr, callable, direct))
+        });
+        let loop_calls = body
+            .stmts(db)
+            .keys()
+            .filter_map(|stmt| self.for_loop_plan(stmt))
+            .flat_map(|plan| {
+                plan.calls
+                    .iter()
+                    .map(move |call| (plan.base, &call.callable, true))
+            });
+        expr_calls.chain(loop_calls).collect()
+    }
+
     pub fn binding_source(
         &self,
         db: &'db dyn HirAnalysisDb,
@@ -5519,16 +5837,12 @@ impl<'db> TypedBody<'db> {
         visited_locals: &mut FxHashSet<PatId>,
     ) -> Option<Vec<ReturnSource>> {
         let callable = self.callable_expr(expr)?;
-        let CallableDef::Func(mut func) = callable.callable_def() else {
+        let CallableDef::Func(func) = callable.callable_def() else {
             return None;
         };
-        if let Some(method) = callable.selected_method(
-            db,
-            TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
-        ) && let Some(body_func) = method.body()
-        {
-            func = body_func;
-        }
+        let func = callable
+            .called_body(db, body.scope(), self.assumptions())
+            .map_or(func, |(body, _)| body);
         let callee_sources = self.forwarded_return_param_sources_from_callable(db, func)?;
         let mut merged = FxHashSet::default();
         for callee_source in callee_sources {
@@ -6314,6 +6628,15 @@ impl<'db> TypedBody<'db> {
             expr_place: SecondaryMap::new(),
             expr_places: PrimaryMap::new(),
             path_applications: Vec::new(),
+            with_choice_bindings: Vec::new(),
+            function_value_choices: Vec::new(),
+            closure_choices: Vec::new(),
+            callee_only_values: Vec::new(),
+            callee_only_calls: Vec::new(),
+            const_reaches: Vec::new(),
+            effect_with_operands: Vec::new(),
+            choice_refusals: Vec::new(),
+            expr_premises: SecondaryMap::new(),
         }
         .into()
     }
@@ -6627,7 +6950,10 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
             let is_direct_call_callee =
                 matches!(expr_data, Expr::Path(..)) && self.direct_call_callees.contains(&expr);
             if prop.binding.is_none() && !is_direct_call_callee {
-                self.check_wf(prop.ty, span.into());
+                // Under the premises where the expression was written: a
+                // `with` makes the goals it opens premises of its block.
+                let premises = self.body.expr_premises(expr).unwrap_or(self.assumptions);
+                self.check_wf(prop.ty, span.into(), premises);
             }
         }
 
@@ -6963,14 +7289,19 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
     }
 
-    fn check_wf(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) {
+    fn check_wf(
+        &mut self,
+        ty: TyId<'db>,
+        span: DynLazySpan<'db>,
+        assumptions: PredicateListId<'db>,
+    ) {
         let flags = ty.flags(self.db);
         if flags.contains(TyFlags::HAS_INVALID) || flags.contains(TyFlags::HAS_VAR) {
             return;
         }
 
         let solve_cx = TraitSolveCx::new(self.db, self.body.body().unwrap().scope());
-        if let Some(diag) = ty.emit_wf_diag(self.db, solve_cx, self.assumptions, span) {
+        if let Some(diag) = ty.emit_wf_diag(self.db, solve_cx, assumptions, span) {
             self.diags.push(diag.into());
         }
     }

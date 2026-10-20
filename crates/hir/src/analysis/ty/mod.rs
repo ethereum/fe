@@ -58,6 +58,7 @@ pub(crate) mod scratch;
 pub mod shape;
 pub(crate) mod sol_codec;
 pub(crate) mod subst;
+pub mod trait_choice;
 pub mod trait_def;
 pub mod trait_lower;
 pub mod trait_resolution; // This line was previously 'pub mod name_resolution;'
@@ -317,6 +318,8 @@ fn walk<'db>(
     enum Domain {
         Type,
         Val,
+        /// Named implementations' names.
+        Impl,
     }
 
     let mut defs = FxHashMap::<(Domain, IdentId<'db>), SmallVec<[ItemKind<'db>; 2]>>::default();
@@ -334,11 +337,12 @@ fn walk<'db>(
                 | ItemKind::TypeAlias(_)
                 | ItemKind::Trait(_) => Domain::Type,
 
+                ItemKind::ImplTrait(_) => Domain::Impl,
+
                 ItemKind::TopMod(_)
                 | ItemKind::StaticAssert(_)
                 | ItemKind::Use(_)
                 | ItemKind::Impl(_)
-                | ItemKind::ImplTrait(_)
                 | ItemKind::Body(_) => continue,
             };
             defs.entry((domain, item.name(db).unwrap()))

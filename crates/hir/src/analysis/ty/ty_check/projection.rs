@@ -274,6 +274,8 @@ impl<'db> TyChecker<'db> {
         {
             let obligation = TraitObligation {
                 goal: inst.mut_goal(self.db),
+                premises: self.env.assumptions(),
+                frame: self.env.choice_frames.current(),
                 origin: TraitObligationOrigin::GenericConfirmation,
                 span,
             };

@@ -231,3 +231,132 @@ fn test_types(_ subject: Subject) {}
          {result:?}; unresolved subgoal: {unresolved:?}",
     );
 }
+
+fn check_cross_ingot_app_diags(app_src: &str) -> Vec<String> {
+    let mut db = HirAnalysisTestDb::default();
+    db.initialize_builtin_core();
+    db.initialize_builtin_std();
+
+    touch(
+        &mut db,
+        "file:///cross-ingot-candidates/traits/fe.toml",
+        r#"
+[ingot]
+name = "traits"
+version = "0.1.0"
+"#,
+    );
+    touch(
+        &mut db,
+        "file:///cross-ingot-candidates/traits/src/lib.fe",
+        r#"
+pub trait Gate {
+    const OK: bool
+}
+
+pub trait Helper {
+    const M: usize
+}
+
+pub trait Width {
+    const N: usize
+    fn check(self) -> usize
+}
+
+pub struct Key {}
+
+impl Gate for Key {
+    const OK: bool = true
+}
+
+impl Gate for Key as ClosedGate {
+    const OK: bool = false
+}
+
+impl<T: Gate> Helper for T {
+    const M: usize = 7
+}
+
+pub struct Wrap<T> {}
+
+impl<T> Width for Wrap<T> {
+    const N: usize = 1
+    fn check(self) -> usize {
+        1
+    }
+}
+
+impl<T: Helper> Width for Wrap<T> as Guarded {
+    const N: usize = <T as Helper>::M
+    fn check(self) -> usize {
+        2
+    }
+}
+"#,
+    );
+
+    touch(
+        &mut db,
+        "file:///cross-ingot-candidates/app/fe.toml",
+        r#"
+[ingot]
+name = "app"
+version = "0.1.0"
+
+[dependencies]
+traits = { path = "../traits" }
+"#,
+    );
+    let app_file = touch(
+        &mut db,
+        "file:///cross-ingot-candidates/app/src/lib.fe",
+        app_src,
+    );
+
+    let (app, _) = db.top_mod(app_file);
+    fe_hir::analysis::initialize_analysis_pass()
+        .run_on_module(&db, app)
+        .into_iter()
+        .map(|diag| diag.to_complete(&db).error_code.to_string())
+        .collect()
+}
+
+#[test]
+fn cross_ingot_open_choice_discovers_downstream_candidate_methods() {
+    let diags = check_cross_ingot_app_diags(
+        r#"
+use core::obligations::Evidence
+use traits::{Gate, Key, Width, Wrap}
+
+pub fn run_method(_ w: Wrap<Key>, _ e: Evidence<Width<Wrap<Key>>>, _ g: Evidence<Gate<Key>>) -> usize {
+    with (e, g) {
+        w.check()
+    }
+}
+"#,
+    );
+    assert!(
+        diags.contains(&"8-0098".to_string()),
+        "expected 8-0098 refusal for `w.check()` via candidate_methods when downstream ingot opens `Width<Wrap<Key>>` and `Gate<Key>`, got {diags:?}"
+    );
+}
+
+#[test]
+fn cross_ingot_open_choice_discovers_downstream_candidate_constants() {
+    let diags = check_cross_ingot_app_diags(
+        r#"
+use core::obligations::Evidence
+use traits::{Gate, Key, Width, Wrap}
+
+pub fn run_const(_ e: Evidence<Width<Wrap<Key>>>, _ g: Evidence<Gate<Key>>) -> usize {
+    with (e, g) {
+        <Wrap<Key> as Width>::N
+    }
+}
+"#,
+    );
+    assert!(
+        diags.contains(&"8-0098".to_string()),
+        "expected 8-0098 refusal for `<Wrap<Key> as Width>::N` via candidate_constants when downstream ingot opens `Width<Wrap<Key>>` and `Gate<Key>`, got {diags:?}"
+    );
+}

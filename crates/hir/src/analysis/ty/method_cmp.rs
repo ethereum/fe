@@ -285,7 +285,12 @@ fn compare_ty<'db>(
         .enumerate()
     {
         // 1) Instantiate trait method's type params into the impl's generics
-        let trait_m_ty = instantiate_trait_method_template(db, *trait_m_ty, param_subst);
+        let trait_m_ty = read_own_constants(
+            db,
+            instantiate_trait_method_template(db, *trait_m_ty, param_subst),
+            impl_m.scope(),
+            trait_inst,
+        );
         if trait_m_ty.has_invalid(db) {
             continue;
         }
@@ -335,7 +340,12 @@ fn compare_ty<'db>(
     }
 
     let impl_m_ret_ty = impl_m.ret_ty(db).instantiate_identity();
-    let trait_m_ret_ty = instantiate_trait_method_template(db, trait_m.ret_ty(db), param_subst);
+    let trait_m_ret_ty = read_own_constants(
+        db,
+        instantiate_trait_method_template(db, trait_m.ret_ty(db), param_subst),
+        impl_m.scope(),
+        trait_inst,
+    );
 
     // Substitute and normalize the return type as well.
     let trait_m_ret_ty_substituted =
@@ -592,14 +602,19 @@ fn collect_effect_provider_entries<'db>(
             let mut binding = binding.clone();
             if let Some(subst) = &param_subst {
                 binding.key = match binding.key {
+                    // The trait's side reads its own constants as the named
+                    // implementation compared with it does.
                     crate::core::semantic::EffectRequirementKey::Type(key_ty) => {
-                        crate::core::semantic::EffectRequirementKey::Type(
+                        crate::core::semantic::EffectRequirementKey::Type(read_own_constants(
+                            db,
                             instantiate_trait_method_template(
                                 db,
                                 Binder::bind(method.generic_owner(), key_ty),
                                 subst,
                             ),
-                        )
+                            scope,
+                            trait_inst,
+                        ))
                     }
                     crate::core::semantic::EffectRequirementKey::Trait(key_trait) => {
                         crate::core::semantic::EffectRequirementKey::Trait(
@@ -845,6 +860,78 @@ fn normalize_predicates_for_comparison<'db>(
     )
 }
 
+/// The trait's signature `ty`, as compared for the implementation around
+/// `scope`: inside a named implementation, a read of its own slot's constant
+/// (`Self::P` in the trait, instantiated) is that implementation's, not the
+/// ordinary one; elsewhere `ty` is unchanged.
+fn read_own_constants<'db, T: TyFoldable<'db>>(
+    db: &'db dyn HirAnalysisDb,
+    ty: T,
+    scope: crate::hir_def::scope_graph::ScopeId<'db>,
+    trait_inst: TraitInstId<'db>,
+) -> T {
+    use crate::analysis::ty::trait_choice::{Choice, KnownChoice, slot_goal};
+    struct Own<'db> {
+        own: KnownChoice<'db>,
+        slot: TraitInstId<'db>,
+    }
+    impl<'db> TyFolder<'db> for Own<'db> {
+        fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+            let ty = ty.super_fold_with(db, self);
+            let TyData::ConstTy(const_ty) = ty.data(db) else {
+                return ty;
+            };
+            let ConstTyData::Abstract(expr, expected_ty) = const_ty.data(db) else {
+                return ty;
+            };
+            let ConstExpr::TraitConst(assoc) = expr.data(db) else {
+                return ty;
+            };
+            if slot_goal(db, assoc.inst()) != self.slot || assoc.choice().is_some() {
+                return ty;
+            }
+            let assoc = assoc.with_choice(Some(Choice::Known(self.own)));
+            let expr = super::const_expr::ConstExprId::new(db, ConstExpr::TraitConst(assoc));
+            TyId::new(
+                db,
+                TyData::ConstTy(super::const_ty::ConstTyId::new(
+                    db,
+                    ConstTyData::Abstract(expr, *expected_ty),
+                )),
+            )
+        }
+    }
+    let Some(implementation) = named_implementation_around(db, scope) else {
+        return ty;
+    };
+    let mut own = Own {
+        own: KnownChoice::own(db, implementation, trait_inst),
+        slot: slot_goal(db, trait_inst),
+    };
+    ty.fold_with(db, &mut own)
+}
+
+/// The named implementation `scope` is inside, if any.
+fn named_implementation_around<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: crate::hir_def::scope_graph::ScopeId<'db>,
+) -> Option<crate::hir_def::ImplTrait<'db>> {
+    let mut at = Some(scope);
+    while let Some(scope) = at {
+        if let crate::hir_def::scope_graph::ScopeId::Item(crate::hir_def::ItemKind::ImplTrait(
+            implementation,
+        )) = scope
+        {
+            return implementation
+                .selection_name(db)
+                .is_some()
+                .then_some(implementation);
+        }
+        at = scope.parent(db);
+    }
+    None
+}
+
 pub(crate) fn normalize_compare_assoc_consts<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: TyId<'db>,
@@ -878,7 +965,22 @@ pub(crate) fn normalize_compare_assoc_consts<'db>(
                 && assoc.inst().def(db) == self.trait_inst.def(db)
                 && is_identity_trait_inst(db, assoc.inst())
             {
-                assoc.with_inst(self.trait_inst)
+                let rebased = assoc.with_inst(self.trait_inst);
+                // The trait's own constant, compared for a named
+                // implementation, is that implementation's:
+                // `Self::P` in the trait's signature is its `P`.
+                match named_implementation_around(db, self.scope) {
+                    Some(implementation) => {
+                        rebased.with_choice(Some(crate::analysis::ty::trait_choice::Choice::Known(
+                            crate::analysis::ty::trait_choice::KnownChoice::own(
+                                db,
+                                implementation,
+                                self.trait_inst,
+                            ),
+                        )))
+                    }
+                    None => rebased,
+                }
             } else {
                 assoc
             }
@@ -1070,12 +1172,17 @@ fn compare_constraints<'db>(
     let impl_m_constraints = collect_func_def_constraints(db, impl_m, false)
         .instantiate_identity()
         .at_mode(db, impl_mode);
-    let trait_m_constraints = instantiate_trait_method_template(
+    let trait_m_constraints = read_own_constants(
         db,
-        collect_func_def_constraints(db, trait_m, false),
-        param_subst,
-    )
-    .at_mode(db, trait_mode);
+        instantiate_trait_method_template(
+            db,
+            collect_func_def_constraints(db, trait_m, false),
+            param_subst,
+        )
+        .at_mode(db, trait_mode),
+        impl_m.scope(),
+        trait_inst,
+    );
     let compare_assumptions = impl_m_constraints
         .merge(db, trait_m_constraints)
         .extend_all_bounds(db);

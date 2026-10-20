@@ -1637,6 +1637,7 @@ impl<'db> RmirEmitter<'db> {
         }
         match value.value(self.db) {
             SemConstValue::Tuple { .. }
+            | SemConstValue::Evidence { .. }
             | SemConstValue::Struct { .. }
             | SemConstValue::Array { .. }
             | SemConstValue::Enum { .. } => self.lower_non_scalar_const_as_class(
@@ -1922,6 +1923,13 @@ impl<'db> RmirEmitter<'db> {
         );
         let ty = self.const_lowering_ty(ty, target);
         match value.value(self.db) {
+            // The choice is compile-time metadata; at runtime an evidence
+            // value is its private seal.
+            SemConstValue::Evidence { .. } => {
+                let seal = hir::analysis::semantic::bool_const(self.db, false);
+                let (field, class) = self.lower_const_value_field(bb, seal, TyId::bool(self.db));
+                self.lower_aggregate_const_fields_as_class(bb, ty, target, &[field], &[class])
+            }
             SemConstValue::Tuple { elems, .. }
             | SemConstValue::Struct { fields: elems, .. }
             | SemConstValue::Array { elems, .. } => {

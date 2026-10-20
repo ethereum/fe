@@ -62,30 +62,29 @@ pub struct EffectFrame<'db> {
 
 #[derive(Clone)]
 pub struct EffectEnv<'db> {
-    frames: Vec<EffectFrame<'db>>,
+    frames: crate::semantic::lexical::LexicalFrames<EffectFrame<'db>>,
 }
 
 impl<'db> EffectEnv<'db> {
     pub fn new() -> Self {
         Self {
-            frames: vec![EffectFrame::default()],
+            frames: crate::semantic::lexical::LexicalFrames::new(EffectFrame::default()),
         }
     }
 
     pub fn push_frame(&mut self) {
-        self.frames.push(EffectFrame::default());
+        self.frames.enter(EffectFrame::default());
     }
 
     pub fn pop_frame(&mut self) {
-        if self.frames.len() > 1 {
-            self.frames.pop();
-        }
+        self.frames.leave();
     }
 
     /// Adds `forwarder` to the outermost frame: an effect of the whole body
     /// (a closure's row component), below the `with` blocks it opens.
     pub fn insert_base_forwarder(&mut self, forwarder: EffectForwarder<'db, ProvidedEffect<'db>>) {
-        self.frames[0]
+        self.frames
+            .root_mut()
             .keyed_by_family
             .entry(forwarder.key.clone().family())
             .or_default()
@@ -93,9 +92,7 @@ impl<'db> EffectEnv<'db> {
     }
 
     fn current_frame_mut(&mut self) -> &mut EffectFrame<'db> {
-        self.frames
-            .last_mut()
-            .expect("effect env must have at least one frame")
+        self.frames.current_mut()
     }
 
     fn insert_keyed_entry(
@@ -180,7 +177,7 @@ impl<'db> EffectEnv<'db> {
             "precise effect lookup requires a fully resolved query",
         );
         let mut out = Vec::new();
-        for frame in self.frames.iter().rev() {
+        for frame in self.frames.inner_first() {
             let mut entries = SmallVec::new();
             let mut blocked_by_barrier = false;
             let mut barrier_reason = None;
@@ -237,7 +234,7 @@ impl<'db> EffectEnv<'db> {
 
     fn lookup_family_fallback(&self, query: &EffectQuery<'db>) -> Vec<FrameLookupResult<'db>> {
         let mut out = Vec::new();
-        for frame in self.frames.iter().rev() {
+        for frame in self.frames.inner_first() {
             let entries = frame
                 .keyed_by_family
                 .get(&query.key.clone().family())

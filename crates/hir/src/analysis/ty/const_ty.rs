@@ -19,11 +19,8 @@ use super::{
     generic_defaults::DefaultApplication,
     normalize::{normalize_ty, normalize_with_trait_evidence},
     subst::substitute_complete,
-    trait_def::{
-        ResolvedImplInstance, TraitInstId, resolve_trait_impl_instance,
-        selected_assoc_const_body_template,
-    },
-    trait_resolution::{Selection, TraitSolveCx, constraint::collect_constraints},
+    trait_def::TraitInstId,
+    trait_resolution::{TraitSolveCx, constraint::collect_constraints},
     ty_check::{BodyOwner, infer_body},
     ty_def::{InvalidCause, TyId, TyParam, TyVar},
     ty_error::first_invalid_ty_cause,
@@ -459,6 +456,9 @@ fn trait_inst_is_fully_ground<'db>(db: &'db dyn HirAnalysisDb, inst: TraitInstId
 
 fn sem_const_is_fully_ground<'db>(db: &'db dyn HirAnalysisDb, value: SemConstId<'db>) -> bool {
     match value.value(db) {
+        SemConstValue::Evidence { ty, choice } => {
+            ty_is_fully_ground(db, *ty) && trait_inst_is_fully_ground(db, choice.goal())
+        }
         SemConstValue::Unit => true,
         SemConstValue::Scalar { ty, .. } => ty_is_fully_ground(db, *ty),
         SemConstValue::Description(term) => const_ty_is_fully_ground(db, *term),
@@ -801,7 +801,8 @@ impl<'db> TyFolder<'db> for RebaseConstUseEnv<'db> {
         // A retained computation's source and call frames carry selection
         // contexts too. Never fold the old assumptions: they can contain the
         // bound currently being collected, making every cycle grow another
-        // copy of its provenance. Preserve the selected body and witnesses.
+        // copy of its provenance. Preserve the selected body, its witnesses
+        // and the choices delivered to it.
         let env = key.impl_env(db);
         let key = SemanticInstanceKey::of(
             db,
@@ -1217,6 +1218,10 @@ fn canonicalize_sem_const_for_mode<'db>(
             .into_boxed_slice()
     };
     let value = match value.value(db) {
+        SemConstValue::Evidence { ty, choice } => SemConstValue::Evidence {
+            ty: canonicalize_ty_for_mode(db, *ty, env, mode),
+            choice: *choice,
+        },
         SemConstValue::Unit => SemConstValue::Unit,
         SemConstValue::Scalar { ty, value } => SemConstValue::Scalar {
             ty: canonicalize(*ty),
@@ -1917,6 +1922,21 @@ pub(crate) fn evaluate_const_ty<'db>(
     };
 
     let expected_ty = expected_ty.or(const_ty_ty);
+    // A constant written where a frame around it opens a
+    // slot it reads is not evaluated; it stays as written, and the check of
+    // the body around it reports it.
+    if super::ty_check::written_frames::refuses_read(db, body, expected_ty) {
+        if super::ty_check::written_frames::written_frames(db, body).in_declaration() {
+            return ConstTyId::invalid(
+                db,
+                InvalidCause::ChoiceDependentConst {
+                    body,
+                    expr: body.expr(db),
+                },
+            );
+        }
+        return expected_ty.map_or(const_ty, |expected_ty| const_ty.with_ty(db, expected_ty));
+    }
     let check_ty = template_ty.or(expected_ty);
     // Materializing an identity capture reads the owner's parameter schema,
     // which can depend on this very body (a const argument in a parameter
@@ -2390,7 +2410,11 @@ pub(crate) fn const_ty_from_assoc_const_use<'db>(
     db: &'db dyn HirAnalysisDb,
     assoc: AssocConstUse<'db>,
 ) -> Option<ConstTyId<'db>> {
-    const_ty_from_trait_const(db, assoc.solve_cx(db), assoc.inst(), assoc.name())
+    const_ty_from_chosen_constant(
+        db,
+        super::trait_def::chosen_constant(db, assoc)?,
+        assoc.name(),
+    )
 }
 
 /// Whether `start_body`'s value definition can re-enter `start_body` when
@@ -2559,7 +2583,7 @@ pub(crate) fn const_ty_or_abstract_from_assoc_const_use<'db>(
 ) -> Option<ConstTyId<'db>> {
     Some(const_ty_or_abstract(
         db,
-        ConstExpr::TraitConst(assoc),
+        ConstExpr::TraitConst(assoc.without_ordinary_choices(db)),
         const_ty_from_assoc_const_use(db, assoc),
         expected_ty,
     ))
@@ -2571,17 +2595,41 @@ pub(super) fn const_ty_from_trait_const<'db>(
     inst: TraitInstId<'db>,
     name: IdentId<'db>,
 ) -> Option<ConstTyId<'db>> {
-    let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, inst) else {
-        return None;
-    };
-    const_ty_from_resolved_trait_const(db, resolved, name)
+    ordinary_const_ty(
+        db,
+        solve_cx,
+        inst,
+        name,
+        crate::analysis::ty::trait_choice::OrdinarySelection::outermost_tier_type(),
+    )
 }
 
-pub(super) fn const_ty_from_resolved_trait_const<'db>(
+/// The ordinary implementation's constant `name` for `inst`, as a constant
+/// term, for a read no choice reaches (`why`).
+pub(super) fn ordinary_const_ty<'db>(
     db: &'db dyn HirAnalysisDb,
-    resolved: ResolvedImplInstance<'db>,
+    solve_cx: TraitSolveCx<'db>,
+    inst: TraitInstId<'db>,
+    name: IdentId<'db>,
+    why: crate::analysis::ty::trait_choice::OrdinarySelection,
+) -> Option<ConstTyId<'db>> {
+    const_ty_from_chosen_constant(
+        db,
+        super::trait_def::ordinary_constant(db, solve_cx, inst, name, why)?,
+        name,
+    )
+}
+
+/// The constant a read of `name` selects, as a constant term to evaluate. Its
+/// body's choices are not carried by the term: evaluation reads them from the
+/// read again (the CTFE `Associated` entry), and a read in a type receives
+/// none, since a type whose constant reads a choice is refused.
+fn const_ty_from_chosen_constant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    chosen: super::trait_def::ChosenConstant<'db>,
     name: IdentId<'db>,
 ) -> Option<ConstTyId<'db>> {
+    let resolved = chosen.resolved;
     if name.data(db) == "BITS"
         && let Some(bits) = super::sol_codec::sol_codec_bits(db, resolved)
     {
@@ -2589,7 +2637,12 @@ pub(super) fn const_ty_from_resolved_trait_const<'db>(
     }
     let inst = resolved.trait_inst();
     let trait_ = inst.def(db);
-    let (body, template_ty, subst) = selected_assoc_const_body_template(db, resolved, name)?;
+    let super::trait_def::ConstantBody {
+        body,
+        ty: template_ty,
+        subst,
+        ..
+    } = chosen.body?;
     let template_ty = Some(template_ty);
     let capture = ConstCaptureEnv::from_subst(db, subst);
 
@@ -2724,7 +2777,7 @@ pub(crate) fn const_ty_or_abstract_from_inherent_const_use<'db>(
 ) -> Option<ConstTyId<'db>> {
     Some(const_ty_or_abstract(
         db,
-        ConstExpr::InherentConst(use_),
+        ConstExpr::InherentConst(use_.without_ordinary_choices(db)),
         const_ty_from_inherent_const_use(db, use_),
         expected_ty,
     ))
@@ -3302,6 +3355,7 @@ mod tests {
         },
         analysis::ty::{
             generic_defaults::{GenericDefault, generic_default},
+            trait_choice::SlotChoices,
             ty_def::PrimTy,
         },
         test_db::{HirAnalysisTestDb, find_func},

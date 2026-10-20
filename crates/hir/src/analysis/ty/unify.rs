@@ -10,6 +10,7 @@ use rustc_hash::FxHashMap;
 
 use super::{
     const_expr::{ConstExpr, ConstExprId},
+    const_ty::ConstTyId,
     fold::{TyFoldable, TyFolder},
     trait_def::{ImplementorId, TraitInstId, TraitRefId},
     ty_def::{
@@ -197,6 +198,24 @@ where
             | (_, TyData::Never) => Ok(()),
 
             (TyData::ConstTy(const_ty1), TyData::ConstTy(const_ty2)) => {
+                // A constant refused where it is read stands for a refusal the
+                // body reports; like an invalid type, it is not a second
+                // mismatch. It is recognized as written, before comparison
+                // normalizes it; an inference variable still takes it as its
+                // value below.
+                let is_var = |const_ty: &ConstTyId<'db>| {
+                    matches!(const_ty.data(self.db), ConstTyData::TyVar(..))
+                };
+                if !is_var(const_ty1)
+                    && !is_var(const_ty2)
+                    && (crate::analysis::ty::ty_check::written_frames::refused_at_read(
+                        self.db, *const_ty1,
+                    ) || crate::analysis::ty::ty_check::written_frames::refused_at_read(
+                        self.db, *const_ty2,
+                    ))
+                {
+                    return Ok(());
+                }
                 let const_ty1 = match normalize_const_tys_for_comparison(
                     self.db,
                     TyId::const_ty(self.db, *const_ty1),

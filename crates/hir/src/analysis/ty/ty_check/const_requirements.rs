@@ -10,6 +10,9 @@ use crate::analysis::name_resolution::{
     resolve_path_with_minter,
 };
 use crate::analysis::ty::canonical::Canonicalized;
+use crate::analysis::ty::trait_choice::{
+    Choice, Delivery, SlotChoices, SlotRef, body_deliveries, own_slots,
+};
 use crate::analysis::ty::{
     const_ty::ConstBodyLowering,
     subst::substitute_complete,
@@ -177,7 +180,7 @@ impl<'db> PredicateKeyBuilder<'_, 'db> {
             ty: self.instantiate(typed.expr_ty(db, expr))?,
             arithmetic: self.arithmetic,
             operation: callable
-                .map(|callable| self.instantiate(callable.clone()))
+                .map(|callable| self.instantiate(callable.as_written()))
                 .transpose()?,
             term,
         }))
@@ -583,6 +586,8 @@ fn first_condition<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<Bod
         })
 }
 
+/// Structural detection through the same declaration/argument walk used by
+/// ordinary const admission. This does not evaluate or discharge a predicate.
 pub(crate) fn type_has_const_requirements<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
     first_condition(db, ty).is_some()
 }
@@ -614,6 +619,11 @@ pub(super) fn check_body_requirements<'db>(
     for (expr, data) in body.exprs(db).iter() {
         if !checker.carries(expr) {
             entered.push(checker.check_expr(expr, data));
+        }
+    }
+    for stmt in body.stmts(db).keys() {
+        if let Some(plan) = typed.for_loop_plan(stmt) {
+            checker.check_for_loop_plan(plan);
         }
     }
     let mut check = checker.check_inferred_types(&entered);
@@ -660,6 +670,8 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
         typed: &'a TypedBody<'db>,
         body: Body<'db>,
     ) -> Self {
+        // A path naming a function that reaches only callees is checked at
+        // those calls, which decide for it, as a path callee is.
         let direct_callees = body
             .exprs(db)
             .values()
@@ -667,6 +679,7 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
                 Expr::Call(callee, _) => Some(*callee),
                 _ => None,
             })
+            .chain(typed.callee_only_values().iter().copied())
             .collect();
         Self {
             db,
@@ -752,23 +765,90 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
         CheckedExpr { expr, ty, failed }
     }
 
+    fn check_for_loop_plan(&mut self, plan: &super::ForLoopPlan<'db>) {
+        for call in &plan.calls {
+            self.discharge_call_conditions_under_choices(plan.base, &call.callable, true);
+            if let CallableDef::Func(func) = call.callable.callable_def() {
+                self.check_callee_headers(plan.base, func, call.callable.generic_args());
+            }
+        }
+    }
+
+    /// Evaluate the conditions under choices that a call at `expr` checks,
+    /// reporting each failure at this call. Returns the callee's own
+    /// conditions that were so checked, which premise forwarding skips.
+    fn discharge_conditions_under_choices(&mut self, expr: ExprId) -> FxHashSet<Body<'db>> {
+        let Some(callable) = self.typed.callable_expr(expr) else {
+            return FxHashSet::default();
+        };
+        let direct = calls_directly(self.db, self.typed, self.body, expr);
+        self.discharge_call_conditions_under_choices(expr, callable, direct)
+    }
+
+    fn discharge_call_conditions_under_choices(
+        &mut self,
+        expr: ExprId,
+        callable: &Callable<'db>,
+        direct: bool,
+    ) -> FxHashSet<Body<'db>> {
+        let mut by_choice = FxHashSet::default();
+        for condition in conditions_at_call(self.db, self.typed, self.scope, callable, direct) {
+            if condition.direct {
+                by_choice.insert(condition.predicate);
+            }
+            if let ConditionAtCall::Evaluate(choices) = &condition.state
+                && let Discharge::Fails(failure) =
+                    discharge_under_choices(self.db, condition.predicate, &condition.args, choices)
+            {
+                self.check
+                    .unmet(expr.span(self.body).into(), condition.predicate, failure);
+            }
+        }
+        by_choice
+    }
+
     /// Checks the requirements of the function or constructor that `expr`
     /// calls or names as a value.
     fn check_callee(&mut self, expr: ExprId, data: &Partial<Expr<'db>>, ty: TyId<'db>) {
+        // A call through a value, a method or a trait still pays the debts its
+        // body owes for the evidence this call passes.
+        // (Direct calls of free functions and inherent methods, through a path
+        // or a function item however written, are handled with their own
+        // conditions in `discharge_callee_conditions`.)
+        if matches!(data.borrowed().to_opt(), Some(Expr::Call(..)))
+            && !calls_directly(self.db, self.typed, self.body, expr)
+            || self
+                .typed
+                .callable_expr(expr)
+                .is_some_and(|callable| callable.trait_inst.is_some())
+        {
+            self.discharge_conditions_under_choices(expr);
+        }
         let callable = self.typed.callable_expr(expr);
         if callable.is_none() && self.direct_callees.contains(&expr) {
             return;
         }
         // A function value enters the body where it is written, at a path
-        // that names the function. A call through anything else, such as a
-        // binding, block, branch or field, calls such a value, whose
-        // requirements were checked there. A call of a callable value runs
-        // its shape trait's method, whose requirements are checked here.
+        // that names the function, unless it reaches only callees, whose
+        // calls check it. A call of a function item, however written, is
+        // checked here as a path call is; a call of any other value
+        // calls a value whose requirements were checked where it was
+        // written. A call of a callable value runs its shape trait's method,
+        // whose requirements are checked here.
         if let Some(Expr::Call(callee, _)) = data.borrowed().to_opt()
             && !self.names_function_value(*callee)
             && self.typed.call_receiver(self.db, expr).is_none()
         {
-            return;
+            if !calls_directly(self.db, self.typed, self.body, expr) {
+                return;
+            }
+            // A function item called through a binding, block or field whose
+            // value was checked where it is written: the call checks only the
+            // conditions under the choices it delivers.
+            if !self.typed.callee_only_calls().contains(&expr) {
+                self.discharge_conditions_under_choices(expr);
+                return;
+            }
         }
         let (definition, args) = match callable {
             Some(callable) => (callable.callable_def(), callable.generic_args()),
@@ -861,10 +941,16 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
     /// candidate selection.
     fn discharge_callee_conditions(&mut self, expr: ExprId, func: Func<'db>, args: &[TyId<'db>]) {
         let db = self.db;
+        if !func.is_free_or_inherent(db) {
+            return;
+        }
+        // Conditions that read a slot this call fills with a choice are checked
+        // against that choice, here or by this function's callers.
+        let by_choice = self.discharge_conditions_under_choices(expr);
         let predicates = WhereClauseOwner::Func(func)
             .where_clause(db)
             .const_predicates(db);
-        if predicates.is_empty() || !func.is_free_or_inherent(db) {
+        if predicates.is_empty() {
             return;
         }
         // Only a use whose arguments mention the owner's parameters can be
@@ -874,7 +960,7 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
             .filter(|_| args.iter().any(|ty| ty.has_param(db)));
         for &predicate in predicates
             .iter()
-            .filter(|&&predicate| checked_at_uses(db, predicate))
+            .filter(|&&predicate| checked_at_uses(db, predicate) && !by_choice.contains(&predicate))
         {
             if let Discharge::Fails(failure) = discharge_requirement(
                 db,
@@ -945,6 +1031,22 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
                     } else {
                         check.unmet(expr.span(body).into(), unmet.predicate, unmet.failure);
                     }
+                }
+            }
+        }
+        for stmt in body.stmts(db).keys() {
+            let Some(plan) = typed.for_loop_plan(stmt) else {
+                continue;
+            };
+            let types = std::iter::once(plan.state_ty).chain(
+                plan.calls
+                    .iter()
+                    .flat_map(|call| call.callable.generic_args().iter().copied()),
+            );
+            for ty in types {
+                while let Some(unmet) = check_type_requirements(db, ty, scope, &reported) {
+                    reported.insert(unmet.ty);
+                    check.unmet_inferred(plan.base.span(body).into(), &unmet);
                 }
             }
         }
@@ -2110,4 +2212,870 @@ fn written_const_args<'db>(
         }
         _ => Vec::new(),
     }
+}
+
+// Checks under trait choices. A condition, or a type, that
+// reads a slot is checked against the choice that arrives for it, at the call
+// where that choice is known. What a body cannot check because a choice it
+// receives is still unknown, it owes to its callers (`owed_checks`), and each
+// call edge maps the callee's debts through what it delivers
+// (`facts_at_call`). Unknown is never "holds": every check is decided at some
+// edge or owed further.
+
+/// The slots a condition reads: the slot choices among the decisions and
+/// deliveries its body recorded (`choice::body_slot_uses`), so a helper call
+/// reads what it is delivered.
+fn predicate_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    predicate: Body<'db>,
+) -> Vec<SlotRef<'db>> {
+    let Some(typed) = check_predicate_formation(db, predicate).well_formed() else {
+        return Vec::new();
+    };
+    let mut reads = Vec::new();
+    for (_, choice) in super::choice::body_slot_uses(db, typed) {
+        if let Some(Choice::Slot(slot)) = choice
+            && !reads.contains(&slot)
+        {
+            reads.push(slot);
+        }
+    }
+    reads
+}
+
+/// A condition owed by a function: a callee's condition that reads a choice
+/// the function receives and cannot know.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+pub(crate) struct OwedCondition<'db> {
+    predicate: Body<'db>,
+    /// The declaring function's generic arguments, in the owner's context.
+    args: Vec<TyId<'db>>,
+    /// The choices for the slots the predicate reads, in the owner's context.
+    choices: Vec<(SlotRef<'db>, Choice<'db>)>,
+}
+
+/// A call whose body is chosen by a choice the function receives, with what
+/// the call delivers, in the function's context.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+pub(crate) struct PendingCall<'db> {
+    func: Func<'db>,
+    trait_inst: TraitInstId<'db>,
+    args: Vec<TyId<'db>>,
+    choice: Choice<'db>,
+    delivered: Vec<(Delivery<'db>, Choice<'db>)>,
+}
+
+/// A check a function leaves to its callers, in its own slots.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+pub(crate) enum OwedCheck<'db> {
+    Condition(OwedCondition<'db>),
+    /// One of the function's bound slots reaches a type: in its body or
+    /// signature, or in a body it delivers that slot's choice to. `signature`
+    /// marks a read of its own signature, which the caller refuses while
+    /// checking the call (`refuse_choice_dependent_signature`).
+    Reaches {
+        slot: TraitInstId<'db>,
+        signature: bool,
+    },
+    /// A goal the function leaves to ordinary selection is proved through a
+    /// condition on one of its bound slots:
+    /// that slot may not receive an opened or evidence choice, so the check
+    /// is owed to every caller, until a choice carries its sub-choices.
+    OpenedCondition {
+        slot: TraitInstId<'db>,
+    },
+    /// A value of the type parameter `param` is opened with `with`, or
+    /// passed to a body chosen later or a callable value: it must not be
+    /// evidence, which would arrive there with no choice.
+    NoEvidence {
+        param: TyId<'db>,
+    },
+    Call(PendingCall<'db>),
+}
+
+#[derive(Clone)]
+enum ConditionAtCall<'db> {
+    /// Every slot it reads is known here, or ordinary.
+    Evaluate(SlotChoices<'db>),
+    /// A slot it reads is a choice the caller receives.
+    Owed(Vec<(SlotRef<'db>, Choice<'db>)>),
+}
+
+#[derive(Clone)]
+struct CallCondition<'db> {
+    predicate: Body<'db>,
+    args: Vec<TyId<'db>>,
+    /// Whether it is one of the callee's own conditions.
+    direct: bool,
+    state: ConditionAtCall<'db>,
+}
+
+/// One check at a call edge, in the caller's context.
+#[derive(Clone)]
+enum EdgeFact<'db> {
+    Condition(CallCondition<'db>),
+    /// A choice that reaches a type of a body the call runs.
+    Reaches {
+        choice: Choice<'db>,
+        signature: bool,
+    },
+    /// A choice delivered into a slot a body the call runs reads through a
+    /// condition of an implementation it selects ordinarily.
+    OpenedCondition {
+        choice: Choice<'db>,
+    },
+    /// The type a call gives a callee's type parameter that must not be
+    /// evidence (`OwedCheck::NoEvidence`), in the caller's context.
+    NoEvidence {
+        ty: TyId<'db>,
+    },
+    Pending(PendingCall<'db>),
+    /// Following the debts of bodies chosen later reached a body whose
+    /// arguments leave the instance limits (recursion growing its arguments),
+    /// or the depth backstop; the call is refused, not assumed.
+    TooDeep,
+}
+
+/// A body whose debts are followed, with its arguments and what it receives.
+type WalkEntry<'db> = (Func<'db>, Vec<TyId<'db>>, Vec<(SlotRef<'db>, Choice<'db>)>);
+
+/// The debts of the bodies one call edge runs, followed through bodies chosen
+/// later. `path` holds the bodies being followed: one met again on it is
+/// already being collected, and the walk cuts there. A body whose walk cut at
+/// no body above it, and met no depth limit, has facts that do not depend on
+/// the path, so they are kept in `done` and not followed again when another
+/// path reaches it.
+struct Walk<'db> {
+    path: Vec<WalkEntry<'db>>,
+    done: rustc_hash::FxHashMap<WalkEntry<'db>, Vec<EdgeFact<'db>>>,
+    /// The shallowest position on `path` that a cut in the current body's
+    /// walk returned to.
+    low: usize,
+}
+
+impl<'db> Walk<'db> {
+    fn new() -> Self {
+        Self {
+            path: Vec::new(),
+            done: rustc_hash::FxHashMap::default(),
+            low: usize::MAX,
+        }
+    }
+}
+
+fn classify_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    reads: &[(SlotRef<'db>, Choice<'db>)],
+) -> ConditionAtCall<'db> {
+    if reads.iter().all(|(_, choice)| !choice.has_slot(db)) {
+        ConditionAtCall::Evaluate(SlotChoices::new(
+            reads
+                .iter()
+                .filter_map(|(slot, choice)| match choice {
+                    Choice::Known(known) => Some((*slot, *known)),
+                    Choice::Slot(_) => None,
+                })
+                .collect(),
+        ))
+    } else {
+        ConditionAtCall::Owed(reads.to_vec())
+    }
+}
+
+fn delivered_for<'db>(
+    delivered: &[(SlotRef<'db>, Choice<'db>)],
+    slot: SlotRef<'db>,
+) -> Option<Choice<'db>> {
+    delivered
+        .iter()
+        .find_map(|(key, choice)| (*key == slot).then_some(*choice))
+}
+
+/// How a choice a body holds for one of its own slots reads at a call into
+/// it: what the call delivers, or nothing when an undelivered bound is
+/// answered the ordinary way. `Err` for an undelivered evidence parameter,
+/// whose argument was refused where it was written.
+fn map_choice<'db>(
+    db: &'db dyn HirAnalysisDb,
+    slots: &[(SlotRef<'db>, Choice<'db>)],
+    choice: Choice<'db>,
+) -> Result<Option<Choice<'db>>, ()> {
+    if let Choice::Slot(own) = choice
+        && let Some(delivered) = delivered_for(slots, own)
+    {
+        return Ok(Some(delivered));
+    }
+    match SlotChoices::default().resolve(Some(choice)) {
+        crate::analysis::ty::trait_choice::Resolved::Known(known) => {
+            let bounds = match known.bounds() {
+                Some(list) => {
+                    let mut items = Vec::new();
+                    for (delivery, item) in list.items(db) {
+                        if let Some(mapped) = map_choice(db, slots, *item)? {
+                            items.push((*delivery, mapped));
+                        }
+                    }
+                    (!items.is_empty())
+                        .then(|| crate::analysis::ty::trait_choice::DeliveryList::new(db, items))
+                }
+                None => None,
+            };
+            Ok(Some(Choice::Known(known.with_bounds(db, bounds))))
+        }
+        crate::analysis::ty::trait_choice::Resolved::Ordinary => Ok(None),
+        crate::analysis::ty::trait_choice::Resolved::Pending => Err(()),
+    }
+}
+
+/// A condition's reads at a call: each read the call fills, with ordinary
+/// reads left out. `None` when the condition is the base language's to check
+/// (it reads only the caller's own bounds, so premise forwarding applies) or
+/// a read's argument was refused.
+fn condition_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    predicate: Body<'db>,
+    args: Vec<TyId<'db>>,
+    direct: bool,
+    reads: impl IntoIterator<Item = (SlotRef<'db>, Result<Option<Choice<'db>>, ()>)>,
+) -> Option<CallCondition<'db>> {
+    let mut mapped = Vec::new();
+    let mut opened = false;
+    for (slot, choice) in reads {
+        if let Some(choice) = choice.ok()? {
+            opened |= !choice.is_ordinary_or_bound();
+            mapped.push((slot, choice));
+        }
+    }
+    opened.then(|| CallCondition {
+        predicate,
+        args,
+        direct,
+        state: classify_reads(db, &mapped),
+    })
+}
+
+/// `func`'s own conditions at a direct call, read through what the call
+/// delivers to `func`'s slots.
+fn direct_conditions_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    args: &[TyId<'db>],
+    slots: &[(SlotRef<'db>, Choice<'db>)],
+) -> Vec<CallCondition<'db>> {
+    if slots.is_empty() || !func.is_free_or_inherent(db) {
+        return Vec::new();
+    }
+    WhereClauseOwner::Func(func)
+        .where_clause(db)
+        .const_predicates(db)
+        .iter()
+        .filter_map(|&predicate| {
+            let reads = predicate_slot_reads(db, predicate)
+                .into_iter()
+                .map(|slot| (slot, map_choice(db, slots, Choice::Slot(slot))));
+            condition_at_call(db, predicate, args.to_vec(), true, reads)
+        })
+        .collect()
+}
+
+/// `value` from `body`'s context, instantiated at a call that runs `body`
+/// with `body_args`.
+fn at_call<'db, T: TyFoldable<'db>>(
+    db: &'db dyn HirAnalysisDb,
+    body: Func<'db>,
+    body_args: &[TyId<'db>],
+    value: T,
+) -> T {
+    crate::analysis::ty::binder::Binder::bind(body.into(), value).instantiate(db, body_args)
+}
+
+/// What `body`'s debts mean at a call that runs it with `body_args` and gives
+/// its slots `slots`.
+fn owed_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Func<'db>,
+    body_args: &[TyId<'db>],
+    slots: &[(SlotRef<'db>, Choice<'db>)],
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    walk: &mut Walk<'db>,
+) -> Vec<EdgeFact<'db>> {
+    let owed = owed_checks(db, body);
+    if owed.is_empty() {
+        return Vec::new();
+    }
+    let here = (body, body_args.to_vec(), slots.to_vec());
+    if let Some(facts) = walk.done.get(&here) {
+        return facts.clone();
+    }
+    if let Some(position) = walk.path.iter().position(|entry| *entry == here) {
+        walk.low = walk.low.min(position);
+        return Vec::new();
+    }
+    // The walk ends where every walk over choices ends: the base's instance
+    // limits on the bodies these become, or the backstop.
+    if !super::choice::choice_walk_step_within_limits(
+        db,
+        super::choice::WalkStep::Instance(body_args),
+        walk.path.len(),
+    ) {
+        // A limit met on the path depends on the path: nothing above it is
+        // kept. With no choice but forwarded bounds on it, the instance is
+        // the base's to limit (16-0016), not a refusal of the choice code.
+        walk.low = 0;
+        let carries_choice = slots
+            .iter()
+            .any(|(_, choice)| !choice.is_ordinary_or_bound());
+        return if carries_choice {
+            vec![EdgeFact::TooDeep]
+        } else {
+            Vec::new()
+        };
+    }
+    let depth = walk.path.len();
+    let outer_low = std::mem::replace(&mut walk.low, usize::MAX);
+    walk.path.push(here.clone());
+    let facts = owed_facts_at_call(db, owed, body, body_args, slots, scope, assumptions, walk);
+    walk.path.pop();
+    let low = walk.low;
+    if low >= depth {
+        walk.done.insert(here, facts.clone());
+        walk.low = outer_low;
+    } else {
+        walk.low = outer_low.min(low);
+    }
+    facts
+}
+
+#[allow(clippy::too_many_arguments)]
+fn owed_facts_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owed: &[OwedCheck<'db>],
+    body: Func<'db>,
+    body_args: &[TyId<'db>],
+    slots: &[(SlotRef<'db>, Choice<'db>)],
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    walk: &mut Walk<'db>,
+) -> Vec<EdgeFact<'db>> {
+    let mut facts = Vec::new();
+    for owed in owed {
+        match owed {
+            OwedCheck::Condition(owed) => {
+                let args = if owed.args.iter().any(|ty| ty.has_param(db)) {
+                    at_call(db, body, body_args, owed.args.clone())
+                } else {
+                    owed.args.clone()
+                };
+                let reads = owed
+                    .choices
+                    .iter()
+                    .map(|(slot, choice)| (*slot, map_choice(db, slots, *choice)));
+                if let Some(condition) = condition_at_call(db, owed.predicate, args, false, reads) {
+                    facts.push(EdgeFact::Condition(condition));
+                }
+            }
+            OwedCheck::Reaches { slot, signature } => {
+                if let Some(choice) = delivered_for(slots, SlotRef::Bound(*slot)) {
+                    facts.push(EdgeFact::Reaches {
+                        choice,
+                        signature: *signature,
+                    });
+                }
+            }
+            OwedCheck::OpenedCondition { slot } => {
+                if let Some(choice) = delivered_for(slots, SlotRef::Bound(*slot)) {
+                    facts.push(EdgeFact::OpenedCondition { choice });
+                }
+            }
+            OwedCheck::NoEvidence { param } => facts.push(EdgeFact::NoEvidence {
+                ty: crate::analysis::ty::normalize::normalize_ty(
+                    db,
+                    at_call(db, body, body_args, *param),
+                    scope,
+                    assumptions,
+                ),
+            }),
+            OwedCheck::Call(pending) => {
+                let Ok(choice) = map_choice(db, slots, pending.choice) else {
+                    continue;
+                };
+                let delivered = pending
+                    .delivered
+                    .iter()
+                    .filter_map(|(delivery, choice)| {
+                        let choice = map_choice(db, slots, *choice).ok()??;
+                        Some((at_call(db, body, body_args, *delivery), choice))
+                    })
+                    .collect::<Vec<_>>();
+                let mut callable = Callable::from_item(
+                    db,
+                    CallableDef::Func(pending.func),
+                    at_call(db, body, body_args, pending.args.clone()),
+                    Some(at_call(db, body, body_args, pending.trait_inst)),
+                );
+                callable.set_choice(choice);
+                callable.set_delivered(delivered);
+                facts.extend(facts_at_call(
+                    db,
+                    &callable,
+                    false,
+                    scope,
+                    assumptions,
+                    walk,
+                ));
+            }
+        }
+    }
+    facts
+}
+
+/// Every check a call edge makes or owes, in the caller's context: the
+/// callee's own conditions (for a direct call), and the debts of the body
+/// that runs, read through what the call delivers. A call whose body waits
+/// for a choice the caller receives is owed as a whole.
+fn facts_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    callable: &Callable<'db>,
+    direct: bool,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    walk: &mut Walk<'db>,
+) -> Vec<EdgeFact<'db>> {
+    let CallableDef::Func(func) = callable.callable_def() else {
+        return Vec::new();
+    };
+    // A call that delivers nothing still answers the callee's bounds the
+    // ordinary way, which can decide a debt the callee holds.
+    let mut facts = Vec::new();
+    if direct && callable.trait_inst.is_none() {
+        let slots = body_deliveries(
+            db,
+            callable.choice().and_then(|c| c.known()),
+            callable.delivered(),
+            func,
+            func,
+        );
+        facts.extend(
+            direct_conditions_at_call(db, func, callable.generic_args(), &slots)
+                .into_iter()
+                .map(EdgeFact::Condition),
+        );
+    }
+    match callable.called_body(db, scope, assumptions) {
+        Some((body, body_args)) => {
+            let slots = body_deliveries(
+                db,
+                callable.choice().and_then(|c| c.known()),
+                callable.delivered(),
+                func,
+                body,
+            );
+            facts.extend(owed_at_call(
+                db,
+                body,
+                &body_args,
+                &slots,
+                scope,
+                assumptions,
+                walk,
+            ));
+        }
+        None => {
+            if let (Some(trait_inst), Some(choice @ Choice::Slot(_))) =
+                (callable.trait_inst, callable.choice())
+            {
+                facts.push(EdgeFact::Pending(PendingCall {
+                    func,
+                    trait_inst,
+                    args: callable.generic_args().to_vec(),
+                    choice,
+                    delivered: callable.delivered().to_vec(),
+                }));
+            }
+        }
+    }
+    facts
+}
+
+/// Whether `expr` calls through a path naming the function.
+fn calls_directly<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &TypedBody<'db>,
+    body: Body<'db>,
+    expr: ExprId,
+) -> bool {
+    super::choice::calls_directly(
+        db,
+        body,
+        expr,
+        |callee| typed.expr_binding(callee).is_some(),
+        |callee| Some(typed.expr_ty(db, callee)),
+    )
+}
+
+/// The caller's own bounds a call passes on to a body whose types read them
+/// (`EdgeFact::Reaches`): type reach of a constant body through its calls.
+pub(super) fn reached_bounds_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &TypedBody<'db>,
+    scope: ScopeId<'db>,
+    callable: &Callable<'db>,
+    direct: bool,
+) -> Vec<TraitInstId<'db>> {
+    facts_at_call(
+        db,
+        callable,
+        direct,
+        scope,
+        typed.assumptions(),
+        &mut Walk::new(),
+    )
+    .into_iter()
+    .filter_map(|fact| match fact {
+        EdgeFact::Reaches {
+            choice: Choice::Slot(SlotRef::Bound(slot)),
+            ..
+        } => Some(slot),
+        _ => None,
+    })
+    .collect()
+}
+
+/// Every condition a call checks or owes under the choices it delivers.
+fn conditions_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &TypedBody<'db>,
+    scope: ScopeId<'db>,
+    callable: &Callable<'db>,
+    direct: bool,
+) -> Vec<CallCondition<'db>> {
+    facts_at_call(
+        db,
+        callable,
+        direct,
+        scope,
+        typed.assumptions(),
+        &mut Walk::new(),
+    )
+    .into_iter()
+    .filter_map(|fact| match fact {
+        EdgeFact::Condition(condition) => Some(condition),
+        EdgeFact::Reaches { .. }
+        | EdgeFact::OpenedCondition { .. }
+        | EdgeFact::NoEvidence { .. }
+        | EdgeFact::Pending(_)
+        | EdgeFact::TooDeep => None,
+    })
+    .collect()
+}
+
+/// Why a call is refused once its edge checks are known.
+pub(super) enum EdgeRefusal {
+    /// It delivers an opened or evidence choice into a slot that reaches a
+    /// type of a body it runs, beyond the callee's own signature (which is
+    /// refused while the call is checked).
+    TypeReach,
+    /// It delivers an opened or evidence choice into a slot that a body it
+    /// runs reads through a condition of an implementation selected
+    /// ordinarily.
+    OpenedCondition,
+    /// It gives evidence to a type parameter whose values a body it runs
+    /// opens or passes on where no choice arrives with it.
+    EvidenceThroughParam,
+    /// The debts of the bodies it runs could not be followed to an end.
+    TooDeep,
+}
+
+pub(super) fn call_refusal<'db>(
+    db: &'db dyn HirAnalysisDb,
+    typed: &TypedBody<'db>,
+    scope: ScopeId<'db>,
+    callable: &Callable<'db>,
+    direct: bool,
+) -> Option<EdgeRefusal> {
+    let facts = facts_at_call(
+        db,
+        callable,
+        direct,
+        scope,
+        typed.assumptions(),
+        &mut Walk::new(),
+    );
+    if facts.iter().any(|fact| matches!(fact, EdgeFact::TooDeep)) {
+        return Some(EdgeRefusal::TooDeep);
+    }
+    let refused = |choice: &Choice<'db>| !choice.is_ordinary_or_bound();
+    if facts.iter().any(
+        |fact| matches!(fact, EdgeFact::Reaches { choice, signature: false } if refused(choice)),
+    ) {
+        return Some(EdgeRefusal::TypeReach);
+    }
+    if facts
+        .iter()
+        .any(|fact| matches!(fact, EdgeFact::OpenedCondition { choice } if refused(choice)))
+    {
+        return Some(EdgeRefusal::OpenedCondition);
+    }
+    facts
+        .iter()
+        .any(|fact| {
+            matches!(fact, EdgeFact::NoEvidence { ty }
+                if super::choice::holds_evidence(db, scope, *ty))
+        })
+        .then_some(EdgeRefusal::EvidenceThroughParam)
+}
+
+/// Whether `func` has something a caller fills: a bound on its generic
+/// parameters, an evidence parameter, or a type parameter. A function
+/// without one owes nothing.
+fn has_slots<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
+    !own_slots(db, func).is_empty()
+        || !crate::analysis::ty::corelib::evidence_params(db, func).is_empty()
+        || !crate::analysis::ty::ty_lower::collect_generic_params(
+            db,
+            crate::hir_def::GenericParamOwner::Func(func),
+        )
+        .params(db)
+        .is_empty()
+}
+
+/// The checks `func` owes its callers (see [`OwedCheck`]).
+#[salsa::tracked(return_ref, cycle_initial=owed_checks_initial, cycle_fn=owed_checks_recover)]
+pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Vec<OwedCheck<'db>> {
+    if !has_slots(db, func) {
+        return Vec::new();
+    }
+    let typed = &infer_body(db, BodyOwner::func(db, func)).1;
+    let Some(body) = typed.body() else {
+        return Vec::new();
+    };
+    let mut owed = Vec::new();
+    let push = |item: OwedCheck<'db>, owed: &mut Vec<OwedCheck<'db>>| {
+        if !owed.contains(&item) {
+            owed.push(item);
+        }
+    };
+    for (_, callable, direct) in typed.recorded_calls(db) {
+        for fact in facts_at_call(
+            db,
+            callable,
+            direct,
+            func.scope(),
+            typed.assumptions(),
+            &mut Walk::new(),
+        ) {
+            match fact {
+                EdgeFact::Condition(CallCondition {
+                    predicate,
+                    args,
+                    state: ConditionAtCall::Owed(choices),
+                    ..
+                }) => push(
+                    OwedCheck::Condition(OwedCondition {
+                        predicate,
+                        args,
+                        choices,
+                    }),
+                    &mut owed,
+                ),
+                EdgeFact::Condition(_) => {}
+                EdgeFact::Reaches {
+                    choice: Choice::Slot(SlotRef::Bound(slot)),
+                    ..
+                } => push(
+                    OwedCheck::Reaches {
+                        slot,
+                        signature: false,
+                    },
+                    &mut owed,
+                ),
+                // Refused where `func` itself is checked.
+                EdgeFact::Reaches { .. } => {}
+                EdgeFact::OpenedCondition {
+                    choice: Choice::Slot(SlotRef::Bound(slot)),
+                } => push(OwedCheck::OpenedCondition { slot }, &mut owed),
+                // Refused where `func` itself is checked.
+                EdgeFact::OpenedCondition { .. } => {}
+                EdgeFact::NoEvidence { ty } => {
+                    if ty.has_param(db) && !super::choice::holds_evidence(db, func.scope(), ty) {
+                        push(OwedCheck::NoEvidence { param: ty }, &mut owed);
+                    }
+                    for param in type_params_in(db, ty) {
+                        push(OwedCheck::NoEvidence { param }, &mut owed);
+                    }
+                }
+                EdgeFact::Pending(pending) => push(OwedCheck::Call(pending), &mut owed),
+                // Refused where `func` itself is checked.
+                EdgeFact::TooDeep => {}
+            }
+        }
+    }
+    for (slot, signature) in super::choice::own_type_reads(db, func, typed) {
+        push(OwedCheck::Reaches { slot, signature }, &mut owed);
+    }
+    for slot in super::choice::owed_opened_conditions(db, func, typed) {
+        push(OwedCheck::OpenedCondition { slot }, &mut owed);
+    }
+    // A value of a type parameter opened with `with`, or passed to a call
+    // whose body is not known here (a callable value, a method chosen later):
+    // evidence would arrive with no choice. A call whose body is known passes
+    // its own debts on (`EdgeFact::NoEvidence`).
+    let push_no_evidence = |ty: TyId<'db>, owed: &mut Vec<OwedCheck<'db>>| {
+        if ty.has_param(db) && !super::choice::holds_evidence(db, func.scope(), ty) {
+            push(OwedCheck::NoEvidence { param: ty }, owed);
+        }
+        for param in type_params_in(db, ty) {
+            push(OwedCheck::NoEvidence { param }, owed);
+        }
+    };
+    for expr in typed.effect_with_operands() {
+        push_no_evidence(typed.expr_ty(db, *expr), &mut owed);
+    }
+    for expr in body.exprs(db).keys() {
+        let Some(callable) = typed.callable_expr(expr) else {
+            continue;
+        };
+        if calls_directly(db, typed, body, expr)
+            && callable
+                .called_body(db, func.scope(), typed.assumptions())
+                .is_some()
+        {
+            continue;
+        }
+        // Every call form's operands, as evidence is delivered to them.
+        for operand in super::choice::call_operands(db, body, expr) {
+            push_no_evidence(typed.expr_ty(db, operand), &mut owed);
+        }
+    }
+    for stmt in body.stmts(db).keys() {
+        let Some(plan) = typed.for_loop_plan(stmt) else {
+            continue;
+        };
+        push_no_evidence(plan.state_ty, &mut owed);
+        if plan.calls.iter().any(|call| {
+            call.callable
+                .called_body(db, func.scope(), typed.assumptions())
+                .is_none()
+        }) {
+            for operand in plan.driver.into_iter().chain([plan.base]) {
+                push_no_evidence(typed.expr_ty(db, operand), &mut owed);
+            }
+        }
+    }
+    owed
+}
+
+/// The type parameters in `ty`.
+fn type_params_in<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'db>> {
+    struct Params<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: Vec<TyId<'db>>,
+    }
+    impl<'db> crate::analysis::ty::visitor::TyVisitor<'db> for Params<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+        fn visit_param(&mut self, param: &crate::analysis::ty::ty_def::TyParam<'db>) {
+            let ty = TyId::new(
+                self.db,
+                crate::analysis::ty::ty_def::TyData::TyParam(param.clone()),
+            );
+            if !self.found.contains(&ty) {
+                self.found.push(ty);
+            }
+        }
+    }
+    let mut params = Params {
+        db,
+        found: Vec::new(),
+    };
+    crate::analysis::ty::visitor::TyVisitable::visit_with(&ty, &mut params);
+    params.found
+}
+
+fn owed_checks_initial<'db>(_db: &'db dyn HirAnalysisDb, _func: Func<'db>) -> Vec<OwedCheck<'db>> {
+    Vec::new()
+}
+
+fn owed_checks_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &Vec<OwedCheck<'db>>,
+    _count: u32,
+    _func: Func<'db>,
+) -> salsa::CycleRecoveryAction<Vec<OwedCheck<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
+/// Evaluate a condition for `args` with the slots it reads given `choices`.
+fn discharge_under_choices<'db>(
+    db: &'db dyn HirAnalysisDb,
+    predicate: Body<'db>,
+    args: &[TyId<'db>],
+    choices: &SlotChoices<'db>,
+) -> Discharge {
+    if check_predicate_formation(db, predicate)
+        .well_formed()
+        .is_none()
+    {
+        return Discharge::Fails(RequirementFailure::NotEstablished);
+    }
+    if args.iter().any(|ty| ty.has_param(db) || ty.has_var(db)) {
+        return Discharge::Fails(RequirementFailure::NotInstantiable);
+    }
+    let owner = BodyOwner::const_predicate(db, predicate);
+    let key = crate::analysis::semantic::SemanticInstanceKey::new(
+        db,
+        owner,
+        GenericSubst::for_body_owner(db, owner, args.to_vec()),
+        crate::analysis::semantic::EffectProviderSubst::empty(db),
+        crate::analysis::semantic::ImplEnv::new(
+            db,
+            owner.scope(),
+            PredicateListId::empty_list(db),
+            Vec::new(),
+        ),
+        EvidenceList::none(db).with_choices(db, choices.clone()),
+    );
+    match crate::analysis::semantic::eval_instance_with_args(db, key, Vec::new()) {
+        crate::analysis::semantic::EvalOutcome::Ready(value) => {
+            match static_assert_bool_value(db, value) {
+                Some(true) => Discharge::Holds,
+                Some(false) => Discharge::Fails(RequirementFailure::False),
+                None => Discharge::Fails(RequirementFailure::NotEstablished),
+            }
+        }
+        crate::analysis::semantic::EvalOutcome::Blocked(_) => {
+            Discharge::Fails(RequirementFailure::NotEstablished)
+        }
+        crate::analysis::semantic::EvalOutcome::Failed(failure) => {
+            Discharge::Fails(RequirementFailure::from_evaluation(
+                &invalid_cause_from_eval_failure(db, owner, failure),
+            ))
+        }
+    }
+}
+
+/// The slots that the conditions of the records and enums in `ty` read,
+/// instantiated with their arguments: a type whose validity depends on a
+/// choice reads that choice's slot.
+pub(super) fn type_condition_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let mut conditions = Vec::new();
+    if type_conditions(db, ty, &mut conditions).is_err() {
+        return Vec::new();
+    }
+    let mut reads = Vec::new();
+    for (predicate, subst) in conditions {
+        for slot in predicate_slot_reads(db, predicate) {
+            if let SlotRef::Bound(goal) = slot
+                && let Ok(goal) = substitute_complete(db, goal, &subst)
+            {
+                reads.push(crate::analysis::ty::trait_choice::slot_goal(db, goal));
+            }
+        }
+    }
+    reads
 }

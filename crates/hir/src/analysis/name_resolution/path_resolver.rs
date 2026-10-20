@@ -2074,6 +2074,18 @@ fn select_assoc_const_candidate<'db>(
             }),
     );
 
+    let matches = if matches.len() > 1 {
+        let available = super::available_traits_in_scope(db, scope);
+        let visible: IndexSet<TraitInstId<'db>> = matches
+            .iter()
+            .copied()
+            .filter(|inst| available.contains(&inst.def(db)))
+            .collect();
+        if visible.is_empty() { matches } else { visible }
+    } else {
+        matches
+    };
+
     if unresolved || matches.len() > 1 {
         AssocConstSelection::Ambiguous(matches.into_iter().collect())
     } else if let Some(inst) = matches.into_iter().next() {

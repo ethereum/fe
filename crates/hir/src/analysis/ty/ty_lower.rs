@@ -189,6 +189,245 @@ fn lower_opt_hir_ty_impl<'db>(
     )
 }
 
+/// The trait goals whose constants the constant bodies written in `ty` read:
+/// array lengths and constant generic arguments, before lowering evaluates
+/// them. Each goal is in slot form (no associated-type equalities).
+pub(crate) fn hir_ty_const_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let mut reads = Vec::new();
+    const_ty_reads(
+        db,
+        Partial::Present(ty),
+        TypePosition::Type,
+        scope,
+        assumptions,
+        &mut reads,
+    );
+    reads
+}
+
+/// The slots read by the constant arguments written in `path`'s segments,
+/// such as a call's callee `g<{ Item::P }>`.
+pub(crate) fn hir_path_const_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let mut reads = Vec::new();
+    const_path_reads(db, path, scope, assumptions, &mut reads);
+    reads
+}
+
+/// The slots read by the constant arguments in an explicit generic argument
+/// list, such as a method call's `x.m::<{ Item::P }>()`.
+pub(crate) fn hir_generic_args_const_slot_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: crate::core::hir_def::GenericArgListId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TraitInstId<'db>> {
+    let mut reads = Vec::new();
+    const_arg_reads(db, args, scope, assumptions, &mut reads);
+    reads
+}
+
+fn const_ty_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: Partial<HirTyId<'db>>,
+    position: TypePosition,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    let Partial::Present(ty) = ty else {
+        return;
+    };
+    match ty.data(db) {
+        HirTyKind::Ptr(inner) | HirTyKind::Mode(_, inner) => {
+            const_ty_reads(db, *inner, TypePosition::Type, scope, assumptions, reads)
+        }
+        HirTyKind::Tuple(tuple) => {
+            for elem in tuple.data(db) {
+                const_ty_reads(db, *elem, TypePosition::Type, scope, assumptions, reads);
+            }
+        }
+        HirTyKind::Array(elem, len) => {
+            const_ty_reads(db, *elem, TypePosition::Type, scope, assumptions, reads);
+            if let Partial::Present(body) = len {
+                const_body_reads(db, *body, scope, assumptions, reads);
+            }
+        }
+        HirTyKind::Path(path) => {
+            if let Partial::Present(path) = path {
+                const_path_reads(db, *path, scope, assumptions, reads);
+                named_const_reads(db, *path, position, scope, assumptions, reads);
+            }
+        }
+        HirTyKind::Never => {}
+    }
+}
+/// The reads of the constant a path written in a type `position` names
+/// itself, unbraced, as `g<<Item as Price>::P>` or `Arr<Holder<Item>::C>`:
+/// lowering evaluates it as the braced form's lone path is read
+/// (`lower_type_position_path`), so the scan reads the same slots.
+fn named_const_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    position: TypePosition,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    use super::ty_check::{ConstRef, written_frames::constant_read_slots};
+    let lowering_cx = LoweringContext::new();
+    let Ok(res) = lowering_cx.without_recording(|| {
+        resolve_type_position_path_with_minter(db, path, scope, assumptions, position, &lowering_cx)
+    }) else {
+        return;
+    };
+    match res {
+        PathRes::TraitConst(recv_ty, inst, name) => {
+            let mut args = inst.args(db).clone();
+            if let Some(self_arg) = args.first_mut() {
+                *self_arg = recv_ty;
+            }
+            let inst = TraitInstId::new(
+                db,
+                inst.def(db),
+                args,
+                common::indexmap::IndexMap::new(),
+                inst.mode(db),
+            );
+            reads.extend(constant_read_slots(
+                db,
+                ConstRef::trait_const(AssocConstUse::new(scope, assumptions, inst, name)),
+            ));
+        }
+        PathRes::InherentConst(recv_ty, impl_, name) => {
+            reads.extend(constant_read_slots(
+                db,
+                ConstRef::InherentConst(InherentConstUse::new(
+                    scope,
+                    assumptions,
+                    impl_,
+                    recv_ty,
+                    name,
+                )),
+            ));
+        }
+        _ => {}
+    }
+}
+fn const_path_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    let mut segment = Some(path);
+    while let Some(path) = segment {
+        if let crate::core::hir_def::PathKind::QualifiedType { type_, trait_ } = path.kind(db) {
+            const_ty_reads(
+                db,
+                Partial::Present(type_),
+                TypePosition::Type,
+                scope,
+                assumptions,
+                reads,
+            );
+            if let Partial::Present(trait_path) = trait_.path(db) {
+                const_path_reads(db, trait_path, scope, assumptions, reads);
+            }
+        }
+        const_arg_reads(db, path.generic_args(db), scope, assumptions, reads);
+        segment = path.parent(db);
+    }
+}
+fn const_body_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    if let Some(path) = const_body_simple_path(db, body)
+        && let Ok(PathRes::TraitConst(recv_ty, inst, name)) =
+            crate::analysis::name_resolution::resolve_path(db, path, scope, assumptions, true)
+    {
+        let mut args = inst.args(db).clone();
+        if let Some(self_arg) = args.first_mut() {
+            *self_arg = recv_ty;
+        }
+        let inst = TraitInstId::new(
+            db,
+            inst.def(db),
+            args,
+            common::indexmap::IndexMap::new(),
+            inst.mode(db),
+        );
+        // The constant's own slot and the slots its body reads.
+        reads.extend(super::ty_check::written_frames::constant_read_slots(
+            db,
+            super::ty_check::ConstRef::trait_const(AssocConstUse::new(
+                scope,
+                assumptions,
+                inst,
+                name,
+            )),
+        ));
+        return;
+    }
+    // A compound body: the trait uses its own check recorded, and those of
+    // the constants written inside it (`{ idn<{ T::P }>() }`), through the
+    // layout the read-time refusal reads. Lengths and constant arguments
+    // are read as `usize` here.
+    use super::ty_check::written_frames::{written_bodies, written_body_uses};
+    reads.extend(
+        written_body_uses(db, body, None)
+            .into_iter()
+            .map(|(goal, _)| goal),
+    );
+    for inner in written_bodies(db, body) {
+        const_body_reads(db, inner, scope, assumptions, reads);
+    }
+}
+fn const_arg_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: crate::core::hir_def::GenericArgListId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    reads: &mut Vec<TraitInstId<'db>>,
+) {
+    for arg in args.data(db) {
+        match arg {
+            GenericArg::Type(arg) => const_ty_reads(
+                db,
+                arg.ty,
+                TypePosition::GenericArg,
+                scope,
+                assumptions,
+                reads,
+            ),
+            GenericArg::Const(arg) => {
+                if let Partial::Present(body) = arg.value {
+                    const_body_reads(db, body, scope, assumptions, reads);
+                }
+            }
+            // An associated-type equality is part of what the path means,
+            // such as `Make<W, Out = Arr<{ Item::P }>>`.
+            GenericArg::AssocType(arg) => {
+                const_ty_reads(db, arg.ty, TypePosition::Type, scope, assumptions, reads)
+            }
+        }
+    }
+}
+
 fn const_body_simple_path<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<PathId<'db>> {
     fn expr_simple_path<'db>(
         db: &'db dyn HirAnalysisDb,
@@ -346,7 +585,31 @@ pub(crate) fn lower_const_body_path<'db>(
                     // Defer evaluation: the use position's expected type may
                     // differ in integer shape from the const's declared type
                     // (e.g. a `u256` trait const used as an array length).
-                    let assoc = AssocConstUse::new(scope, assumptions, inst, name);
+                    // A trait constant written where a frame
+                    // around it opens its slot reads that slot unsupplied, so
+                    // it never evaluates to the ordinary implementation.
+                    let frames = super::ty_check::written_frames::written_frames(db, body);
+                    let opened = super::ty_check::written_frames::opens_constant_read(
+                        db,
+                        frames,
+                        AssocConstUse::new(scope, assumptions, inst, name),
+                    );
+                    if opened && frames.in_declaration() {
+                        // A named implementation's declaration has no body
+                        // check to report it: the read is the refusal.
+                        return Some(ConstTyId::invalid(
+                            db,
+                            InvalidCause::ChoiceDependentConst {
+                                body,
+                                expr: body.expr(db),
+                            },
+                        ));
+                    }
+                    let unsupplied = opened.then_some(super::trait_choice::Choice::Slot(
+                        super::trait_choice::SlotRef::Unsupplied,
+                    ));
+                    let assoc =
+                        AssocConstUse::new(scope, assumptions, inst, name).with_choice(unsupplied);
                     super::const_ty::abstract_const_ty_from_assoc_const_use(db, assoc, expected_ty)
                 } else {
                     ConstTyId::invalid(db, InvalidCause::Other)
@@ -474,6 +737,46 @@ pub(crate) fn lower_type_position_path<'db>(
         position,
         lowering_cx,
     )?;
+    // In a named implementation's declaration, a constant of its own slot is
+    // refused where it is read, as the braced form is.
+    if let Some(cref) = match res {
+        PathRes::TraitConst(recv_ty, inst, name) => {
+            let mut args = inst.args(db).clone();
+            if let Some(self_arg) = args.first_mut() {
+                *self_arg = recv_ty;
+            }
+            let inst = TraitInstId::new(
+                db,
+                inst.def(db),
+                args,
+                inst.assoc_type_bindings(db).clone(),
+                inst.mode(db),
+            );
+            Some(super::ty_check::ConstRef::trait_const(AssocConstUse::new(
+                scope,
+                assumptions,
+                inst,
+                name,
+            )))
+        }
+        PathRes::InherentConst(recv_ty, impl_, name) => {
+            Some(super::ty_check::ConstRef::InherentConst(
+                InherentConstUse::new(scope, assumptions, impl_, recv_ty, name),
+            ))
+        }
+        _ => None,
+    } && let Some(frames) = super::ty_check::written_frames::declaration_frames_at(db, scope)
+        && match cref {
+            super::ty_check::ConstRef::TraitConst { use_, .. } => {
+                super::ty_check::written_frames::opens_constant_read(db, &frames, use_)
+            }
+            _ => super::ty_check::written_frames::constant_read_slots(db, cref)
+                .into_iter()
+                .any(|slot| frames.opens(db, slot)),
+        }
+    {
+        return Ok(TyId::invalid(db, InvalidCause::ChoiceDependentPath));
+    }
     Ok(match res {
         PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty) => ty,
         PathRes::Const(const_def, ty) => {

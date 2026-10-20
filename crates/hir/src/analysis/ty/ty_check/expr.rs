@@ -19,6 +19,7 @@ use crate::span::{DynLazySpan, types::LazyTySpan};
 use super::{
     BodyOwner, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef, RecordLike, RowArg, Typeable,
     ValuePathRef,
+    choice::RecordedCall,
     effect_env::{
         FamilyKeyedEntry, FrameLookupResult, MatchedForwarder, MatchedKeyedEntry, MatchedWitness,
     },
@@ -84,15 +85,14 @@ use crate::analysis::ty::{
 use crate::analysis::{
     HirAnalysisDb, Spanned,
     name_resolution::{
-        EarlyNameQueryId, ExpectedPathKind, NameDomain, NameResBucket, NameResolutionError,
-        PathRes, QueryDirective,
+        ExpectedPathKind, NameDomain, NameResBucket, NameResolutionError, PathRes,
         diagnostics::PathResDiag,
         is_scope_visible_from,
         method_selection::{
             AmbiguousTraitMethods, MethodCandidate, MethodSelectionError,
             select_callable_value_method, select_method_candidate, select_trait_method_candidates,
         },
-        resolve_name_res_with_minter, resolve_query,
+        resolve_name_res_with_minter,
     },
     place::resolve_place_field,
     semantic::{
@@ -249,18 +249,31 @@ impl<'db> TyChecker<'db> {
             Some(ConstIntrinsicKind::SizeOf)
         } else if path("core::intrinsic::storage_slots") {
             Some(ConstIntrinsicKind::StorageSlots)
+        } else if path("core::obligations::prove") {
+            Some(ConstIntrinsicKind::Prove)
         } else {
             None
         }
     }
 
-    fn check_and_register_const_intrinsic(
+    fn check_const_intrinsic(
         &mut self,
         expr: ExprId,
-        callable: Callable<'db>,
+        callable: &mut Callable<'db>,
         kind: ConstIntrinsicKind,
     ) -> bool {
-        if let Some(ty) = callable.generic_args().first().copied() {
+        let ty = match kind {
+            ConstIntrinsicKind::SizeOf | ConstIntrinsicKind::StorageSlots => {
+                callable.generic_args().first().copied()
+            }
+            ConstIntrinsicKind::Prove => {
+                if !self.decide_prove(expr, callable) {
+                    return false;
+                }
+                None
+            }
+        };
+        if let Some(ty) = ty {
             let ty = self.normalize_ty(ty);
             let primary = expr.span(self.body()).into();
             match kind {
@@ -289,7 +302,6 @@ impl<'db> TyChecker<'db> {
                 _ => {}
             }
         }
-        self.env.register_const_intrinsic(expr, callable, kind);
         true
     }
 
@@ -355,6 +367,7 @@ impl<'db> TyChecker<'db> {
         let expected = normalize_ty(self.db, expected, self.env.scope(), self.env.assumptions());
 
         self.env.enter_expr(expr);
+        self.refuse_written_const_args(super::choice::WrittenNode::Expr(expr));
         let mut actual = match expr_data {
             Expr::Lit(LitKind::String(string_id)) => {
                 ExprProp::new(self.string_literal_ty(*string_id, expected), true)
@@ -1586,6 +1599,13 @@ impl<'db> TyChecker<'db> {
         if let Some(value) = self.try_get_literal_int(expr) {
             return Some(value);
         }
+        // Inside a `with`, a trait constant here would be read before its
+        // decision is recorded; leave the bound to the checked value.
+        if super::choice::has_frames(self.env.choice_frames.current())
+            && !self.reads_only_literals_and_consts(expr)
+        {
+            return None;
+        }
         if let Some(const_ref) = self.env.expr_const_ref(expr)
             && let Some(const_ref) =
                 resolve_semantic_const_ref(self.db, const_ref, expected, SemOrigin::Expr(expr))
@@ -1639,9 +1659,28 @@ impl<'db> TyChecker<'db> {
         result_discarded: bool,
     ) -> ExprProp<'db> {
         self.env.effect_env_mut().push_frame();
+        let choice_header = self.env.choice_frames.current();
+        let outer_premises = self.env.assumptions();
+        // A failed opening makes the block invalid. Checking it without the
+        // choice would let its uses fall back to the ordinary implementation.
+        let mut opening_failed = false;
 
         for binding in bindings {
+            if binding.key_path.is_none()
+                && let Some(opened) = self.open_named_binding(choice_header, binding.value)
+            {
+                opening_failed |= !opened;
+                continue;
+            }
             let value_prop = self.check_expr_unknown(binding.value);
+            if binding.key_path.is_none()
+                && let Some(opened) =
+                    self.open_evidence_binding(choice_header, binding.value, &value_prop)
+            {
+                opening_failed |= !opened;
+                continue;
+            }
+
             // A provider confers authority over its place for the body; it
             // opens no access.
             self.consume_access(binding.value);
@@ -1662,6 +1701,14 @@ impl<'db> TyChecker<'db> {
             match binding.key_path {
                 Some(key_path) => {
                     if let Some(key_path) = key_path.to_opt() {
+                        if self.refuse_written_with_key(
+                            key_path,
+                            binding.value.span(self.body()).into(),
+                        ) {
+                            // The binding still provides its effect, so the
+                            // refusal is the block's only diagnostic.
+                            opening_failed = true;
+                        }
                         let folded_provider_ty = self.table.fold_ty(self.db, provided.ty);
                         match self.validate_keyed_with(
                             key_path,
@@ -1709,7 +1756,12 @@ impl<'db> TyChecker<'db> {
         } else {
             self.check_expr(body_expr, expected)
         };
+        self.env.choice_frames.restore(choice_header);
+        self.env.restore_assumptions(outer_premises);
         self.env.effect_env_mut().pop_frame();
+        if opening_failed {
+            return ExprProp::invalid(self.db);
+        }
         result
     }
 
@@ -1722,8 +1774,10 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        // Only a path names the function it calls; any other callee, even one
-        // of a function item's type, is a value the call evaluates first.
+        // A callee whose type is a function item is called directly, however
+        // it is written (a path, a binding, a block, a field): the call decides
+        // for the function's bounds and evidence as a path call does.
+        // Any other callee is a value called through its callable shape.
         let is_path = matches!(
             callee.data(self.db, self.body()),
             Partial::Present(Expr::Path(..))
@@ -1731,7 +1785,7 @@ impl<'db> TyChecker<'db> {
         let mut callable = if is_path && let Some(existing) = self.env.callable_expr(*callee) {
             existing.clone()
         } else if !callee_prop.ty.base_ty(self.db).is_ty_var(self.db)
-            && (!is_path || !callee_prop.ty.is_func(self.db))
+            && !callee_prop.ty.is_func(self.db)
         {
             return self.check_value_call(expr, *callee, callee_prop, args);
         } else {
@@ -1766,6 +1820,17 @@ impl<'db> TyChecker<'db> {
         }
 
         callable.check_args(self, args, call_span.clone().args(), None, false);
+        if self.env.written_refusals[*callee]
+            || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
+        {
+            // Keep the result's shape so the refusal is the only diagnostic
+            // and inference around the call still resolves.
+            let ret_ty = callable.ret_ty(self.db);
+            return ExprProp::new(
+                super::super::trait_choice::invalidate_consts(self.db, ret_ty),
+                true,
+            );
+        }
 
         // The callee's bounds infer what its rows need, such as the
         // arguments of a function item passed for an `F: Fn(..)`.
@@ -1908,6 +1973,8 @@ impl<'db> TyChecker<'db> {
                     goal: inst,
                     origin: TraitObligationOrigin::GenericConfirmation,
                     span,
+                    premises: self.env.assumptions(),
+                    frame: self.env.choice_frames.current(),
                 });
                 let func_ty = self.instantiate_trait_method_to_term(cand.method, receiver_ty, inst);
                 (func_ty, Some(inst))
@@ -1958,6 +2025,8 @@ impl<'db> TyChecker<'db> {
             method_name,
             candidates,
             span,
+            frame: self.env.choice_frames.current(),
+            premises: self.env.assumptions(),
         });
         typed
     }
@@ -2052,8 +2121,11 @@ impl<'db> TyChecker<'db> {
             self.env
                 .type_expr(callee, ExprProp::new(callable.ty(self.db), true));
         }
-        self.env
-            .register_code_region_intrinsic(expr, callable.clone(), arg_expr, kind);
+        self.record_call(
+            expr,
+            callable.clone(),
+            RecordedCall::CodeRegion(arg_expr, kind),
+        );
         Some(ExprProp::new(TyId::u256(self.db), true))
     }
 
@@ -2110,6 +2182,22 @@ impl<'db> TyChecker<'db> {
                 EffectRequirementDecl::from_effect_requirement(self.db, &component.requirement)
             }))
             .collect();
+        // A trait provider reached through a component of one of the callee's
+        // rows is not delivered the choice a frame opens for its slot: the
+        // body that reads it would answer it the ordinary way, where the same
+        // provider named in the callee's own `uses` reads the opened one.
+        // Refused under a frame that opens its trait. A row the call forwards
+        // is the caller's, answered where the caller is called, as a generic
+        // provider named in `uses` is.
+        let frame = self.env.choice_frames.current();
+        let row_provider_refused = reqs.iter().any(|req| {
+            row_paths.contains_key(&req.binding_idx)
+                && matches!(
+                    &req.key,
+                    EffectRequirementKey::Trait(schema)
+                        if self.env.frame_opens_trait(frame, schema.def)
+                )
+        });
         for (param_idx, req) in reqs.iter().enumerate() {
             let key_ty = req.key_ty;
             let Some(query) = build_effect_query_for_call(self, callable, req) else {
@@ -2390,6 +2478,12 @@ impl<'db> TyChecker<'db> {
         let mut providers = specialized_providers.into_values().collect::<Vec<_>>();
         providers.sort_by_key(|provider| provider.provider.provider_idx);
         *callable.effect_providers_mut() = providers;
+        if row_provider_refused {
+            self.push_diag(BodyDiag::ObligationOpening {
+                primary: call_span,
+                reason: "a trait provider reached through an effect row does not receive the implementation a `with` opens for its trait yet; name the trait in the callee's `uses`",
+            });
+        }
 
         resolved_args
     }
@@ -3788,6 +3882,17 @@ impl<'db> TyChecker<'db> {
             Some((*receiver, receiver_prop)),
             false,
         );
+        if self.env.written_refusals[expr]
+            || self.refuse_choice_dependent_signature(&callable, expr.span(self.body()).into())
+        {
+            // Keep the result's shape so the refusal is the only diagnostic
+            // and inference around the call still resolves.
+            let ret_ty = callable.ret_ty(self.db);
+            return ExprProp::new(
+                super::super::trait_choice::invalidate_consts(self.db, ret_ty),
+                true,
+            );
+        }
 
         callable.process_constraints(self, expr, call_span.method_name().into());
         self.check_callable_effects(expr, &mut callable);
@@ -3797,7 +3902,7 @@ impl<'db> TyChecker<'db> {
     /// Registers a checked call and types its result. A projection's result
     /// is a place granted by the call's session; its shape says which parts
     /// are accesses.
-    fn finish_call(&mut self, expr: ExprId, callable: Callable<'db>) -> ExprProp<'db> {
+    fn finish_call(&mut self, expr: ExprId, mut callable: Callable<'db>) -> ExprProp<'db> {
         let ret_ty = callable.ret_ty(self.db);
         let ret_ty = self.normalize_ty(ret_ty);
         self.report_instantiated_const_fault(&callable, ret_ty, expr);
@@ -3805,11 +3910,12 @@ impl<'db> TyChecker<'db> {
             .ret_shape(self.db)
             .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
         if let Some(kind) = self.const_intrinsic_kind(callable.callable_def()) {
-            if !self.check_and_register_const_intrinsic(expr, callable, kind) {
+            if !self.check_const_intrinsic(expr, &mut callable, kind) {
                 return ExprProp::invalid(self.db);
             }
+            self.record_call(expr, callable, RecordedCall::Const(kind));
         } else {
-            self.env.register_semantic_call(expr, callable);
+            self.record_call(expr, callable, RecordedCall::Call);
         }
         ExprProp {
             is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
@@ -4049,6 +4155,8 @@ impl<'db> TyChecker<'db> {
                                     goal: inst,
                                     origin: TraitObligationOrigin::GenericConfirmation,
                                     span: path_expr_span.clone().into(),
+                                    premises: self.env.assumptions(),
+                                    frame: self.env.choice_frames.current(),
                                 });
                             }
                             let method_ty = if cand.method.is_method(self.db) {
@@ -4147,6 +4255,8 @@ impl<'db> TyChecker<'db> {
                         goal: inst,
                         origin: TraitObligationOrigin::GenericConfirmation,
                         span: path_expr_span.clone().into(),
+                        premises: self.env.assumptions(),
+                        frame: self.env.choice_frames.current(),
                     });
 
                     let func_ty = self.instantiate_trait_assoc_fn_to_term(
@@ -4182,12 +4292,11 @@ impl<'db> TyChecker<'db> {
                     );
 
                     if !super::trait_const_goal_has_foreign_params(self.db, inst, self.env.scope())
-                        && let GoalSatisfiability::UnSat(_) = is_goal_satisfiable(
-                            self.db,
-                            TraitSolveCx::new(self.db, self.env.scope())
-                                .with_assumptions(self.env.assumptions()),
-                            inst,
-                        )
+                        && !self
+                            .env
+                            .frame_proves(self.env.choice_frames.current(), inst)
+                        && let GoalSatisfiability::UnSat(_) =
+                            is_goal_satisfiable(self.db, self.env.proof_context(), inst)
                     {
                         self.push_diag(TyDiagCollection::from(
                             TraitConstraintDiag::TraitBoundNotSat {
@@ -4309,6 +4418,7 @@ impl<'db> TyChecker<'db> {
 
         match reso {
             PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => {
+                let written = ty;
                 // Use the expected type to constrain the record's generic args
                 // before checking fields.
                 let snapshot = self.snapshot_state();
@@ -4320,6 +4430,13 @@ impl<'db> TyChecker<'db> {
                     ty.fold_with(self.db, &mut self.table)
                 };
 
+                // A record whose field types read an opened slot is a
+                // choice-dependent type.
+                if self.env.written_refusals[expr]
+                    || self.refuse_choice_dependent_ty(written, ty, span.clone().path().into())
+                {
+                    return ExprProp::invalid(self.db);
+                }
                 let record_like = RecordLike::from_ty(ty);
                 if record_like.is_record(self.db) {
                     self.env
@@ -4363,6 +4480,11 @@ impl<'db> TyChecker<'db> {
                     resolved_ty.fold_with(self.db, &mut self.table)
                 };
                 let variant = crate::analysis::name_resolution::ResolvedVariant { ty, ..variant };
+                if self.env.written_refusals[expr]
+                    || self.refuse_choice_dependent_ty(resolved_ty, ty, span.clone().path().into())
+                {
+                    return ExprProp::invalid(self.db);
+                }
 
                 let record_like = RecordLike::from_variant(variant);
                 if record_like.is_record(self.db) {
@@ -4578,6 +4700,7 @@ impl<'db> TyChecker<'db> {
 
             let len_ty = ConstTyId::from_body(self.db, len_body, expected_len_ty, None);
             let len_ty = TyId::const_ty(self.db, len_ty);
+            self.refuse_choice_dependent_ty(len_ty, len_ty, len_body.span().into());
             let array_ty = TyId::app(self.db, array, len_ty);
 
             if let Some(diag) = array_ty.emit_diag(self.db, len_body.span().into()) {
@@ -4620,6 +4743,10 @@ impl<'db> TyChecker<'db> {
     /// Holes and inference variables are never supplied, so a length that
     /// mentions one cannot wait.
     fn array_len_const_is_acceptable(&self, const_ty: ConstTyId<'db>) -> bool {
+        // A length refused where it is read is reported as that refusal.
+        if super::written_frames::refused_at_read(self.db, const_ty) {
+            return true;
+        }
         let len = TyId::const_ty(self.db, const_ty);
         !len.has_var(self.db)
             && !matches!(
@@ -5002,6 +5129,8 @@ impl<'db> TyChecker<'db> {
                             goal: inst,
                             origin: TraitObligationOrigin::GenericConfirmation,
                             span: expr.span(self.body()).into(),
+                            premises: self.env.assumptions(),
+                            frame: self.env.choice_frames.current(),
                         });
                     }
                     let func_ty = self.instantiate_trait_method_to_term(
@@ -5080,6 +5209,8 @@ impl<'db> TyChecker<'db> {
                             goal: inst,
                             origin: TraitObligationOrigin::GenericConfirmation,
                             span: expr.span(self.body()).into(),
+                            premises: self.env.assumptions(),
+                            frame: self.env.choice_frames.current(),
                         });
                     }
 
@@ -5135,7 +5266,7 @@ impl<'db> TyChecker<'db> {
         let shape = callable
             .ret_shape(self.db)
             .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
-        self.env.register_semantic_call(expr, callable);
+        self.record_call(expr, callable, RecordedCall::Call);
         ExprProp {
             is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
             shape,
@@ -5425,7 +5556,7 @@ fn body_diag_from_method_selection_err<'db>(
     }
 }
 
-fn resolve_ident_expr<'db>(
+pub(super) fn resolve_ident_expr<'db>(
     db: &'db dyn HirAnalysisDb,
     env: &TyCheckEnv<'db>,
     path: PathId<'db>,
@@ -5480,37 +5611,13 @@ fn resolve_ident_expr<'db>(
         ResolvedPathInBody::Reso(reso)
     };
 
-    let mut current_idx = env.current_block_idx();
-
-    loop {
-        let block = env.get_block(current_idx);
-        if let Some(binding) = block.lookup_var(ident) {
-            return ResolvedPathInBody::Binding(binding);
-        }
-
-        let scope = block.scope;
-        let directive = QueryDirective::for_scope(db, scope).disallow_lex();
-        let query = EarlyNameQueryId::new(db, ident, scope, directive);
-        let bucket = resolve_query(db, query);
-
-        let resolved = resolve_bucket(bucket, scope);
-        if matches!(resolved, ResolvedPathInBody::Invalid) {
-            if current_idx == 0 {
-                break;
-            }
-            current_idx -= 1;
-        } else {
-            return resolved;
-        }
-    }
-
-    let body_scope = env.body().scope();
-    let directive = QueryDirective::for_scope(db, body_scope);
-    let query = EarlyNameQueryId::new(db, ident, body_scope, directive);
-    let bucket = resolve_query(db, query);
-    match resolve_bucket(bucket, env.scope()) {
-        ResolvedPathInBody::Invalid => ResolvedPathInBody::NewBinding(ident),
-        r => r,
+    match env.resolve_ident_in_blocks(ident, |bucket, scope| match resolve_bucket(bucket, scope) {
+        ResolvedPathInBody::Invalid => None,
+        resolved => Some(resolved),
+    }) {
+        super::env::IdentInBlocks::Binding(binding) => ResolvedPathInBody::Binding(binding),
+        super::env::IdentInBlocks::Scope(resolved) => resolved,
+        super::env::IdentInBlocks::Unresolved => ResolvedPathInBody::NewBinding(ident),
     }
 }
 

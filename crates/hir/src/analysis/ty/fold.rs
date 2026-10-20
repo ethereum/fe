@@ -222,6 +222,10 @@ where
             .unwrap_or_else(|| SemConstId::new(db, SemConstValue::Description(*term)));
     }
     let value = match value.value(db) {
+        SemConstValue::Evidence { ty, choice } => SemConstValue::Evidence {
+            ty: folder.fold_ty(db, *ty),
+            choice: choice.fold_with(db, folder),
+        },
         SemConstValue::Unit => SemConstValue::Unit,
         SemConstValue::Scalar { ty, value } => SemConstValue::Scalar {
             ty: folder.fold_ty(db, *ty),
