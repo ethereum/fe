@@ -1872,7 +1872,10 @@ impl<'db> TyChecker<'db> {
                 return ExprProp::invalid(self.db);
             }
         };
-        let expected = callable.callable_def.arg_tys(self.db).len() - 1;
+        let Some(params) = self.call_params(&callable, call_span.clone().args().into()) else {
+            return ExprProp::invalid(self.db);
+        };
+        let expected = params.len() - 1;
         if args.len() != expected {
             let def_span = callee_ty
                 .as_closure(self.db)

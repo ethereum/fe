@@ -960,11 +960,19 @@ impl<'a, 'db> Analysis<'a, 'db> {
         {
             return None;
         }
-        // The declared type, before the callee's generic arguments.
+        // The declared type, before the callee's generic arguments. A
+        // parameter a spread lists declares none.
         let typed_body = &infer_body(self.db, owner).1;
-        let input = *typed_body.input_bindings().get(position)?;
-        let declared =
-            matches!(owner, BodyOwner::Func(..)).then(|| typed_body.binding_ty(self.db, input));
+        let (input, declared) = match typed_body.input_bindings().get(position) {
+            Some(&input) => (
+                input,
+                matches!(owner, BodyOwner::Func(..)).then(|| typed_body.binding_ty(self.db, input)),
+            ),
+            None => (
+                *callee.typed_body(self.db).input_bindings().get(position)?,
+                None,
+            ),
+        };
         let ty = self.body.values[arg.value.index()].ty;
         let ty = ty.as_capability(self.db).map_or(ty, |(_, inner)| inner);
         // A view or a `ref` part only reads; an owned or `mut` input may write.

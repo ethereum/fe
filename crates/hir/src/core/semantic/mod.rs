@@ -1163,6 +1163,61 @@ impl<'db> CallableDef<'db> {
         }
     }
 
+    /// The shape of the argument parameter `idx` takes in a call at `mode`:
+    /// an owned value, a view or `mut` access, or a product's parts. `None`
+    /// for a spread, whose shape lists parameters.
+    pub fn param_shape(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        idx: usize,
+        mode: Option<BorrowKind>,
+    ) -> Option<Binder<'db, Shape<'db>>> {
+        if let Some(product) = self.param_product(db, idx, mode) {
+            return Some(product);
+        }
+        if self.spread(db) == Some(idx) {
+            return None;
+        }
+        let param_mode = self.param_mode(db, idx, mode);
+        Some(self.arg_ty(db, idx)?.map(|ty| match param_mode {
+            FuncParamMode::Own => Shape::Owned(ty),
+            FuncParamMode::View => Shape::Access(BorrowKind::Ref, ty),
+            FuncParamMode::Mut => Shape::Access(BorrowKind::Mut, ty),
+        }))
+    }
+
+    /// The callee's parameters in a call at `mode`: the shape of each before
+    /// its spread, and the spread's shape, if it has one.
+    pub fn param_shapes(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
+    ) -> (Vec<Binder<'db, Shape<'db>>>, Option<Binder<'db, TyId<'db>>>) {
+        let declared = (0..)
+            .map_while(|idx| self.param_shape(db, idx, mode))
+            .collect();
+        (
+            declared,
+            self.spread(db).and_then(|idx| self.arg_ty(db, idx)),
+        )
+    }
+
+    /// The index of the callee's spread parameter, `..A`, if it has one: its
+    /// last.
+    pub fn spread(self, db: &'db dyn HirDb) -> Option<usize> {
+        let Self::Func(func) = self else {
+            return None;
+        };
+        let params = func.params_list(db).to_opt()?.data(db);
+        params.last()?.is_spread().then(|| params.len() - 1)
+    }
+
+    /// The declared parameter a call's parameter `idx` is: itself, or the
+    /// spread that lists it.
+    pub fn declared_param(self, db: &'db dyn HirDb, idx: usize) -> usize {
+        self.spread(db).map_or(idx, |spread| idx.min(spread))
+    }
+
     /// The modes the callee is called at: `ref` and `mut` for a `mut?`
     /// function, none for any other.
     pub fn modes(self, db: &'db dyn HirAnalysisDb) -> &'static [Option<BorrowKind>] {

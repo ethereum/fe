@@ -291,6 +291,22 @@ pub fn instantiated_typed_body<'db>(
 ) -> TypedBody<'db> {
     let mut body =
         instantiate_typed_body(db, typed_body_template(db, key.owner(db)), key.subst(db));
+    // A spread's inputs are those its instantiated shape lists.
+    if let BodyOwner::Func(func, _) = key.owner(db)
+        && let Some(spread) = CallableDef::Func(func).spread(db)
+        && let Some(shape) = func.arg_ty(db, spread)
+    {
+        let env = key.impl_env(db);
+        let shape = normalize_ty(
+            db,
+            shape.instantiate(db, key.subst(db).generic_args(db)),
+            env.normalization_scope(db),
+            env.assumptions(db),
+        );
+        if let Some(listed) = shape.as_params_shape(db) {
+            body = body.with_spread_inputs(db, func, spread, listed);
+        }
+    }
     let evidence = instance_evidence(
         db,
         body.signature(),
@@ -1606,6 +1622,7 @@ impl<'db> SemanticInstance<'db> {
             if body.is_none() && cause.const_eval_fault().is_none() {
                 return None;
             }
+
             Some(invalid_size_diagnostic(
                 db,
                 self,

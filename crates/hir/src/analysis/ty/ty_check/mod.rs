@@ -2801,12 +2801,6 @@ impl<'db> TyChecker<'db> {
                 return Viability::Incompatible;
             };
 
-            let expected_arity = callable.callable_def.arg_tys(db).len();
-            let given_arity = call_args.len() + 1;
-            if expected_arity != given_arity {
-                return Viability::Incompatible;
-            }
-
             match unify_explicit_call_generic_args(
                 &mut callable,
                 self,
@@ -2822,6 +2816,15 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
+            let Ok(params) = callable.params_resolving(db, |shape| {
+                normalize_ty(db, shape.fold_with(db, &mut self.table), scope, assumptions)
+            }) else {
+                return Viability::Incompatible;
+            };
+            if params.len() != call_args.len() + 1 {
+                return Viability::Incompatible;
+            }
+
             let Some(receiver_prop) = self.env.typed_expr(receiver) else {
                 return Viability::Incompatible;
             };
@@ -2834,17 +2837,10 @@ impl<'db> TyChecker<'db> {
                 all_arg_tys.push(prop.ty);
             }
 
-            for (&given, expected) in all_arg_tys
-                .iter()
-                .zip(callable.callable_def.arg_tys(db).iter())
-            {
-                let mut expected = expected.instantiate(db, callable.generic_args());
-                if let Some(inst) = callable.trait_inst() {
-                    expected = normalize_with_trait_evidence(db, expected, scope, inst);
-                }
+            for (&given, param) in all_arg_tys.iter().zip(&params) {
                 let expected = normalize_ty(
                     db,
-                    expected.fold_with(db, &mut self.table),
+                    param.shape.erased_ty(db).fold_with(db, &mut self.table),
                     scope,
                     assumptions,
                 );
@@ -5289,6 +5285,41 @@ impl<'db> TypedBody<'db> {
     /// part of a product parameter.
     pub fn input_bindings(&self) -> &[LocalBinding<'db>] {
         &self.tables.input_bindings
+    }
+
+    /// The body of an instance of `func` whose spread, its parameter
+    /// `spread`, lists `listed`: a call passes those parameters last, each
+    /// as an input of its own, or a product's parts.
+    pub(crate) fn with_spread_inputs(
+        mut self,
+        db: &'db dyn HirAnalysisDb,
+        func: Func<'db>,
+        spread: usize,
+        listed: Vec<Shape<'db>>,
+    ) -> Self {
+        let site = ParamSite::Func(func);
+        for (idx, shape) in (spread..).zip(listed) {
+            let inputs = &mut self.tables_mut().input_bindings;
+            match shape.param_mode() {
+                Some(mode) => inputs.push(LocalBinding::Param {
+                    site,
+                    idx,
+                    mode,
+                    ty: shape.erased_ty(db),
+                    is_mut: false,
+                }),
+                None => inputs.extend(shape.leaves().into_iter().zip(0..).map(
+                    |((access, ty), part)| LocalBinding::ParamPart {
+                        site,
+                        idx,
+                        part,
+                        access,
+                        ty,
+                    },
+                )),
+            }
+        }
+        self
     }
 
     /// The position of `binding` among the body's inputs.

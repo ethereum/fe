@@ -131,6 +131,17 @@ impl<'db> Shape<'db> {
             .collect()
     }
 
+    /// The mode a parameter of this shape takes its argument at: `own`, a
+    /// view or `mut`. `None` for a product.
+    pub fn param_mode(&self) -> Option<FuncParamMode> {
+        match self {
+            Self::Owned(_) => Some(FuncParamMode::Own),
+            Self::Access(BorrowKind::Ref, _) => Some(FuncParamMode::View),
+            Self::Access(BorrowKind::Mut, _) => Some(FuncParamMode::Mut),
+            Self::Tuple(_) | Self::Sum { .. } => None,
+        }
+    }
+
     /// Whether this shape grants an access, i.e. whether a function returning
     /// it is a projection.
     pub fn has_access(&self) -> bool {

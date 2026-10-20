@@ -1023,6 +1023,14 @@ pub enum BodyDiag<'db> {
         expected: usize,
     },
 
+    /// A call of a callee whose spread `..A` is instantiated with a shape
+    /// that lists no known parameters.
+    SpreadNotKnown {
+        primary: DynLazySpan<'db>,
+        def_span: DynLazySpan<'db>,
+        shape: TyId<'db>,
+    },
+
     AssertArgNumMismatch {
         primary: DynLazySpan<'db>,
         given: usize,
@@ -1409,6 +1417,7 @@ impl<'db> BodyDiag<'db> {
             Self::ClosureProductParam { .. } => 136,
             Self::ProductArgTooWeak { .. } => 150,
             Self::LateClosureEffect { .. } => 151,
+            Self::SpreadNotKnown { .. } => 146,
             Self::ParamBindsTwice { .. } => 134,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,
@@ -1583,6 +1592,8 @@ pub enum ImplDiag<'db> {
     MethodArgNumMismatch {
         trait_m: CallableDef<'db>,
         impl_m: CallableDef<'db>,
+        /// The trait method's parameter count, with those its spread lists.
+        expected: usize,
     },
 
     MethodArgLabelMismatch {
@@ -1600,6 +1611,17 @@ pub enum ImplDiag<'db> {
         /// The modes the two were compared at.
         trait_mode: Option<BorrowKind>,
         impl_mode: Option<BorrowKind>,
+        /// The trait's parameter, when its spread lists it.
+        spread_part: Option<Shape<'db>>,
+    },
+
+    /// An impl method of a trait method whose spread `..A` the impl's
+    /// trait arguments instantiate with a shape that lists no known
+    /// parameters.
+    SpreadNotListed {
+        trait_m: CallableDef<'db>,
+        impl_m: CallableDef<'db>,
+        shape: TyId<'db>,
     },
 
     MethodRetTyMismatch {
@@ -1802,6 +1824,7 @@ impl ImplDiag<'_> {
             Self::CyclicEffectRow { .. } => 34,
             Self::MethodMaybeMutMismatch { .. } => 35,
             Self::PartialMutImpl { .. } => 36,
+            Self::SpreadNotListed { .. } => 37,
         }
     }
 }

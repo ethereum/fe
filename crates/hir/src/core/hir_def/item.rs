@@ -810,7 +810,8 @@ impl<'db> Func<'db> {
 
     pub fn param_label_or_name(self, db: &'db dyn HirDb, idx: usize) -> Option<FuncParamName<'db>> {
         let param = self.params_list(db).to_opt()?.data(db).get(idx)?;
-        if param.is_label_suppressed {
+        // A spread's parameters have no labels.
+        if param.is_label_suppressed || param.is_spread() {
             Some(FuncParamName::Underscore)
         } else {
             param.name.to_opt()

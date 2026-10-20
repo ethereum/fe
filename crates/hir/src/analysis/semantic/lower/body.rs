@@ -1748,15 +1748,16 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         args: &[ExprId],
         callable: &Callable<'db>,
     ) -> SValueId {
-        let offset = usize::from(receiver.is_some());
-        let mut values = Vec::with_capacity(args.len() + offset);
-        for (index, &arg) in args.iter().enumerate() {
-            let param = index + offset;
-            if let Some(product) = callable.param_product(self.db, param) {
-                self.lower_product_arg(arg, &product, &mut values);
+        let params = callable
+            .params(self.db)
+            .expect("a checked call's spread lists its parameters");
+        let mut values = Vec::with_capacity(params.len());
+        for (&arg, param) in args.iter().zip(&params[usize::from(receiver.is_some())..]) {
+            let Some(mode) = param.shape.param_mode() else {
+                self.lower_product_arg(arg, &param.shape, &mut values);
                 continue;
-            }
-            let value = self.lower_callable_argument(arg, callable, param, false);
+            };
+            let value = self.lower_callable_argument(arg, callable, mode, false);
             values.push(SOperand::expr(value, arg));
         }
         if let Some((receiver, prepared)) = receiver {
@@ -1813,7 +1814,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
     }
 
-    /// Lowers the call input for parameter `param`. A place passed to a view
+    /// Lowers the call input for a parameter of `mode`. A place passed to a view
     /// parameter is viewed in place unless it is a snapshot (a scalar or
     /// handle) or a `Copy` value an ordinary function may take by value:
     /// loading a non-`Copy` place would move it, and a projection's result
@@ -1828,13 +1829,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         &mut self,
         expr: ExprId,
         callable: &Callable<'db>,
-        param: usize,
+        mode: FuncParamMode,
         receiver: bool,
     ) -> SValueId {
         let ty = self.expr_ty(expr);
-        let mode = callable
-            .callable_def()
-            .param_mode(self.db, param, callable.mode());
         if mode == FuncParamMode::Own {
             let value = self.lower_expr(expr);
             return self.take_operand(expr, value);
@@ -2027,7 +2025,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             return Receiver::Place(None);
         }
         if mode != FuncParamMode::Mut {
-            return Receiver::Value(self.lower_callable_argument(receiver, callable, 0, true));
+            return Receiver::Value(self.lower_callable_argument(receiver, callable, mode, true));
         }
         let place = self.try_lower_place(receiver).unwrap_or_else(|| {
             let ty = normalize_ty(
@@ -2090,15 +2088,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         prepared: Receiver<'db>,
         callable: &Callable<'db>,
     ) -> SValueId {
+        let mode = callable
+            .callable_def()
+            .param_mode(self.db, 0, callable.mode());
         match prepared {
             Receiver::Value(value) => value,
-            Receiver::Place(None)
-                if callable
-                    .callable_def()
-                    .param_mode(self.db, 0, callable.mode())
-                    != FuncParamMode::Mut =>
-            {
-                self.lower_callable_argument(receiver, callable, 0, true)
+            Receiver::Place(None) if mode != FuncParamMode::Mut => {
+                self.lower_callable_argument(receiver, callable, mode, true)
             }
             Receiver::Chain(root, prepared) => {
                 let Some(SemanticExprLowering::Call { callable: inner }) =

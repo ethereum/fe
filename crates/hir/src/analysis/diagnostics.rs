@@ -4638,6 +4638,32 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
+            Self::SpreadNotKnown {
+                primary,
+                def_span,
+                shape,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "the callee's parameters are not known".to_string(),
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "its spread is `..{}`, which lists no known parameters",
+                            shape.pretty_print(db)
+                        ),
+                        span: primary.resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: "function defined here".to_string(),
+                        span: def_span.resolve(db),
+                    },
+                ],
+                notes: vec![],
+                error_code,
+            },
+
             Self::AssertArgNumMismatch {
                 primary,
                 given,
@@ -5902,17 +5928,49 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 )
             }
 
-            Self::MethodArgNumMismatch { trait_m, impl_m } => primary_diag(
+            Self::MethodArgNumMismatch {
+                impl_m, expected, ..
+            } => primary_diag(
                 severity,
                 "method argument count mismatch",
                 format!(
-                    "expected {} arguments, but {} given",
-                    trait_m.arg_tys(db).len(),
+                    "expected {expected} arguments, but {} given",
                     impl_m.arg_tys(db).len(),
                 ),
                 impl_m.param_list_span().resolve(db),
                 error_code,
             ),
+
+            Self::SpreadNotListed {
+                trait_m,
+                impl_m,
+                shape,
+            } => CompleteDiagnostic {
+                severity,
+                message: format!(
+                    "cannot implement `{}`: its parameters are not known",
+                    impl_m.name(db).expect("methods have names").data(db)
+                ),
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "the trait's spread is `..{}` here, which lists no known parameters",
+                            shape.pretty_print(db)
+                        ),
+                        span: impl_m.param_list_span().resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: "spread declared here".to_string(),
+                        span: trait_m
+                            .param_span(trait_m.spread(db).expect("the trait method spreads"))
+                            .resolve(db),
+                    },
+                ],
+                notes: vec![],
+                error_code,
+            },
 
             Self::MethodArgLabelMismatch {
                 trait_m,
@@ -5927,7 +5985,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         message: format!(
                             "expected `{}` label, but the given label is `{}`",
                             trait_m
-                                .param_label_or_name(db, *param_idx)
+                                .param_label_or_name(db, trait_m.declared_param(db, *param_idx))
                                 .unwrap()
                                 .pretty_print(db),
                             impl_m
@@ -5940,7 +5998,9 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "argument label defined here".to_string(),
-                        span: trait_m.param_span(*param_idx).resolve(db),
+                        span: trait_m
+                            .param_span(trait_m.declared_param(db, *param_idx))
+                            .resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -5955,10 +6015,15 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 param_idx,
                 trait_mode,
                 impl_mode,
+                spread_part,
             } => {
                 let method_name = impl_m.name(db).expect("methods have names").data(db);
-                let expected =
-                    format_method_param_ty(db, *trait_m, *param_idx, *trait_m_ty, *trait_mode);
+                let expected = match spread_part {
+                    Some(part) => part.pretty_print_product(db),
+                    None => {
+                        format_method_param_ty(db, *trait_m, *param_idx, *trait_m_ty, *trait_mode)
+                    }
+                };
                 let found = format_method_param_ty(db, *impl_m, *param_idx, *impl_m_ty, *impl_mode);
 
                 CompleteDiagnostic {
@@ -5973,7 +6038,9 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: "trait requires this type".to_string(),
-                            span: trait_m.param_span(*param_idx).resolve(db),
+                            span: trait_m
+                                .param_span(trait_m.declared_param(db, *param_idx))
+                                .resolve(db),
                         },
                     ],
                     notes: vec![],

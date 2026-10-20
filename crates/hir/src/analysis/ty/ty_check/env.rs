@@ -2036,6 +2036,8 @@ pub(super) fn func_param_bindings<'db>(
                         },
                     ));
             }
+            // A spread's inputs are an instance's: those its shape lists.
+            None if view.hir(db).is_some_and(FuncParam::is_spread) => {}
             None => bindings.inputs.push(param),
         }
     }

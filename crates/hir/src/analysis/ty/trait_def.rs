@@ -549,6 +549,11 @@ pub enum MethodArgMapError<'db> {
         declared_inputs: usize,
         parameter_inputs: usize,
     },
+    /// A spread instantiated with a shape that lists no parameters.
+    SpreadNotListed {
+        func: Func<'db>,
+        shape: TyId<'db>,
+    },
     SignatureMismatch {
         nominal: Func<'db>,
         body: Func<'db>,
