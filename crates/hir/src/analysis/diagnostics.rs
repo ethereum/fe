@@ -5500,14 +5500,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
-            BodyDiag::ClosureProductParam { primary } => primary_diag(
-                severity,
-                "a closure parameter cannot be a product",
-                "a closure takes each access as its own parameter",
-                primary.resolve(db),
-                error_code,
-            ),
-
             BodyDiag::WriteToCapture { primary, name } => CompleteDiagnostic {
                 severity,
                 message: format!("cannot write to `{}`, which a closure captures", name.data(db)),

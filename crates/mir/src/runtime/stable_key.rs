@@ -5,6 +5,7 @@ use hir::{
         semantic::{EffectProviderSubst, GenericSubst, ImplEnv, SemanticInstance},
         ty::{
             RootProviderScope,
+            shape::Shape,
             trait_def::{TraitInstId, TraitRefId},
             ty_check::{BodyOwner, EffectParamSite},
             ty_def::{BorrowKind, ClosureDef, ClosureTy, TyBase, TyData, TyId},
@@ -471,20 +472,23 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
                 // and its position there identify it.
                 let def = closure.def(db);
                 let owner = closure_owner_identity(db, def);
+                let leaves: Vec<_> = closure.params(db).iter().flat_map(Shape::leaves).collect();
                 let tys = closure
                     .parent_args(db)
                     .iter()
                     .chain(closure.captures(db))
-                    .chain(&closure.param_tys(db))
-                    .chain([closure.ret_ty(db)].iter())
-                    .map(|ty| type_identity(db, *ty))
+                    .copied()
+                    .chain(leaves.iter().map(|&(_, ty)| ty))
+                    .chain([closure.ret_ty(db)])
+                    .map(|ty| type_identity(db, ty))
                     .collect::<Vec<_>>()
                     .join("$");
-                format!(
-                    "closure${owner}${}${:?}${tys}",
-                    def.expr.as_u32(),
-                    closure.modes(db)
-                )
+                let shapes: Vec<_> = closure
+                    .params(db)
+                    .iter()
+                    .map(|param| param.pretty_print_product(db))
+                    .collect();
+                format!("closure${owner}${}${shapes:?}${tys}", def.expr.as_u32(),)
             }
         },
         TyData::TyParam(param) => {

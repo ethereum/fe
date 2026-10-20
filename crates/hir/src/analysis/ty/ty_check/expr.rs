@@ -70,7 +70,7 @@ use crate::analysis::ty::{
     instantiate_trait_self,
     normalize::normalize_with_trait_evidence,
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
-    shape::{Shape, SumKind, is_param_product, sum_kind},
+    shape::{Shape, SumKind, is_param_product, lower_param_product, param_product_diags, sum_kind},
     trait_def::TraitInstId,
     trait_lower::complete_impl_trait,
     trait_resolution::{
@@ -645,39 +645,54 @@ impl<'db> TyChecker<'db> {
                 return expectation;
             }
             let untupled = matches!(&expectation.params[..], [param]
-                if param.is_tuple(self.db) && param.generic_args(self.db).len() == params.len());
+            if param.param_mode().is_some() && {
+                let ty = param.erased_ty(self.db);
+                ty.is_tuple(self.db) && ty.generic_args(self.db).len() == params.len()
+            });
             self.push_diag(BodyDiag::ClosureArityMismatch {
                 primary: span.clone(),
                 expected: expectation.params.len(),
                 given: params.len(),
                 untupled,
             });
+            let invalid = TyId::invalid(self.db, InvalidCause::Other);
             ClosureExpectation {
-                modes: vec![FuncParamMode::View; params.len()],
-                params: vec![TyId::invalid(self.db, InvalidCause::Other); params.len()],
+                params: vec![Shape::Access(BorrowKind::Ref, invalid); params.len()],
                 ret: expectation.ret,
             }
         });
 
         self.env.enter_closure(def);
         let closure_span = expr.span(self.body()).into_closure_expr();
-        let mut param_tys = Vec::new();
+        let site = ParamSite::Closure(def);
+        let mut param_shapes = Vec::new();
         for (idx, param) in params.iter().enumerate() {
             let expected = expectation
                 .as_ref()
-                .map(|expectation| (expectation.modes[idx], expectation.params[idx]));
-            let span = closure_span.clone().params().param(idx).ty();
-            let (mode, ty) = self.closure_param(param, expected, span);
+                .map(|expectation| &expectation.params[idx]);
+            let param_span = closure_span.clone().params().param(idx);
+            let shape = self.closure_param(param, expected, param_span.clone().ty());
+            // A product parameter's binding owns the carriers of its parts,
+            // which its pattern takes apart.
+            let mode = shape.param_mode().unwrap_or_else(|| {
+                if !param.is_destructured() {
+                    self.push_diag(TyDiagCollection::from(
+                        TyLowerDiag::ProductParamNotDestructured(param_span.into()),
+                    ));
+                }
+                self.env.register_param_product(site, idx, shape.clone());
+                FuncParamMode::Own
+            });
             let binding = LocalBinding::Param {
-                site: ParamSite::Closure(def),
+                site,
                 idx,
                 mode,
-                ty,
+                ty: shape.erased_ty(self.db),
                 is_mut: param.is_mut,
             };
             self.env
                 .register_closure_param(param.binding_name(), binding);
-            param_tys.push((mode, ty));
+            param_shapes.push(shape);
         }
         let ret = match ret_ty {
             Some(ret_ty) => self.lower_ty(ret_ty, closure_span.ret_ty(), true),
@@ -716,7 +731,7 @@ impl<'db> TyChecker<'db> {
                 .iter()
                 .map(|capture| capture.ty)
                 .collect::<Vec<_>>(),
-            param_tys,
+            param_shapes,
             ret,
             effects,
         );
@@ -850,17 +865,20 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// A closure parameter's mode and type: as annotated, else as the
-    /// expected shape has them, else a view of an inferred type. A mode
-    /// written without a type (`x: own`) keeps the mode and infers the type.
+    /// The shape of a closure parameter: as annotated, where a product
+    /// carries its parts' modes, else as `expected`, the shape the closure's
+    /// callable bound gives the parameter, has it, else a view of an inferred
+    /// type. A mode written without a type (`x: own`) keeps the mode and
+    /// infers the type.
     fn closure_param(
         &mut self,
         param: &FuncParam<'db>,
-        expected: Option<(FuncParamMode, TyId<'db>)>,
+        expected: Option<&Shape<'db>>,
         span: LazyTySpan<'db>,
-    ) -> (FuncParamMode, TyId<'db>) {
+    ) -> Shape<'db> {
+        let db = self.db;
         let annotation = param.ty.to_opt();
-        let (mode, payload) = match annotation.map(|ty| ty.data(self.db)) {
+        let (mode, payload) = match annotation.map(|ty| ty.data(db)) {
             Some(TypeKind::Mode(mode, payload)) => (
                 Some(match mode {
                     TypeMode::Own => FuncParamMode::Own,
@@ -884,18 +902,37 @@ impl<'db> TyChecker<'db> {
             ),
             _ => (None, annotation),
         };
-        let mode = mode.or(expected.map(|(mode, _)| mode));
-        let ty = match payload {
-            Some(ty) if is_param_product(self.db, ty) => {
-                self.push_diag(BodyDiag::ClosureProductParam {
-                    primary: span.into(),
-                });
-                TyId::invalid(self.db, InvalidCause::Other)
+        let param_mode = mode
+            .or_else(|| expected.and_then(Shape::param_mode))
+            .unwrap_or(FuncParamMode::View);
+        match payload {
+            // A product's parts carry its modes.
+            Some(ty) if is_param_product(db, ty) && mode.is_some() => {
+                self.push_diag(TyDiagCollection::from(TyLowerDiag::ModeOnProduct(
+                    span.into(),
+                )));
+                Shape::Owned(TyId::invalid(db, InvalidCause::Other))
             }
-            Some(ty) => self.lower_ty(ty, span, true),
-            None => expected.map_or_else(|| self.fresh_ty(), |(_, ty)| ty),
-        };
-        (mode.unwrap_or(FuncParamMode::View), ty)
+            Some(ty) if is_param_product(db, ty) => {
+                let (scope, assumptions) = (self.env.scope(), self.env.assumptions());
+                let diags = param_product_diags(db, ty, scope, span, assumptions);
+                if !diags.is_empty() {
+                    diags.into_iter().for_each(|diag| self.push_diag(diag));
+                    return Shape::Owned(TyId::invalid(db, InvalidCause::Other));
+                }
+                lower_param_product(db, ty, scope, assumptions, self.env.owner().mode())
+                    .expect("a product lowers to its shape")
+                    .map_tys(&mut |ty| self.normalize_ty(ty))
+            }
+            Some(ty) => Shape::param(param_mode, self.lower_ty(ty, span, true)),
+            None => match expected {
+                Some(expected) if mode.is_none() => expected.clone(),
+                _ => {
+                    let ty = expected.map_or_else(|| self.fresh_ty(), |shape| shape.erased_ty(db));
+                    Shape::param(param_mode, ty)
+                }
+            },
+        }
     }
 
     fn check_unary(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {

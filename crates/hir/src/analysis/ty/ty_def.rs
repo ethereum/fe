@@ -6,7 +6,6 @@ use crate::{
     hir_def::{
         Body, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId, Struct,
         TypeAlias as HirTypeAlias, VariantKind,
-        params::FuncParamMode,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
     },
@@ -1283,9 +1282,10 @@ pub struct ClosureTy<'db> {
     /// Environment field types, one per captured binding, in capture order.
     #[return_ref]
     pub captures: Vec<TyId<'db>>,
-    /// The parameters' modes and types.
+    /// The parameters' shapes: each an owned value, a view or `mut`
+    /// access, or a product of parts.
     #[return_ref]
-    pub params: Vec<(FuncParamMode, TyId<'db>)>,
+    pub params: Vec<Shape<'db>>,
     pub ret_ty: TyId<'db>,
     /// The effects the body uses that its own `with` blocks do not provide:
     /// its row `E`, which the caller of each call provides.
@@ -1294,25 +1294,13 @@ pub struct ClosureTy<'db> {
 }
 
 impl<'db> ClosureTy<'db> {
-    pub fn modes(self, db: &'db dyn HirAnalysisDb) -> Vec<FuncParamMode> {
-        self.params(db).iter().map(|&(mode, _)| mode).collect()
-    }
-
-    pub fn param_tys(self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
-        self.params(db).iter().map(|&(_, ty)| ty).collect()
-    }
-
     pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
         let params = self
             .params(db)
             .iter()
-            .map(|(mode, ty)| {
-                let mode = match mode {
-                    FuncParamMode::View => "",
-                    FuncParamMode::Mut => "mut ",
-                    FuncParamMode::Own => "own ",
-                };
-                format!("{mode}{}", ty.pretty_print(db))
+            .map(|param| match param {
+                Shape::Access(BorrowKind::Ref, ty) => ty.pretty_print(db).to_string(),
+                _ => param.pretty_print_product(db),
             })
             .collect::<Vec<_>>()
             .join(", ");

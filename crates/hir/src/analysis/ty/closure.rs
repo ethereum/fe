@@ -82,7 +82,7 @@ pub(crate) fn callable_params<'db>(
 /// `unsafe fn` and a projection are not callable values: a variant is made
 /// rather than called, an `unsafe fn` may only be called in an `unsafe`
 /// context, and a projection grants accesses rather than returning a value.
-/// Nor is a function with a product parameter or a spread.
+/// Nor is a function with a spread.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum CallableValue<'db> {
     Closure(ClosureTy<'db>),
@@ -103,22 +103,14 @@ impl<'db> CallableValue<'db> {
             && !func.is_projection(db)
             && !func.is_raw_place(db)
             && !func.is_maybe_mut(db)
-            && CallableDef::Func(*func).spread(db).is_none()
-            && !func
-                .params(db)
-                .any(|param| param.product(db, None).is_some()))
+            && CallableDef::Func(*func).spread(db).is_none())
         .then_some(Self::Func(*func, args))
     }
 
     /// The shape of each of the value's parameters.
     fn params(self, db: &'db dyn HirAnalysisDb) -> Vec<Shape<'db>> {
         match self {
-            Self::Closure(closure) => closure
-                .modes(db)
-                .into_iter()
-                .zip(closure.param_tys(db))
-                .map(|(mode, ty)| Shape::param(mode, ty))
-                .collect(),
+            Self::Closure(closure) => closure.params(db).clone(),
             Self::Func(func, args) => CallableDef::Func(func)
                 .param_shapes(db, None)
                 .0

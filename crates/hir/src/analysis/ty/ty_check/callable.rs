@@ -1210,16 +1210,8 @@ impl<'db> Callable<'db> {
                     return None;
                 }
                 let shape = tc.normalize_ty(*constraint.args(db).get(1)?);
-                let (modes, params) = shape
-                    .as_params_shape(db)?
-                    .iter()
-                    .map(|param| Some((param.param_mode()?, param.erased_ty(db))))
-                    .collect::<Option<Vec<_>>>()?
-                    .into_iter()
-                    .unzip();
                 Some(ClosureExpectation {
-                    modes,
-                    params,
+                    params: shape.as_params_shape(db)?,
                     ret: constraint
                         .assoc_type_bindings(db)
                         .get(&out_ident(db))

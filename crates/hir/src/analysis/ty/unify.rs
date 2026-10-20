@@ -11,6 +11,7 @@ use rustc_hash::FxHashMap;
 use super::{
     const_expr::{ConstExpr, ConstExprId},
     fold::{TyFoldable, TyFolder},
+    shape::Shape,
     trait_def::{ImplementorId, TraitInstId, TraitRefId},
     ty_def::{
         ApplicableTyProp, ClosureTy, Kind, MAX_INLINE_STRING_BYTES, TyBase, TyData, TyId, TyVar,
@@ -157,15 +158,26 @@ where
                         .parent_args(db)
                         .iter()
                         .chain(closure.captures(db))
-                        .chain(&closure.param_tys(db))
-                        .chain([closure.ret_ty(db)].iter())
                         .copied()
+                        .chain(
+                            closure
+                                .params(db)
+                                .iter()
+                                .flat_map(Shape::leaves)
+                                .map(|(_, ty)| ty),
+                        )
+                        .chain([closure.ret_ty(db)])
                         .collect::<Vec<_>>()
                 };
+                let (params1, params2) = (closure1.params(db), closure2.params(db));
                 let (lhs, rhs) = (components(*closure1), components(*closure2));
                 let (lhs_row, rhs_row) = (closure1.effects(db), closure2.effects(db));
                 if closure1.def(db) != closure2.def(db)
-                    || closure1.modes(db) != closure2.modes(db)
+                    || params1.len() != params2.len()
+                    || !params1
+                        .iter()
+                        .zip(params2)
+                        .all(|(param1, param2)| param1.same_modes(param2))
                     || lhs.len() != rhs.len()
                     || lhs_row.len() != rhs_row.len()
                 {

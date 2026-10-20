@@ -393,18 +393,20 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// Gathers each product parameter's parts, the inputs a call passes, into
     /// the product its body destructures.
     fn bind_param_products(&mut self) {
-        for (idx, binding) in
-            (0..).map_while(|idx| Some((idx, self.typed_body.param_binding(idx)?)))
-        {
+        for binding in (0..).map_while(|idx| self.typed_body.param_binding(idx)) {
             let Some(product) = self.typed_body.param_product(binding).cloned() else {
                 continue;
+            };
+            let LocalBinding::Param { site, idx, .. } = binding else {
+                unreachable!("a product is a parameter's")
             };
             let parts: Vec<_> = self
                 .typed_body
                 .input_bindings()
                 .iter()
                 .filter(|input| {
-                    matches!(input, LocalBinding::ParamPart { idx: param, .. } if *param == idx)
+                    matches!(input, LocalBinding::ParamPart { site: part_site, idx: param, .. }
+                        if *part_site == site && *param == idx)
                 })
                 .map(|input| self.binding_locals[input])
                 .collect();

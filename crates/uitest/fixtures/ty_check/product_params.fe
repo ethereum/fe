@@ -127,8 +127,8 @@ fn nested_marked_whole(_ (ref p, c): ((mut u256, mut u256), own u256)) -> u256 {
 // A part that is a product carries its own parts' modes.
 fn mode_on_nested(_ ((a, b), c): (ref (mut u256, bool), own u256)) {}
 
-// A function with a product parameter is no callable value, and a closure's
-// parameter is no product: no shape trait names one.
+// A function's product parameter is one of the shape's parameters, of
+// parts: it is no view of a tuple.
 fn apply<F: Fn((u256, u256)) -> u256>(_ f: F) -> u256 uses F::E {
     f((1, 2))
 }
@@ -137,9 +137,11 @@ fn callable_value() -> u256 {
     apply(total)
 }
 
-fn closure_product() -> u256 {
-    let f = |(a, b): (own u256, ref u256)| a + b
-    0
+// A closure's product parameter carries its modes, and its pattern takes it
+// apart.
+fn closure_product() {
+    let f = |p: (own u256, ref u256)| {}
+    let g = |(a, b): own (own u256, ref u256)| a + b
 }
 
 fn untupled() -> u256 {

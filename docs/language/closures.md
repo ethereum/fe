@@ -16,8 +16,9 @@ type is optional too.
 A parameter may be a pattern, which takes its argument apart as a `let`
 would: `pairs.fold(0, |acc, (a, b)| acc + a * b)`, `|Point { x, y }| x + y`.
 A closure passed one tuple takes it apart with a pattern, `|(i, x)|`, not
-as two parameters. A closure's parameter cannot be a product of accesses
-(`(own u256, ref u256)`) yet.
+as two parameters. A parameter may also be a product of accesses, which its
+pattern takes apart as a function's would:
+`|(mut a, b): (mut u256, ref u256)| a += b`.
 
 ## Callable shapes
 
@@ -93,8 +94,8 @@ named function, associated function or trait method can be passed where a
 closure can: `xs.fold(0, add)` with `fn add(_ acc: own u256, _ x: u256) ->
 u256`. Its row is the function's own effects. A generic function's arguments
 are inferred from the bound, as in `apply(identity, 9)`. An `unsafe fn`, a
-projection, a function with a product parameter or a spread, and a variant
-constructor are not callable values.
+projection, a function with a spread, and a variant constructor are not
+callable values.
 
 ## Captures
 

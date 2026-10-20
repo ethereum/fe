@@ -170,8 +170,8 @@ pub(crate) struct TyCheckEnv<'db> {
     /// The inputs a call passes the body: each parameter, or each part of a
     /// product parameter.
     input_bindings: Vec<LocalBinding<'db>>,
-    /// Each parameter's shape if it is a product, by index.
-    param_products: Vec<Option<Shape<'db>>>,
+    /// The shapes of the product parameters, by index.
+    param_products: Vec<(ParamSite<'db>, usize, Shape<'db>)>,
     /// Pat bindings for transfer to TypedBody
     pat_bindings: SecondaryMap<PatId, Option<LocalBinding<'db>>>,
     local_borrow_providers: SecondaryMap<PatId, Option<AddressSpace>>,
@@ -247,8 +247,8 @@ struct ActiveClosure<'db> {
 /// checked.
 #[derive(Debug, Clone)]
 pub(super) struct ClosureExpectation<'db> {
-    pub(super) modes: Vec<FuncParamMode>,
-    pub(super) params: Vec<TyId<'db>>,
+    /// The shape of each parameter.
+    pub(super) params: Vec<Shape<'db>>,
     pub(super) ret: Option<TyId<'db>>,
 }
 
@@ -891,6 +891,16 @@ impl<'db> TyCheckEnv<'db> {
     /// The shape of `binding` if it is a product parameter's.
     pub(super) fn param_product(&self, binding: &LocalBinding<'db>) -> Option<&Shape<'db>> {
         param_product(&self.param_products, binding)
+    }
+
+    /// Records that parameter `idx` of `site` is a product of `shape`.
+    pub(super) fn register_param_product(
+        &mut self,
+        site: ParamSite<'db>,
+        idx: usize,
+        shape: Shape<'db>,
+    ) {
+        self.param_products.push((site, idx, shape));
     }
 
     pub(super) fn lookup_binding_ty(&self, binding: &LocalBinding<'db>) -> TyId<'db> {
@@ -1962,18 +1972,35 @@ fn param_name<'db>(
 /// The shape of `binding` among `products` if it is a product parameter's:
 /// the product its body destructures.
 pub(super) fn param_product<'a, 'db>(
-    products: &'a [Option<Shape<'db>>],
+    products: &'a [(ParamSite<'db>, usize, Shape<'db>)],
     binding: &LocalBinding<'db>,
 ) -> Option<&'a Shape<'db>> {
-    let LocalBinding::Param {
-        site: ParamSite::Func(_),
-        idx,
-        ..
-    } = binding
-    else {
+    let LocalBinding::Param { site, idx, .. } = binding else {
         return None;
     };
-    products.get(*idx)?.as_ref()
+    products.iter().find_map(|(param_site, param, product)| {
+        (param_site == site && param == idx).then_some(product)
+    })
+}
+
+/// The inputs a call passes parameter `idx` of `site`, a product of shape
+/// `product`: one for each of its parts.
+pub(super) fn product_inputs<'db>(
+    site: ParamSite<'db>,
+    idx: usize,
+    product: &Shape<'db>,
+) -> impl Iterator<Item = LocalBinding<'db>> {
+    product
+        .leaves()
+        .into_iter()
+        .zip(0..)
+        .map(move |((access, ty), part)| LocalBinding::ParamPart {
+            site,
+            idx,
+            part,
+            access,
+            ty,
+        })
 }
 
 /// The bindings of a function's parameters at a mode.
@@ -1985,8 +2012,8 @@ pub(super) struct FuncParamBindings<'db> {
     /// The inputs a call passes the function: each parameter, or each part
     /// of a product parameter.
     pub(super) inputs: Vec<LocalBinding<'db>>,
-    /// Each parameter's shape if it is a product, by index.
-    pub(super) products: Vec<Option<Shape<'db>>>,
+    /// The shapes of the product parameters, by site and index.
+    pub(super) products: Vec<(ParamSite<'db>, usize, Shape<'db>)>,
 }
 
 /// The bindings of `func`'s parameters where it is used at `mode`.
@@ -2021,20 +2048,10 @@ pub(super) fn func_param_bindings<'db>(
             is_mut: view.is_mut(db),
         };
         bindings.params.push(param);
-        bindings.products.push(product.cloned());
         match product {
             Some(product) => {
-                bindings
-                    .inputs
-                    .extend(product.leaves().into_iter().enumerate().map(
-                        |(part, (access, ty))| LocalBinding::ParamPart {
-                            site,
-                            idx,
-                            part: part as u16,
-                            access,
-                            ty,
-                        },
-                    ));
+                bindings.inputs.extend(product_inputs(site, idx, product));
+                bindings.products.push((site, idx, product.clone()));
             }
             // A spread's inputs are an instance's: those its shape lists.
             None if view.hir(db).is_some_and(FuncParam::is_spread) => {}

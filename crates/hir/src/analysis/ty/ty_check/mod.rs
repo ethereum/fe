@@ -4384,8 +4384,9 @@ mod typed_body_tables {
         /// The inputs a call passes the body: each parameter, or each part of
         /// a product parameter.
         pub(super) input_bindings: Vec<LocalBinding<'db>>,
-        /// Each parameter's shape if it is a product, by index.
-        pub(super) param_products: Vec<Option<Shape<'db>>>,
+        /// The shapes of the product parameters, the body's own and its
+        /// closures', by site and index.
+        pub(super) param_products: Vec<(ParamSite<'db>, usize, Shape<'db>)>,
         /// Bindings for local variables (keyed by the pattern that introduces them)
         pub(super) pat_bindings: SecondaryMap<PatId, Option<LocalBinding<'db>>>,
         /// Binding capture mode for local variables (keyed by the pattern that introduces them)
@@ -4716,7 +4717,7 @@ impl<'db> TypedBody<'db> {
         }
         self.tables.param_bindings.visit_with(visitor);
         self.tables.input_bindings.visit_with(visitor);
-        for product in self.tables.param_products.iter().flatten() {
+        for (_, _, product) in &self.tables.param_products {
             product.visit_with(visitor);
         }
         for binding in self.tables.pat_bindings.values().flatten() {
@@ -4791,8 +4792,7 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
             .for_each(|binding| *binding = binding.fold_with(db, folder));
         this.param_products
             .iter_mut()
-            .flatten()
-            .for_each(|product| *product = product.clone().fold_with(db, folder));
+            .for_each(|(_, _, product)| *product = product.clone().fold_with(db, folder));
         this.pat_bindings
             .values_mut()
             .flatten()
@@ -5228,7 +5228,20 @@ impl<'db> TypedBody<'db> {
         tables.param_bindings = iter::once(LocalBinding::closure_env(db, closure, receiver))
             .chain(params)
             .collect();
-        tables.input_bindings = tables.param_bindings.clone();
+        // A product parameter's inputs are its parts.
+        let products = &tables.param_products;
+        tables.input_bindings = tables
+            .param_bindings
+            .iter()
+            .flat_map(
+                |binding| match (binding, env::param_product(products, binding)) {
+                    (&LocalBinding::Param { site, idx, .. }, Some(product)) => {
+                        env::product_inputs(site, idx, product).collect()
+                    }
+                    _ => vec![*binding],
+                },
+            )
+            .collect();
         body
     }
 
@@ -5308,15 +5321,7 @@ impl<'db> TypedBody<'db> {
                     ty: shape.erased_ty(db),
                     is_mut: false,
                 }),
-                None => inputs.extend(shape.leaves().into_iter().zip(0..).map(
-                    |((access, ty), part)| LocalBinding::ParamPart {
-                        site,
-                        idx,
-                        part,
-                        access,
-                        ty,
-                    },
-                )),
+                None => inputs.extend(env::product_inputs(site, idx, &shape)),
             }
         }
         self
@@ -7122,7 +7127,16 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
                     let normalize = |ty| normalize_ty(db, ty, body.scope(), self.assumptions);
                     let span = ctxt.span().unwrap().into_closure_expr();
                     let mut diags = Vec::new();
-                    for (idx, &(mode, ty)) in closure.params(db).iter().enumerate() {
+                    // Each part of a product is checked as a parameter of its
+                    // mode.
+                    let parts = closure
+                        .params(db)
+                        .iter()
+                        .enumerate()
+                        .flat_map(|(idx, param)| {
+                            param.part_modes().into_iter().map(move |part| (idx, part))
+                        });
+                    for (idx, (mode, ty)) in parts {
                         let ty = normalize(ty);
                         let span: DynLazySpan<'db> = span.clone().params().param(idx).into();
                         if let Some((ty, mode)) = view_param_misuse(db, mode, ty) {

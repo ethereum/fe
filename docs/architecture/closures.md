@@ -10,16 +10,18 @@ derived from the closure expression.
 
 `ClosureTy` (`ty_def`) is interned from the closure's definition (body and
 expression), the parent's generic arguments, the capture types (the
-environment's fields), the parameters' modes and types, the result, and the
-row's components. Closure types unify structurally. A closure environment is
-a product like a tuple (`TyId::is_product`): its fields are its captures.
+environment's fields), the parameters' shapes (a mode and type, or a
+product's parts), the result, and the row's components. Closure types unify
+structurally. A closure environment is a product like a tuple
+(`TyId::is_product`): its fields are its captures. A product parameter's
+inputs are its parts, as a function's are (`TypedBody::for_closure`).
 
 ## Callable trait implementations
 
 `ty::closure` is the single home for the relationship between a callable
 value and the callable traits. A callable value (`CallableValue`) is a
 closure or a function item, other than an `unsafe fn`, a projection, a
-function with a product parameter or a spread, or a variant constructor.
+function with a spread, or a variant constructor.
 `CallableTrait::of` recognizes `core::functional`'s `Fn<shape A>` and
 `FnMut<shape A>`; an instance's parameters are those its shape argument
 lists (`callable_params`). A callable value implements both at
