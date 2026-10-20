@@ -1,5 +1,6 @@
 ---
 source: crates/uitest/tests/semantic_access.rs
+assertion_line: 32
 expression: diags
 input_file: fixtures/semantic_access/unsafe_splits.fe
 ---
@@ -18,8 +19,8 @@ error[16-0001]: access conflict in `fn external_call`
 27 │     let (mut a, mut b) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
    │                                    --------------------- projection opened here
    ·
-30 │     let _ = call.raw_call(addr: Address::new(1), gas: 0, value: 0, args: MemSpan::empty(), ret: mut output)
-   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `mut` projection of it is open
+30 │     let _ = call.raw_call(addr: Address::new(1), gas: 0, value: Wei::zero(), args: MemSpan::empty(), ret: mut output)
+   │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `mut` projection of it is open
 
 error[16-0001]: access conflict in `fn two_blocks`
    ┌─ unsafe_splits.fe:37:22
