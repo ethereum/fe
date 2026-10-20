@@ -8,7 +8,7 @@ use hir::analysis::{
         normalized::{NExpr, NStatementKind},
         reify_runtime_const_for_ty, sem_const_ty,
     },
-    ty::ty_def::TyId,
+    ty::{ty_def::TyId, ty_is_snapshot},
 };
 
 use crate::{
@@ -202,7 +202,12 @@ pub(super) fn aggregate_const_ref_class<'db>(
         return None;
     }
     let node = lower_const_node(db, env, value)?;
-    if !const_node_supports_data_ref(db, &node) || is_single_scalar_aggregate(&node) {
+    if !const_node_supports_data_ref(db, &node)
+        || (is_single_scalar_aggregate(&node)
+            && env
+                .scope
+                .is_some_and(|scope| ty_is_snapshot(db, scope, ty, env.assumptions)))
+    {
         return None;
     }
     Some(RuntimeClass::const_ref(layout_for_ty_in_env(db, env, ty)))
@@ -217,9 +222,11 @@ pub(super) fn aggregate_const_ref_region<'db>(
     lower_const_region(db, env, value)
 }
 
-/// A one-field wrapper such as `Wei { amount: 0 }` is as cheap to pass as the
-/// scalar itself. A const region would turn it into a pointer for every call
-/// it is passed to, and a call taking a constant would get its own instance.
+/// A one-field snapshot wrapper such as `Wei { amount: 0 }` is passed by copy
+/// and is as cheap as the scalar itself. A const region would turn it into a
+/// pointer for every call it is passed to, and a call taking a constant would
+/// get its own instance. Other one-field aggregates, such as `(true,)`, are
+/// viewed in place, which a const region serves at no cost.
 fn is_single_scalar_aggregate(node: &ConstNode<'_>) -> bool {
     matches!(node, ConstNode::Aggregate { fields, .. } if matches!(&**fields, [ConstNode::Scalar(_)]))
 }
