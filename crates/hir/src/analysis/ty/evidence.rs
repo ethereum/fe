@@ -379,15 +379,21 @@ fn prove_in<'db>(
 }
 
 /// The implementation answering `inst` where a checked body is
-/// instantiated: the one the checker's `evidence` applies, or, for a goal the
-/// checker proved by an assumption (a bound of the body) or did not prove,
-/// the one `solve_cx` selects.
+/// instantiated: the one the checker's `evidence` applies. A goal the
+/// checker proved by one of the body's bounds holds by that bound in every
+/// instance: by the proof the instance's caller gave of it, or by the
+/// instance's own bound where the caller gave none, so it is dispatched
+/// through the bound, unless the instantiation closes it, when it holds by
+/// the implementation every body proves it with. A goal the checker did not
+/// prove is selected in `solve_cx`.
 pub(crate) fn instantiated_selection<'db>(
     db: &'db dyn HirAnalysisDb,
     evidence: Option<EvidenceId<'db>>,
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
 ) -> Option<ResolvedImplInstance<'db>> {
+    let scope = solve_cx.normalization_scope_for_trait_inst(db, inst);
+    let goal = || normalize_trait_inst_preserving_validity(db, inst, scope, solve_cx.assumptions());
     match evidence.map(|evidence| evidence.data(db)) {
         // The proof names no goal: the use answers its own, normalized as
         // selection resolves it. An instantiated body can expose projections
@@ -397,25 +403,27 @@ pub(crate) fn instantiated_selection<'db>(
             instantiated,
             ..
         }) => {
-            let scope = solve_cx.normalization_scope_for_trait_inst(db, inst);
             let instantiated = if collect_flags(db, *instantiated).contains(TyFlags::HAS_PROJECTION)
             {
                 normalize_ty(db, *instantiated, scope, solve_cx.assumptions())
             } else {
                 *instantiated
             };
-            Some(ResolvedImplInstance::new(
-                *selected,
-                instantiated,
-                normalize_trait_inst_preserving_validity(db, inst, scope, solve_cx.assumptions()),
-            ))
+            Some(ResolvedImplInstance::new(*selected, instantiated, goal()))
         }
-        Some(Evidence::Assumption(_)) | None => {
-            match resolve_trait_impl_instance(db, solve_cx, inst) {
-                Selection::Unique(resolved) => Some(resolved),
-                Selection::Ambiguous(_) | Selection::NotFound => None,
-            }
+        Some(Evidence::Assumption(_)) if is_closed_goal(db, inst) => {
+            instantiated_selection(db, prove(db, solve_cx, inst), solve_cx, inst)
         }
+        // As selection answers a goal by an assumption.
+        Some(Evidence::Assumption(_)) => {
+            let goal = goal();
+            let assumption = ImplementorId::assumption(db, goal);
+            Some(ResolvedImplInstance::new(assumption, assumption, goal))
+        }
+        None => match resolve_trait_impl_instance(db, solve_cx, inst) {
+            Selection::Unique(resolved) => Some(resolved),
+            Selection::Ambiguous(_) | Selection::NotFound => None,
+        },
     }
 }
 
