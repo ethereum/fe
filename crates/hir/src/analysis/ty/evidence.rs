@@ -229,11 +229,11 @@ impl<'db> TyVisitable<'db> for EvidenceId<'db> {
     }
 }
 
-/// Whether `goal` names no parameter, inference variable or projection: no
-/// assumption answers it, so its proof is the same in every body.
+/// Whether `goal` names no parameter or inference variable, so neither does
+/// any projection in it: no assumption answers it, and its proof is the same
+/// in every body.
 fn is_closed_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> bool {
-    !collect_flags(db, goal)
-        .intersects(TyFlags::HAS_PARAM | TyFlags::HAS_VAR | TyFlags::HAS_PROJECTION)
+    !collect_flags(db, goal).intersects(TyFlags::HAS_PARAM | TyFlags::HAS_VAR)
 }
 
 /// Proves `goal` in `solve_cx`, the context of the body that uses it. A goal
@@ -570,42 +570,33 @@ pub(crate) fn impl_const_bound_evidence<'db>(
     instantiate_proofs(db, proofs, subst, supplied)
 }
 
-/// The evidence an instance whose body is checked under `signature` runs
-/// with, when `subst` instantiates the body with closed arguments:
-/// `supplied`'s closed proofs, and a proof in `solve_cx` of each assumption
-/// it gives none of, or gives one naming an assumption of a body the instance
-/// does not run in. Instances of one body with one substitution so share
-/// their evidence.
+/// The evidence an instance runs with: its key's proofs, `supplied`, of the
+/// assumptions its body is checked under, instantiated as `goals`, with a
+/// proof in `solve_cx` of each closed goal `supplied` gives no closed proof
+/// of. A use leaves its callee's closed goals to the instance, and a proof
+/// of one naming the use's own assumptions names those of a body the
+/// instance does not run in.
 #[salsa::tracked]
-pub(crate) fn closed_evidence<'db>(
+pub(crate) fn instance_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
-    signature: PredicateListId<'db>,
-    subst: GenericSubst<'db>,
+    goals: PredicateListId<'db>,
     supplied: EvidenceList<'db>,
     solve_cx: TraitSolveCx<'db>,
 ) -> EvidenceList<'db> {
-    let closed = |index| {
-        supplied
-            .get(db, index)
-            .filter(|evidence| evidence.is_closed(db))
-    };
-    if (0..signature.list(db).len()).all(|index| closed(index).is_some()) {
-        return supplied;
-    }
-    let Some(Ok(goals)) = subst
-        .mapping(db)
-        .as_ref()
-        .map(|subst| substitute_complete(db, signature, subst))
-    else {
-        return EvidenceList::none(db);
-    };
     EvidenceList::of(
         db,
         goals
             .list(db)
             .iter()
             .enumerate()
-            .map(|(index, &goal)| closed(index).or_else(|| prove(db, solve_cx, goal)))
+            .map(|(index, &goal)| {
+                let supplied = supplied.get(db, index);
+                if is_closed_goal(db, goal) && !supplied.is_some_and(|proof| proof.is_closed(db)) {
+                    prove(db, solve_cx, goal)
+                } else {
+                    supplied
+                }
+            })
             .collect(),
     )
 }

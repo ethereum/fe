@@ -12,7 +12,7 @@ use crate::{
             binder::Binder,
             closure::{callee_closure, callee_function_item, closure_template_ty},
             const_ty::{
-                ConstCanonEnv, ConstCanonMode, canonicalize_ty_for_mode, const_body_assumptions,
+                ConstCanonEnv, ConstCanonMode, canonicalize_ty_for_mode,
                 inherent_const_body_and_impl_args, inherent_const_decl_ty,
             },
             corelib::resolve_core_trait,
@@ -20,7 +20,7 @@ use crate::{
                 place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowPath, expand_rows},
             },
-            evidence::{EvidenceList, closed_evidence, impl_method_bound_evidence},
+            evidence::{EvidenceList, impl_method_bound_evidence},
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
@@ -34,7 +34,7 @@ use crate::{
             },
             ty_check::{
                 BodyOwner, Callable, ConstRef, EffectParamSite, EffectProviderSpecialization,
-                ResolvedEffectArg, func_signature,
+                ResolvedEffectArg,
             },
             ty_def::{BorrowKind, TyFlags, TyId},
             ty_lower::{ParamKey, ParamSchemaId},
@@ -513,7 +513,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         );
         let body_rows = row_expansion_for_key(
             db,
-            SemanticInstanceKey::new(
+            SemanticInstanceKey::of(
                 db,
                 owner,
                 subst,
@@ -563,7 +563,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         })
         .collect::<Vec<_>>();
         return Ok(Some(SemanticCallCallee {
-            key: SemanticInstanceKey::new(
+            key: SemanticInstanceKey::of(
                 db,
                 owner,
                 subst,
@@ -603,7 +603,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         );
         let func_rows = row_expansion_for_key(
             db,
-            SemanticInstanceKey::new(
+            SemanticInstanceKey::of(
                 db,
                 owner,
                 GenericSubst::for_owner(db, func.into(), target.generic_args().to_vec()),
@@ -1121,23 +1121,9 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else {
         evidence
     };
-    // An instance with closed arguments runs with closed proofs only: one
-    // the call could not supply, or supplied naming its caller's own
-    // unproved assumptions, is proved here.
-    let evidence = if is_ground(collect_flags(db, subst.generic_args(db))) {
-        closed_evidence(
-            db,
-            func_signature(db, body_func, owner.mode()),
-            subst,
-            evidence,
-            TraitSolveCx::new(db, impl_env.normalization_scope(db)),
-        )
-    } else {
-        evidence
-    };
     Ok(Some(SemanticCallCallee {
         concrete_dispatch: callable.trait_inst().is_none() || selected_impl,
-        key: SemanticInstanceKey::new(
+        key: SemanticInstanceKey::of(
             db,
             owner,
             subst,
@@ -1160,7 +1146,7 @@ fn semantic_callee_key_with_assumptions<'db>(
 
 /// Whether a value has no inference state, symbolic parameters, or
 /// unresolved projections.
-fn is_ground(flags: TyFlags) -> bool {
+pub(super) fn is_ground(flags: TyFlags) -> bool {
     !flags.intersects(
         TyFlags::HAS_INVALID | TyFlags::HAS_VAR | TyFlags::HAS_PARAM | TyFlags::HAS_PROJECTION,
     )
@@ -1291,22 +1277,8 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
             } else {
                 evidence
             };
-            // As for a call: an instance with closed arguments runs with
-            // closed proofs only.
-            let ground = is_ground(collect_flags(db, subst.values()));
             let subst = GenericSubst::complete(db, subst);
-            let evidence = if ground {
-                closed_evidence(
-                    db,
-                    const_body_assumptions(db, body.scope()).extend_all_bounds(db),
-                    subst,
-                    evidence,
-                    use_.solve_cx(db),
-                )
-            } else {
-                evidence
-            };
-            Some(SemanticInstanceKey::new(
+            Some(SemanticInstanceKey::of(
                 db,
                 BodyOwner::AnonConstBody { body, expected: ty },
                 subst,
@@ -1330,7 +1302,7 @@ fn semantic_const_key_for_const<'db>(
     const_: Const<'db>,
 ) -> Option<SemanticInstanceKey<'db>> {
     let owner = BodyOwner::Const(const_);
-    Some(SemanticInstanceKey::new(
+    Some(SemanticInstanceKey::of(
         db,
         owner,
         GenericSubst::none(db),
@@ -1347,7 +1319,7 @@ fn semantic_const_key_for_inherent_const<'db>(
     let (body, impl_args) =
         inherent_const_body_and_impl_args(db, use_.impl_(), use_.receiver_ty(), use_.name())?;
     let ty = inherent_const_decl_ty(db, use_.impl_(), use_.name())?;
-    Some(SemanticInstanceKey::new(
+    Some(SemanticInstanceKey::of(
         db,
         BodyOwner::AnonConstBody { body, expected: ty },
         GenericSubst::for_owner(db, use_.impl_().into(), impl_args),

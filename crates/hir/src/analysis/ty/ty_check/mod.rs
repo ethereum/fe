@@ -625,7 +625,7 @@ pub(super) fn condition_outcome_in<'db>(
     subst: GenericSubst<'db>,
     impl_env: ImplEnv<'db>,
 ) -> ConditionOutcome<'db> {
-    let key = SemanticInstanceKey::new(
+    let key = SemanticInstanceKey::of(
         db,
         owner,
         subst,
@@ -1205,7 +1205,7 @@ fn const_body_ctfe_diags_with_context<'db>(
     } else {
         // A dependent declaration may describe opaque computations, such as
         // extern const calls, that only a value demand has to execute.
-        let key = SemanticInstanceKey::new(
+        let key = SemanticInstanceKey::of(
             db,
             owner,
             GenericSubst::none(db),
@@ -1256,7 +1256,7 @@ fn const_body_ctfe_diags_with_context<'db>(
                     diags.push(diag.into());
                 }
             } else if require_value {
-                let key = SemanticInstanceKey::new(
+                let key = SemanticInstanceKey::of(
                     db,
                     owner,
                     GenericSubst::none(db),

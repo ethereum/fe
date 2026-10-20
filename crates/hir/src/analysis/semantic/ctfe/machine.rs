@@ -234,7 +234,7 @@ pub fn eval_body_owner_const<'db>(
     owner: BodyOwner<'db>,
     subst: GenericSubst<'db>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
-    let key = SemanticInstanceKey::new(
+    let key = SemanticInstanceKey::of(
         db,
         owner,
         subst,
@@ -272,7 +272,7 @@ pub fn eval_body_owner_const_with_args<'db>(
     subst: GenericSubst<'db>,
     args: Vec<SemConstId<'db>>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
-    let key = SemanticInstanceKey::new(
+    let key = SemanticInstanceKey::of(
         db,
         owner,
         subst,
