@@ -905,4 +905,120 @@ const fn call_after() -> u256 {
         assert_ne!(id_before, id_alt30);
         assert_ne!(id_alt20, id_alt30);
     }
+
+    #[test]
+    fn stable_key_distinguishes_generic_forwarded_and_proved_subchoice_evidence() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "stable_key_generic_and_prove_subchoice.fe".into(),
+            r#"
+use core::obligations::prove
+
+trait Inner {
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner20 {
+    const fn inner() -> u256 { 20 }
+}
+impl Inner for u256 as AltInner30 {
+    const fn inner() -> u256 { 30 }
+}
+
+struct Boxed<T> {
+    pub x: T,
+}
+trait Outer {
+    const fn outer(self) -> u256
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const fn outer(self) -> u256 { T::inner() }
+}
+
+const fn run<M: Outer>(_ m: M) -> u256 {
+    m.outer()
+}
+
+const fn call_before() -> u256 {
+    run(Boxed { x: 1 as u256 })
+}
+const fn call_alt20() -> u256 {
+    with (AltInner20) {
+        run(Boxed { x: 1 as u256 })
+    }
+}
+const fn call_alt30() -> u256 {
+    with (AltInner30) {
+        run(Boxed { x: 1 as u256 })
+    }
+}
+const fn call_prove20() -> u256 {
+    let ev = with (AltInner20) {
+        prove<Outer<Boxed<u256>>>()
+    }
+    with (ev) {
+        run(Boxed { x: 1 as u256 })
+    }
+}
+const fn call_prove30() -> u256 {
+    let ev = with (AltInner30) {
+        prove<Outer<Boxed<u256>>>()
+    }
+    with (ev) {
+        run(Boxed { x: 1 as u256 })
+    }
+}
+const fn call_after() -> u256 {
+    run(Boxed { x: 1 as u256 })
+}
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+
+        let func = |name: &str| {
+            top_mod
+                .children_non_nested(&db)
+                .find_map(|item| match item {
+                    ItemKind::Func(f)
+                        if f.name(&db).to_opt().is_some_and(|n| n.data(&db) == name) =>
+                    {
+                        Some(f)
+                    }
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let run_fn = func("run");
+        let run_in = |caller_name: &str| {
+            let caller = func(caller_name);
+            let inst = get_or_build_semantic_instance(
+                &db,
+                root_semantic_instance_key(&db, BodyOwner::Func(caller, None)).unwrap(),
+            );
+            let key = inst
+                .callees(&db)
+                .iter()
+                .find(|c| c.key.owner(&db) == BodyOwner::Func(run_fn, None))
+                .unwrap()
+                .key;
+            get_or_build_semantic_instance(&db, key)
+        };
+
+        let id_before = semantic_instance_identity(&db, run_in("call_before"));
+        let id_alt20 = semantic_instance_identity(&db, run_in("call_alt20"));
+        let id_alt30 = semantic_instance_identity(&db, run_in("call_alt30"));
+        let id_prove20 = semantic_instance_identity(&db, run_in("call_prove20"));
+        let id_prove30 = semantic_instance_identity(&db, run_in("call_prove30"));
+        let id_after = semantic_instance_identity(&db, run_in("call_after"));
+
+        assert_eq!(id_before, id_after);
+        assert_ne!(id_before, id_alt20);
+        assert_ne!(id_before, id_alt30);
+        assert_ne!(id_alt20, id_alt30);
+        assert_ne!(id_before, id_prove20);
+        assert_ne!(id_prove20, id_prove30);
+    }
 }

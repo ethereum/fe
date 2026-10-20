@@ -486,7 +486,10 @@ fn body_trait_uses<'db>(
         return uses;
     };
     for (_, callable, _) in typed.recorded_calls(db) {
-        let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
+        let own_slot = callable
+            .trait_inst
+            .or_else(|| prove_goal(db, callable, |ty| ty))
+            .map(|inst| slot_goal(db, inst));
         if let Some(slot) = own_slot {
             uses.push((slot, callable.choice(), true));
         }
@@ -508,6 +511,19 @@ fn body_trait_uses<'db>(
             let is_own = Some(slot) == own_slot
                 || chosen.is_some_and(|known| known.bound_choice(db, bound).is_some());
             uses.push((slot, delivered, is_own));
+            if let Some(Choice::Known(inner)) = delivered {
+                visit_known_impl_goals(db, inner, &mut |_, inner_goal, inner_delivered| {
+                    let inner_slot = slot_goal(db, inner_goal);
+                    let item = (
+                        inner_slot,
+                        inner_delivered,
+                        Some(inner_slot) == own_slot || inner_delivered.is_some(),
+                    );
+                    if !uses.contains(&item) {
+                        uses.push(item);
+                    }
+                });
+            }
         }
         if let Some(known) = chosen {
             visit_known_impl_goals(db, known, &mut |_, goal, delivered| {
@@ -545,11 +561,7 @@ pub(super) fn owed_opened_conditions<'db>(
     let mut owed = Vec::new();
     let mut seen = Vec::new();
     for (goal, choice, own_slot) in body_trait_uses(db, typed) {
-        if own_slot
-            || choice.is_some_and(|c| !c.is_ordinary())
-            || own.contains(&goal)
-            || seen.contains(&goal)
-        {
+        if own_slot || choice.is_some() || own.contains(&goal) || seen.contains(&goal) {
             continue;
         }
         seen.push(goal);
@@ -1928,27 +1940,28 @@ impl<'db> TyChecker<'db> {
                     // Proved through a condition on an opened slot, or by a
                     // proof that cannot be followed: refused as the call form
                     // of the same goal is.
-                    None => match self.env.reads_opened_condition(
-                        self.env.choice_frames.current(),
-                        [goal],
-                        None,
-                    ) {
-                        Some(refusal) => {
-                            self.push_diag(BodyDiag::ObligationOpening {
-                                primary: expr.span(self.body()).into(),
-                                reason: match refusal {
-                                    ChoiceRefusal::OpenedCondition => {
-                                        "the goal is proved through an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet"
-                                    }
-                                    _ => {
-                                        "the goal's proof cannot be followed to one implementation while a slot is opened here, so it is not known to avoid that slot; this is not supported yet"
-                                    }
-                                },
-                            });
-                            return false;
+                    None => {
+                        let frame = self.env.choice_frames.current();
+                        let mut undecided = Vec::new();
+                        let choice = self.ordinary_choice(frame, goal, &mut undecided);
+                        match self.env.reads_opened_condition(frame, undecided, None) {
+                            Some(refusal) => {
+                                self.push_diag(BodyDiag::ObligationOpening {
+                                    primary: expr.span(self.body()).into(),
+                                    reason: match refusal {
+                                        ChoiceRefusal::OpenedCondition => {
+                                            "the goal is proved through an implementation with a condition on a slot opened here; conditional implementations under `with` are not supported yet"
+                                        }
+                                        _ => {
+                                            "the goal's proof cannot be followed to one implementation while a slot is opened here, so it is not known to avoid that slot; this is not supported yet"
+                                        }
+                                    },
+                                });
+                                return false;
+                            }
+                            None => choice.map(Choice::Known),
                         }
-                        None => self.ordinary_choice(goal).map(Choice::Known),
-                    },
+                    }
                 }
             }
         };
@@ -1985,26 +1998,33 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn ordinary_choice(&self, goal: TraitInstId<'db>) -> Result<KnownChoice<'db>, &'static str> {
-        let cx = self.env.proof_context();
+    fn ordinary_choice(
+        &self,
+        frame: Option<FrameId>,
+        goal: TraitInstId<'db>,
+        undecided: &mut Vec<TraitInstId<'db>>,
+    ) -> Result<KnownChoice<'db>, &'static str> {
+        let cx = self.env.frame_proof_context(frame);
         let Selection::Unique(resolved) = resolve_trait_impl_instance(
             self.db,
             cx,
             goal,
             crate::analysis::ty::trait_choice::OrdinarySelection::no_recorded_choice(),
         ) else {
+            undecided.push(goal);
             return Err("the requested trait goal was not proved");
         };
         let ImplementorOrigin::Hir(implementation) = resolved.selected().origin(self.db) else {
+            undecided.push(goal);
             return Err("the requested trait goal has no authored implementation");
         };
         let mut active = rustc_hash::FxHashSet::default();
         let bounds = self.env.impl_bound_choices(
-            None,
+            frame,
             implementation,
             resolved.impl_args(self.db),
             0,
-            None,
+            Some(undecided),
             &mut active,
         );
         KnownChoice::prove(self.db, cx, implementation, goal)
@@ -2316,6 +2336,7 @@ impl<'db> TyCheckEnv<'db> {
             None => (func, callable.generic_args(), false),
         };
         let mut decided = Vec::new();
+        let mut undecided_bounds = Vec::new();
         for (bound, at_call) in declared_goals(db, body, body_args) {
             let choice = if Some(at_call) == own_slot {
                 own
@@ -2325,7 +2346,18 @@ impl<'db> TyCheckEnv<'db> {
             {
                 Some(bound_choice)
             } else {
-                self.decide(frame, at_call)
+                let mut active = rustc_hash::FxHashSet::default();
+                let resolved = self.ordinary_choice(
+                    frame,
+                    at_call,
+                    0,
+                    Some(&mut undecided_bounds),
+                    &mut active,
+                );
+                if resolved.is_none() {
+                    undecided_bounds.push(at_call);
+                }
+                resolved
             };
             decided.push((bound, at_call, choice));
         }
@@ -2360,22 +2392,13 @@ impl<'db> TyCheckEnv<'db> {
         // for it receives its implementation's bounds here.
         let undecided = undecided_own
             .into_iter()
-            .chain(
-                decided
-                    .iter()
-                    .filter(|(_, _, choice)| choice.is_none())
-                    .map(|(_, goal, _)| *goal),
-            )
+            .chain(undecided_bounds)
             .chain(undecided_candidates);
         if let Some(refusal) = self.reads_opened_condition(frame, undecided, own_slot) {
             return Err(refusal);
         }
         let mut delivered: Vec<(Delivery<'db>, Choice<'db>)> = Vec::new();
-        for (bound, at_call, choice) in decided {
-            let choice = choice.or_else(|| {
-                let mut active = rustc_hash::FxHashSet::default();
-                self.ordinary_choice(None, at_call, 0, None, &mut active)
-            });
+        for (bound, _at_call, choice) in decided {
             let Some(choice) = choice else {
                 continue;
             };
@@ -2665,16 +2688,12 @@ impl<'db> TyCheckEnv<'db> {
             let mut captured = Vec::new();
             let mut undecided = Vec::new();
             for goal in self.call_uses(&callable) {
-                let choice = if Some(slot_goal(db, goal)) == own_slot {
-                    let mut active = rustc_hash::FxHashSet::default();
-                    self.ordinary_choice(frame, goal, 0, Some(&mut undecided), &mut active)
-                } else {
-                    self.decide(frame, goal).or_else(|| {
-                        undecided.push(goal);
-                        let mut active = rustc_hash::FxHashSet::default();
-                        self.ordinary_choice(None, goal, 0, None, &mut active)
-                    })
-                };
+                let mut active = rustc_hash::FxHashSet::default();
+                let choice =
+                    self.ordinary_choice(frame, goal, 0, Some(&mut undecided), &mut active);
+                if choice.is_none() {
+                    undecided.push(goal);
+                }
                 if let Some(choice) = choice {
                     choice.for_each_choice(db, &mut |item| {
                         if !item.is_ordinary() && !captured.contains(&item) {
@@ -2936,9 +2955,15 @@ impl<'db> TyCheckEnv<'db> {
         let use_ = use_.with_choice(own);
         let own_decision = own.map(|choice| (own_slot, choice));
         let items = match use_.body_that_runs(db) {
-            Some(runs) => {
-                self.body_decisions(frame, runs, own_decision, false, &mut undecided, reached)?
-            }
+            Some(runs) => self.body_decisions(
+                frame,
+                runs,
+                own_decision,
+                false,
+                false,
+                &mut undecided,
+                reached,
+            )?,
             // A body chosen later: the trait's default body declares the
             // slots a constant's declaration has (its `Self` and supertraits),
             // reached by name (`DeliveryList::to_body`), and each
@@ -2951,6 +2976,7 @@ impl<'db> TyCheckEnv<'db> {
                         default,
                         own_decision,
                         true,
+                        false,
                         &mut undecided,
                         reached,
                     )?,
@@ -2972,6 +2998,7 @@ impl<'db> TyCheckEnv<'db> {
                         candidate,
                         own_decision,
                         false,
+                        true,
                         &mut undecided,
                         reached,
                     )? {
@@ -3026,6 +3053,7 @@ impl<'db> TyCheckEnv<'db> {
             (body, ty, subst),
             None,
             false,
+            false,
             &mut undecided,
             reached,
         )?;
@@ -3041,6 +3069,7 @@ impl<'db> TyCheckEnv<'db> {
     /// or evidence choice (refused as a call into a function's is); one
     /// that passes the user's own bound on is added to `reached`, which the
     /// user owes its callers (`own_type_reads`).
+    #[allow(clippy::too_many_arguments)]
     fn body_decisions(
         &self,
         frame: Option<FrameId>,
@@ -3051,6 +3080,7 @@ impl<'db> TyCheckEnv<'db> {
         ),
         own: Option<(TraitInstId<'db>, Choice<'db>)>,
         nominal: bool,
+        candidate: bool,
         undecided: &mut Vec<TraitInstId<'db>>,
         reached: &mut Vec<TraitInstId<'db>>,
     ) -> Result<Vec<(Delivery<'db>, Choice<'db>)>, ChoiceRefusal> {
@@ -3059,42 +3089,43 @@ impl<'db> TyCheckEnv<'db> {
         for (bound, at_use) in const_declared_goals(db, body, &subst) {
             let decided = match own {
                 Some((slot, choice)) if at_use == slot => Some(choice),
-                Some((_, Choice::Known(known))) if !nominal => known
-                    .bound_choice(db, bound)
-                    .or_else(|| self.decide(frame, at_use)),
-                _ => self.decide(frame, at_use),
-            };
-            let choice = match decided {
-                Some(choice) => {
-                    if const_type_reads(db, body, ty).contains(&bound) {
-                        let mut dependent = false;
-                        choice.for_each_choice(db, &mut |item| match item {
-                            Choice::Slot(SlotRef::Bound(goal)) => {
-                                if !reached.contains(&goal) {
-                                    reached.push(goal);
-                                }
-                            }
-                            // Refused where it is read (`written_frames`).
-                            Choice::Slot(SlotRef::Unsupplied) => {}
-                            Choice::Known(known) if known.is_ordinary() => {}
-                            _ => dependent = true,
-                        });
-                        if dependent {
-                            return Err(ChoiceRefusal::DependentType);
-                        }
-                    }
-                    choice
+                Some((_, Choice::Known(known))) if !nominal && !candidate => {
+                    known.bound_choice(db, bound).or_else(|| {
+                        let mut active = rustc_hash::FxHashSet::default();
+                        self.ordinary_choice(frame, at_use, 0, Some(undecided), &mut active)
+                    })
                 }
-                None => {
+                _ if candidate => self.decide(frame, at_use).or_else(|| {
                     undecided.push(at_use);
                     let mut active = rustc_hash::FxHashSet::default();
-                    let Some(choice) = self.ordinary_choice(None, at_use, 0, None, &mut active)
-                    else {
-                        continue;
-                    };
-                    choice
+                    self.ordinary_choice(None, at_use, 0, None, &mut active)
+                }),
+                _ => {
+                    let mut active = rustc_hash::FxHashSet::default();
+                    self.ordinary_choice(frame, at_use, 0, Some(undecided), &mut active)
                 }
             };
+            let Some(choice) = decided else {
+                undecided.push(at_use);
+                continue;
+            };
+            if const_type_reads(db, body, ty).contains(&bound) {
+                let mut dependent = false;
+                choice.for_each_choice(db, &mut |item| match item {
+                    Choice::Slot(SlotRef::Bound(goal)) => {
+                        if !reached.contains(&goal) {
+                            reached.push(goal);
+                        }
+                    }
+                    // Refused where it is read (`written_frames`).
+                    Choice::Slot(SlotRef::Unsupplied) => {}
+                    Choice::Known(known) if known.is_ordinary() => {}
+                    _ => dependent = true,
+                });
+                if dependent {
+                    return Err(ChoiceRefusal::DependentType);
+                }
+            }
             let delivery = if nominal {
                 Delivery::Nominal(bound)
             } else {

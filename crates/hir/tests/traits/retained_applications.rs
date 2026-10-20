@@ -377,81 +377,142 @@ fn use_cycle(_ n: Node) -> u32 {
 }
 
 #[test]
-fn conditional_impl_under_with_remains_refused() {
+fn conditional_impl_under_with_forwards_subchoices_and_prove_to_generic_callees() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
-        "conditional_impl_under_with_refused.fe".into(),
+        "conditional_impl_under_with_forwarded.fe".into(),
         r#"
+use core::obligations::{Evidence, prove}
+
 trait Inner {
-    fn inner() -> u32
+    const C: u32
+    const fn inner() -> u32
 }
 
 impl Inner for u32 {
-    fn inner() -> u32 { 1 }
+    const C: u32 = 10
+    const fn inner() -> u32 { 1 }
 }
 
 impl Inner for u32 as AltInner {
-    fn inner() -> u32 { 2 }
+    const C: u32 = 20
+    const fn inner() -> u32 { 2 }
 }
 
 struct Box<T> {
     pub val: T,
 }
 
+struct Nested<T> {
+    pub boxed: Box<T>,
+}
+
 trait Outer {
-    fn outer(self) -> u32
+    const K: u32
+    const fn outer(self) -> u32
 }
 
 impl<T: Inner> Outer for Box<T> {
-    fn outer(self) -> u32 {
+    const K: u32 = T::C
+    const fn outer(self) -> u32 {
         T::inner()
     }
 }
 
-fn run<M: Outer>(_ m: M) -> u32 {
-    m.outer()
+trait Top {
+    const TOP_K: u32
+    const fn top(self) -> u32
 }
 
-fn wrap<U: Inner>(_ x: U) -> u32 {
+impl<T> Top for Nested<T>
+where
+    Box<T>: Outer
+{
+    const TOP_K: u32 = <Box<T> as Outer>::K
+    const fn top(self) -> u32 {
+        self.boxed.outer()
+    }
+}
+
+const fn run<M: Outer>(_ m: M) -> u32 {
+    m.outer() + M::K
+}
+
+const fn wrap<U: Inner>(_ x: U) -> u32 {
     run(Box { val: x })
 }
 
-fn ok_outside_with() -> u32 {
+const fn run_top<M: Top>(_ m: M) -> u32 {
+    m.top() + M::TOP_K
+}
+
+const fn wrap_top<U: Inner>(_ x: U) -> u32 {
+    run_top(Nested { boxed: Box { val: x } })
+}
+
+const fn run_with_ev(_ ev: Evidence<Outer<Box<u32>>>, _ b: Box<u32>) -> u32 {
+    with (ev) {
+        run(b)
+    }
+}
+
+const fn run_top_with_ev(_ ev: Evidence<Top<Nested<u32>>>, _ n: Nested<u32>) -> u32 {
+    with (ev) {
+        run_top(n)
+    }
+}
+
+const OK_OUTSIDE_WITH: u32 = {
     let one: u32 = 1
     run(Box { val: one }) + wrap(one)
 }
 
-fn bad_direct() -> u32 {
+const DIRECT_UNDER_WITH: u32 = {
     let one: u32 = 1
     with (AltInner) {
         run(Box { val: one })
     }
 }
 
-fn bad_through_generic() -> u32 {
+const THROUGH_GENERIC_UNDER_WITH: u32 = {
     let one: u32 = 1
     with (AltInner) {
         wrap(one)
     }
 }
+
+const TWO_HOP_GENERIC_UNDER_WITH: u32 = {
+    let one: u32 = 1
+    with (AltInner) {
+         run_top(Nested { boxed: Box { val: one } }) + wrap_top(one)
+    }
+}
+
+const PROVE_SUBCHOICE_UNDER_WITH: u32 = {
+    let one: u32 = 1
+    let ev = with (AltInner) {
+        prove<Outer<Box<u32>>>()
+    }
+    let ev_top = with (AltInner) {
+        prove<Top<Nested<u32>>>()
+    }
+    run_with_ev(ev, Box { val: one }) + run_top_with_ev(ev_top, Nested { boxed: Box { val: one } })
+}
+
+struct Verify22<const N: u32> where { N == 22 } {}
+struct Verify44<const N: u32> where { N == 44 } {}
+
+fn verify(
+    _ a: Verify22<OK_OUTSIDE_WITH>,
+    _ b: Verify22<DIRECT_UNDER_WITH>,
+    _ c: Verify22<THROUGH_GENERIC_UNDER_WITH>,
+    _ d: Verify44<TWO_HOP_GENERIC_UNDER_WITH>,
+    _ e: Verify44<PROVE_SUBCHOICE_UNDER_WITH>,
+) {}
 "#,
     );
     let (module, _) = db.top_mod(file);
-    let ok_func = find_func(&db, module, "ok_outside_with");
-    let (ok_diags, _) = fe_hir::analysis::ty::ty_check::check_func_body(&db, ok_func);
-    assert!(
-        ok_diags.is_empty(),
-        "expected ok_outside_with to have no diagnostics, got: {ok_diags:?}"
-    );
-    for func_name in ["bad_direct", "bad_through_generic"] {
-        let func = find_func(&db, module, func_name);
-        let (diags, _) = fe_hir::analysis::ty::ty_check::check_func_body(&db, func);
-        let formatted = format!("{diags:?}");
-        assert!(
-            formatted.contains("conditional implementations under `with` are not supported yet"),
-            "expected OpenedCondition refusal in `{func_name}`, got: {formatted}"
-        );
-    }
+    db.assert_no_diags(module);
 }
 
 #[test]

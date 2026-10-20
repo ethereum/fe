@@ -224,20 +224,21 @@ fn run(_ o: Once<Item>) -> usize {
 }
 
 #[test]
-fn for_loop_protocol_calls_refuse_opened_condition_under_with() {
-    // R9C-1a (OpenedCondition refusal on `for x in o` inside `with`):
-    // `Once::start` relies on conditional `impl<T: Price> Bonus for T` under `with (Wholesale)`.
-    let opened_condition_loop = r#"
+fn for_loop_protocol_calls_transport_subchoices_and_refuse_unfollowed_proofs_under_with() {
+    // 1. `Once::start` relies on conditional `impl<T: Price> Bonus for T` via `call_bonus<T>()`.
+    // Under `with (Wholesale)`, the sub-choice `T: Price -> Wholesale` is transported into
+    // `Once::start` -> `call_bonus<Item>()` without refusal.
+    let transported_loop = r#"
 use core::iter::Collection
 
-trait Price { fn amount() -> usize }
-trait Bonus { fn bonus() -> usize }
+trait Price { const fn amount() -> usize }
+trait Bonus { const fn bonus() -> usize }
 struct Item {}
-impl Price for Item { fn amount() -> usize { 100 } }
-impl Price for Item as Wholesale { fn amount() -> usize { 70 } }
-impl<T: Price> Bonus for T { fn bonus() -> usize { T::amount() } }
+impl Price for Item { const fn amount() -> usize { 100 } }
+impl Price for Item as Wholesale { const fn amount() -> usize { 70 } }
+impl<T: Price> Bonus for T { const fn bonus() -> usize { T::amount() } }
 
-fn call_bonus<T: Bonus>() -> usize { T::bonus() }
+const fn call_bonus<T: Bonus>() -> usize { T::bonus() }
 
 struct Once<T> {
     vals: [usize; 1],
@@ -247,13 +248,13 @@ impl<T: Price> Collection for Once<T> {
     type Item = usize
     type Cursor = usize
 
-    fn start(self) -> usize {
+    const fn start(self) -> usize {
         let _ = call_bonus<T>()
         0
     }
-    fn has(self, _ c: usize) -> bool { c < 1 }
-    fn next(self, _ c: usize) -> usize { c + 1 }
-    fn at(mut? self, _ c: usize) -> mut? usize { mut? self.vals[0] }
+    const fn has(self, _ c: usize) -> bool { c < 1 }
+    const fn next(self, _ c: usize) -> usize { c + 1 }
+    const fn at(mut? self, _ c: usize) -> mut? usize { mut? self.vals[0] }
 }
 
 fn run(_ o: Once<Item>) -> usize {
@@ -267,9 +268,9 @@ fn run(_ o: Once<Item>) -> usize {
 }
 "#;
     assert!(
-        diag_codes(opened_condition_loop).contains(&"8-0098".to_string()),
-        "expected 8-0098 for `for` loop protocol call with opened condition under `with`, got {:?}",
-        diag_codes(opened_condition_loop)
+        diag_codes(transported_loop).is_empty(),
+        "expected no diagnostics for `for` loop protocol call transporting conditional sub-choice under `with`, got {:?}",
+        diag_codes(transported_loop)
     );
 }
 

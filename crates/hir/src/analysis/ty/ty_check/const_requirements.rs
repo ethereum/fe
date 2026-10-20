@@ -2810,23 +2810,26 @@ pub(super) fn reached_bounds_at_call<'db>(
     callable: &Callable<'db>,
     direct: bool,
 ) -> Vec<TraitInstId<'db>> {
-    facts_at_call(
+    let mut reached = Vec::new();
+    for fact in facts_at_call(
         db,
         callable,
         direct,
         scope,
         typed.assumptions(),
         &mut Walk::new(),
-    )
-    .into_iter()
-    .filter_map(|fact| match fact {
-        EdgeFact::Reaches {
-            choice: Choice::Slot(SlotRef::Bound(slot)),
-            ..
-        } => Some(slot),
-        _ => None,
-    })
-    .collect()
+    ) {
+        if let EdgeFact::Reaches { choice, .. } = fact {
+            choice.for_each_choice(db, &mut |item| {
+                if let Choice::Slot(SlotRef::Bound(slot)) = item
+                    && !reached.contains(&slot)
+                {
+                    reached.push(slot);
+                }
+            });
+        }
+    }
+    reached
 }
 
 /// Every condition a call checks or owes under the choices it delivers.
@@ -2967,23 +2970,22 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
                     &mut owed,
                 ),
                 EdgeFact::Condition(_) => {}
-                EdgeFact::Reaches {
-                    choice: Choice::Slot(SlotRef::Bound(slot)),
-                    ..
-                } => push(
-                    OwedCheck::Reaches {
-                        slot,
-                        signature: false,
-                    },
-                    &mut owed,
-                ),
-                // Refused where `func` itself is checked.
-                EdgeFact::Reaches { .. } => {}
-                EdgeFact::OpenedCondition {
-                    choice: Choice::Slot(SlotRef::Bound(slot)),
-                } => push(OwedCheck::OpenedCondition { slot }, &mut owed),
-                // Refused where `func` itself is checked.
-                EdgeFact::OpenedCondition { .. } => {}
+                EdgeFact::Reaches { choice, .. } => choice.for_each_choice(db, &mut |item| {
+                    if let Choice::Slot(SlotRef::Bound(slot)) = item {
+                        push(
+                            OwedCheck::Reaches {
+                                slot,
+                                signature: false,
+                            },
+                            &mut owed,
+                        );
+                    }
+                }),
+                EdgeFact::OpenedCondition { choice } => choice.for_each_choice(db, &mut |item| {
+                    if let Choice::Slot(SlotRef::Bound(slot)) = item {
+                        push(OwedCheck::OpenedCondition { slot }, &mut owed);
+                    }
+                }),
                 EdgeFact::NoEvidence { ty } => {
                     if ty.has_param(db) && !super::choice::holds_evidence(db, func.scope(), ty) {
                         push(OwedCheck::NoEvidence { param: ty }, &mut owed);
