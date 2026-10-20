@@ -4254,14 +4254,41 @@ enum TraitImplAdmissibility {
     UnsafeLocalBoundBlanketImpl,
 }
 
+/// Whether `ty` is an associated type, possibly applied.
+fn is_assoc_ty_projection<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    matches!(
+        ty.base_ty(db).data(db),
+        TyData::AssocTy(_) | TyData::QualifiedTy(_)
+    )
+}
+
 impl<'db> ImplTrait<'db> {
     /// Semantic self type of this impl-trait block.
     pub fn ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         let assumptions = constraints_for(db, self.into());
         self.type_ref(db).to_opt().map_or_else(
             || TyId::invalid(db, InvalidCause::ParseError),
-            |hir_ty| lower_hir_ty(db, hir_ty, self.scope(), assumptions),
+            |hir_ty| {
+                let ty = lower_hir_ty(db, hir_ty, self.scope(), assumptions);
+                self.normalize_self_ty(db, ty, assumptions)
+            },
         )
+    }
+
+    /// An impl is for its normalized self type: with `type Out = u256`,
+    /// `impl Tr for <S as Get>::Out` is `impl Tr for u256` to its ingot
+    /// check, overlap checks, impl selection and `Self` alike.
+    fn normalize_self_ty(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+        assumptions: PredicateListId<'db>,
+    ) -> TyId<'db> {
+        if is_assoc_ty_projection(db, ty) {
+            normalize_ty(db, ty, self.scope(), assumptions)
+        } else {
+            ty
+        }
     }
 
     /// Type lowering errors for the implementor type.
@@ -4373,7 +4400,8 @@ impl<'db> ImplTrait<'db> {
                 .type_ref(db)
                 .to_opt()
                 .ok_or(TraitRefLowerError::Ignored)?;
-            lower_hir_ty_deferred(db, hir_ty, self.scope(), assumptions)
+            let ty = lower_hir_ty_deferred(db, hir_ty, self.scope(), assumptions);
+            self.normalize_self_ty(db, ty, assumptions)
         } else {
             self.ty(db)
         };
@@ -4419,7 +4447,9 @@ impl<'db> ImplTrait<'db> {
         assumptions: PredicateListId<'db>,
     ) -> TraitImplAdmissibility {
         let impl_trait_ingot = self.top_mod(db).ingot(db);
-        if Some(impl_trait_ingot) == ty.ingot(db)
+        // `ty` is normalized (`Self::normalize_self_ty`), and a projection
+        // that stays one belongs to no ingot.
+        if !is_assoc_ty_projection(db, ty) && Some(impl_trait_ingot) == ty.ingot(db)
             || impl_trait_ingot == trait_inst.def(db).ingot(db)
         {
             return TraitImplAdmissibility::Admissible;
