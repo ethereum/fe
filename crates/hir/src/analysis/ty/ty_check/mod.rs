@@ -10,6 +10,7 @@ mod owner;
 mod pat;
 mod path;
 mod projection;
+pub(crate) use projection::constructed_variant;
 mod stmt;
 
 pub use self::contract::{

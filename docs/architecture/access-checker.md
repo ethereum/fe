@@ -39,8 +39,11 @@ flowchart TD
   exist only in the IR).
 - A projection's every yield site is a `Yield` terminator whose resume block
   runs the slide and returns. A tail or `return` yield has an empty slide; a
-  `yield` statement's slide is the code after it. Each yield site yields on
-  its own path.
+  `yield` statement's slide is the code after it, except on a sum shape's
+  empty variant, which grants nothing and so returns at once, as `?`'s exit
+  does: a variant constructor is decided statically, and any other yield,
+  such as a forwarded `yield self.entry(k)`, tests its value. Each yield site
+  yields on its own path.
 - `end` elaboration (`lower/elaborate.rs`) computes liveness on the raw body.
   An access (a borrow or a projection call's session) stays open while its
   carrier or any carrier derived from it may be used. It ends right after its
