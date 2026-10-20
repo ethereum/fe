@@ -4391,9 +4391,26 @@ impl<'db> ImplTrait<'db> {
         assumptions: PredicateListId<'db>,
     ) -> TraitImplAdmissibility {
         let impl_trait_ingot = self.top_mod(db).ingot(db);
-        if Some(impl_trait_ingot) == ty.ingot(db)
-            || impl_trait_ingot == trait_inst.def(db).ingot(db)
-        {
+        if impl_trait_ingot == trait_inst.def(db).ingot(db) {
+            return TraitImplAdmissibility::Admissible;
+        }
+
+        // An impl is for its normalized self type, which is where the solver
+        // looks for it: with `type Out = u256`, `impl Tr for <S as Get>::Out`
+        // is `impl Tr for u256`. A projection that does not normalize belongs
+        // to no ingot.
+        let is_projection = |ty: TyId<'db>| {
+            matches!(
+                ty.base_ty(db).data(db),
+                TyData::AssocTy(_) | TyData::QualifiedTy(_)
+            )
+        };
+        let ty = if is_projection(ty) {
+            normalize_ty(db, ty, self.scope(), assumptions)
+        } else {
+            ty
+        };
+        if !is_projection(ty) && Some(impl_trait_ingot) == ty.ingot(db) {
             return TraitImplAdmissibility::Admissible;
         }
 

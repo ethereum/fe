@@ -1,0 +1,38 @@
+struct Local {}
+struct Other {}
+struct Source {}
+struct Wrap<T> {
+    t: T,
+}
+struct NeedsCopy<T: Copy> {
+    t: T,
+}
+
+trait Get {
+    type Out
+}
+impl Get for Local {
+    type Out = Local
+}
+impl Get for Option<u256> {
+    type Out = Other
+}
+impl Get for Source {
+    type Out = Option<u256>
+}
+impl<T: Get> Get for Wrap<T> {
+    type Out = T::Out
+}
+
+// An impl is for its normalized self type: `Local`, and `Other` although
+// `Option` is core's.
+impl Copy for <Local as Get>::Out {}
+impl Copy for <Option<u256> as Get>::Out {}
+
+fn copies(_ local: NeedsCopy<Local>, _ other: NeedsCopy<Other>) {}
+
+// `Option<u256>` and `Copy` are core's.
+impl Copy for <Source as Get>::Out {}
+
+// `<Wrap<T> as Get>::Out` is `T::Out`, which is no ingot's type.
+impl<T: Get> Copy for <Wrap<T> as Get>::Out {}
