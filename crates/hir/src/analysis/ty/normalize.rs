@@ -15,10 +15,11 @@ use super::{
     canonical::Canonicalized,
     closure::callable_out_ty,
     fold::{TyFoldable, TyFolder},
+    shape::Shape,
     trait_def::{TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints},
     trait_lower::complete_impl_assoc_ty,
     trait_resolution::{PredicateListId, TraitSolveCx},
-    ty_def::{AssocTy, InvalidCause, TyData, TyId, TyParam, collect_variables},
+    ty_def::{AssocTy, InvalidCause, ShapeCon, TyBase, TyData, TyId, TyParam, collect_variables},
     unify::UnificationTable,
     visitor::{TyVisitor, walk_ty},
 };
@@ -285,6 +286,20 @@ impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
                 let folded = ty.super_fold_with(db, self);
                 self.cache.insert(*assoc_ty, Some(folded));
                 folded
+            }
+            // The value or carrier type of a shape reduces once the shape is
+            // known.
+            TyData::TyApp(..)
+                if let (base, &[shape]) = ty.decompose_ty_app(db)
+                    && let TyData::TyBase(TyBase::Shape(
+                        con @ (ShapeCon::Value | ShapeCon::Carrier),
+                    )) = base.data(db) =>
+            {
+                match self.fold_ty(db, shape).as_shape_part(db) {
+                    Shape::Opaque(term) => TyId::shape_part(db, *con, term),
+                    shape if *con == ShapeCon::Value => self.fold_ty(db, shape.erased_ty(db)),
+                    shape => self.fold_ty(db, shape.carrier_ty(db)),
+                }
             }
             _ => ty.super_fold_with(db, self),
         }

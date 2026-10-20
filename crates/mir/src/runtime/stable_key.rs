@@ -5,7 +5,6 @@ use hir::{
         semantic::{EffectProviderSubst, GenericSubst, ImplEnv, SemanticInstance},
         ty::{
             RootProviderScope,
-            shape::Shape,
             trait_def::{TraitInstId, TraitRefId},
             ty_check::{BodyOwner, EffectParamSite},
             ty_def::{BorrowKind, ClosureDef, ClosureTy, TyBase, TyData, TyId},
@@ -472,7 +471,11 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
                 // and its position there identify it.
                 let def = closure.def(db);
                 let owner = closure_owner_identity(db, def);
-                let leaves: Vec<_> = closure.params(db).iter().flat_map(Shape::leaves).collect();
+                let leaves: Vec<_> = closure
+                    .params(db)
+                    .iter()
+                    .flat_map(|param| param.leaves(db))
+                    .collect();
                 let tys = closure
                     .parent_args(db)
                     .iter()

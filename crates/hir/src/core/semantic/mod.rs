@@ -34,7 +34,8 @@ use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{
     Shape, is_param_product, lower_param_product, lower_return_shape, lower_shape_value,
-    mentions_mode, param_product_diags, return_shape_diags, shape_value_diags,
+    mentions_mode, names_shape_without_mode, param_product_diags, return_shape_diags,
+    shape_value_diags,
 };
 use crate::analysis::ty::ty_def::{BorrowKind, Kind};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
@@ -810,22 +811,20 @@ impl<'db> Func<'db> {
             return Vec::new();
         };
         let assumptions = self.assumptions(db);
-        if mentions_mode(db, hir_ty) {
-            return return_shape_diags(
-                db,
-                hir_ty,
-                self.scope(),
-                self.span().sig().ret_ty(),
-                assumptions,
-            );
+        let span = self.span().sig().ret_ty();
+        let diags = if mentions_mode(db, hir_ty) {
+            return_shape_diags(db, hir_ty, self.scope(), span.clone(), assumptions)
+        } else {
+            collect_ty_lower_errors(db, self.scope(), hir_ty, span.clone(), assumptions)
+        };
+        if diags.is_empty()
+            && self
+                .return_shape(db, self.modes(db)[0])
+                .is_some_and(|shape| names_shape_without_mode(db, shape))
+        {
+            return vec![TyLowerDiag::ShapeWithoutMode(span.into()).into()];
         }
-        collect_ty_lower_errors(
-            db,
-            self.scope(),
-            hir_ty,
-            self.span().sig().ret_ty(),
-            assumptions,
-        )
+        diags
     }
 
     /// Returns the containing `impl Trait` block if this function is a method
@@ -1338,7 +1337,7 @@ impl<'db> FuncParamView<'db> {
         mode: Option<BorrowKind>,
     ) -> Vec<(FuncParamMode, TyId<'db>)> {
         match self.product(db, mode) {
-            Some(product) => product.part_modes(),
+            Some(product) => product.part_modes(db),
             None => vec![(self.mode_at(db, mode), self.ty(db))],
         }
     }

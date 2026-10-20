@@ -11,7 +11,6 @@ use rustc_hash::FxHashMap;
 use super::{
     const_expr::{ConstExpr, ConstExprId},
     fold::{TyFoldable, TyFolder},
-    shape::Shape,
     trait_def::{ImplementorId, TraitInstId, TraitRefId},
     ty_def::{
         ApplicableTyProp, ClosureTy, Kind, MAX_INLINE_STRING_BYTES, TyBase, TyData, TyId, TyVar,
@@ -163,7 +162,7 @@ where
                             closure
                                 .params(db)
                                 .iter()
-                                .flat_map(Shape::leaves)
+                                .flat_map(|param| param.leaves(db))
                                 .map(|(_, ty)| ty),
                         )
                         .chain([closure.ret_ty(db)])

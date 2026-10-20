@@ -1986,12 +1986,13 @@ pub(super) fn param_product<'a, 'db>(
 /// The inputs a call passes parameter `idx` of `site`, a product of shape
 /// `product`: one for each of its parts.
 pub(super) fn product_inputs<'db>(
+    db: &'db dyn HirAnalysisDb,
     site: ParamSite<'db>,
     idx: usize,
     product: &Shape<'db>,
 ) -> impl Iterator<Item = LocalBinding<'db>> {
     product
-        .leaves()
+        .leaves(db)
         .into_iter()
         .zip(0..)
         .map(move |((access, ty), part)| LocalBinding::ParamPart {
@@ -2050,7 +2051,9 @@ pub(super) fn func_param_bindings<'db>(
         bindings.params.push(param);
         match product {
             Some(product) => {
-                bindings.inputs.extend(product_inputs(site, idx, product));
+                bindings
+                    .inputs
+                    .extend(product_inputs(db, site, idx, product));
                 bindings.products.push((site, idx, product.clone()));
             }
             // A spread's inputs are an instance's: those its shape lists.

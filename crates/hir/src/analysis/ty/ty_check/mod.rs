@@ -54,7 +54,7 @@ use crate::{
     visitor::{Visitor, VisitorCtxt, walk_expr, walk_pat},
 };
 use callable::{CallGenericArgPhase, CallGenericArgUnifyError, unify_explicit_call_generic_args};
-pub use callable::{Callable, EffectProviderProvenance, EffectProviderSpecialization};
+pub use callable::{CallParam, Callable, EffectProviderProvenance, EffectProviderSpecialization};
 use common::indexmap::IndexMap;
 use cranelift_entity::{PrimaryMap, SecondaryMap, entity_impl, packed_option::PackedOption};
 use ena::unify::InPlace;
@@ -5245,7 +5245,7 @@ impl<'db> TypedBody<'db> {
             .flat_map(
                 |binding| match (binding, env::param_product(products, binding)) {
                     (&LocalBinding::Param { site, idx, .. }, Some(product)) => {
-                        env::product_inputs(site, idx, product).collect()
+                        env::product_inputs(db, site, idx, product).collect()
                     }
                     _ => vec![*binding],
                 },
@@ -5330,7 +5330,7 @@ impl<'db> TypedBody<'db> {
                     ty: shape.erased_ty(db),
                     is_mut: false,
                 }),
-                None => inputs.extend(env::product_inputs(site, idx, &shape)),
+                None => inputs.extend(env::product_inputs(db, site, idx, &shape)),
             }
         }
         self
@@ -5365,7 +5365,7 @@ impl<'db> TypedBody<'db> {
             let field = usize::from(*field);
             part += elems[..field.min(elems.len())]
                 .iter()
-                .map(|elem| elem.leaves().len())
+                .map(Shape::leaf_count)
                 .sum::<usize>();
             shape = elems.get(field)?;
             steps = rest;
@@ -5425,6 +5425,10 @@ impl<'db> TypedBody<'db> {
             return product.carrier_ty(db);
         }
         let ty = self.binding_ty(db, binding);
+        // A value of an opaque shape is carried by the shape's carrier.
+        if let Some(shape) = ty.as_shape_value(db) {
+            return Shape::Opaque(shape).carrier_ty(db);
+        }
         match self.binding_access(binding) {
             None => ty,
             Some(BindingAccess::View) => TyId::view_of(db, ty),
@@ -6123,7 +6127,7 @@ impl<'db> TypedBody<'db> {
             return None;
         }
         for (&elem, shape) in elems.iter().zip(parts) {
-            let leaves = shape.leaves().len();
+            let leaves = shape.leaves(db).len();
             if part < leaves {
                 return match shape {
                     Shape::Tuple(_) => self.product_arg_part(db, body, elem, shape, part),
@@ -7143,7 +7147,10 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
                         .iter()
                         .enumerate()
                         .flat_map(|(idx, param)| {
-                            param.part_modes().into_iter().map(move |part| (idx, part))
+                            param
+                                .part_modes(db)
+                                .into_iter()
+                                .map(move |part| (idx, part))
                         });
                     for (idx, (mode, ty)) in parts {
                         let ty = normalize(ty);

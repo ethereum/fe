@@ -14,10 +14,10 @@ use super::{
     diagnostics::{TyDiagCollection, TyLowerDiag},
     fold::{TyFoldable, TyFolder},
     trait_resolution::PredicateListId,
-    ty_def::{BorrowKind, InvalidCause, Kind, ShapeCon, ShapeMode, TyData, TyId},
+    ty_def::{AssocTy, BorrowKind, InvalidCause, Kind, ShapeCon, ShapeMode, TyData, TyId},
     ty_error::collect_hir_ty_diags,
     ty_lower::{lower_hir_ty, lower_hir_ty_with_minter},
-    visitor::{TyVisitable, TyVisitor},
+    visitor::{TyVisitable, TyVisitor, walk_assoc_ty},
 };
 use crate::{
     analysis::HirAnalysisDb,
@@ -41,6 +41,10 @@ pub enum Shape<'db> {
         arg: usize,
         payload: Box<Shape<'db>>,
     },
+    /// A shape whose structure is not known here, the shape term of an
+    /// associated shape at a mode (`D::Step<ref>`) in generic code. Folding
+    /// it decodes the term once it is known.
+    Opaque(TyId<'db>),
 }
 
 /// A `#[view]` type exists only behind view and `ref` accesses: `ty` takes
@@ -80,6 +84,7 @@ impl<'db> Shape<'db> {
             Self::Access(_, ty) => view_misuse(db, *ty, None),
             Self::Tuple(elems) => elems.iter().find_map(|elem| elem.view_misuse(db)),
             Self::Sum { payload, .. } => payload.view_misuse(db),
+            Self::Opaque(_) => None,
         }
     }
 
@@ -90,6 +95,7 @@ impl<'db> Shape<'db> {
             Self::Access(kind, ty) => (*kind == BorrowKind::Mut && ty.is_view(db)).then_some(*ty),
             Self::Tuple(elems) => elems.iter().find_map(|elem| elem.mut_view(db)),
             Self::Sum { payload, .. } => payload.mut_view(db),
+            Self::Opaque(_) => None,
         }
     }
 
@@ -101,25 +107,37 @@ impl<'db> Shape<'db> {
             Self::Access(..) => None,
             Self::Tuple(elems) => elems.iter().find_map(|elem| elem.state_only_value(db)),
             Self::Sum { payload, .. } => payload.state_only_value(db),
+            Self::Opaque(_) => None,
         }
     }
 
     /// The leaves of a product parameter's shape, in order: each part's
-    /// access, or `None` for an owned part, and its type.
-    pub fn leaves(&self) -> Vec<(Option<BorrowKind>, TyId<'db>)> {
+    /// access, or `None` for an owned part, and its type. An opaque part is
+    /// one leaf, transported whole as a value.
+    pub fn leaves(&self, db: &'db dyn HirAnalysisDb) -> Vec<(Option<BorrowKind>, TyId<'db>)> {
         match self {
             Self::Owned(ty) => vec![(None, *ty)],
             Self::Access(kind, ty) => vec![(Some(*kind), *ty)],
-            Self::Tuple(elems) => elems.iter().flat_map(Self::leaves).collect(),
-            Self::Sum { payload, .. } => payload.leaves(),
+            Self::Tuple(elems) => elems.iter().flat_map(|elem| elem.leaves(db)).collect(),
+            Self::Sum { payload, .. } => payload.leaves(db),
+            Self::Opaque(_) => vec![(None, self.erased_ty(db))],
+        }
+    }
+
+    /// The number of leaves `leaves` gives.
+    pub fn leaf_count(&self) -> usize {
+        match self {
+            Self::Owned(_) | Self::Access(..) | Self::Opaque(_) => 1,
+            Self::Tuple(elems) => elems.iter().map(Self::leaf_count).sum(),
+            Self::Sum { payload, .. } => payload.leaf_count(),
         }
     }
 
     /// The mode and type of each of a product parameter's parts, in order,
     /// as a parameter of its own would take it: an owned part is `own`, and
     /// an access part `mut` or a view.
-    pub fn part_modes(&self) -> Vec<(FuncParamMode, TyId<'db>)> {
-        self.leaves()
+    pub fn part_modes(&self, db: &'db dyn HirAnalysisDb) -> Vec<(FuncParamMode, TyId<'db>)> {
+        self.leaves(db)
             .into_iter()
             .map(|(access, ty)| {
                 let mode = match access {
@@ -148,7 +166,7 @@ impl<'db> Shape<'db> {
             Self::Owned(_) => Some(FuncParamMode::Own),
             Self::Access(BorrowKind::Ref, _) => Some(FuncParamMode::View),
             Self::Access(BorrowKind::Mut, _) => Some(FuncParamMode::Mut),
-            Self::Tuple(_) | Self::Sum { .. } => None,
+            Self::Tuple(_) | Self::Sum { .. } | Self::Opaque(_) => None,
         }
     }
 
@@ -160,16 +178,27 @@ impl<'db> Shape<'db> {
             Self::Access(..) => true,
             Self::Tuple(elems) => elems.iter().any(Self::has_access),
             Self::Sum { payload, .. } => payload.has_access(),
+            // An associated shape a projection returns has an access in
+            // every instance.
+            Self::Opaque(_) => true,
         }
     }
 
-    /// Whether this shape grants an access of `kind`.
-    pub fn has_access_of(&self, kind: BorrowKind) -> bool {
+    /// Whether this shape may grant an access of `kind`. An opaque shape's
+    /// accesses are at most its mode.
+    pub fn has_access_of(&self, db: &'db dyn HirAnalysisDb, kind: BorrowKind) -> bool {
         match self {
             Self::Owned(_) => false,
             Self::Access(given, _) => *given == kind,
-            Self::Tuple(elems) => elems.iter().any(|elem| elem.has_access_of(kind)),
-            Self::Sum { payload, .. } => payload.has_access_of(kind),
+            Self::Tuple(elems) => elems.iter().any(|elem| elem.has_access_of(db, kind)),
+            Self::Sum { payload, .. } => payload.has_access_of(db, kind),
+            Self::Opaque(term) => match term.data(db) {
+                TyData::AssocTy(assoc) => assoc
+                    .mode
+                    .and_then(ShapeMode::kind)
+                    .is_none_or(|mode| kind <= mode),
+                _ => true,
+            },
         }
     }
 
@@ -184,6 +213,7 @@ impl<'db> Shape<'db> {
                     .map(|elem| elem.erased_ty(db))
                     .collect::<Vec<_>>(),
             ),
+            Self::Opaque(term) => TyId::shape_part(db, ShapeCon::Value, *term),
         }
     }
 
@@ -213,6 +243,7 @@ impl<'db> Shape<'db> {
                     TyId::app(db, acc, ty_arg)
                 })
             }
+            Self::Opaque(term) => TyId::shape_part(db, ShapeCon::Carrier, *term),
         }
     }
 
@@ -239,6 +270,7 @@ impl<'db> Shape<'db> {
                     ..
                 },
             ) => variant == required_variant && payload.grants(required_payload),
+            (Self::Opaque(given), Self::Opaque(required)) => given == required,
             _ => false,
         }
     }
@@ -287,6 +319,7 @@ impl<'db> Shape<'db> {
                     ..
                 },
             ) => variant == other_variant && payload.same_modes(other_payload),
+            (Self::Opaque(lhs), Self::Opaque(rhs)) => lhs == rhs,
             _ => false,
         }
     }
@@ -339,14 +372,24 @@ impl<'db> Shape<'db> {
                     .join(", ");
                 format!("{}<{args}>", base.pretty_print(db))
             }
+            Self::Opaque(term) => term.pretty_print(db).to_string(),
         }
     }
 
-    pub fn map_tys(&self, f: &mut impl FnMut(TyId<'db>) -> TyId<'db>) -> Self {
+    /// The shape with `f` applied to its types; an opaque part's term is
+    /// decoded again, so a normalizing `f` makes it known.
+    pub fn map_tys(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        f: &mut impl FnMut(TyId<'db>) -> TyId<'db>,
+    ) -> Self {
         match self {
             Self::Owned(ty) => Self::Owned(f(*ty)),
             Self::Access(kind, ty) => Self::Access(*kind, f(*ty)),
-            Self::Tuple(elems) => Self::Tuple(elems.iter().map(|elem| elem.map_tys(f)).collect()),
+            Self::Tuple(elems) => {
+                Self::Tuple(elems.iter().map(|elem| elem.map_tys(db, f)).collect())
+            }
+            Self::Opaque(term) => f(*term).as_shape_part(db),
             Self::Sum {
                 ty,
                 variant,
@@ -356,7 +399,7 @@ impl<'db> Shape<'db> {
                 ty: f(*ty),
                 variant: *variant,
                 arg: *arg,
-                payload: Box::new(payload.map_tys(f)),
+                payload: Box::new(payload.map_tys(db, f)),
             },
         }
     }
@@ -368,7 +411,7 @@ impl<'db> TyVisitable<'db> for Shape<'db> {
         V: TyVisitor<'db> + ?Sized,
     {
         match self {
-            Self::Owned(ty) | Self::Access(_, ty) => ty.visit_with(visitor),
+            Self::Owned(ty) | Self::Access(_, ty) | Self::Opaque(ty) => ty.visit_with(visitor),
             Self::Tuple(elems) => elems.iter().for_each(|elem| elem.visit_with(visitor)),
             Self::Sum { ty, payload, .. } => {
                 ty.visit_with(visitor);
@@ -403,6 +446,7 @@ impl<'db> TyFoldable<'db> for Shape<'db> {
                 arg,
                 payload: Box::new(payload.fold_with(db, folder)),
             },
+            Self::Opaque(term) => term.fold_with(db, folder).as_shape_part(db),
         }
     }
 }
@@ -435,8 +479,9 @@ pub fn mentions_mode<'db>(db: &'db dyn HirAnalysisDb, ty: HirTyId<'db>) -> bool 
     }
 }
 
-/// Lowers a written return type to its shape, with `mut?` at `mode`, the
-/// mode of the function it returns from.
+/// Lowers a written return type to its shape, with `mut?` and an
+/// associated shape named without a mode at `mode`, the mode of the function
+/// it returns from.
 pub fn lower_return_shape<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: HirTyId<'db>,
@@ -450,9 +495,6 @@ pub fn lower_return_shape<'db>(
             |ty| lower_hir_ty(db, ty, scope, assumptions),
         )
     };
-    if !mentions_mode(db, ty) {
-        return Shape::Owned(lower_hir_ty(db, ty, scope, assumptions));
-    }
     match ty.data(db) {
         TypeKind::Mode(TypeMode::Mut, inner) => Shape::Access(BorrowKind::Mut, lower_opt(*inner)),
         TypeKind::Mode(TypeMode::MaybeMut, inner) => {
@@ -460,19 +502,55 @@ pub fn lower_return_shape<'db>(
         }
         TypeKind::Mode(TypeMode::Ref, inner) => Shape::Access(BorrowKind::Ref, lower_opt(*inner)),
         TypeKind::Mode(TypeMode::Own, inner) => Shape::Owned(lower_opt(*inner)),
-        TypeKind::Tuple(elems) => Shape::Tuple(
-            elems
+        // A tuple is a shape if a part is.
+        TypeKind::Tuple(elems) => {
+            let parts: Vec<_> = elems
                 .data(db)
                 .iter()
                 .map(|elem| match elem.to_opt() {
                     Some(elem) => lower_return_shape(db, elem, scope, assumptions, mode),
                     None => Shape::Owned(TyId::invalid(db, InvalidCause::ParseError)),
                 })
-                .collect(),
-        ),
-        TypeKind::Path(Partial::Present(path)) => sum_shape(db, *path, scope, assumptions, mode)
-            .unwrap_or_else(|| Shape::Owned(lower_hir_ty(db, ty, scope, assumptions))),
-        _ => Shape::Owned(lower_hir_ty(db, ty, scope, assumptions)),
+                .collect();
+            if parts.iter().all(|part| matches!(part, Shape::Owned(_))) {
+                Shape::Owned(lower_hir_ty(db, ty, scope, assumptions))
+            } else {
+                Shape::Tuple(parts)
+            }
+        }
+        TypeKind::Path(Partial::Present(path)) if mentions_mode(db, ty) => {
+            sum_shape(db, *path, scope, assumptions, mode)
+                .unwrap_or_else(|| Shape::Owned(lower_hir_ty(db, ty, scope, assumptions)))
+        }
+        _ => {
+            let ty = lower_hir_ty(db, ty, scope, assumptions);
+            if is_associated_shape(db, ty) {
+                Shape::Opaque(shape_at_item_mode(db, ty, mode))
+            } else {
+                Shape::Owned(ty)
+            }
+        }
+    }
+}
+
+/// Whether `ty` is an associated shape, `D::Step`, whose structure an impl
+/// gives.
+fn is_associated_shape<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    matches!(ty.data(db), TyData::AssocTy(assoc) if assoc.is_shape(db))
+}
+
+/// The shape term `ty` in an item used at `mode`: an associated shape named
+/// without a mode takes the item's; without one, it stays without.
+fn shape_at_item_mode<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    mode: Option<BorrowKind>,
+) -> TyId<'db> {
+    match (ty.data(db), mode) {
+        (TyData::AssocTy(assoc), Some(kind)) if assoc.mode.is_none() => {
+            ty.with_shape_mode(db, ShapeMode::from(kind))
+        }
+        _ => ty,
     }
 }
 
@@ -516,7 +594,14 @@ pub fn lower_param_product<'db>(
         }
         TypeKind::Mode(TypeMode::Ref, inner) => Shape::Access(BorrowKind::Ref, lower_opt(*inner)),
         _ => lower_param_product(db, elem, scope, assumptions, mode).unwrap_or_else(|| {
-            Shape::Access(BorrowKind::Ref, lower_hir_ty(db, elem, scope, assumptions))
+            let ty = lower_hir_ty(db, elem, scope, assumptions);
+            // A part naming an associated shape is that shape, at the
+            // function's mode.
+            if is_associated_shape(db, ty) {
+                Shape::Opaque(shape_at_item_mode(db, ty, mode))
+            } else {
+                Shape::Access(BorrowKind::Ref, ty)
+            }
         }),
     };
     Some(Shape::Tuple(
@@ -529,6 +614,81 @@ pub fn lower_param_product<'db>(
             })
             .collect(),
     ))
+}
+
+/// Whether `value` names an associated shape without a mode, where nothing
+/// gives it one: outside a `mut?` item's own signature, `D::Step` needs
+/// `<ref>` or `<mut>`.
+pub(crate) fn names_shape_without_mode<'db>(
+    db: &'db dyn HirAnalysisDb,
+    value: &impl TyVisitable<'db>,
+) -> bool {
+    struct Finder<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: bool,
+    }
+    impl<'db> TyVisitor<'db> for Finder<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_assoc_ty(&mut self, assoc_ty: &AssocTy<'db>) {
+            self.found |= assoc_ty.mode.is_none() && assoc_ty.is_shape(self.db);
+            walk_assoc_ty(self, assoc_ty);
+        }
+    }
+    let mut finder = Finder { db, found: false };
+    value.visit_with(&mut finder);
+    finder.found
+}
+
+/// The parameter list a tuple type written for a shape argument is, when
+/// it is one: a product written with its parts' modes (`(own A, B)`), or a
+/// tuple naming a shape (`(A, D::Step<ref>)`), whose other parts are views.
+/// `None` for a tuple of types alone, which the argument's kind decides.
+pub fn lower_shape_list<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Option<TyId<'db>> {
+    let TypeKind::Tuple(elems) = ty.data(db) else {
+        return None;
+    };
+    if is_param_product(db, ty) {
+        return Some(
+            match lower_param_product(db, ty, scope, assumptions, None) {
+                Some(Shape::Tuple(params)) => TyId::params_shape(db, &params),
+                _ => TyId::invalid(db, InvalidCause::Other),
+            },
+        );
+    }
+    let elems: Vec<_> = elems
+        .data(db)
+        .iter()
+        .map(|elem| {
+            elem.to_opt().map_or_else(
+                || TyId::invalid(db, InvalidCause::ParseError),
+                |elem| lower_hir_ty(db, elem, scope, assumptions),
+            )
+        })
+        .collect();
+    elems
+        .iter()
+        .any(|elem| *elem.kind(db) == Kind::Shape)
+        .then(|| {
+            let params: Vec<_> = elems
+                .into_iter()
+                .map(|elem| {
+                    if *elem.kind(db) == Kind::Shape {
+                        elem
+                    } else {
+                        TyId::shape_part(db, ShapeCon::Access(BorrowKind::Ref), elem)
+                    }
+                })
+                .collect();
+            TyId::params_term(db, &params)
+        })
 }
 
 /// The shape term an impl gives an associated shape (`shape Step = ..`), or

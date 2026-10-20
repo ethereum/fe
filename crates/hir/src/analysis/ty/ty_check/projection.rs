@@ -98,6 +98,8 @@ impl<'db> TyChecker<'db> {
         }
         match shape {
             Shape::Owned(_) => {}
+            // Only a value granting it yields an opaque shape.
+            Shape::Opaque(_) => self.invalid_yield(expr, shape),
             Shape::Access(kind, _) => {
                 let binding_access = prop
                     .binding
@@ -209,7 +211,7 @@ impl<'db> TyChecker<'db> {
                     all &= self.env.typed_expr(elem).is_some_and(|elem| {
                         !elem
                             .shape
-                            .is_some_and(|shape| shape.has_access_of(BorrowKind::Ref))
+                            .is_some_and(|shape| shape.has_access_of(self.db, BorrowKind::Ref))
                     }) || self.select_mut_place(elem);
                 }
                 self.split_demand = outer;
@@ -255,7 +257,7 @@ impl<'db> TyChecker<'db> {
                     self.env
                         .typed_expr(elem)
                         .and_then(|elem| elem.shape)
-                        .is_some_and(|shape| shape.has_access_of(BorrowKind::Ref))
+                        .is_some_and(|shape| shape.has_access_of(self.db, BorrowKind::Ref))
                 })
                 .map(|elem| elem.span(self.body()).into())
                 .collect(),
@@ -380,7 +382,7 @@ impl<'db> TyChecker<'db> {
         }
         let shape = callable
             .ret_shape(self.db)
-            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
+            .map(|shape| shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)));
         self.env.set_call_mode(expr, Some(BorrowKind::Mut));
         self.env.type_expr(
             expr,
@@ -456,7 +458,7 @@ impl<'db> TyChecker<'db> {
         if given.is_some() {
             self.consume_access(arg);
         }
-        let split_reads = if product.has_access_of(BorrowKind::Mut) {
+        let split_reads = if product.has_access_of(self.db, BorrowKind::Mut) {
             self.split_read_accesses(arg)
         } else {
             Vec::new()
@@ -486,7 +488,9 @@ impl<'db> TyChecker<'db> {
                 .is_some_and(|granted| granted.grants(product))
         };
         grants(self)
-            || product.has_access_of(BorrowKind::Mut) && self.select_mut_place(arg) && grants(self)
+            || product.has_access_of(self.db, BorrowKind::Mut)
+                && self.select_mut_place(arg)
+                && grants(self)
     }
 
     /// Marks `expr` as used as an access. A block forwards the access of its

@@ -568,7 +568,7 @@ impl<'db> Callable<'db> {
         self.params(db)
             .unwrap_or_default()
             .iter()
-            .flat_map(|param| param.shape.part_modes())
+            .flat_map(|param| param.shape.part_modes(db))
             .collect()
     }
 
@@ -1076,6 +1076,18 @@ fn check_param_arg<'db>(
 ) -> bool {
     match shape.param_mode() {
         Some(mode) => check_arg_mode(tc, arg, mode, is_receiver),
+        // An opaque shape takes a value of it, which a value granting it is.
+        None if matches!(shape, Shape::Opaque(_)) => {
+            if arg
+                .expr_prop
+                .shape
+                .as_ref()
+                .is_some_and(|given| given.grants(shape))
+            {
+                tc.consume_access(arg.expr);
+            }
+            false
+        }
         None => check_product_arg(tc, arg, shape),
     }
 }

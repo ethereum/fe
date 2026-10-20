@@ -20,7 +20,7 @@ use super::{
     const_ty::{ConstBodyLowering, ConstTyData, LoweringContext, ty_is_fully_ground},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     normalize::normalize_ty,
-    shape::{is_param_product, param_product_diags},
+    shape::{lower_shape_list, param_product_diags},
     trait_resolution::{PredicateListId, TraitSolveCx, WellFormedness, check_ty_wf},
     ty_def::{InvalidCause, Kind, TyData, TyId},
     ty_lower::{lower_hir_ty, lower_hir_ty_in_mode, lower_kind_in_bounds},
@@ -78,11 +78,11 @@ pub(crate) fn path_arg_diags<'db>(
                 return vec![diag];
             }
             match arg {
-                // A tuple whose parts carry modes is a shape, checked as a
-                // product parameter's type is.
+                // A tuple whose parts carry modes or name a shape is a shape,
+                // checked as a product parameter's type is.
                 GenericArg::Type(ty_arg)
                     if let Some(ty) = ty_arg.ty.to_opt()
-                        && is_param_product(db, ty) =>
+                        && lower_shape_list(db, ty, scope, assumptions).is_some() =>
                 {
                     let span = span.into_type_arg().ty();
                     let mut diags = maybe_mut_parts(db, ty, span.clone());

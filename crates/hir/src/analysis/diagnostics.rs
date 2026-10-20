@@ -1716,6 +1716,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::ShapeWithoutMode(span) => primary_diag(
+                Severity::Error,
+                "an associated shape needs a mode here",
+                "write `<ref>` or `<mut>` after it, as in `D::Step<ref>`; only a `mut?` item's own signature names one without",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ModeArgNotShape(span) => primary_diag(
                 Severity::Error,
                 "a mode argument names an associated shape's mode",

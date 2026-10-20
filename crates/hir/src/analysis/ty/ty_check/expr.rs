@@ -490,7 +490,7 @@ impl<'db> TyChecker<'db> {
                 && let Some(shape) = self.check_unsafe_split(*tail)
             {
                 return ExprProp {
-                    is_mut: !shape.has_access_of(BorrowKind::Ref),
+                    is_mut: !shape.has_access_of(self.db, BorrowKind::Ref),
                     shape: Some(shape),
                     ..res
                 };
@@ -554,7 +554,7 @@ impl<'db> TyChecker<'db> {
         self.env.type_expr(
             tail,
             ExprProp {
-                is_mut: !shape.has_access_of(BorrowKind::Ref),
+                is_mut: !shape.has_access_of(self.db, BorrowKind::Ref),
                 shape: Some(shape.clone()),
                 ..prop
             },
@@ -937,7 +937,7 @@ impl<'db> TyChecker<'db> {
                 }
                 lower_param_product(db, ty, scope, assumptions, self.env.owner().mode())
                     .expect("a product lowers to its shape")
-                    .map_tys(&mut |ty| self.normalize_ty(ty))
+                    .map_tys(self.db, &mut |ty| self.normalize_ty(ty))
             }
             Some(ty) => {
                 let lowered = self.lower_ty(ty, span.clone(), true);
@@ -3981,7 +3981,7 @@ impl<'db> TyChecker<'db> {
         self.report_instantiated_const_fault(&callable, ret_ty, expr);
         let shape = callable
             .ret_shape(self.db)
-            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
+            .map(|shape| shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)));
         if let Some(kind) = self.const_intrinsic_kind(callable.callable_def()) {
             if !self.check_and_register_const_intrinsic(expr, callable, kind) {
                 return ExprProp::invalid(self.db);
@@ -5358,7 +5358,7 @@ impl<'db> TyChecker<'db> {
         let ret_ty = self.normalize_ty(callable.ret_ty(self.db));
         let shape = callable
             .ret_shape(self.db)
-            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
+            .map(|shape| shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)));
         self.env.register_semantic_call(expr, callable);
         ExprProp {
             is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),

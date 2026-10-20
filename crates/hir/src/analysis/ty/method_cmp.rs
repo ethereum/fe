@@ -16,7 +16,7 @@ use super::{
     },
     fold::{TyFoldable, TyFolder},
     normalize::{normalize_from_assumptions, normalize_ty},
-    shape::Shape,
+    shape::{Shape, names_shape_without_mode},
     trait_def::TraitInstId,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitSolveCx,
@@ -312,15 +312,6 @@ fn compare_ty<'db>(
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
-    // The trait method's parameters, with those its spread lists.
-    let trait_params = trait_m
-        .param_shapes(db, trait_mode)
-        .0
-        .into_iter()
-        .map(|shape| instantiate_trait_method_template(db, shape, param_subst))
-        .chain(listed.iter().cloned());
-    let impl_params = impl_m.param_shapes(db, impl_mode).0;
-
     let evidence = PredicateListId::new(db, vec![trait_inst]);
     let impl_assumptions = collect_func_def_constraints(db, impl_m, true).instantiate_identity();
     let trait_assumptions = instantiate_trait_method_template(
@@ -332,6 +323,21 @@ fn compare_ty<'db>(
         .merge(db, trait_assumptions)
         .extend_all_bounds(db);
     let trait_scope = impl_m.scope();
+    // A trait shape at the impl, where an associated shape it names is known.
+    let trait_shape = |shape: Binder<'db, Shape<'db>>| {
+        let shape = instantiate_trait_method_template(db, shape, param_subst);
+        let shape = normalize_from_assumptions(db, shape, trait_scope, evidence);
+        normalize_ty(db, shape, trait_scope, compare_assumptions)
+    };
+
+    // The trait method's parameters, with those its spread lists.
+    let trait_params = trait_m
+        .param_shapes(db, trait_mode)
+        .0
+        .into_iter()
+        .map(trait_shape)
+        .chain(listed.iter().cloned());
+    let impl_params = impl_m.param_shapes(db, impl_mode).0;
 
     for (idx, (trait_param, impl_param)) in trait_params.zip(impl_params).enumerate() {
         // 1) Instantiate trait method's type params into the impl's generics
@@ -390,6 +396,13 @@ fn compare_ty<'db>(
         }
     }
 
+    // A trait return naming a shape without a mode is reported at the trait.
+    if trait_m
+        .ret_shape(db, trait_mode)
+        .is_some_and(|shape| names_shape_without_mode(db, shape.skip_binder()))
+    {
+        return !err;
+    }
     let impl_m_ret_ty = impl_m.ret_ty(db).instantiate_identity();
     let trait_m_ret_ty = instantiate_trait_method_template(db, trait_m.ret_ty(db), param_subst);
 
@@ -425,9 +438,9 @@ fn compare_ty<'db>(
         impl_m.ret_shape(db, impl_mode),
         trait_m.ret_shape(db, trait_mode),
     ) {
-        (Some(impl_shape), Some(trait_shape)) => impl_shape
-            .skip_binder()
-            .same_modes(trait_shape.skip_binder()),
+        (Some(impl_shape), Some(trait_ret)) => {
+            impl_shape.skip_binder().same_modes(&trait_shape(trait_ret))
+        }
         (impl_shape, trait_shape) => impl_shape.is_none() && trait_shape.is_none(),
     };
     if !impl_m_ret_ty.has_invalid(db)

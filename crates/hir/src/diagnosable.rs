@@ -221,6 +221,10 @@ impl<'db> WherePredicateBoundView<'db> {
         ));
 
         match trait_lower::lower_trait_ref(db, subject, tr, scope, assumptions, None) {
+            // A bound gives an associated shape no mode.
+            Ok(inst) if ty::shape::names_shape_without_mode(db, &inst) => {
+                out.push(TyLowerDiag::ShapeWithoutMode(span.into()).into());
+            }
             Ok(inst) => {
                 let expected = inst.def(db).self_param(db).kind(db);
                 if !expected.does_match(subject.kind(db)) {
@@ -2004,6 +2008,10 @@ impl<'db> GenericParamOwner<'db> {
                     assumptions,
                 ));
                 match trait_lower::lower_trait_ref(db, subject, *tr, scope, assumptions, None) {
+                    // A bound gives an associated shape no mode.
+                    Ok(inst) if ty::shape::names_shape_without_mode(db, &inst) => {
+                        out.push(TyLowerDiag::ShapeWithoutMode(span.into()).into());
+                    }
                     Ok(inst) => {
                         let expected = inst.def(db).self_param(db).kind(db);
                         if !expected.does_match(subject.kind(db)) {

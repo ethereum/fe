@@ -176,7 +176,7 @@ fn instantiated_method_signature<'db>(
     let (declared, spread) = CallableDef::Func(func).param_shapes(db, mode);
     let mut inputs: Vec<_> = declared
         .into_iter()
-        .map(|shape| shape.instantiate(db, args).map_tys(&mut normalize))
+        .map(|shape| shape.instantiate(db, args).map_tys(db, &mut normalize))
         .collect();
     if let Some(spread) = spread {
         let shape = normalize(spread.instantiate(db, args));

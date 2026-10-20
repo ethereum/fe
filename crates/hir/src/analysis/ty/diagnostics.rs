@@ -71,6 +71,8 @@ pub enum TyLowerDiag<'db> {
     /// `ref` or `mut` as a generic argument of anything but an associated
     /// shape.
     ModeArgNotShape(DynLazySpan<'db>),
+    /// An associated shape named without a mode where nothing gives it one.
+    ShapeWithoutMode(DynLazySpan<'db>),
     /// A parameter pattern of a function without a body to bind it.
     DestructuredParamWithoutBody(DynLazySpan<'db>),
     /// A mode on a product parameter's type, whose parts carry the modes.
@@ -339,6 +341,7 @@ impl TyLowerDiag<'_> {
             Self::ModeNotType(_) => 58,
             Self::ModeOnProduct(_) => 82,
             Self::ModeArgNotShape(_) => 83,
+            Self::ShapeWithoutMode(_) => 84,
             Self::ProductReceiver(_) => 74,
             Self::ProductParamNotDestructured { .. } => 75,
             Self::DestructuredParamWithoutBody(_) => 76,

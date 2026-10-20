@@ -395,12 +395,7 @@ impl<'db> TyId<'db> {
     pub fn params_shape(db: &'db dyn HirAnalysisDb, params: &[Shape<'db>]) -> TyId<'db> {
         let params: Vec<_> = params
             .iter()
-            .map(|param| match param {
-                Shape::Owned(ty) => Self::shape_part(db, ShapeCon::Owned, *ty),
-                Shape::Access(kind, ty) => Self::shape_part(db, ShapeCon::Access(*kind), *ty),
-                Shape::Tuple(parts) => Self::params_shape(db, parts),
-                Shape::Sum { .. } => unreachable!("a parameter is no sum"),
-            })
+            .map(|param| Self::shape_term(db, param))
             .collect();
         Self::params_term(db, &params)
     }
@@ -430,20 +425,50 @@ impl<'db> TyId<'db> {
         let TyData::TyBase(TyBase::Shape(ShapeCon::Params(_))) = base.data(db) else {
             return None;
         };
-        args.iter()
-            .map(|param| {
-                let (base, args) = param.decompose_ty_app(db);
-                match (base.data(db), args) {
-                    (TyData::TyBase(TyBase::Shape(ShapeCon::Owned)), [ty]) => {
-                        Some(Shape::Owned(*ty))
-                    }
-                    (TyData::TyBase(TyBase::Shape(ShapeCon::Access(kind))), [ty]) => {
-                        Some(Shape::Access(*kind, *ty))
-                    }
-                    _ => param.as_params_shape(db).map(Shape::Tuple),
-                }
-            })
-            .collect()
+        Some(args.iter().map(|param| param.as_shape_part(db)).collect())
+    }
+
+    /// The shape of one parameter the shape term `self` is: owned, an
+    /// access, a product of parts, or, for a term whose structure is not
+    /// known here (`D::Step<ref>`), opaque.
+    pub fn as_shape_part(self, db: &'db dyn HirAnalysisDb) -> Shape<'db> {
+        let (base, args) = self.decompose_ty_app(db);
+        match (base.data(db), args) {
+            (TyData::TyBase(TyBase::Shape(ShapeCon::Owned)), [ty]) => Shape::Owned(*ty),
+            (TyData::TyBase(TyBase::Shape(ShapeCon::Access(kind))), [ty]) => {
+                Shape::Access(*kind, *ty)
+            }
+            _ => self
+                .as_params_shape(db)
+                .map_or(Shape::Opaque(self), Shape::Tuple),
+        }
+    }
+
+    /// The shape whose value type `self` is, if it is one: an opaque shape's
+    /// value, before the shape is known.
+    pub fn as_shape_value(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+        match self.decompose_ty_app(db) {
+            (base, &[shape])
+                if matches!(
+                    base.data(db),
+                    TyData::TyBase(TyBase::Shape(ShapeCon::Value))
+                ) =>
+            {
+                Some(shape)
+            }
+            _ => None,
+        }
+    }
+
+    /// The shape term of one parameter's shape.
+    pub fn shape_term(db: &'db dyn HirAnalysisDb, shape: &Shape<'db>) -> TyId<'db> {
+        match shape {
+            Shape::Owned(ty) => Self::shape_part(db, ShapeCon::Owned, *ty),
+            Shape::Access(kind, ty) => Self::shape_part(db, ShapeCon::Access(*kind), *ty),
+            Shape::Tuple(parts) => Self::params_shape(db, parts),
+            Shape::Opaque(term) => *term,
+            Shape::Sum { .. } => unreachable!("a parameter is no sum"),
+        }
     }
 
     pub fn view_of(db: &'db dyn HirAnalysisDb, inner: TyId<'db>) -> TyId<'db> {
@@ -571,8 +596,9 @@ impl<'db> TyId<'db> {
         }
     }
 
-    /// `self`, an impl's shape value, named at `mode`: its `mut?` accesses
-    /// and the shapes it names without a mode take it.
+    /// `self`, an impl's shape value or another projection an associated
+    /// shape resolves to, named at `mode`: its `mut?` accesses and the shapes
+    /// it names without a mode, or inheriting one, take it.
     pub fn at_shape_mode(self, db: &'db dyn HirAnalysisDb, mode: ShapeMode) -> Self {
         struct ShapeModeFolder(ShapeMode);
         impl<'db> TyFolder<'db> for ShapeModeFolder {
@@ -584,7 +610,9 @@ impl<'db> TyId<'db> {
                         }
                         None => ty,
                     },
-                    TyData::AssocTy(assoc) if assoc.mode == Some(ShapeMode::Inherit) => {
+                    TyData::AssocTy(assoc)
+                        if matches!(assoc.mode, None | Some(ShapeMode::Inherit)) =>
+                    {
                         ty.with_shape_mode(db, self.0)
                     }
                     _ => ty.super_fold_with(db, self),
@@ -2205,6 +2233,11 @@ pub enum ShapeCon {
     /// `mut? T` in an impl's shape value: an access at the mode the value
     /// is named at, of kind `* -> shape`.
     MaybeMut,
+    /// The type a value of a shape whose structure is not known has, of
+    /// kind `shape -> *`; it reduces once the shape is known.
+    Value,
+    /// The semantic-IR carrier type of such a value, of kind `shape -> *`.
+    Carrier,
     /// A list of this many parameter shapes, of kind
     /// `shape -> .. -> shape`; nested in a list, a product parameter.
     Params(u16),
@@ -2214,6 +2247,7 @@ impl ShapeCon {
     fn kind(self) -> Kind {
         match self {
             Self::Owned | Self::Access(_) | Self::MaybeMut => Kind::abs(Kind::Star, Kind::Shape),
+            Self::Value | Self::Carrier => Kind::abs(Kind::Shape, Kind::Star),
             Self::Params(n) => (0..n).fold(Kind::Shape, |acc, _| Kind::abs(Kind::Shape, acc)),
         }
     }
@@ -2291,6 +2325,8 @@ impl<'db> TyBase<'db> {
             Self::Shape(ShapeCon::Access(BorrowKind::Ref)) => "ref".to_string(),
             Self::Shape(ShapeCon::Access(BorrowKind::Mut)) => "mut".to_string(),
             Self::Shape(ShapeCon::MaybeMut) => "mut?".to_string(),
+            Self::Shape(ShapeCon::Value) => "value".to_string(),
+            Self::Shape(ShapeCon::Carrier) => "carrier".to_string(),
             Self::Shape(ShapeCon::Params(_)) => "()".to_string(),
         }
     }
@@ -2643,6 +2679,14 @@ fn pretty_print_ty_app<'db>(
                 "{} {}",
                 base.pretty_print(db),
                 inner.pretty_print_with_mode(db, mode)
+            )
+        }
+
+        // A value of an opaque shape prints as the shape.
+        TyData::TyBase(TyBase::Shape(ShapeCon::Value | ShapeCon::Carrier)) => {
+            args.first().map_or_else(
+                || base.pretty_print(db).clone(),
+                |shape| shape.pretty_print_with_mode(db, mode).to_string(),
             )
         }
 

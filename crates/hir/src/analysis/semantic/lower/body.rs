@@ -27,10 +27,10 @@ use crate::{
             normalize::normalize_ty,
             shape::{Shape, SumKind, sum_kind},
             ty_check::{
-                BindingAccess, BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind,
-                ConstRef, ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics,
-                RecordInitLowering, RecordLike, SemanticExprLowering, TypedBody, ValuePathRef,
-                constructed_variant, infer_body, transparent_newtype_field_ty,
+                BindingAccess, BodyOwner, CallParam, Callable, CodeRegionIntrinsicKind,
+                ConstIntrinsicKind, ConstRef, ForLoopItem, ForLoopStep, LocalBinding,
+                PathReadSemantics, RecordInitLowering, RecordLike, SemanticExprLowering, TypedBody,
+                ValuePathRef, constructed_variant, infer_body, transparent_newtype_field_ty,
             },
             ty_def::{BorrowKind, TyData, TyId},
             ty_is_copy, ty_is_snapshot,
@@ -1750,16 +1750,31 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         args: &[ExprId],
         callable: &Callable<'db>,
     ) -> SValueId {
-        let params = callable
+        // An instance knows the shapes a template's opaque parameters are.
+        let scope = self.body.scope();
+        let params: Vec<_> = callable
             .params(self.db)
-            .expect("a checked call's spread lists its parameters");
+            .expect("a checked call's spread lists its parameters")
+            .into_iter()
+            .map(|param| CallParam {
+                shape: normalize_ty(self.db, param.shape, scope, self.assumptions),
+                ..param
+            })
+            .collect();
         let mut values = Vec::with_capacity(params.len());
         for (&arg, param) in args.iter().zip(&params[usize::from(receiver.is_some())..]) {
-            let Some(mode) = param.shape.param_mode() else {
-                self.lower_product_arg(arg, &param.shape, &mut values);
-                continue;
+            let value = match param.shape.param_mode() {
+                Some(mode) => self.lower_callable_argument(arg, callable, mode, false),
+                // An opaque shape is transported whole, as a value.
+                None if matches!(param.shape, Shape::Opaque(_)) => {
+                    let value = self.lower_expr(arg);
+                    self.take_operand(arg, value)
+                }
+                None => {
+                    self.lower_product_arg(arg, &param.shape, &mut values);
+                    continue;
+                }
             };
-            let value = self.lower_callable_argument(arg, callable, mode, false);
             values.push(SOperand::expr(value, arg));
         }
         if let Some((receiver, prepared)) = receiver {
@@ -1925,7 +1940,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     self.lower_product_arg(elem, part, values);
                     continue;
                 }
-                Shape::Owned(_) => {
+                // An opaque part is transported whole, as a value.
+                Shape::Owned(_) | Shape::Opaque(_) => {
                     let value = self.lower_expr(elem);
                     self.take_operand(elem, value)
                 }
