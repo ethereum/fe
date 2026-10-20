@@ -568,7 +568,7 @@ struct Deferred<'db> {
 /// in a trait by name: `I` or `Self::I` in a trait or an implementation of
 /// one (or one of its supertraits), and `X::I` for a type `X` the scope
 /// bounds by a trait with item `I`, else the scope's own `I` when `X` is its
-/// self type.
+/// self type, or an associated type of the enclosing trait bounded by one.
 pub(crate) fn resolve_assoc_item_path<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
@@ -590,9 +590,9 @@ pub(crate) fn resolve_assoc_item_path<'db>(
             _ => return None,
         },
     };
-    let own = own
-        .filter(|inst| inst.self_ty(db) == self_ty)
-        .map(|inst| PredicateListId::new(db, vec![inst]).extend_all_bounds(db));
+    // What the enclosing instance implies includes the bounds on its
+    // associated types: `Self::Base::E` is a row of `Base`'s bound.
+    let own = own.map(|inst| PredicateListId::new(db, vec![inst]).extend_all_bounds(db));
     let bounds = Some(assumptions.extend_all_bounds(db));
     // `I` and `Self::I` name the scope's own items first, and `X::I` those of
     // the bounds on `X`, as an associated type's path does: in a blanket
