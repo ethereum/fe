@@ -371,6 +371,29 @@ impl<'db> ResolvedImplInstance<'db> {
         self.selected.assoc_ty(db, name)
     }
 
+    /// This instance as a proof records it: its goal a bare trait
+    /// reference, without the associated-type equalities and mode that
+    /// distinguish goals one implementation proves alike.
+    pub(crate) fn as_proof(self, db: &'db dyn HirAnalysisDb) -> Self {
+        Self {
+            trait_inst: TraitInstId::new_simple(
+                db,
+                self.trait_inst.def(db),
+                self.trait_inst.args(db).to_vec(),
+            ),
+            ..self
+        }
+    }
+
+    /// This instance answering `goal`, a goal of the trait reference it
+    /// proves.
+    pub(crate) fn answering(self, goal: TraitInstId<'db>) -> Self {
+        Self {
+            trait_inst: goal,
+            ..self
+        }
+    }
+
     /// The selected implementation's conditions, instantiated for the goal.
     pub(crate) fn instantiated_constraints(
         self,

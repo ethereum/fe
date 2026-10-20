@@ -29,6 +29,7 @@ use crate::{
                 EffectKeyKind, instantiate_trait_effect_key, place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowKey, expand_rows},
             },
+            evidence::{EvidenceList, closed_evidence},
             fold::{TyFoldable, TyFolder},
             instantiate_trait_self,
             normalize::{
@@ -81,6 +82,10 @@ pub struct SemanticInstanceKey<'db> {
     pub subst: GenericSubst<'db>,
     pub effect_providers: EffectProviderSubst<'db>,
     pub impl_env: ImplEnv<'db>,
+    /// Proofs of the assumptions the owner's body is checked under, from the
+    /// call that made this instance. One the list does not supply is proved
+    /// where the body needs it.
+    pub evidence: EvidenceList<'db>,
 }
 
 impl<'db> SemanticInstanceKey<'db> {
@@ -101,6 +106,7 @@ impl<'db> SemanticInstanceKey<'db> {
             self.subst(db),
             EffectProviderSubst::new(db, providers, param_spaces),
             self.impl_env(db),
+            self.evidence(db),
         )
     }
 
@@ -259,7 +265,9 @@ pub fn instantiated_typed_body<'db>(
     db: &'db dyn HirAnalysisDb,
     key: SemanticInstanceKey<'db>,
 ) -> TypedBody<'db> {
-    let body = instantiate_typed_body(db, typed_body_template(db, key.owner(db)), key.subst(db));
+    let mut body =
+        instantiate_typed_body(db, typed_body_template(db, key.owner(db)), key.subst(db));
+    body.bind_evidence(db, key.evidence(db));
     // A body's row provider parameters are the providers its call binds.
     let owner = match key.owner(db) {
         BodyOwner::Closure { def, .. } => (def.body.scope(), Some(def.expr)),
@@ -2140,6 +2148,16 @@ pub fn root_semantic_instance_key<'db>(
         subst,
         EffectProviderSubst::new(db, effect_providers, Vec::new()),
         root_impl_env(db, owner, subst),
+        match owner {
+            BodyOwner::Func(func, mode) => closed_evidence(
+                db,
+                (func, mode),
+                subst.generic_args(db),
+                EvidenceList::none(db),
+                TraitSolveCx::new(db, owner.scope()),
+            ),
+            _ => EvidenceList::none(db),
+        },
     );
     validate_instantiated_effect_env_key(db, key)
         .map_err(RootSemanticInstanceError::UnclosedEffectEnv)?;
@@ -2157,6 +2175,7 @@ pub fn identity_semantic_instance_key<'db>(
         subst,
         EffectProviderSubst::empty(db),
         root_impl_env(db, owner, subst),
+        EvidenceList::none(db),
     )
 }
 

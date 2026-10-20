@@ -7,7 +7,7 @@ use crate::{
             subst::substitute_complete,
             trait_def::TraitInstId,
             trait_resolution::PredicateListId,
-            ty_check::{BodyOwner, TypedBody, infer_body},
+            ty_check::{BodyOwner, TypedBody, evidenced_body},
             ty_def::TyId,
             ty_lower::CompleteSubst,
         },
@@ -26,7 +26,7 @@ pub fn typed_body_template<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> TypedBodyTemplate<'db> {
-    let typed_body = infer_body(db, owner).1.clone();
+    let typed_body = evidenced_body(db, owner).clone();
 
     TypedBodyTemplate {
         owner,

@@ -13,7 +13,7 @@ use salsa::Update;
 
 use super::{
     BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker, ValuePathRef,
-    env::ClosureExpectation,
+    env::{ClosureExpectation, func_declared_bounds, func_signature},
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -22,19 +22,20 @@ use crate::analysis::{
         const_ty::LoweringContext,
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
-        evidence::{EvidenceId, instantiated_selection, prove},
+        evidence::{EvidenceId, EvidenceList, instantiated_selection, prove},
         fold::{TyFoldable, TyFolder},
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
+        subst::substitute_complete,
         trait_def::{ResolvedMethodInstance, TraitInstId},
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
         ty_def::{BorrowKind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
         ty_error::emit_invalid_ty_error,
-        ty_lower::{collect_generic_params, lower_generic_arg_list},
-        visitor::{TyVisitable, TyVisitor, collect_flags},
+        ty_lower::{CompleteSubst, collect_generic_params, lower_generic_arg_list},
+        visitor::{TyVisitable, TyVisitor, collect_flags, mentions_effect_provider},
     },
 };
 use crate::core::semantic::{ProviderBinding, ProviderSource, param_env};
@@ -258,6 +259,10 @@ pub struct Callable<'db> {
     /// proved by an assumption, a bound of that body, is selected again where
     /// the body is instantiated.
     evidence: Option<EvidenceId<'db>>,
+    /// Proofs, in the checked body, of the assumptions the callee's body is
+    /// checked under (`func_signature`): the evidence the callee's instance
+    /// receives.
+    bound_evidence: Option<EvidenceList<'db>>,
     /// The mode a `mut?` callee is called at: `ref` unless a use of the
     /// call's result asks for `mut`.
     mode: Option<BorrowKind>,
@@ -279,6 +284,9 @@ impl<'db> TyVisitable<'db> for Callable<'db> {
         if let Some(evidence) = &self.evidence {
             evidence.visit_with(visitor);
         }
+        if let Some(bound_evidence) = &self.bound_evidence {
+            bound_evidence.visit_with(visitor);
+        }
     }
 }
 
@@ -297,6 +305,9 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
                 .map(|inputs| inputs.fold_with(db, folder)),
             trait_inst: self.trait_inst.map(|i| i.fold_with(db, folder)),
             evidence: self.evidence.map(|evidence| evidence.fold_with(db, folder)),
+            bound_evidence: self
+                .bound_evidence
+                .map(|bound_evidence| bound_evidence.fold_with(db, folder)),
             mode: self.mode,
         }
     }
@@ -349,6 +360,7 @@ impl<'db> Callable<'db> {
             checked_input_tys: None,
             trait_inst,
             evidence: None,
+            bound_evidence: None,
             mode: callable_def.modes(db)[0],
         })
     }
@@ -368,6 +380,7 @@ impl<'db> Callable<'db> {
             checked_input_tys: None,
             trait_inst,
             evidence: None,
+            bound_evidence: None,
             mode: callable_def.modes(db)[0],
         }
     }
@@ -412,6 +425,60 @@ impl<'db> Callable<'db> {
     /// The checker's proof of the call's trait goal.
     pub fn evidence(&self) -> Option<EvidenceId<'db>> {
         self.evidence
+    }
+
+    /// Proves, in the checked body's context `solve_cx`, the bounds the
+    /// callee's body declares, instantiated for this call, by their places
+    /// among the assumptions it is checked under. What they imply, and a
+    /// bound on an effect provider, which the call binds once its providers
+    /// are resolved, are left to the instance.
+    pub(super) fn record_bound_evidence(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) {
+        let CallableDef::Func(func) = self.callable_def else {
+            return;
+        };
+        let mode = BodyOwner::func_at(db, func, self.mode).mode();
+        let (declared, signature) = (
+            func_declared_bounds(db, func, mode),
+            func_signature(db, func, mode),
+        );
+        let Ok(subst) = CompleteSubst::for_owner(db, func.into(), self.generic_args.clone()) else {
+            return;
+        };
+        let Ok(goals) = substitute_complete(db, signature, &subst) else {
+            return;
+        };
+        self.bound_evidence = Some(EvidenceList::of(
+            db,
+            signature
+                .list(db)
+                .iter()
+                .zip(goals.list(db))
+                .map(|(&bound, &goal)| {
+                    (declared.list(db).contains(&bound) && !mentions_effect_provider(db, bound))
+                        .then(|| prove(db, solve_cx, goal))
+                        .flatten()
+                })
+                .collect::<Vec<_>>(),
+        ));
+    }
+
+    /// Proofs of the assumptions the callee's body is checked under, as the
+    /// caller's checked body gives them.
+    pub fn bound_evidence(&self) -> Option<EvidenceList<'db>> {
+        self.bound_evidence
+    }
+
+    /// Replaces the assumptions this call's evidence names, its caller's,
+    /// with `bound`'s proofs of them.
+    pub(super) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) {
+        self.evidence = self.evidence.map(|evidence| evidence.bind(db, bound));
+        self.bound_evidence = self
+            .bound_evidence
+            .map(|bound_evidence| bound_evidence.bind(db, bound));
     }
 
     /// The trait method the call runs, with its body: from the

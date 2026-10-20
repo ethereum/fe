@@ -1,4 +1,5 @@
 use crate::analysis::ty::assoc_const::{AssocConstUse, InherentConstUse};
+use crate::analysis::ty::evidence::EvidenceList;
 use crate::analysis::ty::ty_def::TyId;
 use crate::analysis::ty::{corelib::ctfe_extern_intrinsic_kind, ty_check::BodyOwner};
 use crate::analysis::{
@@ -96,6 +97,7 @@ impl<'db> ConstInvocation<'db> {
                 key.subst(db),
                 key.effect_providers(db),
                 ImplEnv::empty(db, owner.scope().ingot(db).root_mod(db).scope()),
+                EvidenceList::none(db),
             )
         } else {
             key

@@ -424,7 +424,7 @@ fn insert_param_mapping<'db>(
 /// The trait method's params as the impl method's, the pairs of their
 /// effects, and whether every effect of the trait method has its pair. An
 /// impl method's extra effects are stricter bounds.
-fn trait_to_impl_param_subst<'db>(
+pub(crate) fn trait_to_impl_param_subst<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_m: CallableDef<'db>,
     trait_m: CallableDef<'db>,

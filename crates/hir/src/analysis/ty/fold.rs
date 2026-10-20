@@ -304,6 +304,7 @@ impl<'db> TyFoldable<'db> for SemanticInstanceKey<'db> {
                 env.assumptions(db).fold_with(db, folder),
                 env.witnesses(db).clone().fold_with(db, folder),
             ),
+            self.evidence(db).fold_with(db, folder),
         )
     }
 }

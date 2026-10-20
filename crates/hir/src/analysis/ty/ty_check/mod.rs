@@ -20,6 +20,7 @@ pub use self::contract::{
     check_contract_recv_blocks, resolve_variant_bare, resolve_variant_in_msg,
 };
 pub(crate) use self::contract::{contract_field_slot, eval_msg_variant_selector};
+pub(crate) use self::env::func_signature;
 pub use self::path::RecordLike;
 use crate::analysis::name_resolution::{ResolvedVariant, is_scope_visible_from};
 pub use crate::analysis::ty::AddressSpace;
@@ -84,7 +85,7 @@ use super::{
         StaticAssertComparisonValues, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
-    evidence::{EvidenceId, instantiated_selection},
+    evidence::{EvidenceId, EvidenceList, instantiated_selection},
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     instantiate_trait_self,
     trait_def::{TraitInstId, selected_assoc_const_body_template},
@@ -621,7 +622,14 @@ pub(super) fn condition_outcome_in<'db>(
     subst: GenericSubst<'db>,
     impl_env: ImplEnv<'db>,
 ) -> ConditionOutcome<'db> {
-    let key = SemanticInstanceKey::new(db, owner, subst, EffectProviderSubst::empty(db), impl_env);
+    let key = SemanticInstanceKey::new(
+        db,
+        owner,
+        subst,
+        EffectProviderSubst::empty(db),
+        impl_env,
+        EvidenceList::none(db),
+    );
     let outcome = eval_const_instance(db, get_or_build_semantic_instance(db, key));
     condition_outcome_from(db, owner, outcome)
 }
@@ -1002,6 +1010,27 @@ struct BodyInferenceKey<'db> {
     owner: BodyOwner<'db>,
 }
 
+/// `owner`'s checked body with each call's proofs of the assumptions its
+/// callee's body is checked under: the evidence the callee's instance
+/// receives. Kept apart from checking, so a body that is only checked does
+/// not prove them.
+pub(crate) fn evidenced_body<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: BodyOwner<'db>,
+) -> &'db TypedBody<'db> {
+    evidenced_body_query(db, BodyInferenceKey::new(db, owner))
+}
+
+#[salsa::tracked(return_ref)]
+fn evidenced_body_query<'db>(
+    db: &'db dyn HirAnalysisDb,
+    key: BodyInferenceKey<'db>,
+) -> TypedBody<'db> {
+    let mut body = infer_body(db, key.owner(db)).1.clone();
+    body.record_bound_evidence(db);
+    body
+}
+
 #[salsa::tracked(return_ref, cycle_initial=infer_body_cycle_initial, cycle_fn=infer_body_cycle_recover)]
 fn infer_body_query<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -1200,6 +1229,7 @@ fn const_body_ctfe_diags_with_context<'db>(
             GenericSubst::none(db),
             EffectProviderSubst::empty(db),
             ImplEnv::empty(db, owner.scope()),
+            EvidenceList::none(db),
         );
         let request = const_computation_for_instance(db, key, Vec::new());
         match describe_const_computation(db, request, CtfeConfig::default()) {
@@ -1250,6 +1280,7 @@ fn const_body_ctfe_diags_with_context<'db>(
                     GenericSubst::none(db),
                     EffectProviderSubst::empty(db),
                     ImplEnv::empty(db, owner.scope()),
+                    EvidenceList::none(db),
                 );
                 let semantic = get_or_build_semantic_instance(db, key);
                 if reify_runtime_const_for_ty(db, semantic, expected, value).is_none() {
@@ -1421,6 +1452,7 @@ fn typed_body_for_bodyless_func<'db>(
     TypedBodyTables {
         body: None,
         result_ty,
+        signature: assumptions,
         assumptions,
         pat_ty: SecondaryMap::new(),
         expr_ty: SecondaryMap::new(),
@@ -4225,6 +4257,9 @@ mod typed_body_tables {
     pub struct TypedBodyTables<'db> {
         pub(super) body: Option<Body<'db>>,
         pub(super) result_ty: TyId<'db>,
+        /// The prefix of `assumptions` the body's owner declares; see
+        /// `TypedBody::signature`.
+        pub(super) signature: PredicateListId<'db>,
         pub(super) assumptions: PredicateListId<'db>,
         pub(super) pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
         pub(super) expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
@@ -4620,6 +4655,7 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
         // another `TypedBody` still shares them.
         let mut this = Arc::unwrap_or_clone(self.tables);
         this.result_ty = this.result_ty.fold_with(db, folder);
+        this.signature = this.signature.fold_with(db, folder);
         this.assumptions = this.assumptions.fold_with(db, folder);
         this.pat_ty
             .values_mut()
@@ -4712,6 +4748,46 @@ impl<'db> TypedBody<'db> {
     /// them.
     fn tables_mut(&mut self) -> &mut TypedBodyTables<'db> {
         Arc::make_mut(&mut self.tables)
+    }
+
+    /// Records, for each call, its proofs of the assumptions its callee's
+    /// body is checked under.
+    fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
+        let Some(body) = self.body() else {
+            return;
+        };
+        let solve_cx = TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions());
+        let tables = self.tables_mut();
+        for lowering in tables.semantic_expr_lowering.values_mut().flatten() {
+            lowering.callable_mut().record_bound_evidence(db, solve_cx);
+        }
+        for plan in tables.for_loop_plans.values_mut().flatten() {
+            for call in &mut plan.calls {
+                call.callable.record_bound_evidence(db, solve_cx);
+            }
+        }
+    }
+
+    /// Replaces the assumptions the body's evidence names with `bound`'s
+    /// proofs of them: an instance's own.
+    pub(crate) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) {
+        if bound.entries(db).is_empty() {
+            return;
+        }
+        let tables = self.tables_mut();
+        for lowering in tables.semantic_expr_lowering.values_mut().flatten() {
+            lowering.callable_mut().bind_evidence(db, bound);
+        }
+        for plan in tables.for_loop_plans.values_mut().flatten() {
+            for call in &mut plan.calls {
+                call.callable.bind_evidence(db, bound);
+            }
+        }
+        for const_ref in tables.const_refs.values_mut().flatten() {
+            if let ConstRef::TraitConst { evidence, .. } = const_ref {
+                *evidence = evidence.map(|evidence| evidence.bind(db, bound));
+            }
+        }
     }
 
     /// The constrained type applications that resolving the body's paths
@@ -4939,6 +5015,13 @@ impl<'db> TypedBody<'db> {
 
     pub fn assumptions(&self) -> PredicateListId<'db> {
         self.tables.assumptions
+    }
+
+    /// The assumptions the body's owner declares, in the order the body's
+    /// evidence numbers them: a prefix of `assumptions`, which a closure in
+    /// the body extends with its own. An instance receives proofs of these.
+    pub fn signature(&self) -> PredicateListId<'db> {
+        self.tables.signature
     }
 
     pub fn expr_ty(&self, db: &'db dyn HirAnalysisDb, expr: ExprId) -> TyId<'db> {
@@ -6517,6 +6600,7 @@ impl<'db> TypedBody<'db> {
         TypedBodyTables {
             body: None,
             result_ty: TyId::unit(db),
+            signature: PredicateListId::empty_list(db),
             assumptions: PredicateListId::empty_list(db),
             pat_ty: SecondaryMap::new(),
             expr_ty: SecondaryMap::new(),

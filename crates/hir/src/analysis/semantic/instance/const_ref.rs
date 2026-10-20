@@ -20,6 +20,7 @@ use crate::{
                 place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowPath, expand_rows},
             },
+            evidence::{EvidenceList, closed_evidence, impl_method_bound_evidence},
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
@@ -518,6 +519,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 subst,
                 EffectProviderSubst::empty(db),
                 ImplEnv::empty(db, owner.scope()),
+                EvidenceList::none(db),
             ),
         );
         let effect_pairs: Vec<_> = rows
@@ -567,6 +569,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 subst,
                 EffectProviderSubst::new(db, providers, Vec::new()),
                 ImplEnv::empty(db, owner.scope()),
+                EvidenceList::none(db),
             ),
             concrete_dispatch: true,
             effect_pairs,
@@ -606,6 +609,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 GenericSubst::for_owner(db, func.into(), target.generic_args().to_vec()),
                 EffectProviderSubst::empty(db),
                 ImplEnv::empty(db, owner.scope()),
+                EvidenceList::none(db),
             ),
         );
         // Each component's index in the call and among the function's
@@ -1094,6 +1098,42 @@ fn semantic_callee_key_with_assumptions<'db>(
             });
         }
     }
+    // A callee that runs its own body receives the call's proofs of the
+    // assumptions that body is checked under; an implementation's method
+    // receives them from the selection's proofs of the implementation's
+    // conditions and the call's proofs of the trait method's.
+    let evidence = match (callable.bound_evidence(), callable.evidence()) {
+        (Some(bound), _) if body_func == nominal_func => bound,
+        (Some(bound), Some(selection)) if selection.selection(db).is_some() => {
+            impl_method_bound_evidence(
+                db,
+                (body_func, nominal_func, callable.mode()),
+                selection,
+                bound,
+                &subst_args,
+            )
+        }
+        _ => EvidenceList::none(db),
+    };
+    let evidence = if collect_flags(db, evidence).contains(TyFlags::HAS_PROJECTION) {
+        normalize_ty(db, evidence, impl_env.normalization_scope(db), assumptions)
+    } else {
+        evidence
+    };
+    // An instance with closed arguments runs with closed proofs only: one
+    // the call could not supply, or supplied naming its caller's own
+    // unproved assumptions, is proved here.
+    let evidence = if is_ground(collect_flags(db, subst_args.as_slice())) {
+        closed_evidence(
+            db,
+            (body_func, owner.mode()),
+            &subst_args,
+            evidence,
+            TraitSolveCx::new(db, impl_env.normalization_scope(db)),
+        )
+    } else {
+        evidence
+    };
     Ok(Some(SemanticCallCallee {
         concrete_dispatch: callable.trait_inst().is_none() || selected_impl,
         key: SemanticInstanceKey::new(
@@ -1109,6 +1149,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 Vec::new(),
             ),
             impl_env,
+            evidence,
         ),
         effect_pairs,
         provider_pairs,
@@ -1255,6 +1296,7 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
                     use_.assumptions(),
                     vec![use_.inst()],
                 ),
+                EvidenceList::none(db),
             ))
         }
         ConstRef::InherentConst(use_) => semantic_const_key_for_inherent_const(db, use_),
@@ -1273,6 +1315,7 @@ fn semantic_const_key_for_const<'db>(
         GenericSubst::none(db),
         EffectProviderSubst::empty(db),
         ImplEnv::empty(db, owner.scope()),
+        EvidenceList::none(db),
     ))
 }
 
@@ -1289,6 +1332,7 @@ fn semantic_const_key_for_inherent_const<'db>(
         GenericSubst::for_owner(db, use_.impl_().into(), impl_args),
         EffectProviderSubst::empty(db),
         ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), vec![]),
+        EvidenceList::none(db),
     ))
 }
 
