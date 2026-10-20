@@ -57,8 +57,8 @@ pub contract Token {
 #[test]
 fn storage_map_methods_keep_fields_separate() uses (evm: mut Evm) {
     let token = evm.create2<Token>(value: 0, args: (), salt: 1)
-    let alice = Address { inner: 1 }
-    let bob = Address { inner: 2 }
+    let alice = Address::new(1)
+    let bob = Address::new(2)
     evm.call(addr: token, gas: 200000, value: 0, message: LedgerMsg::Mint { to: alice, amount: 5 })
     evm.call(addr: token, gas: 200000, value: 0, message: LedgerMsg::Mint { to: bob, amount: 7 })
     evm.call(addr: token, gas: 200000, value: 0, message: LedgerMsg::Mint { to: alice, amount: 11 })

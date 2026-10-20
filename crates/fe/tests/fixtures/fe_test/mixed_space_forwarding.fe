@@ -14,7 +14,7 @@ fn forward(_ x: mut bool) -> mut bool {
 }
 
 impl Guarded {
-    fn locked_forwarded(mut self) -> mut bool @transient {
+    fn locked_forwarded(mut self) -> mut bool {
         forward(mut self.locked.value)
     }
 

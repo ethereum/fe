@@ -34,13 +34,13 @@ pub contract CtxBox uses (ctx: Ctx) {
         GetOrigin {} -> u256
             uses (ctx)
         {
-            ctx.origin().inner
+            ctx.origin().word()
         }
 
         GetCoinbase {} -> u256
             uses (ctx)
         {
-            ctx.coinbase().inner
+            ctx.coinbase().word()
         }
 
         GetTimestamp {} -> u256
@@ -88,13 +88,13 @@ pub contract CtxBox uses (ctx: Ctx) {
         GetAddress {} -> u256
             uses (ctx)
         {
-            ctx.address().inner
+            ctx.address().word()
         }
 
         GetCaller {} -> u256
             uses (ctx)
         {
-            ctx.caller().inner
+            ctx.caller().word()
         }
 
         GetGas {} -> u256
@@ -183,7 +183,7 @@ fn test_blockhash() uses (evm: mut Evm) {
 fn test_address() uses (evm: mut Evm) {
     let addr = evm.create2<CtxBox>(value: 0, args: (), salt: 0)
     let reported: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: CtxMsg::GetAddress {})
-    assert!(reported == addr.inner)
+    assert!(reported == addr.word())
 }
 
 // Test: ctx.caller() returns the caller address

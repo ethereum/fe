@@ -144,7 +144,7 @@ fn eliminate(value: Empty) -> u8 {
 
     let instance = get_or_build_semantic_instance(
         &db,
-        identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+        identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
     let body = instance.body(&db);
 

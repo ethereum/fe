@@ -663,6 +663,11 @@ fn format_builtin<'db>(db: &'db dyn MirDb, builtin: &RuntimeBuiltin<'db>) -> Str
             format_local_id(*dst),
             format_local_id(*len)
         ),
+        RuntimeBuiltin::StoreConstBytes { dst, bytes } => format!(
+            "store_const_bytes {}, 0x{}",
+            format_local_id(*dst),
+            format_bytes(bytes)
+        ),
         RuntimeBuiltin::Msize => "msize".to_string(),
         RuntimeBuiltin::Sload { slot } => format!("sload {}", format_local_id(*slot)),
         RuntimeBuiltin::Sstore { slot, value } => {
@@ -1084,7 +1089,7 @@ fn format_runtime_instance<'db>(db: &'db dyn MirDb, instance: RuntimeInstance<'d
         crate::instance::RuntimeInstanceSource::Semantic(semantic) => {
             let owner = semantic.key(db).owner(db);
             let owner_summary = match owner {
-                hir::analysis::ty::ty_check::BodyOwner::Func(func) => format!(
+                hir::analysis::ty::ty_check::BodyOwner::Func(func, _) => format!(
                     "func={} has_body={} trait={:?} impl_trait={:?} impl={:?} owner={owner:?}",
                     func.name(db)
                         .to_opt()

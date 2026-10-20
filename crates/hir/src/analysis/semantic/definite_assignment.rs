@@ -363,7 +363,7 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
         effect_args: &[NEffectArg<'db>],
         state: &mut MustAssignState<'db>,
     ) -> Result<(), AssignedTargetsFailure<'db>> {
-        let BodyOwner::Func(callee_func) = callee_key.owner(self.db) else {
+        let BodyOwner::Func(callee_func, _) = callee_key.owner(self.db) else {
             return Ok(());
         };
         let callee = get_or_build_semantic_instance(self.db, callee_key);

@@ -8,9 +8,9 @@ use super::{
 };
 use crate::{
     hir_def::{
-        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FieldIndex, FuncParamListId,
-        GenericArg, GenericArgListId, GenericParamListId, IdentId, IntegerId, Partial, PathId,
-        TraitRefId, TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
+        AttrListId, Body, BodyKind, CompBinOp, EffectParamListId, FuncParamListId, GenericArg,
+        GenericArgListId, GenericParamListId, IdentId, ModeMarker, Partial, PathId, TraitRefId,
+        TupleTypeId, TypeBound, TypeId, WhereClauseId, item::*,
     },
     lower::msg::lower_msg_as_mod,
     span::HirOrigin,
@@ -529,24 +529,6 @@ impl<'db> Func<'db> {
             .map(|params| FuncParamListId::lower_ast(ctxt, params))
             .into();
         let ret_ty = sig.ret_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
-        // A trailing `@S` is the contract of components that declare none.
-        let ret_space = sig.ret_space();
-        let ret_spaces = sig
-            .ret_ty()
-            .into_iter()
-            .flat_map(|ty| ty.syntax().descendants().filter_map(ast::ModeType::cast))
-            .filter(|mode| {
-                matches!(
-                    mode.mode(),
-                    Some(ast::TypeMode::Ref(_) | ast::TypeMode::Mut(_))
-                )
-            })
-            .map(|mode| {
-                mode.space()
-                    .or_else(|| ret_space.clone())
-                    .map(|space| SpaceAnnotation::lower_ast(ctxt, space))
-            })
-            .collect();
         let effects = lower_uses_clause_opt(ctxt, ast.sig().uses_clause());
         let vis = super::lower_visibility(&ast);
         let is_unsafe = super::lower_is_unsafe(&ast);
@@ -567,10 +549,7 @@ impl<'db> Func<'db> {
             where_clause,
             params,
             effects,
-            FuncReturn {
-                ty: ret_ty,
-                spaces: ret_spaces,
-            },
+            ret_ty,
             modifiers,
             body,
             top_mod,
@@ -582,6 +561,23 @@ impl<'db> Func<'db> {
 
 impl<'db> Struct<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Struct) -> Self {
+        let is_tuple = ast.fields().is_some_and(|fields| fields.is_tuple());
+        if is_tuple {
+            // Event, error and ABI structs derive their code from named fields.
+            let name = ast.name().map(|name| name.text().to_string());
+            for attr in ["event", "error", "abi"] {
+                report_unsupported_attr(
+                    ctxt,
+                    ast.attr_list(),
+                    attr,
+                    target("tuple struct", name.clone()),
+                    "record structs",
+                );
+            }
+            report_indexed_attrs_outside_event_struct(ctxt, &ast);
+            return Self::lower_plain(ctxt, ast, true);
+        }
+
         let is_event_struct = super::event::is_event_struct(&ast);
         let is_error_struct = super::error::is_error_struct(&ast);
         let is_abi_struct = super::abi_struct::is_abi_struct(&ast);
@@ -605,6 +601,10 @@ impl<'db> Struct<'db> {
             return super::abi_struct::lower_abi_struct(ctxt, ast);
         }
 
+        Self::lower_plain(ctxt, ast, false)
+    }
+
+    fn lower_plain(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Struct, is_tuple: bool) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let id = ctxt.joined_id(TrackedItemVariant::Struct(name));
         ctxt.enter_item_scope(id, false);
@@ -625,6 +625,7 @@ impl<'db> Struct<'db> {
             generic_params,
             where_clause,
             fields,
+            is_tuple,
             ctxt.top_mod(),
             origin,
         );
@@ -655,68 +656,16 @@ fn lower_uses_params<'db>(
         .map(|p| EffectParam {
             name: p.name().map(|n| IdentId::lower_token(ctxt, n.syntax())),
             key_ty: TypeId::lower_ast_partial(ctxt, p.ty()),
-            is_mut: p.mut_token().is_some(),
+            mode: if p.mut_token().is_some() {
+                ModeMarker::Mut
+            } else if p.maybe_mut_token().is_some() {
+                ModeMarker::MaybeMut
+            } else {
+                ModeMarker::None
+            },
         })
         .collect();
     EffectParamListId::new(ctxt.db(), data)
-}
-
-impl<'db> AssocSpace<'db> {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitSpaceItem) -> Self {
-        validate_unsupported_item_attrs(
-            ctxt,
-            ast.attr_list(),
-            "space",
-            ast.name().map(|name| name.text().to_string()),
-        );
-        let steps = SpacePathId::lower_ast(ctxt, ast.space_path());
-        AssocSpace {
-            name: IdentId::lower_token_partial(ctxt, ast.name()),
-            value: ast
-                .value()
-                .map(|value| (Partial::Present(PathId::lower_ast(ctxt, value)), steps)),
-        }
-    }
-}
-
-impl<'db> SpaceAnnotation<'db> {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::SpaceAnnotation) -> Self {
-        let path = PathId::lower_ast_partial(ctxt, ast.path());
-        let steps = SpacePathId::lower_ast(ctxt, ast.space_path());
-        match ast.target() {
-            Some(target) => {
-                let target = Partial::Present(PathId::lower_ast(ctxt, target));
-                // Only `target` takes an argument.
-                if path.to_opt().and_then(|path| path.as_ident(ctxt.db()))
-                    == Some(IdentId::new(ctxt.db(), "target".to_string()))
-                {
-                    Self::Target(target)
-                } else {
-                    Self::Path(Partial::Absent, steps)
-                }
-            }
-            None => Self::Path(path, steps),
-        }
-    }
-}
-
-impl<'db> SpacePathId<'db> {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: Option<ast::SpacePath>) -> Self {
-        let steps: Vec<_> = ast
-            .into_iter()
-            .flat_map(|path| path.steps())
-            .map(|step| match step {
-                ast::SpacePathStep::Field(token) => {
-                    SpaceStep::Field(FieldIndex::Ident(IdentId::lower_token(ctxt, token)))
-                }
-                ast::SpacePathStep::Index(index) => {
-                    SpaceStep::Field(FieldIndex::Index(IntegerId::lower_ast(ctxt, index)))
-                }
-                ast::SpacePathStep::Element => SpaceStep::Element,
-            })
-            .collect();
-        SpacePathId::new(ctxt.db(), steps)
-    }
 }
 
 impl<'db> AssocRow<'db> {
@@ -870,7 +819,6 @@ impl<'db> Trait<'db> {
         let mut types = vec![];
         let mut consts = vec![];
         let mut rows = vec![];
-        let mut spaces = vec![];
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
@@ -904,9 +852,6 @@ impl<'db> Trait<'db> {
                         consts.push(AssocConstDecl::lower_ast(ctxt, c));
                     }
                     ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
-                    ast::TraitItemKind::Space(space) => {
-                        spaces.push(AssocSpace::lower_ast(ctxt, space));
-                    }
                 };
             }
         }
@@ -925,7 +870,7 @@ impl<'db> Trait<'db> {
             where_clause,
             types,
             consts,
-            AccessItems { rows, spaces },
+            rows,
             ctxt.top_mod(),
             origin,
         );
@@ -1009,7 +954,6 @@ impl<'db> ImplTrait<'db> {
         let mut types = vec![];
         let mut consts = vec![];
         let mut rows = vec![];
-        let mut spaces = vec![];
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
                 match impl_item.kind() {
@@ -1042,9 +986,6 @@ impl<'db> ImplTrait<'db> {
                         consts.push(AssocConstDef::lower_ast(ctxt, c));
                     }
                     ast::TraitItemKind::Uses(row) => rows.push(AssocRow::lower_ast(ctxt, row)),
-                    ast::TraitItemKind::Space(space) => {
-                        spaces.push(AssocSpace::lower_ast(ctxt, space));
-                    }
                 };
             }
         }
@@ -1063,7 +1004,7 @@ impl<'db> ImplTrait<'db> {
             where_clause,
             types,
             consts,
-            AccessItems { rows, spaces },
+            rows,
             ast.unsafe_kw().is_some(),
             ctxt.top_mod(),
             origin,
@@ -1219,9 +1160,19 @@ impl<'db> FieldDefListId<'db> {
         ast: ast::RecordFieldDefList,
         field_kind: &'static str,
     ) -> Self {
+        let is_tuple = ast.is_tuple();
         let fields = ast
             .into_iter()
-            .map(|field| FieldDef::lower_ast_with_context(ctxt, field, field_kind))
+            .enumerate()
+            .map(|(idx, field)| {
+                let mut field = FieldDef::lower_ast_with_context(ctxt, field, field_kind);
+                if is_tuple {
+                    // Tuple fields are named by their position, which is what
+                    // `s.0` resolves against.
+                    field.name = Partial::Present(IdentId::new(ctxt.db(), idx.to_string()));
+                }
+                field
+            })
             .collect::<Vec<_>>();
         Self::new(ctxt.db(), fields)
     }

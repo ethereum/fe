@@ -35,7 +35,7 @@ use crate::{
                 BodyOwner, Callable, ConstRef, EffectParamSite, EffectProviderSpecialization,
                 ResolvedEffectArg,
             },
-            ty_def::{TyFlags, TyId},
+            ty_def::{BorrowKind, TyFlags, TyId},
             ty_lower::{ParamKey, ParamSchemaId},
             visitor::{TyVisitable, TyVisitor, collect_flags},
         },
@@ -152,7 +152,7 @@ impl<'db> InstantiatedMethodSignature<'db> {
 
 fn instantiated_method_signature<'db>(
     db: &'db dyn HirAnalysisDb,
-    func: Func<'db>,
+    (func, mode): (Func<'db>, Option<BorrowKind>),
     args: &[TyId<'db>],
     scope: ScopeId<'db>,
     evidence: PredicateListId<'db>,
@@ -184,7 +184,7 @@ fn instantiated_method_signature<'db>(
     let inputs = arg_tys
         .iter()
         .zip(params)
-        .map(|(ty, param)| (param.mode(db), normalize(ty.instantiate(db, args))))
+        .map(|(ty, param)| (param.mode_at(db, mode), normalize(ty.instantiate(db, args))))
         .collect();
     let result = normalize(CallableDef::Func(func).ret_ty(db).instantiate(db, args));
     let provider_slots = place_effect_provider_param_index_map(db, func);
@@ -370,7 +370,7 @@ pub(super) fn root_impl_env<'db>(
     subst: GenericSubst<'db>,
 ) -> ImplEnv<'db> {
     let env = ImplEnv::empty(db, owner.scope());
-    let BodyOwner::Func(func) = owner else {
+    let BodyOwner::Func(func, _) = owner else {
         return env;
     };
     if !(func.containing_impl(db).is_some() || !func.is_associated_func(db))
@@ -589,7 +589,8 @@ fn semantic_callee_key_with_assumptions<'db>(
         let CallableDef::Func(func) = target.callable_def() else {
             unreachable!("a callable function item is a function")
         };
-        let owner = BodyOwner::Func(func);
+        // A `mut?` function is no callable value.
+        let owner = BodyOwner::Func(func, None);
         let (_, rows) = instantiated_effects(
             db,
             nominal_func,
@@ -740,6 +741,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             TraitSolveCx::new(db, impl_env.normalization_scope(db)).with_assumptions(assumptions),
             inst,
             name,
+            callable.mode(),
         )
         && let Some(impl_func) = method.body()
     {
@@ -851,7 +853,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else {
         nominal_func
     };
-    let owner = BodyOwner::Func(body_func);
+    let owner = BodyOwner::func_at(db, body_func, callable.mode());
     // An implementation selected without relying on a caller assumption.
     let selected_impl = selected_trait_method.is_some_and(|(resolved, _)| {
         !matches!(
@@ -911,6 +913,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                     TraitSolveCx::new(db, owner.scope()),
                     resolved.trait_inst(),
                     name,
+                    callable.mode(),
                 ),
                 Selection::Unique(method) if method.resolved() == resolved
             );
@@ -974,15 +977,18 @@ fn semantic_callee_key_with_assumptions<'db>(
     } else if selected_trait_method.is_none()
         && (nominal_func.containing_impl(db).is_some() || !nominal_func.is_associated_func(db))
         && callable.trait_inst().is_none()
+        && !collect_flags(db, subst_args.as_slice())
+            .intersects(TyFlags::HAS_INVALID | TyFlags::HAS_VAR | TyFlags::HAS_PROJECTION)
         && is_ground(
-            collect_flags(db, subst_args.as_slice())
-                | collect_flags(db, effect_providers.as_slice())
-                | collect_flags(db, effect_args),
+            collect_flags(db, effect_providers.as_slice()) | collect_flags(db, effect_args),
         )
     {
-        // A concrete free or inherent function sheds caller context when its
-        // bounds hold and its signature and effect keys normalize the same
-        // without the caller's assumptions.
+        // A free or inherent function sheds caller context when its
+        // arguments, signature and effect keys normalize the same without the
+        // caller's assumptions, and its ground bounds hold without them. A
+        // bound on a caller's parameter is one of the callee instance's own
+        // assumptions, so equal calls written in different bodies share one
+        // instance.
         let empty = PredicateListId::empty_list(db);
         let scope = nominal_func.scope();
         let caller_scope = impl_env.normalization_scope(db);
@@ -992,17 +998,20 @@ fn semantic_callee_key_with_assumptions<'db>(
         let bounds = collect_func_decl_constraints(db, CallableDef::Func(nominal_func), true)
             .instantiate(db, &subst_args);
         let independent = bounds.list(db).iter().copied().all(|bound| {
-            matches!(
-                is_goal_satisfiable(db, TraitSolveCx::new(db, scope), bound),
-                GoalSatisfiability::Satisfied(_)
-            )
-        }) && (0..nominal_func.arg_tys(db).len()).all(|idx| {
-            same_without_caller(
-                callable
-                    .arg_ty(db, idx)
-                    .expect("nominal input arity changed"),
-            )
-        }) && same_without_caller(callable.ret_ty(db))
+            collect_flags(db, bound).contains(TyFlags::HAS_PARAM)
+                || matches!(
+                    is_goal_satisfiable(db, TraitSolveCx::new(db, scope), bound),
+                    GoalSatisfiability::Satisfied(_)
+                )
+        }) && subst_args.iter().all(|&arg| same_without_caller(arg))
+            && (0..nominal_func.arg_tys(db).len()).all(|idx| {
+                same_without_caller(
+                    callable
+                        .arg_ty(db, idx)
+                        .expect("nominal input arity changed"),
+                )
+            })
+            && same_without_caller(callable.ret_ty(db))
             && checked_effect_inputs
                 .iter()
                 .all(|&(_, ty)| same_without_caller(ty));
@@ -1060,7 +1069,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             .extend_all_bounds(db);
         let nominal_signature = instantiated_method_signature(
             db,
-            nominal_func,
+            (nominal_func, callable.mode()),
             callable.generic_args(),
             normalization_scope,
             evidence,
@@ -1069,7 +1078,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         )?;
         let body_signature = instantiated_method_signature(
             db,
-            body_func,
+            (body_func, owner.mode()),
             &subst_args,
             normalization_scope,
             evidence,

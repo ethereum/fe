@@ -50,7 +50,7 @@ const OTHER_S: u256 = 0x6ec5957418998d3d1a1fc033b0d176d460cc0c818e93efebff444c18
 fn bytes<const N: usize>(_ words: [u256; N], len: u256) -> Bytes {
     let buf = ptr::alloc<[u256; N]>()
     unsafe { *buf = words }
-    unsafe { Bytes::from_payload(source: MemSpan::from_raw_parts(ptr: ptr::byte_ptr(buf), len)) }
+    unsafe { Bytes::from_payload(source: MemSpan::from_raw_parts(ptr: ptr::byte_ptr(buf), len: len as usize)) }
 }
 
 fn sig(r: u256, s: u256, v: u256) -> Bytes {
@@ -70,7 +70,7 @@ fn paymaster_and_data() -> Bytes {
 
 fn user_op(_ signature: Bytes) -> PackedUserOperation {
     PackedUserOperation {
-        sender: Address { inner: SENDER },
+        sender: Address::new(SENDER),
         nonce: 42,
         init_code: bytes([0xdeadbeef << 224], len: 4),
         call_data: bytes(
@@ -162,7 +162,7 @@ pub contract Paymaster uses (ctx: Ctx) {
         {
             erc4337::require_paymaster_entry_point(entry_point)
             let valid_until: u64 = (user_op.paymaster_data().word_at(0) >> 208).downcast_truncate()
-            let context = bytes([user_op.sender.inner], len: 32)
+            let context = bytes([user_op.sender.word()], len: 32)
             (context, erc4337::pack_validation_data(sig_success: true, valid_after: 0, valid_until))
         }
 
@@ -175,7 +175,7 @@ pub contract Paymaster uses (ctx: Ctx) {
                 PostOpMode::OpReverted => 2,
                 PostOpMode::PostOpReverted => 3,
             }
-            last_sender = Address { inner: context.word_at(0) }
+            last_sender = Address::new(context.word_at(0))
             last_cost = actual_gas_cost
         }
     }
@@ -229,7 +229,7 @@ pub contract EntryPoint uses (call: mut Call) {
 }
 
 fn addr(_ word: u256) -> Address {
-    Address { inner: word }
+    Address::new(word)
 }
 
 fn same_bytes(_ a: MemSpan, _ b: MemSpan) -> bool {
@@ -345,7 +345,7 @@ fn account_validates_and_pays_prefund() uses (evm: mut Evm) {
     let entry_point = evm.create2<EntryPoint>(value: 0, args: (), salt: 0)
     let account = evm.create2<Account>(
         value: 1000,
-        args: (Address { inner: OWNER }, entry_point),
+        args: (Address::new(OWNER), entry_point),
         salt: 0,
     )
     with (Call = evm, Ctx = evm) {
@@ -380,7 +380,7 @@ fn account_returns_failure_for_bad_signature() uses (evm: mut Evm) {
     let entry_point = evm.create2<EntryPoint>(value: 0, args: (), salt: 0)
     let account = evm.create2<Account>(
         value: 1000,
-        args: (Address { inner: OWNER }, entry_point),
+        args: (Address::new(OWNER), entry_point),
         salt: 0,
     )
     let malformed = user_op(Bytes::from_word_prefix(word: 0, len: 3))
@@ -427,7 +427,7 @@ fn account_rejects_other_callers() uses (evm: mut Evm) {
     let entry_point = evm.create2<EntryPoint>(value: 0, args: (), salt: 0)
     let account = evm.create2<Account>(
         value: 1000,
-        args: (Address { inner: OWNER }, entry_point),
+        args: (Address::new(OWNER), entry_point),
         salt: 0,
     )
     with (Call = evm, Ctx = evm) {
@@ -453,7 +453,7 @@ fn paymaster_validates_and_runs_post_op() uses (evm: mut Evm) {
     var op = owner_signed()
     op.paymaster_and_data = bytes(
         [
-            paymaster.inner << 96,
+            paymaster.word() << 96,
             0x0000c35000000000000000000000000000007530 << 96 | 0x0000cafe0000 << 48,
         ],
         len: 58,

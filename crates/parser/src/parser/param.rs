@@ -88,12 +88,18 @@ fn mut_param_name_error<S: TokenStream>(parser: &mut Parser<S>) {
     );
 }
 
+/// `mut?` before a parameter's name, which goes on its type.
+fn maybe_mut_param_name_error<S: TokenStream>(parser: &mut Parser<S>) {
+    parser.error_msg_on_current_token("a parameter's mode goes on its type: `x: mut? T`");
+}
+
 impl super::Parse for FnParamScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         let has_mut = parser.bump_if(SyntaxKind::MutKw);
-        let has_var = !has_mut && parser.bump_if(SyntaxKind::VarKw);
+        let has_maybe_mut = !has_mut && parser.bump_if(SyntaxKind::MaybeMutKw);
+        let has_var = !has_mut && !has_maybe_mut && parser.bump_if(SyntaxKind::VarKw);
         let lookahead = parser.peek_n_non_trivia(2);
         let allow_ref_self_shorthand = matches!(
             lookahead.as_slice(),
@@ -149,6 +155,8 @@ impl super::Parse for FnParamScope {
             Some(SyntaxKind::Ident) => {
                 if has_mut {
                     mut_param_name_error(parser);
+                } else if has_maybe_mut {
+                    maybe_mut_param_name_error(parser);
                 }
                 parser.bump();
 
@@ -166,6 +174,8 @@ impl super::Parse for FnParamScope {
             Some(SyntaxKind::Underscore) => {
                 if has_mut {
                     mut_param_name_error(parser);
+                } else if has_maybe_mut {
+                    maybe_mut_param_name_error(parser);
                 }
                 parser.bump();
 
@@ -320,6 +330,11 @@ impl super::Parse for TypeBoundScope {
         } else {
             if self.disallow_trait_bound {
                 return parser.error_and_recover("trait bounds are not allowed here");
+            }
+            // The modes the bound grants a trait's `mut?` methods at:
+            // `mut Index<usize>`, or the item's mode with `mut? Collection`.
+            if !parser.bump_if(SyntaxKind::MutKw) {
+                parser.bump_if(SyntaxKind::MaybeMutKw);
             }
             parser.parse_or_recover(TraitRefScope::default())
         }

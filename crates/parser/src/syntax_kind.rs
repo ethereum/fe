@@ -74,9 +74,6 @@ pub enum SyntaxKind {
     /// `#`
     #[token("#")]
     Pound,
-    /// `@`
-    #[token("@")]
-    At,
     /// `// Comment`
     #[regex(r"//[^\n\r]*")]
     Comment,
@@ -233,6 +230,9 @@ pub enum SyntaxKind {
     /// `mut`
     #[token("mut")]
     MutKw,
+    /// `mut?`: the mode of a `mut?` item, `ref` or `mut` by its use.
+    #[token("mut?")]
+    MaybeMutKw,
     /// `ref`
     #[token("ref")]
     RefKw,
@@ -344,8 +344,6 @@ pub enum SyntaxKind {
     LetStmt,
     /// `for x in y {..}`
     ForStmt,
-    /// `by d` in `for x in y by d {..}`
-    ForDriver,
     /// `while expr {..}`
     WhileStmt,
     /// `continue`
@@ -427,8 +425,6 @@ pub enum SyntaxKind {
     TraitConstItem,
     /// `uses E` or `uses E = (storage: mut Store)`: an associated effect row
     TraitUsesItem,
-    /// `space S` or `space S = memory`: an associated result space
-    TraitSpaceItem,
     /// `{ fn foo() {..} }`
     TraitItemList,
     /// `impl Trait for Foo { .. }`
@@ -462,13 +458,8 @@ pub enum SyntaxKind {
     // Types. These are non-leaf nodes.
     /// `*i32`
     PtrType,
-    /// `ref T`, `mut T`, `own T`, `ref T @S`
+    /// `ref T`, `mut T`, `own T`
     ModeType,
-    /// `@S`, `@p`, `@p.f[_]` or `@target(p)`: a result-space contract
-    SpaceAnnotation,
-    /// `.f`, `.0` and `[_]` after a result-space contract's root: the
-    /// sub-place whose space it names
-    SpacePath,
     /// `foo::Type<T, U + 2>`
     PathType,
     /// `Self`
@@ -507,6 +498,10 @@ pub enum SyntaxKind {
     RecordFieldDef,
     /// `{x: i32, y: u32}`
     RecordFieldDefList,
+    /// `pub u8` in `struct Month(pub u8)`
+    TupleFieldDef,
+    /// `(pub u8, u16)` in `struct Pair(pub u8, u16)`
+    TupleFieldDefList,
 
     VariantDef,
     VariantDefList,
@@ -644,7 +639,6 @@ impl SyntaxKind {
             SyntaxKind::FatArrow => "`=>`",
             SyntaxKind::Underscore => "`_`",
             SyntaxKind::Pound => "`#`",
-            SyntaxKind::At => "`@`",
             SyntaxKind::Plus => "`+`",
             SyntaxKind::Minus => "`-`",
             SyntaxKind::Star => "`*`",
@@ -696,6 +690,7 @@ impl SyntaxKind {
             SyntaxKind::LetKw => "`let`",
             SyntaxKind::VarKw => "`var`",
             SyntaxKind::MutKw => "`mut`",
+            SyntaxKind::MaybeMutKw => "`mut?`",
             SyntaxKind::RefKw => "`ref`",
             SyntaxKind::OwnKw => "`own`",
             SyntaxKind::UseKw => "`use`",
@@ -716,6 +711,7 @@ impl SyntaxKind {
 
             SyntaxKind::ArrayExpr => "array definition",
             SyntaxKind::RecordFieldDef => "field",
+            SyntaxKind::TupleFieldDef => "tuple field",
             SyntaxKind::IndexExpr => "index expression",
             SyntaxKind::BlockExpr => "block",
             SyntaxKind::ClosureExpr => "closure expression",
@@ -760,7 +756,6 @@ impl SyntaxKind {
             SyntaxKind::AugAssignExpr => "augmented assignment expression",
             SyntaxKind::LetStmt => "`let` statement",
             SyntaxKind::ForStmt => "`for` statement",
-            SyntaxKind::ForDriver => "`for` driver",
             SyntaxKind::WhileStmt => "`while` statement",
             SyntaxKind::ContinueStmt => "`continue` statement",
             SyntaxKind::BreakStmt => "`break` statement",
@@ -801,7 +796,6 @@ impl SyntaxKind {
             SyntaxKind::TraitTypeItem => "`trait` type item",
             SyntaxKind::TraitConstItem => "`trait` const item",
             SyntaxKind::TraitUsesItem => "`trait` effect row item",
-            SyntaxKind::TraitSpaceItem => "`trait` space item",
             SyntaxKind::ImplTrait => "`impl` trait block",
             SyntaxKind::Const => "const definition",
             SyntaxKind::StaticAssert => "static assertion",
@@ -816,8 +810,6 @@ impl SyntaxKind {
             SyntaxKind::ItemList => "item list",
             SyntaxKind::PtrType => "pointer type",
             SyntaxKind::ModeType => "mode type",
-            SyntaxKind::SpaceAnnotation => "result space",
-            SyntaxKind::SpacePath => "result space path",
             SyntaxKind::SelfType => "`Self` type",
             SyntaxKind::TupleType => "tuple type definition",
             SyntaxKind::NeverType => "never type",
@@ -831,6 +823,7 @@ impl SyntaxKind {
             SyntaxKind::AttrList => "attribute list",
             SyntaxKind::Visibility => "visibility modifier",
             SyntaxKind::RecordFieldDefList => "record field list",
+            SyntaxKind::TupleFieldDefList => "tuple field list",
             SyntaxKind::VariantDef => "`enum` variant definition",
             SyntaxKind::VariantDefList => "`enum` variant list",
             SyntaxKind::TypeGenericParam => "generic type parameter",
@@ -929,6 +922,7 @@ impl SyntaxKind {
                 | SyntaxKind::LetKw
                 | SyntaxKind::VarKw
                 | SyntaxKind::MutKw
+                | SyntaxKind::MaybeMutKw
                 | SyntaxKind::RefKw
                 | SyntaxKind::OwnKw
                 | SyntaxKind::UseKw

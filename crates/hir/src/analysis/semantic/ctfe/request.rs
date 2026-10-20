@@ -330,7 +330,7 @@ impl<'db> TyFoldable<'db> for TermProvenance<'db> {
                 .into_iter()
                 .map(|frame| TermCallFrame {
                     origin: frame.origin,
-                    callee: frame.callee.fold_with(db, folder),
+                    callee: folder.fold_const_context_key(db, frame.callee),
                 })
                 .collect(),
             ..self
@@ -433,7 +433,7 @@ mod tests {
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let owner = crate::analysis::ty::ty_check::BodyOwner::Func(module.all_funcs(&db)[0]);
+        let owner = crate::analysis::ty::ty_check::BodyOwner::Func(module.all_funcs(&db)[0], None);
         let array_ty = crate::analysis::semantic::identity_semantic_instance_key(&db, owner)
             .typed_body(&db)
             .result_ty();

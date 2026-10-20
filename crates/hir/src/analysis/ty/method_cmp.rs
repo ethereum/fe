@@ -22,7 +22,7 @@ use super::{
         constraint::collect_func_def_constraints, is_goal_satisfiable,
     },
     ty_check::{ConstRef, check_anon_const_body},
-    ty_def::{InvalidCause, TyData, TyId},
+    ty_def::{BorrowKind, InvalidCause, TyData, TyId},
     ty_lower::{CompleteSubst, ParamDomainId, ParamSchemaId, PartialSubst},
     unify::UnificationTable,
 };
@@ -55,11 +55,16 @@ use common::indexmap::IndexMap;
 /// * `implementor` - The implementor that contains associated type bindings.
 /// * `sink` - A mutable reference to a vector where diagnostic messages will be
 ///   collected.
+///
+/// A method without a mode can be a `mut?` trait method's body at one of
+/// its modes, `body_mode` (the `ref` body unless it is the `mut` one of a
+/// pair); a `mut?` method implements it at both.
 pub(super) fn compare_impl_method<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_m: CallableDef<'db>,
     trait_m: CallableDef<'db>,
     trait_inst: TraitInstId<'db>,
+    body_mode: BorrowKind,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) {
     if let (CallableDef::Func(impl_func), CallableDef::Func(trait_func)) = (impl_m, trait_m)
@@ -80,6 +85,22 @@ pub(super) fn compare_impl_method<'db>(
         return;
     }
 
+    let both = [
+        (Some(BorrowKind::Ref), Some(BorrowKind::Ref)),
+        (Some(BorrowKind::Mut), Some(BorrowKind::Mut)),
+    ];
+    let single = [(Some(body_mode), None)];
+    let modes: &[(Option<BorrowKind>, Option<BorrowKind>)] =
+        match (trait_m.modes(db), impl_m.modes(db)) {
+            ([None], [None]) => &[(None, None)],
+            ([None], _) => {
+                sink.push(ImplDiag::MethodMaybeMutMismatch { trait_m, impl_m }.into());
+                return;
+            }
+            (_, [None]) => &single,
+            _ => &both,
+        };
+
     // Compare the argument labels, argument types, and return type of the impl
     // method with the trait method.
     let mut err = !compare_arg_label(db, impl_m, trait_m, sink);
@@ -95,12 +116,30 @@ pub(super) fn compare_impl_method<'db>(
         err = true;
     }
     let param_subst = param_subst.residualize(db);
-    err |= !compare_ty(db, impl_m, trait_m, &param_subst, trait_inst, sink);
+    for &(trait_mode, impl_mode) in modes {
+        err |= !compare_ty(
+            db,
+            (impl_m, impl_mode),
+            (trait_m, trait_mode),
+            &param_subst,
+            trait_inst,
+            sink,
+        );
+    }
     if err {
         return;
     }
 
-    compare_constraints(db, impl_m, trait_m, trait_inst, &param_subst, sink);
+    for &(trait_mode, impl_mode) in modes {
+        compare_constraints(
+            db,
+            (impl_m, impl_mode),
+            (trait_m, trait_mode),
+            trait_inst,
+            &param_subst,
+            sink,
+        );
+    }
 }
 
 /// Checks if the number of generic parameters of the implemented method is the
@@ -212,13 +251,14 @@ fn compare_arg_label<'db>(
     !err
 }
 
-/// Checks if the argument types and return type of the implemented method are
-/// the same as the argument types and return type of the trait method.
+/// Checks if the argument types and return type of the implemented method,
+/// used at its mode, are the same as the argument types and return type of
+/// the trait method at its mode.
 /// Returns `false` if the comparison fails.
 fn compare_ty<'db>(
     db: &'db dyn HirAnalysisDb,
-    impl_m: CallableDef<'db>,
-    trait_m: CallableDef<'db>,
+    (impl_m, impl_mode): (CallableDef<'db>, Option<BorrowKind>),
+    (trait_m, trait_mode): (CallableDef<'db>, Option<BorrowKind>),
     param_subst: &CompleteSubst<'db>,
     trait_inst: TraitInstId<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
@@ -278,7 +318,7 @@ fn compare_ty<'db>(
         // 4) Compare for equality, including the parameter's mode.
         if !impl_m_ty.has_invalid(db)
             && (trait_m_ty_normalized != impl_m_ty_normalized
-                || trait_m.param_mode(db, idx) != impl_m.param_mode(db, idx))
+                || trait_m.param_mode(db, idx, trait_mode) != impl_m.param_mode(db, idx, impl_mode))
         {
             sink.push(
                 ImplDiag::MethodArgTyMismatch {
@@ -325,7 +365,10 @@ fn compare_ty<'db>(
         false,
     );
     // A projection's return modes are part of its signature.
-    let same_modes = match (impl_m.ret_shape(db), trait_m.ret_shape(db)) {
+    let same_modes = match (
+        impl_m.ret_shape(db, impl_mode),
+        trait_m.ret_shape(db, trait_mode),
+    ) {
         (Some(impl_shape), Some(trait_shape)) => impl_shape
             .skip_binder()
             .same_modes(trait_shape.skip_binder()),
@@ -341,6 +384,8 @@ fn compare_ty<'db>(
                 impl_m,
                 trait_ty: trait_m_ret_ty_normalized,
                 impl_ty: impl_m_ret_ty_normalized,
+                trait_mode,
+                impl_mode,
             }
             .into(),
         );
@@ -465,7 +510,7 @@ fn map_effect_provider_params_by_identity<'db>(
     // known to be empty needs no entry at all.
     let impl_func = match impl_m {
         CallableDef::Func(func) => Some(func),
-        CallableDef::VariantCtor(_) => None,
+        CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => None,
     };
     let trait_entries: Vec<_> = collect_effect_provider_entries(
         db,
@@ -768,6 +813,7 @@ pub(crate) fn normalize_predicate_for_comparison<'db>(
         pred.def(db),
         args,
         assoc_type_bindings.into_iter().collect::<IndexMap<_, _>>(),
+        pred.mode(db),
     )
 }
 
@@ -1013,18 +1059,21 @@ fn classify_constraint_entailment(result: GoalSatisfiability<'_>) -> ConstraintE
 
 fn compare_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
-    impl_m: CallableDef<'db>,
-    trait_m: CallableDef<'db>,
+    (impl_m, impl_mode): (CallableDef<'db>, Option<BorrowKind>),
+    (trait_m, trait_mode): (CallableDef<'db>, Option<BorrowKind>),
     trait_inst: TraitInstId<'db>,
     param_subst: &CompleteSubst<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
-    let impl_m_constraints = collect_func_def_constraints(db, impl_m, false).instantiate_identity();
+    let impl_m_constraints = collect_func_def_constraints(db, impl_m, false)
+        .instantiate_identity()
+        .at_mode(db, impl_mode);
     let trait_m_constraints = instantiate_trait_method_template(
         db,
         collect_func_def_constraints(db, trait_m, false),
         param_subst,
-    );
+    )
+    .at_mode(db, trait_mode);
     let compare_assumptions = impl_m_constraints
         .merge(db, trait_m_constraints)
         .extend_all_bounds(db);
@@ -1053,7 +1102,7 @@ fn compare_constraints<'db>(
             .filter(|(effect, _)| func.effect_from_row(db, *effect))
             .filter_map(|(_, param)| impl_m.params(db).get((*param)?).copied())
             .collect(),
-        CallableDef::VariantCtor(_) => Vec::new(),
+        CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => Vec::new(),
     };
     let mut unsatisfied_goals = ThinVec::new();
     for &goal in impl_m_constraints.list(db) {

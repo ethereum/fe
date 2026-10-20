@@ -866,7 +866,7 @@ struct Note {
 }
 
 fn note_size(_ note: own Note) -> u256 {
-    note.id + note.body.len()
+    note.id + note.body.len() as u256
 }
 
 fn entry() -> u256 {
@@ -895,7 +895,7 @@ fn pointer_aggregate_temporaries_stay_values() {
         r#"use core::abi::store_word
 use core::ptr::MemBuffer
 
-fn buffer_len() -> u256 {
+fn buffer_len() -> usize {
     let buffer = MemBuffer::alloc(32)
     unsafe { store_word(ptr: buffer.ptr(), value: 42) }
     buffer.span().len()
@@ -2752,7 +2752,7 @@ use std::evm::Mutex
 
 fn bump(_ m: mut Mutex<u256>) {
     assert!(m.try_lock())
-    m.value_mut() += 1
+    m.value() += 1
     m.unlock()
 }
 

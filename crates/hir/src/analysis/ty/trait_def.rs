@@ -10,7 +10,7 @@ use crate::{
         trait_resolution::{GoalSatisfiability, PredicateListId, Selection},
     },
     hir_def::{
-        Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, Trait,
+        Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, ModeMarker, Trait,
         params::FuncParamMode,
     },
 };
@@ -31,7 +31,7 @@ use super::{
         TraitSolveCx, constraint::collect_candidate_constraints, is_goal_satisfiable,
         normalize_trait_inst_preserving_validity,
     },
-    ty_def::{TyBase, TyData, TyId},
+    ty_def::{BorrowKind, TyBase, TyData, TyId},
     ty_lower::{CompleteSubst, ParamBasis, ParamDomainId, ParamKey, PartialSubst, param_schema},
     unify::UnificationTable,
     visitor::{TyVisitable, TyVisitor},
@@ -51,6 +51,11 @@ pub(crate) fn ingot_trait_env<'db>(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>
 /// projections) often only become unifiable after normalization, and unification
 /// rejects unresolved associated types. The solver normalizes before unifying
 /// candidates, so any filtering here must be an over-approximation.
+///
+/// The implementors are headers; their associated types are not lowered.
+/// Lowering `type Space = Inner<P>::Space` proves the bounds of `Inner`'s
+/// impl, `P: Pinned`, which looks up this trait's impls again. Consumers lower
+/// the associated types they read, one binding at a time.
 #[salsa::tracked(return_ref)]
 pub(crate) fn impls_for_trait_def<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -64,9 +69,7 @@ pub(crate) fn impls_for_trait_def<'db>(
         out.extend(contract_virtual_impls(db, ingot).iter().copied());
     }
 
-    out.into_iter()
-        .map(|implementor| complete_impl_trait(db, implementor))
-        .collect()
+    out
 }
 
 /// Different nominal heads cannot unify after freshening or saturation.
@@ -189,7 +192,7 @@ fn contract_virtual_impls<'db>(
     for top_mod in ingot.all_modules(db) {
         for &contract in top_mod.all_contracts(db).iter() {
             let self_ty = TyId::contract(db, contract);
-            let trait_inst = TraitInstId::new(db, contract_trait, vec![self_ty], IndexMap::new());
+            let trait_inst = TraitInstId::new_simple(db, contract_trait, vec![self_ty]);
 
             let init_args_ty = contract.init_args_ty(db);
             let mut types = IndexMap::new();
@@ -296,7 +299,8 @@ impl<'db> ResolvedImplInstance<'db> {
         self.selected.params(db)
     }
 
-    /// Resolves an implemented trait method using this already-selected impl.
+    /// Resolves an implemented trait method, called at `mode`, using this
+    /// already-selected impl.
     ///
     /// The returned generic arguments match the selected implementation for an
     /// explicit method and the resolved trait instance for a default method.
@@ -304,9 +308,10 @@ impl<'db> ResolvedImplInstance<'db> {
         self,
         db: &'db dyn HirAnalysisDb,
         name: IdentId<'db>,
+        mode: Option<BorrowKind>,
     ) -> Option<(Func<'db>, Vec<TyId<'db>>)> {
         let implementor = self.selected();
-        if let Some(func) = implementor.methods(db).get(&name).copied() {
+        if let Some(func) = implementor.method_at(db, name, mode) {
             return Some((func, self.impl_args(db).to_vec()));
         }
         let func = implementor
@@ -565,6 +570,7 @@ pub fn resolve_trait_method_instance<'db>(
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
     method: IdentId<'db>,
+    mode: Option<BorrowKind>,
 ) -> Selection<ResolvedMethodInstance<'db>> {
     let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
         Selection::Unique(resolved) => resolved,
@@ -580,7 +586,7 @@ pub fn resolve_trait_method_instance<'db>(
     else {
         return Selection::NotFound;
     };
-    let (body, body_args) = resolved.method_instance(db, method).map_or_else(
+    let (body, body_args) = resolved.method_instance(db, method, mode).map_or_else(
         || (None, resolved.trait_inst().args(db).to_vec()),
         |(func, args)| (Some(func), args),
     );
@@ -1031,6 +1037,7 @@ impl<'db> ImplementorId<'db> {
             trait_inst.def(db),
             trait_inst.args(db).to_vec(),
             assoc_type_bindings,
+            trait_inst.mode(db),
         )
     }
 
@@ -1049,12 +1056,57 @@ impl<'db> ImplementorId<'db> {
         }
     }
 
-    /// Method map for this impl, keyed by name.
+    /// Method map for this impl, keyed by name: for a method with one body
+    /// per mode, its `ref` body.
     pub(crate) fn methods(
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> &'db IndexMap<IdentId<'db>, Func<'db>> {
-        collect_implementor_methods(db, self)
+        &collect_implementor_methods(db, self).methods
+    }
+
+    /// The impl's body of the method `name` at `mode`: the `mut` body of a
+    /// method with one body per mode at `mut`, and its method otherwise.
+    pub(crate) fn method_at(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+        mode: Option<BorrowKind>,
+    ) -> Option<Func<'db>> {
+        let methods = collect_implementor_methods(db, self);
+        mode.filter(|&mode| mode == BorrowKind::Mut)
+            .and_then(|_| methods.mut_bodies.get(&name))
+            .or_else(|| methods.methods.get(&name))
+            .copied()
+    }
+
+    /// Whether the implementation gives the trait's `mut?` method `trait_m`,
+    /// named `name`, its `mut` mode: by a `mut?` method, a `mut` body, or
+    /// the trait method's default body.
+    fn gives_mut_mode(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+        trait_m: Func<'db>,
+    ) -> bool {
+        let methods = collect_implementor_methods(db, self);
+        methods.mut_bodies.contains_key(&name)
+            || methods
+                .methods
+                .get(&name)
+                .map_or(trait_m.body(db).is_some(), |method| method.is_maybe_mut(db))
+    }
+
+    /// Whether the implementation gives the trait's `mut?` methods their
+    /// `mut` modes, so `T: mut Trait` holds by it under its `mut?` bounds:
+    /// each such method is `mut?` or keeps its `mut?` default body. A
+    /// compiler-made implementor's trait has no `mut?` methods.
+    pub(crate) fn gives_mut(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.trait_def(db)
+            .method_defs(db)
+            .iter()
+            .filter(|(_, method)| method.is_maybe_mut(db))
+            .all(|(&name, &method)| self.gives_mut_mode(db, name, method))
     }
 
     /// Compare impl methods vs. trait methods and report missing/mismatched ones.
@@ -1074,6 +1126,16 @@ impl<'db> ImplementorId<'db> {
             .filter_map(|(name, &trait_method)| trait_method.body(db).is_none().then_some(*name))
             .collect();
 
+        let methods = collect_implementor_methods(db, self);
+        for (first, other) in &methods.conflicts {
+            diags.push(
+                ImplDiag::ConflictMethodImpl {
+                    primary: other.as_callable(db).unwrap(),
+                    conflict_with: first.as_callable(db).unwrap(),
+                }
+                .into(),
+            );
+        }
         for (name, impl_m) in impl_methods {
             let Some(trait_m) = trait_methods.get(name) else {
                 diags.push(
@@ -1086,14 +1148,46 @@ impl<'db> ImplementorId<'db> {
                 );
                 continue;
             };
+            let trait_m = trait_m.as_callable(db).unwrap();
             compare_impl_method(
                 db,
                 impl_m.as_callable(db).unwrap(),
-                trait_m.as_callable(db).unwrap(),
+                trait_m,
                 self.trait_inst(db),
+                BorrowKind::Ref,
                 &mut diags,
             );
+            if let Some(mut_body) = methods.mut_bodies.get(name) {
+                compare_impl_method(
+                    db,
+                    mut_body.as_callable(db).unwrap(),
+                    trait_m,
+                    self.trait_inst(db),
+                    BorrowKind::Mut,
+                    &mut diags,
+                );
+            }
             required_methods.remove(name);
+        }
+
+        // Either every `mut?` method of the trait has its `mut` mode here, or
+        // none has.
+        let modes: Vec<_> = trait_methods
+            .iter()
+            .filter(|(_, method)| method.is_maybe_mut(db))
+            .map(|(&name, &method)| (name, self.gives_mut_mode(db, name, method)))
+            .collect();
+        if let Some(&(given, _)) = modes.iter().find(|(_, gives)| *gives)
+            && let Some(&(missing, _)) = modes.iter().find(|(_, gives)| !gives)
+        {
+            diags.push(
+                ImplDiag::PartialMutImpl {
+                    primary: self.hir_impl_trait(db).span().trait_ref().into(),
+                    given,
+                    missing,
+                }
+                .into(),
+            );
         }
 
         if !required_methods.is_empty() {
@@ -1203,6 +1297,12 @@ pub struct TraitInstId<'db> {
     /// Associated type bounds specified by user, eg `Iterator<Item=i32>`
     #[return_ref]
     pub assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>>,
+
+    /// The modes the predicate grants the trait's `mut?` methods at:
+    /// `T: Trait` grants `ref`, `T: mut Trait` both. `mut?` (`T: mut? Trait`)
+    /// is `mut` where the item it bounds is used at `mut`, and stands only
+    /// in an item's declared bounds.
+    pub mode: ModeMarker,
 }
 
 impl<'db> TraitInstId<'db> {
@@ -1211,7 +1311,47 @@ impl<'db> TraitInstId<'db> {
     }
 
     pub fn new_simple(db: &'db dyn HirAnalysisDb, def: Trait<'db>, args: Vec<TyId<'db>>) -> Self {
-        Self::new(db, def, args, IndexMap::new())
+        Self::new(db, def, args, IndexMap::new(), ModeMarker::None)
+    }
+
+    /// The predicate with `mode` in place of its own.
+    pub fn with_mode(self, db: &'db dyn HirAnalysisDb, mode: ModeMarker) -> Self {
+        Self::new(
+            db,
+            self.def(db),
+            self.args(db).clone(),
+            self.assoc_type_bindings(db).clone(),
+            mode,
+        )
+    }
+
+    /// The predicate a bound of an item used at `mode` is: a `mut?` bound is
+    /// `mut` at `mut`, and plain otherwise.
+    pub fn at_mode(self, db: &'db dyn HirAnalysisDb, mode: Option<BorrowKind>) -> Self {
+        match (self.mode(db), mode) {
+            (ModeMarker::MaybeMut, Some(BorrowKind::Mut)) => self.with_mode(db, ModeMarker::Mut),
+            (ModeMarker::MaybeMut, _) => self.with_mode(db, ModeMarker::None),
+            _ => self,
+        }
+    }
+
+    /// The goal that the predicate's self type grants the trait's `mut?`
+    /// methods at `mut`: `T: mut Trait`, which the predicate's associated
+    /// equalities, checked with it, need not repeat.
+    pub fn mut_goal(self, db: &'db dyn HirAnalysisDb) -> Self {
+        Self::new(
+            db,
+            self.def(db),
+            self.args(db).clone(),
+            IndexMap::new(),
+            ModeMarker::Mut,
+        )
+    }
+
+    /// Whether the predicate grants the `mut` modes of the trait's `mut?`
+    /// methods.
+    pub fn is_mut(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.mode(db) == ModeMarker::Mut
     }
 
     /// Extract positional identity only. The caller remains responsible for
@@ -1230,7 +1370,7 @@ impl<'db> TraitInstId<'db> {
             .iter()
             .map(|ty| table.new_var_from_param(*ty))
             .collect::<Vec<_>>();
-        Self::new(db, def, args, IndexMap::new())
+        Self::new_simple(db, def, args)
     }
 
     pub fn assoc_ty_bindings(self, db: &'db dyn HirAnalysisDb) -> Vec<(IdentId<'db>, TyId<'db>)> {
@@ -1273,6 +1413,7 @@ impl<'db> TraitInstId<'db> {
             self.def(db),
             normalized_args,
             self.assoc_type_bindings(db).clone(),
+            self.mode(db),
         )
     }
 
@@ -1315,12 +1456,13 @@ impl<'db> TraitInstId<'db> {
             };
             format!("{name}({}){ret}", params.join(", "))
         } else {
-            let mut s = self
-                .def(db)
-                .name(db)
-                .to_opt()
-                .map_or("<unknown>", |n| n.data(db).as_str())
-                .to_string();
+            let mut s = self.mode(db).prefix().to_string();
+            s.push_str(
+                self.def(db)
+                    .name(db)
+                    .to_opt()
+                    .map_or("<unknown>", |n| n.data(db).as_str()),
+            );
 
             let mut args = self.args(db).iter().map(|ty| ty.pretty_print(db));
             // Skip the first type parameter since it's the implementor type.
@@ -1460,7 +1602,13 @@ fn probe(value: own Wrapper<u16>) {}
             .expect("missing probe parameter")
             .ty(&db);
         let projected_arg = self_ty.generic_args(&db)[0];
-        let inst = TraitInstId::new(&db, trait_, vec![self_ty, projected_arg], IndexMap::new());
+        let inst = TraitInstId::new(
+            &db,
+            trait_,
+            vec![self_ty, projected_arg],
+            IndexMap::new(),
+            crate::hir_def::ModeMarker::None,
+        );
         let Selection::Unique(resolved) =
             resolve_trait_impl_instance(&db, TraitSolveCx::new(&db, func.scope()), inst)
         else {

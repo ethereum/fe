@@ -295,7 +295,7 @@ fn verify_expr<'db>(
                     value_ty == result_ty && value_ty.is_integral(db)
                 }
                 UnOp::Not => value_ty.is_bool(db) && result_ty.is_bool(db),
-                UnOp::Mut | UnOp::Ref | UnOp::Deref => false,
+                UnOp::Mut | UnOp::MaybeMut | UnOp::Ref | UnOp::Deref => false,
             };
             valid
                 .then_some(())

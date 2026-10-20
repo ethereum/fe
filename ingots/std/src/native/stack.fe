@@ -41,13 +41,14 @@ impl<T, const CAPACITY: usize> FixedStack<T, CAPACITY> {
         Result::Ok(())
     }
 
-    /// The mutable projection reserves the stack until its caller's last use.
-    pub fn top_mut(mut self) -> mut T {
+    /// The top element. At `mut`, the projection reserves the stack until
+    /// its caller's last use.
+    pub fn top(mut? self) -> mut? T {
         core::assert(self.len > 0)
         // Every occupied slot contains Some; the stack owns its allocation.
         unsafe {
             match (*self.slots)[self.len - 1] {
-                Option::Some(mut value) => mut value,
+                Option::Some(mut? value) => mut? value,
                 Option::None => core::panic(),
             }
         }

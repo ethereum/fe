@@ -168,7 +168,7 @@ pub(super) fn check_runtime_body_supported<'db>(
                 expr: NExpr::Call { callee, .. },
                 ..
             } = &stmt.kind
-                && let BodyOwner::Func(func) = callee.key.owner(db)
+                && let BodyOwner::Func(func, _) = callee.key.owner(db)
                 && func.containing_trait(db).is_some()
                 && func.body(db).is_none()
                 && contract_metadata_builtin(db, get_or_build_semantic_instance(db, callee.key))
@@ -312,7 +312,7 @@ fn oversized_size_of_ty<'db>(
         return None;
     };
     let size_of = resolve_lib_func_path(db, key.owner(db).scope(), "core::size_of")?;
-    if invocation.key.owner(db) != BodyOwner::Func(size_of) {
+    if invocation.key.owner(db) != BodyOwner::Func(size_of, None) {
         return None;
     }
     let ty = *invocation.key.subst(db).generic_args(db).first()?;
@@ -349,7 +349,7 @@ fn builtin_arg_ty<'db>(
     args: &[NOperand],
     kind: RuntimeBuiltinFuncKind,
 ) -> Option<TyId<'db>> {
-    let BodyOwner::Func(func) = callee.key.owner(db) else {
+    let BodyOwner::Func(func, _) = callee.key.owner(db) else {
         return None;
     };
     if runtime_builtin_func_kind(db, func) != Some(kind) {
@@ -1744,6 +1744,8 @@ impl<'db> RmirEmitter<'db> {
         );
         let ctor_elems = aggregate_ctor_elems_for_layout(self.db, layout, 3);
         self.lower_aggregate_values(bb, dst, layout, &ctor_elems, &[ptr, len, size]);
+        // The length is stored apart from the bytes, as a word the backend can
+        // forward to later loads of it.
         self.push_ignored_builtin(
             bb,
             crate::runtime::RuntimeBuiltin::Mstore {
@@ -1751,41 +1753,26 @@ impl<'db> RmirEmitter<'db> {
                 value: len,
             },
         );
-        for (idx, chunk) in bytes.chunks(32).enumerate() {
-            let addr = self.alloc_runtime_temp(
-                TyId::u256(self.db),
-                RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-            );
-            let offset = self.alloc_u256_const(bb, 32 * (idx + 1));
+        if !bytes.is_empty() {
+            let thirty_two = self.alloc_u256_const(bb, 32);
+            let data =
+                self.alloc_runtime_temp(TyId::u256(self.db), RuntimeCarrier::Value(word_class()));
             self.push_stmt(
                 bb,
                 RStmt::Assign {
-                    dst: addr,
-                    expr: RExpr::Binary {
-                        op: BinOp::Arith(ArithBinOp::Add),
-                        lhs: ptr,
-                        rhs: offset,
-                    },
-                },
-            );
-            let word = self.alloc_runtime_temp(
-                TyId::u256(self.db),
-                RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-            );
-            self.push_stmt(
-                bb,
-                RStmt::Assign {
-                    dst: word,
-                    expr: RExpr::ConstScalar(ConstScalar::Int {
-                        bits: 256,
-                        signed: false,
-                        words: padded_word_bytes(chunk),
+                    dst: data,
+                    expr: RExpr::Builtin(crate::runtime::RuntimeBuiltin::PtrOffsetBytes {
+                        ptr,
+                        offset: thirty_two,
                     }),
                 },
             );
             self.push_ignored_builtin(
                 bb,
-                crate::runtime::RuntimeBuiltin::Mstore { addr, value: word },
+                crate::runtime::RuntimeBuiltin::StoreConstBytes {
+                    dst: data,
+                    bytes: bytes.into(),
+                },
             );
         }
         dst
@@ -1819,49 +1806,13 @@ impl<'db> RmirEmitter<'db> {
         let payload_len = self.alloc_u256_const(bb, payload.len());
         let allocated_len = self.alloc_u256_const(bb, payload.len().next_multiple_of(32));
         let ptr = self.malloc_bytes(bb, allocated_len);
-
-        for (idx, chunk) in payload.chunks(32).enumerate() {
-            let addr = if idx == 0 {
-                ptr
-            } else {
-                let addr = self.alloc_runtime_temp(
-                    TyId::u256(self.db),
-                    RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-                );
-                let offset = self.alloc_u256_const(bb, idx * 32);
-                self.push_stmt(
-                    bb,
-                    RStmt::Assign {
-                        dst: addr,
-                        expr: RExpr::Binary {
-                            op: BinOp::Arith(ArithBinOp::Add),
-                            lhs: ptr,
-                            rhs: offset,
-                        },
-                    },
-                );
-                addr
-            };
-            let word = self.alloc_runtime_temp(
-                TyId::u256(self.db),
-                RuntimeCarrier::Value(RuntimeClass::Scalar(word_scalar_class())),
-            );
-            self.push_stmt(
-                bb,
-                RStmt::Assign {
-                    dst: word,
-                    expr: RExpr::ConstScalar(ConstScalar::Int {
-                        bits: 256,
-                        signed: false,
-                        words: padded_word_bytes(chunk),
-                    }),
-                },
-            );
-            self.push_ignored_builtin(
-                bb,
-                crate::runtime::RuntimeBuiltin::Mstore { addr, value: word },
-            );
-        }
+        self.push_ignored_builtin(
+            bb,
+            crate::runtime::RuntimeBuiltin::StoreConstBytes {
+                dst: ptr,
+                bytes: payload.into(),
+            },
+        );
 
         RTerminator::Revert {
             offset: ptr,
@@ -2277,21 +2228,23 @@ impl<'db> RmirEmitter<'db> {
             let value = self.lower_zst_value_placeholder(bb, field_ty, stored.clone());
             return (value, stored);
         }
-        let value = if let Some(boundary) =
-            boundary_spec_for_ty_in_env(self.db, self.env, field_ty, AddressSpace::Memory)
-        {
-            self.lower_semantic_operand_for_boundary(bb, field, &boundary)
-        } else {
-            let class = self
-                .top_level_class_for_ty(field_ty, AddressSpace::Memory)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "non-zst constructor field should have a runtime class: owner={:?} field_ty={} stored={stored:#?}",
-                        self.semantic_body.owner().key(self.db).owner(self.db),
-                        field_ty.pretty_print(self.db),
-                    )
-                });
-            self.lower_semantic_operand_for_class(bb, field, &class)
+        let boundary =
+            boundary_spec_for_ty_in_env(self.db, self.env, field_ty, AddressSpace::Memory);
+        let runtime_field = self.runtime_operand(field);
+        let roots = self.runtime_roots();
+        let value_classes = self.normalized_value_classes();
+        // The selection inference classified the field by.
+        let selected = self.with_current_body_cx(|cx| {
+            let mut class_cache = InferClassCache::new(self.semantic_body.locals.len());
+            RuntimeArgSelector::new(cx.env, cx.carriers, Some(&mut class_cache))
+                .with_concrete_roots(&roots)
+                .with_concrete_value_classes(&value_classes)
+                .selected_ctor_field(runtime_field, boundary.as_ref())
+        });
+        // With no source selected, inference gave the field its stored class.
+        let value = match selected {
+            Some(selected) => self.lower_selected_runtime_arg(bb, field, &selected),
+            None => self.lower_semantic_operand_for_class(bb, field, &stored),
         };
         let class = self.value_class(value).cloned().unwrap_or(stored);
         (value, class)
@@ -2972,7 +2925,7 @@ impl<'db> RmirEmitter<'db> {
                 self.lower_intrinsic_arith_expr(IntrinsicArithBinOp::Sub, true, zero, value, class)
             }
             UnOp::Minus | UnOp::BitNot | UnOp::Not => RExpr::Unary { op, value },
-            UnOp::Plus | UnOp::Mut | UnOp::Ref | UnOp::Deref => return None,
+            UnOp::Plus | UnOp::Mut | UnOp::MaybeMut | UnOp::Ref | UnOp::Deref => return None,
         })
     }
 
@@ -3004,7 +2957,7 @@ impl<'db> RmirEmitter<'db> {
         semantic: SemanticInstance<'db>,
         args: &[NOperand],
     ) -> Option<RLocalId> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
         let ret_ty = semantic_return_ty(self.db, semantic);
@@ -3322,7 +3275,7 @@ impl<'db> RmirEmitter<'db> {
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
     ) -> Option<RLocalId> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
 
@@ -3529,7 +3482,7 @@ impl<'db> RmirEmitter<'db> {
         semantic: SemanticInstance<'db>,
         args: &[NOperand],
     ) -> Option<RLocalId> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
         if func.body(self.db).is_some() {
@@ -3816,7 +3769,7 @@ impl<'db> RmirEmitter<'db> {
         semantic: SemanticInstance<'db>,
         args: &[RLocalId],
     ) -> Option<LoweredBuiltinCall<'db>> {
-        let BodyOwner::Func(func) = semantic.key(self.db).owner(self.db) else {
+        let BodyOwner::Func(func, _) = semantic.key(self.db).owner(self.db) else {
             return None;
         };
         let kind = runtime_builtin_func_kind(self.db, func)?;
@@ -4827,7 +4780,7 @@ impl<'db> RmirEmitter<'db> {
             .semantic(self.db)
             .map(|semantic| semantic.key(self.db).owner(self.db));
         let owner_name = owner.and_then(|owner| match owner {
-            BodyOwner::Func(func) => func
+            BodyOwner::Func(func, _) => func
                 .name(self.db)
                 .to_opt()
                 .map(|name| name.data(self.db).to_string()),
@@ -5969,24 +5922,6 @@ impl<'db> RmirEmitter<'db> {
         }
     }
 
-    fn lower_semantic_operand_for_boundary(
-        &mut self,
-        bb: RBlockId,
-        operand: NOperand,
-        boundary: &crate::runtime::RuntimeBoundarySpec<'db>,
-    ) -> RLocalId {
-        let runtime_operand = self.runtime_operand(operand);
-        let roots = self.runtime_roots();
-        let value_classes = self.normalized_value_classes();
-        let selected = self.with_current_body_cx(|cx| {
-            RuntimeArgSelector::new(cx.env, cx.carriers, None)
-                .with_concrete_roots(&roots)
-                .with_concrete_value_classes(&value_classes)
-                .selected_semantic_operand_for_boundary(runtime_operand, boundary)
-        });
-        self.lower_selected_runtime_arg(bb, operand, &selected)
-    }
-
     fn lower_selected_runtime_arg(
         &mut self,
         bb: RBlockId,
@@ -6234,7 +6169,7 @@ impl<'db> RmirEmitter<'db> {
         reify_runtime_const_for_ty(self.db, semantic, expected_ty, value).unwrap_or_else(|| {
             let owner = semantic.key(self.db).owner(self.db);
             let owner_name = match owner {
-                BodyOwner::Func(func) => func
+                BodyOwner::Func(func, _) => func
                     .name(self.db)
                     .to_opt()
                     .map(|name| {
@@ -6547,10 +6482,10 @@ mod tests {
     use crate::{build_test_runtime_package, runtime::package::runtime_instance_for_semantic};
 
     #[test]
-    fn mixed_compile_time_and_runtime_layout_components_lower_through_calls() {
+    fn const_generic_zero_sized_fields_lower_through_calls() {
         let mut db = DriverDataBase::default();
         let file_url = Url::from_file_path(
-            std::env::temp_dir().join("mixed_layout_component_runtime_lowering.fe"),
+            std::env::temp_dir().join("const_generic_zero_sized_fields_runtime_lowering.fe"),
         )
         .expect("fixture path should be absolute");
         db.workspace().touch(
@@ -6558,11 +6493,12 @@ mod tests {
             file_url.clone(),
             Some(
                 r#"
-use std::evm::StorageMap
+struct Marker<const ROOT: u256> {}
 
 struct Mixed<const ROOT: u256> {
-    fixed: StorageMap<u256, u256, 7>,
-    dynamic: StorageMap<u256, u256, ROOT>,
+    fixed: Marker<7>,
+    generic: Marker<ROOT>,
+    value: u256,
 }
 
 fn pass<const ROOT: u256>(value: own Mixed<ROOT>) -> Mixed<ROOT> {
@@ -6581,6 +6517,8 @@ fn forward<const ROOT: u256>(value: own Mixed<ROOT>) -> Mixed<ROOT> {
             .get(&db, &file_url)
             .expect("file should be loaded");
         let top_mod = db.top_mod(file);
+        let diags = db.run_on_top_mod(top_mod);
+        assert!(diags.is_empty(), "{}", diags.format_diags(&db));
         for name in ["pass", "forward"] {
             let func = top_mod
                 .all_funcs(&db)
@@ -6594,9 +6532,14 @@ fn forward<const ROOT: u256>(value: own Mixed<ROOT>) -> Mixed<ROOT> {
                 .unwrap_or_else(|| panic!("missing function `{name}`"));
             let semantic = get_or_build_semantic_instance(
                 &db,
-                identity_semantic_instance_key(&db, BodyOwner::Func(func)),
+                identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
             );
-            let _ = runtime_instance_for_semantic(&db, semantic).body(&db);
+            let body = runtime_instance_for_semantic(&db, semantic).body(&db);
+            assert_eq!(body.signature.params.len(), 1);
+            assert_eq!(
+                body.signature.ret.as_ref(),
+                Some(&body.signature.params[0].class)
+            );
         }
     }
 

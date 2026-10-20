@@ -1,11 +1,10 @@
 // A packed map as a library collection: eight 32-bit counters to a word,
 // each word hashed with its index like Solady's `LibMap`, so any key stays
-// in the map's region. Implementing `Pinned` with `S` storage pins it to
-// storage: no attribute, and no raw storage authority at its uses.
-use core::marker::Pinned
-use core::iter::{Collection, CollectionMut}
+// in the map's region. Implementing `Pinned` with `Space` `Storage` pins it
+// to storage: no attribute, and no raw storage authority at its uses.
+use core::marker::{Pinned, Storage}
+use core::iter::Collection
 use core::ops::{LaneCodec, Location, StateIndex}
-use core::option::Option
 use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words}
 
 /// A `u32` in 32 bits of a word.
@@ -28,7 +27,7 @@ struct Counters {
 }
 
 impl Pinned for Counters {
-    space S = storage
+    type Space = Storage
 }
 
 unsafe impl StateIndex for Counters {
@@ -50,28 +49,25 @@ impl Counters {
 }
 
 // The first ten counters, as a collection whose elements are lanes: their
-// grants are memory copies, which `space S = self[_]` says.
+// grants are memory copies.
 impl Collection for Counters {
-    space S = self[_]
     type Cursor = u256
     type Item = u32
 
-    fn start(self) -> Option<u256> {
-        Option::Some(0)
+    fn start(self) -> u256 {
+        0
     }
 
-    fn next(self, _ c: u256) -> Option<u256> {
-        if c < 9 { Option::Some(c + 1) } else { Option::None }
+    fn has(self, _ c: u256) -> bool {
+        c < 10
     }
 
-    fn at(self, _ c: u256) -> ref u32 {
-        ref self[c]
+    fn next(self, _ c: u256) -> u256 {
+        c + 1
     }
-}
 
-impl CollectionMut for Counters {
-    fn at_mut(mut self, _ c: u256) -> mut u32 {
-        mut self[c]
+    fn at(mut? self, _ c: u256) -> mut? u32 {
+        mut? self[c]
     }
 }
 

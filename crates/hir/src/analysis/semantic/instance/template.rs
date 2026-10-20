@@ -78,14 +78,14 @@ impl<'db> GenericSubst<'db> {
                     |parent| Self::for_body_owner(db, parent, args),
                 );
             }
-            BodyOwner::Func(func) if args.is_empty() => {
+            BodyOwner::Func(func, _) if args.is_empty() => {
                 return Self::for_owner(
                     db,
                     func.into(),
                     CallableDef::Func(func).params(db).to_vec(),
                 );
             }
-            BodyOwner::Func(func) => Some(func.into()),
+            BodyOwner::Func(func, _) => Some(func.into()),
             BodyOwner::AnonConstBody { body, .. } if !args.is_empty() => {
                 lexical_const_body_owner(db, body)
             }
@@ -150,7 +150,7 @@ pub fn instantiate_typed_body<'db>(
     template: TypedBodyTemplate<'db>,
     subst: GenericSubst<'db>,
 ) -> TypedBody<'db> {
-    if let BodyOwner::Func(func) = template.owner {
+    if let BodyOwner::Func(func, _) = template.owner {
         let mapping = subst
             .mapping(db)
             .as_ref()

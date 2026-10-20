@@ -79,7 +79,7 @@ pub contract C {
 #[test]
 fn test_effect_handle_field_deref() uses (evm: mut Evm) {
     let c = evm.create2<C>(value: 0, args: (), salt: 34)
-    assert!(c.inner != 0)
+    assert!(c.word() != 0)
 
     let seeded = evm.call(addr: c, gas: 100000, value: 0, message: Msg::SeedSlot {
         slot: 17,

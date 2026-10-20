@@ -421,7 +421,10 @@ fn requirement_premise_owner<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
 ) -> Option<GenericParamOwner<'db>> {
-    if !matches!(owner, BodyOwner::Func(_) | BodyOwner::AnonConstBody { .. }) {
+    if !matches!(
+        owner,
+        BodyOwner::Func(_, _) | BodyOwner::AnonConstBody { .. }
+    ) {
         return None;
     }
     premise_owner_in_scope(db, owner.scope())
@@ -779,7 +782,7 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
                 self.check_callee_headers(expr, func, args);
                 self.discharge_callee_conditions(expr, func, args);
             }
-            CallableDef::VariantCtor(_) => {
+            CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => {
                 self.check_constructor_value(expr, data, definition, args);
             }
         }
@@ -1673,7 +1676,7 @@ fn written_applications<'db>(
         }
     }
     let signature = match owner {
-        BodyOwner::Func(func) => Some(ItemKind::Func(func)),
+        BodyOwner::Func(func, _) => Some(ItemKind::Func(func)),
         BodyOwner::Const(const_) => Some(ItemKind::Const(const_)),
         _ => None,
     };

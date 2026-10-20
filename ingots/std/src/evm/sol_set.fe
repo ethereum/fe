@@ -15,13 +15,14 @@
 //! if operators.add(operator) { /* newly added */ }
 //! let n = operators.len()
 //! ```
-use core::abi::{AbiFrame, AbiSize, DynArray, Encode, store_word}
+use core::abi::{AbiFrame, AbiSize, Encode, store_word}
+use ingot::abi::DynArray
 use core::iter::{Bidirectional, Collection}
-use core::option::Option
+use core::ops::{WrappingAdd, WrappingSub}
 use core::ptr
 use ingot::abi::{Sol, StaticAbiElement}
 use super::effects::{RawStorage, storage_at_mut}
-use super::sol_array::{SolArray, first_index, last_index, next_index, prev_index}
+use super::sol_array::SolArray
 use super::sol_slot::{SolPacked, field_mask}
 use super::storage_map::StorageMap
 
@@ -34,16 +35,20 @@ pub struct SolEnumerableSet<T> {
 
 // A loop visits the elements in the set's internal order, like `get`.
 impl<T: SolPacked> Collection for SolEnumerableSet<T> {
-    space S = memory
     type Cursor = u256
     type Item = T
 
-    fn start(self) -> Option<u256> {
-        first_index(self.len())
+    // An index cursor that wraps, as `SolArray`'s does.
+    fn start(self) -> u256 {
+        0
     }
 
-    fn next(self, _ c: u256) -> Option<u256> {
-        next_index(c, self.len())
+    fn has(self, _ c: u256) -> bool {
+        c < self.len()
+    }
+
+    fn next(self, _ c: u256) -> u256 {
+        c.wrapping_add(1)
     }
 
     fn at(self, _ c: u256) -> ref T {
@@ -53,12 +58,12 @@ impl<T: SolPacked> Collection for SolEnumerableSet<T> {
 }
 
 impl<T: SolPacked> Bidirectional for SolEnumerableSet<T> {
-    fn last(self) -> Option<u256> {
-        last_index(self.len())
+    fn last(self) -> u256 {
+        self.len().wrapping_sub(1)
     }
 
-    fn prev(self, _ c: u256) -> Option<u256> {
-        prev_index(c)
+    fn prev(self, _ c: u256) -> u256 {
+        c.wrapping_sub(1)
     }
 }
 
@@ -113,7 +118,7 @@ impl<T: SolPacked> SolEnumerableSet<T> {
             value.encode(unsafe { AbiFrame::from_raw_parts(ptr: ptr::offset_bytes(data, 32 + i * 32), len: 32) })
             i += 1
         }
-        unsafe { DynArray::from_abi_tail(data, len, size) }
+        unsafe { DynArray::from_abi_tail(data, len: len as usize, size) }
     }
 
     /// Adds `value`; returns false if it was already present.

@@ -4,10 +4,15 @@
 //! promises. A yield site is the body's tail or a returned expression; blocks,
 //! `if`, `match` and `with` yield through their tails. Each yield site's shape
 //! is recorded for lowering.
-use super::{ExprProp, TyChecker, ValuePathRef, expr::IndexMutOp};
+use super::{
+    ExprProp, TraitObligationOutcome, TyChecker, ValuePathRef,
+    callable::place_borrow_suggestion,
+    env::{TraitObligation, TraitObligationOrigin},
+};
 use crate::{
     analysis::ty::{diagnostics::BodyDiag, shape::Shape, ty_def::BorrowKind},
     hir_def::{BinOp, CallableDef, Expr, ExprId, Partial, Stmt, UnOp},
+    span::DynLazySpan,
 };
 
 impl<'db> TyChecker<'db> {
@@ -56,7 +61,16 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_yield_leaf(&mut self, expr: ExprId, data: &Expr<'db>, shape: &Shape<'db>) {
-        let prop = self.env.typed_expr(expr).expect("yield site is typed");
+        let mut prop = self.env.typed_expr(expr).expect("yield site is typed");
+        // A `mut?` call yielded `mut` is called at `mut`.
+        if prop
+            .shape
+            .as_ref()
+            .is_some_and(|given| !given.grants(shape))
+            && self.select_mut_place(expr)
+        {
+            prop = self.env.typed_expr(expr).expect("yield site is typed");
+        }
         // A projection call or `ref p`/`mut p` grants its own accesses.
         if let Some(given) = &prop.shape {
             if given.grants(shape) {
@@ -102,7 +116,7 @@ impl<'db> TyChecker<'db> {
                     _ => self.env.callable_expr(expr).and_then(|callable| {
                         match callable.callable_def() {
                             CallableDef::VariantCtor(ctor) => Some(ctor.idx),
-                            CallableDef::Func(_) => None,
+                            CallableDef::Func(_) | CallableDef::StructCtor(_) => None,
                         }
                     }),
                 };
@@ -118,10 +132,12 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// Makes `expr`, a place a `mut` context needs, mutable by selecting
-    /// `index_mut` for the trait-lowered indexes along its place chain:
-    /// `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a `mut self` method.
-    /// Returns whether the place is mutable.
+    /// Makes `expr`, a place a `mut` context needs, mutable by calling the
+    /// `mut?` callees along its place chain at `mut`: the trait-lowered
+    /// indexes in `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a
+    /// `mut self` method, and calls such as `xs.at(i).bump()`, also through
+    /// a block's tail (`{ xs.at(i) }`) and `?` (`xs.find(v)?`). Returns
+    /// whether the place is mutable.
     pub(super) fn select_mut_place(&mut self, expr: ExprId) -> bool {
         let Some(prop) = self.env.typed_expr(expr) else {
             return false;
@@ -129,45 +145,157 @@ impl<'db> TyChecker<'db> {
         if prop.is_mut {
             return true;
         }
-        let selected = match self.env.expr_data(expr) {
-            Partial::Present(Expr::Field(base, _)) => self.select_mut_place(*base),
-            Partial::Present(Expr::Bin(base, index, BinOp::Index)) => {
-                let Some(base_prop) = self.env.typed_expr(*base) else {
+        if self
+            .env
+            .callable_expr(expr)
+            .is_some_and(|callable| callable.mode() == Some(BorrowKind::Ref))
+        {
+            return self.select_mut_call(expr, prop);
+        }
+        let shape = match self.env.expr_data(expr) {
+            // A field, array element or place entry is a place of its base.
+            Partial::Present(Expr::Field(base, _) | Expr::Bin(base, _, BinOp::Index)) => {
+                if !self.select_mut_place(*base) {
+                    return false;
+                }
+                prop.shape.as_ref().map(|shape| match shape {
+                    Shape::Access(_, ty) => Shape::Access(BorrowKind::Mut, *ty),
+                    shape => shape.clone(),
+                })
+            }
+            // A block grants what its tail does.
+            Partial::Present(Expr::Block(stmts, _)) => {
+                let Some(Partial::Present(Stmt::Expr(tail))) =
+                    stmts.last().map(|stmt| stmt.data(self.db, self.body()))
+                else {
                     return false;
                 };
-                if base_prop.ty.is_array(self.db) || self.env.is_place_entry(expr) {
-                    self.select_mut_place(*base)
-                } else {
-                    // `index_mut` takes `mut self`: a place base must be
-                    // writable, and a base an outer index grants becomes so by
-                    // that index selecting `index_mut` too.
-                    let is_place = self.env.is_place_expr(*base);
-                    if !self.select_mut_place(*base) && is_place {
-                        return false;
-                    }
-                    self.env.forget_call(expr);
-                    let indexed =
-                        self.check_ops_trait(expr, base_prop.ty, &IndexMutOp, Some(*index));
-                    !indexed.ty.has_invalid(self.db)
+                if !self.select_mut_place(*tail) {
+                    return false;
+                }
+                self.env.typed_expr(*tail).and_then(|tail| tail.shape)
+            }
+            // `e?` grants the payload of what `e` does.
+            Partial::Present(Expr::Try(inner)) => {
+                if !self.select_mut_place(*inner) {
+                    return false;
+                }
+                match self.env.typed_expr(*inner).and_then(|inner| inner.shape) {
+                    Some(Shape::Sum { payload, .. }) => Some(*payload),
+                    _ => prop.shape.clone(),
                 }
             }
-            _ => false,
+            _ => return false,
         };
-        if selected {
-            let shape = prop.shape.as_ref().map(|shape| match shape {
-                Shape::Access(_, ty) => Shape::Access(BorrowKind::Mut, *ty),
-                shape => shape.clone(),
-            });
-            self.env.type_expr(
-                expr,
-                ExprProp {
-                    is_mut: true,
-                    shape,
-                    ..prop
-                },
-            );
+        self.env.type_expr(
+            expr,
+            ExprProp {
+                is_mut: true,
+                shape,
+                ..prop
+            },
+        );
+        true
+    }
+
+    /// Calls the `mut?` callee of the call `expr`, typed as `prop`, at `mut`,
+    /// as a use of its result that needs `mut` asks. Each argument a `mut?`
+    /// parameter takes is then passed `mut`: a receiver is accessed
+    /// implicitly, and any other argument must be a `mut` access. The base
+    /// of an index that is an immutable place leaves the index at `ref`, for
+    /// the use to report as it reports any immutable place; any other
+    /// argument that cannot be `mut` is reported, and the call is still
+    /// `mut`.
+    fn select_mut_call(&mut self, expr: ExprId, prop: ExprProp<'db>) -> bool {
+        let mut callable = self
+            .env
+            .callable_expr(expr)
+            .cloned()
+            .expect("a `mut?` call is resolved");
+        let CallableDef::Func(func) = callable.callable_def() else {
+            return false;
+        };
+        let (receiver, args): (Option<ExprId>, Vec<ExprId>) = match self.env.expr_data(expr) {
+            Partial::Present(Expr::MethodCall(receiver, _, _, args)) => (
+                Some(*receiver),
+                std::iter::once(*receiver)
+                    .chain(args.iter().map(|arg| arg.expr))
+                    .collect(),
+            ),
+            Partial::Present(Expr::Call(_, args)) => {
+                (None, args.iter().map(|arg| arg.expr).collect())
+            }
+            // `t[i]` calls `Index::index` with `t` as its receiver.
+            Partial::Present(Expr::Bin(base, index, BinOp::Index)) => {
+                (Some(*base), vec![*base, *index])
+            }
+            _ => return false,
+        };
+        for (param, arg) in func.params(self.db).zip(args) {
+            if !param.is_maybe_mut(self.db) {
+                continue;
+            }
+            let Some(arg_prop) = self.env.typed_expr(arg) else {
+                continue;
+            };
+            if arg_prop.access() == Some(BorrowKind::Mut) || arg_prop.ty.has_invalid(self.db) {
+                continue;
+            }
+            let span = arg.span(self.body()).into();
+            if Some(arg) == receiver {
+                if !arg_prop.is_mut && !self.select_mut_place(arg) && self.env.is_place_expr(arg) {
+                    if matches!(self.env.expr_data(expr), Partial::Present(Expr::Bin(..))) {
+                        return false;
+                    }
+                    self.report_cannot_borrow_mut(arg, span);
+                }
+            } else if arg_prop.access().is_some() && self.select_mut_place(arg) {
+                // A `mut?` result passed on is asked for `mut` in turn.
+            } else if self.env.is_place_expr(arg) {
+                self.push_diag(BodyDiag::ExplicitBorrowRequired {
+                    primary: span,
+                    kind: BorrowKind::Mut,
+                    suggestion: place_borrow_suggestion(self.db, self.body(), arg, BorrowKind::Mut),
+                });
+            } else {
+                self.push_diag(BodyDiag::BorrowArgMustBePlace {
+                    primary: span,
+                    kind: BorrowKind::Mut,
+                });
+            }
         }
-        selected
+        callable.set_mode(Some(BorrowKind::Mut));
+        // At `mut`, the callee's `mut?` bounds are `mut`, and a trait method
+        // needs a `mut` implementation of its trait.
+        let span: DynLazySpan<'db> = expr.span(self.body()).into();
+        callable.process_maybe_mut_constraints(self, expr, span.clone());
+        if let Some(inst) = callable.trait_inst()
+            && func.containing_trait(self.db).is_some()
+        {
+            let obligation = TraitObligation {
+                goal: inst.mut_goal(self.db),
+                origin: TraitObligationOrigin::GenericConfirmation,
+                span,
+            };
+            if let TraitObligationOutcome::Requeue(obligation) =
+                self.process_trait_obligation(obligation, false)
+            {
+                self.env.register_trait_obligation(obligation);
+            }
+        }
+        let shape = callable
+            .ret_shape(self.db)
+            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
+        self.env.set_call_mode(expr, Some(BorrowKind::Mut));
+        self.env.type_expr(
+            expr,
+            ExprProp {
+                is_mut: true,
+                shape,
+                ..prop
+            },
+        );
+        true
     }
 
     /// Marks `expr` as used as an access. A block forwards the access of its
@@ -231,7 +359,7 @@ impl<'db> TyChecker<'db> {
                 };
                 let explicit = matches!(
                     expr.data(self.db, self.body()),
-                    Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut))
+                    Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut))
                 );
                 (explicit || matches!(shape, Shape::Tuple(_) | Shape::Sum { .. }))
                     && !self.env.is_consumed_access(expr)
@@ -264,8 +392,7 @@ impl<'db> TyChecker<'db> {
             });
         }
         // A tuple holds accesses only as a projection's yield or an unsafe
-        // split; elsewhere its projection-call elements would be copies. The
-        // bases of a two-base loop are opened by its items, not held.
+        // split; elsewhere its projection-call elements would be copies.
         let tuples = self
             .body()
             .exprs(self.db)
@@ -279,12 +406,11 @@ impl<'db> TyChecker<'db> {
                     && elems.iter().any(|elem| {
                         !matches!(
                             elem.data(self.db, self.body()),
-                            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut))
-                        ) && !self.env.is_loop_base(*elem)
-                            && self
-                                .env
-                                .typed_expr(*elem)
-                                .is_some_and(|prop| matches!(prop.shape, Some(Shape::Access(..))))
+                            Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut))
+                        ) && self
+                            .env
+                            .typed_expr(*elem)
+                            .is_some_and(|prop| matches!(prop.shape, Some(Shape::Access(..))))
                     })
             })
             .collect::<Vec<_>>();

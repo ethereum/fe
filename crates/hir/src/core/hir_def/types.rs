@@ -1,4 +1,4 @@
-use super::{Body, IdentId, Partial, PathId};
+use super::{Body, GenericArg, IdentId, Partial, PathId};
 use crate::HirDb;
 
 #[salsa::interned]
@@ -22,6 +22,35 @@ impl<'db> TypeId<'db> {
         match self.data(db) {
             TypeKind::Mode(_, inner) => *inner,
             _ => Partial::Present(self),
+        }
+    }
+
+    /// Whether the type mentions `mut?` anywhere.
+    pub fn mentions_maybe_mut(self, db: &dyn HirDb) -> bool {
+        let mentions =
+            |ty: &Partial<TypeId>| ty.to_opt().is_some_and(|ty| ty.mentions_maybe_mut(db));
+        match self.data(db) {
+            TypeKind::Mode(TypeMode::MaybeMut, _) => true,
+            TypeKind::Mode(_, inner) | TypeKind::Ptr(inner) | TypeKind::Array(inner, _) => {
+                mentions(inner)
+            }
+            TypeKind::Tuple(elems) => elems.data(db).iter().any(mentions),
+            TypeKind::Path(path) => path.to_opt().is_some_and(|path| {
+                (0..path.len(db)).any(|idx| {
+                    path.segment(db, idx).is_some_and(|segment| {
+                        segment
+                            .generic_args(db)
+                            .data(db)
+                            .iter()
+                            .any(|arg| match arg {
+                                GenericArg::Type(arg) => mentions(&arg.ty),
+                                GenericArg::AssocType(arg) => mentions(&arg.ty),
+                                GenericArg::Const(_) => false,
+                            })
+                    })
+                })
+            }),
+            TypeKind::Never => false,
         }
     }
 
@@ -90,6 +119,8 @@ impl<'db> TypeId<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TypeMode {
     Mut,
+    /// `mut?`: the item's mode, `ref` or `mut` by its use.
+    MaybeMut,
     Ref,
     Own,
 }
@@ -98,6 +129,7 @@ impl TypeMode {
     pub fn keyword(self) -> &'static str {
         match self {
             TypeMode::Mut => "mut",
+            TypeMode::MaybeMut => "mut?",
             TypeMode::Ref => "ref",
             TypeMode::Own => "own",
         }

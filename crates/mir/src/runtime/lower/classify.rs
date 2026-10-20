@@ -42,11 +42,10 @@ use crate::{
 use super::{
     arg_selector::RuntimeArgSelector,
     boundary::{
-        BoundaryRef, BoundarySiteAllocator, BoundarySpecializationCache, RuntimeClassShape,
-        StagedBoundary, aggregate_transport_depends_on_runtime_source,
+        BoundarySiteAllocator, BoundarySpecializationCache, RuntimeClassShape, StagedBoundary,
+        aggregate_transport_depends_on_runtime_source,
         boundary_source_uses_transport_sensitive_aggregate, boundary_spec_for_ty_in_env,
         default_borrow_transport_set, specialize_boundary_for_aggregate_layout,
-        specialize_boundary_for_runtime_source_in_context,
     },
     call_input::{
         CompiledCallInputPlan, CompiledMaterializationPlan, compile_call_input_plan_for_semantic,
@@ -1062,23 +1061,6 @@ impl<'a, 'db> BodyEnv<'a, 'db> {
             parent = target;
         }
         Some(storage_field_lane(self.db, &parent, *field, root_space).is_some())
-    }
-
-    pub(crate) fn specialize_boundary_for_source(
-        self,
-        carriers: &[RuntimeCarrier<'db>],
-        local: SLocalId,
-        boundary: &RuntimeBoundarySpec<'db>,
-    ) -> RuntimeBoundarySpec<'db> {
-        specialize_boundary_for_runtime_source_in_context(
-            self,
-            local,
-            BoundaryRef::unstaged(boundary),
-            carriers,
-            None,
-        )
-        .boundary
-        .into_owned()
     }
 
     pub(crate) fn actual_aggregate_class_for_source(
@@ -2138,19 +2120,14 @@ fn aggregate_make_class_from_facts<'db>(
     let mut evaluator = RuntimeArgSelector::new(env, carriers, class_cache);
     for (field, field_facts) in fields.iter().copied().zip(facts.fields.iter()) {
         let field = env.body.runtime_operand(field)?;
-        let selected = if let Some(boundary) = field_facts.boundary.as_ref() {
-            let mut boundary_sites = BoundarySiteAllocator::default();
-            evaluator.selected_value_pass_plan(
+        let class = evaluator
+            .selected_ctor_field(
                 field,
-                &compile_value_pass_plan(
-                    RuntimeParamPlan::Boundary(boundary.boundary.clone()),
-                    &mut boundary_sites,
-                ),
+                field_facts
+                    .boundary
+                    .as_ref()
+                    .map(|boundary| &boundary.boundary),
             )
-        } else {
-            evaluator.selected_materialized_operand(field)
-        };
-        let class = selected
             .map(|arg| arg.class)
             .unwrap_or_else(|| field_facts.stored_class.clone());
         field_classes.push(class);
@@ -2724,7 +2701,7 @@ fn runtime_extern_builtin_return_class<'db>(
             AddressSpace::Memory,
         ));
     }
-    let hir::analysis::ty::ty_check::BodyOwner::Func(func) = semantic.key(db).owner(db) else {
+    let hir::analysis::ty::ty_check::BodyOwner::Func(func, _) = semantic.key(db).owner(db) else {
         return None;
     };
     if func.body(db).is_none()
@@ -2852,7 +2829,7 @@ pub(crate) fn semantic_return_ty<'db>(
     semantic: SemanticInstance<'db>,
 ) -> TyId<'db> {
     match semantic.key(db).owner(db) {
-        BodyOwner::Func(func) if func.is_projection(db) => semantic.normalized_result_ty(db),
+        BodyOwner::Func(func, _) if func.is_projection(db) => semantic.normalized_result_ty(db),
         _ => semantic.key(db).typed_body(db).result_ty(),
     }
 }
@@ -3037,9 +3014,10 @@ mod tests {
         name: &str,
     ) -> SemanticInstance<'db> {
         let func = func_by_name(db, top_mod, name);
-        let key = root_semantic_instance_key(db, BodyOwner::Func(func)).unwrap_or_else(|err| {
-            panic!("failed to build root semantic key for `{name}`: {err:?}")
-        });
+        let key =
+            root_semantic_instance_key(db, BodyOwner::Func(func, None)).unwrap_or_else(|err| {
+                panic!("failed to build root semantic key for `{name}`: {err:?}")
+            });
         get_or_build_semantic_instance(db, key)
     }
 
@@ -3142,7 +3120,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
         let trait_inst = TraitInstId::new_simple(&db, trait_, vec![TyId::bool(&db)]);
         let callee_key = SemanticInstanceKey::new(
             &db,
-            BodyOwner::Func(declaration),
+            BodyOwner::Func(declaration, None),
             GenericSubst::for_owner(&db, declaration.into(), trait_inst.args(&db).to_vec()),
             EffectProviderSubst::empty(&db),
             ImplEnv::new(
@@ -3518,7 +3496,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
             .find_map(|call| {
                 let semantic = call.callee.key(&db).semantic(&db)?;
                 match semantic.key(&db).owner(&db) {
-                    BodyOwner::Func(func)
+                    BodyOwner::Func(func, _)
                         if func
                             .name(&db)
                             .to_opt()
@@ -3816,7 +3794,7 @@ uses (slot: Slot<u256>)
                 else {
                     continue;
                 };
-                let BodyOwner::Func(func) = callee.key.owner(&db) else {
+                let BodyOwner::Func(func, _) = callee.key.owner(&db) else {
                     continue;
                 };
                 let Some(name) = func.name(&db).to_opt().map(|name| name.data(&db)) else {
@@ -3954,7 +3932,7 @@ fn caller() -> u256 {
         )
         .run();
         let callee_name = |owner: BodyOwner<'_>| match owner {
-            BodyOwner::Func(func) => func.name(&db).to_opt().map(|name| name.data(&db).clone()),
+            BodyOwner::Func(func, _) => func.name(&db).to_opt().map(|name| name.data(&db).clone()),
             _ => None,
         };
         // Inference selects a local provider before the local is given a
@@ -4078,7 +4056,7 @@ fn caller() -> u256 {
                         else {
                             return None;
                         };
-                        let BodyOwner::Func(func) = callee.key.owner(&db) else {
+                        let BodyOwner::Func(func, _) = callee.key.owner(&db) else {
                             return None;
                         };
                         if func
@@ -4113,7 +4091,7 @@ fn caller() -> u256 {
             .find_map(|call| {
                 let semantic = call.callee.key(&db).semantic(&db)?;
                 match semantic.key(&db).owner(&db) {
-                    BodyOwner::Func(func)
+                    BodyOwner::Func(func, _)
                         if func
                             .name(&db)
                             .to_opt()

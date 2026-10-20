@@ -186,10 +186,11 @@ impl<'db> TyCheckEnv<'db> {
 
         // Compute base assumptions (without effect-derived bounds) up-front
         let (base_preds, base_assumptions) = match owner {
-            BodyOwner::Func(func) => {
+            BodyOwner::Func(func, mode) => {
                 // Trait methods implicitly assume `Self: Trait` in their bodies so
                 // default method calls resolve against the trait being implemented.
-                let preds = crate::semantic::func_body_assumptions(db, func);
+                // A `mut?` bound is the body's mode's.
+                let preds = crate::semantic::func_body_assumptions(db, func).at_mode(db, mode);
                 let assumptions = preds.extend_all_bounds(db);
                 (preds, assumptions)
             }
@@ -255,7 +256,7 @@ impl<'db> TyCheckEnv<'db> {
         env.enter_scope(body.expr(db));
 
         match owner {
-            BodyOwner::Func(func) => {
+            BodyOwner::Func(func, mode) => {
                 let arg_tys = func.arg_tys(db);
                 for (idx, view) in func.params(db).enumerate() {
                     let mut ty = *arg_tys
@@ -270,7 +271,7 @@ impl<'db> TyCheckEnv<'db> {
                     let var = LocalBinding::Param {
                         site: ParamSite::Func(func),
                         idx,
-                        mode: view.mode(db),
+                        mode: view.mode_at(db, mode),
                         ty,
                         is_mut: view.is_mut(db),
                     };
@@ -329,7 +330,7 @@ impl<'db> TyCheckEnv<'db> {
 
     fn register_effect_bindings(&mut self, base_assumptions: PredicateListId<'db>) {
         match self.owner {
-            BodyOwner::Func(func) => self.register_func_effect_bindings(func),
+            BodyOwner::Func(func, _) => self.register_func_effect_bindings(func),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
             BodyOwner::ContractInit { .. } => {
                 self.register_contract_effect_bindings(base_assumptions)
@@ -430,7 +431,7 @@ impl<'db> TyCheckEnv<'db> {
                     arm_idx,
                 },
             )),
-            BodyOwner::Func(_)
+            BodyOwner::Func(_, _)
             | BodyOwner::Const(_)
             | BodyOwner::AnonConstBody { .. }
             | BodyOwner::Closure { .. } => None,
@@ -619,11 +620,16 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
-    /// Drops the call `expr` resolved to, so it can resolve to another.
-    pub(super) fn forget_call(&mut self, expr: ExprId) {
-        self.callables[expr] = None;
-        self.call_effect_args[expr] = None;
-        self.semantic_expr_lowering[expr] = None;
+    /// Calls the callee `expr` resolved to at `mode`.
+    pub(super) fn set_call_mode(&mut self, expr: ExprId, mode: Option<BorrowKind>) {
+        if let Some(callable) = &mut self.callables[expr] {
+            callable.set_mode(mode);
+        }
+        if let Some(SemanticExprLowering::Call { callable }) =
+            &mut self.semantic_expr_lowering[expr]
+        {
+            callable.set_mode(mode);
+        }
     }
 
     pub(super) fn register_const_ref(&mut self, expr: ExprId, const_ref: ConstRef<'db>) {
@@ -652,14 +658,6 @@ impl<'db> TyCheckEnv<'db> {
                 .into_iter()
                 .map(|application| (site.clone(), application)),
         );
-    }
-
-    /// Whether `expr` is a base a `for` loop holds.
-    pub(super) fn is_loop_base(&self, expr: ExprId) -> bool {
-        self.for_loop_plans
-            .values()
-            .flatten()
-            .any(|plan| plan.bases.contains(&expr))
     }
 
     pub(super) fn register_for_loop_plan(&mut self, stmt: StmtId, plan: ForLoopPlan<'db>) {
@@ -751,7 +749,7 @@ impl<'db> TyCheckEnv<'db> {
     /// Returns a callable if the body owner is a function.
     pub(super) fn func(&self) -> Option<CallableDef<'db>> {
         match self.owner {
-            BodyOwner::Func(func) => func.as_callable(self.db),
+            BodyOwner::Func(func, _) => func.as_callable(self.db),
             _ => None,
         }
     }
@@ -776,7 +774,7 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn compute_expected_return(&self) -> TyId<'db> {
         match self.owner {
-            BodyOwner::Func(func) => {
+            BodyOwner::Func(func, _) => {
                 let rt = func.return_ty(self.db);
                 if func.has_explicit_return_ty(self.db) {
                     if rt.is_star_kind(self.db) {
@@ -883,10 +881,6 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn is_value_call(&self, call: ExprId) -> bool {
         self.value_calls.contains(&call)
-    }
-
-    pub(super) fn is_place_entry(&self, expr: ExprId) -> bool {
-        self.place_entries.contains(&expr)
     }
 
     /// Records that the function's own authority covers the resources the
@@ -1325,6 +1319,10 @@ impl<'db> TyCheckEnv<'db> {
         self.deferred.push(DeferredTask::PrimitiveOp(pending))
     }
 
+    pub(super) fn register_type_equality(&mut self, equality: TypeEquality<'db>) {
+        self.deferred.push(DeferredTask::TypeEquality(equality))
+    }
+
     /// Completes the type checking environment by finalizing pending trait
     /// obligations and folding types with the unification table.
     ///
@@ -1489,7 +1487,7 @@ impl<'db> TyCheckEnv<'db> {
 impl<'db> TyChecker<'db> {
     pub(super) fn seed_effect_witnesses(&mut self) {
         match self.env.owner {
-            BodyOwner::Func(func) => self.seed_func_effect_witnesses(func),
+            BodyOwner::Func(func, _) => self.seed_func_effect_witnesses(func),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
             BodyOwner::ContractInit { .. } | BodyOwner::ContractRecvArm { .. } => {
                 self.seed_contract_effect_witnesses();
@@ -2205,6 +2203,14 @@ pub(super) enum DeferredTask<'db> {
     Obligation(TraitObligation<'db>),
     Method(PendingMethod<'db>),
     PrimitiveOp(PendingPrimitiveOp),
+    TypeEquality(TypeEquality<'db>),
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct TypeEquality<'db> {
+    pub actual: TyId<'db>,
+    pub expected: TyId<'db>,
+    pub span: DynLazySpan<'db>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

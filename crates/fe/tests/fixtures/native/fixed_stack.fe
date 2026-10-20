@@ -41,7 +41,7 @@ pub fn main(argc: i32, argv: **u8) -> i32 {
     }
     while stack.len() > 0 {
         count -= 1
-        let frame = mut stack.top_mut()
+        let frame = mut stack.top()
         core::assert(frame.value == count)
         core::assert(frame.words[3] == count as u256)
         core::assert(frame.memory.byte_at(8191) == (count + 41).downcast_unchecked())

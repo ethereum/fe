@@ -109,7 +109,7 @@ pub contract Caller uses (call: mut Call) {
                 addr: token,
                 gas: 100000,
                 value: 0,
-                message: TokenMsg::Transfer { receiver: Address { inner: 9 }, amount: 1 },
+                message: TokenMsg::Transfer { receiver: Address::new(9), amount: 1 },
                 default: true,
             )
         }
@@ -117,7 +117,7 @@ pub contract Caller uses (call: mut Call) {
 }
 
 fn receiver() -> Address {
-    Address { inner: 2 }
+    Address::new(2)
 }
 
 #[test]
@@ -207,7 +207,7 @@ fn test_bubbled_revert_data_survives_verbatim() uses (evm: mut Evm) {
     // wrapped call's revert data instead of reverting the test itself.
     let data = ptr::MemBuffer::alloc(36)
     unsafe { store_word(ptr: data.ptr(), value: 1 << 224) }
-    unsafe { store_word(ptr: ptr::offset_bytes(data.ptr(), 4), value: token.inner) }
+    unsafe { store_word(ptr: ptr::offset_bytes(data.ptr(), 4), value: token.word()) }
     var output = ptr::MemBuffer::empty()
     let outcome = evm.raw_call(
         addr: caller,
@@ -242,7 +242,7 @@ fn test_malformed_returndata_still_reverts_in_decoder() uses (evm: mut Evm) {
 fn test_no_code_address_yields_default() uses (evm: mut Evm) {
     // Documented trap: a call to an address with no code succeeds with empty
     // returndata, so the default surfaces as a silent "success".
-    let eoa = Address { inner: 0xe0a }
+    let eoa = Address::new(0xe0a)
 
     let ok: bool = evm.call_with_default(
         addr: eoa,

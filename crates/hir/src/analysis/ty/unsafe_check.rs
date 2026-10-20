@@ -46,7 +46,7 @@ pub(crate) fn check_unsafe_ops<'db>(
         owner,
         body,
         typed_body,
-        in_unsafe: matches!(owner, BodyOwner::Func(func) if func.is_unsafe(db)),
+        in_unsafe: matches!(owner, BodyOwner::Func(func, _) if func.is_unsafe(db)),
         written_fields: FxHashSet::default(),
         state_accesses: FxHashSet::default(),
         diags: Vec::new(),
@@ -324,6 +324,11 @@ impl<'db> UnsafeChecker<'db, '_> {
     fn mut_binding(&self, pat: PatId) -> Option<PatId> {
         match pat.data(self.db, self.body) {
             Partial::Present(Pat::Path(_, BindingMarker::Mut)) => Some(pat),
+            Partial::Present(Pat::Path(_, BindingMarker::MaybeMut))
+                if self.owner.mode() == Some(BorrowKind::Mut) =>
+            {
+                Some(pat)
+            }
             Partial::Present(Pat::Tuple(pats) | Pat::PathTuple(_, pats)) => {
                 pats.iter().find_map(|pat| self.mut_binding(*pat))
             }
@@ -342,7 +347,11 @@ impl<'db> UnsafeChecker<'db, '_> {
     fn mut_receiver(&self, expr: ExprId) -> Option<ExprId> {
         let receiver = self.typed_body.call_receiver(self.db, expr)?;
         let callable = self.typed_body.callable_expr(expr)?;
-        (callable.callable_def().param_mode(self.db, 0) == FuncParamMode::Mut).then_some(receiver)
+        (callable
+            .callable_def()
+            .param_mode(self.db, 0, callable.mode())
+            == FuncParamMode::Mut)
+            .then_some(receiver)
     }
     fn report_deref(&mut self, expr: ExprId) {
         self.push_unsafe(BodyDiag::UnsafeDerefRequiresUnsafe {
@@ -386,11 +395,10 @@ impl<'db> UnsafeChecker<'db, '_> {
                     self.check_expr(*expr);
                 }
             }
-            Stmt::For(pat, iter, driver, body, _) => {
+            Stmt::For(pat, iter, body, _) => {
                 self.check_pat(*pat);
-                for expr in [*iter].into_iter().chain(*driver).chain([*body]) {
-                    self.check_expr(expr);
-                }
+                self.check_expr(*iter);
+                self.check_expr(*body);
             }
             Stmt::While(cond, body) => {
                 self.check_cond(*cond);
@@ -430,7 +438,9 @@ impl<'db> UnsafeChecker<'db, '_> {
             Expr::Closure { body, .. } => self.check_expr(*body),
 
             Expr::Un(inner, op) => {
-                if *op == UnOp::Mut {
+                if *op == UnOp::Mut
+                    || *op == UnOp::MaybeMut && self.owner.mode() == Some(BorrowKind::Mut)
+                {
                     self.check_place_write(*inner);
                 }
                 self.check_expr(*inner);
