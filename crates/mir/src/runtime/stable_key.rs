@@ -807,4 +807,102 @@ const fn call_after() -> u256 {
         assert_ne!(id_before, id_alt30);
         assert_ne!(id_alt20, id_alt30);
     }
+
+    #[test]
+    fn stable_key_distinguishes_multi_hop_nested_evidence_and_shares_ordinary_instances() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "stable_key_multi_hop_evidence.fe".into(),
+            r#"
+trait Inner {
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner20 {
+    const fn inner() -> u256 { 20 }
+}
+impl Inner for u256 as AltInner30 {
+    const fn inner() -> u256 { 30 }
+}
+
+struct Boxed<T> {
+    pub x: T,
+}
+struct Nested<T> {
+    pub b: Boxed<T>,
+}
+
+trait Mid {
+    const fn mid(self) -> u256
+}
+impl<T: Inner> Mid for Boxed<T> {
+    const fn mid(self) -> u256 { T::inner() }
+}
+
+trait Outer {
+    const fn outer(self) -> u256
+}
+impl<T> Outer for Nested<T>
+where
+    Boxed<T>: Mid
+{
+    const fn outer(self) -> u256 { self.b.mid() }
+}
+
+const fn call_before() -> u256 {
+    (Nested { b: Boxed { x: 1 as u256 } }).outer()
+}
+const fn call_alt20() -> u256 {
+    with (AltInner20) {
+        (Nested { b: Boxed { x: 1 as u256 } }).outer()
+    }
+}
+const fn call_alt30() -> u256 {
+    with (AltInner30) {
+        (Nested { b: Boxed { x: 1 as u256 } }).outer()
+    }
+}
+const fn call_after() -> u256 {
+    (Nested { b: Boxed { x: 1 as u256 } }).outer()
+}
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+
+        let func = |name: &str| {
+            top_mod
+                .children_non_nested(&db)
+                .find_map(|item| match item {
+                    ItemKind::Func(f)
+                        if f.name(&db).to_opt().is_some_and(|n| n.data(&db) == name) =>
+                    {
+                        Some(f)
+                    }
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let outer_callee_in = |caller_name: &str| {
+            let caller = func(caller_name);
+            let inst = get_or_build_semantic_instance(
+                &db,
+                root_semantic_instance_key(&db, BodyOwner::Func(caller, None)).unwrap(),
+            );
+            let key = inst.callees(&db).first().unwrap().key;
+            get_or_build_semantic_instance(&db, key)
+        };
+
+        let id_before = semantic_instance_identity(&db, outer_callee_in("call_before"));
+        let id_alt20 = semantic_instance_identity(&db, outer_callee_in("call_alt20"));
+        let id_alt30 = semantic_instance_identity(&db, outer_callee_in("call_alt30"));
+        let id_after = semantic_instance_identity(&db, outer_callee_in("call_after"));
+
+        assert_eq!(id_before, id_after);
+        assert_ne!(id_before, id_alt20);
+        assert_ne!(id_before, id_alt30);
+        assert_ne!(id_alt20, id_alt30);
+    }
 }

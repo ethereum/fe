@@ -1148,82 +1148,84 @@ fn verify(_ v: Verify<{ check() }>) {}
     );
 
     // 2. Two-level conditional impl (`impl<T: Mid> Inner for T` + `impl<T: Inner> Outer for Boxed<T>`):
-    // both explicit (`get`, `K`) and default (`def_get`, `DEF_K`) uses are refused with `8-0098`
-    // under `with (AltMid)`, directly and through a generic caller `via_mid<T: Mid>`.
-    let two_level_refused = r#"
+    // both explicit (`get`, `K`) and default (`def_get`, `DEF_K`) uses succeed and transport
+    // `AltMid` across 2 hops under `with (AltMid)`, directly and through `via_mid<T: Mid>`.
+    let two_level_ok = r#"
 trait Mid {
     const M: u256
-    fn m() -> u256
+    const fn m() -> u256
 }
 impl Mid for u256 {
     const M: u256 = 10
-    fn m() -> u256 { 10 }
+    const fn m() -> u256 { 10 }
 }
 impl Mid for u256 as AltMid {
     const M: u256 = 20
-    fn m() -> u256 { 20 }
+    const fn m() -> u256 { 20 }
 }
 
 trait Inner {
     const C: u256
-    fn v() -> u256
+    const fn v() -> u256
 }
 impl<T: Mid> Inner for T {
     const C: u256 = T::M
-    fn v() -> u256 { T::m() }
+    const fn v() -> u256 { T::m() }
 }
 
 struct Boxed<T> { pub x: T }
 trait Outer {
     const K: u256
     const DEF_K: u256 = Self::K
-    fn get(self) -> u256
-    fn def_get(self) -> u256 { self.get() }
+    const fn get(self) -> u256
+    const fn def_get(self) -> u256 { self.get() }
 }
 impl<T: Inner> Outer for Boxed<T> {
     const K: u256 = T::C
-    fn get(self) -> u256 { T::v() }
+    const fn get(self) -> u256 { T::v() }
 }
 
-fn via_mid_def_get<T: Mid>(_ x: T) -> u256 {
+const fn via_mid_get<T: Mid>(_ x: T) -> u256 {
+    (Boxed { x }).get()
+}
+
+const fn via_mid_def_get<T: Mid>(_ x: T) -> u256 {
     (Boxed { x }).def_get()
 }
 
-fn via_mid_def_k<T: Mid>() -> u256 {
+const fn via_mid_k<T: Mid>() -> u256 {
+    <Boxed<T> as Outer>::K
+}
+
+const fn via_mid_def_k<T: Mid>() -> u256 {
     <Boxed<T> as Outer>::DEF_K
 }
 
-pub fn direct_def_get_refused() -> u256 {
-    let b: Boxed<u256> = Boxed { x: 1 }
-    with (AltMid) {
-        b.def_get()
-    }
-}
+const DIRECT_GET: u256 = with (AltMid) { (Boxed { x: 1 as u256 }).get() }
+const DIRECT_DEF_GET: u256 = with (AltMid) { (Boxed { x: 1 as u256 }).def_get() }
+const DIRECT_K: u256 = with (AltMid) { <Boxed<u256> as Outer>::K }
+const DIRECT_DEF_K: u256 = with (AltMid) { <Boxed<u256> as Outer>::DEF_K }
+const GENERIC_GET: u256 = with (AltMid) { via_mid_get<u256>(1) }
+const GENERIC_DEF_GET: u256 = with (AltMid) { via_mid_def_get<u256>(1) }
+const GENERIC_K: u256 = with (AltMid) { via_mid_k<u256>() }
+const GENERIC_DEF_K: u256 = with (AltMid) { via_mid_def_k<u256>() }
 
-pub fn direct_def_k_refused() -> u256 {
-    with (AltMid) {
-        <Boxed<u256> as Outer>::DEF_K
-    }
-}
-
-pub fn generic_def_get_refused() -> u256 {
-    let x: u256 = 1
-    with (AltMid) {
-        via_mid_def_get<u256>(x)
-    }
-}
-
-pub fn generic_def_k_refused() -> u256 {
-    with (AltMid) {
-        via_mid_def_k<u256>()
-    }
-}
+struct Verify20<const N: u256> where { N == 20 } {}
+fn verify_all(
+    _ a: Verify20<DIRECT_GET>,
+    _ b: Verify20<DIRECT_DEF_GET>,
+    _ c: Verify20<DIRECT_K>,
+    _ d: Verify20<DIRECT_DEF_K>,
+    _ e: Verify20<GENERIC_GET>,
+    _ f: Verify20<GENERIC_DEF_GET>,
+    _ g: Verify20<GENERIC_K>,
+    _ h: Verify20<GENERIC_DEF_K>,
+) {}
 "#;
-    let codes_two_level = diag_codes("two_level_refused.fe", two_level_refused);
-    assert_eq!(
-        codes_two_level.iter().filter(|c| *c == "8-0098").count(),
-        4,
-        "expected 4 `8-0098` refusals on 2-level conditional impl default methods/constants, got {codes_two_level:?}"
+    let codes_two_level = diag_codes("two_level_ok.fe", two_level_ok);
+    assert!(
+        codes_two_level.is_empty(),
+        "expected no diagnostics on 2-level conditional impl explicit/default methods and constants, got {codes_two_level:?}"
     );
 
     // 3. Type-position reads of `<Boxed<u256> as Outer>::DEF_K` under `with (AltInner)`
@@ -1260,4 +1262,118 @@ pub fn braced_type_read() {
         2,
         "expected 2 `8-0122` refusals on type-position reads of `DEF_K` under `with (AltInner)`, got {codes_type_read:?}"
     );
+}
+
+#[test]
+fn multi_hop_conditional_impls_transport_across_two_and_three_hops_under_with() {
+    let src = r#"
+trait Inner {
+    const C: u256
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner {
+    const C: u256 = 20
+    const fn inner() -> u256 { 20 }
+}
+impl Inner for u256 as AltInner30 {
+    const C: u256 = 30
+    const fn inner() -> u256 { 30 }
+}
+
+struct Boxed<T> { pub inner: T }
+struct Nested<T> { pub boxed: Boxed<T> }
+struct Deep<T> { pub nested: Nested<T> }
+
+trait Mid {
+    const M: u256
+    const DEF_M: u256 = Self::M
+    const fn mid(self) -> u256
+    const fn def_mid(self) -> u256 { self.mid() }
+}
+impl<T> Mid for Boxed<T>
+where
+    T: Inner
+{
+    const M: u256 = T::C
+    const fn mid(self) -> u256 { T::inner() }
+}
+
+trait Outer {
+    const K: u256
+    const DEF_K: u256 = Self::K
+    const fn outer(self) -> u256
+    const fn def_outer(self) -> u256 { self.outer() }
+}
+impl<T> Outer for Nested<T>
+where
+    Boxed<T>: Mid
+{
+    const K: u256 = <Boxed<T> as Mid>::DEF_M
+    const fn outer(self) -> u256 { self.boxed.def_mid() }
+}
+
+trait Top {
+    const TOP_K: u256
+    const DEF_TOP_K: u256 = Self::TOP_K
+    const fn top(self) -> u256
+    const fn def_top(self) -> u256 { self.top() }
+}
+impl<T> Top for Deep<T>
+where
+    Nested<T>: Outer
+{
+    const TOP_K: u256 = <Nested<T> as Outer>::DEF_K
+    const fn top(self) -> u256 { self.nested.def_outer() }
+}
+
+const fn via_inner_two_hop<T: Inner>(_ x: T) -> u256 {
+    let n = Nested { boxed: Boxed { inner: x } }
+    n.def_outer() + <Nested<T> as Outer>::DEF_K
+}
+
+const fn via_inner_three_hop<T: Inner>(_ x: T) -> u256 {
+    let d = Deep { nested: Nested { boxed: Boxed { inner: x } } }
+    d.def_top() + <Deep<T> as Top>::DEF_TOP_K
+}
+
+const ORD_TWO_HOP: u256 = {
+    let n = Nested { boxed: Boxed { inner: 1 as u256 } }
+    n.outer() + n.def_outer() + <Nested<u256> as Outer>::K + <Nested<u256> as Outer>::DEF_K
+}
+const ALT20_TWO_HOP: u256 = with (AltInner) {
+    let n = Nested { boxed: Boxed { inner: 1 as u256 } }
+    n.outer() + n.def_outer() + <Nested<u256> as Outer>::K + <Nested<u256> as Outer>::DEF_K
+}
+const ALT30_THREE_HOP: u256 = with (AltInner30) {
+    let d = Deep { nested: Nested { boxed: Boxed { inner: 1 as u256 } } }
+    d.top() + d.def_top() + <Deep<u256> as Top>::TOP_K + <Deep<u256> as Top>::DEF_TOP_K
+}
+const VIA_INNER_TWO_HOP_ALT20: u256 = with (AltInner) {
+    via_inner_two_hop<u256>(1)
+}
+const VIA_INNER_THREE_HOP_ALT30: u256 = with (AltInner30) {
+    via_inner_three_hop<u256>(1)
+}
+
+struct Verify40<const N: u256> where { N == 40 } {}
+struct Verify60<const N: u256> where { N == 60 } {}
+struct Verify80<const N: u256> where { N == 80 } {}
+struct Verify120<const N: u256> where { N == 120 } {}
+
+fn verify_multi_hop(
+    _ a: Verify40<ORD_TWO_HOP>,
+    _ b: Verify80<ALT20_TWO_HOP>,
+    _ c: Verify120<ALT30_THREE_HOP>,
+    _ d: Verify40<VIA_INNER_TWO_HOP_ALT20>,
+    _ e: Verify60<VIA_INNER_THREE_HOP_ALT30>,
+) {}
+"#;
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone("multi_hop_conditional.fe".into(), src);
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
 }

@@ -247,7 +247,10 @@ impl<'db> KnownChoice<'db> {
         goal: TraitInstId<'db>,
     ) -> Option<Self> {
         let super::evidence::Evidence::Impl {
-            selected, conds, ..
+            selected,
+            instantiated,
+            conds,
+            ..
         } = evidence.data(db)
         else {
             return None;
@@ -260,7 +263,7 @@ impl<'db> KnownChoice<'db> {
             impl_trait.into(),
         )
         .instantiate_identity();
-        let inst_conds = selected.constraints(db);
+        let inst_conds = instantiated.constraints(db);
         let items: Vec<(Delivery<'db>, Choice<'db>)> = written_conds
             .list(db)
             .iter()

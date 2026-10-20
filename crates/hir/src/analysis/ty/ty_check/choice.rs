@@ -446,6 +446,20 @@ pub(crate) fn body_slot_uses<'db>(
 /// a trait call's) rather than a goal its callee or constant body declares.
 type TraitUse<'db> = (TraitInstId<'db>, Option<Choice<'db>>, bool);
 
+fn visit_known_impl_goals<'db>(
+    db: &'db dyn HirAnalysisDb,
+    known: KnownChoice<'db>,
+    f: &mut impl FnMut(TraitInstId<'db>, TraitInstId<'db>, Option<Choice<'db>>),
+) {
+    for (bound, goal) in known.impl_goals(db) {
+        let delivered = known.bound_choice(db, bound);
+        f(bound, goal, delivered);
+        if let Some(Choice::Known(inner)) = delivered {
+            visit_known_impl_goals(db, inner, f);
+        }
+    }
+}
+
 /// The trait uses behind `body_slot_uses`, each marked as a use's own slot or
 /// a declared goal: each trait constant, each call (expression calls and a
 /// `for` loop's protocol calls).
@@ -461,7 +475,11 @@ fn body_trait_uses<'db>(
         };
         for (goal, choice) in const_use_reads(db, cref) {
             let slot = slot_goal(db, goal);
-            uses.push((slot, choice, Some(slot) == own_slot));
+            uses.push((
+                slot,
+                choice,
+                Some(slot) == own_slot || (own_slot.is_some() && choice.is_some()),
+            ));
         }
     }
     let Some(body) = typed.body() else {
@@ -487,17 +505,22 @@ fn body_trait_uses<'db>(
             let delivered = slots
                 .iter()
                 .find_map(|(s, choice)| (*s == SlotRef::Bound(bound)).then_some(*choice));
-            uses.push((slot, delivered, Some(slot) == own_slot));
+            let is_own = Some(slot) == own_slot
+                || chosen.is_some_and(|known| known.bound_choice(db, bound).is_some());
+            uses.push((slot, delivered, is_own));
         }
         if let Some(known) = chosen {
-            for (bound, goal) in known.impl_goals(db) {
+            visit_known_impl_goals(db, known, &mut |_, goal, delivered| {
                 let slot = slot_goal(db, goal);
-                let delivered = known.bound_choice(db, bound);
-                let item = (slot, delivered, Some(slot) == own_slot);
+                let item = (
+                    slot,
+                    delivered,
+                    Some(slot) == own_slot || delivered.is_some(),
+                );
                 if !uses.contains(&item) {
                     uses.push(item);
                 }
-            }
+            });
         }
     }
     uses
@@ -701,11 +724,25 @@ pub(crate) fn const_use_reads<'db>(
             .iter()
             .find_map(|(given, choice)| (*given == bound).then_some(*choice));
         reads.push((at_use, choice));
+        if let Some(Choice::Known(inner)) = choice {
+            visit_known_impl_goals(db, inner, &mut |_, goal, delivered| {
+                if !reads.iter().any(|(existing, _)| *existing == goal) {
+                    reads.push((goal, delivered));
+                }
+            });
+        }
     }
-    for (bound, at_use) in impl_goals {
-        let choice = chosen.and_then(|known| known.bound_choice(db, bound));
-        if !reads.iter().any(|(goal, _)| *goal == at_use) {
-            reads.push((at_use, choice));
+    if let Some(known) = chosen {
+        visit_known_impl_goals(db, known, &mut |_, at_use, choice| {
+            if !reads.iter().any(|(goal, _)| *goal == at_use) {
+                reads.push((at_use, choice));
+            }
+        });
+    } else {
+        for (_, at_use) in impl_goals {
+            if !reads.iter().any(|(goal, _)| *goal == at_use) {
+                reads.push((at_use, None));
+            }
         }
     }
     reads
@@ -2129,9 +2166,18 @@ impl<'db> TyCheckEnv<'db> {
         };
         let goal = implementor.trait_inst(db);
         let slot = self.normalized_slot(goal);
+        let mut active = rustc_hash::FxHashSet::default();
+        let bounds = self.impl_bound_choices(
+            None,
+            implementation,
+            implementor.params(db),
+            0,
+            None,
+            &mut active,
+        );
         self.choice_frames.seed(
             slot,
-            Choice::Known(KnownChoice::own(db, implementation, goal)),
+            Choice::Known(KnownChoice::own(db, implementation, goal).with_bounds(db, bounds)),
         );
     }
 
@@ -2222,13 +2268,13 @@ impl<'db> TyCheckEnv<'db> {
         let db = self.db();
         let mut bounds = Vec::new();
         for (bound, at_use) in impl_declared_goals(db, implementation, impl_args) {
-            let choice = match undecided.as_deref_mut() {
-                Some(undecided) => self.decide(frame, at_use).or_else(|| {
-                    undecided.push(at_use);
-                    self.ordinary_choice(None, at_use, depth, None, active)
-                }),
-                None => self.ordinary_choice(None, at_use, depth, None, active),
-            };
+            let choice =
+                self.ordinary_choice(frame, at_use, depth, undecided.as_deref_mut(), active);
+            if choice.is_none()
+                && let Some(undecided) = undecided.as_deref_mut()
+            {
+                undecided.push(at_use);
+            }
             if let Some(choice) = choice {
                 let item = (Delivery::Bound(bound), choice);
                 if !bounds.contains(&item) {
@@ -2273,6 +2319,11 @@ impl<'db> TyCheckEnv<'db> {
         for (bound, at_call) in declared_goals(db, body, body_args) {
             let choice = if Some(at_call) == own_slot {
                 own
+            } else if by_name
+                && let Some(Choice::Known(known)) = own
+                && let Some(bound_choice) = known.bound_choice(db, bound)
+            {
+                Some(bound_choice)
             } else {
                 self.decide(frame, at_call)
             };
@@ -3008,6 +3059,9 @@ impl<'db> TyCheckEnv<'db> {
         for (bound, at_use) in const_declared_goals(db, body, &subst) {
             let decided = match own {
                 Some((slot, choice)) if at_use == slot => Some(choice),
+                Some((_, Choice::Known(known))) if !nominal => known
+                    .bound_choice(db, bound)
+                    .or_else(|| self.decide(frame, at_use)),
                 _ => self.decide(frame, at_use),
             };
             let choice = match decided {
