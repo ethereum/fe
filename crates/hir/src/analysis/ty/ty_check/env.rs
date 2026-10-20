@@ -2956,9 +2956,7 @@ pub(crate) fn body_lexical_env<'db>(
                     collector.register_effects(arm.effects);
                 }
             }
-            BodyOwner::Const(_)
-            | BodyOwner::AnonConstBody { .. }
-            | BodyOwner::Closure { .. } => {}
+            BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
         }
     }
     collector.walk_expr(root_expr);

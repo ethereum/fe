@@ -423,7 +423,9 @@ impl<'db> TyChecker<'db> {
         // Bare identifiers that don't resolve to a type/variant are local bindings,
         // unless the expected type is a msg type, in which case we try to resolve
         // the identifier as a msg variant first.
-        if let Some(name) = path.as_ident(self.db) && self.env.is_pat_local_binding(name) {
+        if let Some(name) = path.as_ident(self.db)
+            && self.env.is_pat_local_binding(name)
+        {
             let binding = LocalBinding::local(
                 pat,
                 matches!(

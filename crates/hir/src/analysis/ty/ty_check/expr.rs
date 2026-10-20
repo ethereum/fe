@@ -5607,11 +5607,9 @@ pub(super) fn resolve_ident_expr<'db>(
         ResolvedPathInBody::Reso(reso)
     };
 
-    match env.resolve_ident_in_blocks(ident, |bucket, scope| {
-        match resolve_bucket(bucket, scope) {
-            ResolvedPathInBody::Invalid => None,
-            resolved => Some(resolved),
-        }
+    match env.resolve_ident_in_blocks(ident, |bucket, scope| match resolve_bucket(bucket, scope) {
+        ResolvedPathInBody::Invalid => None,
+        resolved => Some(resolved),
     }) {
         super::env::IdentInBlocks::Binding(binding) => ResolvedPathInBody::Binding(binding),
         super::env::IdentInBlocks::Scope(resolved) => resolved,

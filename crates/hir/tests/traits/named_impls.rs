@@ -438,4 +438,3 @@ fn run(_ tag: Tag) -> usize {
         diag_codes(unit_variant_pat)
     );
 }
-

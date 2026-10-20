@@ -680,10 +680,14 @@ pub(crate) fn const_use_reads<'db>(
         ConstRef::Const(_) => return Vec::new(),
     };
     let mut reads = own.into_iter().collect::<Vec<_>>();
-    let chosen = own.and_then(|(_, choice)| choice).and_then(|choice| choice.known());
+    let chosen = own
+        .and_then(|(_, choice)| choice)
+        .and_then(|choice| choice.known());
     let given = delivered
         .or_else(|| chosen.and_then(|known| known.bounds()))
-        .map_or_else(Vec::new, |list| list.const_body_deliveries(db, chosen, body));
+        .map_or_else(Vec::new, |list| {
+            list.const_body_deliveries(db, chosen, body)
+        });
     for (bound, at_use) in const_declared_goals(db, body, &subst) {
         let choice = given
             .iter()
@@ -1193,7 +1197,9 @@ impl<'db> TyChecker<'db> {
         // a named implementation answers is refused until sub-choices carry
         // the opening's answer into the implementation.
         let mut active = rustc_hash::FxHashSet::default();
-        let bounds = self.env.impl_bound_choices(*implementation, &[], 0, &mut active);
+        let bounds = self
+            .env
+            .impl_bound_choices(*implementation, &[], 0, &mut active);
         Some(
             KnownChoice::prove(
                 self.db,

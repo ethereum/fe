@@ -678,10 +678,9 @@ fn local_evidence_goal<'db>(
     // generic parameters returns the evidence its signature declares.
     if crate::analysis::ty::corelib::lib_func_matches(db, *func, "core::obligations::prove") {
         let goal = match path.generic_args(db).data(db).first() {
-            Some(GenericArg::Type(arg)) => arg
-                .ty
-                .to_opt()
-                .map(|ty| crate::analysis::ty::ty_lower::lower_hir_ty(db, ty, callee_scope, assumptions)),
+            Some(GenericArg::Type(arg)) => arg.ty.to_opt().map(|ty| {
+                crate::analysis::ty::ty_lower::lower_hir_ty(db, ty, callee_scope, assumptions)
+            }),
             _ => None,
         };
         return match goal.map(|goal| goal.data(db)) {

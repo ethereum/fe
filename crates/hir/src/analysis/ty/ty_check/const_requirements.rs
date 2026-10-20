@@ -2404,9 +2404,7 @@ fn map_choice<'db>(
         return Ok(Some(delivered));
     }
     match SlotChoices::default().resolve(Some(choice)) {
-        crate::analysis::ty::trait_choice::Resolved::Known(known) => {
-            Ok(Some(Choice::Known(known)))
-        }
+        crate::analysis::ty::trait_choice::Resolved::Known(known) => Ok(Some(Choice::Known(known))),
         crate::analysis::ty::trait_choice::Resolved::Ordinary => Ok(None),
         crate::analysis::ty::trait_choice::Resolved::Pending => Err(()),
     }
@@ -2939,7 +2937,12 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
         if plan.state_ty.has_param(db)
             && !super::choice::holds_evidence(db, func.scope(), plan.state_ty)
         {
-            push(OwedCheck::NoEvidence { param: plan.state_ty }, &mut owed);
+            push(
+                OwedCheck::NoEvidence {
+                    param: plan.state_ty,
+                },
+                &mut owed,
+            );
         }
         if plan.calls.iter().any(|call| {
             call.callable

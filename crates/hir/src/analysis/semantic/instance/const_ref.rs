@@ -773,10 +773,12 @@ fn semantic_callee_key_with_assumptions<'db>(
             let delivered_goals = callable
                 .delivered()
                 .iter()
-                .filter_map(|(_, choice)| match caller_choices.resolve_in(db, Some(*choice)) {
-                    Resolved::Known(known) => Some(known.goal()),
-                    _ => None,
-                })
+                .filter_map(
+                    |(_, choice)| match caller_choices.resolve_in(db, Some(*choice)) {
+                        Resolved::Known(known) => Some(known.goal()),
+                        _ => None,
+                    },
+                )
                 .collect::<Vec<_>>();
             let assumptions = if delivered_goals.is_empty() {
                 assumptions

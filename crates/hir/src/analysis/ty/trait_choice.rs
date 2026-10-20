@@ -109,8 +109,8 @@ impl<'db> KnownChoice<'db> {
         bounds: Option<DeliveryList<'db>>,
     ) -> Self {
         let bounds = bounds.filter(|list| !list.items(db).is_empty());
-        let ordinary = bounds
-            .is_none_or(|list| list.items(db).iter().all(|(_, c)| c.is_ordinary_or_bound()));
+        let ordinary =
+            bounds.is_none_or(|list| list.items(db).iter().all(|(_, c)| c.is_ordinary_or_bound()));
         Self {
             implementation,
             goal: slot_goal(db, goal),
@@ -293,7 +293,10 @@ pub fn impl_declared_goals<'db>(
     goals
 }
 
-fn impl_slots<'db>(db: &'db dyn HirAnalysisDb, implementation: ImplTrait<'db>) -> Vec<TraitInstId<'db>> {
+fn impl_slots<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementation: ImplTrait<'db>,
+) -> Vec<TraitInstId<'db>> {
     let bounds = super::trait_resolution::constraint::collect_constraints(
         db,
         crate::hir_def::GenericParamOwner::ImplTrait(implementation),

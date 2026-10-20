@@ -231,7 +231,10 @@ fn verify(_ v: Verify<{ caller() }>) {}
     // Call 0: `u32::inner()` records `KnownChoice::ordinary` for `impl Inner for u32` with no bounds.
     let inner_call = caller_calls[0];
     let Some(Choice::Known(inner_known)) = inner_call.choice() else {
-        panic!("expected KnownChoice on u32::inner(), got {:?}", inner_call.choice());
+        panic!(
+            "expected KnownChoice on u32::inner(), got {:?}",
+            inner_call.choice()
+        );
     };
     assert!(inner_known.is_ordinary());
     assert_eq!(inner_known.implementation(), inner_u32_impl);
@@ -241,11 +244,16 @@ fn verify(_ v: Verify<{ caller() }>) {}
     // with prerequisite `bounds` mapping `Inner<T> => Choice::Known(impl Inner for u32)`.
     let outer_call = caller_calls[1];
     let Some(Choice::Known(outer_known)) = outer_call.choice() else {
-        panic!("expected KnownChoice on Box.outer(), got {:?}", outer_call.choice());
+        panic!(
+            "expected KnownChoice on Box.outer(), got {:?}",
+            outer_call.choice()
+        );
     };
     assert!(outer_known.is_ordinary());
     assert_eq!(outer_known.implementation(), outer_box_impl);
-    let outer_bounds = outer_known.bounds().expect("conditional impl must record prerequisite bounds");
+    let outer_bounds = outer_known
+        .bounds()
+        .expect("conditional impl must record prerequisite bounds");
     assert_eq!(outer_bounds.items(&db).len(), 1);
     assert_eq!(outer_bounds.items(&db)[0].1, Choice::Known(inner_known));
 
@@ -305,7 +313,9 @@ fn verify(_ v: Verify<{ caller() }>) {}
     };
     assert!(param_outer_known.is_ordinary());
     assert_eq!(param_outer_known.implementation(), outer_box_impl);
-    let param_bounds = param_outer_known.bounds().expect("parameterized impl must record bound slot");
+    let param_bounds = param_outer_known
+        .bounds()
+        .expect("parameterized impl must record bound slot");
     assert!(matches!(
         param_bounds.items(&db).as_slice(),
         [(Delivery::Bound(_), Choice::Slot(SlotRef::Bound(_)))]
@@ -325,7 +335,10 @@ fn verify(_ v: Verify<{ caller() }>) {}
         panic!("expected Known after specializing parameterized KnownChoice");
     };
     let specialized_bounds = specialized_outer.bounds().expect("specialized bounds");
-    assert_eq!(specialized_bounds.items(&db)[0].1, Choice::Known(inner_known));
+    assert_eq!(
+        specialized_bounds.items(&db)[0].1,
+        Choice::Known(inner_known)
+    );
 }
 
 #[test]
@@ -520,7 +533,10 @@ fn verify(_ v: Verify<{ caller() }>) {}
                 "INNER" => {
                     saw_inner = true;
                     let Some(Choice::Known(known)) = assoc.choice() else {
-                        panic!("expected KnownChoice on u32::INNER, got {:?}", assoc.choice());
+                        panic!(
+                            "expected KnownChoice on u32::INNER, got {:?}",
+                            assoc.choice()
+                        );
                     };
                     assert!(known.is_ordinary());
                     assert_eq!(known.implementation(), inner_u32_impl);
@@ -529,7 +545,10 @@ fn verify(_ v: Verify<{ caller() }>) {}
                 "OUTER" => {
                     saw_outer = true;
                     let Some(Choice::Known(known)) = assoc.choice() else {
-                        panic!("expected KnownChoice on Box<u32>::OUTER, got {:?}", assoc.choice());
+                        panic!(
+                            "expected KnownChoice on Box<u32>::OUTER, got {:?}",
+                            assoc.choice()
+                        );
                     };
                     assert!(known.is_ordinary());
                     assert_eq!(known.implementation(), outer_box_impl);
@@ -715,7 +734,8 @@ fn verify(_ v: Verify<{ caller() }>) {}
     // and when passed through `ev: Evidence<Outer<Box<u32>>>` to `run_with_ev`, unpacks `Inner<T>`
     // into `<Box<T> as Outer>::outer` without solver re-selection.
     let ord_call = run_calls[0];
-    let Some((Delivery::Param(0), Choice::Known(ord_known))) = ord_call.delivered().first().copied()
+    let Some((Delivery::Param(0), Choice::Known(ord_known))) =
+        ord_call.delivered().first().copied()
     else {
         panic!(
             "expected Evidence param delivery Choice::Known, got {:?}",
@@ -767,7 +787,8 @@ fn verify(_ v: Verify<{ caller() }>) {}
     // 2. `ev_alt = with (AltOuter) { prove<Outer<Box<u32>>>() }` selects `AltOuter` (`!is_ordinary()`),
     // and inside `AltOuter::outer`, `u32::inner()` directly carries `Choice::Known(prereq)`.
     let alt_call = run_calls[1];
-    let Some((Delivery::Param(0), Choice::Known(alt_known))) = alt_call.delivered().first().copied()
+    let Some((Delivery::Param(0), Choice::Known(alt_known))) =
+        alt_call.delivered().first().copied()
     else {
         panic!(
             "expected Evidence param delivery Choice::Known, got {:?}",

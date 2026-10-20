@@ -360,4 +360,3 @@ pub fn run_const(_ e: Evidence<Width<Wrap<Key>>>, _ g: Evidence<Gate<Key>>) -> u
         "expected 8-0098 refusal for `<Wrap<Key> as Width>::N` via candidate_constants when downstream ingot opens `Width<Wrap<Key>>` and `Gate<Key>`, got {diags:?}"
     );
 }
-
