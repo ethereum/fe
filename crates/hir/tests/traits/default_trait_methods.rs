@@ -65,7 +65,7 @@ fn run(evm: mut Evm) -> u256 {
             .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
     )
-    .and_then(|evidence| evidence.selection(&db))
+    .and_then(|evidence| evidence.answering(&db, inst))
     .and_then(|selected| selected.method(&db, method_name, None))
     .expect("missing resolved method");
     let resolved_method = resolved.body().expect("missing resolved method body");

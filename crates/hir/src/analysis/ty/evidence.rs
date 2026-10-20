@@ -20,7 +20,8 @@ use super::{
     normalize::normalize_ty,
     subst::substitute_complete,
     trait_def::{
-        ImplementorOrigin, ResolvedImplInstance, TraitInstId, resolve_trait_impl_instance,
+        ImplementorId, ImplementorOrigin, ResolvedImplInstance, TraitInstId,
+        resolve_trait_impl_instance,
     },
     trait_lower::lower_impl_trait,
     trait_resolution::{
@@ -46,11 +47,15 @@ pub struct EvidenceId<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum Evidence<'db> {
-    /// An implementation applied to the goal, with a proof of each of its
-    /// conditions in the order `ImplementorId::constraints` lists them. A
-    /// compiler-provided implementation has none.
+    /// An implementation, `selected` and as `instantiated` for the goal,
+    /// with a proof of each of its conditions in the order
+    /// `ImplementorId::constraints` lists them. A compiler-provided
+    /// implementation has none. The proof names no goal: goals that differ
+    /// only in their mode or associated-type equalities share it, and each
+    /// use answers its own.
     Impl {
-        resolved: ResolvedImplInstance<'db>,
+        selected: ImplementorId<'db>,
+        instantiated: ImplementorId<'db>,
         conds: Vec<EvidenceId<'db>>,
     },
     /// The assumption at this position in the extended assumption list of
@@ -59,11 +64,19 @@ pub enum Evidence<'db> {
 }
 
 impl<'db> EvidenceId<'db> {
-    /// The implementation this proof applies to its goal; none for an
+    /// The implementation this proof applies, answering `goal`; none for an
     /// assumption.
-    pub fn selection(self, db: &'db dyn HirAnalysisDb) -> Option<ResolvedImplInstance<'db>> {
+    pub fn answering(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        goal: TraitInstId<'db>,
+    ) -> Option<ResolvedImplInstance<'db>> {
         match self.data(db) {
-            Evidence::Impl { resolved, .. } => Some(*resolved),
+            Evidence::Impl {
+                selected,
+                instantiated,
+                ..
+            } => Some(ResolvedImplInstance::new(*selected, *instantiated, goal)),
             Evidence::Assumption(_) => None,
         }
     }
@@ -73,10 +86,15 @@ impl<'db> EvidenceId<'db> {
     fn rebase(self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) -> Option<Self> {
         Some(match self.data(db) {
             Evidence::Assumption(index) => bound.get(db, *index as usize)?,
-            Evidence::Impl { resolved, conds } => EvidenceId::new(
+            Evidence::Impl {
+                selected,
+                instantiated,
+                conds,
+            } => EvidenceId::new(
                 db,
                 Evidence::Impl {
-                    resolved: *resolved,
+                    selected: *selected,
+                    instantiated: *instantiated,
                     conds: conds
                         .iter()
                         .map(|cond| cond.rebase(db, bound))
@@ -104,10 +122,15 @@ impl<'db> EvidenceId<'db> {
     pub fn bind(self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) -> Self {
         match self.data(db) {
             Evidence::Assumption(index) => bound.get(db, *index as usize).unwrap_or(self),
-            Evidence::Impl { resolved, conds } => EvidenceId::new(
+            Evidence::Impl {
+                selected,
+                instantiated,
+                conds,
+            } => EvidenceId::new(
                 db,
                 Evidence::Impl {
-                    resolved: *resolved,
+                    selected: *selected,
+                    instantiated: *instantiated,
                     conds: conds.iter().map(|cond| cond.bind(db, bound)).collect(),
                 },
             ),
@@ -200,10 +223,15 @@ impl<'db> TyFoldable<'db> for EvidenceId<'db> {
         F: TyFolder<'db>,
     {
         match self.data(db) {
-            Evidence::Impl { resolved, conds } => EvidenceId::new(
+            Evidence::Impl {
+                selected,
+                instantiated,
+                conds,
+            } => EvidenceId::new(
                 db,
                 Evidence::Impl {
-                    resolved: resolved.fold_with(db, folder),
+                    selected: *selected,
+                    instantiated: instantiated.fold_with(db, folder),
                     conds: conds
                         .iter()
                         .map(|cond| cond.fold_with(db, folder))
@@ -220,8 +248,13 @@ impl<'db> TyVisitable<'db> for EvidenceId<'db> {
     where
         V: TyVisitor<'db> + ?Sized,
     {
-        if let Evidence::Impl { resolved, conds } = self.data(visitor.db()) {
-            resolved.visit_with(visitor);
+        if let Evidence::Impl {
+            instantiated,
+            conds,
+            ..
+        } = self.data(visitor.db())
+        {
+            instantiated.visit_with(visitor);
             for cond in conds {
                 cond.visit_with(visitor);
             }
@@ -324,7 +357,8 @@ fn prove_in<'db>(
                 BorrowKind::Ref
             });
             Evidence::Impl {
-                resolved: resolved.as_proof(db),
+                selected: resolved.selected(),
+                instantiated: resolved.instantiated(),
                 conds: resolved
                     .instantiated_constraints(db)
                     .list(db)
@@ -336,7 +370,8 @@ fn prove_in<'db>(
         ImplementorOrigin::VirtualContract(_)
         | ImplementorOrigin::Callable
         | ImplementorOrigin::Structural => Evidence::Impl {
-            resolved: resolved.as_proof(db),
+            selected: resolved.selected(),
+            instantiated: resolved.instantiated(),
             conds: Vec::new(),
         },
     };
@@ -353,28 +388,34 @@ pub(crate) fn instantiated_selection<'db>(
     solve_cx: TraitSolveCx<'db>,
     inst: TraitInstId<'db>,
 ) -> Option<ResolvedImplInstance<'db>> {
-    match evidence.and_then(|evidence| evidence.selection(db)) {
-        // The proof records its goal bare; the use answers its own, as
+    match evidence.map(|evidence| evidence.data(db)) {
+        // The proof names no goal: the use answers its own, normalized as
         // selection resolves it. An instantiated body can expose projections
         // its checker could not resolve.
-        Some(resolved) => {
+        Some(Evidence::Impl {
+            selected,
+            instantiated,
+            ..
+        }) => {
             let scope = solve_cx.normalization_scope_for_trait_inst(db, inst);
-            let resolved = if collect_flags(db, resolved).contains(TyFlags::HAS_PROJECTION) {
-                normalize_ty(db, resolved, scope, solve_cx.assumptions())
+            let instantiated = if collect_flags(db, *instantiated).contains(TyFlags::HAS_PROJECTION)
+            {
+                normalize_ty(db, *instantiated, scope, solve_cx.assumptions())
             } else {
-                resolved
+                *instantiated
             };
-            Some(resolved.answering(normalize_trait_inst_preserving_validity(
-                db,
-                inst,
-                scope,
-                solve_cx.assumptions(),
-            )))
+            Some(ResolvedImplInstance::new(
+                *selected,
+                instantiated,
+                normalize_trait_inst_preserving_validity(db, inst, scope, solve_cx.assumptions()),
+            ))
         }
-        None => match resolve_trait_impl_instance(db, solve_cx, inst) {
-            Selection::Unique(resolved) => Some(resolved),
-            Selection::Ambiguous(_) | Selection::NotFound => None,
-        },
+        Some(Evidence::Assumption(_)) | None => {
+            match resolve_trait_impl_instance(db, solve_cx, inst) {
+                Selection::Unique(resolved) => Some(resolved),
+                Selection::Ambiguous(_) | Selection::NotFound => None,
+            }
+        }
     }
 }
 
