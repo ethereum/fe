@@ -3,10 +3,11 @@ use fe_hir::analysis::semantic::{
     GenericSubst, get_or_build_semantic_instance, instantiate_typed_body,
     root_semantic_instance_key, typed_body_template,
 };
-use fe_hir::analysis::ty::trait_def::resolve_trait_method_instance;
-use fe_hir::analysis::ty::trait_resolution::{Selection, TraitSolveCx};
+use fe_hir::analysis::ty::evidence::prove;
+use fe_hir::analysis::ty::trait_resolution::TraitSolveCx;
 use fe_hir::analysis::ty::ty_check::{BodyOwner, check_func_body};
 use fe_hir::hir_def::{Expr, ItemKind, Partial};
+use fe_hir::semantic::param_env;
 use fe_hir::test_db::HirAnalysisTestDb;
 
 #[test]
@@ -58,15 +59,15 @@ fn run(evm: mut Evm) -> u256 {
         .map(|(name, method)| (*name, *method))
         .expect("missing trait method");
 
-    let Selection::Unique(resolved) = resolve_trait_method_instance(
+    let resolved = prove(
         &db,
-        TraitSolveCx::new(&db, impl_trait.scope()),
+        TraitSolveCx::new(&db, impl_trait.scope())
+            .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
-        method_name,
-        None,
-    ) else {
-        panic!("missing resolved method");
-    };
+    )
+    .and_then(|evidence| evidence.selection(&db))
+    .and_then(|selected| selected.method(&db, method_name, None))
+    .expect("missing resolved method");
     let resolved_method = resolved.body().expect("missing resolved method body");
 
     assert_eq!(resolved_method, trait_method);
