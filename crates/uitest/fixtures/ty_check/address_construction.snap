@@ -9,9 +9,9 @@ error[2-0003]: `inner` is not visible
 11 │     Address { inner: 1 }
    │               ^^^^^^^^ `inner` is not visible
    │
-   ┌─ src/evm/effects.fe:46:33
+   ┌─ src/evm/effects.fe:47:33
    │
-46 │ pub struct Address { pub(ingot) inner: u256 }
+47 │ pub struct Address { pub(ingot) inner: u256 }
    │                                 ----- `inner` is defined here
 
 error[2-0003]: `inner` is not visible
@@ -20,9 +20,9 @@ error[2-0003]: `inner` is not visible
 15 │     address.inner
    │             ^^^^^ `inner` is not visible
    │
-   ┌─ src/evm/effects.fe:46:33
+   ┌─ src/evm/effects.fe:47:33
    │
-46 │ pub struct Address { pub(ingot) inner: u256 }
+47 │ pub struct Address { pub(ingot) inner: u256 }
    │                                 ----- `inner` is defined here
 
 error[3-0073]: panic in const context
@@ -31,9 +31,9 @@ error[3-0073]: panic in const context
  8 │ const DIRTY: Address = Address::new((1 << 160) | 1)
    │                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ while evaluating this
    │
-   ┌─ src/evm/effects.fe:53:13
+   ┌─ src/evm/effects.fe:54:13
    │
-53 │             core::panic_code(PANIC_OVERFLOW)
+54 │             core::panic_code(PANIC_OVERFLOW)
    │             -------------------------------- panics with code 0x11
 
 error[8-0055]: cast is not provably lossless
