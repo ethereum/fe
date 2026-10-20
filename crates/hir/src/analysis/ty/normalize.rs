@@ -15,9 +15,12 @@ use super::{
     canonical::Canonicalized,
     closure::callable_out_ty,
     fold::{TyFoldable, TyFolder},
-    trait_def::{TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints},
+    trait_def::{
+        TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints,
+        named_output_implementation,
+    },
     trait_lower::complete_impl_assoc_ty,
-    trait_resolution::{PredicateListId, TraitSolveCx},
+    trait_resolution::{PredicateListId, Selection, TraitSolveCx},
     ty_def::{AssocTy, InvalidCause, TyData, TyId, TyParam, collect_variables},
     unify::UnificationTable,
     visitor::{TyVisitor, walk_ty},
@@ -200,6 +203,26 @@ pub(crate) fn tree_size_within<'db>(
     size(db, ty, limit, &mut FxHashMap::default())
 }
 
+/// Whether an instance's generic arguments stay within the instance limits:
+/// each nests at most [`PROJECTION_DEPTH_LIMIT`] levels, and all together
+/// have at most [`PROJECTION_WORK_LIMIT`] type nodes. Recursion that grows
+/// its arguments leaves these limits; recursion that does not comes back to
+/// an instance already made.
+pub(crate) fn instance_args_within_limits<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: &[TyId<'db>],
+) -> bool {
+    args.iter()
+        .all(|&arg| tree_depth_within(db, arg, PROJECTION_DEPTH_LIMIT))
+        && args
+            .iter()
+            .try_fold(0usize, |total, &arg| {
+                let size = tree_size_within(db, arg, PROJECTION_WORK_LIMIT - total)?;
+                Some(total + size)
+            })
+            .is_some()
+}
+
 /// Whether `ty`, as a tree, nests at most `limit` levels of types.
 pub(crate) fn tree_depth_within<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -357,7 +380,7 @@ impl<'db> TypeNormalizer<'db> {
         }
 
         match dedup.len() {
-            0 => None,
+            0 => self.named_output_assoc_ty(ty, assoc),
             1 => {
                 let (unique, _) = dedup.first().unwrap();
                 // Only replace if we're actually making progress
@@ -365,6 +388,20 @@ impl<'db> TypeNormalizer<'db> {
             }
             _ => None,
         }
+    }
+
+    /// A slot no ordinary implementation answers has the associated
+    /// types its named implementations agree on.
+    fn named_output_assoc_ty(&mut self, ty: TyId<'db>, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
+        let inst = assoc.trait_.fold_with(self.db, self).as_predicate(self.db);
+        let solve_cx = TraitSolveCx::new(self.db, self.scope).with_assumptions(self.assumptions);
+        let Selection::Unique(resolved) = named_output_implementation(self.db, solve_cx, inst)
+        else {
+            return None;
+        };
+        let out = resolved.instantiated_assoc_ty(self.db, assoc.name)?;
+        let out = self.fold_ty(self.db, out);
+        (out != ty).then_some(out)
     }
 
     /// A pure normalization query may observe established equality, but may

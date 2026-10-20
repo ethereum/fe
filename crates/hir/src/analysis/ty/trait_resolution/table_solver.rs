@@ -17,8 +17,9 @@ use tablesolve::{
 };
 
 use super::{
-    CanonicalGoalQuery, GoalSatisfiability, TRAIT_SOLVER_ROOT_ANSWER_LIMIT, TraitGoalSolution,
-    TraitSolveCompletion, TraitSolveCx, TraitSolverQuery, normalize_trait_inst_preserving_validity,
+    CanonicalGoalQuery, GoalSatisfiability, ImplConditionsId, TRAIT_SOLVER_ROOT_ANSWER_LIMIT,
+    TraitGoalSolution, TraitSolveCompletion, TraitSolveCx, TraitSolverQuery,
+    normalize_trait_inst_preserving_validity,
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -217,6 +218,9 @@ struct Branch<'db> {
     root_goal: TraitInstId<'db>,
     remaining_goals: Vec<TraitInstId<'db>>,
     selected_impl: ImplementorId<'db>,
+    establishes_goal: bool,
+    impl_conditions: Vec<ImplementorId<'db>>,
+    trait_conditions: Vec<TraitInstId<'db>>,
 }
 
 #[derive(Clone)]
@@ -329,12 +333,37 @@ impl<'db> TraitResolutionContext<'db> {
         branch: &mut Branch<'db>,
         goal: TraitInstId<'db>,
     ) -> GoalSolution<'db> {
+        let mut trait_conditions = branch
+            .trait_conditions
+            .clone()
+            .fold_with(self.db, &mut branch.table);
+        let goal = goal.fold_with(self.db, &mut branch.table);
+        // Assumptions do not create a fresh declaration-condition obligation.
+        if branch.establishes_goal
+            && (!crate::hir_def::WhereClauseOwner::Trait(goal.def(self.db))
+                .where_clause(self.db)
+                .const_predicates(self.db)
+                .is_empty()
+                || super::goal_has_const_type_requirements(self.db, goal))
+            && !trait_conditions.contains(&goal)
+        {
+            trait_conditions.push(goal);
+        }
+        let impl_conditions = ImplConditionsId::new(
+            self.db,
+            branch
+                .impl_conditions
+                .clone()
+                .fold_with(self.db, &mut branch.table),
+            trait_conditions,
+        );
         parent.canonicalize_solution(
             self.db,
             &mut branch.table,
             TraitGoalSolution {
                 inst: goal,
                 implementor: branch.selected_impl,
+                impl_conditions,
             },
         )
     }
@@ -382,6 +411,7 @@ impl<'db> TraitResolutionContext<'db> {
                 goal: next_goal,
                 assumptions,
                 require_impl: false,
+                selected_candidate: None,
             },
             state: branch,
         }
@@ -393,7 +423,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
     type Key = Query<'db>;
     type Clause = Clause<'db>;
     type Answer = GoalSolution<'db>;
-    type AnswerKey = GoalSolution<'db>;
+    type AnswerKey = (TraitInstId<'db>, ImplementorId<'db>);
     type Output = GoalSolution<'db>;
     type State = Branch<'db>;
     type Rebase = CanonicalGoalQuery<'db>;
@@ -430,36 +460,66 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             self.origin_ingot,
             prepared.query.goal,
         );
-        let implementors = impls_for_trait_in_ingots(
-            self.db,
-            primary,
-            secondary,
-            Canonical::new(self.db, prepared.query.goal),
-        );
-
-        let mut clauses =
-            Vec::with_capacity(implementors.len() + prepared.query.assumptions.list(self.db).len());
-        clauses.extend(implementors.iter().copied().map(Clause::Implementor));
-        if callable_implementor(self.db, prepared.normalized_goal).is_some() {
-            clauses.push(Clause::Callable);
-        }
-        if clearable_implementor(self.db, prepared.normalized_goal).is_some() {
-            clauses.push(Clause::Clearable);
-        }
-        if sol_codec_implementor(
-            self.db,
-            prepared.normalized_goal,
-            prepared.scope,
-            prepared.query.assumptions,
-        )
-        .is_some()
-        {
-            clauses.push(Clause::SolCodec);
-        }
-        if !prepared.query.require_impl && self.goal_can_use_assumptions(prepared.normalized_goal) {
-            clauses.extend(
-                (0..prepared.query.assumptions.list(self.db).len()).map(Clause::Assumption),
+        let mut clauses = Vec::with_capacity(prepared.query.assumptions.list(self.db).len() + 1);
+        if let Some(candidate) = prepared.query.selected_candidate {
+            // Named definitions need not be ordinary-discovery candidates. Apply
+            // the same header unification and prerequisite checks to this root.
+            clauses.push(Clause::Implementor(candidate));
+        } else {
+            let implementors = impls_for_trait_in_ingots(
+                self.db,
+                primary,
+                secondary,
+                Canonical::new(self.db, prepared.query.goal),
             );
+            clauses.extend(implementors.iter().copied().map(Clause::Implementor));
+            if callable_implementor(self.db, prepared.normalized_goal).is_some() {
+                clauses.push(Clause::Callable);
+            }
+            if clearable_implementor(self.db, prepared.normalized_goal).is_some() {
+                clauses.push(Clause::Clearable);
+            }
+            if sol_codec_implementor(
+                self.db,
+                prepared.normalized_goal,
+                prepared.scope,
+                prepared.query.assumptions,
+            )
+            .is_some()
+            {
+                clauses.push(Clause::SolCodec);
+            }
+        }
+        if !prepared.query.require_impl && prepared.query.selected_candidate.is_none() {
+            let assumptions = prepared.query.assumptions.list(self.db);
+            if self.goal_can_use_assumptions(prepared.normalized_goal) {
+                clauses.extend((0..assumptions.len()).map(Clause::Assumption));
+            } else if clauses.is_empty()
+                && !prepared
+                    .normalized_goal
+                    .def(self.db)
+                    .has_assoc_outputs(self.db)
+            {
+                // A concrete goal no implementation answers is answered by a
+                // premise equal to it: a slot only named implementations
+                // answer, opened by a frame (`add_opened_premise`) or
+                // delivered to the instance that runs. A base program cannot
+                // state such a premise (a bound on a concrete type is
+                // refused), so no base program changes. A trait with
+                // associated outputs is left to their one selection:
+                // a premise has no outputs to read.
+                let goal =
+                    crate::analysis::ty::evidence::slot_goal(self.db, prepared.normalized_goal);
+                clauses.extend(
+                    assumptions
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, premise)| {
+                            crate::analysis::ty::evidence::slot_goal(self.db, **premise) == goal
+                        })
+                        .map(|(index, _)| Clause::Assumption(index)),
+                );
+            }
         }
         Ok(CallbackOutcome::Continue(clauses))
     }
@@ -536,6 +596,33 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     root_goal: query.goal,
                     remaining_goals,
                     selected_impl,
+                    establishes_goal: true,
+                    impl_conditions: if let crate::analysis::ty::trait_def::ImplementorOrigin::Hir(
+                        item,
+                    ) = candidate.origin(self.db)
+                        && (!crate::hir_def::WhereClauseOwner::ImplTrait(item)
+                            .where_clause(self.db)
+                            .const_predicates(self.db)
+                            .is_empty()
+                            || super::goal_has_const_type_requirements(
+                                self.db,
+                                candidate.trait_inst(self.db),
+                            )) {
+                        vec![candidate]
+                    } else {
+                        Vec::new()
+                    },
+                    // Normalization can expose a conditional nominal type that
+                    // the authored projection hides. Retain the prepared goal
+                    // in this proof's receipt; admission stays outside solving.
+                    trait_conditions: if super::goal_has_const_type_requirements(
+                        self.db,
+                        normalized_goal,
+                    ) {
+                        vec![normalized_goal]
+                    } else {
+                        Vec::new()
+                    },
                 };
                 return Ok(self.continue_branch(key, branch, query.assumptions));
             }
@@ -566,6 +653,9 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                     root_goal: query.goal,
                     remaining_goals,
                     selected_impl,
+                    establishes_goal: false,
+                    impl_conditions: Vec::new(),
+                    trait_conditions: Vec::new(),
                 };
                 return Ok(self.continue_branch(key, branch, query.assumptions));
             }
@@ -602,6 +692,9 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
             root_goal: query.goal,
             remaining_goals: Vec::new(),
             selected_impl,
+            establishes_goal: false,
+            impl_conditions: Vec::new(),
+            trait_conditions: Vec::new(),
         };
         Ok(self.finish_branch(key, branch))
     }
@@ -614,7 +707,18 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         rebase: Self::Rebase,
     ) -> Result<ContextTransition<Self>, Self::Error> {
         let pending_goal = rebase.goal();
-        let solution = rebase.extract_solution(&mut branch.table, answer).inst;
+        let solution = rebase.extract_solution(&mut branch.table, answer);
+        for &instance in solution.impl_conditions.instances(self.db) {
+            if !branch.impl_conditions.contains(&instance) {
+                branch.impl_conditions.push(instance);
+            }
+        }
+        for &goal in solution.impl_conditions.trait_goals(self.db) {
+            if !branch.trait_conditions.contains(&goal) {
+                branch.trait_conditions.push(goal);
+            }
+        }
+        let solution = solution.inst;
 
         let normalized_pending = {
             let scope = TraitSolveCx::normalization_scope_for_trait_inst_with_origin(
@@ -657,6 +761,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 goal: resumed_root,
                 assumptions: resumed_assumptions,
                 require_impl: parent.value().require_impl,
+                selected_candidate: parent.value().selected_candidate,
             },
         ) {
             return Ok(Transition::Stop(StopReason::MaximumTypeDepth));
@@ -677,7 +782,11 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
     }
 
     fn answer_key(&self, _key: &Self::Key, answer: &Self::Answer) -> Self::AnswerKey {
-        *answer
+        // Conditions describe the retained proof, not a new implementation
+        // choice. Duplicate routes keep one complete representative receipt;
+        // combining their conditions would turn alternatives into conjunction.
+        // Canonicalization visits these identity fields before the receipt.
+        (answer.value.inst, answer.value.implementor)
     }
 }
 
@@ -880,6 +989,15 @@ pub(crate) fn ty_depth_impl<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> u
         | TyData::AssocTy { .. }
         | TyData::TyVar(_) => 1,
         TyData::QualifiedTy(trait_inst) => ty_depth_impl(db, trait_inst.self_ty(db)) + 1,
+        TyData::ConstraintTerm(goal) => {
+            goal.args(db)
+                .iter()
+                .chain(goal.assoc_type_bindings(db).values())
+                .map(|&ty| ty_depth_impl(db, ty))
+                .max()
+                .unwrap_or(0)
+                + 1
+        }
         TyData::TyApp(lhs, rhs) => {
             let lhs_depth = ty_depth_impl(db, *lhs);
             let rhs_depth = ty_depth_impl(db, *rhs);

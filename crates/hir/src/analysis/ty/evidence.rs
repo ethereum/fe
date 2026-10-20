@@ -38,6 +38,22 @@ use crate::{
     hir_def::{Body, CallableDef, Func, ItemKind, scope_graph::ScopeId},
 };
 
+/// The slot a goal occupies: its trait and arguments, without associated-type
+/// equalities, which constrain the accepted answer rather than name a slot.
+pub fn slot_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> TraitInstId<'db> {
+    if goal.assoc_type_bindings(db).is_empty() && goal.mode(db) == crate::hir_def::ModeMarker::None
+    {
+        return goal;
+    }
+    TraitInstId::new(
+        db,
+        goal.def(db),
+        goal.args(db).clone(),
+        common::indexmap::IndexMap::new(),
+        crate::hir_def::ModeMarker::None,
+    )
+}
+
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EvidenceId<'db> {

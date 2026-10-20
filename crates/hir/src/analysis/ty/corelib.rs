@@ -15,8 +15,8 @@ use crate::{
         },
     },
     hir_def::{
-        ArithBinOp, BinOp, CallableDef, CompBinOp, Func, FuncParamMode, IdentId, ItemKind, PathId,
-        Trait, UnOp, scope_graph::ScopeId,
+        ArithBinOp, BinOp, CallableDef, CompBinOp, Func, FuncParamMode, HirIngot, IdentId,
+        ItemKind, PathId, Trait, UnOp, scope_graph::ScopeId,
     },
     semantic::EffectRequirementKey,
 };
@@ -28,14 +28,28 @@ pub fn resolve_core_trait<'db>(
     segments: &[&str],
 ) -> Option<Trait<'db>> {
     let (module_segments, [trait_name]) = segments.split_last_chunk::<1>()?;
-    let mut module_path = lib_root_path(db, scope, "core");
+    // Operator syntax names a compiler library requirement, not a lexical
+    // `core` binding. Reuse the dependency roots used by name resolution;
+    // resolving from the user's scope would let `mod core {}` intercept it.
+    let own_ingot = scope.top_mod(db).ingot(db);
+    let core = if own_ingot.is_core(db) {
+        own_ingot
+    } else {
+        own_ingot
+            .resolved_external_ingots(db)
+            .iter()
+            .find_map(|(name, ingot)| (name.data(db) == "core").then_some(*ingot))?
+    };
+    let core_scope = core.root_mod(db).scope();
+    let mut module_path = PathId::from_ident(db, IdentId::make_ingot(db));
 
     for segment in module_segments {
         module_path = module_path.push_str(db, segment);
     }
 
     let assumptions = PredicateListId::empty_list(db);
-    let Ok(PathRes::Mod(module_scope)) = resolve_path(db, module_path, scope, assumptions, false)
+    let Ok(PathRes::Mod(module_scope)) =
+        resolve_path(db, module_path, core_scope, assumptions, false)
     else {
         return None;
     };
@@ -63,6 +77,41 @@ pub fn resolve_lib_type_path<'db>(
 ) -> Option<TyId<'db>> {
     let path_id = LibPath::new(db, path.to_string());
     resolve_lib_path(db, scope, path_id)
+}
+
+/// The goal of an `Evidence<G>` type, if `ty` is one.
+pub(crate) fn evidence_goal<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<super::trait_def::TraitInstId<'db>> {
+    let (base, args) = ty.decompose_ty_app(db);
+    if Some(base) != resolve_lib_type_path(db, scope, "core::obligations::Evidence") {
+        return None;
+    }
+    let [term] = args else { return None };
+    match term.data(db) {
+        super::ty_def::TyData::ConstraintTerm(goal) => Some(*goal),
+        _ => None,
+    }
+}
+
+/// The indices of `func`'s parameters whose type is `Evidence<G>`: the slots
+/// through which a caller delivers a choice by value.
+pub(crate) fn evidence_params<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: crate::hir_def::Func<'db>,
+) -> Vec<u16> {
+    crate::hir_def::CallableDef::Func(func)
+        .arg_tys(db)
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, ty)| {
+            let ty = *ty.skip_binder();
+            let ty = ty.as_capability(db).map_or(ty, |(_, inner)| inner);
+            evidence_goal(db, func.scope(), ty).map(|_| idx as u16)
+        })
+        .collect()
 }
 
 /// Resolve a function by a fully-qualified `core::...` or `std::...` path string.

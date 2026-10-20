@@ -1839,6 +1839,9 @@ impl<'db> GenericParamOwner<'db> {
                 let TypeBound::Trait(tr, mode) = bound else {
                     continue;
                 };
+                if ty::ty_lower::is_core_constraint_bound(db, scope, *tr) {
+                    continue;
+                }
                 let bound_span = view.span().into_type_param().bounds().bound(i);
                 if *mode == ModeMarker::MaybeMut
                     && !matches!(

@@ -21,6 +21,7 @@
 //!   method(s) here.
 
 pub mod index;
+pub(crate) mod lexical;
 pub mod reference;
 mod storage_layout;
 pub mod symbol;
@@ -83,7 +84,8 @@ use crate::analysis::ty::effects::{
     EffectKeyKind, place_effect_provider_param_index_map, resolve_effect_key,
 };
 use crate::analysis::ty::trait_def::{
-    ImplementorId, ImplementorOrigin, TraitInstId, does_impl_trait_conflict, impls_for_trait_def,
+    ImplSelectionClass, ImplementorId, ImplementorOrigin, TraitInstId, does_impl_trait_conflict,
+    impl_selection_class, impls_for_trait_def,
 };
 use crate::analysis::ty::trait_lower::{
     TraitRefLowerError, collect_implementor_methods, collect_trait_impls, lower_impl_trait,
@@ -3293,6 +3295,15 @@ impl<'db> WherePredicateView<'db> {
             if let TypeBound::Kind(Partial::Present(kb)) = b {
                 return Some(lower_hir_kind_local(kb));
             }
+            if let TypeBound::Trait(reference, _) = b
+                && crate::analysis::ty::ty_lower::is_core_constraint_bound(
+                    db,
+                    self.owner_item().scope(),
+                    *reference,
+                )
+            {
+                return Some(Kind::Constraint);
+            }
         }
         None
     }
@@ -3304,14 +3315,25 @@ impl<'db> WherePredicateView<'db> {
     /// Iterate trait bounds as per-bound semantic views.
     pub fn bounds(
         self,
-        db: &'db dyn HirDb,
+        db: &'db dyn HirAnalysisDb,
     ) -> impl Iterator<Item = WherePredicateBoundView<'db>> + 'db {
         let idxs: Vec<usize> = self
             .hir_pred(db)
             .bounds
             .iter()
             .enumerate()
-            .filter_map(|(i, b)| matches!(b, TypeBound::Trait(..)).then_some(i))
+            .filter_map(|(i, b)| match b {
+                TypeBound::Trait(reference, _)
+                    if !crate::analysis::ty::ty_lower::is_core_constraint_bound(
+                        db,
+                        self.owner_item().scope(),
+                        *reference,
+                    ) =>
+                {
+                    Some(i)
+                }
+                _ => None,
+            })
             .collect();
         idxs.into_iter()
             .map(move |idx| WherePredicateBoundView { pred: self, idx })
@@ -4277,18 +4299,24 @@ impl<'db> ImplTrait<'db> {
 
         // Conflict check
         let trait_ = implementor.trait_(db);
-        for &cand_view in impls_for_trait_def(db, self.top_mod(db).ingot(db), trait_.def(db)) {
-            let cand_impl_trait = cand_view.hir_impl_trait(db);
-            if cand_impl_trait == self {
-                continue;
-            }
-            if does_impl_trait_conflict(db, cand_view, implementor)
-                && !Self::impl_trait_conflict_is_sealed_marker_disjoint(db, cand_impl_trait, self)
-            {
-                return Err(ImplTraitLowerError::Conflict {
-                    primary: cand_impl_trait,
-                    conflict: self,
-                });
+        if impl_selection_class(db, self) == ImplSelectionClass::Ordinary {
+            for &cand_view in impls_for_trait_def(db, self.top_mod(db).ingot(db), trait_.def(db)) {
+                let cand_impl_trait = cand_view.hir_impl_trait(db);
+                if cand_impl_trait == self {
+                    continue;
+                }
+                if does_impl_trait_conflict(db, cand_view, implementor)
+                    && !Self::impl_trait_conflict_is_sealed_marker_disjoint(
+                        db,
+                        cand_impl_trait,
+                        self,
+                    )
+                {
+                    return Err(ImplTraitLowerError::Conflict {
+                        primary: cand_impl_trait,
+                        conflict: self,
+                    });
+                }
             }
         }
 
@@ -4709,7 +4737,74 @@ impl<'db> ImplTrait<'db> {
         }
 
         match self.lowered_implementor(db) {
-            Ok(implementor) => (Some(implementor), Vec::new()),
+            Ok(implementor) => {
+                let mut diags = Vec::new();
+                let trait_ = implementor.trait_inst(db).def(db);
+                if self.selection_name(db).is_some()
+                    && crate::analysis::ty::trait_def::has_only_ordinary_implementations(
+                        db,
+                        self.scope(),
+                        trait_,
+                    )
+                {
+                    diags.push(
+                        TraitLowerDiag::NamedImplementationOfUniqueTrait {
+                            primary: self,
+                            trait_,
+                        }
+                        .into(),
+                    );
+                }
+                if matches!(
+                    crate::analysis::ty::trait_def::impl_selection_class(db, self),
+                    crate::analysis::ty::trait_def::ImplSelectionClass::Named(_)
+                ) && let Some(mismatch) =
+                    crate::analysis::ty::trait_def::named_output_mismatch(db, self, implementor)
+                {
+                    use crate::analysis::ty::trait_def::NamedOutputMismatch;
+                    diags.push(
+                        match mismatch {
+                            NamedOutputMismatch::AssocType {
+                                ordinary: true,
+                                name,
+                                expected,
+                                given,
+                                ..
+                            } => TraitLowerDiag::NamedAssociatedTypeMismatch {
+                                primary: self,
+                                name,
+                                expected,
+                                given,
+                            },
+                            NamedOutputMismatch::AssocType {
+                                with,
+                                name,
+                                expected,
+                                given,
+                                ..
+                            } => TraitLowerDiag::NamedAssociatedTypeDisagreement {
+                                primary: self,
+                                with,
+                                name,
+                                expected,
+                                given,
+                            },
+                            NamedOutputMismatch::Row {
+                                with,
+                                ordinary,
+                                name,
+                            } => TraitLowerDiag::NamedAssociatedRowMismatch {
+                                primary: self,
+                                with,
+                                ordinary,
+                                name,
+                            },
+                        }
+                        .into(),
+                    );
+                }
+                (Some(implementor), diags)
+            }
             Err(err) => {
                 let mut diags = Vec::new();
                 match err {
@@ -5064,10 +5159,14 @@ pub struct AssocTypeBoundView<'db> {
 
 impl<'db> TraitAssocTypeView<'db> {
     /// Iterate trait bounds as per-bound semantic views.
-    pub fn bounds(self, db: &'db dyn HirDb) -> impl Iterator<Item = AssocTypeBoundView<'db>> + 'db {
+    pub fn bounds(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> impl Iterator<Item = AssocTypeBoundView<'db>> + 'db {
         let len = self.bounds_raw(db).len();
         let idxs: Vec<usize> = (0..len)
-            .filter(|&i| matches!(self.bounds_raw(db)[i], TypeBound::Trait(..)))
+            .filter(|&i| matches!(self.bounds_raw(db)[i], TypeBound::Trait(reference, _)
+                if !crate::analysis::ty::ty_lower::is_core_constraint_bound(db, self.owner.scope(), reference)))
             .collect();
         idxs.into_iter()
             .map(move |idx| AssocTypeBoundView { owner: self, idx })

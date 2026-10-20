@@ -207,6 +207,8 @@ pub enum TyLowerDiag<'db> {
     ConstEvalStepLimitExceeded(DynLazySpan<'db>),
     ConstEvalRecursionLimitExceeded(DynLazySpan<'db>),
     ConstEvalRecursiveConst(DynLazySpan<'db>),
+    /// A named implementation's declaration reads its own slot's constant.
+    ChoiceDependentConst(DynLazySpan<'db>),
     TypeLoweringCycle(DynLazySpan<'db>),
     TypeNormalizationLimit(DynLazySpan<'db>),
 
@@ -322,6 +324,7 @@ impl TyLowerDiag<'_> {
             Self::ConstEvalStepLimitExceeded(_) => 26,
             Self::ConstEvalRecursionLimitExceeded(_) => 27,
             Self::ConstEvalRecursiveConst(_) => 37,
+            Self::ChoiceDependentConst(_) => 71,
             Self::TypeLoweringCycle(_) => 38,
             Self::TypeNormalizationLimit(_) => 58,
             Self::MixedRefSelfPrefixWithExplicitType { .. } => 28,
@@ -405,6 +408,45 @@ pub enum MarkerPosition {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum BodyDiag<'db> {
+    /// `prove<G>()` cannot provide `G` here.
+    ObligationIntroduction {
+        primary: DynLazySpan<'db>,
+        reason: &'static str,
+    },
+    /// A `with` header names no admissible choice, or gives one slot twice.
+    ObligationOpening {
+        primary: DynLazySpan<'db>,
+        reason: &'static str,
+    },
+    /// An evidence value that selects a choice is not known at compile time.
+    EvidenceChoiceNotCompileTime {
+        primary: DynLazySpan<'db>,
+    },
+    /// A mutable place holds an evidence value.
+    EvidenceMutableStorage {
+        primary: DynLazySpan<'db>,
+    },
+    /// A type reads a constant of a slot that an enclosing `with` opened, or a
+    /// call delivers a choice into a slot its callee's types read. Such a
+    /// type has no one meaning.
+    ChoiceDependentType {
+        primary: DynLazySpan<'db>,
+    },
+    /// An opened choice would be carried to where it is not in force: a
+    /// function value made under the opening, or a body this call reaches
+    /// that reads the choice in a type, a function value or a closure.
+    /// `reason` says which.
+    ChoiceCarried {
+        primary: DynLazySpan<'db>,
+        reason: &'static str,
+    },
+    /// An item written inside a `with` reads `slot`, which the `with`
+    /// answers; the item reads the ordinary implementation. `item` names it.
+    ItemReadsChoice {
+        primary: DynLazySpan<'db>,
+        item: String,
+        slot: TraitInstId<'db>,
+    },
     TypeMismatch {
         span: DynLazySpan<'db>,
         expected: TyId<'db>,
@@ -1200,6 +1242,11 @@ impl<'db> BodyDiag<'db> {
 
     pub(crate) fn local_code(&self) -> u16 {
         match self {
+            Self::ObligationIntroduction { .. } => 97,
+            Self::ObligationOpening { .. } | Self::ItemReadsChoice { .. } => 98,
+            Self::EvidenceChoiceNotCompileTime { .. } => 120,
+            Self::EvidenceMutableStorage { .. } => 100,
+            Self::ChoiceDependentType { .. } | Self::ChoiceCarried { .. } => 122,
             Self::TypeMismatch { .. } => 0,
             Self::InfiniteOccurrence(..) => 1,
             Self::DuplicatedRestPat(..) => 2,
@@ -1334,6 +1381,38 @@ impl<'db> BodyDiag<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TraitLowerDiag<'db> {
+    /// A named implementation may not change an ordinary
+    /// implementation's associated types.
+    NamedAssociatedTypeMismatch {
+        primary: ImplTrait<'db>,
+        name: IdentId<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
+    },
+    /// Named implementations of a slot with no ordinary implementation
+    /// agree on its associated types.
+    NamedAssociatedTypeDisagreement {
+        primary: ImplTrait<'db>,
+        with: ImplTrait<'db>,
+        name: IdentId<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
+    },
+    /// A named implementation gives a slot's associated effect row as
+    /// the slot's ordinary implementation does, or, with none, as each
+    /// other named implementation does.
+    NamedAssociatedRowMismatch {
+        primary: ImplTrait<'db>,
+        with: ImplTrait<'db>,
+        ordinary: bool,
+        name: IdentId<'db>,
+    },
+    /// A named implementation of a trait chosen where no frame reaches:
+    /// storage locations and encodings have only ordinary implementations.
+    NamedImplementationOfUniqueTrait {
+        primary: ImplTrait<'db>,
+        trait_: Trait<'db>,
+    },
     ConflictTraitImpl {
         primary: ImplTrait<'db>,
         conflict_with: ImplTrait<'db>,
@@ -1353,6 +1432,10 @@ pub enum TraitLowerDiag<'db> {
 impl TraitLowerDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
+            Self::NamedAssociatedTypeMismatch { .. }
+            | Self::NamedAssociatedTypeDisagreement { .. }
+            | Self::NamedAssociatedRowMismatch { .. }
+            | Self::NamedImplementationOfUniqueTrait { .. } => 5,
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
             Self::CyclicSuperTraits { .. } => 2,

@@ -745,3 +745,28 @@ pub fn selector() -> u32 {
     let (top_mod, _) = db.top_mod(file);
     db.assert_no_diags(top_mod);
 }
+
+#[test]
+fn compiler_operator_trait_ignores_lexical_core_shadow() {
+    for (name, source) in [
+        ("shadow", "mod core {}\nfn f(x: u256) -> u256 { x + 1 }\n"),
+        ("ordinary", "fn f(x: u256) -> u256 { x + 1 }\n"),
+    ] {
+        let mut db = DriverDataBase::default();
+        let url = Url::parse(&format!("file:///operator_core_{name}.fe")).unwrap();
+        let file = db.workspace().touch(&mut db, url, Some(source.to_string()));
+        let top_mod = db.top_mod(file);
+        let func = top_mod.all_funcs(&db)[0];
+        let actual = resolve_core_trait(&db, func.scope(), &["ops", "Add"])
+            .expect("compiler-owned Add trait");
+        assert_eq!(actual.top_mod(&db).ingot(&db), db.builtin_core());
+        let diagnostics = db.run_on_top_mod(top_mod);
+        assert!(diagnostics.is_empty(), "{}", diagnostics.format_diags(&db));
+        let diagnostics = db.mir_diagnostics_for_top_mod(top_mod);
+        assert!(
+            diagnostics.is_empty(),
+            "{}",
+            db.format_complete_diagnostics(&diagnostics)
+        );
+    }
+}
