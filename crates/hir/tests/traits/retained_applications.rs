@@ -808,3 +808,264 @@ fn verify(_ v: Verify<{ caller() }>) {}
         .expect("u32::inner() call inside AltOuter::outer");
     assert_eq!(inner_call_in_alt.choice(), Some(Choice::Known(prereq)));
 }
+
+#[test]
+fn multi_hop_prerequisite_bounds_specialize_and_unpack_without_reselection() {
+    use fe_hir::{
+        analysis::ty::{
+            trait_choice::{Choice, Delivery, Resolved, SlotChoices, SlotRef, body_deliveries},
+            ty_check::check_func_body,
+        },
+        hir_def::CallableDef,
+    };
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "multi_hop_prerequisite_bounds.fe".into(),
+        r#"
+trait Step0 {
+    fn step0() -> u32
+}
+
+impl Step0 for u32 {
+    fn step0() -> u32 { 7 }
+}
+
+struct Wrap<T> {
+    val: T,
+}
+
+trait Step1 {
+    fn step1() -> u32
+}
+
+impl<T: Step0> Step1 for Wrap<T> {
+    fn step1() -> u32 {
+        T::step0() + 10
+    }
+}
+
+struct Pair<T> {
+    inner: Wrap<T>,
+}
+
+trait Step2 {
+    fn step2() -> u32
+}
+
+impl<T> Step2 for Pair<T>
+where
+    Wrap<T>: Step1
+{
+    fn step2() -> u32 {
+        Wrap<T>::step1() + 100
+    }
+}
+
+fn use_step2<X: Step2>() -> u32 {
+    X::step2()
+}
+
+fn generic_caller<T: Step0>() -> u32 {
+    use_step2<Pair<T>>()
+}
+
+pub fn concrete_caller() -> u32 {
+    generic_caller<u32>()
+}
+"#,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    let impls = top_mod.all_impl_traits(&db);
+    let step0_u32 = impls[0];
+    let step1_wrap = impls[1];
+    let step2_pair = impls[2];
+
+    let generic_caller = top_mod
+        .all_funcs(&db)
+        .iter()
+        .copied()
+        .find(|f| f.name(&db).to_opt().map(|n| n.data(&db).as_str()) == Some("generic_caller"))
+        .expect("generic_caller");
+    let concrete_caller = top_mod
+        .all_funcs(&db)
+        .iter()
+        .copied()
+        .find(|f| f.name(&db).to_opt().map(|n| n.data(&db).as_str()) == Some("concrete_caller"))
+        .expect("concrete_caller");
+
+    let (_, generic_typed) = check_func_body(&db, generic_caller);
+    let use_step2_call = generic_typed
+        .body()
+        .unwrap()
+        .exprs(&db)
+        .keys()
+        .find_map(|expr| generic_typed.callable_expr(expr))
+        .expect("use_step2<Pair<T>>() call");
+
+    // In `generic_caller<T: Step0>()`, `use_step2<Pair<T>>()` delivers `Step2<Pair<T>>`
+    // with 2-hop prerequisite bounds: `Step2<Pair<T>> -> Step1<Wrap<T>> -> SlotRef::Bound(T: Step0)`.
+    let Some((_, Choice::Known(step2_known))) = use_step2_call.delivered().first().copied() else {
+        panic!("expected KnownChoice delivery on use_step2<Pair<T>>()");
+    };
+    assert!(step2_known.is_ordinary());
+    assert_eq!(step2_known.implementation(), step2_pair);
+    let hop1 = step2_known.bounds().expect("hop1 bounds on Step2");
+    let Some((_, Choice::Known(step1_known))) = hop1.items(&db).first().copied() else {
+        panic!("expected KnownChoice for Step1<Wrap<T>> in hop1");
+    };
+    assert!(step1_known.is_ordinary());
+    assert_eq!(step1_known.implementation(), step1_wrap);
+    let hop2 = step1_known.bounds().expect("hop2 bounds on Step1");
+    assert!(matches!(
+        hop2.items(&db).as_slice(),
+        [(Delivery::Bound(_), Choice::Slot(SlotRef::Bound(_)))]
+    ));
+
+    // When `concrete_caller` calls `generic_caller<u32>()`, specializing `step2_known`
+    // through `generic_caller`'s `SlotChoices` replaces the inner `SlotRef::Bound(T: Step0)`
+    // at hop 2 with `Choice::Known(step0_u32)`!
+    let (_, concrete_typed) = check_func_body(&db, concrete_caller);
+    let concrete_call = concrete_typed
+        .body()
+        .unwrap()
+        .exprs(&db)
+        .keys()
+        .find_map(|expr| concrete_typed.callable_expr(expr))
+        .expect("generic_caller<u32>() call");
+    let CallableDef::Func(nominal_generic) = concrete_call.callable_def() else {
+        panic!("expected Func");
+    };
+    let caller_slots = SlotChoices::from_resolved(
+        body_deliveries(
+            &db,
+            None,
+            concrete_call.delivered(),
+            nominal_generic,
+            generic_caller,
+        )
+        .into_iter()
+        .map(|(slot, choice)| (slot, SlotChoices::default().resolve_in(&db, Some(choice))))
+        .collect(),
+    );
+    let Resolved::Known(spec_step2) =
+        caller_slots.resolve_in(&db, Some(Choice::Known(step2_known)))
+    else {
+        panic!("expected Known after specializing 2-hop choice");
+    };
+    let spec_hop1 = spec_step2.bounds().expect("specialized hop1");
+    let (_, Choice::Known(spec_step1)) = spec_hop1.items(&db)[0] else {
+        panic!("expected Known at specialized hop1");
+    };
+    let spec_hop2 = spec_step1.bounds().expect("specialized hop2");
+    let (_, Choice::Known(spec_step0)) = spec_hop2.items(&db)[0] else {
+        panic!("expected Known at specialized hop2");
+    };
+    assert_eq!(spec_step0.implementation(), step0_u32);
+}
+
+#[test]
+fn for_loop_inside_closure_records_choices_read_at_for_bound_and_evidence_refusals() {
+    let diag_codes = |name: &str, source: &str| -> Vec<String> {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(name.into(), source);
+        let (top_mod, _) = db.top_mod(file);
+        fe_hir::analysis::initialize_analysis_pass()
+            .run_on_module(&db, top_mod)
+            .into_iter()
+            .map(|d| d.to_complete(&db).error_code.to_string())
+            .collect()
+    };
+
+    let bound_in_closure_loop = r#"
+use core::iter::Collection
+
+trait Price { fn amount() -> usize }
+struct Item {}
+impl Price for Item { fn amount() -> usize { 100 } }
+impl Price for Item as Wholesale { fn amount() -> usize { 70 } }
+
+struct Once<T> {
+    vals: [usize; 1],
+}
+
+impl<T: Price> Collection for Once<T> {
+    type Item = usize
+    type Cursor = usize
+    fn start(self) -> usize { 0 }
+    fn has(self, _ c: usize) -> bool { c < 1 && T::amount() > 0 }
+    fn next(self, _ c: usize) -> usize { c + 1 }
+    fn at(mut? self, _ c: usize) -> mut? usize { mut? self.vals[0] }
+}
+
+fn sum_in_closure<T: Price>(_ o: Once<T>) -> usize {
+    let f = || -> usize {
+        var acc: usize = 0
+        for x in o {
+            acc = acc + x
+        }
+        acc
+    }
+    f()
+}
+
+pub fn pass_opened_into_closure_for_loop(_ o: Once<Item>) -> usize {
+    with (Wholesale) {
+        sum_in_closure(o)
+    }
+}
+"#;
+    let codes_bound = diag_codes("bound_in_closure_loop.fe", bound_in_closure_loop);
+    assert!(
+        codes_bound.contains(&"8-0122".to_string()),
+        "expected 8-0122 refusal for passing `with` choice into a generic function whose closure runs a `for` loop reading the bound, got {codes_bound:?}"
+    );
+
+    let evidence_in_closure_loop = r#"
+use core::iter::Collection
+use core::obligations::Evidence
+
+struct Arr2 {
+    vals: [usize; 2],
+}
+
+impl Collection for Arr2 {
+    type Item = usize
+    type Cursor = usize
+    fn start(self) -> usize { 0 }
+    fn has(self, _ c: usize) -> bool { c < 2 }
+    fn next(self, _ c: usize) -> usize { c + 1 }
+    fn at(mut? self, _ c: usize) -> mut? usize { mut? self.vals[c] }
+}
+
+impl Collection for Arr2 as ReverseArr {
+    type Item = usize
+    type Cursor = usize
+    fn start(self) -> usize { 0 }
+    fn has(self, _ c: usize) -> bool { c < 2 }
+    fn next(self, _ c: usize) -> usize { c + 1 }
+    fn at(mut? self, _ c: usize) -> mut? usize { mut? self.vals[1 - c] }
+}
+
+pub fn closure_reads_evidence_in_for_loop(_ ev: Evidence<Collection<Arr2>>) -> usize {
+    let arr = Arr2 { vals: [1, 2] }
+    with (ev) {
+        let f = || -> usize {
+            var acc: usize = 0
+            for x in arr {
+                acc = acc * 10 + x
+            }
+            acc
+        }
+        f()
+    }
+}
+"#;
+    let codes_ev = diag_codes("evidence_in_closure_loop.fe", evidence_in_closure_loop);
+    assert!(
+        codes_ev.contains(&"8-0098".to_string()),
+        "expected 8-0098 refusal for a closure running a `for` loop under an enclosing `Evidence` choice, got {codes_ev:?}"
+    );
+}

@@ -703,6 +703,28 @@ impl<'db> Choice<'db> {
     pub fn is_ordinary_or_bound(self) -> bool {
         self.is_ordinary() || matches!(self, Self::Slot(SlotRef::Bound(_)))
     }
+
+    /// Calls `f` on `self` and every prerequisite choice nested in its `bounds`.
+    pub fn for_each_choice(self, db: &'db dyn HirAnalysisDb, f: &mut impl FnMut(Choice<'db>)) {
+        f(self);
+        if let Self::Known(known) = self
+            && let Some(bounds) = known.bounds()
+        {
+            for (_, choice) in bounds.items(db) {
+                choice.for_each_choice(db, f);
+            }
+        }
+    }
+
+    /// Whether `self` or any prerequisite choice nested in its `bounds` is an
+    /// unresolved [`SlotRef`].
+    pub fn has_slot(self, db: &'db dyn HirAnalysisDb) -> bool {
+        let mut found = false;
+        self.for_each_choice(db, &mut |choice| {
+            found |= matches!(choice, Self::Slot(_));
+        });
+        found
+    }
 }
 
 impl<'db> TyFoldable<'db> for Choice<'db> {

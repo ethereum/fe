@@ -2362,11 +2362,11 @@ impl<'db> Walk<'db> {
     }
 }
 
-fn classify_reads<'db>(reads: &[(SlotRef<'db>, Choice<'db>)]) -> ConditionAtCall<'db> {
-    if reads
-        .iter()
-        .all(|(_, choice)| matches!(choice, Choice::Known(_)))
-    {
+fn classify_reads<'db>(
+    db: &'db dyn HirAnalysisDb,
+    reads: &[(SlotRef<'db>, Choice<'db>)],
+) -> ConditionAtCall<'db> {
+    if reads.iter().all(|(_, choice)| !choice.has_slot(db)) {
         ConditionAtCall::Evaluate(SlotChoices::new(
             reads
                 .iter()
@@ -2395,6 +2395,7 @@ fn delivered_for<'db>(
 /// answered the ordinary way. `Err` for an undelivered evidence parameter,
 /// whose argument was refused where it was written.
 fn map_choice<'db>(
+    db: &'db dyn HirAnalysisDb,
     slots: &[(SlotRef<'db>, Choice<'db>)],
     choice: Choice<'db>,
 ) -> Result<Option<Choice<'db>>, ()> {
@@ -2404,7 +2405,22 @@ fn map_choice<'db>(
         return Ok(Some(delivered));
     }
     match SlotChoices::default().resolve(Some(choice)) {
-        crate::analysis::ty::trait_choice::Resolved::Known(known) => Ok(Some(Choice::Known(known))),
+        crate::analysis::ty::trait_choice::Resolved::Known(known) => {
+            let bounds = match known.bounds() {
+                Some(list) => {
+                    let mut items = Vec::new();
+                    for (delivery, item) in list.items(db) {
+                        if let Some(mapped) = map_choice(db, slots, *item)? {
+                            items.push((*delivery, mapped));
+                        }
+                    }
+                    (!items.is_empty())
+                        .then(|| crate::analysis::ty::trait_choice::DeliveryList::new(db, items))
+                }
+                None => None,
+            };
+            Ok(Some(Choice::Known(known.with_bounds(db, bounds))))
+        }
         crate::analysis::ty::trait_choice::Resolved::Ordinary => Ok(None),
         crate::analysis::ty::trait_choice::Resolved::Pending => Err(()),
     }
@@ -2415,6 +2431,7 @@ fn map_choice<'db>(
 /// (it reads only the caller's own bounds, so premise forwarding applies) or
 /// a read's argument was refused.
 fn condition_at_call<'db>(
+    db: &'db dyn HirAnalysisDb,
     predicate: Body<'db>,
     args: Vec<TyId<'db>>,
     direct: bool,
@@ -2432,7 +2449,7 @@ fn condition_at_call<'db>(
         predicate,
         args,
         direct,
-        state: classify_reads(&mapped),
+        state: classify_reads(db, &mapped),
     })
 }
 
@@ -2454,8 +2471,8 @@ fn direct_conditions_at_call<'db>(
         .filter_map(|&predicate| {
             let reads = predicate_slot_reads(db, predicate)
                 .into_iter()
-                .map(|slot| (slot, map_choice(slots, Choice::Slot(slot))));
-            condition_at_call(predicate, args.to_vec(), true, reads)
+                .map(|slot| (slot, map_choice(db, slots, Choice::Slot(slot))));
+            condition_at_call(db, predicate, args.to_vec(), true, reads)
         })
         .collect()
 }
@@ -2552,8 +2569,8 @@ fn owed_facts_at_call<'db>(
                 let reads = owed
                     .choices
                     .iter()
-                    .map(|(slot, choice)| (*slot, map_choice(slots, *choice)));
-                if let Some(condition) = condition_at_call(owed.predicate, args, false, reads) {
+                    .map(|(slot, choice)| (*slot, map_choice(db, slots, *choice)));
+                if let Some(condition) = condition_at_call(db, owed.predicate, args, false, reads) {
                     facts.push(EdgeFact::Condition(condition));
                 }
             }
@@ -2579,14 +2596,14 @@ fn owed_facts_at_call<'db>(
                 ),
             }),
             OwedCheck::Call(pending) => {
-                let Ok(choice) = map_choice(slots, pending.choice) else {
+                let Ok(choice) = map_choice(db, slots, pending.choice) else {
                     continue;
                 };
                 let delivered = pending
                     .delivered
                     .iter()
                     .filter_map(|(delivery, choice)| {
-                        let choice = map_choice(slots, *choice).ok()??;
+                        let choice = map_choice(db, slots, *choice).ok()??;
                         Some((at_call(db, body, body_args, *delivery), choice))
                     })
                     .collect::<Vec<_>>();

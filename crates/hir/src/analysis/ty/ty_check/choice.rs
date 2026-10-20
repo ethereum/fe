@@ -2566,13 +2566,17 @@ impl<'db> TyCheckEnv<'db> {
             let mut captured = Vec::new();
             let mut undecided = Vec::new();
             for goal in self.call_uses(&callable) {
-                match self.decide(frame, goal) {
-                    Some(choice) => {
-                        if !captured.contains(&choice) {
-                            captured.push(choice);
+                let choice = self.decide(frame, goal).or_else(|| {
+                    undecided.push(goal);
+                    let mut active = rustc_hash::FxHashSet::default();
+                    self.ordinary_choice(goal, 0, &mut active)
+                });
+                if let Some(choice) = choice {
+                    choice.for_each_choice(db, &mut |item| {
+                        if !item.is_ordinary() && !captured.contains(&item) {
+                            captured.push(item);
                         }
-                    }
-                    None => undecided.push(goal),
+                    });
                 }
             }
             // A function value's bounds are left to ordinary selection as a
@@ -2759,26 +2763,44 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     /// The choices the use at `expr` reads: a call's own and those it
-    /// delivers, a constant use's own and those it delivers.
+    /// delivers (including a `for` loop's protocol calls anchored at `expr`),
+    /// a constant use's own and those it delivers, and any prerequisite bound
+    /// choices nested within them.
     fn choices_read_at(&self, expr: ExprId) -> Vec<Choice<'db>> {
         let db = self.db();
-        let mut read: Vec<Choice<'db>> = Vec::new();
+        let mut raw: Vec<Choice<'db>> = Vec::new();
         if let Some(SemanticExprLowering::Call { callable }) =
             self.semantic_expr_lowering[expr].as_ref()
         {
-            read.extend(callable.choice());
-            read.extend(callable.delivered().iter().map(|(_, choice)| *choice));
+            raw.extend(callable.choice());
+            raw.extend(callable.delivered().iter().map(|(_, choice)| *choice));
+        }
+        for plan in self.for_loop_plans.values().flatten() {
+            if plan.base == expr {
+                for call in &plan.calls {
+                    raw.extend(call.callable.choice());
+                    raw.extend(call.callable.delivered().iter().map(|(_, choice)| *choice));
+                }
+            }
         }
         let delivered = match self.const_refs[expr] {
             Some(ConstRef::TraitConst(use_)) => {
-                read.extend(use_.choice());
+                raw.extend(use_.choice());
                 use_.delivered()
             }
             Some(ConstRef::InherentConst(use_)) => use_.delivered(),
             _ => None,
         };
         if let Some(list) = delivered {
-            read.extend(list.items(db).iter().map(|(_, choice)| *choice));
+            raw.extend(list.items(db).iter().map(|(_, choice)| *choice));
+        }
+        let mut read: Vec<Choice<'db>> = Vec::new();
+        for choice in raw {
+            choice.for_each_choice(db, &mut |item| {
+                if !read.contains(&item) {
+                    read.push(item);
+                }
+            });
         }
         read
     }
@@ -2991,6 +3013,17 @@ fn body_type_reads<'db>(
                 .map(|(goal, _)| goal),
         );
     }
+    for (_, captured) in typed
+        .function_value_choices()
+        .iter()
+        .chain(typed.closure_choices())
+    {
+        for choice in captured {
+            if let Choice::Slot(SlotRef::Bound(goal)) = choice {
+                reads.push(*goal);
+            }
+        }
+    }
     let mut unique = Vec::new();
     for goal in reads {
         let goal = slot_goal(db, goal);
@@ -3081,17 +3114,6 @@ pub(super) fn own_type_reads<'db>(
     }
     for goal in body_type_reads(db, typed) {
         note(goal, false);
-    }
-    for (_, captured) in typed
-        .function_value_choices()
-        .iter()
-        .chain(typed.closure_choices())
-    {
-        for choice in captured {
-            if let Choice::Slot(SlotRef::Bound(goal)) = choice {
-                note(*goal, false);
-            }
-        }
     }
     reached
 }
