@@ -62,6 +62,7 @@ pub fn lower_hir_kind_local(k: &HirKindBound) -> Kind {
     use crate::hir_def::Partial;
     match k {
         HirKindBound::Mono => Kind::Star,
+        HirKindBound::Shape => Kind::Shape,
         HirKindBound::Abs(lhs, rhs) => {
             let lhs_k = match lhs {
                 Partial::Present(inner) => lower_hir_kind_local(inner),
@@ -1435,7 +1436,7 @@ impl<'db> FuncParamView<'db> {
 
         let mut out = Vec::new();
 
-        if !ty.has_star_kind(db) {
+        if !ty.is_star_kind(db) {
             out.push(TyDiagCollection::from(TyLowerDiag::ExpectedStarKind(
                 ty_span.clone(),
             )));
@@ -4647,7 +4648,7 @@ impl<'db> ImplTrait<'db> {
         Self::impl_trait_local_nominal_root(db, impl_trait).is_some_and(|root| match root {
             TyBase::Adt(adt) => adt.ingot(db) == impl_trait_ingot,
             TyBase::Contract(contract) => contract.top_mod(db).ingot(db) == impl_trait_ingot,
-            TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) => false,
+            TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) | TyBase::Shape(_) => false,
         })
     }
 
@@ -5684,7 +5685,7 @@ impl<'db> FieldView<'db> {
         let ty = self.ty(db);
         let span = self.ty_span();
 
-        if !ty.has_star_kind(db) {
+        if !ty.is_star_kind(db) {
             out.push(TyLowerDiag::ExpectedStarKind(span.clone()).into());
             return out;
         }

@@ -33,6 +33,7 @@ use super::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     effects::{place_effect_provider_param_index_map, rows::RowComponent},
     normalize::normalize_ty,
+    shape::Shape,
     trait_def::{TraitInstId, TraitRefId},
     trait_resolution::{PredicateListId, WellFormedness},
     ty_lower::collect_generic_params,
@@ -287,11 +288,6 @@ impl<'db> TyId<'db> {
         self.flags(db).contains(TyFlags::HAS_PROJECTION)
     }
 
-    /// Returns `true` if the type has a `*` kind.
-    pub fn has_star_kind(self, db: &dyn HirAnalysisDb) -> bool {
-        !matches!(self.kind(db), Kind::Abs(..))
-    }
-
     #[salsa::tracked(return_ref)]
     pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
         self.pretty_print_with_mode(db, TypePrintMode::Concrete)
@@ -388,6 +384,50 @@ impl<'db> TyId<'db> {
             BorrowKind::Mut => Self::borrow_mut_of(db, inner),
             BorrowKind::Ref => Self::borrow_ref_of(db, inner),
         }
+    }
+
+    /// The shape term of the parameter list `params`.
+    pub fn params_shape(db: &'db dyn HirAnalysisDb, params: &[Shape<'db>]) -> TyId<'db> {
+        let con = ShapeCon::Params(u16::try_from(params.len()).expect("a parameter list fits"));
+        params.iter().fold(
+            Self::new(db, TyData::TyBase(TyBase::Shape(con))),
+            |acc, param| {
+                let param = match param {
+                    Shape::Owned(ty) => Self::shape_part(db, ShapeCon::Owned, *ty),
+                    Shape::Access(kind, ty) => Self::shape_part(db, ShapeCon::Access(*kind), *ty),
+                    Shape::Tuple(parts) => Self::params_shape(db, parts),
+                    Shape::Sum { .. } => unreachable!("a parameter is no sum"),
+                };
+                Self::app(db, acc, param)
+            },
+        )
+    }
+
+    fn shape_part(db: &'db dyn HirAnalysisDb, con: ShapeCon, ty: TyId<'db>) -> TyId<'db> {
+        Self::app(db, Self::new(db, TyData::TyBase(TyBase::Shape(con))), ty)
+    }
+
+    /// The parameter list the shape term `self` is, one shape per parameter:
+    /// a product parameter is a `Shape::Tuple` of its parts.
+    pub fn as_params_shape(self, db: &'db dyn HirAnalysisDb) -> Option<Vec<Shape<'db>>> {
+        let (base, args) = self.decompose_ty_app(db);
+        let TyData::TyBase(TyBase::Shape(ShapeCon::Params(_))) = base.data(db) else {
+            return None;
+        };
+        args.iter()
+            .map(|param| {
+                let (base, args) = param.decompose_ty_app(db);
+                match (base.data(db), args) {
+                    (TyData::TyBase(TyBase::Shape(ShapeCon::Owned)), [ty]) => {
+                        Some(Shape::Owned(*ty))
+                    }
+                    (TyData::TyBase(TyBase::Shape(ShapeCon::Access(kind))), [ty]) => {
+                        Some(Shape::Access(*kind, *ty))
+                    }
+                    _ => param.as_params_shape(db).map(Shape::Tuple),
+                }
+            })
+            .collect()
     }
 
     pub fn view_of(db: &'db dyn HirAnalysisDb, inner: TyId<'db>) -> TyId<'db> {
@@ -748,7 +788,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.scope(db)),
             TyData::TyBase(TyBase::Contract(c)) => Some(c.scope()),
             TyData::TyBase(TyBase::Func(func)) => Some(func.scope()),
-            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(..)) => None,
+            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(..) | TyBase::Shape(_)) => None,
             TyData::ConstTy(const_ty) => match const_ty.data(db) {
                 ConstTyData::TyVar(..) => None,
                 ConstTyData::TyParam(ty_param, _) => Some(ty_param.scope(db)),
@@ -775,7 +815,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
             TyData::TyBase(TyBase::Contract(c)) => c.scope().name_span(db),
             TyData::TyBase(TyBase::Func(func)) => Some(func.name_span()),
-            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(_)) => None,
+            TyData::TyBase(TyBase::Closure(_) | TyBase::Prim(_) | TyBase::Shape(_)) => None,
 
             TyData::ConstTy(ty) => match ty.data(db) {
                 ConstTyData::TyParam(param, _) => param.scope(db).name_span(db),
@@ -1078,7 +1118,7 @@ impl<'db> TyId<'db> {
         }
 
         let applicable_kind = match self.kind(db) {
-            Kind::Star => return None,
+            Kind::Star | Kind::Shape => return None,
             Kind::Abs(inner) => inner.0.clone(),
             Kind::Any => Kind::Any,
         };
@@ -1664,6 +1704,11 @@ pub enum Kind {
 
     /// `Any` kind is set to the type iff the type is `Invalid`.
     Any,
+
+    /// The kind of a callable's parameter list, `Fn<shape A>`'s argument:
+    /// a list of parameter shapes, each `own T`, `ref T`, `mut T` or a
+    /// product of them. Never the kind of a value.
+    Shape,
 }
 
 impl Kind {
@@ -1673,7 +1718,7 @@ impl Kind {
 
     pub fn does_match(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Star, Self::Star) => true,
+            (Self::Star, Self::Star) | (Self::Shape, Self::Shape) => true,
             (Self::Abs(a), Self::Abs(b)) => a.0.does_match(&b.0) && a.1.does_match(&b.1),
             (Self::Any, _) => true,
             (_, Self::Any) => true,
@@ -1688,6 +1733,7 @@ impl fmt::Display for Kind {
             Self::Star => write!(f, "*"),
             Self::Abs(inner) => write!(f, "({} -> {})", inner.0, inner.1),
             Self::Any => write!(f, "Any"),
+            Self::Shape => write!(f, "shape"),
         }
     }
 }
@@ -2046,6 +2092,29 @@ pub enum TyBase<'db> {
     Contract(crate::hir_def::Contract<'db>),
     Func(CallableDef<'db>),
     Closure(ClosureTy<'db>),
+    Shape(ShapeCon),
+}
+
+/// A constructor of shape terms, the types of `shape` kind a callable's
+/// parameter list is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub enum ShapeCon {
+    /// `own T`, of kind `* -> shape`.
+    Owned,
+    /// `ref T` or `mut T`, of kind `* -> shape`.
+    Access(BorrowKind),
+    /// A list of this many parameter shapes, of kind
+    /// `shape -> .. -> shape`; nested in a list, a product parameter.
+    Params(u16),
+}
+
+impl ShapeCon {
+    fn kind(self) -> Kind {
+        match self {
+            Self::Owned | Self::Access(_) => Kind::abs(Kind::Star, Kind::Shape),
+            Self::Params(n) => (0..n).fold(Kind::Shape, |acc, _| Kind::abs(Kind::Shape, acc)),
+        }
+    }
 }
 
 impl<'db> TyBase<'db> {
@@ -2115,6 +2184,11 @@ impl<'db> TyBase<'db> {
             ),
 
             Self::Closure(closure) => closure.pretty_print(db),
+
+            Self::Shape(ShapeCon::Owned) => "own".to_string(),
+            Self::Shape(ShapeCon::Access(BorrowKind::Ref)) => "ref".to_string(),
+            Self::Shape(ShapeCon::Access(BorrowKind::Mut)) => "mut".to_string(),
+            Self::Shape(ShapeCon::Params(_)) => "()".to_string(),
         }
     }
 
@@ -2310,6 +2384,7 @@ impl HasKind for TyBase<'_> {
             TyBase::Contract(_) => Kind::Star, // Contracts have no generic params
             TyBase::Func(func) => func.kind(db),
             TyBase::Closure(_) => Kind::Star,
+            TyBase::Shape(con) => con.kind(),
         }
     }
 }
@@ -2455,6 +2530,25 @@ fn pretty_print_ty_app<'db>(
             format!("[{elem_ty}; {len}]")
         }
 
+        TyData::TyBase(TyBase::Shape(ShapeCon::Owned | ShapeCon::Access(_))) => {
+            let Some(inner) = args.first() else {
+                return base.pretty_print(db).clone();
+            };
+            format!(
+                "{} {}",
+                base.pretty_print(db),
+                inner.pretty_print_with_mode(db, mode)
+            )
+        }
+
+        TyData::TyBase(TyBase::Shape(ShapeCon::Params(_))) => format!(
+            "({})",
+            args.iter()
+                .map(|arg| arg.pretty_print_with_mode(db, mode))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+
         TyData::TyBase(Prim(Tuple(_))) => {
             let mut args = args.iter();
             let mut s = ("(").to_string();
@@ -2596,4 +2690,37 @@ pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlag
 
     walk_ty(&mut collector, ty);
     collector.flags
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_db::HirAnalysisTestDb;
+
+    #[test]
+    fn params_shape_terms() {
+        let db = HirAnalysisTestDb::default();
+        let (u256, bool) = (TyId::u256(&db), TyId::bool(&db));
+        let params = vec![
+            Shape::Owned(u256),
+            Shape::Access(BorrowKind::Ref, bool),
+            Shape::Tuple(vec![
+                Shape::Owned(u256),
+                Shape::Access(BorrowKind::Mut, u256),
+            ]),
+        ];
+        let term = TyId::params_shape(&db, &params);
+        assert_eq!(term.kind(&db), &Kind::Shape);
+        assert!(!term.is_star_kind(&db));
+        assert_eq!(term.as_params_shape(&db), Some(params));
+        assert_eq!(
+            term.pretty_print(&db),
+            "(own u256, ref bool, (own u256, mut u256))"
+        );
+        assert_eq!(
+            TyId::params_shape(&db, &[]).as_params_shape(&db),
+            Some(Vec::new())
+        );
+        assert_eq!(u256.as_params_shape(&db), None);
+    }
 }

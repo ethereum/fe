@@ -446,6 +446,8 @@ impl<'db> TraitRefId<'db> {
 pub enum KindBound {
     /// `*`
     Mono,
+    /// A `shape A` parameter's kind: a callable's parameter list.
+    Shape,
     /// `* -> *`
     Abs(Partial<Box<KindBound>>, Partial<Box<KindBound>>),
 }

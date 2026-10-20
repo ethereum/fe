@@ -337,7 +337,7 @@ impl<'db> Func<'db> {
             ) {
                 return vec![diag];
             }
-            if !ret.has_star_kind(db) {
+            if !ret.is_star_kind(db) {
                 diags.push(TyLowerDiag::ExpectedStarKind(span).into());
             } else if ret.is_const_ty(db) {
                 diags.push(TyLowerDiag::NormalTypeExpected { span, given: ret }.into());
@@ -1661,7 +1661,7 @@ impl<'db> VariantView<'db> {
             if ty.has_invalid(db) {
                 continue;
             }
-            if !ty.has_star_kind(db) {
+            if !ty.is_star_kind(db) {
                 out.push(TyLowerDiag::ExpectedStarKind(span.clone().into()).into());
                 continue;
             }

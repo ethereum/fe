@@ -110,6 +110,7 @@ where
         TyBase::Contract(c) => visitor.visit_contract(*c),
         TyBase::Func(func) => visitor.visit_func(*func),
         TyBase::Closure(closure) => visitor.visit_closure(*closure),
+        TyBase::Shape(_) => {}
     }
 }
 

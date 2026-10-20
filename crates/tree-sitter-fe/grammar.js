@@ -578,8 +578,14 @@ module.exports = grammar({
 
     generic_param_list: $ => seq(
       $._generic_open,
-      sepTrailing(choice($.type_generic_param, $.const_generic_param), ','),
+      sepTrailing(choice($.type_generic_param, $.const_generic_param, $.shape_generic_param), ','),
       '>',
+    ),
+
+    // `shape A`: a callable's parameter list
+    shape_generic_param: $ => seq(
+      'shape',
+      field('name', $.identifier),
     ),
 
     type_generic_param: $ => seq(

@@ -263,6 +263,14 @@ impl super::Parse for GenericParamListScope {
                 )?;
                 match parser.current_kind() {
                     Some(SyntaxKind::ConstKw) => parser.parse(ConstGenericParamScope::default()),
+                    // `shape` is a keyword only before a parameter's name.
+                    Some(SyntaxKind::Ident)
+                        if parser.is_ident("shape")
+                            && parser.peek_n_non_trivia(2).as_slice()
+                                == [SyntaxKind::Ident, SyntaxKind::Ident] =>
+                    {
+                        parser.parse(ShapeGenericParamScope::default())
+                    }
                     Some(SyntaxKind::Ident) => {
                         parser.parse(TypeGenericParamScope::new(self.disallow_trait_bound))
                     }
@@ -307,6 +315,18 @@ impl super::Parse for ConstGenericParamScope {
         if parser.bump_if(SyntaxKind::Eq) {
             parse_const_generic_expr(parser)?;
         }
+        Ok(())
+    }
+}
+
+define_scope! { ShapeGenericParamScope, ShapeGenericParam }
+impl super::Parse for ShapeGenericParamScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        parser.bump_expected(SyntaxKind::Ident);
+        parser.bump_expected(SyntaxKind::Ident);
         Ok(())
     }
 }

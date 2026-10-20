@@ -78,9 +78,11 @@ fn raw_impl_self_key<'db>(
             {
                 NameResKind::Prim(prim) => match TyBase::from(prim) {
                     TyBase::Prim(prim) => Some(ImplSelfKey::Prim(prim)),
-                    TyBase::Adt(_) | TyBase::Contract(_) | TyBase::Func(_) | TyBase::Closure(_) => {
-                        unreachable!()
-                    }
+                    TyBase::Adt(_)
+                    | TyBase::Contract(_)
+                    | TyBase::Func(_)
+                    | TyBase::Closure(_)
+                    | TyBase::Shape(_) => unreachable!(),
                 },
                 NameResKind::Scope(
                     scope @ ScopeId::Item(

@@ -1,0 +1,16 @@
+// A shape is a callable's parameter list, never the type of a value.
+fn param<shape A>(_ x: A) {}
+
+fn in_tuple<shape A>(_ x: (A, u256)) {}
+
+struct Holder<shape A> {
+    a: A,
+}
+
+enum Wrap<shape A> {
+    Value(A),
+}
+
+trait Make {
+    fn make<shape A>() -> A
+}

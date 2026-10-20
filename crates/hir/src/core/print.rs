@@ -350,6 +350,7 @@ impl KindBound {
     pub fn pretty_print(&self) -> String {
         match self {
             KindBound::Mono => "*".to_string(),
+            KindBound::Shape => "shape".to_string(),
             KindBound::Abs(lhs, rhs) => {
                 let lhs = unwrap_partial_ref(lhs, "KindBound::Abs lhs").pretty_print();
                 let rhs = unwrap_partial_ref(rhs, "KindBound::Abs rhs").pretty_print();

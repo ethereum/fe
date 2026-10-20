@@ -80,7 +80,7 @@ fn lower_hir_ty_impl<'db>(
             let tuple = TyId::tuple(db, len);
             elems.iter().enumerate().fold(tuple, |acc, (idx, &elem)| {
                 let elem_ty = lower_child(elem, idx);
-                if !elem_ty.has_star_kind(db) {
+                if !elem_ty.is_star_kind(db) {
                     return TyId::invalid(db, InvalidCause::NotFullyApplied);
                 }
 
@@ -1667,6 +1667,7 @@ impl<'db> TyParamPrecursor<'db> {
 pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
     match kind {
         HirKindBound::Mono => Kind::Star,
+        HirKindBound::Shape => Kind::Shape,
         HirKindBound::Abs(lhs, rhs) => match (lhs, rhs) {
             (Partial::Present(lhs), Partial::Present(rhs)) => {
                 Kind::Abs(Box::new((lower_kind(lhs), lower_kind(rhs))))

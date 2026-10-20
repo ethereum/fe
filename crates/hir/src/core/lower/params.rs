@@ -170,6 +170,13 @@ impl<'db> GenericParam<'db> {
             ast::GenericParamKind::Const(const_param) => {
                 ConstGenericParam::lower_ast(ctxt, const_param).into()
             }
+            // A type parameter of the `shape` kind.
+            ast::GenericParamKind::Shape(shape_param) => TypeGenericParam {
+                name: IdentId::lower_token_partial(ctxt, shape_param.name()),
+                bounds: vec![TypeBound::Kind(Partial::Present(KindBound::Shape))],
+                default_ty: None,
+            }
+            .into(),
         }
     }
 }

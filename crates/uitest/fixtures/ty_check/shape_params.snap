@@ -1,0 +1,34 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/shape_params.fe
+---
+error[3-0000]: expected `*` kind in this context
+  ┌─ shape_params.fe:2:24
+  │
+2 │ fn param<shape A>(_ x: A) {}
+  │                        ^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+  ┌─ shape_params.fe:4:27
+  │
+4 │ fn in_tuple<shape A>(_ x: (A, u256)) {}
+  │                           ^^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+  ┌─ shape_params.fe:7:8
+  │
+7 │     a: A,
+  │        ^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ shape_params.fe:11:11
+   │
+11 │     Value(A),
+   │           ^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ shape_params.fe:15:27
+   │
+15 │     fn make<shape A>() -> A
+   │                           ^ expected `*` kind here

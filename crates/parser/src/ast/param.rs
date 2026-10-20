@@ -118,7 +118,7 @@ ast_node! {
     /// `T: Trait`
     /// `const N: usize`
     pub struct GenericParam,
-    SK::TypeGenericParam | SK::ConstGenericParam,
+    SK::TypeGenericParam | SK::ConstGenericParam | SK::ShapeGenericParam,
 }
 impl GenericParam {
     /// Returns the specific kind of the generic parameter.
@@ -130,6 +130,9 @@ impl GenericParam {
             SK::ConstGenericParam => {
                 GenericParamKind::Const(AstNode::cast(self.syntax().clone()).unwrap())
             }
+            SK::ShapeGenericParam => {
+                GenericParamKind::Shape(AstNode::cast(self.syntax().clone()).unwrap())
+            }
             _ => unreachable!(),
         }
     }
@@ -138,10 +141,12 @@ impl GenericParam {
 /// A generic parameter kind.
 /// `Type` is either `T` or `T: Trait`.
 /// `Const` is `const N: usize`.
+/// `Shape` is `shape A`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum GenericParamKind {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
+    Shape(ShapeGenericParam),
 }
 
 impl GenericParamKind {
@@ -149,6 +154,7 @@ impl GenericParamKind {
         match self {
             GenericParamKind::Type(param) => param.syntax(),
             GenericParamKind::Const(param) => param.syntax(),
+            GenericParamKind::Shape(param) => param.syntax(),
         }
     }
 }
@@ -197,6 +203,22 @@ impl TypeGenericParam {
 
     pub fn default_ty(&self) -> Option<Type> {
         support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    /// A shape generic parameter, `shape A`: a callable's parameter list.
+    pub struct ShapeGenericParam,
+    SK::ShapeGenericParam,
+}
+impl ShapeGenericParam {
+    /// The parameter's name, after the `shape` keyword.
+    pub fn name(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| token.kind() == SK::Ident)
+            .nth(1)
     }
 }
 

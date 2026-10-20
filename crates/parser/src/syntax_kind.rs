@@ -511,6 +511,8 @@ pub enum SyntaxKind {
     TypeGenericParam,
     /// `const N: usize`
     ConstGenericParam,
+    /// `shape A`
+    ShapeGenericParam,
     /// `<T: Trait, U, const N: usize>`
     GenericParamList,
 
@@ -828,6 +830,7 @@ impl SyntaxKind {
             SyntaxKind::VariantDefList => "`enum` variant list",
             SyntaxKind::TypeGenericParam => "generic type parameter",
             SyntaxKind::ConstGenericParam => "constant generic parameter",
+            SyntaxKind::ShapeGenericParam => "shape generic parameter",
             SyntaxKind::GenericParamList => "generic parameter list",
             SyntaxKind::FuncSignature => "function signature",
             SyntaxKind::FuncParamList => "function parameter list",

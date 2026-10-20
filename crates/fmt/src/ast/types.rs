@@ -539,6 +539,13 @@ impl ToDoc for ast::GenericParam {
         match self.kind() {
             GenericParamKind::Type(ty_param) => ty_param.to_doc(ctx),
             GenericParamKind::Const(const_param) => const_param.to_doc(ctx),
+            GenericParamKind::Shape(shape_param) => {
+                let alloc = &ctx.alloc;
+                let name = shape_param
+                    .name()
+                    .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
+                alloc.text("shape ").append(name)
+            }
         }
     }
 }
