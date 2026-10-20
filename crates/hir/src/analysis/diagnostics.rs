@@ -1735,7 +1735,7 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
             Self::ModeOnProduct(span) => primary_diag(
                 Severity::Error,
                 "a product's parts carry its modes",
-                "remove the mode before the tuple: each part takes its own",
+                "remove the mode before it: each part takes its own",
                 span.resolve(db),
                 error_code,
             ),
@@ -4666,6 +4666,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 notes: vec![],
                 error_code,
             },
+
+            Self::OpaqueShapeBound { primary, shape } => primary_diag(
+                Severity::Error,
+                format!("a value of `{}` can only be passed on", shape.pretty_print(db)),
+                "its parts are not known here: return it, or pass it to a parameter of the same shape",
+                primary.resolve(db),
+                error_code,
+            ),
 
             Self::SpreadNotKnown {
                 primary,

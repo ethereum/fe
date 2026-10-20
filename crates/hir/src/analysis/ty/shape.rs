@@ -533,6 +533,36 @@ pub fn lower_return_shape<'db>(
     }
 }
 
+/// Whether a written parameter type may name an associated shape: an
+/// associated item's path with a mode argument (`D::Step<ref>`), or one in a
+/// `mut?` function (`maybe_mut`). Decided from the written type, before the
+/// function's constraints, which may need its parameters' types.
+pub fn may_name_shape<'db>(db: &'db dyn HirAnalysisDb, ty: HirTyId<'db>, maybe_mut: bool) -> bool {
+    let TypeKind::Path(Partial::Present(path)) = ty.data(db) else {
+        return false;
+    };
+    let mode_arg = matches!(
+        path.generic_args(db).data(db).as_slice(),
+        [GenericArg::Mode(_)]
+    );
+    path.len(db) >= 2 && (mode_arg || maybe_mut)
+}
+
+/// The opaque shape of a parameter written as an associated shape,
+/// `_ s: D::Step<ref>`: a value of it, passed on whole, with a shape named
+/// without a mode at `mode`, the mode of the function. `None` for any other
+/// parameter.
+pub fn lower_opaque_param<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    mode: Option<BorrowKind>,
+) -> Option<Shape<'db>> {
+    let ty = lower_hir_ty(db, ty, scope, assumptions);
+    is_associated_shape(db, ty).then(|| Shape::Opaque(shape_at_item_mode(db, ty, mode)))
+}
+
 /// Whether `ty` is an associated shape, `D::Step`, whose structure an impl
 /// gives.
 fn is_associated_shape<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {

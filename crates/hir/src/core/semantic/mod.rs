@@ -33,9 +33,9 @@ use crate::analysis::ty::effects::rows::RowKey;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{
-    Shape, is_param_product, lower_param_product, lower_return_shape, lower_shape_value,
-    mentions_mode, names_assoc_ty, names_shape_without_mode, param_product_diags,
-    return_shape_diags, shape_value_diags,
+    Shape, is_param_product, lower_opaque_param, lower_param_product, lower_return_shape,
+    lower_shape_value, may_name_shape, mentions_mode, names_assoc_ty, names_shape_without_mode,
+    param_product_diags, return_shape_diags, shape_value_diags,
 };
 use crate::analysis::ty::ty_def::{BorrowKind, Kind, ShapeMode};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
@@ -512,6 +512,13 @@ fn func_param_product<'db>(
         .get(idx)?
         .ty
         .to_opt()?;
+    // A parameter naming an associated shape takes a value of it whole.
+    if may_name_shape(db, hir_ty, func.is_maybe_mut(db))
+        && let Some(opaque) =
+            lower_opaque_param(db, hir_ty, func.scope(), func.assumptions(db), mode)
+    {
+        return Some(opaque);
+    }
     // Decided from the written type, before the function's constraints,
     // which may need its other parameters' types.
     if !is_param_product(db, hir_ty) {
@@ -1491,26 +1498,36 @@ impl<'db> FuncParamView<'db> {
 
         // A product's parts carry its modes, and its body takes it apart.
         if let TypeKind::Mode(_, inner) = hir_ty.data(db)
-            && inner
-                .to_opt()
-                .is_some_and(|inner| is_param_product(db, inner))
+            && inner.to_opt().is_some_and(|inner| {
+                is_param_product(db, inner)
+                    || may_name_shape(db, inner, func.is_maybe_mut(db))
+                        && lower_opaque_param(db, inner, func.scope(), assumptions, None).is_some()
+            })
         {
             let span = self.span().ty().into();
             return vec![TyLowerDiag::ModeOnProduct(span).into()];
         }
-        if self.product(db, None).is_some() {
+        if let Some(product) = self.product(db, func.modes(db)[0]) {
             if self.is_self_param(db) {
                 return vec![TyLowerDiag::ProductReceiver(self.span().into()).into()];
             }
-            if !param.is_destructured() && func.body(db).is_some() {
-                let span = self.span().into();
-                return vec![
-                    TyLowerDiag::ProductParamNotDestructured {
-                        span,
-                        closure: false,
-                    }
-                    .into(),
-                ];
+            match product {
+                // A value of an opaque shape is passed on whole.
+                Shape::Opaque(_) if names_shape_without_mode(db, product) => {
+                    return vec![TyLowerDiag::ShapeWithoutMode(self.span().ty().into()).into()];
+                }
+                Shape::Opaque(_) => {}
+                _ if !param.is_destructured() && func.body(db).is_some() => {
+                    let span = self.span().into();
+                    return vec![
+                        TyLowerDiag::ProductParamNotDestructured {
+                            span,
+                            closure: false,
+                        }
+                        .into(),
+                    ];
+                }
+                _ => {}
             }
         }
 
@@ -1537,6 +1554,11 @@ impl<'db> FuncParamView<'db> {
 
         let mut out = Vec::new();
 
+        // An associated shape outside a `mut?` function needs its mode.
+        if matches!(ty.data(db), TyData::AssocTy(assoc) if assoc.is_shape(db)) {
+            out.push(TyLowerDiag::ShapeWithoutMode(ty_span).into());
+            return out;
+        }
         if !ty.is_star_kind(db) {
             out.push(TyDiagCollection::from(TyLowerDiag::ExpectedStarKind(
                 ty_span.clone(),

@@ -410,7 +410,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 })
                 .map(|input| self.binding_locals[input])
                 .collect();
-            let expr = self.gather_product(&product, &mut parts.into_iter());
+            // An opaque parameter's binding is its one input, passed on
+            // whole, as is a known one of a single part.
+            let expr = match (&product, parts.as_slice()) {
+                (Shape::Tuple(_), _) => self.gather_product(&product, &mut parts.into_iter()),
+                (_, &[part]) => SExpr::Forward(SOperand::synthetic(part)),
+                _ => unreachable!("a parameter's inputs are its shape's parts"),
+            };
             let local = self.alloc_binding_local(binding);
             self.push_synthetic_stmt(SStmtKind::Assign { dst: local, expr });
         }
@@ -872,6 +878,19 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     panic!("an access block ends in an expression")
                 };
                 self.lower_access(*tail)
+            }
+            // A transport binding of an opaque shape is passed on as it is,
+            // moved: it is used at most once.
+            Partial::Present(Expr::Path(_))
+                if matches!(shape, Shape::Opaque(_))
+                    && let Some(binding) = self.typed_body.expr_binding(expr) =>
+            {
+                let value = self.binding_locals[&binding];
+                self.emit_expr_with_origin(
+                    SemOrigin::Expr(expr),
+                    ty,
+                    SExpr::UseValue(SOperand::expr(value, expr)),
+                )
             }
             // `ref p`, `mut p`, or a place matched through the `mut` access
             // its `mut` pattern bindings open.

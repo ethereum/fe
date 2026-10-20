@@ -1,5 +1,6 @@
-// Generic code forwards an associated shape whole, and nested in a product;
-// each instance grants what its impl's shape lists, from memory or storage.
+// Generic code forwards an associated shape whole, nested in a product, and
+// through a parameter of the shape; each instance grants what its impl's
+// shape lists, from memory or storage.
 use std::evm::{Create, Evm}
 
 trait Driver {
@@ -23,6 +24,14 @@ impl Driver for Pair {
 
 fn first<D: mut? Driver>(_ d: mut? D) -> D::Step {
     d.at()
+}
+
+fn pass_on<D: Driver>(_ s: D::Step<ref>) -> D::Step<ref> {
+    s
+}
+
+fn first_ref<D: Driver>(_ d: D) -> D::Step<ref> {
+    pass_on<D>(d.at())
 }
 
 fn tag<D: mut? Driver>(_ d: mut? D, _ i: usize) -> (own usize, D::Step) {
@@ -79,4 +88,11 @@ fn pair_forward() {
     assert(p.a == 10 && p.b == 20)
     let (r, s) = first(p)
     assert(r + s == 30)
+}
+
+#[test]
+fn transport() {
+    let p = Pair { a: 3, b: 4 }
+    let (x, y) = first_ref(p)
+    assert(x + y == 7)
 }

@@ -3593,6 +3593,13 @@ impl<'db> TyChecker<'db> {
                     self.bind_pattern_accesses(*payload_pat, payload, authority, binding);
                 }
             }
+            // A value of an opaque shape is only passed on, never bound.
+            (Shape::Opaque(term), Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
+                self.push_diag(BodyDiag::OpaqueShapeBound {
+                    primary: pat.span(self.body()).into(),
+                    shape: *term,
+                });
+            }
             (_, Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
                 self.shape_bindings.insert(pat);
                 self.push_diag(BodyDiag::ShapeNotDestructured {
@@ -5307,6 +5314,36 @@ impl<'db> TypedBody<'db> {
     /// part of a product parameter.
     pub fn input_bindings(&self) -> &[LocalBinding<'db>] {
         &self.tables.input_bindings
+    }
+
+    /// The body of an instance whose opaque parameters' shapes are known, as
+    /// `normalize` makes them: each takes the inputs its shape lists.
+    pub(crate) fn with_known_params(
+        mut self,
+        db: &'db dyn HirAnalysisDb,
+        mut normalize: impl FnMut(Shape<'db>) -> Shape<'db>,
+    ) -> Self {
+        let tables = self.tables_mut();
+        for entry in 0..tables.param_products.len() {
+            let (site, idx, product) = tables.param_products[entry].clone();
+            if !matches!(product, Shape::Opaque(_)) {
+                continue;
+            }
+            let known = normalize(product);
+            if matches!(known, Shape::Opaque(_)) {
+                continue;
+            }
+            let opaque = |input: &LocalBinding<'db>| {
+                matches!(*input, LocalBinding::ParamPart { site: part_site, idx: part_idx, .. }
+                    if part_site == site && part_idx == idx)
+            };
+            if let Some(at) = tables.input_bindings.iter().position(opaque) {
+                let inputs: Vec<_> = env::product_inputs(db, site, idx, &known).collect();
+                tables.input_bindings.splice(at..=at, inputs);
+            }
+            tables.param_products[entry].2 = known;
+        }
+        self
     }
 
     /// The body of an instance of `func` whose spread, its parameter

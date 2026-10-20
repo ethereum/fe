@@ -307,6 +307,12 @@ pub fn instantiated_typed_body<'db>(
             body = body.with_spread_inputs(db, func, spread, listed);
         }
     }
+    // An opaque parameter's inputs are those its instantiated shape lists.
+    if let BodyOwner::Func(..) | BodyOwner::Closure { .. } = key.owner(db) {
+        let env = key.impl_env(db);
+        let (scope, assumptions) = (env.normalization_scope(db), env.assumptions(db));
+        body = body.with_known_params(db, |shape| normalize_ty(db, shape, scope, assumptions));
+    }
     let evidence = instance_evidence(
         db,
         body.signature(),

@@ -1,0 +1,36 @@
+// A value of an associated shape not known here is passed on at most once.
+trait Driver {
+    shape Step
+
+    fn at(mut? self) -> Self::Step
+}
+
+struct Pair {
+    a: u256,
+    b: u256,
+}
+
+impl Driver for Pair {
+    shape Step = (mut? u256, mut? u256)
+
+    fn at(mut? self) -> (mut? u256, mut? u256) {
+        (mut? self.a, mut? self.b)
+    }
+}
+
+
+fn take<D: Driver>(_ s: D::Step<ref>) {}
+
+fn twice<D: Driver>(_ s: D::Step<ref>) {
+    take<D>(s)
+    take<D>(s)
+}
+
+// Accepted: once on each path.
+fn once<D: Driver>(_ s: D::Step<ref>, _ c: bool) {
+    if c {
+        take<D>(s)
+    } else {
+        take<D>(s)
+    }
+}

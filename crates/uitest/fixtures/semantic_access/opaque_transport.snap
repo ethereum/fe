@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+expression: diags
+input_file: fixtures/semantic_access/opaque_transport.fe
+---
+error[16-0002]: move conflict in `fn twice`
+   ┌─ opaque_transport.fe:26:13
+   │
+25 │     take<D>(s)
+   │             - value is moved here
+26 │     take<D>(s)
+   │             ^ cannot use a value after it was moved
