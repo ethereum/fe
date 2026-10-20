@@ -1759,6 +1759,21 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::MaybeMutWithoutResult(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut?` function's result needs a `mut?` part".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "nothing this function returns is `mut?`".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "a call is at `mut` only when a use of its result asks for `mut`, so this function's `mut` body would never run"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
             Self::ExpectedStarKind(span) => {
                 // find expected ty name, num of generic args, etc
                 primary_diag(

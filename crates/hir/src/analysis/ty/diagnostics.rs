@@ -80,6 +80,9 @@ pub enum TyLowerDiag<'db> {
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
+    /// A `mut?` function whose result has no `mut?` part, so no call uses it
+    /// at `mut`.
+    MaybeMutWithoutResult(DynLazySpan<'db>),
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -314,6 +317,7 @@ impl TyLowerDiag<'_> {
             Self::ProductReceiver(_) => 74,
             Self::ProductParamNotDestructured(_) => 75,
             Self::DestructuredParamWithoutBody(_) => 76,
+            Self::MaybeMutWithoutResult(_) => 77,
             Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,

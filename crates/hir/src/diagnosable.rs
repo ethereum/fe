@@ -19,7 +19,7 @@ use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
 use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
-use crate::analysis::ty::ty_def::{InvalidCause, TyId};
+use crate::analysis::ty::ty_def::{BorrowKind, InvalidCause, TyId};
 use crate::analysis::ty::ty_error::{
     collect_ty_lower_errors, emit_invalid_ty_error, path_generic_args, trait_ref_arg_diags,
 };
@@ -361,6 +361,18 @@ impl<'db> Func<'db> {
                     diags.extend(precise);
                 }
             }
+        }
+        // Only a use of its result calls a `mut?` function at `mut`.
+        if self.is_maybe_mut(db)
+            && self.return_shape(db, Some(BorrowKind::Ref))
+                == self.return_shape(db, Some(BorrowKind::Mut))
+        {
+            let span = if self.has_explicit_return_ty(db) {
+                self.span().ret_ty().into()
+            } else {
+                self.span().name().into()
+            };
+            diags.push(TyLowerDiag::MaybeMutWithoutResult(span).into());
         }
         diags
     }

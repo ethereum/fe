@@ -4,6 +4,22 @@ assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/maybe_mut_errors.fe
 ---
+error[3-0077]: a `mut?` function's result needs a `mut?` part
+   ┌─ maybe_mut_errors.fe:81:35
+   │
+81 │ fn count_of(_ pair: mut? Pair) -> u256 {
+   │                                   ^^^^ nothing this function returns is `mut?`
+   │
+   = a call is at `mut` only when a use of its result asks for `mut`, so this function's `mut` body would never run
+
+error[3-0077]: a `mut?` function's result needs a `mut?` part
+   ┌─ maybe_mut_errors.fe:85:4
+   │
+85 │ fn reset_both(_ pair: mut? Pair) {}
+   │    ^^^^^^^^^^ nothing this function returns is `mut?`
+   │
+   = a call is at `mut` only when a use of its result asks for `mut`, so this function's `mut` body would never run
+
 error[8-0018]: left-hand side of assignment is immutable
    ┌─ maybe_mut_errors.fe:27:9
    │

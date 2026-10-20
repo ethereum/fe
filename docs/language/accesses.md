@@ -225,7 +225,9 @@ its result asks for `mut`: a `mut` receiver (`xs.at(i).bump()`), a `mut`
 access or binding (`let x = mut xs.at(i)`, `Some(mut x)`), a `mut`
 argument, an assignment (`xs.at(i) = 1`) or a `mut` yield. At `mut`, the
 call's receiver is accessed mutably, and any other argument its `mut?`
-parameters take must be written as a `mut` access, `f(mut p)`.
+parameters take must be written as a `mut` access, `f(mut p)`. Since only a
+use of its result asks for `mut`, a `mut?` function's result must have a
+`mut?` part; without one, its `mut` body would never run.
 
 A trait method may be `mut?`. A bound says which modes a generic body may
 call it at: `T: Collection` grants `at` at `ref`, and `T: mut Collection`

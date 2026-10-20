@@ -75,3 +75,11 @@ fn implicit_argument() {
 fn with_effect(_ pair: mut? Pair) -> mut? Counter uses (counter: mut? Counter) {
     mut? pair.first
 }
+
+// Only a use of its result calls a `mut?` function at `mut`, so its result
+// needs a `mut?` part.
+fn count_of(_ pair: mut? Pair) -> u256 {
+    pair.first.count
+}
+
+fn reset_both(_ pair: mut? Pair) {}
