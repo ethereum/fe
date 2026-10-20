@@ -34,38 +34,38 @@ pub trait Collection {
     fn at(mut? self, _ c: Self::Cursor) -> mut? Self::Item uses E
 
     /// Each element with its index: `for (i, x) in xs.enumerate()`.
-    fn enumerate(self) -> Enumerate<Identity> {
-        Identity {}.enumerate()
+    fn enumerate(self) -> Enumerate<Identity<Self>> {
+        Identity<Self> {}.enumerate()
     }
 
     /// The first `n` elements.
-    fn take(self, _ n: usize) -> Take<Identity> {
-        Identity {}.take(n)
+    fn take(self, _ n: usize) -> Take<Identity<Self>> {
+        Identity<Self> {}.take(n)
     }
 
     /// The elements after the first `n`.
-    fn skip(self, _ n: usize) -> Skip<Identity> {
-        Identity {}.skip(n)
+    fn skip(self, _ n: usize) -> Skip<Identity<Self>> {
+        Identity<Self> {}.skip(n)
     }
 
     /// Every `k`th element.
-    fn step_by(self, _ k: usize) -> StepBy<Identity> {
-        Identity {}.step_by(k)
+    fn step_by(self, _ k: usize) -> StepBy<Identity<Self>> {
+        Identity<Self> {}.step_by(k)
     }
 
     /// The elements `p` holds for.
-    fn filter<P: Fn(Self::Item) -> bool>(self, _ p: own P) -> Filter<Identity, P> {
-        Identity {}.filter(p)
+    fn filter<P: Fn(Self::Item) -> bool>(self, _ p: own P) -> Filter<Identity<Self>, P> {
+        Identity<Self> {}.filter(p)
     }
 
     /// The values `f` makes of the elements, owned.
-    fn map<F: FnMut(Self::Item) -> _>(self, _ f: own F) -> Map<Identity, F> {
-        Identity {}.map(f)
+    fn map<F: FnMut(Self::Item) -> _>(self, _ f: own F) -> Map<Identity<Self>, F> {
+        Identity<Self> {}.map(f)
     }
 
-    /// The traversal `d`, a driver or producer, runs over this collection:
-    /// `for x in xs.by(d)`. `d` moves into the loop, so one that is not
-    /// `Copy` runs a single loop.
+    /// The traversal `d`, a driver or producer whose base is this
+    /// collection's type, runs over it: `for x in xs.by(d)`. `d` moves into
+    /// the loop, so one that is not `Copy` runs a single loop.
     fn by<D>(self, _ d: own D) -> D {
         d
     }
@@ -128,8 +128,8 @@ pub trait Bidirectional: Collection {
     fn prev(self, _ c: Self::Cursor) -> Self::Cursor uses E
 
     /// Each element from the last to the first.
-    fn reversed(self) -> Reversed {
-        Reversed {}
+    fn reversed(self) -> Reversed<Self> {
+        Reversed<Self> {}
     }
 }
 
@@ -295,66 +295,103 @@ impl<T> Bidirectional for MemSlice<T> {
     }
 }
 
-/// A traversal of a base collection `B` that a loop holds and passes to each
-/// call. A driver stores its state and parameters, never the base, so it is
-/// an ordinary value: built, stored and returned, and run over a base by
-/// `xs.by(d)`.
+/// A traversal of a base collection, `Base`, that a loop holds and passes to
+/// each call. A driver stores its state and parameters, never the base, so
+/// it is an ordinary value: built, stored and returned, and run over a base
+/// by `xs.by(d)`.
+///
+/// Each position yields a `Step`: the element accesses it projects, with
+/// what the driver adds beside them, such as an index. A loop's pattern
+/// destructures it as a `let` does, and a closure the driver calls takes it
+/// whole.
 ///
 /// Nothing promises one call per element: `filter` projects each element to
 /// test it and again to yield it, and `take(0)` still starts its inner
 /// traversal.
-pub trait Driver<B: Collection> {
-    /// The driver's own effects; each method declares the base's.
+pub trait Driver {
+    /// The driver's own effects; each method declares its base's too.
     uses E
+    type Base: Collection
     type State: Copy
-    type Item
-    /// What the driver yields beside each element, such as its index.
-    type Extra = ()
+    shape Step
 
     /// The first state; one that names no element if there are none.
-    fn start(self, _ base: B) -> Self::State uses (B::E, E)
+    fn start(self, _ base: Self::Base) -> Self::State uses (Self::Base::E, E)
 
     /// Whether `s` names an element.
-    fn has(self, _ base: B, _ s: Self::State) -> bool uses (B::E, E)
+    fn has(self, _ base: Self::Base, _ s: Self::State) -> bool uses (Self::Base::E, E)
 
     /// The state after `s`, which `has` accepted but which may name no
     /// element by now, as for `Collection::next`.
-    fn next(self, _ base: B, _ s: Self::State) -> Self::State uses (B::E, E)
+    fn next(self, _ base: Self::Base, _ s: Self::State) -> Self::State uses (Self::Base::E, E)
 
-    /// The element at `s`; `has(s)` must hold. A loop that mutates its
-    /// elements takes it at `mut`, from a `mut Driver<B>`.
-    fn at(self, _ base: mut? B, _ s: Self::State) -> (Self::Extra, mut? Self::Item) uses (B::E, E)
+    /// The step at `s`; `has(s)` must hold. A loop that mutates its
+    /// elements takes it at `mut`, from a `mut Driver`.
+    fn at(self, _ base: mut? Self::Base, _ s: Self::State) -> Self::Step uses (Self::Base::E, E)
+
+    /// Each step with its index.
+    fn enumerate(own self) -> Enumerate<Self> {
+        Enumerate { inner: self }
+    }
+
+    /// The first `n` steps.
+    fn take(own self, _ n: usize) -> Take<Self> {
+        Take { n, inner: self }
+    }
+
+    /// The steps after the first `n`.
+    fn skip(own self, _ n: usize) -> Skip<Self> {
+        Skip { n, inner: self }
+    }
+
+    /// Every `k`th step.
+    fn step_by(own self, _ k: usize) -> StepBy<Self> {
+        assert(k > 0)
+        StepBy { k, inner: self }
+    }
+
+    /// The steps `p` holds for.
+    fn filter<P: Fn(Self::Step<ref>) -> bool>(own self, _ p: own P) -> Filter<Self, P> {
+        Filter { inner: self, p }
+    }
+
+    /// The values `f` makes of the steps, owned.
+    fn map<F: FnMut(Self::Step<ref>) -> _>(own self, _ f: own F) -> Map<Self, F> {
+        Map { inner: self, f }
+    }
 }
 
 /// A traversal that produces an owned value at each position, so non-`Copy`
 /// results can be collected.
-pub trait Producer<B: Collection> {
+pub trait Producer {
     uses E
+    type Base: Collection
     type State: Copy
     type Out
 
     /// The first state; one that names no element if there are none.
-    fn start(self, _ base: B) -> Self::State uses (B::E, E)
+    fn start(self, _ base: Self::Base) -> Self::State uses (Self::Base::E, E)
 
     /// Whether `s` names an element.
-    fn has(self, _ base: B, _ s: Self::State) -> bool uses (B::E, E)
+    fn has(self, _ base: Self::Base, _ s: Self::State) -> bool uses (Self::Base::E, E)
 
     /// The state after `s`, which `has` accepted but which may name no
     /// element by now: the base may have changed, or `produce` the producer.
-    fn next(self, _ base: B, _ s: Self::State) -> Self::State uses (B::E, E)
+    fn next(self, _ base: Self::Base, _ s: Self::State) -> Self::State uses (Self::Base::E, E)
 
     /// The value made at `s`; `has(s)` must hold.
-    fn produce(mut self, _ base: B, _ s: Self::State) -> Self::Out uses (B::E, E)
+    fn produce(mut self, _ base: Self::Base, _ s: Self::State) -> Self::Out uses (Self::Base::E, E)
 }
 
-/// The traversal `for x in xs` runs: each element in order.
-pub struct Identity {}
+/// The traversal `for x in xs` runs over a `B`: each element in order.
+pub struct Identity<B> {}
 
-impl Copy for Identity {}
+impl<B> Copy for Identity<B> {}
 
-impl<B: mut? Collection> Driver<B> for Identity {
+impl<B: mut? Collection> Driver for Identity<B> {
+    type Base = B
     type State = B::Cursor
-    type Item = B::Item
+    shape Step = mut? B::Item
 
     #[inline(always)]
     fn start(self, _ base: B) -> B::Cursor uses B::E {
@@ -372,19 +409,20 @@ impl<B: mut? Collection> Driver<B> for Identity {
     }
 
     #[inline(always)]
-    fn at(self, _ base: mut? B, _ s: B::Cursor) -> ((), mut? B::Item) uses B::E {
-        ((), Collection::at(mut? base, s))
+    fn at(self, _ base: mut? B, _ s: B::Cursor) -> mut? B::Item uses B::E {
+        Collection::at(mut? base, s)
     }
 }
 
-/// Each element from the last to the first.
-pub struct Reversed {}
+/// Each element of a `B` from the last to the first.
+pub struct Reversed<B> {}
 
-impl Copy for Reversed {}
+impl<B> Copy for Reversed<B> {}
 
-impl<B: Bidirectional + mut? Collection> Driver<B> for Reversed {
+impl<B: Bidirectional + mut? Collection> Driver for Reversed<B> {
+    type Base = B
     type State = B::Cursor
-    type Item = B::Item
+    shape Step = mut? B::Item
 
     #[inline(always)]
     fn start(self, _ base: B) -> B::Cursor uses B::E {
@@ -402,47 +440,46 @@ impl<B: Bidirectional + mut? Collection> Driver<B> for Reversed {
     }
 
     #[inline(always)]
-    fn at(self, _ base: mut? B, _ s: B::Cursor) -> ((), mut? B::Item) uses B::E {
-        ((), Collection::at(mut? base, s))
+    fn at(self, _ base: mut? B, _ s: B::Cursor) -> mut? B::Item uses B::E {
+        Collection::at(mut? base, s)
     }
 }
 
-/// Each element of the inner traversal with its index.
+/// Each step of the inner traversal with its index.
 pub struct Enumerate<D> {
     inner: D,
 }
 
 impl<D: Copy> Copy for Enumerate<D> {}
 
-impl<B: mut? Collection, D: mut? Driver<B>> Driver<B> for Enumerate<D> {
+impl<D: mut? Driver> Driver for Enumerate<D> {
     uses E = D::E
+    type Base = D::Base
     type State = (usize, D::State)
-    type Item = D::Item
-    type Extra = usize
+    shape Step = (own usize, D::Step)
 
     #[inline(always)]
-    fn start(self, _ base: B) -> (usize, D::State) uses (B::E, E) {
+    fn start(self, _ base: D::Base) -> (usize, D::State) uses (D::Base::E, E) {
         (0, self.inner.start(base))
     }
 
     #[inline(always)]
-    fn has(self, _ base: B, _ s: (usize, D::State)) -> bool uses (B::E, E) {
+    fn has(self, _ base: D::Base, _ s: (usize, D::State)) -> bool uses (D::Base::E, E) {
         self.inner.has(base, s.1)
     }
 
     #[inline(always)]
-    fn next(self, _ base: B, _ s: (usize, D::State)) -> (usize, D::State) uses (B::E, E) {
+    fn next(self, _ base: D::Base, _ s: (usize, D::State)) -> (usize, D::State) uses (D::Base::E, E) {
         (s.0 + 1, self.inner.next(base, s.1))
     }
 
     #[inline(always)]
-    fn at(self, _ base: mut? B, _ s: (usize, D::State)) -> (usize, mut? D::Item) uses (B::E, E) {
-        let (_, mut? item) = Driver<B>::at(self.inner, mut? base, s.1)
-        (s.0, item)
+    fn at(self, _ base: mut? D::Base, _ s: (usize, D::State)) -> (own usize, D::Step) uses (D::Base::E, E) {
+        (s.0, self.inner.at(mut? base, s.1))
     }
 }
 
-/// The first `n` elements of the inner traversal.
+/// The first `n` steps of the inner traversal.
 pub struct Take<D> {
     n: usize,
     inner: D,
@@ -450,38 +487,38 @@ pub struct Take<D> {
 
 impl<D: Copy> Copy for Take<D> {}
 
-impl<B: mut? Collection, D: mut? Driver<B>> Driver<B> for Take<D> {
+impl<D: mut? Driver> Driver for Take<D> {
     uses E = D::E
+    type Base = D::Base
     type State = (usize, D::State)
-    type Item = D::Item
-    type Extra = D::Extra
+    shape Step = D::Step
 
-    // The state counts the elements before its own, and stops advancing the
+    // The state counts the steps before its own, and stops advancing the
     // inner traversal at the limit, where a filter would scan on. It holds
     // an inner state from the start, so even `take(0)` starts the inner
     // traversal: an empty state would put an `Option` in every take loop.
     #[inline(always)]
-    fn start(self, _ base: B) -> (usize, D::State) uses (B::E, E) {
+    fn start(self, _ base: D::Base) -> (usize, D::State) uses (D::Base::E, E) {
         (0, self.inner.start(base))
     }
 
     #[inline(always)]
-    fn has(self, _ base: B, _ s: (usize, D::State)) -> bool uses (B::E, E) {
+    fn has(self, _ base: D::Base, _ s: (usize, D::State)) -> bool uses (D::Base::E, E) {
         s.0 < self.n && self.inner.has(base, s.1)
     }
 
     #[inline(always)]
-    fn next(self, _ base: B, _ s: (usize, D::State)) -> (usize, D::State) uses (B::E, E) {
+    fn next(self, _ base: D::Base, _ s: (usize, D::State)) -> (usize, D::State) uses (D::Base::E, E) {
         if s.0 + 1 < self.n { (s.0 + 1, self.inner.next(base, s.1)) } else { (self.n, s.1) }
     }
 
     #[inline(always)]
-    fn at(self, _ base: mut? B, _ s: (usize, D::State)) -> (D::Extra, mut? D::Item) uses (B::E, E) {
-        Driver<B>::at(self.inner, mut? base, s.1)
+    fn at(self, _ base: mut? D::Base, _ s: (usize, D::State)) -> D::Step uses (D::Base::E, E) {
+        self.inner.at(mut? base, s.1)
     }
 }
 
-/// The inner traversal after its first `n` elements.
+/// The inner traversal after its first `n` steps.
 pub struct Skip<D> {
     n: usize,
     inner: D,
@@ -489,14 +526,14 @@ pub struct Skip<D> {
 
 impl<D: Copy> Copy for Skip<D> {}
 
-impl<B: mut? Collection, D: mut? Driver<B>> Driver<B> for Skip<D> {
+impl<D: mut? Driver> Driver for Skip<D> {
     uses E = D::E
+    type Base = D::Base
     type State = D::State
-    type Item = D::Item
-    type Extra = D::Extra
+    shape Step = D::Step
 
     #[inline(always)]
-    fn start(self, _ base: B) -> D::State uses (B::E, E) {
+    fn start(self, _ base: D::Base) -> D::State uses (D::Base::E, E) {
         var s = self.inner.start(base)
         var skipped = 0
         while skipped < self.n && self.inner.has(base, s) {
@@ -507,22 +544,22 @@ impl<B: mut? Collection, D: mut? Driver<B>> Driver<B> for Skip<D> {
     }
 
     #[inline(always)]
-    fn has(self, _ base: B, _ s: D::State) -> bool uses (B::E, E) {
+    fn has(self, _ base: D::Base, _ s: D::State) -> bool uses (D::Base::E, E) {
         self.inner.has(base, s)
     }
 
     #[inline(always)]
-    fn next(self, _ base: B, _ s: D::State) -> D::State uses (B::E, E) {
+    fn next(self, _ base: D::Base, _ s: D::State) -> D::State uses (D::Base::E, E) {
         self.inner.next(base, s)
     }
 
     #[inline(always)]
-    fn at(self, _ base: mut? B, _ s: D::State) -> (D::Extra, mut? D::Item) uses (B::E, E) {
-        Driver<B>::at(self.inner, mut? base, s)
+    fn at(self, _ base: mut? D::Base, _ s: D::State) -> D::Step uses (D::Base::E, E) {
+        self.inner.at(mut? base, s)
     }
 }
 
-/// Every `k`th element of the inner traversal, from its first.
+/// Every `k`th step of the inner traversal, from its first.
 pub struct StepBy<D> {
     k: usize,
     inner: D,
@@ -530,25 +567,25 @@ pub struct StepBy<D> {
 
 impl<D: Copy> Copy for StepBy<D> {}
 
-impl<B: mut? Collection, D: mut? Driver<B>> Driver<B> for StepBy<D> {
+impl<D: mut? Driver> Driver for StepBy<D> {
     uses E = D::E
+    type Base = D::Base
     type State = D::State
-    type Item = D::Item
-    type Extra = D::Extra
+    shape Step = D::Step
 
     #[inline(always)]
-    fn start(self, _ base: B) -> D::State uses (B::E, E) {
+    fn start(self, _ base: D::Base) -> D::State uses (D::Base::E, E) {
         self.inner.start(base)
     }
 
     #[inline(always)]
-    fn has(self, _ base: B, _ s: D::State) -> bool uses (B::E, E) {
+    fn has(self, _ base: D::Base, _ s: D::State) -> bool uses (D::Base::E, E) {
         self.inner.has(base, s)
     }
 
     // Stops at the end of the inner traversal rather than stepping past it.
     #[inline(always)]
-    fn next(self, _ base: B, _ s: D::State) -> D::State uses (B::E, E) {
+    fn next(self, _ base: D::Base, _ s: D::State) -> D::State uses (D::Base::E, E) {
         var s = self.inner.next(base, s)
         var stepped = 1
         while stepped < self.k && self.inner.has(base, s) {
@@ -559,49 +596,12 @@ impl<B: mut? Collection, D: mut? Driver<B>> Driver<B> for StepBy<D> {
     }
 
     #[inline(always)]
-    fn at(self, _ base: mut? B, _ s: D::State) -> (D::Extra, mut? D::Item) uses (B::E, E) {
-        Driver<B>::at(self.inner, mut? base, s)
+    fn at(self, _ base: mut? D::Base, _ s: D::State) -> D::Step uses (D::Base::E, E) {
+        self.inner.at(mut? base, s)
     }
 }
 
-/// Owned copies of the `Copy` items of a driver, with what it yields beside
-/// them.
-pub struct Copied<D> {
-    inner: D,
-}
-
-impl<D: Copy> Copy for Copied<D> {}
-
-impl<B: Collection, D: Driver<B>> Producer<B> for Copied<D>
-    where D::Item: Copy, D::Extra: Copy
-{
-    uses E = D::E
-    type State = D::State
-    type Out = (D::Extra, D::Item)
-
-    #[inline(always)]
-    fn start(self, _ base: B) -> D::State uses (B::E, E) {
-        self.inner.start(base)
-    }
-
-    #[inline(always)]
-    fn has(self, _ base: B, _ s: D::State) -> bool uses (B::E, E) {
-        self.inner.has(base, s)
-    }
-
-    #[inline(always)]
-    fn next(self, _ base: B, _ s: D::State) -> D::State uses (B::E, E) {
-        self.inner.next(base, s)
-    }
-
-    #[inline(always)]
-    fn produce(mut self, _ base: B, _ s: D::State) -> (D::Extra, D::Item) uses (B::E, E) {
-        let (extra, item) = Driver<B>::at(self.inner, base, s)
-        (extra, item)
-    }
-}
-
-/// The elements of the inner traversal that `p` holds for.
+/// The steps of the inner traversal that `p` holds for.
 pub struct Filter<D, P> {
     inner: D,
     p: P,
@@ -609,17 +609,16 @@ pub struct Filter<D, P> {
 
 impl<D: Copy, P: Copy> Copy for Filter<D, P> {}
 
-/// The first state from `s` on whose element `d`'s predicate holds, or the
+/// The first state from `s` on whose step `d`'s predicate holds, or the
 /// inner traversal's end.
-fn filtered<B: Collection, D: Driver<B>, P: Fn(D::Item) -> bool>(
+fn filtered<D: Driver, P: Fn(D::Step<ref>) -> bool>(
     _ d: Filter<D, P>,
-    _ base: B,
+    _ base: D::Base,
     _ s: D::State,
-) -> D::State uses (B::E, D::E, P::E) {
+) -> D::State uses (D::Base::E, D::E, P::E) {
     var s = s
     while d.inner.has(base, s) {
-        let (_, ref item) = Driver<B>::at(d.inner, base, s)
-        if (d.p)(item) {
+        if (d.p)(d.inner.at(base, s)) {
             return s
         }
         s = d.inner.next(base, s)
@@ -627,110 +626,70 @@ fn filtered<B: Collection, D: Driver<B>, P: Fn(D::Item) -> bool>(
     s
 }
 
-impl<B: mut? Collection, D: mut? Driver<B>, P: Fn(D::Item) -> bool> Driver<B> for Filter<D, P> {
+impl<D: mut? Driver, P: Fn(D::Step<ref>) -> bool> Driver for Filter<D, P> {
     uses E = (D::E, P::E)
+    type Base = D::Base
     type State = D::State
-    type Item = D::Item
-    type Extra = D::Extra
+    shape Step = D::Step
 
-    fn start(self, _ base: B) -> D::State uses (B::E, E) {
+    fn start(self, _ base: D::Base) -> D::State uses (D::Base::E, E) {
         filtered(self, base, self.inner.start(base))
     }
 
-    fn has(self, _ base: B, _ s: D::State) -> bool uses (B::E, E) {
+    fn has(self, _ base: D::Base, _ s: D::State) -> bool uses (D::Base::E, E) {
         self.inner.has(base, s)
     }
 
-    fn next(self, _ base: B, _ s: D::State) -> D::State uses (B::E, E) {
+    fn next(self, _ base: D::Base, _ s: D::State) -> D::State uses (D::Base::E, E) {
         filtered(self, base, self.inner.next(base, s))
     }
 
-    fn at(self, _ base: mut? B, _ s: D::State) -> (D::Extra, mut? D::Item) uses (B::E, E) {
-        Driver<B>::at(self.inner, mut? base, s)
+    fn at(self, _ base: mut? D::Base, _ s: D::State) -> D::Step uses (D::Base::E, E) {
+        self.inner.at(mut? base, s)
     }
 }
 
-/// The values `f` makes of the inner traversal's elements, owned.
+/// The values `f` makes of the inner traversal's steps, owned.
 pub struct Map<D, F> {
     inner: D,
     f: F,
 }
 
-impl<B: Collection, D: Driver<B>, F: FnMut(D::Item) -> _> Producer<B> for Map<D, F> {
+impl<D: Driver, F: FnMut(D::Step<ref>) -> _> Producer for Map<D, F> {
     uses E = (D::E, F::E)
+    type Base = D::Base
     type State = D::State
     type Out = F::Out
 
-    fn start(self, _ base: B) -> D::State uses (B::E, E) {
+    fn start(self, _ base: D::Base) -> D::State uses (D::Base::E, E) {
         self.inner.start(base)
     }
 
-    fn has(self, _ base: B, _ s: D::State) -> bool uses (B::E, E) {
+    fn has(self, _ base: D::Base, _ s: D::State) -> bool uses (D::Base::E, E) {
         self.inner.has(base, s)
     }
 
-    fn next(self, _ base: B, _ s: D::State) -> D::State uses (B::E, E) {
+    fn next(self, _ base: D::Base, _ s: D::State) -> D::State uses (D::Base::E, E) {
         self.inner.next(base, s)
     }
 
-    fn produce(mut self, _ base: B, _ s: D::State) -> F::Out uses (B::E, E) {
-        let (_, ref item) = Driver<B>::at(self.inner, base, s)
-        (self.f)(item)
+    fn produce(mut self, _ base: D::Base, _ s: D::State) -> F::Out uses (D::Base::E, E) {
+        (self.f)(self.inner.at(base, s))
     }
 }
-
-/// The combinators every driver has.
-pub trait Adapt {
-    fn enumerate(own self) -> Enumerate<Self> {
-        Enumerate { inner: self }
-    }
-
-    fn take(own self, _ n: usize) -> Take<Self> {
-        Take { n, inner: self }
-    }
-
-    fn skip(own self, _ n: usize) -> Skip<Self> {
-        Skip { n, inner: self }
-    }
-
-    fn step_by(own self, _ k: usize) -> StepBy<Self> {
-        assert(k > 0)
-        StepBy { k, inner: self }
-    }
-
-    fn copied(own self) -> Copied<Self> {
-        Copied { inner: self }
-    }
-
-    fn filter<P>(own self, _ p: own P) -> Filter<Self, P> {
-        Filter { inner: self, p }
-    }
-
-    fn map<F>(own self, _ f: own F) -> Map<Self, F> {
-        Map { inner: self, f }
-    }
-}
-
-impl Adapt for Identity {}
-impl Adapt for Reversed {}
-impl<D> Adapt for Enumerate<D> {}
-impl<D> Adapt for Take<D> {}
-impl<D> Adapt for Skip<D> {}
-impl<D> Adapt for StepBy<D> {}
-impl<D, P> Adapt for Filter<D, P> {}
 
 /// A container a producer's owned values are collected into, of the same
 /// shape whatever their type.
 pub trait FromProducer
     where Self: * -> *
 {
-    fn collect<B: Collection, P: Producer<B, Out = T>, T>(_ base: B, _ p: own P) -> Self<T>
-        uses (B::E, P::E)
+    fn collect<P: Producer<Out = T>, T>(_ base: P::Base, _ p: own P) -> Self<T>
+        uses (P::Base::E, P::E)
 }
 
 impl FromProducer for MemArray {
-    fn collect<B: Collection, P: Producer<B, Out = T>, T>(_ base: B, _ p: own P) -> MemArray<T>
-        uses (B::E, P::E)
+    fn collect<P: Producer<Out = T>, T>(_ base: P::Base, _ p: own P) -> MemArray<T>
+        uses (P::Base::E, P::E)
     {
         var p = p
         var len: usize = 0
@@ -759,8 +718,8 @@ impl FromProducer for MemArray {
 }
 
 impl FromProducer for MemVec {
-    fn collect<B: Collection, P: Producer<B, Out = T>, T>(_ base: B, _ p: own P) -> MemVec<T>
-        uses (B::E, P::E)
+    fn collect<P: Producer<Out = T>, T>(_ base: P::Base, _ p: own P) -> MemVec<T>
+        uses (P::Base::E, P::E)
     {
         var p = p
         var out = MemVec<T>::new()

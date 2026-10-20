@@ -18,7 +18,7 @@ use crate::{
             corelib::resolve_core_trait,
             effects::{
                 place_effect_provider_param_index_map,
-                rows::{RowExpansion, RowPath, expand_rows},
+                rows::{RowExpansion, RowKey, RowPath, expand_rows},
             },
             evidence::{Evidence, EvidenceList, impl_method_bound_evidence},
             fold::{TyFoldable, TyFolder},
@@ -210,19 +210,29 @@ fn instantiated_method_signature<'db>(
                 .map(|component| (&component.requirement, None)),
         )
         .map(|(requirement, provider_ty)| {
+            let normalize_inst = |inst| {
+                normalize_predicate_for_comparison(
+                    db,
+                    inst,
+                    scope,
+                    evidence,
+                    trait_inst,
+                    rebase_same_trait_uses,
+                )
+            };
             let key = match requirement.key.clone() {
                 EffectRequirementKey::Type(ty) => EffectRequirementKey::Type(normalize(ty)),
                 EffectRequirementKey::Trait(inst) => {
-                    EffectRequirementKey::Trait(normalize_predicate_for_comparison(
-                        db,
-                        inst,
-                        scope,
-                        evidence,
-                        trait_inst,
-                        rebase_same_trait_uses,
-                    ))
+                    EffectRequirementKey::Trait(normalize_inst(inst))
                 }
-                key => key,
+                // A row still abstract here is its instance's, normalized as a
+                // trait key's is: `Enumerate<Identity<C>>::Base: Collection`'s
+                // row is `C: Collection`'s.
+                EffectRequirementKey::Row(row) => EffectRequirementKey::Row(RowKey {
+                    inst: normalize_inst(row.inst),
+                    ..row
+                }),
+                EffectRequirementKey::Other => EffectRequirementKey::Other,
             };
             (
                 requirement.binding_idx,

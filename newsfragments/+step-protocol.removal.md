@@ -1,0 +1,1 @@
+`Driver` and `Producer` lose their base parameter: a driver names its base as `type Base`, and `Identity` and `Reversed` take it, `Identity<B>`. `Driver::Item`, `Driver::Extra`, the `Adapt` trait, `Copied` and `.copied()` are removed; a loop copies a step's `Copy` elements by its pattern. `FromProducer::collect` takes the producer's `P::Base`.

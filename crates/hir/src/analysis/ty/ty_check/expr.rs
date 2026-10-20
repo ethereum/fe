@@ -3313,7 +3313,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn trait_effect_goal_satisfiability(
+    pub(super) fn trait_effect_goal_satisfiability(
         &self,
         trait_goal: TraitInstId<'db>,
     ) -> GoalSatisfiability<'db> {

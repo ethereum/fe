@@ -35,3 +35,22 @@ fn by_value(_ xs: mut [u256; 2]) {
         xs[0] = x
     }
 }
+
+// Rejected: a driver's step holds its `ref` element's session through the
+// body.
+fn enumerated(_ items: mut [Item; 2]) {
+    for (i, ref item) in items.enumerate() {
+        items[i] = Item { n: 0 }
+        assert(item.n > 0)
+    }
+}
+
+// Accepted: a step whose elements are copied or discarded holds none.
+fn enumerated_copies(_ xs: mut [u256; 2], _ items: mut [Item; 2]) {
+    for (i, (j, x)) in xs.enumerate().enumerate() {
+        xs[i] = x + j as u256
+    }
+    for (i, _) in items.enumerate() {
+        items[i] = Item { n: 0 }
+    }
+}

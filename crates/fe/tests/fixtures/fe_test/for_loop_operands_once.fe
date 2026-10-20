@@ -45,7 +45,7 @@ fn field_base_index_read_once() {
 #[test]
 fn driver_evaluated_once() {
     let xs: [u256; 6] = [1, 2, 3, 4, 5, 6]
-    var d: Take<Identity> = xs.take(2)
+    var d: Take<Identity<[u256; 6]>> = xs.take(2)
     var s: u256 = 0
     for x in xs.by(d) {
         d = xs.take(5)

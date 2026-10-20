@@ -420,8 +420,8 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
     ) -> Result<CallbackOutcome<Vec<Self::Clause>, Self::StopReason>, Self::Error> {
         let prepared = self.prepare_query(*key);
         // An impl lives in its normalized self type's ingot or its trait's
-        // (`trait_impl_admissibility`): `<Identity as Driver<[P; 2]>>::Item:
-        // Copy` is `P: Copy`, whose impl is in `P`'s ingot, not `Identity`'s.
+        // (`trait_impl_admissibility`): `<Option<P> as Unwrap>::Out: Copy` is
+        // `P: Copy`, whose impl is in `P`'s ingot, not `Option`'s.
         let (primary, secondary) = TraitSolveCx::search_ingots_for_trait_inst_with_origin(
             self.db,
             self.origin_ingot,

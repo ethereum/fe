@@ -55,3 +55,25 @@ impl Copy for <Source as Get>::Out {}
 
 // `<Wrap<T> as Get>::Out` is `T::Out`, which is no ingot's type.
 impl<T: Get> Copy for <Wrap<T> as Get>::Out {}
+
+// A bound on an associated type finds the implementation for the type it
+// normalizes to: `<Option<Point> as Unwrap>::Out` is `Point`, whose `Copy`
+// is here, although `Option` is core's.
+struct Point {}
+impl Copy for Point {}
+
+trait Unwrap {
+    type Out
+}
+impl<T> Unwrap for Option<T> {
+    type Out = T
+}
+
+trait Check {}
+impl<O: Unwrap> Check for Wrap<O> where O::Out: Copy {}
+
+fn checks<C: Check>(_ c: C) {}
+
+fn check(_ w: Wrap<Option<Point>>) {
+    checks(w)
+}

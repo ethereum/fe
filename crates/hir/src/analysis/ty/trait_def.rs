@@ -701,7 +701,7 @@ fn impls_with_constraint_mode<'db>(
             let impl_ty = table.instantiate_to_term(inst.self_ty(db));
             let ty_term = table.instantiate_to_term(ty);
             // The constraints are checked under the target's arguments too:
-            // `impl<B, D: Driver<B>> Driver<B> for Filter<D>` needs its `B`.
+            // `impl<T, R: Read<T>> Read<T> for Buf<R>` needs its `T`.
             let unifies =
                 table.unify(impl_ty, ty_term).is_ok()
                     && trait_inst.is_none_or(|target| {
