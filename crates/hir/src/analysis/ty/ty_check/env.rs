@@ -54,6 +54,60 @@ use crate::core::semantic::{
     ResolvedEffectBindingInfo, row_effect_provider,
 };
 
+/// The assumptions `func`'s body is checked under at `mode`, before a
+/// closure in the body adds its own: its declared bounds
+/// (`func_declared_bounds`) extended with what they imply.
+pub(crate) fn func_signature<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    mode: Option<BorrowKind>,
+) -> PredicateListId<'db> {
+    func_declared_bounds(db, func, mode).extend_all_bounds(db)
+}
+
+/// The bounds `func`'s body declares at `mode`: its own and its parent's,
+/// with a trait method's `Self: Trait`, and those its trait-keyed effects and
+/// their rows' components put on their providers. A call proves these for
+/// the instance of `func` it makes; the instance proves what they imply.
+#[salsa::tracked]
+pub(crate) fn func_declared_bounds<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    mode: Option<BorrowKind>,
+) -> PredicateListId<'db> {
+    let base = crate::semantic::func_body_assumptions(db, func).at_mode(db, mode);
+    let mut preds = base.list(db).to_vec();
+    preds.extend(collect_func_effect_provider_constraints(db, func));
+    if let Some(body) = func.body(db) {
+        // A row that stays abstract may expand in an instance and renumber
+        // the components after it, so components are only bound when every
+        // row expands.
+        let rows = expand_rows(
+            db,
+            func.effect_requirements(db),
+            func.scope(),
+            base.extend_all_bounds(db),
+        );
+        if rows.abstract_rows.is_empty()
+            && rows
+                .components
+                .iter()
+                .all(|component| component.requirement.key.key_row().is_none())
+        {
+            preds.extend(rows.components.iter().filter_map(|component| {
+                let trait_inst = component.requirement.key.key_trait()?;
+                let provider = row_effect_provider(db, body.scope(), None, &component.requirement);
+                Some(super::super::instantiate_trait_self(
+                    db,
+                    trait_inst,
+                    provider.provider_ty,
+                ))
+            }));
+        }
+    }
+    PredicateListId::new(db, preds)
+}
+
 pub(crate) struct TyCheckEnv<'db> {
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
@@ -75,6 +129,9 @@ pub(crate) struct TyCheckEnv<'db> {
     effect_env: keyed_effect_env::EffectEnv<'db>,
     effect_bounds: ThinVec<TraitInstId<'db>>,
     base_assumptions: PredicateListId<'db>,
+    /// The assumptions the body's owner declares, before a closure in the
+    /// body adds its own: what an instance receives proofs of.
+    signature: PredicateListId<'db>,
     assumptions: PredicateListId<'db>,
     var_env: Vec<BlockEnv<'db>>,
     /// The index of the block each binding is registered in, which tells
@@ -222,6 +279,7 @@ impl<'db> TyCheckEnv<'db> {
             effect_env: keyed_effect_env::EffectEnv::new(),
             effect_bounds: ThinVec::new(),
             base_assumptions,
+            signature: base_assumptions,
             assumptions: base_assumptions,
             var_env: vec![BlockEnv::new(owner_scope, 0)],
             binding_block_idx: FxHashMap::default(),
@@ -320,9 +378,14 @@ impl<'db> TyCheckEnv<'db> {
         env.register_effect_bindings(base_assumptions);
 
         // Finalize assumptions by merging in effect-derived bounds
-        let mut preds = base_preds.list(db).to_vec();
-        preds.extend(env.effect_bounds.iter().copied());
-        env.assumptions = PredicateListId::new(db, preds).extend_all_bounds(db);
+        env.assumptions = if let BodyOwner::Func(func, mode) = owner {
+            func_signature(db, func, mode)
+        } else {
+            let mut preds = base_preds.list(db).to_vec();
+            preds.extend(env.effect_bounds.iter().copied());
+            PredicateListId::new(db, preds).extend_all_bounds(db)
+        };
+        env.signature = env.assumptions;
 
         Ok(env)
     }
@@ -341,8 +404,6 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     fn register_func_effect_bindings(&mut self, func: Func<'db>) {
-        self.effect_bounds
-            .extend(collect_func_effect_provider_constraints(self.db, func));
         for binding in func.effect_requirements(self.db) {
             if !matches!(
                 binding.key.kind(),
@@ -381,14 +442,6 @@ impl<'db> TyCheckEnv<'db> {
         for component in rows.components {
             let requirement = component.requirement;
             let provider = row_effect_provider(self.db, self.body.scope(), None, &requirement);
-            if let Some(trait_inst) = requirement.key.key_trait() {
-                self.effect_bounds
-                    .push(super::super::instantiate_trait_self(
-                        self.db,
-                        trait_inst,
-                        provider.provider_ty,
-                    ));
-            }
             self.row_components.push(ResolvedEffectBindingInfo {
                 requirement,
                 provider,
@@ -1377,6 +1430,7 @@ impl<'db> TyCheckEnv<'db> {
                 }
             });
         let assumptions = self.assumptions.fold_with(self.db, &mut prober);
+        let signature = self.signature.fold_with(self.db, &mut prober);
         let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
 
         self.semantic_expr_lowering
@@ -1443,6 +1497,7 @@ impl<'db> TyCheckEnv<'db> {
         TypedBodyTables {
             body: Some(self.body),
             result_ty,
+            signature,
             assumptions,
             pat_ty: self.pat_ty,
             expr_ty: self.expr_ty,

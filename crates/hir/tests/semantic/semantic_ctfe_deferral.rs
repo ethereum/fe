@@ -1,3 +1,4 @@
+use fe_hir::analysis::ty::evidence::EvidenceList;
 use std::{
     env::{current_exe, var_os},
     process::Command,
@@ -236,6 +237,7 @@ fn invocation<'db>(
             GenericSubst::for_body_owner(db, owner, generic_args),
             EffectProviderSubst::empty(db),
             ImplEnv::empty(db, owner.scope()),
+            EvidenceList::none(db),
         ),
         args,
     })
@@ -1887,6 +1889,7 @@ const fn selected<const X: usize, const Y: usize>() -> usize { Selected<{ X + 0 
             ),
             identity.effect_providers(&db),
             identity.impl_env(&db),
+            EvidenceList::none(&db),
         ),
     );
     for (parameter, template) in [
@@ -2465,6 +2468,7 @@ const fn pair() -> (u8, u8) { (1, 2) }
             GenericSubst::for_body_owner(&db, owner, args.to_vec()),
             key.effect_providers(&db),
             key.impl_env(&db),
+            EvidenceList::none(&db),
         ),
     );
     for (name, retained) in [

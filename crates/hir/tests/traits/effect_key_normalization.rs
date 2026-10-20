@@ -6,6 +6,7 @@ use fe_hir::analysis::semantic::{
     root_semantic_instance_key, typed_body_template, validate_instantiated_effect_env_key,
 };
 use fe_hir::analysis::ty::effects::{EffectKeyKind, place_effect_provider_param_index_map};
+use fe_hir::analysis::ty::evidence::EvidenceList;
 use fe_hir::analysis::ty::trait_def::resolve_trait_method_instance;
 use fe_hir::analysis::ty::trait_resolution::{Selection, TraitSolveCx};
 use fe_hir::analysis::ty::ty_check::{
@@ -3080,6 +3081,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
             GenericSubst::for_owner(&db, method.into(), resolved.body_args().to_vec()),
             fe_hir::analysis::semantic::EffectProviderSubst::empty(&db),
             fe_hir::analysis::semantic::ImplEnv::empty(&db, impl_trait.scope()),
+            EvidenceList::none(&db),
         ),
     );
     let body = instance.body(&db);

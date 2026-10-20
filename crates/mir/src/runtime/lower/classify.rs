@@ -1,6 +1,8 @@
 #[cfg(test)]
 use hir::analysis::semantic::normalized::ReadMode;
 use hir::analysis::ty::AddressSpace;
+#[cfg(test)]
+use hir::analysis::ty::evidence::EvidenceList;
 
 use cranelift_entity::{EntityRef, PrimaryMap, entity_impl};
 use hir::analysis::{
@@ -3129,6 +3131,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
                 PredicateListId::empty_list(&db),
                 vec![trait_inst],
             ),
+            EvidenceList::none(&db),
         );
         let mut replaced = false;
         for block in &mut body.normalized.blocks {

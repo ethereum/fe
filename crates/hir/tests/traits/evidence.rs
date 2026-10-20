@@ -1,7 +1,8 @@
 use camino::Utf8PathBuf;
+use fe_hir::analysis::semantic::{get_or_build_semantic_instance, root_semantic_instance_key};
 use fe_hir::analysis::ty::evidence::{Evidence, EvidenceId};
 use fe_hir::analysis::ty::trait_resolution::{PredicateListId, TraitSolveCx};
-use fe_hir::analysis::ty::ty_check::{Callable, ConstRef, TypedBody, check_func_body};
+use fe_hir::analysis::ty::ty_check::{BodyOwner, Callable, ConstRef, TypedBody, check_func_body};
 use fe_hir::hir_def::{Expr, Func, ItemKind, Partial, TopLevelMod};
 use fe_hir::test_db::HirAnalysisTestDb;
 
@@ -28,6 +29,10 @@ fn wrapped<T: Copy>(_ x: T) -> u256 {
 
 fn bound<T: Grow>(_ x: T) -> u256 {
     x.grow()
+}
+
+fn root() -> u256 {
+    bound(Wrap { t: 1 as u256 })
 }
 
 trait HasK {
@@ -233,4 +238,49 @@ fn checker_selection_answers_a_constant_without_the_body_context() {
         k_use_bodies(&db, func(&db, top_mod, "bound_k")),
         (false, false)
     );
+}
+
+#[test]
+fn an_instance_receives_its_callers_proofs_of_its_bounds() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("an_instance_receives_its_callers_proofs_of_its_bounds.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // `root` proves `Wrap<u256>: Grow` for `bound`'s `T: Grow`, so in that
+    // instance the call `x.grow()`, checked against the bound, carries the
+    // blanket implementation with its conditions proved.
+    let root = get_or_build_semantic_instance(
+        &db,
+        root_semantic_instance_key(&db, BodyOwner::Func(func(&db, top_mod, "root"), None))
+            .expect("missing root key"),
+    );
+    let bound_fn = func(&db, top_mod, "bound");
+    let bound = root
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(bound_fn, None))
+        .expect("`root` calls `bound`");
+    let body = bound_fn.body(&db).expect("missing body");
+    let call = body
+        .exprs(&db)
+        .keys()
+        .find(|expr| matches!(expr.data(&db, body), Partial::Present(Expr::MethodCall(..))))
+        .expect("missing method call");
+    let evidence = bound
+        .key
+        .typed_body(&db)
+        .callable_expr(call)
+        .and_then(Callable::evidence)
+        .expect("the call's goal is proved");
+    let [wrap_copy] = conds(&db, evidence) else {
+        panic!("the blanket implementation has one condition");
+    };
+    let [u256_copy] = conds(&db, *wrap_copy) else {
+        panic!("`Copy for Wrap<T>` has one condition");
+    };
+    assert!(conds(&db, *u256_copy).is_empty());
 }

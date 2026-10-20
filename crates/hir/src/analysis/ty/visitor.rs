@@ -292,6 +292,7 @@ impl<'db> TyVisitable<'db> for SemanticInstanceKey<'db> {
         let env = self.impl_env(db);
         env.assumptions(db).visit_with(visitor);
         env.witnesses(db).visit_with(visitor);
+        self.evidence(db).visit_with(visitor);
     }
 }
 
@@ -456,6 +457,31 @@ impl<'db> TyVisitable<'db> for ResolvedEffectArg<'db> {
             ty.visit_with(visitor);
         }
     }
+}
+
+/// Whether `v` mentions an effect provider's type parameter, which a call
+/// binds only once its providers are resolved.
+pub(crate) fn mentions_effect_provider<'db, V: TyVisitable<'db>>(
+    db: &'db dyn HirAnalysisDb,
+    v: V,
+) -> bool {
+    struct Finder<'db> {
+        db: &'db dyn HirAnalysisDb,
+        found: bool,
+    }
+    impl<'db> TyVisitor<'db> for Finder<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_param(&mut self, ty_param: &TyParam<'db>) {
+            self.found |= ty_param.is_effect_provider();
+        }
+    }
+
+    let mut finder = Finder { db, found: false };
+    v.visit_with(&mut finder);
+    finder.found
 }
 
 pub fn collect_flags<'db, V: TyVisitable<'db>>(db: &'db dyn HirAnalysisDb, v: V) -> TyFlags {
