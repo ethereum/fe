@@ -48,7 +48,8 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
 
     let mut out = Vec::new();
     let mut effect_ref_trait = None;
-    for binding in func.effect_requirements(db) {
+    // The bounds don't depend on the effects' modes.
+    for binding in func.effect_requirements(db, func.modes(db)[0]) {
         if !matches!(
             binding.key.kind(),
             EffectKeyKind::Type | EffectKeyKind::Trait
@@ -897,7 +898,7 @@ where
         let slot_provider_idx = provider_map[1].expect("missing provider slot for slot");
         assert!(cap_provider_idx < slot_provider_idx);
 
-        let effect_bindings = func.effect_requirements(&db);
+        let effect_bindings = func.effect_requirements(&db, None);
         let slot_binding = effect_bindings
             .iter()
             .find(|binding| binding.binding_name.data(&db) == "slot")

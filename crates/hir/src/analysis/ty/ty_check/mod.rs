@@ -62,7 +62,7 @@ pub use env::{
     BindingAccess, ClosureCapture, ClosureInfo, EffectParamSite, ExprProp, LocalBinding, ParamSite,
     PatBindingMode, PathReadSemantics,
 };
-use env::{TyCheckEnv, func_param_bindings};
+use env::{ProvidedEffect, TyCheckEnv, func_param_bindings};
 pub(super) use expr::TraitOps;
 use num_traits::ToPrimitive;
 pub use owner::BodyOwner;
@@ -152,6 +152,28 @@ pub fn check_func_body<'db>(
     let mut bodies = BodyOwner::func_bodies(db, func).map(|owner| check_body(db, owner));
     let (mut diags, typed) = bodies.next().expect("a function has a body");
     for diag in bodies.flat_map(|(diags, _)| diags) {
+        // An effect the `ref` body's call misses at `ref` and the `mut`
+        // body's at `mut` is missing at `mut?`.
+        if let FuncBodyDiag::Body(BodyDiag::MissingEffect {
+            primary,
+            func: callee,
+            key,
+            mode: ModeMarker::Mut,
+        }) = &diag
+            && let Some(FuncBodyDiag::Body(BodyDiag::MissingEffect { mode, .. })) =
+                diags.iter_mut().find(|other| {
+                    **other
+                        == FuncBodyDiag::Body(BodyDiag::MissingEffect {
+                            primary: primary.clone(),
+                            func: *callee,
+                            key: *key,
+                            mode: ModeMarker::None,
+                        })
+                })
+        {
+            *mode = ModeMarker::MaybeMut;
+            continue;
+        }
         if !diags.contains(&diag) {
             diags.push(diag);
         }
@@ -1045,13 +1067,14 @@ fn infer_body_query<'db>(
     checker.run();
     let (mut diags, typed_body) = checker.finish();
     diags.extend(check_unsafe_ops(db, owner, &typed_body));
-    if let BodyOwner::Func(func, _) = owner
+    if let BodyOwner::Func(func, mode) = owner
         && func.is_const(db)
         && !func.is_extern(db)
     {
         diags.extend(crate::analysis::ty::const_check::check_const_fn_body(
             db,
             func,
+            mode,
             &typed_body,
         ));
     }
@@ -1499,6 +1522,14 @@ pub struct TyChecker<'db> {
     ref_part_bindings: FxHashSet<PatId>,
     /// Names bound to a shape whole, which is reported where they bind.
     shape_bindings: FxHashSet<PatId>,
+    /// The missing effects of `mut?` calls at `ref`, reported once the calls'
+    /// modes are final: the call, the effect's binding index in its callee,
+    /// and the report.
+    missing_effects: Vec<(ExprId, u32, BodyDiag<'db>)>,
+    /// The provider each effect of a `mut?` call at `ref` resolved to, by the
+    /// call and the effect's binding index, which a raise to `mut` requires
+    /// mutable as resolution does.
+    effect_providers: FxHashMap<(ExprId, u32), ProvidedEffect<'db>>,
     diags: Vec<FuncBodyDiag<'db>>,
     /// Set once deferred work is resolved for the last time, after which type
     /// equalities are decided rather than retained.
@@ -1687,12 +1718,6 @@ impl<'db> TyChecker<'db> {
         effects: crate::hir_def::EffectParamListId<'db>,
     ) {
         for (idx, effect) in effects.data(self.db).iter().enumerate() {
-            if effect.mode == ModeMarker::MaybeMut {
-                self.push_diag(BodyDiag::MaybeMutEffect {
-                    owner: EffectParamOwner::Func(func),
-                    idx,
-                });
-            }
             let Some(key_ty) = effect.key_ty.to_opt() else {
                 continue;
             };
@@ -1728,7 +1753,10 @@ impl<'db> TyChecker<'db> {
         effects: crate::hir_def::EffectParamListId<'db>,
     ) {
         let (owner, site) = match owner {
-            BodyOwner::Func(func, _) => (EffectParamOwner::Func(func), EffectParamSite::Func(func)),
+            BodyOwner::Func(func, mode) => (
+                EffectParamOwner::Func(func),
+                EffectParamSite::Func(func, mode),
+            ),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {
                 unreachable!()
             }
@@ -2866,6 +2894,8 @@ impl<'db> TyChecker<'db> {
             param_pattern_sites: FxHashMap::default(),
             ref_part_bindings: FxHashSet::default(),
             shape_bindings: FxHashSet::default(),
+            missing_effects: Vec::new(),
+            effect_providers: FxHashMap::default(),
             diags: Vec::new(),
             final_pass: false,
         }
@@ -7120,6 +7150,9 @@ impl<'db> TyCheckerFinalizer<'db> {
         let assumptions = checker.env.assumptions();
         checker.resolve_deferred();
         checker.check_access_captures();
+        for (_, _, diag) in std::mem::take(&mut checker.missing_effects) {
+            checker.push_diag(diag);
+        }
         let mut body = checker.env.finish(&mut checker.table);
         body.tables_mut().return_borrow_provider = checker.first_return_borrow_provider;
         let direct_call_callees = body.body().map_or_else(FxHashSet::default, |body_id| {

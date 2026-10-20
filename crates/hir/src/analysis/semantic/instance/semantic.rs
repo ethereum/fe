@@ -301,10 +301,10 @@ pub fn instantiated_typed_body<'db>(
     // A body's row provider parameters are the providers its call binds.
     let owner = match key.owner(db) {
         BodyOwner::Closure { def, .. } => (def.body.scope(), Some(def.expr)),
-        BodyOwner::Func(func, _)
+        BodyOwner::Func(func, mode)
             if let Some(func_body) = func.body(db)
                 && func
-                    .effect_requirements(db)
+                    .effect_requirements(db, mode)
                     .iter()
                     .any(|requirement| requirement.key.key_row().is_some()) =>
         {
@@ -450,7 +450,7 @@ fn expand_row_args<'db>(
     let scope = key.owner(db).scope();
     let assumptions = semantic_instance_base_assumptions_for_key(db, key);
     let requirements: Vec<_> = func
-        .effective_effect_requirements(db)
+        .effect_requirements(db, callable.mode())
         .iter()
         .map(|requirement| match requirement.key {
             EffectRequirementKey::Row(row) => EffectRequirement {
@@ -546,7 +546,7 @@ fn expand_row_args<'db>(
                 provider: ProviderBinding {
                     provider_idx: target,
                     source: ProviderSource::UsesParam {
-                        site: EffectParamSite::Func(func),
+                        site: EffectParamSite::Func(func, callable.mode()),
                         requirement_idx: target,
                     },
                     ..provider.clone()
@@ -1958,7 +1958,7 @@ pub(crate) fn provisional_provider_idx_for_requirement<'db>(
     requirement_idx: u32,
 ) -> Option<u32> {
     match site {
-        EffectParamSite::Func(func) => place_effect_provider_param_index_map(db, func)
+        EffectParamSite::Func(func, _) => place_effect_provider_param_index_map(db, func)
             .get(requirement_idx as usize)
             .and_then(|param_idx| param_idx.map(|_| requirement_idx))
             .or_else(|| {
@@ -2003,7 +2003,7 @@ fn provisional_provider_binding_for_effect<'db>(
     is_mut: bool,
 ) -> Option<ProviderBinding<'db>> {
     match site {
-        EffectParamSite::Func(func) => {
+        EffectParamSite::Func(func, _) => {
             let provider_map = place_effect_provider_param_index_map(db, func);
             if provider_map
                 .get(requirement_idx as usize)
@@ -2400,7 +2400,7 @@ fn instantiate_provider_bindings_for_key<'db>(
     }
     if matches!(
         site,
-        crate::analysis::ty::ty_check::EffectParamSite::Func(_)
+        crate::analysis::ty::ty_check::EffectParamSite::Func(..)
     ) && !specializations.is_empty()
     {
         for resolution in resolutions {

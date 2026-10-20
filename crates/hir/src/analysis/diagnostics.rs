@@ -23,7 +23,10 @@ use crate::analysis::{
 };
 use crate::{
     ParserError, SpannedHirDb,
-    hir_def::{CallableDef, FieldIndex, GenericParamOwner, PathKind, Trait, params::FuncParamMode},
+    hir_def::{
+        CallableDef, FieldIndex, GenericParamOwner, ModeMarker, PathKind, Trait,
+        params::FuncParamMode,
+    },
     span::LazySpan,
 };
 use common::diagnostics::{
@@ -1759,6 +1762,18 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::MaybeMutRowEffect { span, entry } => {
+                let (message, label) = if *entry {
+                    ("`mut?` on a row", "a row's effects carry their own modes")
+                } else {
+                    (
+                        "`mut?` effect of a row",
+                        "a row has no mode: only a function is used at a mode",
+                    )
+                };
+                primary_diag(Severity::Error, message, label, span.resolve(db), error_code)
+            }
+
             Self::MaybeMutWithoutResult(span) => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a `mut?` function's result needs a `mut?` part".to_string(),
@@ -3095,7 +3110,12 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
-            Self::MissingEffect { primary, func, key } => {
+            Self::MissingEffect {
+                primary,
+                func,
+                key,
+                mode,
+            } => {
                 let func_name = func
                     .name(db)
                     .to_opt().map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string());
@@ -3114,7 +3134,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     notes: vec![
                         format!(
                             "require it in this function's signature with `uses {}`, so that its callers provide it",
-                            effect_clause(db, *func, *key)
+                            effect_clause(db, *func, *key, *mode)
                         ),
                         format!(
                             "or provide it to a block of this function with `with ({key_str} = value) {{ .. }}`"
@@ -3165,6 +3185,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 func,
                 key,
                 provided_span,
+                maybe_mut,
             } => {
                 let func_name = func
                     .name(db)
@@ -3191,10 +3212,15 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         "effect `{key_str}` must be mutable when calling `{func_name}`"
                     ),
                     sub_diagnostics,
-                    notes: vec![
+                    notes: vec![if let Some(name) = maybe_mut {
+                        format!(
+                            "`{}` is `mut?`, which a `mut?` function's `ref` body only reads",
+                            name.data(db)
+                        )
+                    } else {
                         "use a mutable binding or pass a mutable reference in the `with` block"
-                            .to_string(),
-                    ],
+                            .to_string()
+                    }],
                     error_code,
                 }
             }
@@ -3752,26 +3778,37 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            Self::CannotBorrowMut { primary, binding } => {
+            Self::CannotBorrowMut {
+                primary,
+                binding,
+                maybe_mut,
+            } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "cannot borrow as `mut`".to_string(),
                     span: primary.resolve(db),
                 }];
 
+                let mut notes = Vec::new();
                 if let Some((name, span)) = binding {
+                    let name = name.data(db);
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("`{}` does not provide mutable access", name.data(db)),
+                        message: format!("`{name}` does not provide mutable access"),
                         span: span.resolve(db),
                     });
+                    if *maybe_mut {
+                        notes.push(format!(
+                            "`{name}` is `mut?`, which a `mut?` function's `ref` body only reads"
+                        ));
+                    }
                 }
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "mutable borrow requires a mutable place".to_string(),
                     sub_diagnostics,
-                    notes: vec![],
+                    notes,
                     error_code,
                 }
             }
@@ -3954,21 +3991,9 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }],
                 notes: vec![
-                    "a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T` or `-> mut? T`"
+                    "a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T`, `-> mut? T`, `uses (x: mut? T)` or a `mut?` bound"
                         .to_string(),
                 ],
-                error_code,
-            },
-
-            Self::MaybeMutEffect { owner, idx } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "a `mut?` effect is not supported yet".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this effect is required at the function's mode".to_string(),
-                    span: owner.effect_param_ty_span(db, *idx).resolve(db),
-                }],
-                notes: vec!["write `mut` or no mode on the effect".to_string()],
                 error_code,
             },
 
@@ -4318,7 +4343,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         MutabilityFix::ViewSelf => {
                             "write `mut self` for a mutable borrow".to_string()
                         }
-                        MutabilityFix::MaybeMutParam => format!(
+                        MutabilityFix::MaybeMut => format!(
                             "`{name}` is `mut?`, which a `mut?` function's `ref` body only reads"
                         ),
                         MutabilityFix::OwnSelf => {
@@ -5944,17 +5969,25 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 }
             }
 
-            Self::MethodEffectMismatch { trait_m, impl_m } => {
-                let trait_count = match trait_m {
-                    CallableDef::Func(func) => func.effect_requirements(db).len(),
+            Self::MethodEffectMismatch {
+                trait_m,
+                impl_m,
+                mode,
+            } => {
+                let count = |m: CallableDef| match m {
+                    CallableDef::Func(func) => {
+                        func.effect_requirements(db, func.modes(db)[0]).len()
+                    }
                     CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
                 };
-                let impl_count = match impl_m {
-                    CallableDef::Func(func) => func.effect_requirements(db).len(),
-                    CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
-                };
+                let (trait_count, impl_count) = (count(*trait_m), count(*impl_m));
                 let detail = if trait_count == impl_count {
-                    "effect keys or mutability differ from the trait method".to_string()
+                    let at = match mode {
+                        Some(BorrowKind::Ref) => " at `ref`",
+                        Some(BorrowKind::Mut) => " at `mut`",
+                        None => "",
+                    };
+                    format!("effect keys or mutability differ from the trait method{at}")
                 } else {
                     format!("expected {trait_count} effects, found {impl_count}")
                 };
@@ -6470,12 +6503,13 @@ impl DiagnosticVoucher for ImplDiag<'_> {
     }
 }
 
-/// The `uses` entry of `func` whose key is `key`, as a clause naming it with
-/// its mode: `(storage: mut RawStorage)`.
+/// The `uses` entry naming `func`'s effect keyed `key`, at the mode `mode` a
+/// call needs it.
 fn effect_clause<'db>(
     db: &'db dyn HirAnalysisDb,
     func: crate::hir_def::Func<'db>,
     key: crate::hir_def::TypeId<'db>,
+    mode: ModeMarker,
 ) -> String {
     let key_str = key.pretty_print(db);
     func.effects(db)
@@ -6489,8 +6523,7 @@ fn effect_clause<'db>(
                     .name
                     .map(|name| format!("{}: ", name.data(db)))
                     .unwrap_or_default();
-                let mode = param.mode.prefix();
-                format!("({name}{mode}{key_str})")
+                format!("({name}{}{key_str})", mode.prefix())
             },
         )
 }

@@ -267,8 +267,22 @@ a struct's or a trait's bounds, including those of its associated types
 (`type Item: mut Slot`) and of `Self`, are `mut` or plain.
 
 Each body of a `mut?` function defines its own closures, and a `mut?` in
-one, such as a parameter `c: mut? T`, is that body's mode. An effect cannot
-be `mut?` yet.
+one, such as a parameter `c: mut? T`, is that body's mode.
+
+An effect may be `mut?` as well: the `ref` body only reads it, and the `mut`
+body may write it.
+
+```fe
+fn slot() -> mut? u256 uses (store: mut? Store) {
+    mut? store.n
+}
+```
+
+A call at `ref` needs only read authority, `uses (store: Store)`, and one at
+`mut` needs the effect `mut`. The two bodies of an implementation's `mut?`
+method take the trait method's `mut?` effect at their own modes. An effect
+row (`uses E = (..)`) and a contract's `uses` have no mode, so each of their
+effects is `mut` or read-only.
 
 ## Views
 

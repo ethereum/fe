@@ -367,7 +367,7 @@ where
     );
     let (top_mod, _) = db.top_mod(file);
     let needs = find_func(&db, top_mod, "needs");
-    let requirements = needs.effect_requirements(&db);
+    let requirements = needs.effect_requirements(&db, None);
     let key = requirements[0].key.key_trait().expect("trait effect key");
     assert_eq!(
         key.args(&db)[1].generic_args(&db),

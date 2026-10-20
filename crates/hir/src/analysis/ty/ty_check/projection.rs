@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     analysis::ty::{diagnostics::BodyDiag, shape::Shape, ty_def::BorrowKind},
-    hir_def::{BinOp, CallableDef, Expr, ExprId, Partial, Stmt, UnOp},
+    hir_def::{BinOp, CallableDef, Expr, ExprId, ModeMarker, Partial, Stmt, UnOp},
     span::DynLazySpan,
 };
 
@@ -273,9 +273,42 @@ impl<'db> TyChecker<'db> {
             }
         }
         callable.set_mode(Some(BorrowKind::Mut));
-        // At `mut`, the callee's `mut?` bounds are `mut`, and a trait method
-        // needs a `mut` implementation of its trait.
+        // At `mut`, the callee's `mut?` bounds and effects are `mut`, and a
+        // trait method needs a `mut` implementation of its trait. Each effect
+        // resolved at `ref` that the callee takes `mut` at `mut` needs a
+        // mutable provider, and a closure's effect it provides becomes `mut`.
         let span: DynLazySpan<'db> = expr.span(self.body()).into();
+        let at_mut = func.effect_requirements(self.db, Some(BorrowKind::Mut));
+        let mut_at_mut = |binding_idx: u32| {
+            at_mut
+                .iter()
+                .any(|requirement| requirement.binding_idx == binding_idx && requirement.is_mut)
+        };
+        // A missing effect is missing at `mut` now.
+        for (call, binding_idx, diag) in &mut self.missing_effects {
+            if *call != expr || !mut_at_mut(*binding_idx) {
+                continue;
+            }
+            match diag {
+                BodyDiag::MissingEffect { mode, .. } => *mode = ModeMarker::Mut,
+                BodyDiag::LateClosureEffect { is_mut, .. } => *is_mut = true,
+                _ => {}
+            }
+        }
+        let mut raised = Vec::new();
+        if let Some(args) = self.env.call_effect_args_mut(expr) {
+            for arg in args.iter_mut().filter(|arg| {
+                !arg.required_mut && arg.row_arg.is_none() && mut_at_mut(arg.binding_idx)
+            }) {
+                arg.required_mut = true;
+                raised.push((arg.binding_idx, arg.key));
+            }
+        }
+        for (binding_idx, key) in raised {
+            if let Some(&provider) = self.effect_providers.get(&(expr, binding_idx)) {
+                self.require_mut_provider(span.clone(), func, key, provider);
+            }
+        }
         callable.process_maybe_mut_constraints(self, expr, span.clone());
         if let Some(inst) = callable.trait_inst()
             && func.containing_trait(self.db).is_some()

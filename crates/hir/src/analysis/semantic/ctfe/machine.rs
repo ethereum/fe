@@ -1303,12 +1303,12 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             .iter()
             .filter_map(|local| match body.local(*local)?.source? {
                 LocalBinding::EffectParam {
-                    site: EffectParamSite::Func(func),
+                    site: EffectParamSite::Func(func, mode),
                     idx,
                     ..
                 } if matches!(
                     instance.key(self.db).owner(self.db),
-                    BodyOwner::Func(owner, _) if owner == func
+                    BodyOwner::Func(owner, owner_mode) if owner == func && owner_mode == mode
                 ) =>
                 {
                     Some((idx as u32, *local))
@@ -1407,7 +1407,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             BodyOwner::Func(func, _) if !func.is_const(self.db) => {
                 Err(CtfeError::NonConstCall { origin })
             }
-            BodyOwner::Func(func, _) if !const_effects_supported(self.db, func) => {
+            BodyOwner::Func(func, mode) if !const_effects_supported(self.db, func, mode) => {
                 Err(CtfeError::NotConstEvaluable { origin })
             }
             BodyOwner::ContractInit { .. }
@@ -1587,10 +1587,10 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     .collect::<Vec<_>>();
                 let instance = self.instance_for_key(callee.key);
                 if !effect_args.is_empty() {
-                    let BodyOwner::Func(func, _) = instance.key(self.db).owner(self.db) else {
+                    let BodyOwner::Func(func, mode) = instance.key(self.db).owner(self.db) else {
                         return Err(CtfeError::NotConstEvaluable { origin }.into());
                     };
-                    if !const_effects_supported(self.db, func) {
+                    if !const_effects_supported(self.db, func, mode) {
                         return Err(CtfeError::NotConstEvaluable { origin }.into());
                     }
                 }

@@ -12,7 +12,8 @@ use crate::{
 use salsa::Update;
 
 use super::{
-    BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker, ValuePathRef,
+    BodyOwner, EffectParamSite, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker,
+    ValuePathRef,
     env::{ClosureExpectation, func_declared_bounds, func_signature},
 };
 use crate::analysis::{
@@ -489,7 +490,36 @@ impl<'db> Callable<'db> {
         self.mode
     }
 
+    /// Calls the callee at `mode`. A provider its effects resolved to the
+    /// callee's own slot names that slot at `mode`; a provider a recursive
+    /// call passes on from the caller's own effect stays the caller's.
     pub(super) fn set_mode(&mut self, mode: Option<BorrowKind>) {
+        if let CallableDef::Func(func) = self.callable_def {
+            let slot_site = EffectParamSite::Func(func, self.mode);
+            for specialization in &mut self.effect_providers {
+                let forwarded = |site, requirement_idx| {
+                    matches!(
+                        specialization.provenance,
+                        EffectProviderProvenance::Binding {
+                            binding: LocalBinding::EffectParam { site: own, idx, .. },
+                            ..
+                        } if own == site && idx == requirement_idx as usize
+                    )
+                };
+                if let ProviderSource::UsesParam {
+                    site,
+                    requirement_idx,
+                } = specialization.provider.source
+                    && site == slot_site
+                    && !forwarded(site, requirement_idx)
+                {
+                    specialization.provider.source = ProviderSource::UsesParam {
+                        site: EffectParamSite::Func(func, mode),
+                        requirement_idx,
+                    };
+                }
+            }
+        }
         self.mode = mode;
     }
 
@@ -997,13 +1027,16 @@ fn check_arg_mode<'db>(
             if access.is_some() {
                 tc.consume_access(arg.expr);
                 tc.report_cannot_borrow_mut(arg.expr, arg.expr_span.clone());
+            } else if arg.expr_prop.ty.has_invalid(db) {
+                // An invalid argument, such as `mut x` of an immutable `x`,
+                // is reported already.
             } else if tc.env.is_place_expr(arg.expr) {
                 tc.push_diag(BodyDiag::ExplicitBorrowRequired {
                     primary: arg.expr_span.clone(),
                     kind: BorrowKind::Mut,
                     suggestion: place_borrow_suggestion(db, tc.body(), arg.expr, BorrowKind::Mut),
                 });
-            } else if !arg.expr_prop.ty.has_invalid(db) {
+            } else {
                 tc.push_diag(BodyDiag::BorrowArgMustBePlace {
                     primary: arg.expr_span.clone(),
                     kind: BorrowKind::Mut,

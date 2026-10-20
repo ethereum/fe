@@ -162,8 +162,9 @@ impl<'db> CallableValue<'db> {
     pub(crate) fn effects(self, db: &'db dyn HirAnalysisDb) -> Vec<RowComponent<'db>> {
         match self {
             Self::Closure(closure) => closure.effects(db).clone(),
+            // A `mut?` function is no callable value.
             Self::Func(func, args) => func
-                .effective_effect_requirements(db)
+                .effect_requirements(db, None)
                 .iter()
                 .map(|requirement| RowComponent {
                     name: requirement.binding_name,

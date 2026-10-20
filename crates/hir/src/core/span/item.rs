@@ -7,7 +7,7 @@ use super::{
     expr::LazyExprSpan,
     params::{
         LazyFuncParamListSpan, LazyGenericParamListSpan, LazyTypeBoundListSpan, LazyUsesClauseSpan,
-        LazyWhereClauseSpan,
+        LazyUsesParamSpan, LazyWhereClauseSpan,
     },
     pat::LazyPatSpan,
     path::LazyPathSpan,
@@ -429,6 +429,79 @@ impl<'db> LazyTraitItemListSpan<'db> {
         };
         self.0.push(lazy_transition);
         LazyTraitConstSpan(self.0)
+    }
+
+    /// The `idx`-th effect row, `uses E = (..)`.
+    pub fn assoc_row(mut self, idx: usize) -> LazyTraitUsesSpan<'db> {
+        use crate::span::transition::{LazyArg, LazyTransitionFn, ResolvedOrigin};
+        use parser::ast::prelude::*;
+
+        fn f(origin: ResolvedOrigin, arg: LazyArg) -> ResolvedOrigin {
+            let idx = match arg {
+                LazyArg::Idx(idx) => idx,
+                _ => unreachable!(),
+            };
+
+            origin.map(|node| {
+                ast::TraitItemList::cast(node)
+                    .and_then(|list| {
+                        list.into_iter()
+                            .filter_map(|item| match item.kind() {
+                                ast::TraitItemKind::Uses(row) => Some(row),
+                                _ => None,
+                            })
+                            .nth(idx)
+                    })
+                    .map(|n| n.syntax().clone().into())
+            })
+        }
+
+        let lazy_transition = LazyTransitionFn {
+            f,
+            arg: LazyArg::Idx(idx),
+        };
+        self.0.push(lazy_transition);
+        LazyTraitUsesSpan(self.0)
+    }
+}
+
+define_lazy_span_node!(
+    LazyTraitUsesSpan,
+    ast::TraitUsesItem,
+    @token {
+        (name, name),
+    }
+);
+impl<'db> LazyTraitUsesSpan<'db> {
+    /// The row's `idx`-th effect, in either `= (..)` or the single-effect
+    /// form.
+    pub fn param_idx(mut self, idx: usize) -> LazyUsesParamSpan<'db> {
+        use crate::span::transition::{LazyArg, LazyTransitionFn, ResolvedOrigin};
+        use parser::ast::prelude::*;
+
+        fn f(origin: ResolvedOrigin, arg: LazyArg) -> ResolvedOrigin {
+            let idx = match arg {
+                LazyArg::Idx(idx) => idx,
+                _ => unreachable!(),
+            };
+            origin.map(|node| {
+                ast::TraitUsesItem::cast(node).and_then(|row| {
+                    if let Some(list) = row.param_list() {
+                        list.into_iter().nth(idx).map(|n| n.syntax().clone().into())
+                    } else if idx == 0 {
+                        row.param().map(|n| n.syntax().clone().into())
+                    } else {
+                        None
+                    }
+                })
+            })
+        }
+
+        self.0.push(LazyTransitionFn {
+            f,
+            arg: LazyArg::Idx(idx),
+        });
+        LazyUsesParamSpan(self.0)
     }
 }
 

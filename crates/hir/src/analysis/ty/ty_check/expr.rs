@@ -6,10 +6,10 @@ use smallvec1::SmallVec;
 
 use crate::core::{
     hir_def::{
-        ArithBinOp, BinOp, CallArg as HirCallArg, CallableDef, Cond, CondId, Expr, ExprId,
-        FieldIndex, Func, FuncParam, FuncParamListId, FuncParamMode, IdentId, IntegerId, LitKind,
-        LogicalBinOp, Partial, PatId, PathId, Stmt, StmtId, TypeId as HirTyId, TypeKind, TypeMode,
-        UnOp, VariantKind, WithBinding,
+        ArithBinOp, BinOp, BindingMarker, CallArg as HirCallArg, CallableDef, Cond, CondId, Expr,
+        ExprId, FieldIndex, Func, FuncParam, FuncParamListId, FuncParamMode, IdentId, IntegerId,
+        LitKind, LogicalBinOp, ModeMarker, Partial, Pat, PatId, PathId, Stmt, StmtId,
+        TypeId as HirTyId, TypeKind, TypeMode, UnOp, VariantKind, WithBinding,
     },
     semantic::{EffectRequirement, EffectRequirementKey as SemanticEffectRequirementKey},
 };
@@ -2101,17 +2101,20 @@ impl<'db> TyChecker<'db> {
 
     pub(super) fn check_callable_effects(&mut self, expr: ExprId, callable: &mut Callable<'db>) {
         let call_span: DynLazySpan<'db> = expr.span(self.body()).into();
-        let args = self.resolve_callable_effects(call_span, callable);
+        let args = self.resolve_callable_effects(call_span, callable, Some(expr));
         for arg in args {
             self.env.push_call_effect_arg(expr, arg);
         }
     }
 
-    /// Resolves the effects `callable` requires where it is called.
+    /// Resolves the effects `callable` requires where it is called. A missing
+    /// effect of a `mut?` call at `ref`, `call`, is reported once the call's
+    /// mode is final.
     pub(super) fn resolve_callable_effects(
         &mut self,
         call_span: DynLazySpan<'db>,
         callable: &mut Callable<'db>,
+        call: Option<ExprId>,
     ) -> Vec<super::ResolvedEffectArg<'db>> {
         let CallableDef::Func(func) = callable.callable_def else {
             return Vec::new();
@@ -2125,18 +2128,11 @@ impl<'db> TyChecker<'db> {
         let mut specialized_providers: FxHashMap<u32, EffectProviderSpecialization<'db>> =
             FxHashMap::default();
 
-        let body = self.body();
         let callee_provider_arg_idx_by_effect =
             place_effect_provider_param_index_map(self.db, func);
-        let callee_effect_env =
-            crate::core::semantic::EffectEnvView::new(EffectParamSite::Func(func));
+        let callee_site = EffectParamSite::Func(func, callable.mode());
+        let callee_effect_env = crate::core::semantic::EffectEnvView::new(callee_site);
 
-        let provided_span = |provided: ProvidedEffect<'db>| match provided.origin {
-            EffectOrigin::With { value_expr } => Some(value_expr.span(body).into()),
-            EffectOrigin::Param { site, index, .. } => {
-                Some(super::env::effect_param_span(self.db, site, index))
-            }
-        };
         // Each component of a callee row the call expands is resolved like the
         // callee's own effects, in a slot numbered after them.
         let rows = self.callee_rows(callable, func);
@@ -2146,14 +2142,34 @@ impl<'db> TyChecker<'db> {
             .iter()
             .map(|component| (component.requirement.binding_idx, component.path.clone()))
             .collect();
-        let reqs: Vec<_> = effect_requirement_decls_for_callable(self.db, callable.callable_def)
-            .into_iter()
-            .chain(rows.components.iter().filter_map(|component| {
-                EffectRequirementDecl::from_effect_requirement(self.db, &component.requirement)
-            }))
-            .collect();
+        let reqs: Vec<_> =
+            effect_requirement_decls_for_callable(self.db, callable.callable_def, callable.mode())
+                .into_iter()
+                .chain(rows.components.iter().filter_map(|component| {
+                    EffectRequirementDecl::from_effect_requirement(self.db, &component.requirement)
+                }))
+                .collect();
         for (param_idx, req) in reqs.iter().enumerate() {
             let key_ty = req.key_ty;
+            let mode = if req.required_mut {
+                ModeMarker::Mut
+            } else {
+                ModeMarker::None
+            };
+            let missing = || BodyDiag::MissingEffect {
+                primary: call_span.clone(),
+                func,
+                key: key_ty,
+                mode,
+            };
+            // A `mut?` call at `ref` may be raised, so its missing effect is
+            // reported once its mode is final.
+            let defer = call
+                .filter(|_| {
+                    callable.mode() == Some(BorrowKind::Ref)
+                        && !row_paths.contains_key(&req.binding_idx)
+                })
+                .map(|call| (call, req.binding_idx));
             let Some(query) = build_effect_query_for_call(self, callable, req) else {
                 continue;
             };
@@ -2181,12 +2197,7 @@ impl<'db> TyChecker<'db> {
                             let committed = self.apply_effect_commit_plan(commit);
                             debug_assert!(committed, "chosen keyed effect evidence commit failed");
                             if !committed {
-                                let diag = BodyDiag::MissingEffect {
-                                    primary: call_span.clone(),
-                                    func,
-                                    key: key_ty,
-                                };
-                                self.push_diag(diag);
+                                self.push_missing_effect(defer, missing());
                                 continue;
                             }
                             (provider, arg_style, key_kind, target_ty)
@@ -2213,12 +2224,7 @@ impl<'db> TyChecker<'db> {
                                 "chosen unkeyed type effect evidence commit failed"
                             );
                             if !committed {
-                                let diag = BodyDiag::MissingEffect {
-                                    primary: call_span.clone(),
-                                    func,
-                                    key: key_ty,
-                                };
-                                self.push_diag(diag);
+                                self.push_missing_effect(defer, missing());
                                 continue;
                             }
                             (provider, arg_style, EffectKeyKind::Type, target_ty)
@@ -2234,12 +2240,7 @@ impl<'db> TyChecker<'db> {
                                 "chosen unkeyed trait effect evidence commit failed"
                             );
                             if !committed {
-                                let diag = BodyDiag::MissingEffect {
-                                    primary: call_span.clone(),
-                                    func,
-                                    key: key_ty,
-                                };
-                                self.push_diag(diag);
+                                self.push_missing_effect(defer, missing());
                                 continue;
                             }
                             (provider, arg_style, EffectKeyKind::Trait, None)
@@ -2247,43 +2248,22 @@ impl<'db> TyChecker<'db> {
                     };
 
                     if req.required_mut
-                        && let Some(LocalBinding::EffectParam {
-                            site: EffectParamSite::Closure(closure),
-                            idx,
-                            ..
-                        }) = provider.binding
-                        && !self.env.require_mut_closure_effect(closure, idx)
+                        && !self.require_mut_provider(call_span.clone(), func, key_ty, provider)
                     {
-                        self.push_diag(BodyDiag::LateClosureEffect {
-                            primary: call_span.clone(),
-                            func,
-                            key: key_ty,
-                            is_mut: true,
-                            closure: closure.expr.span(body).into(),
-                        });
                         continue;
                     }
-                    let (arg, pass_mode) =
-                        self.effect_arg_for_provider(provider, arg_style, req.required_mut);
+                    // A raise to `mut` requires the provider as this does.
+                    if let Some(call) = call
+                        && callable.mode() == Some(BorrowKind::Ref)
+                    {
+                        self.effect_providers
+                            .insert((call, req.binding_idx), provider);
+                    }
+                    let (arg, pass_mode) = self.effect_arg_for_provider(provider, arg_style);
                     let provider_target_ty =
                         instantiated_key_ty.map(|ty| self.table.fold_ty(self.db, ty));
-                    if req.required_mut && matches!(pass_mode, super::EffectPassMode::Unknown) {
-                        let diag = BodyDiag::EffectMutabilityMismatch {
-                            primary: call_span.clone(),
-                            func,
-                            key: key_ty,
-                            provided_span: provided_span(provider),
-                        };
-                        self.push_diag(diag);
-                        continue;
-                    }
                     if !self.effect_arg_is_valid(&arg, pass_mode) {
-                        let diag = BodyDiag::MissingEffect {
-                            primary: call_span.clone(),
-                            func,
-                            key: key_ty,
-                        };
-                        self.push_diag(diag);
+                        self.push_missing_effect(defer, missing());
                         continue;
                     }
                     if let Some(provider_arg_idx) = provider_arg_idx_for_param
@@ -2306,7 +2286,7 @@ impl<'db> TyChecker<'db> {
                                 key: key_ty,
                                 expected: existing_provider,
                                 given,
-                                provided_span: provided_span(provider),
+                                provided_span: Some(provider.origin.span(self.db, self.body())),
                             });
                         }
                     }
@@ -2331,7 +2311,7 @@ impl<'db> TyChecker<'db> {
                         Some((
                             req.binding_idx,
                             ProviderSource::UsesParam {
-                                site: EffectParamSite::Func(func),
+                                site: callee_site,
                                 requirement_idx: req.binding_idx,
                             },
                         ))
@@ -2382,20 +2362,17 @@ impl<'db> TyChecker<'db> {
                 }
                 EffectResolution::BlockedByBarrier => {}
                 EffectResolution::Missing => {
-                    self.push_diag(match self.env.late_closure() {
+                    let diag = match self.env.late_closure() {
                         Some(closure) => BodyDiag::LateClosureEffect {
                             primary: call_span.clone(),
                             func,
                             key: key_ty,
                             is_mut: req.required_mut,
-                            closure: closure.expr.span(body).into(),
+                            closure: closure.expr.span(self.body()).into(),
                         },
-                        None => BodyDiag::MissingEffect {
-                            primary: call_span.clone(),
-                            func,
-                            key: key_ty,
-                        },
-                    });
+                        None => missing(),
+                    };
+                    self.push_missing_effect(defer, diag);
                 }
                 EffectResolution::Ambiguous => {
                     self.push_diag(BodyDiag::AmbiguousEffect {
@@ -2407,7 +2384,7 @@ impl<'db> TyChecker<'db> {
             }
         }
         // A row that stays abstract is the caller's own row, forwarded.
-        let effects = func.effective_effect_requirements(self.db);
+        let effects = func.effect_requirements(self.db, callable.mode());
         let forwarded = rows
             .abstract_rows
             .iter()
@@ -2449,7 +2426,7 @@ impl<'db> TyChecker<'db> {
                         func,
                         key: requirement.binding_ty,
                         is_mut: requirement.is_mut,
-                        closure: closure.expr.span(body).into(),
+                        closure: closure.expr.span(self.body()).into(),
                     },
                     None => BodyDiag::MissingRow {
                         primary: call_span.clone(),
@@ -2470,7 +2447,7 @@ impl<'db> TyChecker<'db> {
     /// whether the function is called or used as a value.
     fn unify_row_provider_slots(&mut self, callable: &Callable<'db>, func: Func<'db>) {
         let provider_slots = place_effect_provider_param_index_map(self.db, func);
-        for requirement in func.effective_effect_requirements(self.db) {
+        for requirement in func.effect_requirements(self.db, callable.mode()) {
             if requirement.key.key_row().is_some()
                 && let Some(Some(slot)) = provider_slots.get(requirement.binding_idx as usize)
                 && let Some(&provider_var) = callable.generic_args().get(*slot)
@@ -2483,7 +2460,7 @@ impl<'db> TyChecker<'db> {
     /// The callee's rows as this call instantiates them.
     fn callee_rows(&mut self, callable: &Callable<'db>, func: Func<'db>) -> RowExpansion<'db> {
         let requirements: Vec<_> = func
-            .effective_effect_requirements(self.db)
+            .effect_requirements(self.db, callable.mode())
             .iter()
             .map(|requirement| match requirement.key {
                 SemanticEffectRequirementKey::Row(row) => {
@@ -2533,7 +2510,7 @@ impl<'db> TyChecker<'db> {
             };
             return Some((binding, RowPath::entry(idx as u32)));
         }
-        let super::BodyOwner::Func(caller, _) = self.env.owner() else {
+        let super::BodyOwner::Func(caller, mode) = self.env.owner() else {
             return None;
         };
         let (scope, assumptions) = (self.env.scope(), self.env.assumptions());
@@ -2544,7 +2521,7 @@ impl<'db> TyChecker<'db> {
                         == row.inst
             })
         };
-        let requirements = caller.effective_effect_requirements(self.db);
+        let requirements = caller.effect_requirements(self.db, mode);
         let path = match requirements
             .iter()
             .find(|requirement| names_row(requirement))
@@ -2859,16 +2836,62 @@ impl<'db> TyChecker<'db> {
         })
     }
 
+    /// Requires `provider`, which passes the effect keyed `key` to a call of
+    /// `func`, at `span`, that takes it `mut`, to be mutable: a closure's
+    /// effect it provides becomes `mut`, unless the closure's row is already
+    /// fixed. Returns whether it is mutable.
+    pub(super) fn require_mut_provider(
+        &mut self,
+        span: DynLazySpan<'db>,
+        func: Func<'db>,
+        key: HirTyId<'db>,
+        provider: ProvidedEffect<'db>,
+    ) -> bool {
+        if let Some(LocalBinding::EffectParam {
+            site: EffectParamSite::Closure(closure),
+            idx,
+            ..
+        }) = provider.binding
+            && !self.env.require_mut_closure_effect(closure, idx)
+        {
+            self.push_diag(BodyDiag::LateClosureEffect {
+                primary: span,
+                func,
+                key,
+                is_mut: true,
+                closure: closure.expr.span(self.body()).into(),
+            });
+            return false;
+        }
+        if !provider.is_mut {
+            self.push_diag(BodyDiag::EffectMutabilityMismatch {
+                primary: span,
+                func,
+                key,
+                provided_span: Some(provider.origin.span(self.db, self.body())),
+                maybe_mut: provider
+                    .binding
+                    .filter(|&binding| self.binding_is_maybe_mut(binding))
+                    .map(|binding| binding.binding_name(&self.env)),
+            });
+        }
+        provider.is_mut
+    }
+
+    /// Reports a missing effect, or keeps it until the mode of the call
+    /// `defer` names is final, as its effect's slot there.
+    fn push_missing_effect(&mut self, defer: Option<(ExprId, u32)>, diag: BodyDiag<'db>) {
+        match defer {
+            Some((call, binding_idx)) => self.missing_effects.push((call, binding_idx, diag)),
+            None => self.push_diag(diag),
+        }
+    }
+
     fn effect_arg_for_provider(
         &mut self,
         provider: ProvidedEffect<'db>,
         arg_style: EffectArgStyle,
-        required_mut: bool,
     ) -> (super::EffectArg<'db>, super::EffectPassMode) {
-        if required_mut && !provider.is_mut {
-            return (super::EffectArg::Unknown, super::EffectPassMode::Unknown);
-        }
-
         match arg_style {
             EffectArgStyle::Place => (
                 self.provider_place(provider)
@@ -2932,7 +2955,7 @@ impl<'db> TyChecker<'db> {
                             EffectParamSite::Contract(contract)
                             | EffectParamSite::ContractInit { contract }
                             | EffectParamSite::ContractRecvArm { contract, .. } => contract,
-                            EffectParamSite::Func(_) | EffectParamSite::Closure(_) => {
+                            EffectParamSite::Func(..) | EffectParamSite::Closure(_) => {
                                 unreachable!(
                                     "effect field bindings cannot originate from function sites"
                                 )
@@ -5297,6 +5320,7 @@ impl<'db> TyChecker<'db> {
             let binding = binding.map(|binding| {
                 let ident = binding.binding_name(&self.env);
                 let fix = match binding {
+                    _ if self.binding_is_maybe_mut(binding) => MutabilityFix::MaybeMut,
                     LocalBinding::Local { pat, .. } => {
                         if self.ref_part_bindings.contains(&pat) {
                             MutabilityFix::RefPart
@@ -5307,12 +5331,6 @@ impl<'db> TyChecker<'db> {
                         } else {
                             MutabilityFix::Var
                         }
-                    }
-                    LocalBinding::Param { site, idx, .. }
-                        if hir_param(self.db, site, idx)
-                            .is_some_and(|param| param.is_maybe_mut(self.db)) =>
-                    {
-                        MutabilityFix::MaybeMutParam
                     }
                     LocalBinding::Param { mode, .. } => {
                         match (mode == FuncParamMode::Own, ident.is_self(self.db)) {
@@ -5361,9 +5379,36 @@ impl<'db> TyChecker<'db> {
         if self.report_write_to_capture(binding, primary.clone()) {
             return;
         }
-        let binding =
-            binding.map(|binding| (binding.binding_name(&self.env), binding.def_span(&self.env)));
-        self.push_diag(BodyDiag::CannotBorrowMut { primary, binding });
+        self.push_diag(BodyDiag::CannotBorrowMut {
+            primary,
+            binding: binding
+                .map(|binding| (binding.binding_name(&self.env), binding.def_span(&self.env))),
+            maybe_mut: binding.is_some_and(|binding| self.binding_is_maybe_mut(binding)),
+        });
+    }
+
+    /// Whether `binding` is `mut?`: a `mut?` name, parameter or effect,
+    /// which a `mut?` function's `ref` body only reads.
+    pub(super) fn binding_is_maybe_mut(&self, binding: LocalBinding<'db>) -> bool {
+        match binding {
+            LocalBinding::Local { pat, .. } => matches!(
+                pat.data(self.db, self.body()),
+                Partial::Present(Pat::Path(_, BindingMarker::MaybeMut))
+            ),
+            LocalBinding::Param { site, idx, .. } => {
+                hir_param(self.db, site, idx).is_some_and(|param| param.is_maybe_mut(self.db))
+            }
+            LocalBinding::EffectParam {
+                site: EffectParamSite::Func(func, _),
+                idx,
+                ..
+            } => func
+                .effects(self.db)
+                .data(self.db)
+                .get(idx)
+                .is_some_and(|effect| effect.mode == ModeMarker::MaybeMut),
+            LocalBinding::EffectParam { .. } | LocalBinding::ParamPart { .. } => false,
+        }
     }
 
     /// Reports a write through `binding` if it is a capture of the closure

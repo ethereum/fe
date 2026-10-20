@@ -644,7 +644,7 @@ impl<'db> TyChecker<'db> {
                 callable.set_mode(Some(BorrowKind::Mut));
             }
             callable.set_checked_input_tys(inputs);
-            let effect_args = this.resolve_callable_effects(span.clone(), &mut callable);
+            let effect_args = this.resolve_callable_effects(span.clone(), &mut callable, None);
             Some(ForLoopCall {
                 callable,
                 effect_args,

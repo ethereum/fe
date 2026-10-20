@@ -2,7 +2,7 @@ use crate::analysis::HirAnalysisDb;
 use crate::analysis::ty::diagnostics::{BodyDiag, FuncBodyDiag};
 use crate::analysis::ty::trait_resolution::TraitSolveCx;
 use crate::analysis::ty::ty_check::{Callable, EffectParamSite, EffectPassMode, TypedBody};
-use crate::analysis::ty::ty_def::InvalidCause;
+use crate::analysis::ty::ty_def::{BorrowKind, InvalidCause};
 use crate::hir_def::{
     Body, CallableDef, Cond, CondId, Expr, ExprId, Func, Partial, Pat, Stmt, StmtId,
 };
@@ -10,14 +10,18 @@ use crate::semantic::{EffectEnvView, EffectRequirementKey};
 use crate::span::DynLazySpan;
 
 /// Const transport admits immutable trait dictionaries, not storage providers.
-pub(crate) fn const_effects_supported(db: &dyn HirAnalysisDb, func: Func<'_>) -> bool {
+pub(crate) fn const_effects_supported(
+    db: &dyn HirAnalysisDb,
+    func: Func<'_>,
+    mode: Option<BorrowKind>,
+) -> bool {
     if !func.has_effects(db) {
         return true;
     }
     if func.is_extern(db) {
         return false;
     }
-    let requirements = EffectEnvView::new(EffectParamSite::Func(func)).requirements(db);
+    let requirements = EffectEnvView::new(EffectParamSite::Func(func, mode)).requirements(db);
     requirements.len() == func.effects(db).data(db).len()
         && requirements.iter().all(|requirement| {
             !requirement.is_mut && matches!(requirement.key, EffectRequirementKey::Trait(_))
@@ -27,6 +31,7 @@ pub(crate) fn const_effects_supported(db: &dyn HirAnalysisDb, func: Func<'_>) ->
 pub(crate) fn check_const_fn_body<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
     typed_body: &TypedBody<'db>,
 ) -> Vec<FuncBodyDiag<'db>> {
     let Some(body) = func.body(db) else {
@@ -34,7 +39,7 @@ pub(crate) fn check_const_fn_body<'db>(
     };
 
     let mut diags = check_const_body_expressions(db, body, typed_body);
-    if !const_effects_supported(db, func) {
+    if !const_effects_supported(db, func, mode) {
         diags.insert(
             0,
             BodyDiag::ConstFnEffectsNotAllowed(func.span().effects().into()).into(),
@@ -111,7 +116,7 @@ impl<'db, 'a> ConstFnChecker<'db, 'a> {
                 },
                 InvalidCause::ConstEvalNonConstCall { body, expr },
             )
-        } else if !const_effects_supported(self.db, callee) {
+        } else if !const_effects_supported(self.db, callee, callable.mode()) {
             (
                 BodyDiag::ConstFnEffectfulCall {
                     primary,

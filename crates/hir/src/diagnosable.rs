@@ -37,7 +37,7 @@ use crate::analysis::ty::trait_def::ImplementorId;
 use crate::semantic::{
     FieldView, FuncParamView, ImplAssocTypeView, InherentImplAdmissibility, VariantView,
     WherePredicateBoundView, WherePredicateView, constraints_for, header_constraints_for,
-    lower_hir_kind_local, param_env, trait_self_predicate,
+    lower_hir_kind_local, param_env, signature_mentions_maybe_mut, trait_self_predicate,
 };
 
 /// Unified "pull" diagnostics surface for HIR items and views.
@@ -362,8 +362,11 @@ impl<'db> Func<'db> {
                 }
             }
         }
-        // Only a use of its result calls a `mut?` function at `mut`.
-        if self.is_maybe_mut(db)
+        // Only a use of its result calls a `mut?` function at `mut`. A result
+        // that failed to parse, and a `mut?` on a `uses` entry naming a row
+        // (3-0078), are reported already.
+        if signature_mentions_maybe_mut(db, self, |effect| !self.names_row(db, effect))
+            && !self.return_ty(db).has_invalid(db)
             && self.return_shape(db, Some(BorrowKind::Ref))
                 == self.return_shape(db, Some(BorrowKind::Mut))
         {
@@ -375,6 +378,24 @@ impl<'db> Func<'db> {
             diags.push(TyLowerDiag::MaybeMutWithoutResult(span).into());
         }
         diags
+    }
+
+    /// A row's components carry their own modes, so a `uses` entry naming a
+    /// row takes no `mut?`.
+    pub fn diags_effects(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        self.declared_effects(db)
+            .data(db)
+            .iter()
+            .enumerate()
+            .filter(|(_, effect)| effect.mode == ModeMarker::MaybeMut && self.names_row(db, effect))
+            .map(|(idx, _)| {
+                TyLowerDiag::MaybeMutRowEffect {
+                    span: self.span().effects().param_idx(idx).into(),
+                    entry: true,
+                }
+                .into()
+            })
+            .collect()
     }
 
     /// A `#[view]` type is taken only by view and `mut` parameters and
@@ -406,10 +427,9 @@ impl<'db> Func<'db> {
                 .flat_map(|param| param.input_modes(db, mode))
                 .any(|(mode, _)| mode == FuncParamMode::Mut)
                 || self
-                    .effects(db)
-                    .data(db)
+                    .effect_requirements(db, mode)
                     .iter()
-                    .any(|effect| effect.is_mut());
+                    .any(|effect| effect.is_mut);
             let unheld_mut_view = shape
                 .mut_view(db)
                 .filter(|_| !holds_mutably && !self.is_unsafe(db))
@@ -1152,6 +1172,25 @@ impl<'db> ImplTrait<'db> {
                 })
             })
             .collect();
+        // A row has no mode, so none of its effects is `mut?`.
+        for (row_idx, row) in self.rows(db).iter().enumerate() {
+            for (idx, effect) in row
+                .effects
+                .iter()
+                .flat_map(|effects| effects.data(db).iter().enumerate())
+            {
+                if effect.mode == ModeMarker::MaybeMut {
+                    let span = self.span().item_list().assoc_row(row_idx).param_idx(idx);
+                    diags.push(
+                        TyLowerDiag::MaybeMutRowEffect {
+                            span: span.into(),
+                            entry: false,
+                        }
+                        .into(),
+                    );
+                }
+            }
+        }
         // A row whose components name rows must end in effects:
         // `uses E = Self::E` names only itself.
         if let Ok(inst) = self.trait_inst_result(db) {
@@ -2063,6 +2102,7 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_parameters(db));
         out.extend(self.diags_param_types(db));
         out.extend(self.diags_return(db));
+        out.extend(self.diags_effects(db));
         out.extend(self.diags_view_types(db));
         out.extend(self.diags_state_only_types(db));
 

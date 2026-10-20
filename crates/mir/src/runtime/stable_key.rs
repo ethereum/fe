@@ -54,19 +54,23 @@ pub fn semantic_instance_identity_in_mode<'db>(
     )
 }
 
+/// A `mut?` function's bodies, one per mode, are distinct.
+fn mode_identity(mode: Option<BorrowKind>) -> &'static str {
+    match mode {
+        None => "",
+        Some(BorrowKind::Ref) => "$ref",
+        Some(BorrowKind::Mut) => "$mut",
+    }
+}
+
 fn body_owner_identity<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> String {
     match owner {
         BodyOwner::Func(func, mode) => {
             let owner_context = semantic_owner_context_identity(db, owner).unwrap_or_default();
-            // A `mut?` function's bodies, one per mode, are distinct.
-            let mode = match mode {
-                None => "",
-                Some(BorrowKind::Ref) => "$ref",
-                Some(BorrowKind::Mut) => "$mut",
-            };
             format!(
-                "func${}${owner_context}{mode}",
-                item_identity(db, func.into())
+                "func${}${owner_context}{}",
+                item_identity(db, func.into()),
+                mode_identity(mode)
             )
         }
         BodyOwner::Const(const_) => format!("const${}", item_identity(db, const_.into())),
@@ -396,7 +400,11 @@ fn effect_param_site_identity<'db>(
     site: EffectParamSite<'db>,
 ) -> String {
     match site {
-        EffectParamSite::Func(func) => format!("func${}", item_identity(db, func.into())),
+        EffectParamSite::Func(func, mode) => format!(
+            "func${}{}",
+            item_identity(db, func.into()),
+            mode_identity(mode)
+        ),
         EffectParamSite::Contract(contract) => {
             format!("contract${}", item_identity(db, contract.into()))
         }

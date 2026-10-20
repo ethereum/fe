@@ -445,15 +445,17 @@ pub(crate) fn impl_method_evidence<'db>(
     };
     let implementor = lower_impl_trait(db, impl_trait)?;
     let conditions = collect_candidate_constraints(db, impl_trait.into()).instantiate_identity();
+    let nominal_mode = BodyOwner::func_at(db, nominal, mode).mode();
+    let mode = BodyOwner::func_at(db, body, mode).mode();
     let (subst, _, _) = trait_to_impl_param_subst(
         db,
-        CallableDef::Func(body),
-        CallableDef::Func(nominal),
+        (CallableDef::Func(body), mode),
+        (CallableDef::Func(nominal), nominal_mode),
         implementor.trait_inst(db),
     );
     let nominal_signature = substitute_complete(
         db,
-        func_signature(db, nominal, BodyOwner::func_at(db, nominal, mode).mode()),
+        func_signature(db, nominal, nominal_mode),
         &subst.residualize(db),
     )
     .ok()?;
@@ -466,7 +468,6 @@ pub(crate) fn impl_method_evidence<'db>(
             .copied()
             .collect::<Vec<_>>(),
     );
-    let mode = BodyOwner::func_at(db, body, mode).mode();
     Some(basis_proofs(
         db,
         body.scope(),
