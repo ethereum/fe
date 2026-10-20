@@ -24,12 +24,9 @@ use crate::{
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
-            trait_def::{
-                ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId,
-                resolve_trait_impl_instance,
-            },
+            trait_def::{ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId},
             trait_resolution::{
-                GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
+                GoalSatisfiability, PredicateListId, TraitSolveCx,
                 constraint::collect_func_decl_constraints, is_goal_satisfiable,
             },
             ty_check::{
@@ -431,12 +428,17 @@ pub fn generated_callee_key<'db>(
     ) {
         return Err(MethodArgMapError::MissingNominalRole(key));
     }
-    let callable = Callable::from_item(
+    let mut callable = Callable::from_item(
         db,
         CallableDef::Func(func),
         inherited.iter().chain(own_args).copied().collect(),
         trait_inst,
     );
+    // The call proves its goal and its callee's bounds where it is made, as
+    // the checker proves a written call's.
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
+    callable.record_evidence(db, solve_cx);
+    callable.record_bound_evidence(db, solve_cx);
     let callee = semantic_callee_key_with_assumptions(
         db,
         None,
@@ -892,8 +894,9 @@ fn semantic_callee_key_with_assumptions<'db>(
     }
 
     // A fully concrete implementation can shed caller context only when the
-    // same implementation is selected without it. Symbolic calls and
-    // assumption-selected defaults keep the caller's proof environment.
+    // call's proof of it names none of the caller's assumptions. Symbolic
+    // calls and assumption-selected defaults keep the caller's proof
+    // environment.
     let (context_independent, nominal_witness_required) = if let Some((resolved, inst)) =
         selected_trait_method
         && selected_impl
@@ -905,15 +908,8 @@ fn semantic_callee_key_with_assumptions<'db>(
                 | collect_flags(db, resolved.trait_inst()),
         );
         let original_ground = is_ground(collect_flags(db, inst));
-        let independent = body_ground
-            && matches!(
-                resolve_trait_impl_instance(
-                    db,
-                    TraitSolveCx::new(db, owner.scope()),
-                    resolved.trait_inst(),
-                ),
-                Selection::Unique(selected) if selected == resolved
-            );
+        let independent =
+            body_ground && callable.evidence().is_some_and(|proof| proof.is_closed(db));
         // A symbolic nominal receiver can be discarded after selection only if
         // it normalizes to the independent implementation and neither signature
         // has additional effects, method bounds, or layout slots to carry.

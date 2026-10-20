@@ -415,7 +415,7 @@ impl<'db> Callable<'db> {
     }
 
     /// Proves the call's trait goal in the checked body's context.
-    pub(super) fn record_evidence(
+    pub(crate) fn record_evidence(
         &mut self,
         db: &'db dyn HirAnalysisDb,
         solve_cx: TraitSolveCx<'db>,
@@ -431,7 +431,7 @@ impl<'db> Callable<'db> {
     /// Proves, in the checked body's context `solve_cx`, the bounds the
     /// callee's body declares, instantiated for this call, as
     /// `declared_bound_evidence` records them.
-    pub(super) fn record_bound_evidence(
+    pub(crate) fn record_bound_evidence(
         &mut self,
         db: &'db dyn HirAnalysisDb,
         solve_cx: TraitSolveCx<'db>,
