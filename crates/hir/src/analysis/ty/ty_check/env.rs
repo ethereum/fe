@@ -1490,7 +1490,7 @@ impl<'db> TyCheckEnv<'db> {
             }
         }
         for const_ref in self.const_refs.values_mut().flatten() {
-            if let ConstRef::TraitConst { use_, evidence } = const_ref {
+            if let ConstRef::TraitConst { use_, evidence, .. } = const_ref {
                 *evidence = prove(self.db, use_.solve_cx(self.db), use_.inst());
             }
         }

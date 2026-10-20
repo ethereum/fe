@@ -85,9 +85,12 @@ use super::{
         StaticAssertComparisonValues, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
-    evidence::{EvidenceId, EvidenceList, instantiated_selection},
+    evidence::{
+        EvidenceId, EvidenceList, impl_const_bound_evidence, instantiated_selection, prove,
+    },
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     instantiate_trait_self,
+    subst::substitute_complete,
     trait_def::{TraitInstId, selected_assoc_const_body_template},
     trait_resolution::{
         CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx, WellFormedness,
@@ -113,7 +116,7 @@ use crate::analysis::ty::ty_def::{ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
     closure::{CallableShape, CallableValue},
     const_ty::{
-        CallableInputOrigin, ConstTyData, ConstTyId, LoweringContext,
+        CallableInputOrigin, ConstTyData, ConstTyId, LoweringContext, const_body_assumptions,
         invalid_cause_from_eval_failure, origin_expr_for_const_eval_diag, root_ctfe_error,
     },
     normalize::{normalize_ty, normalize_with_trait_evidence},
@@ -4126,24 +4129,98 @@ pub enum ConstRef<'db> {
         /// The checker's proof of the use's trait goal, as for a call's
         /// [`Callable`].
         evidence: Option<EvidenceId<'db>>,
+        /// Proofs, in the checked body, of the bounds the trait's default
+        /// value body declares, by their places among the assumptions it is
+        /// checked under: the evidence that body's instance receives.
+        bound_evidence: Option<EvidenceList<'db>>,
     },
     InherentConst(InherentConstUse<'db>),
 }
 
 impl<'db> ConstRef<'db> {
-    /// A trait constant's defining body, its declared type and the
-    /// substitution over the body's owner: from the implementation the
-    /// checker selected, or, for a use the checker answered by an assumption,
-    /// the one the use's context selects.
+    /// A trait constant's defining body, its declared type, the substitution
+    /// over the body's owner, and the evidence the body's instance receives:
+    /// from the implementation the checker selected, or, for a use the
+    /// checker answered by an assumption, the one the use's context selects.
     pub fn trait_const_body(
         self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>)> {
-        let ConstRef::TraitConst { use_, evidence } = self else {
+    ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>, EvidenceList<'db>)> {
+        let ConstRef::TraitConst {
+            use_,
+            evidence,
+            bound_evidence,
+        } = self
+        else {
             return None;
         };
         let resolved = instantiated_selection(db, evidence, use_.solve_cx(db), use_.inst())?;
-        selected_assoc_const_body_template(db, resolved, use_.name())
+        let (body, ty, subst) = selected_assoc_const_body_template(db, resolved, use_.name())?;
+        let default = use_
+            .inst()
+            .def(db)
+            .const_(db, use_.name())
+            .and_then(|constant| constant.default_body(db));
+        // The trait's default receives the use's proofs; an implementation's
+        // value receives them from the selection's proofs of its conditions.
+        let received = match (bound_evidence, evidence) {
+            (Some(bound), _) if default == Some(body) => bound,
+            (_, Some(selection)) if default != Some(body) && selection.selection(db).is_some() => {
+                impl_const_bound_evidence(
+                    db,
+                    body,
+                    selection,
+                    GenericSubst::complete(db, subst.clone()),
+                )
+            }
+            _ => EvidenceList::none(db),
+        };
+        Some((body, ty, subst, received))
+    }
+
+    /// Proves, in the use's context, the bounds the trait's default value
+    /// body declares, instantiated for the use.
+    fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
+        let ConstRef::TraitConst {
+            use_,
+            bound_evidence,
+            ..
+        } = self
+        else {
+            return;
+        };
+        let trait_ = use_.inst().def(db);
+        let Some(body) = trait_
+            .const_(db, use_.name())
+            .and_then(|constant| constant.default_body(db))
+        else {
+            return;
+        };
+        let declared = const_body_assumptions(db, body.scope());
+        let signature = declared.extend_all_bounds(db);
+        let Some(goals) =
+            CompleteSubst::for_owner(db, trait_.into(), use_.inst().args(db).to_vec())
+                .ok()
+                .and_then(|subst| substitute_complete(db, signature, &subst).ok())
+        else {
+            return;
+        };
+        let solve_cx = use_.solve_cx(db);
+        *bound_evidence = Some(EvidenceList::of(
+            db,
+            signature
+                .list(db)
+                .iter()
+                .zip(goals.list(db))
+                .map(|(bound, &goal)| {
+                    declared
+                        .list(db)
+                        .contains(bound)
+                        .then(|| prove(db, solve_cx, goal))
+                        .flatten()
+                })
+                .collect(),
+        ));
     }
 }
 
@@ -4154,10 +4231,17 @@ impl<'db> TyVisitable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(_) => {}
-            ConstRef::TraitConst { use_, evidence } => {
+            ConstRef::TraitConst {
+                use_,
+                evidence,
+                bound_evidence,
+            } => {
                 use_.visit_with(visitor);
                 if let Some(evidence) = evidence {
                     evidence.visit_with(visitor);
+                }
+                if let Some(bound_evidence) = bound_evidence {
+                    bound_evidence.visit_with(visitor);
                 }
             }
             ConstRef::InherentConst(use_) => use_.visit_with(visitor),
@@ -4172,9 +4256,15 @@ impl<'db> TyFoldable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(const_def) => ConstRef::Const(const_def),
-            ConstRef::TraitConst { use_, evidence } => ConstRef::TraitConst {
+            ConstRef::TraitConst {
+                use_,
+                evidence,
+                bound_evidence,
+            } => ConstRef::TraitConst {
                 use_: use_.fold_with(db, folder),
                 evidence: evidence.map(|evidence| evidence.fold_with(db, folder)),
+                bound_evidence: bound_evidence
+                    .map(|bound_evidence| bound_evidence.fold_with(db, folder)),
             },
             ConstRef::InherentConst(use_) => ConstRef::InherentConst(use_.fold_with(db, folder)),
         }
@@ -4766,6 +4856,9 @@ impl<'db> TypedBody<'db> {
                 call.callable.record_bound_evidence(db, solve_cx);
             }
         }
+        for const_ref in tables.const_refs.values_mut().flatten() {
+            const_ref.record_bound_evidence(db);
+        }
     }
 
     /// Replaces the assumptions the body's evidence names with `bound`'s
@@ -4784,8 +4877,15 @@ impl<'db> TypedBody<'db> {
             }
         }
         for const_ref in tables.const_refs.values_mut().flatten() {
-            if let ConstRef::TraitConst { evidence, .. } = const_ref {
+            if let ConstRef::TraitConst {
+                evidence,
+                bound_evidence,
+                ..
+            } = const_ref
+            {
                 *evidence = evidence.map(|evidence| evidence.bind(db, bound));
+                *bound_evidence =
+                    bound_evidence.map(|bound_evidence| bound_evidence.bind(db, bound));
             }
         }
     }

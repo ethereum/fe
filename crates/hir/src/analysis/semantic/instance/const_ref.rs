@@ -12,7 +12,7 @@ use crate::{
             binder::Binder,
             closure::{callee_closure, callee_function_item, closure_template_ty},
             const_ty::{
-                ConstCanonEnv, ConstCanonMode, canonicalize_ty_for_mode,
+                ConstCanonEnv, ConstCanonMode, canonicalize_ty_for_mode, const_body_assumptions,
                 inherent_const_body_and_impl_args, inherent_const_decl_ty,
             },
             corelib::resolve_core_trait,
@@ -34,7 +34,7 @@ use crate::{
             },
             ty_check::{
                 BodyOwner, Callable, ConstRef, EffectParamSite, EffectProviderSpecialization,
-                ResolvedEffectArg,
+                ResolvedEffectArg, func_signature,
             },
             ty_def::{BorrowKind, TyFlags, TyId},
             ty_lower::{ParamKey, ParamSchemaId},
@@ -1102,6 +1102,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     // assumptions that body is checked under; an implementation's method
     // receives them from the selection's proofs of the implementation's
     // conditions and the call's proofs of the trait method's.
+    let subst = GenericSubst::for_owner(db, body_func.into(), subst_args);
     let evidence = match (callable.bound_evidence(), callable.evidence()) {
         (Some(bound), _) if body_func == nominal_func => bound,
         (Some(bound), Some(selection)) if selection.selection(db).is_some() => {
@@ -1110,7 +1111,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 (body_func, nominal_func, callable.mode()),
                 selection,
                 bound,
-                &subst_args,
+                subst,
             )
         }
         _ => EvidenceList::none(db),
@@ -1123,23 +1124,22 @@ fn semantic_callee_key_with_assumptions<'db>(
     // An instance with closed arguments runs with closed proofs only: one
     // the call could not supply, or supplied naming its caller's own
     // unproved assumptions, is proved here.
-    let evidence = if is_ground(collect_flags(db, subst_args.as_slice())) {
-        closed_evidence(
+    let evidence = match subst.mapping(db) {
+        Some(mapping) if is_ground(collect_flags(db, subst.generic_args(db))) => closed_evidence(
             db,
-            (body_func, owner.mode()),
-            &subst_args,
+            func_signature(db, body_func, owner.mode()),
+            mapping,
             evidence,
             TraitSolveCx::new(db, impl_env.normalization_scope(db)),
-        )
-    } else {
-        evidence
+        ),
+        _ => evidence,
     };
     Ok(Some(SemanticCallCallee {
         concrete_dispatch: callable.trait_inst().is_none() || selected_impl,
         key: SemanticInstanceKey::new(
             db,
             owner,
-            GenericSubst::for_owner(db, body_func.into(), subst_args),
+            subst,
             EffectProviderSubst::new(
                 db,
                 effect_providers
@@ -1284,7 +1284,25 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
     let instance = match const_ref {
         ConstRef::Const(const_) => semantic_const_key_for_const(db, const_),
         ConstRef::TraitConst { use_, .. } => {
-            let (body, ty, subst) = const_ref.trait_const_body(db)?;
+            let (body, ty, subst, evidence) = const_ref.trait_const_body(db)?;
+            let evidence = if collect_flags(db, evidence).contains(TyFlags::HAS_PROJECTION) {
+                normalize_ty(db, evidence, use_.origin_scope(), use_.assumptions())
+            } else {
+                evidence
+            };
+            // As for a call: an instance with closed arguments runs with
+            // closed proofs only.
+            let evidence = if is_ground(collect_flags(db, subst.values())) {
+                closed_evidence(
+                    db,
+                    const_body_assumptions(db, body.scope()).extend_all_bounds(db),
+                    &subst,
+                    evidence,
+                    use_.solve_cx(db),
+                )
+            } else {
+                evidence
+            };
             Some(SemanticInstanceKey::new(
                 db,
                 BodyOwner::AnonConstBody { body, expected: ty },
@@ -1296,7 +1314,7 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
                     use_.assumptions(),
                     vec![use_.inst()],
                 ),
-                EvidenceList::none(db),
+                evidence,
             ))
         }
         ConstRef::InherentConst(use_) => semantic_const_key_for_inherent_const(db, use_),

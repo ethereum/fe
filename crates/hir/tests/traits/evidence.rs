@@ -1,5 +1,7 @@
 use camino::Utf8PathBuf;
-use fe_hir::analysis::semantic::{get_or_build_semantic_instance, root_semantic_instance_key};
+use fe_hir::analysis::semantic::{
+    get_or_build_semantic_instance, root_semantic_instance_key, typed_body_template,
+};
 use fe_hir::analysis::ty::evidence::{Evidence, EvidenceId};
 use fe_hir::analysis::ty::trait_resolution::{PredicateListId, TraitSolveCx};
 use fe_hir::analysis::ty::ty_check::{BodyOwner, Callable, ConstRef, TypedBody, check_func_body};
@@ -33,6 +35,28 @@ fn bound<T: Grow>(_ x: T) -> u256 {
 
 fn root() -> u256 {
     bound(Wrap { t: 1 as u256 })
+}
+
+trait HasD {
+    const D: u256
+}
+
+impl<T: Copy> HasD for Wrap<T> {
+    const D: u256 = 3
+}
+
+trait HasE {
+    const E: u256 = 2
+}
+
+impl HasE for u256 {}
+
+fn root_d() -> u256 {
+    Wrap<u256>::D
+}
+
+fn root_e() -> u256 {
+    u256::E
 }
 
 trait HasK {
@@ -160,16 +184,23 @@ fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option
 /// nothing is assumed, and where the body's assumptions are.
 fn k_use_bodies(db: &HirAnalysisTestDb, func: Func<'_>) -> (bool, bool) {
     let typed_body = check_func_body(db, func).1.clone();
-    let Some(ConstRef::TraitConst { use_, evidence }) = typed_body.const_refs().next() else {
+    let Some(ConstRef::TraitConst {
+        use_,
+        evidence,
+        bound_evidence,
+    }) = typed_body.const_refs().next()
+    else {
         panic!("missing trait constant use");
     };
     let without_assumptions = ConstRef::TraitConst {
         use_: use_.with_env(func.scope(), PredicateListId::empty_list(db)),
         evidence,
+        bound_evidence,
     };
     let with_assumptions = ConstRef::TraitConst {
         use_: use_.with_env(func.scope(), typed_body.assumptions()),
         evidence,
+        bound_evidence,
     };
     (
         without_assumptions.trait_const_body(db).is_some(),
@@ -283,4 +314,45 @@ fn an_instance_receives_its_callers_proofs_of_its_bounds() {
         panic!("`Copy for Wrap<T>` has one condition");
     };
     assert!(conds(&db, *u256_copy).is_empty());
+}
+
+/// The evidence the body defining `func`'s only trait-constant use
+/// receives: a closed proof of each assumption the body is checked under.
+fn const_body_evidence(db: &HirAnalysisTestDb, func: Func<'_>) -> Vec<bool> {
+    let template = typed_body_template(db, BodyOwner::Func(func, None));
+    let const_ref = template
+        .body
+        .const_refs()
+        .next()
+        .expect("missing trait constant use");
+    let (_, _, _, evidence) = const_ref
+        .trait_const_body(db)
+        .expect("the use has a defining body");
+    evidence
+        .entries(db)
+        .iter()
+        .map(|entry| entry.is_some_and(|evidence| evidence.is_closed(db)))
+        .collect()
+}
+
+#[test]
+fn a_constant_body_receives_proofs_of_its_assumptions() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("a_constant_body_receives_proofs_of_its_assumptions.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // `Wrap<u256>::D` is the implementation's value, checked under its
+    // condition `T: Copy`: the selection's proof of the condition supplies
+    // it.
+    assert_eq!(
+        const_body_evidence(&db, func(&db, top_mod, "root_d")),
+        vec![true]
+    );
+    // `u256::E` is the trait's default, checked under `Self: HasE`: the
+    // use's proof supplies it.
+    assert!(const_body_evidence(&db, func(&db, top_mod, "root_e")).contains(&true));
 }
