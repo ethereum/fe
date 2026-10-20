@@ -623,23 +623,39 @@ pub(crate) fn names_shape_without_mode<'db>(
     db: &'db dyn HirAnalysisDb,
     value: &impl TyVisitable<'db>,
 ) -> bool {
-    struct Finder<'db> {
+    names_assoc_ty(db, value, |assoc| {
+        assoc.mode.is_none() && assoc.is_shape(db)
+    })
+}
+
+/// Whether `value` names an associated type or shape `found` accepts.
+pub(crate) fn names_assoc_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    value: &impl TyVisitable<'db>,
+    found: impl Fn(&AssocTy<'db>) -> bool,
+) -> bool {
+    struct Finder<'db, F> {
         db: &'db dyn HirAnalysisDb,
-        found: bool,
+        found: F,
+        any: bool,
     }
-    impl<'db> TyVisitor<'db> for Finder<'db> {
+    impl<'db, F: Fn(&AssocTy<'db>) -> bool> TyVisitor<'db> for Finder<'db, F> {
         fn db(&self) -> &'db dyn HirAnalysisDb {
             self.db
         }
 
         fn visit_assoc_ty(&mut self, assoc_ty: &AssocTy<'db>) {
-            self.found |= assoc_ty.mode.is_none() && assoc_ty.is_shape(self.db);
+            self.any |= (self.found)(assoc_ty);
             walk_assoc_ty(self, assoc_ty);
         }
     }
-    let mut finder = Finder { db, found: false };
+    let mut finder = Finder {
+        db,
+        found,
+        any: false,
+    };
     value.visit_with(&mut finder);
-    finder.found
+    finder.any
 }
 
 /// The parameter list a tuple type written for a shape argument is, when

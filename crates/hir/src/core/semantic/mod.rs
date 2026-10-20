@@ -34,10 +34,10 @@ use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{
     Shape, is_param_product, lower_param_product, lower_return_shape, lower_shape_value,
-    mentions_mode, names_shape_without_mode, param_product_diags, return_shape_diags,
-    shape_value_diags,
+    mentions_mode, names_assoc_ty, names_shape_without_mode, param_product_diags,
+    return_shape_diags, shape_value_diags,
 };
-use crate::analysis::ty::ty_def::{BorrowKind, Kind};
+use crate::analysis::ty::ty_def::{BorrowKind, Kind, ShapeMode};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
 use crate::hir_def::params::{FuncParamMode, KindBound as HirKindBound};
 use crate::hir_def::scope_graph::ScopeId;
@@ -5134,6 +5134,46 @@ impl<'db> ImplAssocTypeView<'db> {
                 }
                 .into(),
             ];
+        }
+
+        if def.is_shape
+            && let Some(name) = def.name.to_opt()
+        {
+            // A shape's accesses are at most the mode it is named at, so at
+            // `ref` it grants no `mut`.
+            let at_ref = ty.at_shape_mode(db, ShapeMode::Ref).as_shape_part(db);
+            if at_ref.has_access_of(db, BorrowKind::Mut) {
+                return vec![
+                    ImplDiag::ShapeGrantsMut {
+                        primary: ty_span.into(),
+                        name,
+                    }
+                    .into(),
+                ];
+            }
+            // A shape a trait method returns makes it a projection in every
+            // impl.
+            if let Some(trait_) = self.owner.trait_def(db)
+                && !at_ref.has_access()
+                && trait_.methods(db).any(|method| {
+                    method
+                        .return_shape(db, method.modes(db)[0])
+                        .is_some_and(|shape| {
+                            names_assoc_ty(db, shape, |assoc| {
+                                assoc.name == name && assoc.trait_.def(db) == trait_
+                            })
+                        })
+                })
+            {
+                return vec![
+                    ImplDiag::ShapeWithoutAccess {
+                        primary: ty_span.into(),
+                        name,
+                        trait_,
+                    }
+                    .into(),
+                ];
+            }
         }
 
         Vec::new()

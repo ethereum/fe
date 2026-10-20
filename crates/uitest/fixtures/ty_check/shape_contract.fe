@@ -1,0 +1,50 @@
+// An impl's shape grants at most the mode it is named at, and a shape a
+// trait method returns has an access.
+trait Holds {
+    shape Part
+}
+
+struct Writes {}
+
+// `mut` where it is named at `ref`: write `mut?`.
+impl Holds for Writes {
+    shape Part = mut u256
+}
+
+struct Wrap<D> {}
+
+impl<D: Holds> Holds for Wrap<D> {
+    shape Part = (own usize, D::Part<mut>)
+}
+
+// Accepted: accesses at the mode, and an inherited shape.
+struct Reads {}
+
+impl Holds for Reads {
+    shape Part = (ref u256, mut? u256)
+}
+
+struct Nest<D> {}
+
+impl<D: Holds> Holds for Nest<D> {
+    shape Part = (own usize, D::Part)
+}
+
+trait Driver {
+    shape Step
+
+    fn peek(self) -> Self::Step<ref>
+}
+
+struct Owned {
+    x: u256,
+}
+
+// `peek` is a projection in every impl, so its shape has an access.
+impl Driver for Owned {
+    shape Step = own u256
+
+    fn peek(self) -> own u256 {
+        self.x
+    }
+}

@@ -1,0 +1,31 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/shape_contract.fe
+---
+error[6-0008]: method `peek` has incompatible return type
+   ┌─ shape_contract.fe:47:8
+   │
+36 │     fn peek(self) -> Self::Step<ref>
+   │        ---- trait requires this return type
+   ·
+47 │     fn peek(self) -> own u256 {
+   │        ^^^^ expected `Self::Step<ref>`, found `u256`
+
+error[6-0039]: `Part` grants `mut` where it is named at `ref`
+   ┌─ shape_contract.fe:11:18
+   │
+11 │     shape Part = mut u256
+   │                  ^^^^^^^^ a shape's accesses are at most its mode: write `mut?` for an access at it
+
+error[6-0039]: `Part` grants `mut` where it is named at `ref`
+   ┌─ shape_contract.fe:17:18
+   │
+17 │     shape Part = (own usize, D::Part<mut>)
+   │                  ^^^^^^^^^^^^^^^^^^^^^^^^^ a shape's accesses are at most its mode: write `mut?` for an access at it
+
+error[6-0040]: `Step` has no access
+   ┌─ shape_contract.fe:45:18
+   │
+45 │     shape Step = own u256
+   │                  ^^^^^^^^ `Driver` returns it as a projection, so it needs a `ref`, `mut?` or `mut` part

@@ -6476,6 +6476,32 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 )
             }
 
+            Self::ShapeGrantsMut { primary, name } => primary_diag(
+                severity,
+                format!(
+                    "`{}` grants `mut` where it is named at `ref`",
+                    name.data(db)
+                ),
+                "a shape's accesses are at most its mode: write `mut?` for an access at it",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ShapeWithoutAccess {
+                primary,
+                name,
+                trait_,
+            } => primary_diag(
+                severity,
+                format!("`{}` has no access", name.data(db)),
+                format!(
+                    "`{}` returns it as a projection, so it needs a `ref`, `mut?` or `mut` part",
+                    trait_.name(db).unwrap().data(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
             Self::AssocShapeMismatch {
                 primary,
                 trait_,

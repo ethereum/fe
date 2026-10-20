@@ -1696,6 +1696,20 @@ pub enum ImplDiag<'db> {
         trait_: Trait<'db>,
     },
 
+    /// An impl's associated shape granting `mut` where it is named at `ref`.
+    ShapeGrantsMut {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
+
+    /// An impl's associated shape with no access, which a trait method
+    /// returns as a projection.
+    ShapeWithoutAccess {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        trait_: Trait<'db>,
+    },
+
     /// An impl giving an associated shape with `type`, or an associated
     /// type with `shape`.
     AssocShapeMismatch {
@@ -1842,6 +1856,8 @@ impl ImplDiag<'_> {
             Self::MethodMaybeMutMismatch { .. } => 35,
             Self::PartialMutImpl { .. } => 36,
             Self::AssocShapeMismatch { .. } => 38,
+            Self::ShapeGrantsMut { .. } => 39,
+            Self::ShapeWithoutAccess { .. } => 40,
             Self::SpreadNotListed { .. } => 37,
         }
     }
