@@ -945,7 +945,8 @@ pub fn return_shape_diags<'db>(
             .map(|ty| return_shape_diags(db, ty, scope, span, assumptions))
             .unwrap_or_default()
     };
-    if !mentions_mode(db, ty) {
+    // A tuple is checked part by part: a part may name a shape.
+    if !mentions_mode(db, ty) && !matches!(ty.data(db), TypeKind::Tuple(_)) {
         return collect_hir_ty_diags(db, scope, ty, span, assumptions);
     }
     match ty.data(db) {

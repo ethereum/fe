@@ -1,0 +1,82 @@
+// Generic code forwards an associated shape whole, and nested in a product;
+// each instance grants what its impl's shape lists, from memory or storage.
+use std::evm::{Create, Evm}
+
+trait Driver {
+    shape Step
+
+    fn at(mut? self) -> Self::Step
+}
+
+struct Pair {
+    a: u256,
+    b: u256,
+}
+
+impl Driver for Pair {
+    shape Step = (mut? u256, mut? u256)
+
+    fn at(mut? self) -> (mut? u256, mut? u256) {
+        (mut? self.a, mut? self.b)
+    }
+}
+
+fn first<D: mut? Driver>(_ d: mut? D) -> D::Step {
+    d.at()
+}
+
+fn tag<D: mut? Driver>(_ d: mut? D, _ i: usize) -> (own usize, D::Step) {
+    (i, d.at())
+}
+
+
+msg M {
+    #[selector = 1]
+    Set,
+    #[selector = 2]
+    Get -> u256,
+}
+
+pub contract C {
+    mut p: Pair,
+
+    recv M {
+        Set uses (mut p) {
+            let (i, (mut x, mut y)) = tag(mut p, 3)
+            x = 10 + i as u256
+            y = 20
+        }
+        Get -> u256 uses (p) {
+            let (i, (x, y)) = tag(p, 4)
+            x + y + i as u256
+        }
+    }
+}
+
+#[test]
+fn nested_storage() uses (cr: mut Create, evm: mut Evm) {
+    let c = cr.create2<C>(value: 0, args: (), salt: 1)
+    evm.call(addr: c, gas: 200000, value: 0, message: M::Set {})
+    let r = evm.call(addr: c, gas: 200000, value: 0, message: M::Get {})
+    assert(r == 37)
+}
+
+#[test]
+fn nested_memory() {
+    var p = Pair { a: 1, b: 2 }
+    let (i, (mut x, mut y)) = tag(mut p, 5)
+    x = i as u256
+    y = i as u256 * 2
+    assert(p.a == 5 && p.b == 10)
+}
+
+#[test]
+fn pair_forward() {
+    var p = Pair { a: 1, b: 2 }
+    let (mut x, mut y) = first(mut p)
+    x = 10
+    y = 20
+    assert(p.a == 10 && p.b == 20)
+    let (r, s) = first(p)
+    assert(r + s == 30)
+}

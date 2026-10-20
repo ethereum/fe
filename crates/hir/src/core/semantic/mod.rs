@@ -812,16 +812,13 @@ impl<'db> Func<'db> {
         };
         let assumptions = self.assumptions(db);
         let span = self.span().sig().ret_ty();
-        let diags = if mentions_mode(db, hir_ty) {
+        let shape = self.return_shape(db, self.modes(db)[0]);
+        let diags = if mentions_mode(db, hir_ty) || shape.is_some() {
             return_shape_diags(db, hir_ty, self.scope(), span.clone(), assumptions)
         } else {
             collect_ty_lower_errors(db, self.scope(), hir_ty, span.clone(), assumptions)
         };
-        if diags.is_empty()
-            && self
-                .return_shape(db, self.modes(db)[0])
-                .is_some_and(|shape| names_shape_without_mode(db, shape))
-        {
+        if diags.is_empty() && shape.is_some_and(|shape| names_shape_without_mode(db, shape)) {
             return vec![TyLowerDiag::ShapeWithoutMode(span.into()).into()];
         }
         diags
