@@ -23,7 +23,7 @@ modify rustup aliases:
 
 ```sh
 git clone https://github.com/fe-lang/sonatina.git /tmp/fe-sp1-sonatina
-git -C /tmp/fe-sp1-sonatina checkout 897941a7450c0d0e5aa4c7e4539c79beb008eea5
+git -C /tmp/fe-sp1-sonatina checkout 4039bbc83f2c80b4080224a2f6b3595f347aa9ed
 bash /tmp/fe-sp1-sonatina/crates/sp1/install-toolchain.sh /tmp/fe-sp1-toolchain
 export SONATINA_SP1_TOOLCHAIN=/tmp/fe-sp1-toolchain
 
@@ -32,9 +32,11 @@ target/release/fe build --backend sp1 --emit elf,ir examples/sp1_increment.fe
 
 This writes `examples/out/sp1_increment.elf` and `examples/out/sp1_increment.sp1.sona`.
 The default emit for SP1 is `elf`; `--emit ir` needs no Succinct toolchain.
-The linker builds Sonatina's embedded, locked SP1 runtime, which can require
-network access to populate Cargo's dependency cache. It supplies startup,
-public-value digest finalization, and halt handling.
+Linking uses Sonatina's embedded, locked SP1 runtime, which supplies startup,
+public-value digest finalization, and halt handling. Fe builds it once and
+reuses that build from `sp1-runtime` in Fe's cache directory (`$FE_CACHE_DIR`,
+else the user cache directory, e.g. `~/.cache/fe`). The first build can require
+network access to populate Cargo's dependency cache.
 
 ## Input and public values
 

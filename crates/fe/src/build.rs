@@ -7,6 +7,8 @@ use std::{
 
 use camino::{Utf8Path, Utf8PathBuf};
 use codegen::{OptLevel, SonatinaContractBytecode};
+#[cfg(feature = "sp1")]
+use common::cache::cache_dir;
 use common::{
     InputDb,
     config::{
@@ -1558,11 +1560,14 @@ fn build_sp1_top_mod(
     .map_err(|err| err.to_string())?;
     let elf = toolchain
         .map(|toolchain| {
+            let cache = cache_dir("sp1-runtime")
+                .ok_or("no cache directory for the SP1 runtime; set FE_CACHE_DIR")?;
             let object = artifacts.object.as_deref().expect("SP1 object requested");
-            Sp1Runtime::build(toolchain)?.link_objects(&[object])
+            Sp1Runtime::build(toolchain, cache)
+                .and_then(|runtime| runtime.link_objects(&[object]))
+                .map_err(|err| err.to_string())
         })
-        .transpose()
-        .map_err(|err| err.to_string())?;
+        .transpose()?;
     ensure_output_dirs(emit, out_dir, out_dir)?;
     if let Some(ir) = artifacts.ir {
         write_named_ir_artifact(out_dir, report_dir, ir_file_stem, "sp1.sona", &ir)?;
