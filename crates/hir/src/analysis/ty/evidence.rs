@@ -27,10 +27,10 @@ use super::{
         PredicateListId, Selection, TraitSolveCx, answering_assumption,
         constraint::collect_candidate_constraints, normalize_trait_inst_preserving_validity,
     },
-    ty_check::{BodyOwner, func_signature},
+    ty_check::{BodyOwner, func_declared_bounds, func_signature},
     ty_def::{BorrowKind, TyFlags},
     ty_lower::CompleteSubst,
-    visitor::{TyVisitable, TyVisitor, collect_flags},
+    visitor::{TyVisitable, TyVisitor, collect_flags, mentions_effect_provider},
 };
 use crate::{
     analysis::{HirAnalysisDb, semantic::GenericSubst},
@@ -229,6 +229,13 @@ impl<'db> TyVisitable<'db> for EvidenceId<'db> {
     }
 }
 
+/// Whether `goal` names no parameter, inference variable or projection: no
+/// assumption answers it, so its proof is the same in every body.
+fn is_closed_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> bool {
+    !collect_flags(db, goal)
+        .intersects(TyFlags::HAS_PARAM | TyFlags::HAS_VAR | TyFlags::HAS_PROJECTION)
+}
+
 /// Proves `goal` in `solve_cx`, the context of the body that uses it. A goal
 /// or proof that still holds inference variables, such as a generic function
 /// item's own, has no evidence: it is proved where the body is instantiated.
@@ -237,15 +244,55 @@ pub fn prove<'db>(
     solve_cx: TraitSolveCx<'db>,
     goal: TraitInstId<'db>,
 ) -> Option<EvidenceId<'db>> {
-    // No assumption answers a closed goal, so every body shares its proof.
-    let closed = !collect_flags(db, goal)
-        .intersects(TyFlags::HAS_PARAM | TyFlags::HAS_VAR | TyFlags::HAS_PROJECTION);
-    let solve_cx = if closed {
+    // Every body shares a closed goal's proof.
+    let solve_cx = if is_closed_goal(db, goal) {
         solve_cx.with_assumptions(PredicateListId::empty_list(db))
     } else {
         solve_cx
     };
     prove_in(db, solve_cx, goal)
+}
+
+/// A use's proofs, in its body's context `solve_cx`, of the bounds a body it
+/// reaches declares (`declared`), instantiated by `subst`, by their places
+/// among the assumptions that body is checked under (`signature`). A bound
+/// whose goal is closed is left to the instance, which proves it once for
+/// every use, and so is a bound on an effect provider, which the use binds
+/// only once its providers are resolved: the use records only proofs that
+/// name its own assumptions. A goal the use's body itself assumes is that
+/// assumption.
+pub(crate) fn declared_bound_evidence<'db>(
+    db: &'db dyn HirAnalysisDb,
+    declared: PredicateListId<'db>,
+    signature: PredicateListId<'db>,
+    subst: &CompleteSubst<'db>,
+    solve_cx: TraitSolveCx<'db>,
+) -> EvidenceList<'db> {
+    let assumptions = solve_cx.assumptions().extend_all_bounds(db);
+    EvidenceList::of(
+        db,
+        signature
+            .list(db)
+            .iter()
+            .map(|&bound| {
+                if !declared.list(db).contains(&bound) || mentions_effect_provider(db, bound) {
+                    return None;
+                }
+                let goal = substitute_complete(db, bound, subst).ok()?;
+                if is_closed_goal(db, goal) {
+                    return None;
+                }
+                match assumptions
+                    .list(db)
+                    .iter()
+                    .position(|&assumption| assumption == goal)
+                {
+                    Some(index) => Some(EvidenceId::new(db, Evidence::Assumption(index as u32))),
+                    None => prove(db, solve_cx, goal),
+                }
+            })
+            .collect(),
+    )
 }
 
 #[salsa::tracked(cycle_fn = prove_cycle_recover, cycle_initial = prove_cycle_initial)]
@@ -370,11 +417,13 @@ pub(crate) fn impl_method_evidence<'db>(
             .copied()
             .collect::<Vec<_>>(),
     );
+    let mode = BodyOwner::func_at(db, body, mode).mode();
     Some(basis_proofs(
         db,
         body.scope(),
         basis,
-        func_signature(db, body, BodyOwner::func_at(db, body, mode).mode()),
+        func_declared_bounds(db, body, mode),
+        func_signature(db, body, mode),
     ))
 }
 
@@ -390,41 +439,55 @@ pub(crate) fn impl_const_evidence<'db>(
     let Some(ItemKind::ImplTrait(impl_trait)) = body.scope().parent_item(db) else {
         return None;
     };
+    let declared = const_body_assumptions(db, body.scope());
     Some(basis_proofs(
         db,
         body.scope(),
         collect_candidate_constraints(db, impl_trait.into()).instantiate_identity(),
-        const_body_assumptions(db, body.scope()).extend_all_bounds(db),
+        declared,
+        declared.extend_all_bounds(db),
     ))
 }
 
-/// Proofs, in `scope`, of each of `goals` from the assumptions `basis`, each
+/// Proofs, in `scope`, of the entries of `signature`, a body's assumptions,
+/// that the body declares (`declared`), from the assumptions `basis`, each
 /// naming the assumptions it uses by their positions in `basis` itself. A
-/// goal that needs an assumption `basis` only implies has none.
+/// bound `basis` states is that assumption. What the declared bounds imply,
+/// and a bound that needs an assumption `basis` only implies, have no proof:
+/// the instance proves them.
 fn basis_proofs<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     basis: PredicateListId<'db>,
-    goals: PredicateListId<'db>,
+    declared: PredicateListId<'db>,
+    signature: PredicateListId<'db>,
 ) -> Vec<Option<EvidenceId<'db>>> {
+    let assumption = |index: usize| EvidenceId::new(db, Evidence::Assumption(index as u32));
     // A proof names its assumptions by position in the extended basis.
-    let to_basis = EvidenceList::of(
-        db,
-        basis
-            .extend_all_bounds(db)
-            .list(db)
-            .iter()
-            .map(|assumption| {
-                let index = basis.list(db).iter().position(|pred| pred == assumption)?;
-                Some(EvidenceId::new(db, Evidence::Assumption(index as u32)))
-            })
-            .collect::<Vec<_>>(),
-    );
+    let to_basis = || {
+        EvidenceList::of(
+            db,
+            basis
+                .extend_all_bounds(db)
+                .list(db)
+                .iter()
+                .map(|pred| Some(assumption(basis.list(db).iter().position(|p| p == pred)?)))
+                .collect::<Vec<_>>(),
+        )
+    };
     let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(basis);
-    goals
+    signature
         .list(db)
         .iter()
-        .map(|&goal| prove(db, solve_cx, goal)?.rebase(db, to_basis))
+        .map(|&goal| {
+            if !declared.list(db).contains(&goal) {
+                return None;
+            }
+            if let Some(index) = basis.list(db).iter().position(|&pred| pred == goal) {
+                return Some(assumption(index));
+            }
+            prove(db, solve_cx, goal)?.rebase(db, to_basis())
+        })
         .collect()
 }
 
@@ -513,10 +576,11 @@ pub(crate) fn impl_const_bound_evidence<'db>(
 /// it gives none of, or gives one naming an assumption of a body the instance
 /// does not run in. Instances of one body with one substitution so share
 /// their evidence.
+#[salsa::tracked]
 pub(crate) fn closed_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     signature: PredicateListId<'db>,
-    subst: &CompleteSubst<'db>,
+    subst: GenericSubst<'db>,
     supplied: EvidenceList<'db>,
     solve_cx: TraitSolveCx<'db>,
 ) -> EvidenceList<'db> {
@@ -528,7 +592,11 @@ pub(crate) fn closed_evidence<'db>(
     if (0..signature.list(db).len()).all(|index| closed(index).is_some()) {
         return supplied;
     }
-    let Ok(goals) = substitute_complete(db, signature, subst) else {
+    let Some(Ok(goals)) = subst
+        .mapping(db)
+        .as_ref()
+        .map(|subst| substitute_complete(db, signature, subst))
+    else {
         return EvidenceList::none(db);
     };
     EvidenceList::of(

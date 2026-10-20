@@ -2148,11 +2148,11 @@ pub fn root_semantic_instance_key<'db>(
         subst,
         EffectProviderSubst::new(db, effect_providers, Vec::new()),
         root_impl_env(db, owner, subst),
-        match (owner, subst.mapping(db)) {
-            (BodyOwner::Func(func, mode), Some(mapping)) => closed_evidence(
+        match owner {
+            BodyOwner::Func(func, mode) => closed_evidence(
                 db,
                 func_signature(db, func, mode),
-                mapping,
+                subst,
                 EvidenceList::none(db),
                 TraitSolveCx::new(db, owner.scope()),
             ),
