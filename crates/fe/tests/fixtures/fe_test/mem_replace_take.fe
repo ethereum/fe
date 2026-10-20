@@ -82,7 +82,7 @@ fn replace_works_on_elements() {
 
 #[test]
 fn replace_and_take_contract_state() uses (evm: mut Evm) {
-    let c = evm.create2<C>(value: 0, args: (), salt: 0)
-    let r: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: M::Go {})
+    let c = evm.create2<C>(value: Wei::zero(), args: (), salt: 0)
+    let r: u256 = evm.call(addr: c, gas: 1000000, value: Wei::zero(), message: M::Go {})
     assert(r == 5973)
 }

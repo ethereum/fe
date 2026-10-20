@@ -26,7 +26,7 @@ pub contract Target {
 
 #[test]
 fn shared_staticcall_decodes_output() uses (evm: mut Evm) {
-    let target = evm.create2<Target>(value: 0, args: (), salt: 0)
+    let target = evm.create2<Target>(value: Wei::zero(), args: (), salt: 0)
     let args = encode_msg_calldata(Query::Word { value: 42 })
     with (Call = evm) {
         assert(
@@ -37,7 +37,7 @@ fn shared_staticcall_decodes_output() uses (evm: mut Evm) {
 
 #[test(should_revert, selector = 0xdeadbeef)]
 fn staticcall_bubbles_revert_data() uses (evm: mut Evm) {
-    let target = evm.create2<Target>(value: 0, args: (), salt: 0)
+    let target = evm.create2<Target>(value: Wei::zero(), args: (), salt: 0)
     let args = encode_msg_calldata(Query::Fail {})
     with (Call = evm) {
         let _ = staticcall_decode<u256>(addr: target, gas: 100000, args: args.span())
@@ -46,7 +46,7 @@ fn staticcall_bubbles_revert_data() uses (evm: mut Evm) {
 
 #[test(should_revert)]
 fn staticcall_rejects_short_output() uses (evm: mut Evm) {
-    let target = evm.create2<Target>(value: 0, args: (), salt: 0)
+    let target = evm.create2<Target>(value: Wei::zero(), args: (), salt: 0)
     let args = encode_msg_calldata(Query::Short {})
     with (Call = evm) {
         let _ = staticcall_decode<u256>(addr: target, gas: 100000, args: args.span())
@@ -55,7 +55,7 @@ fn staticcall_rejects_short_output() uses (evm: mut Evm) {
 
 #[test(should_revert)]
 fn staticcall_rejects_noncanonical_output() uses (evm: mut Evm) {
-    let target = evm.create2<Target>(value: 0, args: (), salt: 0)
+    let target = evm.create2<Target>(value: Wei::zero(), args: (), salt: 0)
     let args = encode_msg_calldata(Query::Word { value: 2 })
     with (Call = evm) {
         let _ = staticcall_decode<bool>(addr: target, gas: 100000, args: args.span())

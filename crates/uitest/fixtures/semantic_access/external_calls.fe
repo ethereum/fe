@@ -8,7 +8,7 @@ use std::evm::{Address, Call, Evm, RawStorage}
 fn ping() uses (call: mut Call) {
     var output = MemBuffer::empty()
     let outcome = call.raw_call(
-        addr: Address::new(1), gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: Wei::zero(),
         args: MemSpan::empty(), ret: mut output,
     )
 }
@@ -16,7 +16,7 @@ fn ping() uses (call: mut Call) {
 fn ping_evm() uses (evm: mut Evm) {
     var output = MemBuffer::empty()
     let outcome = evm.raw_call(
-        addr: Address::new(1), gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: Wei::zero(),
         args: MemSpan::empty(), ret: mut output,
     )
 }
@@ -35,7 +35,7 @@ pub contract CallAcrossMut {
         let held = mut value
         var output = MemBuffer::empty()
         let outcome = call.raw_call(
-            addr: Address::new(1), gas: 100000, value: 0,
+            addr: Address::new(1), gas: 100000, value: Wei::zero(),
             args: MemSpan::empty(), ret: mut output,
         )
         held = 1

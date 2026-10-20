@@ -3995,7 +3995,7 @@ fn test_cli_test_unsafe_trust_rejects_untrusted_unsafe_uses() {
         ),
         (
             "unsafe_trust_create",
-            "evm.create2<dep::Vault>(value: 0, args: (), salt: 0)",
+            "evm.create2<dep::Vault>(value: Wei::zero(), args: (), salt: 0)",
             "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
         ),
     ] {

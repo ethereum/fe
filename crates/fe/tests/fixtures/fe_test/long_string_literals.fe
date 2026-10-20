@@ -108,8 +108,8 @@ fn test_long_literal_event() uses (log: mut Log) {
 
 #[test]
 fn test_long_literals_cross_calls() uses (evm: mut Evm, call: mut Call) {
-    let texts = evm.create2<Texts>(value: 0, args: (), salt: 0)
-    let greeting: DynString = evm.call(addr: texts, gas: 1000000, value: 0, message: TextMsg::Greeting {})
+    let texts = evm.create2<Texts>(value: Wei::zero(), args: (), salt: 0)
+    let greeting: DynString = evm.call(addr: texts, gas: 1000000, value: Wei::zero(), message: TextMsg::Greeting {})
     assert!(holds(greeting, len: 52, hash: keccak("Greetings from a string literal longer than one word")))
 
     let failed = texts.try_call(TextMsg::Fail {})

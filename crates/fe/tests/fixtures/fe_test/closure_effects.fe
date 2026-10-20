@@ -199,7 +199,7 @@ pub contract Tally {
 
 #[test]
 fn storage_providers() uses (evm: mut Evm, call: mut Call) {
-    let addr = evm.create2<Tally>(value: 0, args: (), salt: 0)
+    let addr = evm.create2<Tally>(value: Wei::zero(), args: (), salt: 0)
     let r: u256 = addr.call(TallyMsg::Add { a: 2, b: 3 })
     assert!(r == 5 + 2 + 3 + 5 + 5)
     let s: u256 = addr.call(TallyMsg::Add { a: 1, b: 0 })

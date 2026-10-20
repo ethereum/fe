@@ -268,7 +268,7 @@ pub contract PayloadEcho {
 
 #[test]
 fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
-    let echo = evm.create2<PayloadEcho>(value: 0, args: (), salt: 0)
+    let echo = evm.create2<PayloadEcho>(value: Wei::zero(), args: (), salt: 0)
     assert!(echo.word() != 0)
     let data = ptr::alloc_bytes(164)
     var ret = ptr::MemBuffer::with_capacity(160)
@@ -290,7 +290,7 @@ fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
             for padding in 0..(padded_len - len + 1) as usize {
                 let outcome = unsafe {
                     evm.raw_call(
-                        addr: echo, gas: 1000000, value: 0,
+                        addr: echo, gas: 1000000, value: Wei::zero(),
                         args: MemSpan::from_raw_parts(ptr: data, len: (68 + len + padding as u256) as usize),
                         ret: mut ret,
                     )
@@ -311,7 +311,7 @@ fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
             // must still produce the ABI decoder's empty revert.
             let outcome = unsafe {
                 evm.raw_call(
-                    addr: echo, gas: 1000000, value: 0,
+                    addr: echo, gas: 1000000, value: Wei::zero(),
                     args: MemSpan::from_raw_parts(ptr: data, len: (67 + len) as usize), ret: mut ret,
                 )
             }
