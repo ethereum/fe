@@ -516,7 +516,7 @@ fn declared_sol_compat_abi_type<'db>(
     // event `TOPIC0` hash does: through its `as_bytes` method.
     let as_bytes = resolve_lib_trait_path(db, scope, "core::AsBytes")?;
     let inst = TraitInstId::new_simple(db, as_bytes, vec![sem_const_ty(db, value)]);
-    let method = prove(db, solve_cx, inst)?.selection(db)?.method(
+    let method = prove(db, solve_cx, inst)?.answering(db, inst)?.method(
         db,
         IdentId::new(db, "as_bytes".to_string()),
         None,

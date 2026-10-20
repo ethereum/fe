@@ -85,7 +85,7 @@ use super::{
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     evidence::{
-        EvidenceId, EvidenceList, declared_bound_evidence, impl_const_bound_evidence,
+        Evidence, EvidenceId, EvidenceList, declared_bound_evidence, impl_const_bound_evidence,
         instantiated_selection,
     },
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
@@ -3978,7 +3978,9 @@ impl<'db> ConstRef<'db> {
         // value receives them from the selection's proofs of its conditions.
         let received = match (bound_evidence, evidence) {
             (Some(bound), _) if default == Some(body) => bound,
-            (_, Some(selection)) if default != Some(body) && selection.selection(db).is_some() => {
+            (_, Some(selection))
+                if default != Some(body) && matches!(selection.data(db), Evidence::Impl { .. }) =>
+            {
                 impl_const_bound_evidence(
                     db,
                     body,

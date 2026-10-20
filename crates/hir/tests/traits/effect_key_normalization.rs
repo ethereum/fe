@@ -2818,7 +2818,7 @@ fn impl_trait_method_typed_body_instantiation_substitutes_self() {
             .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
     )
-    .and_then(|evidence| evidence.selection(&db))
+    .and_then(|evidence| evidence.answering(&db, inst))
     .and_then(|selected| {
         selected.method(
             &db,
@@ -2867,7 +2867,7 @@ fn impl_trait_method_self_paths_preserve_binding_ty_after_instantiation() {
             .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
     )
-    .and_then(|evidence| evidence.selection(&db))
+    .and_then(|evidence| evidence.answering(&db, inst))
     .and_then(|selected| {
         selected.method(
             &db,
@@ -3083,7 +3083,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
             .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
     )
-    .and_then(|evidence| evidence.selection(&db))
+    .and_then(|evidence| evidence.answering(&db, inst))
     .and_then(|selected| {
         selected.method(
             &db,

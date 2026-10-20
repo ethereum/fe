@@ -20,7 +20,7 @@ use crate::{
                 place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowPath, expand_rows},
             },
-            evidence::{EvidenceList, impl_method_bound_evidence},
+            evidence::{Evidence, EvidenceList, impl_method_bound_evidence},
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
@@ -1105,7 +1105,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     let subst = GenericSubst::for_owner(db, body_func.into(), subst_args);
     let evidence = match (callable.bound_evidence(), callable.evidence()) {
         (Some(bound), _) if body_func == nominal_func => bound,
-        (Some(bound), Some(selection)) if selection.selection(db).is_some() => {
+        (Some(bound), Some(selection)) if matches!(selection.data(db), Evidence::Impl { .. }) => {
             impl_method_bound_evidence(
                 db,
                 (body_func, nominal_func, callable.mode()),
