@@ -17,14 +17,6 @@ error[8-0000]: type mismatch
    │         ^^^^^^ expected `u256`, but `(_, _)` is given
 
 error[8-0018]: left-hand side of assignment is immutable
-   ┌─ loop_drivers.fe:41:9
-   │
-40 │     for mut x in xs.by(d) {
-   │         ----- `x` is a read access; bind it with `mut` to write through it
-41 │         x += 1
-   │         ^ immutable assignment
-
-error[8-0018]: left-hand side of assignment is immutable
    ┌─ loop_drivers.fe:48:9
    │
 47 │     for x in xs.reversed() {

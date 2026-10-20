@@ -5456,6 +5456,14 @@ impl<'db> TyChecker<'db> {
             if self.report_write_to_capture(binding, lhs.span(self.body()).into()) {
                 return AssignLhsStatus::Immutable;
             }
+            // A `mut` binding of a read access is reported where it binds.
+            if let Some(binding @ LocalBinding::Local { pat, .. }) = binding
+                && self.env.binding_access(&binding).is_some()
+                && let Partial::Present(Pat::Path(_, marker)) = pat.data(self.db, self.body())
+                && self.binding_marker(pat, *marker) == BindingMarker::Mut
+            {
+                return AssignLhsStatus::Immutable;
+            }
             let binding = binding.map(|binding| {
                 let ident = binding.binding_name(&self.env);
                 let fix = match binding {
