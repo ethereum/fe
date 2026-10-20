@@ -846,7 +846,8 @@ fn verify(_ v: Verify<{ caller() }>) {}
     assert_eq!(box_outer_deliveries[0].1, Choice::Known(prereq));
 
     // 2. `ev_alt = with (AltOuter) { prove<Outer<Box<u32>>>() }` selects `AltOuter` (`!is_ordinary()`),
-    // and inside `AltOuter::outer`, `u32::inner()` directly carries `Choice::Known(prereq)`.
+    // and `alt_known.bounds()` records `Choice::Known(prereq)` for `AltOuter`'s closed `where u32: Inner` bound,
+    // which `AltOuter::outer` reads as `Choice::Slot(SlotRef::Bound(u32: Inner))`.
     let alt_call = run_calls[1];
     let Some((Delivery::Param(0), Choice::Known(alt_known))) =
         alt_call.delivered().first().copied()
@@ -858,6 +859,11 @@ fn verify(_ v: Verify<{ caller() }>) {}
     };
     assert!(!alt_known.is_ordinary());
     assert_eq!(alt_known.implementation(), alt_outer_impl);
+    let alt_bounds = alt_known
+        .bounds()
+        .expect("AltOuter carries closed bound delivery");
+    assert_eq!(alt_bounds.items(&db).len(), 1);
+    assert_eq!(alt_bounds.items(&db)[0].1, Choice::Known(prereq));
     let alt_outer_fn = alt_outer_impl.methods(&db).next().unwrap();
     let (_, alt_outer_typed) = check_func_body(&db, alt_outer_fn);
     let inner_call_in_alt = alt_outer_typed
@@ -867,7 +873,12 @@ fn verify(_ v: Verify<{ caller() }>) {}
         .keys()
         .find_map(|expr| alt_outer_typed.callable_expr(expr))
         .expect("u32::inner() call inside AltOuter::outer");
-    assert_eq!(inner_call_in_alt.choice(), Some(Choice::Known(prereq)));
+    assert_eq!(
+        inner_call_in_alt.choice(),
+        Some(Choice::Slot(
+            fe_hir::analysis::ty::trait_choice::SlotRef::Bound(prereq.goal())
+        ))
+    );
 }
 
 #[test]
@@ -1437,4 +1448,387 @@ fn verify_multi_hop(
     let file = db.new_stand_alone("multi_hop_conditional.fe".into(), src);
     let (top_mod, _) = db.top_mod(file);
     db.assert_no_diags(top_mod);
+}
+
+#[test]
+fn multi_hop_type_position_const_and_generic_type_reach_refused_under_with() {
+    let diag_codes = |name: &str, src: &str| -> Vec<String> {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(name.into(), src);
+        let (top_mod, _) = db.top_mod(file);
+        fe_hir::analysis::initialize_analysis_pass()
+            .run_on_module(&db, top_mod)
+            .into_iter()
+            .map(|d| d.to_complete(&db).error_code.to_string())
+            .collect()
+    };
+
+    let src = r#"
+trait Inner { const C: usize }
+impl Inner for u256 { const C: usize = 2 }
+impl Inner for u256 as AltInner { const C: usize = 4 }
+
+struct Boxed<T> { pub x: T }
+struct Nested<T> { pub boxed: Boxed<T> }
+
+trait Mid {
+    const M: usize
+    const DEF_M: usize = Self::M
+}
+impl<T: Inner> Mid for Boxed<T> {
+    const M: usize = T::C
+}
+
+trait Outer {
+    const K: usize
+    const DEF_K: usize = Self::K
+}
+impl<T> Outer for Nested<T>
+where
+    Boxed<T>: Mid
+{
+    const K: usize = <Boxed<T> as Mid>::DEF_M
+}
+
+fn make<T: Inner>() -> [u8; <Nested<T> as Outer>::K] {
+    [0; <Nested<T> as Outer>::K]
+}
+
+struct Buf<M: Mid> {
+    pub data: [u8; M::M],
+}
+
+struct Checked<M: Mid>
+where
+    { M::M == 2 }
+{
+    pub val: M,
+}
+
+pub fn two_hop_type_reads() {
+    with (AltInner) {
+        let _a: [u8; <Nested<u256> as Outer>::K] = [0; 2]
+        let _b: [u8; <Nested<u256> as Outer>::DEF_K] = [0; 2]
+        let _c: [u8; { <Nested<u256> as Outer>::K }] = [0; 2]
+        let _d: [u8; { <Nested<u256> as Outer>::DEF_K }] = [0; 2]
+        let _e = make<u256>()
+        let _f: Buf<Boxed<u256>> = Buf { data: [0; 2] }
+        let _g: Checked<Boxed<u256>> = Checked { val: Boxed { x: 1 } }
+    }
+}
+"#;
+    let codes = diag_codes("multi_hop_type_read.fe", src);
+    assert!(
+        codes.iter().filter(|c| *c == "8-0122").count() >= 7,
+        "expected at least 7 `8-0122` refusals for 2-hop type-position associated constants, generic type-reach, and parameterized structs under `with (AltInner)`, got {codes:?}"
+    );
+}
+
+#[test]
+fn closed_intermediate_impl_where_clause_transports_subchoice_under_with() {
+    let src = r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const C: u256
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner {
+    const C: u256 = 20
+    const fn inner() -> u256 { 20 }
+}
+
+struct Unit {}
+struct Boxed<T> { pub x: T }
+struct UnitTwoHop {}
+
+trait Mid {
+    const fn mid() -> u256
+}
+impl<T: Inner> Mid for Boxed<T> {
+    const fn mid() -> u256 { T::inner() }
+}
+
+trait Outer {
+    const K: u256
+    const fn outer(self) -> u256
+}
+impl Outer for Unit
+where
+    u256: Inner
+{
+    const K: u256 = <u256 as Inner>::C
+    const fn outer(self) -> u256 { u256::inner() }
+}
+
+impl Outer for UnitTwoHop
+where
+    Boxed<u256>: Mid
+{
+    const K: u256 = <Boxed<u256> as Mid>::mid()
+    const fn outer(self) -> u256 { <Boxed<u256> as Mid>::mid() }
+}
+
+const fn run<T: Outer>(_ x: T) -> u256 {
+    x.outer()
+}
+
+const fn run_with_ev(_ x: Unit, _ ev: Evidence<Outer<Unit>>) -> u256 {
+    with (ev) {
+        x.outer()
+    }
+}
+
+const DIRECT_CALL: u256 = with (AltInner) { (Unit {}).outer() }
+const ASSOC_CONST: u256 = with (AltInner) { <Unit as Outer>::K }
+const FORWARDED: u256 = with (AltInner) { run(Unit {}) }
+const TWO_HOP_CALL: u256 = with (AltInner) { (UnitTwoHop {}).outer() }
+const TWO_HOP_CONST: u256 = with (AltInner) { <UnitTwoHop as Outer>::K }
+const TWO_HOP_FORWARDED: u256 = with (AltInner) { run(UnitTwoHop {}) }
+const PROVED_EV: u256 = {
+    let ev: Evidence<Outer<Unit>> = with (AltInner) { prove<Outer<Unit>>() }
+    run_with_ev(Unit {}, ev)
+}
+
+struct Verify20<const N: u256> where { N == 20 } {}
+fn verify_closed_where_transport(
+    _ a: Verify20<DIRECT_CALL>,
+    _ b: Verify20<ASSOC_CONST>,
+    _ c: Verify20<FORWARDED>,
+    _ d: Verify20<TWO_HOP_CALL>,
+    _ e: Verify20<TWO_HOP_CONST>,
+    _ f: Verify20<TWO_HOP_FORWARDED>,
+    _ g: Verify20<PROVED_EV>,
+) {}
+"#;
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone("closed_where_transports.fe".into(), src);
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+}
+
+#[test]
+fn closed_unsatisfied_impl_where_clause_is_refused_under_with() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "closed_unsatisfied_where_refused.fe".into(),
+        r#"
+trait Inner {
+    fn inner() -> u256
+}
+impl Inner for u256 {
+    fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner {
+    fn inner() -> u256 { 20 }
+}
+
+struct Boxed<T> { pub x: T }
+
+trait Mid {
+    fn mid() -> u256
+}
+impl<T: Inner> Mid for Boxed<T> {
+    fn mid() -> u256 { T::inner() }
+}
+
+trait Step {
+    fn step(self) -> u256
+}
+impl<T> Step for Boxed<T>
+where
+    Boxed<u256>: Mid
+{
+    fn step(self) -> u256 { <Boxed<u256> as Mid>::mid() }
+}
+
+pub fn check_refusal<T>(_ x: Boxed<T>) -> u256
+where
+    Boxed<T>: Step
+{
+    with (AltInner) {
+        x.step()
+    }
+}
+"#,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    let codes: Vec<String> = fe_hir::analysis::initialize_analysis_pass()
+        .run_on_module(&db, top_mod)
+        .into_iter()
+        .map(|d| d.to_complete(&db).error_code.to_string())
+        .collect();
+    assert!(
+        codes.iter().any(|c| c == "8-0098"),
+        "expected `8-0098` refusal when a candidate impl's closed where-clause reads an opened slot through a condition, got {codes:?}"
+    );
+}
+
+#[test]
+fn default_trait_item_with_supertrait_bound_transports_under_with_and_evidence() {
+    let src = r#"
+use core::obligations::{Evidence, prove}
+
+trait Mid {
+    const M: u256
+    const fn mid(self) -> u256
+}
+impl Mid for u256 {
+    const M: u256 = 10
+    const fn mid(self) -> u256 { self + 10 }
+}
+impl Mid for u256 as AltMid {
+    const M: u256 = 20
+    const fn mid(self) -> u256 { self + 20 }
+}
+
+trait Outer: Mid {
+    const DEF_K: u256 = Self::M
+    const fn def_outer(self) -> u256 { self.mid() }
+}
+impl<T: Mid> Outer for T {}
+
+const EV_OUTER: Evidence<Outer<u256>> = with (AltMid) {
+    prove<Outer<u256>>()
+}
+
+const DIRECT_WITH_ALT: u256 = with (AltMid) {
+    (1 as u256).def_outer() + <u256 as Outer>::DEF_K
+}
+
+const VIA_EV_OUTER: u256 = with (EV_OUTER) {
+    (1 as u256).def_outer() + <u256 as Outer>::DEF_K
+}
+
+struct Verify41<const N: u256> where { N == 41 } {}
+fn verify_supertrait_default(
+    _ a: Verify41<DIRECT_WITH_ALT>,
+    _ b: Verify41<VIA_EV_OUTER>,
+) {}
+"#;
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone("supertrait_default_transport.fe".into(), src);
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+}
+
+#[test]
+fn factory_and_pattern_constant_subchoices_and_refusals_under_with() {
+    let diag_codes = |name: &str, src: &str| -> Vec<String> {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(name.into(), src);
+        let (top_mod, _) = db.top_mod(file);
+        fe_hir::analysis::initialize_analysis_pass()
+            .run_on_module(&db, top_mod)
+            .into_iter()
+            .map(|d| d.to_complete(&db).error_code.to_string())
+            .collect()
+    };
+
+    let positive = r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const C: u256
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner {
+    const C: u256 = 20
+    const fn inner() -> u256 { 20 }
+}
+
+struct Boxed<T> { pub x: T }
+trait Outer {
+    const K: u256
+    const fn outer(self) -> u256
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const K: u256 = T::C
+    const fn outer(self) -> u256 { T::inner() }
+}
+
+const fn repack(_ ev: Evidence<Inner<u256>>) -> Evidence<Outer<Boxed<u256>>> {
+    with (ev) {
+        prove<Outer<Boxed<u256>>>()
+    }
+}
+
+const EV_ALT: Evidence<Inner<u256>> = with (AltInner) {
+    prove<Inner<u256>>()
+}
+
+const FROM_FACTORY: u256 = with (repack(EV_ALT)) {
+    (Boxed { x: 1 as u256 }).outer() + <Boxed<u256> as Outer>::K
+}
+
+const FROM_PATTERN: u256 = with (AltInner) {
+    match 20 {
+        <Boxed<u256> as Outer>::K => 20,
+        _ => 10,
+    }
+}
+
+struct Verify40<const N: u256> where { N == 40 } {}
+struct Verify20<const N: u256> where { N == 20 } {}
+fn verify_factory_and_pattern(
+    _ a: Verify40<FROM_FACTORY>,
+    _ b: Verify20<FROM_PATTERN>,
+) {}
+"#;
+    let codes_pos = diag_codes("factory_and_pattern_pos.fe", positive);
+    assert!(
+        codes_pos.is_empty(),
+        "expected no diagnostics for closed factory and pattern constant sub-choices, got {codes_pos:?}"
+    );
+
+    let negative = r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const C: u256
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn inner() -> u256 { 10 }
+}
+
+struct Boxed<T> { pub x: T }
+trait Outer {
+    const K: u256
+    const fn outer(self) -> u256
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const K: u256 = T::C
+    const fn outer(self) -> u256 { T::inner() }
+}
+
+const fn make_outer<T>() -> Evidence<Outer<Boxed<T>>>
+where
+    Boxed<T>: Outer
+{
+    prove<Outer<Boxed<T>>>()
+}
+
+pub fn bad_factory(_ ev: Evidence<Inner<u256>>) -> u256 {
+    with (ev) {
+        with (make_outer<u256>()) {
+            (Boxed { x: 1 as u256 }).outer()
+        }
+    }
+}
+"#;
+    let codes_neg = diag_codes("factory_and_pattern_neg.fe", negative);
+    assert!(
+        codes_neg.contains(&"8-0098".to_string()),
+        "expected 8-0098 refusal for factory call capturing pending evidence sub-choice, got {codes_neg:?}"
+    );
 }

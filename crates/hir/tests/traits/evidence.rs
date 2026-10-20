@@ -205,23 +205,14 @@ fn grow_call_bodies<'db>(db: &'db HirAnalysisTestDb, func: Func<'db>) -> (Option
 /// nothing is assumed, and where the body's assumptions are.
 fn k_use_bodies(db: &HirAnalysisTestDb, func: Func<'_>) -> (bool, bool) {
     let typed_body = check_func_body(db, func).1.clone();
-    let Some(ConstRef::TraitConst {
-        use_,
-        evidence,
-        bound_evidence,
-    }) = typed_body.const_refs().next()
-    else {
+    let Some(ConstRef::TraitConst { use_ }) = typed_body.const_refs().next() else {
         panic!("missing trait constant use");
     };
     let without_assumptions = ConstRef::TraitConst {
         use_: use_.with_env(func.scope(), PredicateListId::empty_list(db)),
-        evidence,
-        bound_evidence,
     };
     let with_assumptions = ConstRef::TraitConst {
         use_: use_.with_env(func.scope(), typed_body.assumptions()),
-        evidence,
-        bound_evidence,
     };
     (
         without_assumptions.trait_const_body(db).is_some(),
@@ -838,8 +829,7 @@ fn verify(
     assert_eq!(trait_const_refs.len(), 2, "T::BASE and T::DEF_BASE");
     for cref in trait_const_refs {
         match cref {
-            ConstRef::TraitConst { use_, evidence, .. } => {
-                assert_eq!(evidence, Some(param_ev));
+            ConstRef::TraitConst { use_ } => {
                 assert_eq!(use_.evidence(), Some(param_ev));
                 assert!(
                     cref.trait_const_body(&db).is_none(),

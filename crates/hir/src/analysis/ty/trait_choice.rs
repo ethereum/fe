@@ -6,9 +6,9 @@
 //! delivered to its slots. Every later stage resolves a use with
 //! [`SlotChoices::resolve`]; none decides again from source.
 
-use common::indexmap::IndexMap;
 use salsa::Update;
 
+pub use super::evidence::slot_goal;
 use super::{
     binder::Binder,
     fold::{TyFoldable, TyFolder},
@@ -25,22 +25,6 @@ use crate::{
     analysis::HirAnalysisDb,
     hir_def::{Func, ImplTrait},
 };
-
-/// The slot a goal occupies: its trait and arguments, without associated-type
-/// equalities, which constrain the accepted answer rather than name a slot.
-pub fn slot_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> TraitInstId<'db> {
-    if goal.assoc_type_bindings(db).is_empty() && goal.mode(db) == crate::hir_def::ModeMarker::None
-    {
-        return goal;
-    }
-    TraitInstId::new(
-        db,
-        goal.def(db),
-        goal.args(db).clone(),
-        IndexMap::new(),
-        crate::hir_def::ModeMarker::None,
-    )
-}
 
 /// One implementation for one slot, with its conditions checked where the
 /// choice was decided. Identity includes the implementation, the slot, and
@@ -193,6 +177,26 @@ impl<'db> KnownChoice<'db> {
             .find_map(|(delivery, choice)| (*delivery == Delivery::Bound(bound)).then_some(*choice))
     }
 
+    /// The decision recorded in `self.bounds` for `bound` (in the running
+    /// body's parameter space) or, when a trait default body runs, for the
+    /// implementation bound that instantiates to `at_use`.
+    pub fn bound_choice_at_use(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        bound: TraitInstId<'db>,
+        at_use: TraitInstId<'db>,
+    ) -> Option<Choice<'db>> {
+        if let Some(choice) = self.bound_choice(db, bound) {
+            return Some(choice);
+        }
+        let target = slot_goal(db, at_use);
+        let (impl_bound, _) = self
+            .impl_goals(db)
+            .into_iter()
+            .find(|(_, inst_goal)| *inst_goal == target)?;
+        self.bound_choice(db, impl_bound)
+    }
+
     /// This choice as an `EvidenceId` proof (`Evidence::Impl`).
     pub fn to_evidence(
         self,
@@ -218,7 +222,7 @@ impl<'db> KnownChoice<'db> {
             .list(db)
             .iter()
             .zip(resolved.instantiated_constraints(db).list(db).iter())
-            .filter_map(|(&written_cond, &inst_cond)| {
+            .map(|(&written_cond, &inst_cond)| {
                 let cond_goal = inst_cond.at_mode(db, mode);
                 if let Some(choice) = self
                     .bound_choice(db, written_cond)
@@ -229,7 +233,7 @@ impl<'db> KnownChoice<'db> {
                 super::evidence::prove(db, solve_cx, cond_goal)
                     .or_else(|| super::evidence::prove(db, impl_solve_cx, cond_goal))
             })
-            .collect();
+            .collect::<Option<Vec<_>>>()?;
         Some(super::evidence::EvidenceId::new(
             db,
             super::evidence::Evidence::Impl {
@@ -483,17 +487,15 @@ pub fn const_declared_goals<'db>(
         .collect()
 }
 
-fn slots_of<'db>(
+pub(crate) fn slots_of<'db>(
     db: &'db dyn HirAnalysisDb,
     assumptions: super::trait_resolution::PredicateListId<'db>,
 ) -> Vec<TraitInstId<'db>> {
     let mut slots = Vec::new();
     for bound in assumptions.list(db).iter().copied() {
-        if bound.args(db).iter().any(|ty| ty.has_param(db)) {
-            let own = slot_goal(db, bound);
-            if !slots.contains(&own) {
-                slots.push(own);
-            }
+        let own = slot_goal(db, bound);
+        if !slots.contains(&own) {
+            slots.push(own);
         }
     }
     slots
@@ -845,6 +847,16 @@ impl<'db> Choice<'db> {
         let mut found = false;
         self.for_each_choice(db, &mut |choice| {
             found |= matches!(choice, Self::Slot(_));
+        });
+        found
+    }
+
+    /// Whether `self` or any prerequisite choice nested in its `bounds` waits
+    /// on an evidence parameter or an unsupplied frame slot.
+    pub fn has_pending_slot(self, db: &'db dyn HirAnalysisDb) -> bool {
+        let mut found = false;
+        self.for_each_choice(db, &mut |choice| {
+            found |= choice.evidence_param().is_some() || choice == Self::Slot(SlotRef::Unsupplied);
         });
         found
     }

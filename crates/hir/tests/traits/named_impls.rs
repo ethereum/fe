@@ -743,4 +743,95 @@ pub fn bad() {
         diag_codes(choice_dependent_type_under_generic_named).contains(&"8-0122".to_string()),
         "expected 8-0122 when type inside `with (NamedOuter<u256>)` reads `<u256 as Outer>::N`"
     );
+
+    let defaulted_const_param_written_frames = r#"
+trait Cap { const C: usize }
+struct Arr<const N: usize> {}
+impl<const N: usize> Cap for Arr<N> { const C: usize = N }
+impl<const N: usize = { 2 + 2 }> Cap for Arr<N> as NamedArr { const C: usize = 99 }
+
+pub fn bad_defaulted() {
+    with (NamedArr) {
+        let _xs: [u8; <Arr<4> as Cap>::C] = [0; 4]
+    }
+}
+"#;
+    assert!(
+        diag_codes(defaulted_const_param_written_frames).contains(&"8-0122".to_string()),
+        "expected 8-0122 when type inside `with (NamedArr)` with defaulted const param reads `<Arr<4> as Cap>::C`"
+    );
+
+    let anon_const_arg_on_named_impl = r#"
+struct Positive<const N: usize> where { N > 0 } {}
+trait Cap { fn get(self) -> usize }
+struct Arr<const N: usize> {}
+impl<const N: usize> Cap for Arr<N> as NamedArr {
+    fn get(self) -> usize { N }
+}
+pub fn bad_anon_const() -> usize {
+    with (NamedArr<{ let _p: Positive<0> = Positive {}; 4 }>) {
+        let a: Arr<4> = Arr {}
+        a.get()
+    }
+}
+"#;
+    assert!(
+        !diag_codes(anon_const_arg_on_named_impl).is_empty(),
+        "expected diagnostic when anonymous const argument on `with (NamedArr<{{ ... }}>)` violates inner `where` requirement"
+    );
+}
+
+#[test]
+fn generic_named_impl_own_body_sees_self_slot_for_blanket_and_named_only_traits() {
+    let src = r#"
+trait Inner {
+    const fn inner(self) -> u256
+}
+impl Inner for u256 {
+    const fn inner(self) -> u256 { self + 5 }
+}
+
+trait Outer {
+    const OC: u256 = 10
+    const fn get(self) -> u256
+    const fn helper(self) -> u256 {
+        Self::OC
+    }
+}
+
+impl<T: Inner> Outer for T as BlanketOuter {
+    const OC: u256 = 20
+    const fn get(self) -> u256 {
+        self.inner() + self.helper() + Self::OC + T::OC
+    }
+}
+
+struct Boxed<T> { pub x: T }
+impl<T: Inner> Outer for Boxed<T> as NamedBoxedOuter {
+    const OC: u256 = 30
+    const fn get(self) -> u256 {
+        self.x.inner() + self.helper() + Self::OC + <Boxed<T> as Outer>::OC
+    }
+}
+
+const FROM_BLANKET: u256 = with (BlanketOuter<u256>) {
+    (1 as u256).get()
+}
+
+const FROM_BOXED: u256 = with (NamedBoxedOuter<u256>) {
+    (Boxed { x: 1 as u256 }).get()
+}
+
+struct Verify66<const N: u256> where { N == 66 } {}
+struct Verify96<const N: u256> where { N == 96 } {}
+fn verify_own_body(
+    _ a: Verify66<FROM_BLANKET>,
+    _ b: Verify96<FROM_BOXED>,
+) {}
+"#;
+    let codes = diag_codes(src);
+    assert!(
+        codes.is_empty(),
+        "expected no diagnostics for generic named impl bodies referencing their own slot via `self.helper()`, `Self::OC`, `T::OC`, and `<Boxed<T> as Outer>::OC`, got {codes:?}"
+    );
 }

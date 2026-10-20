@@ -558,47 +558,17 @@ fn opened_by<'db>(
             if !bodies.is_empty() {
                 return None;
             }
-            let Some(trait_inst) = implementation.trait_inst(db) else {
-                return Some(Vec::new());
-            };
-            let param_set =
-                crate::analysis::ty::ty_lower::collect_generic_params(db, implementation.into());
-            let params = param_set.params(db);
-            let given_args = path.generic_args(db);
-            if params.is_empty() {
-                return Some(if given_args.is_empty(db) {
-                    vec![trait_inst]
-                } else {
-                    Vec::new()
-                });
-            }
-            let minter = crate::analysis::ty::const_ty::LoweringContext::new();
-            let lowered_args = crate::analysis::ty::ty_lower::lower_generic_arg_list(
-                db,
-                given_args,
-                expr_scope,
-                assumptions,
-                &minter,
+            return Some(
+                super::choice::instantiate_named_impl_header(
+                    db,
+                    implementation,
+                    path.generic_args(db),
+                    expr_scope,
+                    assumptions,
+                    Some,
+                )
+                .map_or_else(|_| Vec::new(), |(goal, _)| vec![goal]),
             );
-            let Ok(impl_args) = param_set.complete_args(
-                db,
-                &[],
-                &lowered_args,
-                crate::analysis::ty::generic_defaults::DefaultApplication::StructuralMetadata(
-                    &minter,
-                ),
-            ) else {
-                return Some(Vec::new());
-            };
-            if impl_args.len() != params.len() {
-                return Some(Vec::new());
-            }
-            let inst = crate::analysis::ty::binder::Binder::bind(
-                crate::hir_def::GenericParamOwner::ImplTrait(implementation),
-                trait_inst,
-            )
-            .instantiate(db, &impl_args);
-            return Some(vec![inst]);
         }
         ImplNameRes::NotVisible | ImplNameRes::Ambiguous => return Some(Vec::new()),
         ImplNameRes::NotFound => {}

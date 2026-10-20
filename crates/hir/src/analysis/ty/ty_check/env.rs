@@ -1602,28 +1602,19 @@ impl<'db> TyCheckEnv<'db> {
             .values_mut()
             .flatten()
             .for_each(|premises| *premises = premises.fold_with(self.db, &mut prober));
+        self.assumptions = self.assumptions.fold_with(self.db, &mut prober);
+        let assumptions = self.assumptions;
         self.record_choice_decisions();
-        let assumptions = self.assumptions.fold_with(self.db, &mut prober);
         let signature = self.signature.fold_with(self.db, &mut prober);
         let pattern_store = self.pattern_store.fold_with(self.db, &mut prober);
 
-        // Each trait goal a call or constant uses is now final: prove it once,
-        // here, for every later stage.
         let solve_cx = TraitSolveCx::new(self.db, prober.scope).with_assumptions(assumptions);
         for lowering in self.semantic_expr_lowering.values_mut().flatten() {
-            let callable = lowering.callable_mut();
-            callable.record_evidence(self.db, solve_cx);
-            callable.record_bound_evidence(self.db, solve_cx);
-        }
-        for plan in self.for_loop_plans.values_mut().flatten() {
-            for call in &mut plan.calls {
-                call.callable.record_evidence(self.db, solve_cx);
-                call.callable.record_bound_evidence(self.db, solve_cx);
+            if !matches!(lowering, SemanticExprLowering::Call { .. }) {
+                let callable = lowering.callable_mut();
+                callable.record_evidence(self.db, solve_cx);
+                callable.record_bound_evidence(self.db, solve_cx);
             }
-        }
-        for const_ref in self.const_refs.values_mut().flatten() {
-            const_ref.record_evidence(self.db);
-            const_ref.record_bound_evidence(self.db);
         }
 
         self.record_init_lowering

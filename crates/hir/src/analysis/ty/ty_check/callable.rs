@@ -446,7 +446,9 @@ impl<'db> Callable<'db> {
         let Some(inst) = self.trait_inst else {
             return Some((func, self.generic_args.clone()));
         };
-        if inst.args(db).iter().any(|ty| ty.has_var(db)) {
+        if inst.args(db).iter().any(|ty| ty.has_var(db))
+            || matches!(self.choice, Some(Choice::Slot(_)))
+        {
             return None;
         }
         if self.evidence.is_some() {
@@ -490,6 +492,11 @@ impl<'db> Callable<'db> {
     /// The checker's decision for this call's trait slot, if not ordinary.
     pub fn choice(&self) -> Option<Choice<'db>> {
         self.choice
+    }
+
+    /// Whether this call's trait decision reaches an unresolved [`SlotRef`].
+    pub(crate) fn has_open_choice(&self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.choice.is_some_and(|choice| choice.has_slot(db))
     }
 
     pub(crate) fn set_choice(&mut self, choice: Option<Choice<'db>>) {

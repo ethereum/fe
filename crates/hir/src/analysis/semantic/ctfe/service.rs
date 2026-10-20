@@ -1759,11 +1759,7 @@ fn force_const_computation_in_context<'db>(
                 };
             };
             // The body receives the evidence the use delivers to its bounds.
-            let mut cref = crate::analysis::ty::ty_check::ConstRef::TraitConst {
-                use_,
-                evidence: use_.evidence(),
-                bound_evidence: use_.bound_evidence(),
-            };
+            let mut cref = crate::analysis::ty::ty_check::ConstRef::trait_const(use_);
             if use_.evidence().is_none() {
                 cref.record_evidence(db);
             }

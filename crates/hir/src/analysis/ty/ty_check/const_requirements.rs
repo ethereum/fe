@@ -1138,9 +1138,26 @@ fn positioned_const_bodies<'db>(
 /// are not found here. Resolution does not reject them either, and nothing
 /// evaluates them. The explicit arguments of a callable are applied with the
 /// call, so its uses check them (`expression_const_bodies`).
+fn zip_const_param_bodies<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: GenericArgListId<'db>,
+    params: &[TyId<'db>],
+    found: &mut Vec<(Body<'db>, TyId<'db>)>,
+) {
+    for (arg, param) in args.data(db).iter().zip(params) {
+        if let GenericArg::Const(arg) = arg
+            && let Partial::Present(body) = arg.value
+            && let Some(expected) = param.const_ty_ty(db)
+        {
+            found.push((body, expected));
+        }
+    }
+}
+
 fn segment_const_args<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
+    scope: ScopeId<'db>,
     resolutions: &[(PathId<'db>, PathRes<'db>)],
 ) -> Vec<(Body<'db>, TyId<'db>)> {
     let mut found = Vec::new();
@@ -1157,20 +1174,23 @@ fn segment_const_args<'db>(
             .rev()
             .find_map(|(resolved, res)| (*resolved == current).then_some(res))
         else {
+            if let crate::analysis::name_resolution::path_resolver::ImplNameRes::Found(impl_trait) =
+                crate::analysis::name_resolution::path_resolver::resolve_impl_name(
+                    db, current, scope,
+                )
+            {
+                let params =
+                    crate::analysis::ty::ty_lower::collect_generic_params(db, impl_trait.into())
+                        .params(db);
+                zip_const_param_bodies(db, args, params, &mut found);
+            }
             continue;
         };
         match res {
             // An alias's arguments are its own parameters', whether or not the
             // aliased type uses them.
             PathRes::TyAlias(alias, _) => {
-                for (arg, param) in args.data(db).iter().zip(alias.params(db)) {
-                    if let GenericArg::Const(arg) = arg
-                        && let Partial::Present(body) = arg.value
-                        && let Some(expected) = param.const_ty_ty(db)
-                    {
-                        found.push((body, expected));
-                    }
-                }
+                zip_const_param_bodies(db, args, alias.params(db), &mut found);
             }
             res => found.extend(positioned_const_bodies(
                 db,
@@ -1372,40 +1392,37 @@ fn expression_const_bodies<'db>(
     };
     // Arguments of the path's segments, which path resolution applies, each
     // checked against its segment's own resolution (`segment_const_args`).
-    let segment_args = |path: PathId<'db>, value: bool| {
+    let segment_args = |path: PathId<'db>, scope: ScopeId<'db>, value: bool| {
         if path_const_bodies(db, path).is_empty() {
             return Vec::new();
         }
         let lowering_cx = LoweringContext::deferred().recording_resolutions();
         let resolve = |value| {
-            resolve_path_with_minter(
-                db,
-                path,
-                body.scope(),
-                typed.assumptions(),
-                value,
-                &lowering_cx,
-            )
+            resolve_path_with_minter(db, path, scope, typed.assumptions(), value, &lowering_cx)
         };
         // A tail that is not a value can still be a type, as a record's is.
         if resolve(value).is_err() {
             let _ = resolve(!value);
         }
-        segment_const_args(db, path, &lowering_cx.into_resolutions())
+        segment_const_args(db, path, scope, &lowering_cx.into_resolutions())
     };
 
+    let lex = super::env::body_lexical_env(db, body);
     let mut found: Vec<(Body<'db>, TyId<'db>)> = Vec::new();
     for (expr, data) in body.exprs(db).iter() {
+        let expr_scope = lex.expr_scope(expr).unwrap_or(body.scope());
         let entries = match data.borrowed().to_opt() {
             Some(Expr::ArrayRep(_, len)) => {
                 len.to_opt().zip(array_length_ty(db)).into_iter().collect()
             }
             Some(Expr::Path(Partial::Present(path))) => {
-                let mut entries = segment_args(*path, true);
+                let mut entries = segment_args(*path, expr_scope, true);
                 entries.extend(explicit_args(expr, path.generic_args(db)));
                 entries
             }
-            Some(Expr::RecordInit(Partial::Present(path), _)) => segment_args(*path, false),
+            Some(Expr::RecordInit(Partial::Present(path), _)) => {
+                segment_args(*path, expr_scope, false)
+            }
             Some(Expr::MethodCall(_, _, args, _)) => explicit_args(expr, *args),
             _ => Vec::new(),
         };
@@ -1418,7 +1435,7 @@ fn expression_const_bodies<'db>(
             | Pat::Record(Partial::Present(path), _),
         ) = pat.borrowed().to_opt()
         {
-            found.extend(segment_args(*path, true));
+            found.extend(segment_args(*path, body.scope(), true));
         }
     }
     // A body appears in one position, but two lookups can both find it.
@@ -2269,7 +2286,7 @@ fn trait_ref_const_args<'db>(
     }
     let lowering_cx = LoweringContext::deferred().recording_resolutions();
     let _ = resolve_path_with_minter(db, path, scope, assumptions, false, &lowering_cx);
-    segment_const_args(db, path, &lowering_cx.into_resolutions())
+    segment_const_args(db, path, scope, &lowering_cx.into_resolutions())
 }
 
 /// The anonymous constants written directly in `hir_ty`, each with the type
@@ -2295,7 +2312,7 @@ fn written_const_args<'db>(
                 assumptions,
                 ConstBodyLowering::Deferred,
             );
-            segment_const_args(db, *path, &resolutions)
+            segment_const_args(db, *path, scope, &resolutions)
         }
         _ => Vec::new(),
     }
