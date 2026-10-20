@@ -254,6 +254,13 @@ For each built contract, `fe build` writes (depending on `--emit`):
 
 For the Sonatina backend, `.bin` is the **init section** bytes and `.runtime.bin` is the **runtime section** bytes.
 
+With the optional `sp1` Cargo feature, `fe build --backend sp1 <file.fe>` compiles
+a standalone `pub fn main() -> i32` guest to SP1 RV64IM. The default output is
+`<out>/<file>.elf`; `--emit ir` writes `<out>/<file>.sp1.sona`, and `--emit elf,ir`
+writes both. ELF linking requires the pinned Succinct toolchain configured through
+`SONATINA_SP1_TOOLCHAIN`. See the [SP1 guide](tests/sp1/README.md) for installation,
+guest input and public values, and proof verification tests.
+
 The `metadata.json` artifact follows the Solidity Contract Metadata schema (`version: 1`), adapted to Fe. It is a complete, deterministic recompilation input: rebuilding with the same compiler version, `sources`, and `settings` reproduces the same bytecode. Its shape:
 
 ```
