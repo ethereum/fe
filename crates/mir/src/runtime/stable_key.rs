@@ -1021,4 +1021,100 @@ const fn call_after() -> u256 {
         assert_ne!(id_before, id_prove20);
         assert_ne!(id_prove20, id_prove30);
     }
+
+    #[test]
+    fn stable_key_distinguishes_generic_named_impl_and_prerequisite_subchoice_evidence() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "stable_key_generic_named_impl.fe".into(),
+            r#"
+trait Inner {
+    const fn inner() -> u256
+}
+impl Inner for u256 {
+    const fn inner() -> u256 { 10 }
+}
+impl Inner for u256 as AltInner20 {
+    const fn inner() -> u256 { 20 }
+}
+impl Inner for u256 as AltInner30 {
+    const fn inner() -> u256 { 30 }
+}
+
+trait Outer {
+    const fn outer() -> u256
+}
+impl Outer for u256 {
+    const fn outer() -> u256 { 1 }
+}
+impl<T: Inner> Outer for T as NamedOuter {
+    const fn outer() -> u256 { T::inner() + 100 }
+}
+
+const fn run<M: Outer>() -> u256 {
+    M::outer()
+}
+
+const fn call_ordinary() -> u256 {
+    run<u256>()
+}
+const fn call_named_default() -> u256 {
+    with (NamedOuter<u256>) {
+        run<u256>()
+    }
+}
+const fn call_named_alt20() -> u256 {
+    with (AltInner20, NamedOuter<u256>) {
+        run<u256>()
+    }
+}
+const fn call_named_alt30() -> u256 {
+    with (AltInner30, NamedOuter<u256>) {
+        run<u256>()
+    }
+}
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+
+        let func = |name: &str| {
+            top_mod
+                .children_non_nested(&db)
+                .find_map(|item| match item {
+                    ItemKind::Func(f)
+                        if f.name(&db).to_opt().is_some_and(|n| n.data(&db) == name) =>
+                    {
+                        Some(f)
+                    }
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let run_fn = func("run");
+        let run_in = |caller_name: &str| {
+            let caller = func(caller_name);
+            let inst = get_or_build_semantic_instance(
+                &db,
+                root_semantic_instance_key(&db, BodyOwner::Func(caller, None)).unwrap(),
+            );
+            let key = inst
+                .callees(&db)
+                .iter()
+                .find(|c| c.key.owner(&db) == BodyOwner::Func(run_fn, None))
+                .unwrap()
+                .key;
+            get_or_build_semantic_instance(&db, key)
+        };
+
+        let id_ordinary = semantic_instance_identity(&db, run_in("call_ordinary"));
+        let id_named_default = semantic_instance_identity(&db, run_in("call_named_default"));
+        let id_named_alt20 = semantic_instance_identity(&db, run_in("call_named_alt20"));
+        let id_named_alt30 = semantic_instance_identity(&db, run_in("call_named_alt30"));
+
+        assert_ne!(id_ordinary, id_named_default);
+        assert_ne!(id_named_default, id_named_alt20);
+        assert_ne!(id_named_default, id_named_alt30);
+        assert_ne!(id_named_alt20, id_named_alt30);
+    }
 }

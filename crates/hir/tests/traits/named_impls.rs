@@ -580,3 +580,167 @@ pub fn nested_const_in_with() {
         "expected 3 `8-0098` refusals for nested items inside `with` referencing choice-dependent `Holder<Item>`, got {codes:?}"
     );
 }
+
+#[test]
+fn generic_named_impl_opens_with_explicit_type_args_and_transports_subchoices() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "generic_named_impl_positive.fe".into(),
+        r#"
+use core::obligations::{Evidence, prove}
+
+trait Inner {
+    const C: usize
+    const fn val() -> usize
+}
+
+impl Inner for u256 {
+    const C: usize = 3
+    const fn val() -> usize { 30 }
+}
+
+impl Inner for u256 as AltInner {
+    const C: usize = 7
+    const fn val() -> usize { 70 }
+}
+
+trait OnlyInner {
+    const fn only_val() -> usize
+}
+
+impl OnlyInner for u256 as NamedOnlyInner {
+    const fn only_val() -> usize { 90 }
+}
+
+trait Outer {
+    const OC: usize
+    const fn out() -> usize
+}
+
+impl Outer for u256 {
+    const OC: usize = 1
+    const fn out() -> usize { 10 }
+}
+
+impl<T: Inner> Outer for T as NamedOuter {
+    const OC: usize = T::C + 100
+    const fn out() -> usize { T::val() + 100 }
+}
+
+impl<T: OnlyInner> Outer for T as NamedNeedsOnly {
+    const OC: usize = 200
+    const fn out() -> usize { T::only_val() + 200 }
+}
+
+const fn ask_outer<T: Outer>() -> usize {
+    T::OC + T::out()
+}
+
+const fn use_outer_ev(_ ev: Evidence<Outer<u256>>) -> usize {
+    with (ev) {
+        ask_outer<u256>()
+    }
+}
+
+const ORDINARY: usize = ask_outer<u256>()
+
+const NAMED_DEFAULT_INNER: usize = with (NamedOuter<u256>) {
+    <u256 as Outer>::OC + <u256 as Outer>::out() + ask_outer<u256>()
+}
+
+const NAMED_ALT_INNER_SAME_HEADER: usize = with (AltInner, NamedOuter<u256>) {
+    <u256 as Outer>::OC + <u256 as Outer>::out() + ask_outer<u256>()
+}
+
+const NAMED_ALT_INNER_NESTED: usize = with (AltInner) {
+    with (NamedOuter<u256>) {
+        ask_outer<u256>()
+    }
+}
+
+const NAMED_ONLY_PREREQ: usize = with (NamedOnlyInner, NamedNeedsOnly<u256>) {
+    ask_outer<u256>()
+}
+
+const NAMED_PROVED_EV: usize = {
+    let ev: Evidence<Outer<u256>> = with (AltInner, NamedOuter<u256>) {
+        prove<Outer<u256>>()
+    }
+    use_outer_ev(ev)
+}
+
+pub fn check() -> [u8; ORDINARY] {
+    let _a: [u8; NAMED_DEFAULT_INNER] = [0; 466]
+    let _b: [u8; NAMED_ALT_INNER_SAME_HEADER] = [0; 554]
+    let _c: [u8; NAMED_ALT_INNER_NESTED] = [0; 277]
+    let _d: [u8; NAMED_ONLY_PREREQ] = [0; 490]
+    let _e: [u8; NAMED_PROVED_EV] = [0; 277]
+    [0; 11]
+}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    db.assert_no_diags(module);
+}
+
+#[test]
+fn generic_named_impl_refuses_bad_arguments_unsatisfied_prereqs_and_choice_dependent_types() {
+    let missing_args = r#"
+trait Outer { fn out() -> u256 }
+impl<T> Outer for T as NamedOuter { fn out() -> u256 { 1 } }
+pub fn bad() -> u256 {
+    with (NamedOuter) {
+        <u256 as Outer>::out()
+    }
+}
+"#;
+    assert!(
+        diag_codes(missing_args).contains(&"8-0098".to_string()),
+        "expected 8-0098 when opening generic named impl without generic arguments"
+    );
+
+    let extra_args_on_non_generic = r#"
+trait Outer { fn out() -> u256 }
+impl Outer for u256 as NonGeneric { fn out() -> u256 { 1 } }
+pub fn bad() -> u256 {
+    with (NonGeneric<u256>) {
+        <u256 as Outer>::out()
+    }
+}
+"#;
+    assert!(
+        diag_codes(extra_args_on_non_generic).contains(&"8-0098".to_string()),
+        "expected 8-0098 when passing generic arguments to a non-generic named impl"
+    );
+
+    let unsatisfied_prereq = r#"
+trait OnlyInner { fn val() -> u256 }
+impl OnlyInner for u256 as NamedOnly { fn val() -> u256 { 1 } }
+trait Outer { fn out() -> u256 }
+impl<T: OnlyInner> Outer for T as NamedNeedsOnly { fn out() -> u256 { T::val() } }
+pub fn bad() -> u256 {
+    with (NamedNeedsOnly<u256>) {
+        <u256 as Outer>::out()
+    }
+}
+"#;
+    assert!(
+        diag_codes(unsatisfied_prereq).contains(&"8-0098".to_string()),
+        "expected 8-0098 when opening generic named impl whose prerequisite is not satisfied"
+    );
+
+    let choice_dependent_type_under_generic_named = r#"
+trait Outer { const N: usize }
+impl Outer for u256 { const N: usize = 2 }
+impl<T> Outer for T as NamedOuter { const N: usize = 4 }
+pub fn bad() {
+    with (NamedOuter<u256>) {
+        let _buf: [u8; <u256 as Outer>::N] = [0; 2]
+    }
+}
+"#;
+    assert!(
+        diag_codes(choice_dependent_type_under_generic_named).contains(&"8-0122".to_string()),
+        "expected 8-0122 when type inside `with (NamedOuter<u256>)` reads `<u256 as Outer>::N`"
+    );
+}

@@ -1209,7 +1209,10 @@ impl<'db> TyChecker<'db> {
     }
 
     /// `with (N)` names an implementation when `N` is not an ordinary value.
-    fn named_choice(&mut self, value: ExprId) -> Option<Result<KnownChoice<'db>, &'static str>> {
+    fn named_choice(
+        &mut self,
+        value: ExprId,
+    ) -> Option<Result<KnownChoice<'db>, Option<&'static str>>> {
         let Partial::Present(Expr::Path(Partial::Present(path))) = value.data(self.db, self.body())
         else {
             return None;
@@ -1220,63 +1223,151 @@ impl<'db> TyChecker<'db> {
         let implementation = match resolve_impl_name(self.db, *path, self.env.scope()) {
             ImplNameRes::Found(implementation) => implementation,
             ImplNameRes::NotVisible => {
-                return Some(Err(
+                return Some(Err(Some(
                     "this implementation name is not visible here; an implementation name is private to its module unless declared `pub impl`",
-                ));
+                )));
             }
-            ImplNameRes::Ambiguous => return Some(Err("the implementation name is ambiguous")),
+            ImplNameRes::Ambiguous => {
+                return Some(Err(Some("the implementation name is ambiguous")));
+            }
             ImplNameRes::NotFound => return None,
         };
         // A bare name that is both a value and a named implementation is an
         // error that asks which one is meant; a value alone is a value.
-        if path.as_ident(self.db).is_some() {
+        if path.parent(self.db).is_none()
+            && let Some(ident) = path.ident(self.db).to_opt()
+        {
             let minter = LoweringContext::new();
             if !matches!(
                 resolve_ident_expr(
                     self.db,
                     &self.env,
-                    *path,
+                    crate::hir_def::PathId::from_ident(self.db, ident),
                     value.span(self.body()).into(),
                     &minter
                 ),
                 ResolvedPathInBody::NewBinding(_)
             ) {
-                return Some(Err(
+                return Some(Err(Some(
                     "this name is both a value and a named implementation; write `{ name }` for the value, or rename one of them",
-                ));
+                )));
             }
+        }
+        if self.refuse_written_const_args(WrittenNode::Expr(value)) {
+            return Some(Err(None));
         }
         let implementation = &implementation;
         let Some(candidate) = lower_impl_trait(self.db, *implementation) else {
-            return Some(Err("the named implementation declaration is invalid"));
+            return Some(Err(Some("the named implementation declaration is invalid")));
         };
-        if !candidate.params(self.db).is_empty() {
-            return Some(Err(
-                "a generic named implementation cannot be opened by name",
-            ));
+        let given_args = path.generic_args(self.db);
+        let params = candidate.params(self.db);
+        if params.is_empty() && !given_args.is_empty(self.db) {
+            return Some(Err(Some(
+                "this named implementation takes no generic arguments",
+            )));
         }
-        // Its conditions are proved where it is declared, not under the
-        // frames of the opening: a condition that only
-        // a named implementation answers is refused until sub-choices carry
-        // the opening's answer into the implementation.
-        let mut active = rustc_hash::FxHashSet::default();
-        let bounds = self
-            .env
-            .impl_bound_choices(None, *implementation, &[], 0, None, &mut active);
-        Some(
-            KnownChoice::prove(
-                self.db,
-                TraitSolveCx::new(self.db, implementation.scope()),
-                *implementation,
-                // The slot it answers; its associated types are its own
-                // (compared with the ordinary ones where it is declared).
-                slot_goal(self.db, candidate.trait_inst(self.db)),
-            )
-            .map(|known| known.with_bounds(self.db, bounds))
-            .map_err(|_| {
-                "the named implementation's conditions do not hold where it is declared; a condition only a named implementation answers is not supported yet"
-            }),
+        let minter = LoweringContext::new();
+        let lowered_args = crate::analysis::ty::ty_lower::lower_generic_arg_list(
+            self.db,
+            given_args,
+            self.env.scope(),
+            self.env.assumptions(),
+            &minter,
+        );
+        let param_set = crate::analysis::ty::ty_lower::collect_generic_params(
+            self.db,
+            (*implementation).into(),
+        );
+        let Ok(impl_args) = param_set.complete_args(
+            self.db,
+            &[],
+            &lowered_args,
+            crate::analysis::ty::generic_defaults::DefaultApplication::Evaluate(&minter),
+        ) else {
+            return Some(Err(Some(
+                "the generic arguments do not match the named implementation's parameters",
+            )));
+        };
+        if impl_args.len() != params.len() {
+            return Some(Err(Some(if given_args.is_empty(self.db) {
+                "a generic named implementation cannot be opened by name without generic arguments"
+            } else {
+                "the generic arguments do not match the named implementation's parameters"
+            })));
+        }
+        let mut normalized_args = Vec::with_capacity(impl_args.len());
+        for &arg in &impl_args {
+            let resolved = self.resolved_ty(arg);
+            if self.refuse_choice_dependent_ty(arg, resolved, value.span(self.body()).into()) {
+                return Some(Err(None));
+            }
+            for slot in type_slot_reads(self.db, resolved) {
+                if !self.env.const_reaches.contains(&slot) {
+                    self.env.const_reaches.push(slot);
+                }
+            }
+            normalized_args.push(resolved);
+        }
+        let instantiated = crate::analysis::ty::binder::Binder::bind(
+            crate::hir_def::GenericParamOwner::ImplTrait(*implementation),
+            slot_goal(self.db, candidate.trait_inst(self.db)),
         )
+        .instantiate(self.db, &normalized_args);
+        let goal = slot_goal(
+            self.db,
+            crate::analysis::ty::trait_resolution::normalize_trait_inst_preserving_validity(
+                self.db,
+                instantiated,
+                self.env.scope(),
+                self.env.assumptions(),
+            ),
+        );
+        for &arg in goal.args(self.db) {
+            if self.refuse_choice_dependent_ty(arg, arg, value.span(self.body()).into()) {
+                return Some(Err(None));
+            }
+            for slot in type_slot_reads(self.db, arg) {
+                if !self.env.const_reaches.contains(&slot) {
+                    self.env.const_reaches.push(slot);
+                }
+            }
+        }
+        let frame = self.env.choice_frames.current();
+        let frame_cx = self.env.frame_proof_context(frame);
+        let decl_cx = TraitSolveCx::new(self.db, implementation.scope())
+            .with_assumptions(frame_cx.assumptions());
+        let mut undecided = Vec::new();
+        let mut active = rustc_hash::FxHashSet::default();
+        let bounds = self.env.impl_bound_choices(
+            frame,
+            *implementation,
+            &normalized_args,
+            0,
+            Some(&mut undecided),
+            &mut active,
+        );
+        let Ok(known) = KnownChoice::prove(self.db, frame_cx, *implementation, goal)
+            .or_else(|_| KnownChoice::prove(self.db, decl_cx, *implementation, goal))
+        else {
+            return Some(Err(Some(
+                "the named implementation's conditions do not hold where it is opened",
+            )));
+        };
+        if let Some(refusal) = self
+            .env
+            .reads_opened_condition(frame, undecided, Some(goal))
+        {
+            return Some(Err(Some(match refusal {
+                ChoiceRefusal::OpenedCondition => {
+                    "the named implementation's conditions read a slot opened here through an implementation with a condition on it; conditional implementations under `with` are not supported yet"
+                }
+                _ => {
+                    "the named implementation's conditions have a proof that cannot be followed to one implementation while a slot is opened here; this is not supported yet"
+                }
+            })));
+        }
+        Some(Ok(known.with_bounds(self.db, bounds)))
     }
 
     /// Open an unkeyed `with` binding that names an implementation. `None`
@@ -1293,13 +1384,14 @@ impl<'db> TyChecker<'db> {
                 self.add_premise_if_needed(choice.goal());
                 self.push_choice(header, value, choice.goal(), Choice::Known(choice))
             }
-            Err(reason) => {
+            Err(Some(reason)) => {
                 self.push_diag(BodyDiag::ObligationOpening {
                     primary: value.span(self.body()).into(),
                     reason,
                 });
                 false
             }
+            Err(None) => false,
         };
         self.env
             .type_expr(value, ExprProp::new(TyId::unit(self.db), false));

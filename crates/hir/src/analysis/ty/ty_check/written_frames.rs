@@ -550,10 +550,55 @@ fn opened_by<'db>(
     use crate::analysis::name_resolution::path_resolver::{ImplNameRes, resolve_impl_name};
     match resolve_impl_name(db, *path, expr_scope) {
         ImplNameRes::Found(implementation) => {
-            if path.is_bare_ident(db) && lex.expr_binding(value).is_some() {
+            if path.parent(db).is_none() && lex.expr_binding(value).is_some() {
                 return Some(Vec::new());
             }
-            return Some(implementation.trait_inst(db).into_iter().collect());
+            let mut bodies = Vec::new();
+            path_bodies(db, *path, &mut bodies);
+            if !bodies.is_empty() {
+                return None;
+            }
+            let Some(trait_inst) = implementation.trait_inst(db) else {
+                return Some(Vec::new());
+            };
+            let param_set =
+                crate::analysis::ty::ty_lower::collect_generic_params(db, implementation.into());
+            let params = param_set.params(db);
+            let given_args = path.generic_args(db);
+            if params.is_empty() {
+                return Some(if given_args.is_empty(db) {
+                    vec![trait_inst]
+                } else {
+                    Vec::new()
+                });
+            }
+            let minter = crate::analysis::ty::const_ty::LoweringContext::new();
+            let lowered_args = crate::analysis::ty::ty_lower::lower_generic_arg_list(
+                db,
+                given_args,
+                expr_scope,
+                assumptions,
+                &minter,
+            );
+            let Ok(impl_args) = param_set.complete_args(
+                db,
+                &[],
+                &lowered_args,
+                crate::analysis::ty::generic_defaults::DefaultApplication::StructuralMetadata(
+                    &minter,
+                ),
+            ) else {
+                return Some(Vec::new());
+            };
+            if impl_args.len() != params.len() {
+                return Some(Vec::new());
+            }
+            let inst = crate::analysis::ty::binder::Binder::bind(
+                crate::hir_def::GenericParamOwner::ImplTrait(implementation),
+                trait_inst,
+            )
+            .instantiate(db, &impl_args);
+            return Some(vec![inst]);
         }
         ImplNameRes::NotVisible | ImplNameRes::Ambiguous => return Some(Vec::new()),
         ImplNameRes::NotFound => {}

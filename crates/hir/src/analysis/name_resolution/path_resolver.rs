@@ -600,8 +600,7 @@ pub(crate) enum ImplNameRes<'db> {
 /// The named implementation a `with` operand's path names: its last segment
 /// in the implementation-name domain, found as any item is, through the
 /// lexical scope and imports for a bare name and through module paths
-/// otherwise, and visible from `scope`. A segment with generic arguments
-/// names nothing yet.
+/// otherwise, and visible from `scope`.
 pub(crate) fn resolve_impl_name<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
@@ -612,8 +611,9 @@ pub(crate) fn resolve_impl_name<'db>(
         let Some(segment) = path.segment(db, segment_idx) else {
             return ImplNameRes::NotFound;
         };
+        let is_last = segment_idx + 1 == path.len(db);
         if !matches!(segment.kind(db), PathKind::Ident { .. })
-            || !segment.generic_args(db).is_empty(db)
+            || (!is_last && !segment.generic_args(db).is_empty(db))
         {
             return ImplNameRes::NotFound;
         }
