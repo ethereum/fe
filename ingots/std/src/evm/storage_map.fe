@@ -1,4 +1,4 @@
-use super::effects::{Address, RawStorage, storage_at_mut}
+use super::effects::{Address, RawStorage, storage_at}
 use super::layout::mapping_slot
 use ingot::evm::ops::mstore
 use core::num::IntWord
@@ -226,8 +226,8 @@ impl<K: StorageKey + Copy, V> StorageMap<K, V> {
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses `slot` or the entries' slots.
     #[raw_place]
-    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        unsafe { storage_at_mut(slot) }
+    pub unsafe fn at(_ slot: u256) -> mut? Self uses (storage: mut? RawStorage) {
+        unsafe { storage_at(slot) }
     }
 
     /// Copies the value at `key` out of storage, in full.

@@ -3,7 +3,7 @@
 // as Solidity reserves a mapping's slot. A plain zero-sized type takes none.
 use core::marker::{Pinned, Storage}
 use core::ops::{Location, StateIndex}
-use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words, storage_at_mut}
+use std::evm::{Address, Evm, RawStorage, SolSlot, keccak_words, storage_at}
 
 /// Words hashed with the map's number, like Solady's `LibMap`.
 struct Words {}
@@ -25,7 +25,7 @@ impl Words {
     /// The words rooted at `slot`.
     #[raw_place]
     pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        unsafe { storage_at_mut(slot) }
+        unsafe { storage_at(slot) }
     }
 }
 

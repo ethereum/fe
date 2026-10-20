@@ -1611,7 +1611,7 @@ fn runtime() uses (evm: mut Evm) {
     let sel = evm.selector()
     with (RawStorage = evm) {
         // The blobs' maps take slots 0 and 1.
-        let blobs = unsafe { Blobs::at(0) }
+        let blobs = unsafe { mut Blobs::at(0) }
 
         if sel == SET_SELECTOR {
             let view = decode_bytes_view(CallData::with_base(4))

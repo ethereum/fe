@@ -5377,8 +5377,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }],
                 notes: vec![if *in_closure {
                     format!(
-                        "a closure takes none of the enclosing function's authority; use `storage_at{}`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
-                        if *is_mut { "_mut" } else { "" },
+                        "a closure takes none of the enclosing function's authority; use `storage_at`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
                         if *is_mut { "mut " } else { "" }
                     )
                 } else {

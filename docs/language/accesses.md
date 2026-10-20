@@ -439,9 +439,10 @@ binding of one (`let m = store.balances`) is its read access. A place's space
 follows its path: a field or element of a pinned type lies in the type's
 space, so a `TSlot` and its value, `slot.value`, lie in transient storage
 whatever holds the `TSlot`. A raw-slot constructor,
-`unsafe fn at(slot) -> mut Self uses (storage: mut RawStorage)`, places a
-collection at a runtime slot, and its caller vouches that nothing else uses
-that slot. A `with` block may install a provider naming storage only when its
+`unsafe fn at(slot) -> mut? Self uses (storage: mut? RawStorage)`, places a
+collection at a runtime slot, read-only unless its use asks for `mut`
+(`let a = unsafe { mut SolArray<u256>::at(0) }`), and its caller vouches that
+nothing else uses that slot. A `with` block may install a provider naming storage only when its
 place lies in one of the function's effects, under raw storage authority, or
 in an `unsafe` block.
 
