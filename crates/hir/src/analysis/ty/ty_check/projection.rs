@@ -5,7 +5,7 @@
 //! `if`, `match` and `with` yield through their tails. Each yield site's shape
 //! is recorded for lowering.
 use super::{
-    ExprProp, TraitObligationOutcome, TyChecker, ValuePathRef,
+    Callable, ExprProp, TraitObligationOutcome, TyChecker, ValuePathRef,
     callable::place_borrow_suggestion,
     env::{TraitObligation, TraitObligationOrigin},
 };
@@ -14,6 +14,22 @@ use crate::{
     hir_def::{BinOp, CallableDef, Expr, ExprId, Partial, Stmt, UnOp},
     span::DynLazySpan,
 };
+
+/// The variant a sum-shape yield site builds when it is a variant
+/// constructor: a unit variant path, by what it resolves to, or a variant
+/// constructor call, by its callee.
+pub(crate) fn constructed_variant(
+    value_path: Option<ValuePathRef<'_>>,
+    callable: Option<&Callable<'_>>,
+) -> Option<u16> {
+    match value_path {
+        Some(ValuePathRef::UnitVariant(variant)) => Some(variant.variant.idx),
+        _ => match callable?.callable_def() {
+            CallableDef::VariantCtor(ctor) => Some(ctor.idx),
+            CallableDef::Func(_) | CallableDef::StructCtor(_) => None,
+        },
+    }
+}
 
 impl<'db> TyChecker<'db> {
     pub(super) fn check_yield_site(&mut self, expr: ExprId, shape: &Shape<'db>) {
@@ -111,15 +127,10 @@ impl<'db> TyChecker<'db> {
             Shape::Sum {
                 variant, payload, ..
             } => {
-                let ctor = match self.env.value_path_ref(expr) {
-                    Some(ValuePathRef::UnitVariant(variant)) => Some(variant.variant.idx),
-                    _ => self.env.callable_expr(expr).and_then(|callable| {
-                        match callable.callable_def() {
-                            CallableDef::VariantCtor(ctor) => Some(ctor.idx),
-                            CallableDef::Func(_) | CallableDef::StructCtor(_) => None,
-                        }
-                    }),
-                };
+                let ctor = constructed_variant(
+                    self.env.value_path_ref(expr),
+                    self.env.callable_expr(expr),
+                );
                 match (ctor, data) {
                     (Some(ctor), Expr::Call(_, args)) if ctor == *variant && args.len() == 1 => {
                         self.check_yield_site(args[0].expr, payload);
