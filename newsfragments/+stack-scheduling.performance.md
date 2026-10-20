@@ -1,0 +1,1 @@
+Contracts are smaller and use less gas: the backend reorders values on the EVM stack with the fewest swaps, and when a stack layout needs values that are not on the stack, it pushes or reloads just those values where it often spilled the whole stack to memory and reloaded it, also at -O0 (the eight contracts of a Fe port of Seaport shrink by 5.4% at -O1).

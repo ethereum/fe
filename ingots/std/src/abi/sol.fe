@@ -40,7 +40,7 @@ fn canonical_signed_word(word: u256, mask: u256, sign_bit: u256) -> u256 {
     revert_empty()
 }
 
-/// Compute the 4-byte Solidity selector for a signature string.
+/// Compute the 4-byte Solidity selector from the fixed-width packed encoding.
 ///
 /// For example, `sol("transfer(address,uint256)") == 0xa9059cbb`.
 pub const fn sol<T: AsBytes>(_ sig: T) -> u32 {
@@ -292,7 +292,7 @@ pub fn decode_bytes_view_at<I>(_ input: own I, base: u256, head_pos: u256) -> By
         revert_empty()
     }
 
-    BytesView::new(input, start: data_start, len: data_len)
+    BytesView::new(input, start: data_start, len: data_len as usize)
 }
 
 /// Decode a Solidity ABI `string` payload view from `input` at byte 0.

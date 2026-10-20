@@ -13,7 +13,7 @@ use crate::analysis::{
         AddressSpace,
         diagnostics::{
             BodyDiag, CallConstraintDiagInfo, ContractFieldLayoutIssue, DefConflictError,
-            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix,
+            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix, RevealedBy,
             TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag,
         },
         trait_def::TraitInstId,
@@ -231,6 +231,29 @@ fn const_requirement_diag(
     diag
 }
 
+/// A const fault that a use reveals in a computation written elsewhere: the use
+/// is primary, and the faulting computation keeps its own label.
+fn revealed_const_fault(
+    db: &dyn SpannedHirAnalysisDb,
+    fault: &TyDiagCollection,
+    use_label: &str,
+    use_span: &crate::span::DynLazySpan,
+    error_code: GlobalErrorCode,
+) -> CompleteDiagnostic {
+    let mut diag = fault.to_complete(db);
+    for sub in &mut diag.sub_diagnostics {
+        if sub.style == LabelStyle::Primary {
+            sub.style = LabelStyle::Secondary;
+        }
+    }
+    diag.sub_diagnostics.insert(
+        0,
+        SubDiagnostic::new(LabelStyle::Primary, use_label.into(), use_span.resolve(db)),
+    );
+    diag.error_code = error_code;
+    diag
+}
+
 /// A diagnostic whose only label is a primary one on `span`.
 fn primary_diag(
     severity: Severity,
@@ -280,7 +303,7 @@ fn format_method_param_ty<'db>(
     let ty = ty.pretty_print(db).to_string();
     let Some(param) = (match callable {
         CallableDef::Func(func) => func.params(db).nth(param_idx),
-        CallableDef::VariantCtor(_) => None,
+        CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => None,
     }) else {
         return ty;
     };
@@ -2104,6 +2127,21 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
 
 
 
+            Self::RevealedConstFault {
+                site,
+                revealed_by,
+                fault,
+            } => revealed_const_fault(
+                db,
+                fault,
+                match revealed_by {
+                    RevealedBy::AppliedDefault => "in a default this reference applies",
+                    RevealedBy::Evaluation => "while evaluating this",
+                },
+                site,
+                error_code,
+            ),
+
             Self::ContractFieldCallPointer { span, ty, pointer } => {
                 let space = match pointer.as_ptr(db) {
                     Some((_, AddressSpace::Calldata)) => "calldata",
@@ -3375,7 +3413,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 if let Some(func) = func {
                     let has_explicit = match func {
                         CallableDef::Func(f) => f.has_explicit_return_ty(db),
-                        CallableDef::VariantCtor(_) => false,
+                        CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => false,
                     };
 
                     // For explicit return types, point at the return type span;
@@ -3543,24 +3581,13 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 )
             }
 
-            Self::CallReturnTypeConstFault { call, fault } => {
-                let mut diag = fault.to_complete(db);
-                for sub in &mut diag.sub_diagnostics {
-                    if sub.style == LabelStyle::Primary {
-                        sub.style = LabelStyle::Secondary;
-                    }
-                }
-                diag.sub_diagnostics.insert(
-                    0,
-                    SubDiagnostic::new(
-                        LabelStyle::Primary,
-                        "in the return type of this call".into(),
-                        call.resolve(db),
-                    ),
-                );
-                diag.error_code = error_code;
-                diag
-            }
+            Self::CallReturnTypeConstFault { call, fault } => revealed_const_fault(
+                db,
+                fault,
+                "in the return type of this call",
+                call,
+                error_code,
+            ),
 
             Self::StaticAssertFailed {
                 primary,
@@ -4796,7 +4823,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                             "this function is marked `#[must_use]`".to_string(),
                         )
                     }
-                    MustUseSubject::Function(CallableDef::VariantCtor(_)) => unreachable!(),
+                    MustUseSubject::Function(CallableDef::VariantCtor(_) | CallableDef::StructCtor(_)) => unreachable!(),
                 };
 
                 CompleteDiagnostic {
@@ -5517,6 +5544,17 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 impl_trait.span().trait_ref().resolve(db),
                 error_code,
             ),
+
+            Self::ImplHeaderAssocTypeBinding { span, name } => {
+                let name = name.data(db);
+                primary_diag(
+                    Severity::Error,
+                    "associated type bindings are not allowed in an impl header",
+                    format!("define `{name}` in the impl body with `type {name} = ...`"),
+                    span.resolve(db),
+                    error_code,
+                )
+            }
         }
     }
 }
@@ -5904,11 +5942,11 @@ impl DiagnosticVoucher for ImplDiag<'_> {
             Self::MethodEffectMismatch { trait_m, impl_m } => {
                 let trait_count = match trait_m {
                     CallableDef::Func(func) => func.effect_requirements(db).len(),
-                    CallableDef::VariantCtor(_) => 0,
+                    CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
                 };
                 let impl_count = match impl_m {
                     CallableDef::Func(func) => func.effect_requirements(db).len(),
-                    CallableDef::VariantCtor(_) => 0,
+                    CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
                 };
                 let detail = if trait_count == impl_count {
                     "effect keys or mutability differ from the trait method".to_string()

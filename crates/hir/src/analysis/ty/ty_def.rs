@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{
     hir_def::{
-        Body, ClosureDef, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId,
+        Body, ClosureDef, Enum, ExprId, GenericParamOwner, IdentId, ItemKind, PathId, Struct,
         TypeAlias as HirTypeAlias, VariantKind,
         params::FuncParamMode,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
@@ -725,6 +725,27 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// Returns the tuple struct (`struct Month(pub u8)`) this type refers to.
+    pub fn as_tuple_struct(self, db: &'db dyn HirAnalysisDb) -> Option<Struct<'db>> {
+        match self.base_ty(db).adt_ref(db)? {
+            AdtRef::Struct(struct_) if struct_.is_tuple(db) => Some(struct_),
+            _ => None,
+        }
+    }
+
+    /// Returns the constructor function type of a tuple struct type, applied
+    /// to the type's generic arguments, e.g. `fn(u8) -> Month` for `Month`.
+    pub fn tuple_struct_ctor_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+        let struct_ = self.as_tuple_struct(db)?;
+        let mut ty = TyId::func(db, CallableDef::StructCtor(struct_));
+        for &arg in self.generic_args(db) {
+            if ty.applicable_ty(db).is_some() {
+                ty = TyId::app(db, ty, arg);
+            }
+        }
+        Some(ty)
+    }
+
     pub fn as_scope(self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         match self.base_ty(db).data(db) {
             TyData::TyParam(param) => Some(param.scope(db)),
@@ -821,10 +842,11 @@ impl<'db> TyId<'db> {
     pub(super) fn const_ty_var(
         db: &'db dyn HirAnalysisDb,
         ty: TyId<'db>,
+        sort: TyVarSort,
         key: InferenceKey<'db>,
     ) -> Self {
         let ty_var = TyVar {
-            sort: TyVarSort::General,
+            sort,
             kind: ty.kind(db).clone(),
             key,
         };
@@ -1726,6 +1748,11 @@ pub enum TyVarSort {
 
     /// Type variable that can be unified with only integral types.
     Integral,
+
+    /// Const variable for the length of a string literal's `String<N>` type.
+    /// It can be unified with integer constants of at least `min_len`, and
+    /// defaults to `min_len` like the literal's own type would.
+    StringLen { min_len: usize },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -1754,6 +1781,10 @@ impl PartialOrd for TyVarSort {
                 other => other,
             },
             (Self::String { .. }, _) | (_, Self::String { .. }) => None,
+            (Self::StringLen { min_len: min_len1 }, Self::StringLen { min_len: min_len2 }) => {
+                min_len1.partial_cmp(min_len2)
+            }
+            (Self::StringLen { .. }, _) | (_, Self::StringLen { .. }) => None,
             (Self::Integral, Self::Integral) => Some(std::cmp::Ordering::Equal),
         }
     }
@@ -1762,7 +1793,7 @@ impl PartialOrd for TyVarSort {
 impl TyVar<'_> {
     pub(super) fn pretty_print(&self) -> String {
         match self.sort {
-            TyVarSort::General => ("_").to_string(),
+            TyVarSort::General | TyVarSort::StringLen { .. } => ("_").to_string(),
             TyVarSort::Integral => "{integer}".to_string(),
             TyVarSort::String { min_len, fallback } => match fallback {
                 StringFallback::Dynamic => format!("DynString({min_len})"),
@@ -2565,11 +2596,14 @@ pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlag
 
         fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
             // An identity capture reads its owner's formals without
-            // spelling them, so the body still depends on parameters.
+            // spelling them, so the body still depends on parameters. A
+            // capture with no formals, such as the `4` in
+            // `type Bytes4 = FixedBytes<4>`, depends on none.
             if let ConstTyData::UnEvaluated {
-                capture: ConstCaptureEnv::Identity(_),
+                capture: ConstCaptureEnv::Identity(domain),
                 ..
             } = const_ty.data(self.db)
+                && domain.has_formals(self.db)
             {
                 self.flags.insert(TyFlags::HAS_PARAM);
             }

@@ -745,7 +745,7 @@ fn declared_tys<'db>(db: &'db dyn HirAnalysisDb, def: CallableDef<'db>) -> Vec<D
                 });
             }
         }
-        CallableDef::VariantCtor(_) => {}
+        CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => {}
     }
     tys
 }

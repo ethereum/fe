@@ -40,7 +40,7 @@ pub contract Texts {
 }
 
 /// Whether `text` holds `len` bytes hashing to `hash`.
-fn holds(_ text: DynString, len: u256, hash: u256) -> bool {
+fn holds(_ text: DynString, len: usize, hash: u256) -> bool {
     text.len() == len && keccak256(text.payload_span()) == hash
 }
 
@@ -49,7 +49,7 @@ fn encoding_hash<T: Encode<Sol> + AbiSize>(_ value: own T) -> u256 {
     keccak256(encode_alloc<Sol, T>(value).span())
 }
 
-fn length(_ short: bool) -> u256 {
+fn length(_ short: bool) -> usize {
     // Both literals unify with the longer one: the `if` is a `DynString`.
     let text = if short { "short" } else { "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-!" }
     text.len()

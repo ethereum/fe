@@ -110,17 +110,70 @@ pub fn main() -> i32 {
 }
 
 #[test]
-fn native_const_generic_packed_writer_uses_runtime_inputs() {
-    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/fe_test/const_generic_packed_writer.fe");
+fn native_packed_bytes_write_runtime_words_strings_and_nested_tuples() {
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native/packed_bytes_io.fe");
     let temp = tempdir().unwrap();
     for level in ["1", "2"] {
         let out = temp.path().join(format!("out-{level}"));
         build(&source, &out, level, &[]);
-        let executable = out.join("const_generic_packed_writer");
-        for args in [&[][..], &["runtime"][..]] {
-            let result = Command::new(&executable).args(args).output().unwrap();
-            assert!(result.status.success(), "{result:?}");
+        for arg_count in 0..4 {
+            let output = Command::new(out.join("packed_bytes_io"))
+                .args(vec!["input"; arg_count])
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "O{level}: {output:?}");
+            assert!(output.stderr.is_empty(), "{output:?}");
+            let mut expected = b"xyz|abcd|abcde|\0\0abtu\n".to_vec();
+            let word = match arg_count {
+                0 => [0; 32],
+                1 => {
+                    let mut word = [0; 32];
+                    word[31] = 1;
+                    word
+                }
+                2 => {
+                    let mut word = [0; 32];
+                    word[0] = 128;
+                    word
+                }
+                _ => [255; 32],
+            };
+            expected.extend(word);
+            if arg_count == 0 {
+                expected.extend(b"A1234567890123456789012345678901");
+            } else {
+                expected.push(b'B');
+                expected.extend([0; 30]);
+                expected.push(b'x');
+            }
+            expected.extend([1, 2, 3]);
+            for width in [0, 1, 31, 32, 33, 63, 64, 65] {
+                expected.extend((0..width).map(|i| (arg_count + 1 + i) as u8));
+            }
+            assert_eq!(output.stdout, expected, "O{level}, argc={}", arg_count + 1);
+        }
+    }
+}
+
+#[test]
+fn native_packed_bytes_index_checks_empty_and_nonempty_bounds() {
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/native/packed_bytes_bounds.fe");
+    let temp = tempdir().unwrap();
+    for level in ["1", "2"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        for arg_count in 0..3 {
+            let output = Command::new(out.join("packed_bytes_bounds"))
+                .args(vec!["input"; arg_count])
+                .output()
+                .unwrap();
+            assert_eq!(
+                output.status.success(),
+                arg_count == 1,
+                "O{level}: {output:?}"
+            );
         }
     }
 }
@@ -526,6 +579,53 @@ pub fn main() -> i32 {
                 .success(),
             "referent identity at O{level}"
         );
+    }
+}
+
+#[test]
+fn native_code_after_partially_diverging_else_if_chain_runs() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("else_if_chain.fe");
+    fs::write(
+        &source,
+        r#"
+fn after_else_if(_ x: u64) -> u64 {
+    var r: u64 = 0
+    if x == 0 {
+        return 1
+    } else if x == 5 {
+        r = 3
+    } else {
+        return 2
+    }
+    r + 4
+}
+pub fn main() -> i32 {
+    var i: u64 = 0
+    while i < 4 {
+        if i != 1 {
+            i += 1
+            continue
+        } else if i == 1 {
+            i += 0
+        } else {
+            return 100
+        }
+        i += 2
+    }
+    core::assert(i == 4)
+    core::assert(after_else_if(5) == 7)
+    core::assert(after_else_if(6) == 2)
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1", "2"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let status = Command::new(out.join("else_if_chain")).status().unwrap();
+        assert_eq!(status.code(), Some(0), "O{level}: {status:?}");
     }
 }
 
@@ -1002,6 +1102,52 @@ pub fn main() -> i32 {
         build(&source, &out, level, &[]);
         let result = Command::new(out.join("option_copy")).output().unwrap();
         assert_eq!(result.status.code(), Some(42), "O{level}: {result:?}");
+    }
+}
+
+#[test]
+fn native_byte_buffer_copies_ranges_between_buffers() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("byte_buffer_copy.fe");
+    fs::write(
+        &source,
+        r#"
+use std::native::ByteBuffer
+pub fn main() -> i32 {
+    var from = ByteBuffer::new()
+    var into = ByteBuffer::new()
+    from.copy_from(dest: 0, source: into, offset: 0, len: 0)
+    core::assert(from.try_resize(100) && into.try_resize(70))
+    var i: u64 = 0
+    while i < 100 {
+        from.set_byte(index: i, value: (i + 1).downcast_truncate())
+        i += 1
+    }
+    into.copy_from(dest: 3, source: from, offset: 40, len: 60)
+    into.copy_from(dest: 70, source: from, offset: 100, len: 0)
+    i = 0
+    while i < 70 {
+        let expected: u8 = if i >= 3 && i < 63 { (i + 38).downcast_truncate() } else { 0 }
+        core::assert(into.byte_at(i) == expected)
+        i += 1
+    }
+    i = 0
+    while i < 100 {
+        core::assert(from.byte_at(i) == (i + 1).downcast_truncate())
+        i += 1
+    }
+    from.release()
+    into.release()
+    0
+}
+"#,
+    )
+    .unwrap();
+    for level in ["0", "1"] {
+        let out = temp.path().join(format!("out-{level}"));
+        build(&source, &out, level, &[]);
+        let result = Command::new(out.join("byte_buffer_copy")).output().unwrap();
+        assert!(result.status.success(), "O{level}: {result:?}");
     }
 }
 

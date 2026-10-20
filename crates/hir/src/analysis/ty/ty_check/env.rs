@@ -11,6 +11,7 @@ use crate::hir_def::params::FuncParamMode;
 use crate::hir_def::{CallableDef, ItemKind};
 use common::indexmap::IndexMap;
 use cranelift_entity::{PrimaryMap, SecondaryMap};
+use num_bigint::BigInt;
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 use thin_vec::ThinVec;
@@ -27,9 +28,12 @@ use crate::analysis::ty::pattern_ir::{
 };
 use crate::analysis::{
     HirAnalysisDb,
+    semantic::consts::int_const,
     ty::{
         closure::closure_effect_requirements,
-        const_ty::{CallableInputOrigin, const_body_assumptions},
+        const_ty::{
+            CallableInputOrigin, ConstTyData, const_body_assumptions, const_ty_from_sem_const,
+        },
         corelib::resolve_lib_type_path,
         effects::{
             EffectKeyKind,
@@ -1239,10 +1243,15 @@ impl<'db> TyCheckEnv<'db> {
             requirement,
         };
         let provider_ty = info.provider.provider_ty;
+        // The body assumes its provider meets the key. The key keeps the
+        // trait's own `Self` for its provider, for the row's to fill.
+        let bound = info
+            .requirement
+            .key
+            .key_trait()
+            .map(|key| super::super::instantiate_trait_self(db, key, provider_ty));
         if let EffectRequirementKey::Trait(inst) = info.requirement.key {
-            info.requirement.key = EffectRequirementKey::Trait(
-                super::super::instantiate_trait_self(db, inst, provider_ty),
-            );
+            info.requirement.key = EffectRequirementKey::Trait(inst.with_self_ty(db, provider_ty));
         }
         let binding = LocalBinding::effect_param(&info);
         // A row is forwarded whole, never provided.
@@ -1260,7 +1269,6 @@ impl<'db> TyCheckEnv<'db> {
             is_mut: true,
             binding: Some(binding),
         });
-        let bound = info.requirement.key.key_trait();
         active.effects.push(info);
         if let Some(bound) = bound {
             let mut preds = self.assumptions.list(db).to_vec();
@@ -2373,6 +2381,13 @@ impl<'db, 'a> Prober<'db, 'a> {
 impl<'db> TyFolder<'db> for Prober<'db, '_> {
     fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
         let ty = self.table.fold_ty(db, ty);
+        if let TyData::ConstTy(const_ty) = ty.data(db)
+            && let ConstTyData::TyVar(var, len_ty) = const_ty.data(db)
+            && let Some(TyVarSort::StringLen { min_len }) = self.table.unbound_sort(var.key)
+        {
+            let len = const_ty_from_sem_const(db, int_const(db, *len_ty, BigInt::from(min_len)));
+            return TyId::const_ty(db, len);
+        }
         let TyData::TyVar(var) = ty.data(db) else {
             return ty.super_fold_with(db, self);
         };

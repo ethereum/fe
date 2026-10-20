@@ -19,6 +19,7 @@ use crate::analysis::{
             place_effect_provider_param_index_map,
         },
         fold::TyFoldable,
+        instantiate_trait_self,
         trait_def::TraitInstId,
         trait_lower::{lower_impl_trait, lower_trait_ref, lower_trait_ref_with_minter},
         trait_resolution::PredicateListId,
@@ -100,19 +101,9 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
 
         match (identity.key_ty, identity.key_trait) {
             (_, Some(inst)) => {
-                let mut args = inst.args(db).to_vec();
-                if args.is_empty() {
-                    args.push(provider_ty);
-                } else {
-                    args[0] = provider_ty;
-                }
-                out.push(TraitInstId::new(
-                    db,
-                    inst.def(db),
-                    args,
-                    inst.assoc_type_bindings(db).clone(),
-                    ModeMarker::None,
-                ));
+                out.push(
+                    instantiate_trait_self(db, inst, provider_ty).with_mode(db, ModeMarker::None),
+                );
             }
             (Some(target_ty), None) => {
                 if !target_ty.is_star_kind(db) {
@@ -240,6 +231,12 @@ pub(crate) fn collect_func_decl_constraints<'db>(
         CallableDef::VariantCtor(var) => {
             return Binder::bind(var.enum_.into(), PredicateListId::empty_list(db));
         }
+        CallableDef::StructCtor(s) if include_parent => {
+            return collect_constraints(db, s.into());
+        }
+        CallableDef::StructCtor(s) => {
+            return Binder::bind(s.into(), PredicateListId::empty_list(db));
+        }
     };
 
     // A method's own bounds resolve under its parent's, so without the parent
@@ -279,6 +276,9 @@ pub(crate) fn collect_func_decl_constraint_pairs<'db>(
         CallableDef::Func(func) => func,
         CallableDef::VariantCtor(var) => {
             return decl_constraint_pairs(db, var.enum_.into()).clone();
+        }
+        CallableDef::StructCtor(s) => {
+            return decl_constraint_pairs(db, s.into()).clone();
         }
     };
 

@@ -6,13 +6,14 @@
 use std::fmt;
 
 use common::ingot::IngotKind;
+use ruint::aliases::U256;
 
 use crate::analysis::HirAnalysisDb;
 use crate::analysis::semantic::{
     EvalOutcome, GenericSubst, SemConstScalar, SemConstValue, eval_body_owner_const,
     eval_body_owner_const_with_args, sem_const_ty,
 };
-use crate::analysis::ty::corelib::resolve_lib_trait_path;
+use crate::analysis::ty::corelib::{concrete_usize, resolve_lib_trait_path};
 use crate::analysis::ty::evidence::prove;
 use crate::analysis::ty::normalize::normalize_ty;
 use crate::analysis::ty::trait_def::{TraitInstId, assoc_const_body_template_for_trait_inst};
@@ -200,8 +201,8 @@ pub(crate) fn semantic_ty_to_abi_desc_with_source<'db>(
         return Ok(elem_desc.array(&len));
     }
 
-    if let Some(elem_ty) = core_dyn_array_elem_ty(db, ty) {
-        let source_elem = core_dyn_array_elem_ty(db, source).ok_or_else(|| {
+    if let Some(elem_ty) = std_dyn_array_elem_ty(db, ty) {
+        let source_elem = std_dyn_array_elem_ty(db, source).ok_or_else(|| {
             AbiTypeError::unsupported("ABI source and canonical dynamic arrays differ")
         })?;
         let elem_desc =
@@ -288,9 +289,13 @@ pub(crate) fn semantic_ty_to_abi_desc_with_source<'db>(
                                 ty.generic_args(db),
                                 source.generic_args(db),
                             );
+                            // Tuple struct fields are named by position only
+                            // for `.0` lookups; in the ABI they are unnamed,
+                            // like tuple components.
                             let name = field
                                 .name
                                 .to_opt()
+                                .filter(|_| !struct_.is_tuple(db))
                                 .map(|ident| ident.data(db).to_string())
                                 .unwrap_or_default();
                             Ok((name, semantic_ty_to_abi_desc_with_source(db, field_ty)?))
@@ -374,9 +379,9 @@ fn is_std_address_ty(db: &dyn HirAnalysisDb, ty: TyId<'_>, adt_ref: AdtRef<'_>) 
         .is_some_and(|ingot| ingot.kind(db) == IngotKind::Std)
 }
 
-fn core_dyn_array_elem_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
+fn std_dyn_array_elem_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
     if let Some((_, inner)) = ty.as_capability(db) {
-        return core_dyn_array_elem_ty(db, inner);
+        return std_dyn_array_elem_ty(db, inner);
     }
 
     let (base, args) = ty.decompose_ty_app(db);
@@ -390,7 +395,7 @@ fn core_dyn_array_elem_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Opt
     }
     if !base
         .ingot(db)
-        .is_some_and(|ingot| ingot.kind(db) == IngotKind::Core)
+        .is_some_and(|ingot| ingot.kind(db) == IngotKind::Std)
     {
         return None;
     }
@@ -437,9 +442,9 @@ pub(crate) fn is_dynamic_event_ty(db: &dyn HirAnalysisDb, ty: TyId<'_>) -> bool 
             .is_some_and(|&elem_ty| is_dynamic_event_ty(db, elem_ty));
     }
     ty.is_string(db)
-        || ["Bytes", "DynString", "DynArray"]
-            .into_iter()
-            .any(|name| is_core_adt_named(db, ty, name))
+        || is_core_bytes_ty(db, ty)
+        || is_core_dyn_string_ty(db, ty)
+        || std_dyn_array_elem_ty(db, ty).is_some()
 }
 
 /// Fixed arrays, tuples and `#[abi]` structs. Solidity hashes the encoding
@@ -480,7 +485,7 @@ pub(crate) fn non_copy_fixed_array_elem<'db>(
             .iter()
             .find_map(|&elem| non_copy_fixed_array_elem(db, scope, elem, assumptions));
     }
-    core_dyn_array_elem_ty(db, ty)
+    std_dyn_array_elem_ty(db, ty)
         .and_then(|elem| non_copy_fixed_array_elem(db, scope, elem, assumptions))
 }
 
@@ -531,24 +536,29 @@ fn declared_sol_compat_abi_type<'db>(
     ) else {
         return None;
     };
-    let bytes = match bytes.value(db) {
-        SemConstValue::Scalar {
-            value: SemConstScalar::Bytes(bytes),
-            ..
-        } => bytes.clone(),
-        // A `[u8; N]` value the conversion returns unchanged.
-        SemConstValue::Array { elems, .. } => elems
-            .iter()
-            .map(|elem| match elem.value(db) {
-                SemConstValue::Scalar {
-                    value: SemConstScalar::Int { value },
-                    ..
-                } => u8::try_from(value).ok(),
-                _ => None,
-            })
-            .collect::<Option<_>>()?,
-        _ => return None,
+    // The result is a `PackedBytes<N>`: its first `N` bytes, big-endian
+    // across its `u256` words.
+    let len = concrete_usize(db, *sem_const_ty(db, bytes).generic_args(db).first()?)?;
+    let SemConstValue::Struct { fields, .. } = bytes.value(db) else {
+        return None;
     };
+    let SemConstValue::Array { elems: words, .. } = fields.first()?.value(db) else {
+        return None;
+    };
+    let mut bytes = words
+        .iter()
+        .map(|word| match word.value(db) {
+            SemConstValue::Scalar {
+                value: SemConstScalar::Int { value },
+                ..
+            } => Some(
+                U256::try_from_be_slice(&value.to_biguint()?.to_bytes_be())?.to_be_bytes::<32>(),
+            ),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?
+        .concat();
+    bytes.truncate(len);
     String::from_utf8(bytes).ok()
 }
 

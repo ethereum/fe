@@ -77,6 +77,9 @@ fn take(_ x: mut Option<MemBuffer>) -> Option<MemBuffer> {
 }
 ```
 
+`core::mem::replace(mut x, v)` and `core::mem::take(mut x)` do this in one
+call, as does `x.take()` on an `Option`.
+
 A value reached through a view or a `ref` access, through an effect, or in
 storage, cannot move; bind it `ref` to read it in place. An effect lends its
 place: a non-`Copy` value under it is read in place or passed on to a callee's
@@ -183,11 +186,11 @@ or at `mut`, and `mut?` is `ref` or `mut` accordingly, wherever `ref` and
 `mut` may be written.
 
 ```fe
-pub fn at(mut? self, _ index: u256) -> mut? T {
+pub fn at(mut? self, _ index: usize) -> mut? T {
     unsafe { mut? *self.ptr_at(index) }
 }
 
-pub fn split_at(mut? self, _ mid: u256) -> (mut? Self, mut? Self) { .. }
+pub fn split_at(mut? self, _ mid: usize) -> (mut? Self, mut? Self) { .. }
 ```
 
 Its body is checked once per mode: the `ref` body cannot write through a
@@ -207,15 +210,22 @@ same name that takes `mut` where the trait method takes `mut?`, for an
 element its two modes compute differently:
 
 ```fe
-impl<T> Index<usize> for MemVec<T> where .. {
-    fn index(self, _ index: usize) -> ref T {
-        self.get(index as u256)
+/// Stores each element doubled.
+struct Doubled {
+    words: [u256; 4],
+}
+
+impl Index<usize> for Doubled {
+    type Output = u256
+
+    fn index(self, _ index: usize) -> ref u256 {
+        self.words[index] / 2
     }
 
-    fn index(mut self, _ index: usize) -> mut T {
-        var value = self.get(index as u256)
+    fn index(mut self, _ index: usize) -> mut u256 {
+        var value = self.words[index] / 2
         yield mut value
-        self.set(index: index as u256, value)
+        self.words[index] = value * 2
     }
 }
 ```
@@ -345,7 +355,10 @@ index and the element type, and `locate(root, key)` returns the entry's
 access to `c[k]` opens and does the loads, stores and masking itself. It
 must keep every entry inside the collection's own region, hashing per entry
 or bounding the key, and distinct keys apart, which the `unsafe impl`
-asserts.
+asserts. `std::evm::layout` has Solidity's derivations for it:
+`mapping_slot(root, key)`, `array_data_slot(root)` and `element_location`,
+so a mapping-like `locate` is
+`Location { slot: mapping_slot(root, key), offset: 0 }`.
 
 A collection may pack small elements into lanes of shared slots, as a
 `SolArray` does for Solidity's packed array elements. Its `Lanes` codec

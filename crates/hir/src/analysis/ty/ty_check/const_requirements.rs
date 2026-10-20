@@ -13,13 +13,14 @@ use crate::analysis::ty::canonical::Canonicalized;
 use crate::analysis::ty::trait_choice::{
     Choice, Delivery, SlotChoices, SlotRef, body_deliveries, own_slots,
 };
+use crate::analysis::ty::trait_resolution::mentions_ty;
 use crate::analysis::ty::{
     const_ty::ConstBodyLowering,
     subst::substitute_complete,
     ty_lower::{CompleteSubst, SubstError, lower_hir_ty_with_resolutions, lower_type_alias},
 };
 use crate::hir_def::{GenericArg, GenericArgListId, ItemKind, UnOp, scope_graph::ScopeId};
-use crate::semantic::constraints_for;
+use crate::semantic::{constraints_for, param_env};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PredicateKey<'db> {
@@ -868,7 +869,7 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
                 self.check_callee_headers(expr, func, args);
                 self.discharge_callee_conditions(expr, func, args);
             }
-            CallableDef::VariantCtor(_) => {
+            CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => {
                 self.check_constructor_value(expr, data, definition, args);
             }
         }
@@ -1757,6 +1758,11 @@ fn formation_cycle_recover<'db>(
 
 /// The assumptions a type written at `scope` is lowered with.
 fn assumptions_at<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> PredicateListId<'db> {
+    constraints_for(db, enclosing_item(db, scope))
+}
+
+/// The item `scope` is in, outside any body.
+fn enclosing_item<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> ItemKind<'db> {
     let mut enclosing = scope;
     while matches!(enclosing.item(), ItemKind::Body(_)) {
         let Some(parent) = enclosing.parent(db) else {
@@ -1764,7 +1770,7 @@ fn assumptions_at<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> Predi
         };
         enclosing = parent;
     }
-    constraints_for(db, enclosing.item())
+    enclosing.item()
 }
 
 /// The applications that the types written in `owner`'s signature and body
@@ -1839,6 +1845,9 @@ struct WrittenType<'db> {
     lowered: Option<TyId<'db>>,
     /// The constrained applications its paths passed through.
     applications: Vec<TyId<'db>>,
+    /// Whether it is in an argument its alias drops, which no expansion
+    /// holds for its position to check.
+    dropped: bool,
     /// The index of the first entry nested in this type.
     nested_from: usize,
 }
@@ -1867,8 +1876,11 @@ fn written_types_query<'db>(
     use crate::span::types::LazyTySpan;
     use crate::visitor::{
         Visitor, VisitorCtxt,
-        prelude::{LazyBodySpan, LazyExprSpan, LazyItemSpan, LazyTraitRefSpan},
-        walk_body, walk_expr, walk_item, walk_path, walk_trait_ref, walk_type,
+        prelude::{
+            LazyBodySpan, LazyExprSpan, LazyGenericArgListSpan, LazyItemSpan, LazyTraitRefSpan,
+        },
+        walk_body, walk_expr, walk_generic_arg_list, walk_item, walk_path, walk_trait_ref,
+        walk_type,
     };
     struct Collector<'db> {
         db: &'db dyn HirAnalysisDb,
@@ -1879,6 +1891,10 @@ fn written_types_query<'db>(
         /// and finds them with the same rule (`written_type_const_args`).
         defaults: FxHashSet<crate::hir_def::TypeId<'db>>,
         default_depth: usize,
+        /// The arguments of the alias path being walked, each with whether
+        /// the alias drops it, and how deep the walk is inside one dropped.
+        alias_args: Option<(GenericArgListId<'db>, Vec<bool>)>,
+        dropped_depth: usize,
     }
     impl<'db> Visitor<'db> for Collector<'db> {
         // Nested items and bodies are their own regions.
@@ -1937,6 +1953,26 @@ fn written_types_query<'db>(
             let scope = ctxt.scope();
             let span = ctxt.span().map(Into::into);
             self.written_type(hir_ty, scope, span, |this| walk_type(this, ctxt, hir_ty));
+        }
+
+        fn visit_generic_arg_list(
+            &mut self,
+            ctxt: &mut VisitorCtxt<'db, LazyGenericArgListSpan<'db>>,
+            args: GenericArgListId<'db>,
+        ) {
+            let alias_args = self
+                .alias_args
+                .take_if(|(alias_args, _)| *alias_args == args);
+            let (Some((_, dropped)), Some(span)) = (alias_args, ctxt.span()) else {
+                return walk_generic_arg_list(self, ctxt, args);
+            };
+            for (idx, arg) in args.data(self.db).iter().enumerate() {
+                let in_dropped = dropped.get(idx).copied().unwrap_or_default();
+                self.dropped_depth += usize::from(in_dropped);
+                let mut arg_ctxt = VisitorCtxt::new(self.db, ctxt.scope(), span.clone().arg(idx));
+                self.visit_generic_arg(&mut arg_ctxt, arg);
+                self.dropped_depth -= usize::from(in_dropped);
+            }
         }
 
         // A `with` key is a type written in the body, whose paths are
@@ -2012,14 +2048,34 @@ fn written_types_query<'db>(
                     self.entries.push(WrittenEntry::ConstBodies(bodies));
                 }
             }
+            let alias_args = match hir_ty.data(db) {
+                TypeKind::Path(Partial::Present(path)) => {
+                    match resolve_path(db, *path, scope, assumptions, false) {
+                        Ok(PathRes::TyAlias(alias, _)) => {
+                            let expansion = *alias.alias_to.skip_binder();
+                            let dropped = alias
+                                .params(db)
+                                .iter()
+                                .map(|&param| !mentions_ty(db, expansion, param))
+                                .collect();
+                            Some((path.generic_args(db), dropped))
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            };
+            let enclosing_alias_args = std::mem::replace(&mut self.alias_args, alias_args);
             let nested_from = self.entries.len();
             walk_nested(self);
+            self.alias_args = enclosing_alias_args;
             if let Some(span) = span {
                 self.entries.push(WrittenEntry::Type(WrittenType {
                     span,
                     scope,
                     lowered: (!ty.has_invalid(db)).then_some(ty),
                     applications,
+                    dropped: self.dropped_depth > 0,
                     nested_from,
                 }));
             }
@@ -2033,6 +2089,8 @@ fn written_types_query<'db>(
         entries: Vec::new(),
         defaults: FxHashSet::default(),
         default_depth: 0,
+        alias_args: None,
+        dropped_depth: 0,
     };
     collector.visit_item(&mut VisitorCtxt::with_item(db, root), root);
     collector.entries
@@ -2060,7 +2118,36 @@ fn written_type_check_query<'db>(
     let mut diags = Vec::new();
     // The failing application each entry reported, if any.
     let mut reported: Vec<Option<TyId<'db>>> = Vec::with_capacity(entries.len());
+    // Whether each entry reported itself ill-formed.
+    let mut ill_formed: Vec<bool> = Vec::with_capacity(entries.len());
     for entry in entries {
+        // A type in an argument its alias drops is checked for its bounds
+        // here, where it is written, once for the innermost one that fails.
+        ill_formed.push(match entry {
+            WrittenEntry::Type(written)
+                if written.dropped && !ill_formed[written.nested_from..].contains(&true) =>
+            {
+                written.lowered.is_some_and(|ty| {
+                    let solve_cx = TraitSolveCx::new(db, written.scope)
+                        .with_assumptions(param_env(db, enclosing_item(db, written.scope)));
+                    let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(db, solve_cx, ty)
+                    else {
+                        return false;
+                    };
+                    diags.push(FuncBodyDiag::Ty(
+                        TraitConstraintDiag::TraitBoundNotSat {
+                            span: written.span.clone(),
+                            primary_goal: goal,
+                            unsat_subgoal: subgoal,
+                            required_by: None,
+                        }
+                        .into(),
+                    ));
+                    true
+                })
+            }
+            _ => false,
+        });
         let report = match entry {
             WrittenEntry::ConstBodies(bodies) => {
                 for &(body, expected) in bodies {

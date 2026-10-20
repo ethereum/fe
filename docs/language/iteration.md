@@ -30,8 +30,10 @@ cursor `has` accepted; the position after the last element (or, in reverse,
 before the first) is a cursor that names none. `at` is `mut?`: a loop whose
 item is `mut` takes it at `mut`, which needs a `mut Collection` (or a
 `mut Driver<B>`), and `Bidirectional` (`last`, `prev`) traverses in reverse.
-Arrays, `MemArray`, `MemSlice`, ranges, `SolArray` and `SolEnumerableSet` are
-collections; a collection declares the effects its methods need (`uses E`).
+Arrays, `MemArray`, `MemVec`, `MemSlice`, ranges, `SolArray` and
+`SolEnumerableSet` are collections, and so is `DynArray`, whose loop decodes
+each element as it reaches it; a collection declares the effects its
+methods need (`uses E`).
 
 A loop that copies each item (a `Copy` element bound by a plain name or
 `var`, or a producer's value) holds
@@ -73,5 +75,5 @@ let totals = accounts.fold(Totals { sum: 0 }, |acc, account| {
 ```
 
 `MemArray::collect(xs, xs.map(f))` collects a producer's values into an
-array.
+array, and `MemVec::collect` into a growable one.
 See [closures](closures.md) for the callables these take.
