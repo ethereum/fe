@@ -490,6 +490,7 @@ impl<'db> TyChecker<'db> {
                 && let Some(shape) = self.check_unsafe_split(*tail)
             {
                 return ExprProp {
+                    is_mut: !shape.has_access_of(BorrowKind::Ref),
                     shape: Some(shape),
                     ..res
                 };
@@ -547,11 +548,13 @@ impl<'db> TyChecker<'db> {
         for elem in elems {
             self.consume_access(elem);
         }
+        // The split is as mutable as its grants: a `ref` one makes it read.
         let shape = Shape::Tuple(shapes);
         let prop = self.env.typed_expr(tail)?;
         self.env.type_expr(
             tail,
             ExprProp {
+                is_mut: !shape.has_access_of(BorrowKind::Ref),
                 shape: Some(shape.clone()),
                 ..prop
             },

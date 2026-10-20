@@ -147,8 +147,9 @@ impl<'db> TyChecker<'db> {
     /// `mut?` callees along its place chain at `mut`: the trait-lowered
     /// indexes in `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a
     /// `mut self` method, and calls such as `xs.at(i).bump()`, also through
-    /// a block's tail (`{ xs.at(i) }`) and `?` (`xs.find(v)?`). Returns
-    /// whether the place is mutable.
+    /// a block's tail (`{ xs.at(i) }`), `?` (`xs.find(v)?`) and the
+    /// elements of an unsafe split (`unsafe { (xs.at(i), ys.at(j)) }`).
+    /// Returns whether the place is mutable.
     pub(super) fn select_mut_place(&mut self, expr: ExprId) -> bool {
         let Some(prop) = self.env.typed_expr(expr) else {
             return false;
@@ -195,6 +196,27 @@ impl<'db> TyChecker<'db> {
                     Some(Shape::Sum { payload, .. }) => Some(*payload),
                     _ => prop.shape.clone(),
                 }
+            }
+            // An unsafe split grants what its access elements do.
+            Partial::Present(Expr::Tuple(elems)) if self.env.is_unsafe_split(expr) => {
+                let elems = elems.clone();
+                if !elems.iter().all(|&elem| {
+                    self.env
+                        .typed_expr(elem)
+                        .is_some_and(|elem| elem.access().is_none())
+                        || self.select_mut_place(elem)
+                }) {
+                    return false;
+                }
+                Some(Shape::Tuple(
+                    elems
+                        .iter()
+                        .map(|&elem| {
+                            let elem = self.env.typed_expr(elem).expect("an element is typed");
+                            elem.shape.unwrap_or(Shape::Owned(elem.ty))
+                        })
+                        .collect(),
+                ))
             }
             _ => return false,
         };
