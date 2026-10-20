@@ -1,5 +1,4 @@
 use crate::analysis::ty::assoc_const::{AssocConstUse, InherentConstUse};
-use crate::analysis::ty::evidence::EvidenceList;
 use crate::analysis::ty::ty_def::TyId;
 use crate::analysis::ty::{corelib::ctfe_extern_intrinsic_kind, ty_check::BodyOwner};
 use crate::analysis::{
@@ -91,13 +90,13 @@ impl<'db> ConstInvocation<'db> {
             && scope == scope.ingot(db).root_mod(db).scope()
         {
             let owner = key.owner(db);
-            SemanticInstanceKey::new(
+            SemanticInstanceKey::of(
                 db,
                 owner,
                 key.subst(db),
                 key.effect_providers(db),
                 ImplEnv::empty(db, owner.scope().ingot(db).root_mod(db).scope()),
-                EvidenceList::none(db),
+                key.evidence(db),
             )
         } else {
             key

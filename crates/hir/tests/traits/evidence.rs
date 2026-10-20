@@ -1,6 +1,7 @@
 use camino::Utf8PathBuf;
 use fe_hir::analysis::semantic::{
-    get_or_build_semantic_instance, root_semantic_instance_key, typed_body_template,
+    get_or_build_semantic_instance, identity_semantic_instance_key, root_semantic_instance_key,
+    typed_body_template,
 };
 use fe_hir::analysis::ty::evidence::{Evidence, EvidenceId};
 use fe_hir::analysis::ty::trait_resolution::{PredicateListId, TraitSolveCx};
@@ -81,6 +82,14 @@ fn wrapped_k<T: Copy>(_ x: T) -> u256 {
 
 fn bound_k<T: HasK>(_ x: T) -> u256 {
     T::K
+}
+
+fn pair<T: Grow, U: Grow>(_ x: T, _ y: U) -> u256 {
+    x.grow() + y.grow()
+}
+
+fn half<U: Grow>(_ y: U) -> u256 {
+    pair(1 as u256, y)
 }
 "#;
 
@@ -404,4 +413,51 @@ fn a_constant_body_receives_proofs_of_its_assumptions() {
         .find(|callee| callee.key.owner(&db) == BodyOwner::Func(generic_e_fn, None))
         .expect("`root_e` calls `generic_e`");
     assert!(const_body_evidence(&db, generic_e.key.typed_body(&db)).contains(&true));
+}
+
+#[test]
+fn an_instance_proves_the_bounds_its_arguments_close() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        Utf8PathBuf::from("an_instance_proves_the_bounds_its_arguments_close.fe"),
+        SOURCE,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+
+    // `half` leaves `pair`'s closed bound `u256: Grow` to the instance and
+    // proves `U: Grow` by its own bound. In `pair<u256, U>`, which `half`'s
+    // body makes, `x.grow()` so carries the blanket implementation, and
+    // `y.grow()` still holds by `half`'s bound.
+    let half = get_or_build_semantic_instance(
+        &db,
+        identity_semantic_instance_key(&db, BodyOwner::Func(func(&db, top_mod, "half"), None)),
+    );
+    let pair_fn = func(&db, top_mod, "pair");
+    let pair = half
+        .callees(&db)
+        .iter()
+        .find(|callee| callee.key.owner(&db) == BodyOwner::Func(pair_fn, None))
+        .expect("`half` calls `pair`");
+    let body = pair_fn.body(&db).expect("missing body");
+    let mut proofs: Vec<_> = body
+        .exprs(&db)
+        .keys()
+        .filter(|expr| matches!(expr.data(&db, body), Partial::Present(Expr::MethodCall(..))))
+        .map(|call| {
+            let evidence = pair
+                .key
+                .typed_body(&db)
+                .callable_expr(call)
+                .and_then(Callable::evidence)
+                .expect("the call's goal is proved");
+            match evidence.data(&db) {
+                Evidence::Impl { .. } if evidence.is_closed(&db) => "closed implementation",
+                Evidence::Impl { .. } => "implementation",
+                Evidence::Assumption(_) => "assumption",
+            }
+        })
+        .collect();
+    proofs.sort();
+    assert_eq!(proofs, ["assumption", "closed implementation"]);
 }

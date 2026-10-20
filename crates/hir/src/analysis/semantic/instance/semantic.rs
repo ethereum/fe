@@ -29,7 +29,7 @@ use crate::{
                 EffectKeyKind, instantiate_trait_effect_key, place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowKey, expand_rows},
             },
-            evidence::{EvidenceList, closed_evidence},
+            evidence::{EvidenceList, instance_evidence},
             fold::{TyFoldable, TyFolder},
             instantiate_trait_self,
             normalize::{
@@ -50,11 +50,12 @@ use crate::{
                 BodyOwner, Callable, ConstIntrinsicKind, EffectArg, EffectParamSite,
                 EffectPassMode, EffectProviderProvenance, EffectProviderSpecialization,
                 ForLoopStep, LocalBinding, ParamSite, ResolvedEffectArg, RowArg,
-                SemanticExprLowering, SmirLoweringIssue, TypedBody, func_signature,
+                SemanticExprLowering, SmirLoweringIssue, TypedBody,
             },
             ty_def::{BorrowKind, InvalidCause, TyData, TyId},
             ty_is_snapshot,
             ty_lower::{ParamSchemaId, SubstError},
+            visitor::collect_flags,
         },
     },
     hir_def::{CallableDef, Contract, ExprId, FuncParamMode, StmtId, scope_graph::ScopeId},
@@ -70,9 +71,10 @@ use salsa::Update;
 use thin_vec::ThinVec;
 
 use super::{
-    EffectProviderSubst, GenericSubst, ImplEnv, const_ref::root_impl_env, instantiate_typed_body,
-    provisional_semantic_callee_key, semantic_callee_key_with_effect_providers,
-    typed_body_template,
+    EffectProviderSubst, GenericSubst, ImplEnv,
+    const_ref::{is_ground, root_impl_env},
+    instantiate_typed_body, provisional_semantic_callee_key,
+    semantic_callee_key_with_effect_providers, typed_body_template,
 };
 
 #[salsa::interned]
@@ -89,6 +91,28 @@ pub struct SemanticInstanceKey<'db> {
 }
 
 impl<'db> SemanticInstanceKey<'db> {
+    /// The key for `owner`'s instance with `subst`, given the proofs a use
+    /// supplies of the assumptions its body is checked under. One with
+    /// closed arguments carries none: its instance proves every assumption
+    /// itself (`instance_evidence`), so the keys for one body and
+    /// substitution are the same however they are made, and a key never
+    /// holds a proof whose types can hold the key.
+    pub fn of(
+        db: &'db dyn HirAnalysisDb,
+        owner: BodyOwner<'db>,
+        subst: GenericSubst<'db>,
+        effect_providers: EffectProviderSubst<'db>,
+        impl_env: ImplEnv<'db>,
+        supplied: EvidenceList<'db>,
+    ) -> Self {
+        let evidence = if is_ground(collect_flags(db, subst.generic_args(db))) {
+            EvidenceList::none(db)
+        } else {
+            supplied
+        };
+        Self::new(db, owner, subst, effect_providers, impl_env, evidence)
+    }
+
     /// This key instantiated with its data parameters naming places in
     /// `param_spaces`.
     fn with_param_spaces(
@@ -267,7 +291,13 @@ pub fn instantiated_typed_body<'db>(
 ) -> TypedBody<'db> {
     let mut body =
         instantiate_typed_body(db, typed_body_template(db, key.owner(db)), key.subst(db));
-    body.bind_evidence(db, key.evidence(db));
+    let evidence = instance_evidence(
+        db,
+        body.signature(),
+        key.evidence(db),
+        TraitSolveCx::new(db, key.impl_env(db).normalization_scope(db)),
+    );
+    body.bind_evidence(db, evidence);
     // A body's row provider parameters are the providers its call binds.
     let owner = match key.owner(db) {
         BodyOwner::Closure { def, .. } => (def.body.scope(), Some(def.expr)),
@@ -2134,22 +2164,13 @@ pub fn root_semantic_instance_key<'db>(
         | BodyOwner::ContractRecvArm { .. }
         | BodyOwner::Closure { .. } => GenericSubst::none(db),
     };
-    let key = SemanticInstanceKey::new(
+    let key = SemanticInstanceKey::of(
         db,
         owner,
         subst,
         EffectProviderSubst::new(db, effect_providers, Vec::new()),
         root_impl_env(db, owner, subst),
-        match owner {
-            BodyOwner::Func(func, mode) => closed_evidence(
-                db,
-                func_signature(db, func, mode),
-                subst,
-                EvidenceList::none(db),
-                TraitSolveCx::new(db, owner.scope()),
-            ),
-            _ => EvidenceList::none(db),
-        },
+        EvidenceList::none(db),
     );
     validate_instantiated_effect_env_key(db, key)
         .map_err(RootSemanticInstanceError::UnclosedEffectEnv)?;
@@ -2161,7 +2182,7 @@ pub fn identity_semantic_instance_key<'db>(
     owner: BodyOwner<'db>,
 ) -> SemanticInstanceKey<'db> {
     let subst = GenericSubst::for_body_owner(db, owner, Vec::new());
-    SemanticInstanceKey::new(
+    SemanticInstanceKey::of(
         db,
         owner,
         subst,

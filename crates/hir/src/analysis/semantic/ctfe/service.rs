@@ -1213,7 +1213,7 @@ fn force_const_term_operand_impl<'db>(
                 body: *body,
                 expected: template_ty.unwrap_or(*expected),
             };
-            let key = SemanticInstanceKey::new(
+            let key = SemanticInstanceKey::of(
                 db,
                 owner,
                 capture.generic_subst(db),
@@ -1865,7 +1865,7 @@ fn force_selected_const_ty<'db>(
                 body: *body,
                 expected: template_ty.or(*ty).unwrap_or(expected),
             };
-            let key = SemanticInstanceKey::new(
+            let key = SemanticInstanceKey::of(
                 db,
                 owner,
                 capture.generic_subst(db),
