@@ -16,6 +16,7 @@ use super::{
     generic_defaults::DefaultApplication,
     normalize::normalize_ty,
     provider::AddressSpace,
+    shape::{Shape, is_param_product, lower_param_product},
     trait_def::TraitInstId,
     trait_resolution::{
         PredicateListId,
@@ -880,8 +881,8 @@ pub(crate) fn lower_generic_arg_list<'db>(
             // Generic args are syntactically ambiguous: `String<N>` may parse `N` as a type
             // even when `String` expects a const generic arg, so a path is lowered as the
             // constant it names, if it names one.
-            GenericArg::Type(ty_arg) => match ty_arg.ty.to_opt().map(|ty| ty.data(db)) {
-                Some(HirTyKind::Path(path)) => lower_path_impl(
+            GenericArg::Type(ty_arg) => match ty_arg.ty.to_opt().map(|ty| (ty, ty.data(db))) {
+                Some((_, HirTyKind::Path(path))) => lower_path_impl(
                     db,
                     scope,
                     *path,
@@ -889,6 +890,14 @@ pub(crate) fn lower_generic_arg_list<'db>(
                     TypePosition::GenericArg,
                     lowering_cx,
                 ),
+                // A tuple whose parts carry modes is a parameter list, a
+                // shape: `Fn<(own A, B)>`.
+                Some((ty, HirTyKind::Tuple(_))) if is_param_product(db, ty) => {
+                    match lower_param_product(db, ty, scope, assumptions, None) {
+                        Some(Shape::Tuple(params)) => TyId::params_shape(db, &params),
+                        _ => TyId::invalid(db, InvalidCause::Other),
+                    }
+                }
                 _ => lower_opt_hir_ty_impl(db, ty_arg.ty, scope, assumptions, lowering_cx),
             },
             GenericArg::Const(const_arg) => TyId::const_ty(
