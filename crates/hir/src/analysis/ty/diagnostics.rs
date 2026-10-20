@@ -90,6 +90,14 @@ pub enum TyLowerDiag<'db> {
         span: DynLazySpan<'db>,
         entry: bool,
     },
+    /// A spread parameter, `..A`, that is not the last of a trait method's
+    /// declaration.
+    MisplacedSpread(DynLazySpan<'db>),
+    /// A spread parameter whose type is not a shape.
+    SpreadOfNonShape {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+    },
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -326,6 +334,8 @@ impl TyLowerDiag<'_> {
             Self::DestructuredParamWithoutBody(_) => 76,
             Self::MaybeMutWithoutResult(_) => 77,
             Self::MaybeMutRowEffect { .. } => 78,
+            Self::MisplacedSpread(_) => 80,
+            Self::SpreadOfNonShape { .. } => 81,
             Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,

@@ -1763,6 +1763,22 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::MisplacedSpread(span) => primary_diag(
+                Severity::Error,
+                "a spread parameter is a trait method declaration's last",
+                "`..A` spreads a shape's parameters in a bodiless trait method",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::SpreadOfNonShape { span, ty } => primary_diag(
+                Severity::Error,
+                format!("`{}` is not a shape", ty.pretty_print(db)),
+                "a spread takes the parameters of a shape parameter, `..A` with `shape A`",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::MaybeMutRowEffect { span, entry } => {
                 let (message, label) = if *entry {
                     ("`mut?` on a row", "a row's effects carry their own modes")

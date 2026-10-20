@@ -412,6 +412,14 @@ impl<'db> FuncParamListId<'db> {
 impl<'db> FuncParam<'db> {
     /// Pretty-prints a function parameter.
     pub fn pretty_print(&self, db: &'db dyn HirDb) -> String {
+        if self.is_spread() {
+            return format!(
+                "..{}",
+                self.ty
+                    .to_opt()
+                    .map_or("?".to_string(), |ty| ty.pretty_print(db))
+            );
+        }
         let mut result = self.pretty_print_binding(db);
 
         // Type (if not a self param with fallback) — use "?" if Absent.

@@ -65,6 +65,11 @@ impl FuncParam {
         }
     }
 
+    /// Returns the `..` of a spread parameter, `..A`.
+    pub fn spread_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Dot2)
+    }
+
     /// Returns the pattern a parameter destructures with instead of a name.
     /// `(a, b)` in `_ (a, b): (u256, u256)`.
     pub fn pat(&self) -> Option<super::Pat> {

@@ -1,0 +1,17 @@
+// A spread parameter lists a shape's parameters, as the last parameter of
+// a trait method's declaration.
+trait Call<shape A> {
+    fn call(self, ..A) -> u256
+
+    fn before(self, ..A, _ x: u256)
+}
+
+fn free<shape A>(..A) {}
+
+trait Defaulted<shape A> {
+    fn call(self, ..A) {}
+}
+
+trait NotShape<T> {
+    fn call(self, ..T)
+}

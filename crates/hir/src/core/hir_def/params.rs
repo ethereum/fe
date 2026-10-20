@@ -301,7 +301,9 @@ impl<'db> FuncParam<'db> {
             .flatten()
             .and_then(|name| match name {
                 FuncParamName::Ident(ident) => Some(ident),
-                FuncParamName::Underscore | FuncParamName::Destructured(_) => None,
+                FuncParamName::Underscore
+                | FuncParamName::Destructured(_)
+                | FuncParamName::Spread => None,
             })
     }
 
@@ -309,7 +311,9 @@ impl<'db> FuncParam<'db> {
     pub fn name(&self) -> Option<IdentId<'db>> {
         match self.name.to_opt()? {
             FuncParamName::Ident(name) => Some(name),
-            FuncParamName::Underscore | FuncParamName::Destructured(_) => None,
+            FuncParamName::Underscore | FuncParamName::Destructured(_) | FuncParamName::Spread => {
+                None
+            }
         }
     }
 
@@ -318,7 +322,7 @@ impl<'db> FuncParam<'db> {
     pub fn binding_name(&self) -> Option<IdentId<'db>> {
         match self.name.to_opt()? {
             FuncParamName::Ident(name) | FuncParamName::Destructured(name) => Some(name),
-            FuncParamName::Underscore => None,
+            FuncParamName::Underscore | FuncParamName::Spread => None,
         }
     }
 
@@ -329,6 +333,11 @@ impl<'db> FuncParam<'db> {
     /// Whether the parameter is a pattern its body destructures it with.
     pub fn is_destructured(&self) -> bool {
         matches!(self.name.to_opt(), Some(FuncParamName::Destructured(_)))
+    }
+
+    /// Whether the parameter is a spread, `..A`.
+    pub fn is_spread(&self) -> bool {
+        matches!(self.name.to_opt(), Some(FuncParamName::Spread))
     }
 
     /// Whether the parameter is written `mut?`: `mut? self` or `x: mut? T`.
@@ -354,6 +363,9 @@ pub enum FuncParamName<'db> {
     /// `let (a, b) = %1`. The name, which source cannot write, is the
     /// parameter's `%` and its index.
     Destructured(IdentId<'db>),
+    /// `..A`: the parameters the shape `A`, the parameter's type, lists, in
+    /// its place.
+    Spread,
 }
 
 impl<'db> FuncParamName<'db> {
@@ -384,6 +396,7 @@ impl<'db> FuncParamName<'db> {
         match self {
             FuncParamName::Ident(name) => name.data(db).to_string(),
             FuncParamName::Underscore | FuncParamName::Destructured(_) => "_".to_string(),
+            FuncParamName::Spread => "..".to_string(),
         }
     }
 }

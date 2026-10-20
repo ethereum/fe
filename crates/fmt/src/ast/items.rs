@@ -781,6 +781,9 @@ impl ToDoc for ast::FuncParam {
 
         let mut doc = alloc.nil();
 
+        if self.spread_token().is_some() {
+            doc = doc.append(alloc.text(".."));
+        }
         if self.mut_token().is_some() {
             doc = doc.append(alloc.text("mut "));
         }
@@ -811,7 +814,10 @@ impl ToDoc for ast::FuncParam {
         }
 
         if let Some(ty) = self.ty() {
-            doc = doc.append(alloc.text(": ")).append(ty.to_doc(ctx));
+            if self.spread_token().is_none() {
+                doc = doc.append(alloc.text(": "));
+            }
+            doc = doc.append(ty.to_doc(ctx));
         }
 
         doc

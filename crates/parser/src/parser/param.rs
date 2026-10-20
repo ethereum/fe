@@ -119,6 +119,11 @@ impl super::Parse for FnParamScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        // `..A`: the parameters a shape lists.
+        if parser.bump_if(SyntaxKind::Dot2) {
+            parse_type(parser, None)?;
+            return Ok(());
+        }
         let has_mut = parser.bump_if(SyntaxKind::MutKw);
         let has_maybe_mut = !has_mut && parser.bump_if(SyntaxKind::MaybeMutKw);
         let has_var = !has_mut && !has_maybe_mut && parser.bump_if(SyntaxKind::VarKw);

@@ -1394,6 +1394,34 @@ impl<'db> FuncParamView<'db> {
             return vec![TyLowerDiag::VarParamNotOwned { span }.into()];
         }
 
+        // A spread lists a shape's parameters, last in a trait method's
+        // declaration; its type is the shape, not a value's type.
+        if param.is_spread() {
+            if func.body(db).is_some()
+                || func.containing_trait(db).is_none()
+                || self.idx + 1 != func.params(db).count()
+            {
+                return vec![TyLowerDiag::MisplacedSpread(self.span().into()).into()];
+            }
+            let errs =
+                collect_hir_ty_diags(db, func.scope(), hir_ty, self.lazy_ty_span(db), assumptions);
+            if !errs.is_empty() {
+                return errs;
+            }
+            let ty = self.ty(db);
+            return if *ty.kind(db) == Kind::Shape {
+                Vec::new()
+            } else {
+                vec![
+                    TyLowerDiag::SpreadOfNonShape {
+                        span: self.ty_span(db),
+                        ty,
+                    }
+                    .into(),
+                ]
+            };
+        }
+
         // A product's parts carry its modes, and its body takes it apart.
         if let TypeKind::Mode(_, inner) = hir_ty.data(db)
             && inner

@@ -189,7 +189,9 @@ impl<'db> FuncParam<'db> {
         let is_own = ast.own_token().is_some();
         let is_maybe_mut = ast.maybe_mut_token().is_some();
         let is_label_suppressed = ast.is_label_suppressed();
-        let name = if ast.pat().is_some() {
+        let name = if ast.spread_token().is_some() {
+            Some(FuncParamName::Spread)
+        } else if ast.pat().is_some() {
             Some(FuncParamName::Destructured(FuncParamName::destructured(
                 ctxt.db(),
                 idx,
