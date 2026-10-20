@@ -477,3 +477,105 @@ fn verify(_ v: Verify<{ check() }>) {}
         diag_codes(src)
     );
 }
+
+#[test]
+fn no_evidence_debt_refuses_composite_and_projected_types_holding_evidence() {
+    let src = r#"
+use core::obligations::{Evidence, prove}
+
+trait Price { fn p() -> u256 }
+struct Item {}
+impl Price for Item { fn p() -> u256 { 10 } }
+impl Price for Item as Alt { fn p() -> u256 { 20 } }
+
+struct Wrap<T> {
+    pub x: T,
+}
+
+trait Holder {
+    type Assoc
+}
+
+struct EvHolder {}
+impl Holder for EvHolder {
+    type Assoc = Evidence<Price<Item>>
+}
+
+fn call_closure_with_wrap<T>(_ w: Wrap<T>) {
+    let f = |_ v: Wrap<T>| {}
+    f(w)
+}
+
+fn open_wrap<T>(_ w: Wrap<T>) {
+    with (w) {}
+}
+
+fn open_projected<H: Holder>(_ x: H::Assoc) {
+    with (x) {}
+}
+
+pub fn leak_composite_to_closure() {
+    let ev: Evidence<Price<Item>> = with (Alt) { prove<Price<Item>>() }
+    call_closure_with_wrap(Wrap { x: ev })
+}
+
+pub fn leak_composite_to_with() {
+    let ev: Evidence<Price<Item>> = with (Alt) { prove<Price<Item>>() }
+    open_wrap(Wrap { x: ev })
+}
+
+pub fn leak_projected_to_with() {
+    let ev: Evidence<Price<Item>> = with (Alt) { prove<Price<Item>>() }
+    open_projected<EvHolder>(ev)
+}
+"#;
+    let codes = diag_codes(src);
+    assert_eq!(
+        codes.iter().filter(|c| *c == "8-0098").count(),
+        3,
+        "expected 3 `8-0098` refusals for composite and projected types holding evidence, got {codes:?}"
+    );
+}
+
+#[test]
+fn nested_items_inside_with_refuse_transitive_type_slot_reads() {
+    let src = r#"
+trait Price { const P: usize }
+struct Item {}
+impl Price for Item { const P: usize = 2 }
+impl Price for Item as Wholesale { const P: usize = 4 }
+
+struct Holder<T: Price> {
+    pub buf: [u8; T::P],
+}
+
+pub fn nested_fn_in_with() {
+    with (Wholesale) {
+        fn inner(_ h: Holder<Item>) {}
+    }
+}
+
+pub fn nested_struct_in_with() {
+    with (Wholesale) {
+        struct Inner {
+            pub h: Holder<Item>,
+        }
+    }
+}
+
+pub fn nested_const_in_with() {
+    with (Wholesale) {
+        const C: usize = {
+            let _h = Holder<Item> { buf: [0; 2] }
+            0
+        }
+    }
+}
+"#;
+    let codes = diag_codes(src);
+    assert_eq!(
+        codes.iter().filter(|c| *c == "8-0098").count(),
+        3,
+        "expected 3 `8-0098` refusals for nested items inside `with` referencing choice-dependent `Holder<Item>`, got {codes:?}"
+    );
+}

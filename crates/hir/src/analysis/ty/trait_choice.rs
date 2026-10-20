@@ -29,7 +29,8 @@ use crate::{
 /// The slot a goal occupies: its trait and arguments, without associated-type
 /// equalities, which constrain the accepted answer rather than name a slot.
 pub fn slot_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> TraitInstId<'db> {
-    if goal.assoc_type_bindings(db).is_empty() {
+    if goal.assoc_type_bindings(db).is_empty() && goal.mode(db) == crate::hir_def::ModeMarker::None
+    {
         return goal;
     }
     TraitInstId::new(
@@ -37,7 +38,7 @@ pub fn slot_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> Tra
         goal.def(db),
         goal.args(db).clone(),
         IndexMap::new(),
-        goal.mode(db),
+        crate::hir_def::ModeMarker::None,
     )
 }
 
@@ -166,6 +167,30 @@ impl<'db> KnownChoice<'db> {
     ) -> Option<ResolvedImplInstance<'db>> {
         let candidate = complete_selected_impl(db, lower_impl_trait(db, self.implementation)?)?;
         instantiate_selected_impl(db, candidate, inst)
+    }
+
+    /// The slots this implementation declares on its generic parameters, each
+    /// as written and as instantiated for `self.goal`.
+    pub fn impl_goals(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Vec<(TraitInstId<'db>, TraitInstId<'db>)> {
+        let Some(resolved) = self.resolved_instance(db, self.goal) else {
+            return Vec::new();
+        };
+        impl_declared_goals(db, self.implementation, resolved.impl_args(db))
+    }
+
+    /// The decision recorded for `bound` in `self.bounds`.
+    pub fn bound_choice(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        bound: TraitInstId<'db>,
+    ) -> Option<Choice<'db>> {
+        self.bounds?
+            .items(db)
+            .iter()
+            .find_map(|(delivery, choice)| (*delivery == Delivery::Bound(bound)).then_some(*choice))
     }
 
     /// Whether this choice answers `goal`: the same slot, and the chosen

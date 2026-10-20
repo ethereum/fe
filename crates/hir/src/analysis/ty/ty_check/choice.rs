@@ -93,12 +93,6 @@ pub(super) fn holds_evidence<'db>(
     false
 }
 
-/// The type parameter a value of type `ty` is, behind any capability.
-pub(super) fn as_type_param<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
-    let ty = ty.as_capability(db).map_or(ty, |(_, inner)| inner);
-    matches!(ty.data(db), TyData::TyParam(_)).then_some(ty)
-}
-
 /// Evidence in a field, an element or a destructured part of an
 /// aggregate has no admitted source.
 const AGGREGATE: &str = "evidence stored in an aggregate is not supported";
@@ -461,20 +455,22 @@ fn body_trait_uses<'db>(
 ) -> Vec<TraitUse<'db>> {
     let mut uses = Vec::new();
     for cref in typed.const_refs() {
-        let own = match cref {
-            ConstRef::TraitConst(assoc) => Some(assoc.inst()),
+        let own_slot = match cref {
+            ConstRef::TraitConst(assoc) => Some(slot_goal(db, assoc.inst())),
             _ => None,
         };
-        for (index, (goal, choice)) in const_use_reads(db, cref).into_iter().enumerate() {
-            uses.push((slot_goal(db, goal), choice, own.is_some() && index == 0));
+        for (goal, choice) in const_use_reads(db, cref) {
+            let slot = slot_goal(db, goal);
+            uses.push((slot, choice, Some(slot) == own_slot));
         }
     }
     let Some(body) = typed.body() else {
         return uses;
     };
     for (_, callable, _) in typed.recorded_calls(db) {
-        if let Some(inst) = callable.trait_inst {
-            uses.push((slot_goal(db, inst), callable.choice(), true));
+        let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
+        if let Some(slot) = own_slot {
+            uses.push((slot, callable.choice(), true));
         }
         let CallableDef::Func(func) = callable.callable_def() else {
             continue;
@@ -484,18 +480,24 @@ fn body_trait_uses<'db>(
         let (body_func, body_args) = callable
             .called_body(db, body.scope(), typed.assumptions())
             .unwrap_or_else(|| (func, callable.generic_args().to_vec()));
-        let slots = body_deliveries(
-            db,
-            callable.choice().and_then(|c| c.known()),
-            callable.delivered(),
-            func,
-            body_func,
-        );
+        let chosen = callable.choice().and_then(|c| c.known());
+        let slots = body_deliveries(db, chosen, callable.delivered(), func, body_func);
         for (bound, goal) in declared_goals(db, body_func, &body_args) {
+            let slot = slot_goal(db, goal);
             let delivered = slots
                 .iter()
-                .find_map(|(slot, choice)| (*slot == SlotRef::Bound(bound)).then_some(*choice));
-            uses.push((slot_goal(db, goal), delivered, false));
+                .find_map(|(s, choice)| (*s == SlotRef::Bound(bound)).then_some(*choice));
+            uses.push((slot, delivered, Some(slot) == own_slot));
+        }
+        if let Some(known) = chosen {
+            for (bound, goal) in known.impl_goals(db) {
+                let slot = slot_goal(db, goal);
+                let delivered = known.bound_choice(db, bound);
+                let item = (slot, delivered, Some(slot) == own_slot);
+                if !uses.contains(&item) {
+                    uses.push(item);
+                }
+            }
         }
     }
     uses
@@ -634,7 +636,7 @@ pub(crate) fn const_use_reads<'db>(
     db: &'db dyn HirAnalysisDb,
     cref: ConstRef<'db>,
 ) -> Vec<(TraitInstId<'db>, Option<Choice<'db>>)> {
-    let (own, body, subst, delivered) = match cref {
+    let (own, body, subst, delivered, impl_goals) = match cref {
         ConstRef::TraitConst(assoc) => {
             let own = Some((assoc.inst(), assoc.choice()));
             // While inference runs, a goal can still hold inference variables;
@@ -652,7 +654,13 @@ pub(crate) fn const_use_reads<'db>(
             else {
                 return own.into_iter().collect();
             };
-            (own, body, subst, assoc.delivered())
+            (
+                own,
+                body,
+                subst,
+                assoc.delivered(),
+                assoc.selected_impl_goals(db),
+            )
         }
         ConstRef::InherentConst(use_) => {
             if use_.receiver_ty().has_var(db) {
@@ -675,7 +683,7 @@ pub(crate) fn const_use_reads<'db>(
             ) else {
                 return Vec::new();
             };
-            (None, body, subst, use_.delivered())
+            (None, body, subst, use_.delivered(), Vec::new())
         }
         ConstRef::Const(_) => return Vec::new(),
     };
@@ -693,6 +701,12 @@ pub(crate) fn const_use_reads<'db>(
             .iter()
             .find_map(|(given, choice)| (*given == bound).then_some(*choice));
         reads.push((at_use, choice));
+    }
+    for (bound, at_use) in impl_goals {
+        let choice = chosen.and_then(|known| known.bound_choice(db, bound));
+        if !reads.iter().any(|(goal, _)| *goal == at_use) {
+            reads.push((at_use, choice));
+        }
     }
     reads
 }
@@ -1199,7 +1213,7 @@ impl<'db> TyChecker<'db> {
         let mut active = rustc_hash::FxHashSet::default();
         let bounds = self
             .env
-            .impl_bound_choices(*implementation, &[], 0, &mut active);
+            .impl_bound_choices(None, *implementation, &[], 0, None, &mut active);
         Some(
             KnownChoice::prove(
                 self.db,
@@ -1949,9 +1963,11 @@ impl<'db> TyChecker<'db> {
         };
         let mut active = rustc_hash::FxHashSet::default();
         let bounds = self.env.impl_bound_choices(
+            None,
             implementation,
             resolved.impl_args(self.db),
             0,
+            None,
             &mut active,
         );
         KnownChoice::prove(self.db, cx, implementation, goal)
@@ -2119,35 +2135,45 @@ impl<'db> TyCheckEnv<'db> {
         );
     }
 
-    /// The ordinary implementation of `inst`, together with the choices for
-    /// the bounds its `impl` declares, when `inst` has a unique authored
-    /// ordinary implementation in this body's proof context. A bound of the
-    /// `impl` that is one of this body's own bounds records `SlotRef::Bound`,
-    /// and a cyclic goal on the current proof path is left to the body's
-    /// slot resolution so coinductive proofs terminate.
+    /// The proof context of `frame`, whose opened goals are premises there as
+    /// they were while the block was checked (`add_premise_if_needed`).
+    fn frame_proof_context(&self, frame: Option<FrameId>) -> TraitSolveCx<'db> {
+        let db = self.db();
+        let mut premises = self.assumptions().list(db).to_vec();
+        for opened in self.choice_frames.opened(frame) {
+            if !premises.contains(&opened) {
+                premises.push(opened);
+            }
+        }
+        TraitSolveCx::new(db, self.scope())
+            .with_assumptions(PredicateListId::new(db, premises).extend_all_bounds(db))
+    }
+
+    /// The implementation of `inst`, together with the choices for the bounds
+    /// its `impl` declares, when `inst` has a unique authored implementation
+    /// in `frame`'s proof context. When `undecided` is given (for a direct
+    /// use's own slot), the implementation's direct bounds are decided in
+    /// `frame` and any left to ordinary selection are recorded in `undecided`.
     fn ordinary_choice(
         &self,
+        frame: Option<FrameId>,
         inst: TraitInstId<'db>,
         depth: usize,
+        undecided: Option<&mut Vec<TraitInstId<'db>>>,
         active: &mut rustc_hash::FxHashSet<TraitInstId<'db>>,
     ) -> Option<Choice<'db>> {
         let db = self.db();
-        let written = slot_goal(db, inst);
-        let slot = self.normalized_slot(inst).inst();
-        if let Some(own) = self
-            .own_bounds()
-            .into_iter()
-            .find(|own| *own == written || *own == slot)
-        {
-            return Some(Choice::Slot(SlotRef::Bound(own)));
+        if let Some(choice) = self.decide(frame, inst) {
+            return Some(choice);
         }
+        let slot = self.normalized_slot(inst).inst();
         if slot.args(db).iter().any(|ty| ty.has_var(db))
             || !choice_walk_step_within_limits(db, WalkStep::Proof, depth)
             || !active.insert(slot)
         {
             return None;
         }
-        let cx = self.proof_context();
+        let cx = self.frame_proof_context(frame);
         let resolved = match resolve_trait_impl_instance(
             db,
             cx,
@@ -2164,8 +2190,14 @@ impl<'db> TyCheckEnv<'db> {
             active.remove(&slot);
             return None;
         };
-        let bounds =
-            self.impl_bound_choices(implementation, resolved.impl_args(db), depth + 1, active);
+        let bounds = self.impl_bound_choices(
+            frame,
+            implementation,
+            resolved.impl_args(db),
+            depth + 1,
+            undecided,
+            active,
+        );
         active.remove(&slot);
         Some(Choice::Known(KnownChoice::ordinary(
             db,
@@ -2180,15 +2212,24 @@ impl<'db> TyCheckEnv<'db> {
     /// context.
     fn impl_bound_choices(
         &self,
+        frame: Option<FrameId>,
         implementation: crate::hir_def::ImplTrait<'db>,
         impl_args: &[TyId<'db>],
         depth: usize,
+        mut undecided: Option<&mut Vec<TraitInstId<'db>>>,
         active: &mut rustc_hash::FxHashSet<TraitInstId<'db>>,
     ) -> Option<DeliveryList<'db>> {
         let db = self.db();
         let mut bounds = Vec::new();
         for (bound, at_use) in impl_declared_goals(db, implementation, impl_args) {
-            if let Some(choice) = self.ordinary_choice(at_use, depth, active) {
+            let choice = match undecided.as_deref_mut() {
+                Some(undecided) => self.decide(frame, at_use).or_else(|| {
+                    undecided.push(at_use);
+                    self.ordinary_choice(None, at_use, depth, None, active)
+                }),
+                None => self.ordinary_choice(None, at_use, depth, None, active),
+            };
+            if let Some(choice) = choice {
                 let item = (Delivery::Bound(bound), choice);
                 if !bounds.contains(&item) {
                     bounds.push(item);
@@ -2211,14 +2252,12 @@ impl<'db> TyCheckEnv<'db> {
         callable: &Callable<'db>,
     ) -> Result<CallDecisions<'db>, ChoiceRefusal> {
         let db = self.db();
-        let own = callable
-            .trait_inst
-            .and_then(|inst| self.decide(frame, inst))
-            .or_else(|| {
-                let inst = callable.trait_inst?;
-                let mut active = rustc_hash::FxHashSet::default();
-                self.ordinary_choice(inst, 0, &mut active)
-            });
+        let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
+        let mut undecided_own = Vec::new();
+        let own = callable.trait_inst.and_then(|inst| {
+            let mut active = rustc_hash::FxHashSet::default();
+            self.ordinary_choice(frame, inst, 0, Some(&mut undecided_own), &mut active)
+        });
         let generic = !self.own_bounds().is_empty();
         let CallableDef::Func(func) = callable.callable_def() else {
             return Ok((own, Vec::new()));
@@ -2232,7 +2271,12 @@ impl<'db> TyCheckEnv<'db> {
         };
         let mut decided = Vec::new();
         for (bound, at_call) in declared_goals(db, body, body_args) {
-            decided.push((bound, at_call, self.decide(frame, at_call)));
+            let choice = if Some(at_call) == own_slot {
+                own
+            } else {
+                self.decide(frame, at_call)
+            };
+            decided.push((bound, at_call, choice));
         }
         // A body chosen later is one of the trait's implementations of the
         // goal. Each candidate that applies to the goal as written has its own
@@ -2263,11 +2307,14 @@ impl<'db> TyCheckEnv<'db> {
         // implementation itself, where an opened slot its conditions read is
         // not in force. The call's own slot is exempt: the body that runs
         // for it receives its implementation's bounds here.
-        let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
-        let undecided = decided
-            .iter()
-            .filter(|(_, _, choice)| choice.is_none())
-            .map(|(_, goal, _)| *goal)
+        let undecided = undecided_own
+            .into_iter()
+            .chain(
+                decided
+                    .iter()
+                    .filter(|(_, _, choice)| choice.is_none())
+                    .map(|(_, goal, _)| *goal),
+            )
             .chain(undecided_candidates);
         if let Some(refusal) = self.reads_opened_condition(frame, undecided, own_slot) {
             return Err(refusal);
@@ -2276,7 +2323,7 @@ impl<'db> TyCheckEnv<'db> {
         for (bound, at_call, choice) in decided {
             let choice = choice.or_else(|| {
                 let mut active = rustc_hash::FxHashSet::default();
-                self.ordinary_choice(at_call, 0, &mut active)
+                self.ordinary_choice(None, at_call, 0, None, &mut active)
             });
             let Some(choice) = choice else {
                 continue;
@@ -2563,14 +2610,20 @@ impl<'db> TyCheckEnv<'db> {
             .collect::<Vec<_>>();
         for (expr, callable) in values {
             let frame = self.use_frames[expr];
+            let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
             let mut captured = Vec::new();
             let mut undecided = Vec::new();
             for goal in self.call_uses(&callable) {
-                let choice = self.decide(frame, goal).or_else(|| {
-                    undecided.push(goal);
+                let choice = if Some(slot_goal(db, goal)) == own_slot {
                     let mut active = rustc_hash::FxHashSet::default();
-                    self.ordinary_choice(goal, 0, &mut active)
-                });
+                    self.ordinary_choice(frame, goal, 0, Some(&mut undecided), &mut active)
+                } else {
+                    self.decide(frame, goal).or_else(|| {
+                        undecided.push(goal);
+                        let mut active = rustc_hash::FxHashSet::default();
+                        self.ordinary_choice(None, goal, 0, None, &mut active)
+                    })
+                };
                 if let Some(choice) = choice {
                     choice.for_each_choice(db, &mut |item| {
                         if !item.is_ordinary() && !captured.contains(&item) {
@@ -2582,7 +2635,6 @@ impl<'db> TyCheckEnv<'db> {
             // A function value's bounds are left to ordinary selection as a
             // call's are, and refused as a call's are when proved through a
             // condition on an opened slot.
-            let own_slot = callable.trait_inst.map(|inst| slot_goal(db, inst));
             if let Some(refusal) = self.reads_opened_condition(frame, undecided, own_slot) {
                 self.choice_refusals.push((expr, refusal));
             }
@@ -2816,14 +2868,18 @@ impl<'db> TyCheckEnv<'db> {
         reached: &mut Vec<TraitInstId<'db>>,
     ) -> Result<crate::analysis::ty::assoc_const::AssocConstUse<'db>, ChoiceRefusal> {
         let db = self.db();
-        let own = self.decide(frame, use_.inst()).or_else(|| {
-            let mut active = rustc_hash::FxHashSet::default();
-            self.ordinary_choice(use_.inst(), 0, &mut active)
-        });
-        let use_ = use_.with_choice(own);
+        let own_slot = slot_goal(db, use_.inst());
         let mut undecided = Vec::new();
+        let own = {
+            let mut active = rustc_hash::FxHashSet::default();
+            self.ordinary_choice(frame, use_.inst(), 0, Some(&mut undecided), &mut active)
+        };
+        let use_ = use_.with_choice(own);
+        let own_decision = own.map(|choice| (own_slot, choice));
         let items = match use_.body_that_runs(db) {
-            Some(runs) => self.body_decisions(frame, runs, false, &mut undecided, reached)?,
+            Some(runs) => {
+                self.body_decisions(frame, runs, own_decision, false, &mut undecided, reached)?
+            }
             // A body chosen later: the trait's default body declares the
             // slots a constant's declaration has (its `Self` and supertraits),
             // reached by name (`DeliveryList::to_body`), and each
@@ -2831,9 +2887,14 @@ impl<'db> TyCheckEnv<'db> {
             // constant's bounds decided here, as a call's candidates are.
             None => {
                 let mut items = match use_.trait_default_body(db) {
-                    Some(default) => {
-                        self.body_decisions(frame, default, true, &mut undecided, reached)?
-                    }
+                    Some(default) => self.body_decisions(
+                        frame,
+                        default,
+                        own_decision,
+                        true,
+                        &mut undecided,
+                        reached,
+                    )?,
                     None => Vec::new(),
                 };
                 let candidates = self
@@ -2847,9 +2908,14 @@ impl<'db> TyCheckEnv<'db> {
                         )
                     });
                 for candidate in candidates {
-                    for item in
-                        self.body_decisions(frame, candidate, false, &mut undecided, reached)?
-                    {
+                    for item in self.body_decisions(
+                        frame,
+                        candidate,
+                        own_decision,
+                        false,
+                        &mut undecided,
+                        reached,
+                    )? {
                         if !items.contains(&item) {
                             items.push(item);
                         }
@@ -2858,9 +2924,7 @@ impl<'db> TyCheckEnv<'db> {
                 items
             }
         };
-        if let Some(refusal) =
-            self.reads_opened_condition(frame, undecided, Some(slot_goal(db, use_.inst())))
-        {
+        if let Some(refusal) = self.reads_opened_condition(frame, undecided, Some(own_slot)) {
             return Err(refusal);
         }
         Ok(use_.with_delivered((!items.is_empty()).then(|| DeliveryList::new(db, items))))
@@ -2898,8 +2962,14 @@ impl<'db> TyCheckEnv<'db> {
             return Ok(use_);
         };
         let mut undecided = Vec::new();
-        let items =
-            self.body_decisions(frame, (body, ty, subst), false, &mut undecided, reached)?;
+        let items = self.body_decisions(
+            frame,
+            (body, ty, subst),
+            None,
+            false,
+            &mut undecided,
+            reached,
+        )?;
         if let Some(refusal) = self.reads_opened_condition(frame, undecided, None) {
             return Err(refusal);
         }
@@ -2920,6 +2990,7 @@ impl<'db> TyCheckEnv<'db> {
             TyId<'db>,
             crate::analysis::ty::ty_lower::CompleteSubst<'db>,
         ),
+        own: Option<(TraitInstId<'db>, Choice<'db>)>,
         nominal: bool,
         undecided: &mut Vec<TraitInstId<'db>>,
         reached: &mut Vec<TraitInstId<'db>>,
@@ -2927,10 +2998,15 @@ impl<'db> TyCheckEnv<'db> {
         let db = self.db();
         let mut items = Vec::new();
         for (bound, at_use) in const_declared_goals(db, body, &subst) {
-            let choice = match self.decide(frame, at_use) {
+            let decided = match own {
+                Some((slot, choice)) if at_use == slot => Some(choice),
+                _ => self.decide(frame, at_use),
+            };
+            let choice = match decided {
                 Some(choice) => {
                     if const_type_reads(db, body, ty).contains(&bound) {
-                        match choice {
+                        let mut dependent = false;
+                        choice.for_each_choice(db, &mut |item| match item {
                             Choice::Slot(SlotRef::Bound(goal)) => {
                                 if !reached.contains(&goal) {
                                     reached.push(goal);
@@ -2938,7 +3014,11 @@ impl<'db> TyCheckEnv<'db> {
                             }
                             // Refused where it is read (`written_frames`).
                             Choice::Slot(SlotRef::Unsupplied) => {}
-                            _ => return Err(ChoiceRefusal::DependentType),
+                            Choice::Known(known) if known.is_ordinary() => {}
+                            _ => dependent = true,
+                        });
+                        if dependent {
+                            return Err(ChoiceRefusal::DependentType);
                         }
                     }
                     choice
@@ -2946,7 +3026,8 @@ impl<'db> TyCheckEnv<'db> {
                 None => {
                     undecided.push(at_use);
                     let mut active = rustc_hash::FxHashSet::default();
-                    let Some(choice) = self.ordinary_choice(at_use, 0, &mut active) else {
+                    let Some(choice) = self.ordinary_choice(None, at_use, 0, None, &mut active)
+                    else {
                         continue;
                     };
                     choice
@@ -2970,7 +3051,7 @@ impl<'db> TyCheckEnv<'db> {
 /// and the slots its constant uses pass on to a constant body whose types
 /// read them. Type reach of function bodies (`own_type_reads`) and constant
 /// bodies (`const_type_reads`) reads only this list.
-fn body_type_reads<'db>(
+pub(super) fn body_type_reads<'db>(
     db: &'db dyn HirAnalysisDb,
     typed: &super::TypedBody<'db>,
 ) -> Vec<TraitInstId<'db>> {

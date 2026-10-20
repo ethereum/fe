@@ -1069,3 +1069,195 @@ pub fn closure_reads_evidence_in_for_loop(_ ev: Evidence<Collection<Arr2>>) -> u
         "expected 8-0098 refusal for a closure running a `for` loop under an enclosing `Evidence` choice, got {codes_ev:?}"
     );
 }
+
+#[test]
+fn conditional_impl_default_methods_and_constants_match_explicit_under_with() {
+    let diag_codes = |name: &str, source: &str| -> Vec<String> {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(name.into(), source);
+        let (top_mod, _) = db.top_mod(file);
+        fe_hir::analysis::initialize_analysis_pass()
+            .run_on_module(&db, top_mod)
+            .into_iter()
+            .map(|d| d.to_complete(&db).error_code.to_string())
+            .collect()
+    };
+
+    // 1. One-level conditional impl (`impl<T: Inner> Outer for Boxed<T>`):
+    // direct concrete and generic-forwarded calls/constants for both explicit (`get`, `K`)
+    // and default (`def_get`, `DEF_K`) trait items receive the frame's choice for `T: Inner`
+    // and distinguish different prerequisite bound choices (`AltInner20` vs `AltInner30`).
+    let one_level_ok = r#"
+trait Inner {
+    const C: u256
+    const fn v() -> u256
+}
+
+impl Inner for u256 {
+    const C: u256 = 10
+    const fn v() -> u256 { 10 }
+}
+
+impl Inner for u256 as AltInner20 {
+    const C: u256 = 20
+    const fn v() -> u256 { 20 }
+}
+
+impl Inner for u256 as AltInner30 {
+    const C: u256 = 30
+    const fn v() -> u256 { 30 }
+}
+
+struct Boxed<T> {
+    pub x: T,
+}
+
+trait Outer {
+    const K: u256
+    const DEF_K: u256 = Self::K
+    const fn get(self) -> u256
+    const fn def_get(self) -> u256 { self.get() }
+}
+
+impl<T: Inner> Outer for Boxed<T> {
+    const K: u256 = T::C
+    const fn get(self) -> u256 { T::v() }
+}
+
+const fn mid_get<T: Inner>(_ b: Boxed<T>) -> u256 {
+    b.get() + b.def_get() + <Boxed<T> as Outer>::K + <Boxed<T> as Outer>::DEF_K
+}
+
+const fn check() -> u256 {
+    let b: Boxed<u256> = Boxed { x: 1 }
+    let c20: u256 = with (AltInner20) {
+        b.get() + b.def_get() + <Boxed<u256> as Outer>::K + <Boxed<u256> as Outer>::DEF_K + mid_get<u256>(b)
+    }
+    let c30: u256 = with (AltInner30) {
+        b.def_get() + <Boxed<u256> as Outer>::DEF_K + mid_get<u256>(b)
+    }
+    c20 + c30
+}
+
+struct Verify<const N: u256> where { N == 340 } {}
+fn verify(_ v: Verify<{ check() }>) {}
+"#;
+    assert_eq!(
+        diag_codes("one_level_ok.fe", one_level_ok),
+        Vec::<String>::new()
+    );
+
+    // 2. Two-level conditional impl (`impl<T: Mid> Inner for T` + `impl<T: Inner> Outer for Boxed<T>`):
+    // both explicit (`get`, `K`) and default (`def_get`, `DEF_K`) uses are refused with `8-0098`
+    // under `with (AltMid)`, directly and through a generic caller `via_mid<T: Mid>`.
+    let two_level_refused = r#"
+trait Mid {
+    const M: u256
+    fn m() -> u256
+}
+impl Mid for u256 {
+    const M: u256 = 10
+    fn m() -> u256 { 10 }
+}
+impl Mid for u256 as AltMid {
+    const M: u256 = 20
+    fn m() -> u256 { 20 }
+}
+
+trait Inner {
+    const C: u256
+    fn v() -> u256
+}
+impl<T: Mid> Inner for T {
+    const C: u256 = T::M
+    fn v() -> u256 { T::m() }
+}
+
+struct Boxed<T> { pub x: T }
+trait Outer {
+    const K: u256
+    const DEF_K: u256 = Self::K
+    fn get(self) -> u256
+    fn def_get(self) -> u256 { self.get() }
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const K: u256 = T::C
+    fn get(self) -> u256 { T::v() }
+}
+
+fn via_mid_def_get<T: Mid>(_ x: T) -> u256 {
+    (Boxed { x }).def_get()
+}
+
+fn via_mid_def_k<T: Mid>() -> u256 {
+    <Boxed<T> as Outer>::DEF_K
+}
+
+pub fn direct_def_get_refused() -> u256 {
+    let b: Boxed<u256> = Boxed { x: 1 }
+    with (AltMid) {
+        b.def_get()
+    }
+}
+
+pub fn direct_def_k_refused() -> u256 {
+    with (AltMid) {
+        <Boxed<u256> as Outer>::DEF_K
+    }
+}
+
+pub fn generic_def_get_refused() -> u256 {
+    let x: u256 = 1
+    with (AltMid) {
+        via_mid_def_get<u256>(x)
+    }
+}
+
+pub fn generic_def_k_refused() -> u256 {
+    with (AltMid) {
+        via_mid_def_k<u256>()
+    }
+}
+"#;
+    let codes_two_level = diag_codes("two_level_refused.fe", two_level_refused);
+    assert_eq!(
+        codes_two_level.iter().filter(|c| *c == "8-0098").count(),
+        4,
+        "expected 4 `8-0098` refusals on 2-level conditional impl default methods/constants, got {codes_two_level:?}"
+    );
+
+    // 3. Type-position reads of `<Boxed<u256> as Outer>::DEF_K` under `with (AltInner)`
+    // are refused with `8-0122` in both unbraced and braced spellings.
+    let type_read_def_k = r#"
+trait Inner { const C: usize }
+impl Inner for u256 { const C: usize = 2 }
+impl Inner for u256 as AltInner { const C: usize = 4 }
+
+struct Boxed<T> { pub x: T }
+trait Outer {
+    const K: usize
+    const DEF_K: usize = Self::K
+}
+impl<T: Inner> Outer for Boxed<T> {
+    const K: usize = T::C
+}
+
+pub fn unbraced_type_read() {
+    with (AltInner) {
+        let _a: [u8; <Boxed<u256> as Outer>::DEF_K] = [0; 2]
+    }
+}
+
+pub fn braced_type_read() {
+    with (AltInner) {
+        let _b: [u8; { <Boxed<u256> as Outer>::DEF_K }] = [0; 2]
+    }
+}
+"#;
+    let codes_type_read = diag_codes("type_read_def_k.fe", type_read_def_k);
+    assert_eq!(
+        codes_type_read.iter().filter(|c| *c == "8-0122").count(),
+        2,
+        "expected 2 `8-0122` refusals on type-position reads of `DEF_K` under `with (AltInner)`, got {codes_type_read:?}"
+    );
+}

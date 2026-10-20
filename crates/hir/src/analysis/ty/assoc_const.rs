@@ -152,6 +152,23 @@ impl<'db> AssocConstUse<'db> {
         let body = super::trait_def::chosen_constant(db, self)?.body?;
         Some((body.body, body.ty, body.subst))
     }
+
+    /// The slots the implementation selected for this constant declares on its
+    /// generic parameters, each as written and as instantiated for this use.
+    pub(crate) fn selected_impl_goals(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Vec<(TraitInstId<'db>, TraitInstId<'db>)> {
+        let Some(chosen) = super::trait_def::chosen_constant(db, self) else {
+            return Vec::new();
+        };
+        let super::trait_def::ImplementorOrigin::Hir(implementation) =
+            chosen.resolved.selected().origin(db)
+        else {
+            return Vec::new();
+        };
+        super::trait_choice::impl_declared_goals(db, implementation, chosen.resolved.impl_args(db))
+    }
 }
 
 impl<'db> TyVisitable<'db> for AssocConstUse<'db> {

@@ -299,27 +299,60 @@ fn impl_env_identity<'db>(
         .choices(db)
         .iter()
         .map(|(slot, choice)| {
-            let slot = match slot {
-                SlotRef::EvidenceParam(idx) => format!("param{idx}"),
-                SlotRef::Bound(goal) => format!("bound{}", trait_identity(db, goal)),
-                SlotRef::Unsupplied => "unsupplied".to_string(),
-            };
-            let Some(choice) = choice else {
-                return format!("{slot}=pending");
-            };
-            let name = choice
-                .implementation()
-                .selection_name(db)
-                .map_or_else(|| "ordinary".to_string(), |name| name.data(db).to_string());
-            format!(
-                "{slot}=impl${}${name}${}",
-                item_identity(db, ItemKind::ImplTrait(choice.implementation())),
-                trait_identity(db, choice.goal())
-            )
+            let slot = slot_ref_identity(db, slot);
+            match choice {
+                Some(choice) => format!("{slot}={}", known_choice_identity(db, choice)),
+                None => format!("{slot}=pending"),
+            }
         })
         .collect::<Vec<_>>()
         .join("$");
     format!("{identity}$choices${choices}")
+}
+
+fn slot_ref_identity<'db>(db: &'db dyn HirAnalysisDb, slot: SlotRef<'db>) -> String {
+    match slot {
+        SlotRef::EvidenceParam(idx) => format!("param{idx}"),
+        SlotRef::Bound(goal) => format!("bound{}", trait_identity(db, goal)),
+        SlotRef::Unsupplied => "unsupplied".to_string(),
+    }
+}
+
+fn known_choice_identity<'db>(
+    db: &'db dyn HirAnalysisDb,
+    choice: hir::analysis::ty::trait_choice::KnownChoice<'db>,
+) -> String {
+    use hir::analysis::ty::trait_choice::{Choice, Delivery};
+    let name = choice
+        .implementation()
+        .selection_name(db)
+        .map_or_else(|| "ordinary".to_string(), |name| name.data(db).to_string());
+    let base = format!(
+        "impl${}${name}${}",
+        item_identity(db, ItemKind::ImplTrait(choice.implementation())),
+        trait_identity(db, choice.goal())
+    );
+    let Some(bounds) = choice.bounds() else {
+        return base;
+    };
+    let bounds = bounds
+        .items(db)
+        .iter()
+        .map(|(delivery, item)| {
+            let delivery = match delivery {
+                Delivery::Param(idx) => format!("param{idx}"),
+                Delivery::Bound(goal) => format!("bound{}", trait_identity(db, *goal)),
+                Delivery::Nominal(goal) => format!("nominal{}", trait_identity(db, *goal)),
+            };
+            let item = match item {
+                Choice::Known(known) => known_choice_identity(db, *known),
+                Choice::Slot(slot) => slot_ref_identity(db, *slot),
+            };
+            format!("{delivery}={item}")
+        })
+        .collect::<Vec<_>>()
+        .join("$");
+    format!("{base}$bounds$[{bounds}]")
 }
 
 fn trait_list_identity<'db>(

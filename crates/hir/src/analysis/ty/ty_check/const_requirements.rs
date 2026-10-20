@@ -2920,13 +2920,16 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
     // whose body is not known here (a callable value, a method chosen later):
     // evidence would arrive with no choice. A call whose body is known passes
     // its own debts on (`EdgeFact::NoEvidence`).
-    let param_of = |expr: ExprId| super::choice::as_type_param(db, typed.expr_ty(db, expr));
-    for param in typed
-        .effect_with_operands()
-        .iter()
-        .filter_map(|expr| param_of(*expr))
-    {
-        push(OwedCheck::NoEvidence { param }, &mut owed);
+    let push_no_evidence = |ty: TyId<'db>, owed: &mut Vec<OwedCheck<'db>>| {
+        if ty.has_param(db) && !super::choice::holds_evidence(db, func.scope(), ty) {
+            push(OwedCheck::NoEvidence { param: ty }, owed);
+        }
+        for param in type_params_in(db, ty) {
+            push(OwedCheck::NoEvidence { param }, owed);
+        }
+    };
+    for expr in typed.effect_with_operands() {
+        push_no_evidence(typed.expr_ty(db, *expr), &mut owed);
     }
     for expr in body.exprs(db).keys() {
         let Some(callable) = typed.callable_expr(expr) else {
@@ -2940,39 +2943,22 @@ pub(crate) fn owed_checks<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> V
             continue;
         }
         // Every call form's operands, as evidence is delivered to them.
-        for param in super::choice::call_operands(db, body, expr)
-            .into_iter()
-            .filter_map(param_of)
-        {
-            push(OwedCheck::NoEvidence { param }, &mut owed);
+        for operand in super::choice::call_operands(db, body, expr) {
+            push_no_evidence(typed.expr_ty(db, operand), &mut owed);
         }
     }
     for stmt in body.stmts(db).keys() {
         let Some(plan) = typed.for_loop_plan(stmt) else {
             continue;
         };
-        if plan.state_ty.has_param(db)
-            && !super::choice::holds_evidence(db, func.scope(), plan.state_ty)
-        {
-            push(
-                OwedCheck::NoEvidence {
-                    param: plan.state_ty,
-                },
-                &mut owed,
-            );
-        }
+        push_no_evidence(plan.state_ty, &mut owed);
         if plan.calls.iter().any(|call| {
             call.callable
                 .called_body(db, func.scope(), typed.assumptions())
                 .is_none()
         }) {
-            for param in plan
-                .driver
-                .into_iter()
-                .chain([plan.base])
-                .filter_map(param_of)
-            {
-                push(OwedCheck::NoEvidence { param }, &mut owed);
+            for operand in plan.driver.into_iter().chain([plan.base]) {
+                push_no_evidence(typed.expr_ty(db, operand), &mut owed);
             }
         }
     }

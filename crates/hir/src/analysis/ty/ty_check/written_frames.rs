@@ -484,6 +484,10 @@ fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<
                 ctxt.scope(),
                 assumptions,
             ));
+            let lowered =
+                crate::analysis::ty::ty_lower::lower_hir_ty(self.db, ty, ctxt.scope(), assumptions);
+            self.reads
+                .extend(super::choice::type_slot_reads(self.db, lowered));
             walk_type(self, ctxt, ty);
         }
 
@@ -495,6 +499,7 @@ fn item_slot_reads<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Vec<
             let uses = match ScopeId::from_item(ItemKind::Body(body)).parent_item(db) {
                 Some(ItemKind::Func(func)) if body.body_kind(db) == BodyKind::FuncBody => {
                     let typed = &super::infer_body(db, super::BodyOwner::func(db, func)).1;
+                    self.reads.extend(super::choice::body_type_reads(db, typed));
                     super::choice::body_slot_uses(db, typed)
                 }
                 _ => written_body_uses(db, body, None),
