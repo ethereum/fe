@@ -33,8 +33,8 @@ use crate::analysis::ty::effects::rows::RowKey;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{
-    Shape, is_param_product, lower_param_product, lower_return_shape, mentions_mode,
-    param_product_diags, return_shape_diags,
+    Shape, is_param_product, lower_param_product, lower_return_shape, lower_shape_value,
+    mentions_mode, param_product_diags, return_shape_diags, shape_value_diags,
 };
 use crate::analysis::ty::ty_def::{BorrowKind, Kind};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
@@ -5047,30 +5047,32 @@ impl<'db> ImplAssocTypeView<'db> {
 
     /// Semantic type of this associated type implementation.
     pub fn ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
-        let hir = self.owner.types(db)[self.idx].type_ref.to_opt()?;
         let assumptions = constraints_for(db, self.owner.into());
-        let lowering_cx = LoweringContext::new().for_impl_assoc_type(self.owner);
-        Some(lower_hir_ty_with_minter(
-            db,
-            hir,
-            self.owner.scope(),
-            assumptions,
-            &lowering_cx,
-        ))
+        self.lower(db, assumptions, LoweringContext::new())
     }
 
     pub(crate) fn candidate_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
-        let hir = self.owner.types(db)[self.idx].type_ref.to_opt()?;
         let assumptions =
             collect_candidate_constraints(db, self.owner.into()).instantiate_identity();
-        let lowering_cx = LoweringContext::deferred().for_impl_assoc_type(self.owner);
-        Some(lower_hir_ty_with_minter(
-            db,
-            hir,
-            self.owner.scope(),
-            assumptions,
-            &lowering_cx,
-        ))
+        self.lower(db, assumptions, LoweringContext::deferred())
+    }
+
+    /// The type or, for `shape Step = ..`, the shape term the impl gives.
+    fn lower(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        assumptions: PredicateListId<'db>,
+        lowering_cx: LoweringContext<'db>,
+    ) -> Option<TyId<'db>> {
+        let def = self.owner.types(db)[self.idx];
+        let hir = def.type_ref.to_opt()?;
+        let lowering_cx = lowering_cx.for_impl_assoc_type(self.owner);
+        let scope = self.owner.scope();
+        Some(if def.is_shape {
+            lower_shape_value(db, hir, scope, assumptions, &lowering_cx)
+        } else {
+            lower_hir_ty_with_minter(db, hir, scope, assumptions, &lowering_cx)
+        })
     }
 
     /// All type-related diagnostics for this associated type.
@@ -5083,8 +5085,12 @@ impl<'db> ImplAssocTypeView<'db> {
         let ty_span = self.span().ty();
         let assumptions = constraints_for(db, self.owner.into());
 
-        let errs =
-            collect_ty_lower_errors(db, self.owner.scope(), hir, ty_span.clone(), assumptions);
+        let scope = self.owner.scope();
+        let errs = if def.is_shape {
+            shape_value_diags(db, hir, scope, ty_span.clone(), assumptions)
+        } else {
+            collect_ty_lower_errors(db, scope, hir, ty_span.clone(), assumptions)
+        };
         if !errs.is_empty() {
             return errs;
         }
@@ -5253,7 +5259,17 @@ impl<'db> TraitAssocTypeView<'db> {
         let hir = self.decl(db).default?;
         let trait_ = self.owner;
         let assumptions = constraints_for(db, trait_.into());
-        Some(lower_hir_ty(db, hir, trait_.scope(), assumptions))
+        Some(if self.is_shape(db) {
+            lower_shape_value(
+                db,
+                hir,
+                trait_.scope(),
+                assumptions,
+                &LoweringContext::new(),
+            )
+        } else {
+            lower_hir_ty(db, hir, trait_.scope(), assumptions)
+        })
     }
 
     pub(crate) fn candidate_default_ty(
@@ -5263,7 +5279,12 @@ impl<'db> TraitAssocTypeView<'db> {
         let hir = self.decl(db).default?;
         let trait_ = self.owner;
         let assumptions = collect_candidate_constraints(db, trait_.into()).instantiate_identity();
-        Some(lower_hir_ty_deferred(db, hir, trait_.scope(), assumptions))
+        Some(if self.is_shape(db) {
+            let lowering_cx = LoweringContext::deferred();
+            lower_shape_value(db, hir, trait_.scope(), assumptions, &lowering_cx)
+        } else {
+            lower_hir_ty_deferred(db, hir, trait_.scope(), assumptions)
+        })
     }
 
     /// Semantic trait bounds using the trait's own `Self` as the subject.

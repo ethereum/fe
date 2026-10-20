@@ -1,4 +1,4 @@
-use crate::core::hir_def::GenericArg;
+use crate::core::hir_def::{GenericArg, TypeMode};
 use crate::hir_def::{CallableDef, Func};
 use crate::{
     core::hir_def::{
@@ -51,7 +51,7 @@ use crate::analysis::{
             GoalSatisfiability, PredicateListId, TraitSolveCx, constraint::collect_constraints,
             is_goal_satisfiable,
         },
-        ty_def::{InvalidCause, Kind, TyBase, TyData, TyId},
+        ty_def::{InvalidCause, Kind, ShapeMode, TyBase, TyData, TyId},
         ty_error::emit_invalid_ty_error,
         ty_lower::{
             TyAlias, collect_generic_params, lower_generic_arg_list, lower_hir_ty_with_minter,
@@ -1380,7 +1380,7 @@ where
             if let TyData::QualifiedTy(trait_inst) = ty.data(db) {
                 // Associated type projection
                 if let Some(assoc_ty) = trait_inst.project_assoc_ty(db, ident) {
-                    let r = PathRes::Ty(assoc_ty);
+                    let r = PathRes::Ty(shape_at_mode_arg(db, assoc_ty, path).unwrap_or(assoc_ty));
                     observer(path, &r);
                     return Ok(r);
                 }
@@ -1541,6 +1541,11 @@ where
             };
 
             if let Some(assoc_ty) = impl_self_assoc {
+                if let Some(shape) = shape_at_mode_arg(db, assoc_ty, path) {
+                    let result = PathRes::Ty(shape);
+                    observer(path, &result);
+                    return Ok(result);
+                }
                 let seg_args = lower_generic_arg_list(
                     db,
                     path.generic_args(db),
@@ -1604,7 +1609,9 @@ where
             let mut dedup: IndexMap<TyId<'db>, (TraitInstId<'db>, TyId<'db>, TyId<'db>)> =
                 IndexMap::new();
             for (inst, ty_candidate) in assoc_tys.iter().copied() {
-                let applied = if seg_args.is_empty() {
+                let applied = if let Some(shape) = shape_at_mode_arg(db, ty_candidate, path) {
+                    shape
+                } else if seg_args.is_empty() {
                     ty_candidate
                 } else {
                     TyId::foldl(db, ty_candidate, &seg_args)
@@ -2201,6 +2208,25 @@ fn assoc_ty_candidate_evidence<'db>(
         return PredicateListId::new(db, list);
     }
     evidence
+}
+
+/// `assoc`, an associated shape `path` names, at the mode its last segment
+/// gives it alone: `D::Step<ref>`. `None` for anything else.
+fn shape_at_mode_arg<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assoc: TyId<'db>,
+    path: PathId<'db>,
+) -> Option<TyId<'db>> {
+    let [GenericArg::Mode(mode)] = path.generic_args(db).data(db).as_slice() else {
+        return None;
+    };
+    let mode = match mode {
+        TypeMode::Ref => ShapeMode::Ref,
+        TypeMode::Mut => ShapeMode::Mut,
+        TypeMode::Own | TypeMode::MaybeMut => return None,
+    };
+    matches!(assoc.data(db), TyData::AssocTy(projection) if projection.is_shape(db))
+        .then(|| assoc.with_shape_mode(db, mode))
 }
 
 fn find_associated_type_in_mode<'db>(

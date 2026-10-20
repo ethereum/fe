@@ -9,13 +9,14 @@
 use salsa::Update;
 
 use super::{
+    const_ty::LoweringContext,
     corelib::resolve_lib_type_path,
     diagnostics::{TyDiagCollection, TyLowerDiag},
     fold::{TyFoldable, TyFolder},
     trait_resolution::PredicateListId,
-    ty_def::{BorrowKind, InvalidCause, TyId},
+    ty_def::{BorrowKind, InvalidCause, Kind, ShapeCon, ShapeMode, TyData, TyId},
     ty_error::collect_hir_ty_diags,
-    ty_lower::lower_hir_ty,
+    ty_lower::{lower_hir_ty, lower_hir_ty_with_minter},
     visitor::{TyVisitable, TyVisitor},
 };
 use crate::{
@@ -528,6 +529,72 @@ pub fn lower_param_product<'db>(
             })
             .collect(),
     ))
+}
+
+/// The shape term an impl gives an associated shape (`shape Step = ..`), or
+/// a trait its default: an owned value or an access, a product of parts, or
+/// another shape. `mut?` and a shape named without a mode take the mode the
+/// value is named at, and a part without a mode is a view.
+pub(crate) fn lower_shape_value<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    lowering_cx: &LoweringContext<'db>,
+) -> TyId<'db> {
+    match ty.data(db) {
+        TypeKind::Mode(mode, inner) => {
+            let con = match mode {
+                TypeMode::Own => ShapeCon::Owned,
+                TypeMode::Ref => ShapeCon::Access(BorrowKind::Ref),
+                TypeMode::Mut => ShapeCon::Access(BorrowKind::Mut),
+                TypeMode::MaybeMut => ShapeCon::MaybeMut,
+            };
+            let inner = inner.to_opt().map_or_else(
+                || TyId::invalid(db, InvalidCause::ParseError),
+                |inner| lower_hir_ty_with_minter(db, inner, scope, assumptions, lowering_cx),
+            );
+            TyId::shape_part(db, con, inner)
+        }
+        TypeKind::Tuple(elems) if is_param_product(db, ty) => {
+            let parts: Vec<_> = elems
+                .data(db)
+                .iter()
+                .map(|elem| match elem.to_opt() {
+                    Some(elem) => lower_shape_value(db, elem, scope, assumptions, lowering_cx),
+                    None => TyId::invalid(db, InvalidCause::ParseError),
+                })
+                .collect();
+            TyId::params_term(db, &parts)
+        }
+        _ => {
+            let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);
+            match ty.data(db) {
+                TyData::AssocTy(assoc) if assoc.mode.is_none() && assoc.is_shape(db) => {
+                    ty.with_shape_mode(db, ShapeMode::Inherit)
+                }
+                _ if *ty.kind(db) == Kind::Shape => ty,
+                _ => TyId::shape_part(db, ShapeCon::Access(BorrowKind::Ref), ty),
+            }
+        }
+    }
+}
+
+/// Diagnostics for a written associated shape value: each part's type is
+/// checked as a type, under its mode if it has one.
+pub fn shape_value_diags<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    span: LazyTySpan<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TyDiagCollection<'db>> {
+    match ty.data(db) {
+        TypeKind::Mode(_, inner) => inner.to_opt().map_or_else(Vec::new, |inner| {
+            collect_hir_ty_diags(db, scope, inner, span.into_mode_type().inner(), assumptions)
+        }),
+        _ => param_product_diags(db, ty, scope, span, assumptions),
+    }
 }
 
 /// Whether a written parameter type is a product: a tuple whose parts carry

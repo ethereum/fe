@@ -153,8 +153,11 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
 
             AssocTy(assoc) => {
                 let folded_trait = assoc.trait_.fold_with(db, folder);
-
-                TyId::assoc_ty(db, folded_trait, assoc.name)
+                let folded = TyId::assoc_ty(db, folded_trait, assoc.name);
+                match assoc.mode {
+                    Some(mode) => folded.with_shape_mode(db, mode),
+                    None => folded,
+                }
             }
 
             QualifiedTy(trait_inst) => {

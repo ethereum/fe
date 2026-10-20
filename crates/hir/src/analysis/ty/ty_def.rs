@@ -31,6 +31,7 @@ use super::{
     },
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     effects::{place_effect_provider_param_index_map, rows::RowComponent},
+    fold::{TyFoldable, TyFolder},
     normalize::normalize_ty,
     shape::Shape,
     trait_def::{TraitInstId, TraitRefId},
@@ -298,8 +299,13 @@ impl<'db> TyId<'db> {
             TyData::TyParam(param) => param.pretty_print(db),
             TyData::AssocTy(assoc_ty) => {
                 let self_ty = assoc_ty.trait_.self_ty(db);
+                let shape_mode = match assoc_ty.mode {
+                    Some(ShapeMode::Ref) => "<ref>",
+                    Some(ShapeMode::Mut) => "<mut>",
+                    Some(ShapeMode::Inherit) | None => "",
+                };
                 format!(
-                    "{}::{}",
+                    "{}::{}{shape_mode}",
                     self_ty.pretty_print_with_mode(db, mode),
                     assoc_ty.name.data(db)
                 )
@@ -387,22 +393,33 @@ impl<'db> TyId<'db> {
 
     /// The shape term of the parameter list `params`.
     pub fn params_shape(db: &'db dyn HirAnalysisDb, params: &[Shape<'db>]) -> TyId<'db> {
+        let params: Vec<_> = params
+            .iter()
+            .map(|param| match param {
+                Shape::Owned(ty) => Self::shape_part(db, ShapeCon::Owned, *ty),
+                Shape::Access(kind, ty) => Self::shape_part(db, ShapeCon::Access(*kind), *ty),
+                Shape::Tuple(parts) => Self::params_shape(db, parts),
+                Shape::Sum { .. } => unreachable!("a parameter is no sum"),
+            })
+            .collect();
+        Self::params_term(db, &params)
+    }
+
+    /// The shape term of a list of parameters' shape terms.
+    pub(crate) fn params_term(db: &'db dyn HirAnalysisDb, params: &[TyId<'db>]) -> TyId<'db> {
         let con = ShapeCon::Params(u16::try_from(params.len()).expect("a parameter list fits"));
         params.iter().fold(
             Self::new(db, TyData::TyBase(TyBase::Shape(con))),
-            |acc, param| {
-                let param = match param {
-                    Shape::Owned(ty) => Self::shape_part(db, ShapeCon::Owned, *ty),
-                    Shape::Access(kind, ty) => Self::shape_part(db, ShapeCon::Access(*kind), *ty),
-                    Shape::Tuple(parts) => Self::params_shape(db, parts),
-                    Shape::Sum { .. } => unreachable!("a parameter is no sum"),
-                };
-                Self::app(db, acc, param)
-            },
+            |acc, &param| Self::app(db, acc, param),
         )
     }
 
-    fn shape_part(db: &'db dyn HirAnalysisDb, con: ShapeCon, ty: TyId<'db>) -> TyId<'db> {
+    /// The shape term `con` of `ty`: `own T`, `ref T`, `mut T` or `mut? T`.
+    pub(crate) fn shape_part(
+        db: &'db dyn HirAnalysisDb,
+        con: ShapeCon,
+        ty: TyId<'db>,
+    ) -> TyId<'db> {
         Self::app(db, Self::new(db, TyData::TyBase(TyBase::Shape(con))), ty)
     }
 
@@ -531,8 +548,53 @@ impl<'db> TyId<'db> {
             trait_.def(db).assoc_ty(db, name).is_some(),
             "associated member must belong to its projection trait"
         );
-        let assoc_ty = AssocTy { trait_, name };
+        let assoc_ty = AssocTy {
+            trait_,
+            name,
+            mode: None,
+        };
         Self::new(db, TyData::AssocTy(assoc_ty))
+    }
+
+    /// `self`, an associated shape, named at `mode`; any other type as it
+    /// is.
+    pub fn with_shape_mode(self, db: &'db dyn HirAnalysisDb, mode: ShapeMode) -> Self {
+        match self.data(db) {
+            TyData::AssocTy(assoc) if assoc.is_shape(db) => Self::new(
+                db,
+                TyData::AssocTy(AssocTy {
+                    mode: Some(mode),
+                    ..*assoc
+                }),
+            ),
+            _ => self,
+        }
+    }
+
+    /// `self`, an impl's shape value, named at `mode`: its `mut?` accesses
+    /// and the shapes it names without a mode take it.
+    pub fn at_shape_mode(self, db: &'db dyn HirAnalysisDb, mode: ShapeMode) -> Self {
+        struct ShapeModeFolder(ShapeMode);
+        impl<'db> TyFolder<'db> for ShapeModeFolder {
+            fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+                match ty.data(db) {
+                    TyData::TyBase(TyBase::Shape(ShapeCon::MaybeMut)) => match self.0.kind() {
+                        Some(kind) => {
+                            TyId::new(db, TyData::TyBase(TyBase::Shape(ShapeCon::Access(kind))))
+                        }
+                        None => ty,
+                    },
+                    TyData::AssocTy(assoc) if assoc.mode == Some(ShapeMode::Inherit) => {
+                        ty.with_shape_mode(db, self.0)
+                    }
+                    _ => ty.super_fold_with(db, self),
+                }
+            }
+        }
+        if mode == ShapeMode::Inherit {
+            return self;
+        }
+        self.fold_with(db, &mut ShapeModeFolder(mode))
     }
 
     pub(crate) fn qualified_ty(db: &'db dyn HirAnalysisDb, trait_: TraitInstId<'db>) -> Self {
@@ -1827,9 +1889,53 @@ impl TyVar<'_> {
 pub struct AssocTy<'db> {
     pub trait_: TraitRefId<'db>,
     pub name: IdentId<'db>,
+    /// The mode an associated shape is named at; `None` for an associated
+    /// type, and for a shape named without one, which takes the mode of its
+    /// context.
+    pub mode: Option<ShapeMode>,
+}
+
+/// The mode an associated shape is named at: its `mut?` parts and the shapes
+/// it names without a mode are at it.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Update)]
+pub enum ShapeMode {
+    /// `D::Step<ref>`, or `D::Step` in an item used at `ref`.
+    Ref,
+    /// `D::Step<mut>`, or `D::Step` in an item used at `mut`.
+    Mut,
+    /// `D::Step` in an impl's shape value: the mode the value is named at.
+    Inherit,
+}
+
+impl ShapeMode {
+    /// The access kind of a known mode.
+    pub fn kind(self) -> Option<BorrowKind> {
+        match self {
+            Self::Ref => Some(BorrowKind::Ref),
+            Self::Mut => Some(BorrowKind::Mut),
+            Self::Inherit => None,
+        }
+    }
+}
+
+impl From<BorrowKind> for ShapeMode {
+    fn from(kind: BorrowKind) -> Self {
+        match kind {
+            BorrowKind::Ref => Self::Ref,
+            BorrowKind::Mut => Self::Mut,
+        }
+    }
 }
 
 impl<'db> AssocTy<'db> {
+    /// Whether this names an associated shape, `shape Step`.
+    pub fn is_shape(&self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.trait_
+            .def(db)
+            .assoc_ty(db, self.name)
+            .is_some_and(|decl| decl.is_shape())
+    }
+
     pub fn scope(&self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         // Find the index of this associated type in the trait's type list
         let trait_def = self.trait_.def(db);
@@ -2096,6 +2202,9 @@ pub enum ShapeCon {
     Owned,
     /// `ref T` or `mut T`, of kind `* -> shape`.
     Access(BorrowKind),
+    /// `mut? T` in an impl's shape value: an access at the mode the value
+    /// is named at, of kind `* -> shape`.
+    MaybeMut,
     /// A list of this many parameter shapes, of kind
     /// `shape -> .. -> shape`; nested in a list, a product parameter.
     Params(u16),
@@ -2104,7 +2213,7 @@ pub enum ShapeCon {
 impl ShapeCon {
     fn kind(self) -> Kind {
         match self {
-            Self::Owned | Self::Access(_) => Kind::abs(Kind::Star, Kind::Shape),
+            Self::Owned | Self::Access(_) | Self::MaybeMut => Kind::abs(Kind::Star, Kind::Shape),
             Self::Params(n) => (0..n).fold(Kind::Shape, |acc, _| Kind::abs(Kind::Shape, acc)),
         }
     }
@@ -2181,6 +2290,7 @@ impl<'db> TyBase<'db> {
             Self::Shape(ShapeCon::Owned) => "own".to_string(),
             Self::Shape(ShapeCon::Access(BorrowKind::Ref)) => "ref".to_string(),
             Self::Shape(ShapeCon::Access(BorrowKind::Mut)) => "mut".to_string(),
+            Self::Shape(ShapeCon::MaybeMut) => "mut?".to_string(),
             Self::Shape(ShapeCon::Params(_)) => "()".to_string(),
         }
     }
@@ -2523,7 +2633,9 @@ fn pretty_print_ty_app<'db>(
             format!("[{elem_ty}; {len}]")
         }
 
-        TyData::TyBase(TyBase::Shape(ShapeCon::Owned | ShapeCon::Access(_))) => {
+        TyData::TyBase(TyBase::Shape(
+            ShapeCon::Owned | ShapeCon::Access(_) | ShapeCon::MaybeMut,
+        )) => {
             let Some(inner) = args.first() else {
                 return base.pretty_print(db).clone();
             };

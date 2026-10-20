@@ -285,7 +285,7 @@ where
             (TyData::AssocTy(a1), TyData::AssocTy(a2)) => {
                 if a1 == a2 {
                     Ok(())
-                } else if a1.name == a2.name {
+                } else if a1.name == a2.name && a1.mode == a2.mode {
                     self.unify(a1.trait_, a2.trait_)
                 } else {
                     Err(UnificationError::TypeMismatch)

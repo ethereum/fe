@@ -499,9 +499,10 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
             )
         }
         TyData::AssocTy(assoc) => format!(
-            "assoc${}${}",
+            "assoc${}${}${:?}",
             trait_ref_identity(db, assoc.trait_),
-            assoc.name.data(db)
+            assoc.name.data(db),
+            assoc.mode
         ),
         TyData::QualifiedTy(trait_inst) => format!("qualified${}", trait_identity(db, *trait_inst)),
         TyData::ConstTy(const_ty) => {
