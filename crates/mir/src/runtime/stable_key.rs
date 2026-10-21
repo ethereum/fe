@@ -490,12 +490,11 @@ fn lexical_scope_identity_in_mode<'db>(
                     OwnerContextRenderMode::Textual => format!("impl${ty_identity}"),
                 });
             }
-            ScopeId::Item(ItemKind::Func(func)) => parents.push(format!(
-                "{}${}",
-                item_identity(db, func.into()),
-                owner_context_identity_in_mode(db, BodyOwner::Func(func, None), mode)
-                    .unwrap_or_default()
-            )),
+            // Enclosing impl/trait headers are recorded by the same parent
+            // walk; rendering them recursively here would duplicate the path.
+            ScopeId::Item(ItemKind::Func(func)) => {
+                parents.push(item_identity(db, func.into()));
+            }
             ScopeId::Item(item) => parents.push(format!(
                 "{}${}",
                 item.kind_name(),
@@ -1954,13 +1953,58 @@ const D: u256 = WrapB::VALUE
             .collect::<Vec<_>>();
         assert_pairwise_distinct_instances(&db, &const_instances);
 
+        let ask = top_mod
+            .children_non_nested(&db)
+            .find_map(|item| match item {
+                ItemKind::Func(func)
+                    if func
+                        .name(&db)
+                        .to_opt()
+                        .is_some_and(|name| name.data(&db) == "ask") =>
+                {
+                    Some(func)
+                }
+                _ => None,
+            })
+            .expect("fixture declares the ask helper");
+        let local_pick_methods = local_impls
+            .iter()
+            .flat_map(|implementation| implementation.methods(&db))
+            .collect::<Vec<_>>();
+        assert_eq!(local_pick_methods.len(), 4);
         let mut direct_methods = Vec::new();
         let mut helper_instances = Vec::new();
         for const_inst in &const_instances {
             let callees = const_inst.callees(&db);
-            assert_eq!(callees.len(), 2);
-            direct_methods.push(get_or_build_semantic_instance(&db, callees[0].key));
-            helper_instances.push(get_or_build_semantic_instance(&db, callees[1].key));
+            assert_eq!(
+                callees.len(),
+                3,
+                "direct pick, ask, and arithmetic addition"
+            );
+            let mut direct = None;
+            let mut helper = None;
+            let mut additions = 0;
+            for callee in callees {
+                let BodyOwner::Func(func, _) = callee.key.owner(&db) else {
+                    panic!("fixture calls only function bodies");
+                };
+                let instance = get_or_build_semantic_instance(&db, callee.key);
+                if func == ask {
+                    assert!(helper.replace(instance).is_none(), "one ask call");
+                } else if local_pick_methods.contains(&func) {
+                    assert!(
+                        direct.replace(instance).is_none(),
+                        "one direct Local::pick call"
+                    );
+                } else {
+                    assert!(func.top_mod(&db).ingot(&db).is_core(&db));
+                    assert_eq!(func.name(&db).to_opt().unwrap().data(&db), "add");
+                    additions += 1;
+                }
+            }
+            assert_eq!(additions, 1, "one core arithmetic addition call");
+            direct_methods.push(direct.expect("direct call targets a local pick declaration"));
+            helper_instances.push(helper.expect("generic call targets the ask declaration"));
         }
 
         assert_pairwise_distinct_instances(&db, &direct_methods);
