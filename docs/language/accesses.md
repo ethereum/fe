@@ -223,7 +223,9 @@ Its body is checked once per mode: the `ref` body cannot write through a
 disjointness of two `mut?` components. A call is at `ref` unless a use of
 its result asks for `mut`: a `mut` receiver (`xs.at(i).bump()`), a `mut`
 access or binding (`let x = mut xs.at(i)`, `Some(mut x)`), a `mut`
-argument, an assignment (`xs.at(i) = 1`) or a `mut` yield. At `mut`, the
+argument, an assignment (`xs.at(i) = 1`) or a `mut` yield. A `mut` binding
+of any part of an unsafe split asks every access in it for `mut`, since the
+split is one session. At `mut`, the
 call's receiver is accessed mutably, and any other argument its `mut?`
 parameters take must be written as a `mut` access, `f(mut p)`. Since only a
 use of its result asks for `mut`, a `mut?` function's result must have a

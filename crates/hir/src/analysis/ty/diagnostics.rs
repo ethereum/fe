@@ -728,16 +728,22 @@ pub enum BodyDiag<'db> {
     },
 
     /// A call argument is not a place, but the callee requires a borrow handle (`mut`/`ref`).
+    /// With `split`, the unsafe split whose `mut` binding asked the call for
+    /// `mut`.
     BorrowArgMustBePlace {
         primary: DynLazySpan<'db>,
         kind: BorrowKind,
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call argument is a place, but the callee requires an explicit borrow handle (`mut`/`ref`).
+    /// With `split`, the unsafe split whose `mut` binding asked the call for
+    /// `mut`.
     ExplicitBorrowRequired {
         primary: DynLazySpan<'db>,
         kind: BorrowKind,
         suggestion: Option<String>,
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A plain binding of a projection's read result that is neither `Copy`

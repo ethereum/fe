@@ -1005,6 +1005,7 @@ fn check_arg_mode<'db>(
                 primary: arg.expr_span.clone(),
                 kind: BorrowKind::Mut,
                 suggestion: place_borrow_suggestion(db, tc.body(), arg.expr, BorrowKind::Mut),
+                split: None,
             });
             diagnosed = true;
         }
@@ -1035,11 +1036,13 @@ fn check_arg_mode<'db>(
                     primary: arg.expr_span.clone(),
                     kind: BorrowKind::Mut,
                     suggestion: place_borrow_suggestion(db, tc.body(), arg.expr, BorrowKind::Mut),
+                    split: None,
                 });
             } else {
                 tc.push_diag(BodyDiag::BorrowArgMustBePlace {
                     primary: arg.expr_span.clone(),
                     kind: BorrowKind::Mut,
+                    split: None,
                 });
             }
         }

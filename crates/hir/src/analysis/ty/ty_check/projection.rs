@@ -201,13 +201,19 @@ impl<'db> TyChecker<'db> {
             // of accesses among them.
             Partial::Present(Expr::Tuple(elems)) if self.env.is_unsafe_split(expr) => {
                 let elems = elems.clone();
-                if !elems.iter().all(|&elem| {
-                    self.env.typed_expr(elem).is_some_and(|elem| {
+                let outer = self.split_demand.replace(expr);
+                // Every access element is asked, whatever an earlier one
+                // answers, so each reports what it cannot pass `mut`.
+                let mut all = true;
+                for &elem in &elems {
+                    all &= self.env.typed_expr(elem).is_some_and(|elem| {
                         !elem
                             .shape
                             .is_some_and(|shape| shape.has_access_of(BorrowKind::Ref))
-                    }) || self.select_mut_place(elem)
-                }) {
+                    }) || self.select_mut_place(elem);
+                }
+                self.split_demand = outer;
+                if !all {
                     return false;
                 }
                 Some(Shape::Tuple(
@@ -376,16 +382,21 @@ impl<'db> TyChecker<'db> {
             return;
         }
         let span = arg.span(self.body()).into();
+        let split = self
+            .split_demand
+            .map(|split| split.span(self.body()).into());
         if self.env.is_place_expr(arg) {
             self.push_diag(BodyDiag::ExplicitBorrowRequired {
                 primary: span,
                 kind: BorrowKind::Mut,
                 suggestion: place_borrow_suggestion(self.db, self.body(), arg, BorrowKind::Mut),
+                split,
             });
         } else {
             self.push_diag(BodyDiag::BorrowArgMustBePlace {
                 primary: span,
                 kind: BorrowKind::Mut,
+                split,
             });
         }
     }

@@ -1530,6 +1530,9 @@ pub struct TyChecker<'db> {
     /// call and the effect's binding index, which a raise to `mut` requires
     /// mutable as resolution does.
     effect_providers: FxHashMap<(ExprId, u32), ProvidedEffect<'db>>,
+    /// The unsafe split whose `mut` binding is asking its accesses for
+    /// `mut`, which the errors that asks for name.
+    split_demand: Option<ExprId>,
     diags: Vec<FuncBodyDiag<'db>>,
     /// Set once deferred work is resolved for the last time, after which type
     /// equalities are decided rather than retained.
@@ -2896,6 +2899,7 @@ impl<'db> TyChecker<'db> {
             shape_bindings: FxHashSet::default(),
             missing_effects: Vec::new(),
             effect_providers: FxHashMap::default(),
+            split_demand: None,
             diags: Vec::new(),
             final_pass: false,
         }
