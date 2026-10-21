@@ -1108,6 +1108,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 selection,
                 bound,
                 subst,
+                assumptions,
             )
         }
         _ => EvidenceList::none(db),
