@@ -490,12 +490,11 @@ fn lexical_scope_identity_in_mode<'db>(
                     OwnerContextRenderMode::Textual => format!("impl${ty_identity}"),
                 });
             }
-            ScopeId::Item(ItemKind::Func(func)) => parents.push(format!(
-                "{}${}",
-                item_identity(db, func.into()),
-                owner_context_identity_in_mode(db, BodyOwner::Func(func, None), mode)
-                    .unwrap_or_default()
-            )),
+            // Enclosing impl/trait headers are recorded by the same parent
+            // walk; rendering them recursively here would duplicate the path.
+            ScopeId::Item(ItemKind::Func(func)) => {
+                parents.push(item_identity(db, func.into()));
+            }
             ScopeId::Item(item) => parents.push(format!(
                 "{}${}",
                 item.kind_name(),
