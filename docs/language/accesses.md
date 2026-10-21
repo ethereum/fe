@@ -21,7 +21,7 @@ type has no value, as a view's does (`fill(buf.span())`).
 A parameter may be a pattern, written after `_` since it has no label:
 `fn sum(_ (a, b): (u256, u256))`. The body binds its names as a `let` of the
 parameter would, so from a view of a tuple a `Copy` part is copied and any
-other part is bound `ref` (`_ (i, ref x): (usize, Buf)`). A function without
+other part must be bound `ref` (`_ (i, ref x): (usize, Buf)`). A function without
 a body, such as a trait method's declaration, names its parameters.
 
 A parameter may also take several accesses at once as a *product*: a tuple

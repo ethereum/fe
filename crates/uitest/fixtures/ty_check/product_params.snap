@@ -29,13 +29,19 @@ error[3-0082]: a product's parts carry its modes
 10 │ fn outer_mode(_ (a, b): own (own u256, ref u256)) -> u256 {
    │                         ^^^^^^^^^^^^^^^^^^^^^^^^ remove the mode before the tuple: each part takes its own
 
-error[6-0003]: trait bound is not satisfied
-    ┌─ product_params.fe:134:5
+error[3-0082]: a product's parts carry its modes
+    ┌─ product_params.fe:128:35
     │
-129 │ fn apply<F: Fn((u256, u256)) -> u256>(_ f: F) -> u256 uses F::E {
+128 │ fn mode_on_nested(_ ((a, b), c): (ref (mut u256, bool), own u256)) {}
+    │                                   ^^^^^^^^^^^^^^^^^^^^ remove the mode before the tuple: each part takes its own
+
+error[6-0003]: trait bound is not satisfied
+    ┌─ product_params.fe:137:5
+    │
+132 │ fn apply<F: Fn((u256, u256)) -> u256>(_ f: F) -> u256 uses F::E {
     │             ------------------------ required by this bound on `apply`
     ·
-134 │     apply(total)
+137 │     apply(total)
     │     ^^^^^ `fn total` doesn't implement `Fn((u256, u256)) -> u256`
 
 error[6-0007]: method `modes` has incompatible argument type
@@ -84,9 +90,9 @@ error[8-0072]: a product's part that is a product must be destructured
     │                           ^^^^^ bind its parts with a tuple pattern
 
 error[8-0109]: closure has the wrong number of parameters
-    ┌─ product_params.fe:143:11
+    ┌─ product_params.fe:146:11
     │
-143 │     apply(|a, b| a + b)
+146 │     apply(|a, b| a + b)
     │           ^^^^^^^^^^^^ expected a closure taking 1 parameter, found 2
     │
     = the closure is passed one tuple; take it apart with a pattern, as in `|(i, x)|`
@@ -104,9 +110,9 @@ error[8-0135]: a product parameter takes a tuple of its parts
    │           ^^^^^^^^^ pass a part for each of `(own u256, ref u256)`
 
 error[8-0136]: a closure parameter cannot be a product
-    ┌─ product_params.fe:138:22
+    ┌─ product_params.fe:141:22
     │
-138 │     let f = |(a, b): (own u256, ref u256)| a + b
+141 │     let f = |(a, b): (own u256, ref u256)| a + b
     │                      ^^^^^^^^^^^^^^^^^^^^ a closure takes each access as its own parameter
 
 error[8-0150]: this argument grants a product's parts too weakly
