@@ -27,7 +27,7 @@ fn external_call() uses (call: mut Call, storage: mut RawStorage) {
     let (mut a, mut b) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
     a.push(1)
     var output = MemBuffer::empty()
-    let _ = call.raw_call(addr: Address::new(1), gas: 0, value: 0, args: MemSpan::empty(), ret: mut output)
+    let _ = call.raw_call(addr: Address::new(1), gas: 0, value: Wei::zero(), args: MemSpan::empty(), ret: mut output)
     b.push(2)
 }
 

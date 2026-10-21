@@ -1,5 +1,6 @@
 ---
 source: crates/uitest/tests/ty_check.rs
+assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/event_unsupported_field_type.fe
 ---
@@ -12,9 +13,9 @@ error[6-0003]: trait bound is not satisfied
   7 │ │ }
     │ ╰─^ `(Opaque)` doesn't implement `Encode<Sol>`
     │
-    ┌─ src/evm/effects.fe:402:14
+    ┌─ src/evm/effects.fe:403:14
     │
-402 │     where T: Encode<Sol> + AbiSize
+403 │     where T: Encode<Sol> + AbiSize
     │              ----------- required by this bound on `encode_abi_payload`
 
 error[6-0003]: trait bound is not satisfied
@@ -26,7 +27,7 @@ error[6-0003]: trait bound is not satisfied
   7 │ │ }
     │ ╰─^ `(Opaque)` doesn't implement `AbiSize`
     │
-    ┌─ src/evm/effects.fe:402:28
+    ┌─ src/evm/effects.fe:403:28
     │
-402 │     where T: Encode<Sol> + AbiSize
+403 │     where T: Encode<Sol> + AbiSize
     │                            ------- required by this bound on `encode_abi_payload`

@@ -29,8 +29,8 @@ use crate::{
             ty_check::{
                 BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef,
                 ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics, RecordInitLowering,
-                RecordLike, SemanticExprLowering, TypedBody, ValuePathRef, infer_body,
-                transparent_newtype_field_ty,
+                RecordLike, SemanticExprLowering, TypedBody, ValuePathRef, constructed_variant,
+                infer_body, transparent_newtype_field_ty,
             },
             ty_def::{BorrowKind, TyData, TyId},
             ty_is_copy, ty_is_snapshot,
@@ -855,9 +855,25 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     fn lower_try(&mut self, expr: ExprId, inner: ExprId, ty: TyId<'db>) -> SValueId {
         let origin = SemOrigin::Expr(expr);
         let value = self.lower_source(inner);
+        let variant = self.exit_on_empty(origin, value);
+        self.emit_expr_with_origin(
+            origin,
+            ty,
+            SExpr::ExtractEnumField {
+                value: SOperand::synthetic(value),
+                variant,
+                field: FieldIndex(0),
+            },
+        )
+    }
+
+    /// Tests the `Option` or `Result` `value`: on its empty variant, exits
+    /// with that variant, carrying an `Err`'s error; on its payload variant,
+    /// which it returns, continues.
+    fn exit_on_empty(&mut self, origin: SemOrigin<'db>, value: SValueId) -> VariantIndex {
         let sum_ty = self.locals[value.index()].ty;
         let kind = sum_kind(self.db, self.body.scope(), sum_ty)
-            .expect("`?` applies to an `Option` or a `Result`");
+            .expect("`?` and a sum shape's yield test an `Option` or a `Result`");
         let success = kind.payload_variant();
         let failure = 1 - success;
         let is_success = self.emit_expr_with_origin(
@@ -907,21 +923,18 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 fields: error.into_iter().collect(),
             },
         );
-        // The empty variant grants nothing, so no slide follows it.
-        let slide = self.slide.take();
-        self.exit(origin, Some(SOperand::synthetic(exit)));
-        self.slide = slide;
+        self.exit_empty(origin, SOperand::synthetic(exit));
 
         self.switch_to(success_bb);
-        self.emit_expr_with_origin(
-            origin,
-            ty,
-            SExpr::ExtractEnumField {
-                value: SOperand::synthetic(value),
-                variant: VariantIndex(success),
-                field: FieldIndex(0),
-            },
-        )
+        VariantIndex(success)
+    }
+
+    /// Exits with `value`, the empty variant of an `Option` or a `Result`. It
+    /// grants nothing, so no slide follows it.
+    fn exit_empty(&mut self, origin: SemOrigin<'db>, value: SOperand) {
+        let slide = self.slide.take();
+        self.exit(origin, Some(value));
+        self.slide = slide;
     }
 
     /// Lowers a projection's yield site to the carrier of what it grants.
@@ -1006,8 +1019,31 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         if self.expr_ty(expr).is_never(self.db) && !self.is_terminated(self.current) {
             self.set_synthetic_terminator(self.current, STerminatorKind::Assert { message: None });
         }
-        if yield_leaf.is_some() && self.yield_depth == 0 && !self.is_terminated(self.current) {
-            self.exit(SemOrigin::Expr(expr), Some(SOperand::expr(value, expr)));
+        if let Some(shape) = yield_leaf
+            && self.yield_depth == 0
+            && !self.is_terminated(self.current)
+        {
+            let origin = SemOrigin::Expr(expr);
+            let operand = SOperand::expr(value, expr);
+            match shape {
+                // A sum shape's empty variant skips the `yield` statement's
+                // slide: a variant constructor builds it or not, and any other
+                // site is tested, as `?` tests its operand.
+                Shape::Sum { variant, .. } if self.slide.is_some() => {
+                    match constructed_variant(
+                        self.typed_body.value_path_ref(expr),
+                        self.typed_body.callable_expr(expr),
+                    ) {
+                        Some(built) if built != *variant => self.exit_empty(origin, operand),
+                        Some(_) => self.exit(origin, Some(operand)),
+                        None => {
+                            self.exit_on_empty(origin, value);
+                            self.exit(origin, Some(operand));
+                        }
+                    }
+                }
+                _ => self.exit(origin, Some(operand)),
+            }
         }
         value
     }

@@ -7,6 +7,8 @@ use std::{
 
 use camino::{Utf8Path, Utf8PathBuf};
 use codegen::{OptLevel, SonatinaContractBytecode};
+#[cfg(feature = "sp1")]
+use common::cache::cache_dir;
 use common::{
     InputDb,
     config::{
@@ -23,6 +25,8 @@ use hir::lower::map_file_to_mod;
 use mir::build_runtime_package;
 use salsa::Setter;
 use smol_str::SmolStr;
+#[cfg(feature = "sp1")]
+use sonatina_sp1::{Sp1Runtime, Sp1Toolchain};
 use tiny_keccak::{Hasher, Keccak};
 use url::Url;
 
@@ -63,6 +67,7 @@ struct EmitSelection {
     abi: bool,
     metadata: bool,
     executable: bool,
+    elf: bool,
 }
 
 impl EmitSelection {
@@ -74,6 +79,7 @@ impl EmitSelection {
             abi: false,
             metadata: false,
             executable: false,
+            elf: false,
         };
         for emit in requested {
             match emit {
@@ -83,6 +89,7 @@ impl EmitSelection {
                 BuildEmit::Abi => selection.abi = true,
                 BuildEmit::Metadata => selection.metadata = true,
                 BuildEmit::Executable => selection.executable = true,
+                BuildEmit::Elf => selection.elf = true,
             }
         }
         selection
@@ -99,11 +106,18 @@ fn create_build_report_staging() -> Result<ReportStaging, String> {
 
 fn validate_build_request(
     backend: BuildBackend,
+    ingot: Option<&str>,
     contract: Option<&str>,
     emit: EmitSelection,
 ) -> Result<(), String> {
+    #[cfg(not(feature = "sp1"))]
+    let _ = ingot;
     #[cfg(not(feature = "cranelift"))]
     let _ = contract;
+
+    if emit.elf && backend.name() != "sp1" {
+        return Err("`--emit elf` requires `--backend sp1`".to_string());
+    }
 
     match backend {
         BuildBackend::Sonatina if emit.executable => {
@@ -125,6 +139,18 @@ fn validate_build_request(
         ),
         #[cfg(feature = "cranelift")]
         BuildBackend::Native => Ok(()),
+        #[cfg(feature = "sp1")]
+        BuildBackend::Sp1 if ingot.is_some() || contract.is_some() => {
+            Err("SP1 output does not support `--ingot` or `--contract`".to_string())
+        }
+        #[cfg(feature = "sp1")]
+        BuildBackend::Sp1
+            if emit.writes_any_bytecode() || emit.abi || emit.metadata || emit.executable =>
+        {
+            Err("SP1 backend only supports `--emit elf` and `--emit ir`".to_string())
+        }
+        #[cfg(feature = "sp1")]
+        BuildBackend::Sp1 => Ok(()),
     }
 }
 
@@ -204,7 +230,7 @@ pub fn build(
     use_recovery_mode: bool,
 ) {
     let emit = EmitSelection::from_requested(emit);
-    if let Err(err) = validate_build_request(backend, contract, emit) {
+    if let Err(err) = validate_build_request(backend, ingot, contract, emit) {
         eprintln!("Error: {err}");
         std::process::exit(1);
     }
@@ -316,6 +342,11 @@ pub fn build(
             out_dir,
             report_ctx.as_ref(),
         ),
+        #[cfg(feature = "sp1")]
+        CliTarget::Directory(_) if matches!(backend, BuildBackend::Sp1) => {
+            eprintln!("Error: sp1 executable output only supports standalone `.fe` files");
+            true
+        }
         CliTarget::Directory(dir_path) => build_directory(
             &mut db,
             &dir_path,
@@ -377,7 +408,7 @@ pub fn build_from_metadata(
     use_recovery_mode: bool,
 ) {
     let emit = EmitSelection::from_requested(emit);
-    if let Err(err) = validate_build_request(BuildBackend::Sonatina, contract, emit) {
+    if let Err(err) = validate_build_request(BuildBackend::Sonatina, None, contract, emit) {
         eprintln!("Error: {err}");
         std::process::exit(1);
     }
@@ -1358,6 +1389,25 @@ fn build_top_mod(
         );
     }
 
+    #[cfg(feature = "sp1")]
+    if matches!(backend, BuildBackend::Sp1) {
+        let result = build_sp1_top_mod(
+            db,
+            top_mod,
+            opt_level,
+            emit,
+            out_dir,
+            ir_file_stem,
+            report_dir.map(Utf8PathBuf::as_path),
+        );
+        if let Err(err) = &result {
+            eprintln!("Error: Failed to compile SP1 output: {err}");
+        }
+        return BuildSummary {
+            had_errors: result.is_err(),
+        };
+    }
+
     let contract_names = match collect_contract_names(db, top_mod) {
         Ok(names) => names,
         Err(err) => {
@@ -1451,6 +1501,7 @@ fn build_native_top_mod(
     let artifacts = match codegen::emit_module_native_artifacts(
         db,
         top_mod,
+        codegen::NativeTarget::Host,
         opt_level,
         codegen::NativeOutputSelection {
             ir: emit.ir,
@@ -1478,6 +1529,59 @@ fn build_native_top_mod(
         return BuildSummary { had_errors: true };
     }
     BuildSummary { had_errors: false }
+}
+
+#[cfg(feature = "sp1")]
+fn build_sp1_top_mod(
+    db: &DriverDataBase,
+    top_mod: TopLevelMod<'_>,
+    opt_level: OptLevel,
+    emit: EmitSelection,
+    out_dir: &Utf8Path,
+    ir_file_stem: &str,
+    report_dir: Option<&Utf8Path>,
+) -> Result<(), String> {
+    // Locate the toolchain before compiling, and write nothing unless linking succeeds.
+    let toolchain = emit
+        .elf
+        .then(Sp1Toolchain::from_env)
+        .transpose()
+        .map_err(|err| err.to_string())?;
+    let artifacts = codegen::emit_module_native_artifacts(
+        db,
+        top_mod,
+        codegen::NativeTarget::Sp1,
+        opt_level,
+        codegen::NativeOutputSelection {
+            ir: emit.ir,
+            object: emit.elf,
+        },
+    )
+    .map_err(|err| err.to_string())?;
+    let elf = toolchain
+        .map(|toolchain| {
+            let cache = cache_dir("sp1-runtime")
+                .ok_or("no cache directory for the SP1 runtime; set FE_CACHE_DIR")?;
+            let object = artifacts.object.as_deref().expect("SP1 object requested");
+            Sp1Runtime::build(toolchain, cache)
+                .and_then(|runtime| runtime.link_objects(&[object]))
+                .map_err(|err| err.to_string())
+        })
+        .transpose()?;
+    ensure_output_dirs(emit, out_dir, out_dir)?;
+    if let Some(ir) = artifacts.ir {
+        write_named_ir_artifact(out_dir, report_dir, ir_file_stem, "sp1.sona", &ir)?;
+    }
+    if let Some(elf) = elf {
+        let name = format!("{}.elf", sanitize_name_with_default(ir_file_stem, "main"));
+        let file = out_dir.join(&name);
+        fs::write(&file, &elf).map_err(|err| format!("Failed to write SP1 ELF {file}: {err}"))?;
+        if let Some(report_dir) = report_dir {
+            let _ = fs::write(report_dir.join(&name), &elf);
+        }
+        println!("Wrote {file}");
+    }
+    Ok(())
 }
 
 fn collect_contract_names(
@@ -1626,7 +1730,7 @@ fn ensure_output_dirs(
     out_dir: &Utf8Path,
     ir_out_dir: &Utf8Path,
 ) -> Result<(), String> {
-    if emit.writes_any_bytecode() || emit.abi || emit.metadata || emit.executable {
+    if emit.writes_any_bytecode() || emit.abi || emit.metadata || emit.executable || emit.elf {
         fs::create_dir_all(out_dir.as_std_path())
             .map_err(|err| format!("Failed to create output directory {out_dir}: {err}"))?;
     }
@@ -2167,6 +2271,9 @@ fn describe_emit_selection(emit: EmitSelection) -> String {
     if emit.executable {
         parts.push("executable");
     }
+    if emit.elf {
+        parts.push("elf");
+    }
     parts.join(",")
 }
 
@@ -2279,6 +2386,7 @@ mod tests {
             abi: true,
             metadata: false,
             executable: false,
+            elf: false,
         };
         assert_eq!(describe_emit_selection(emit), "abi");
     }

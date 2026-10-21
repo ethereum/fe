@@ -47,11 +47,11 @@ pub contract Decoder {
 
 #[test]
 fn long_inputs_are_decode_errors() uses (evm: mut Evm) {
-    let target = evm.create2<Decoder>(value: 0, args: (), salt: 0)
-    let bytes = evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::LongBytes {})
+    let target = evm.create2<Decoder>(value: Wei::zero(), args: (), salt: 0)
+    let bytes = evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::LongBytes {})
     assert(!bytes.success() && bytes.returndata_len() == 0)
-    let string = evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::LongString {})
+    let string = evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::LongString {})
     assert(!string.success() && string.returndata_len() == 0)
-    let array = evm.try_call(addr: target, gas: 300000, value: 0, message: Probe::LongArray {})
+    let array = evm.try_call(addr: target, gas: 300000, value: Wei::zero(), message: Probe::LongArray {})
     assert(!array.success() && array.returndata_len() == 0)
 }

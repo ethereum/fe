@@ -1,5 +1,6 @@
 ---
 source: crates/language-server/src/functionality/completion.rs
+assertion_line: 1728
 expression: snapshot
 input_file: test_files/completion.fe
 ---
@@ -25,6 +26,7 @@ completions:
   - Decode (Interface)
   - Default (Interface)
   - Drawable (Interface)
+  - Duration (Struct)
   - Encode (Interface)
   - Err (EnumMember)
   - ErrorVariant (Interface)
@@ -53,8 +55,10 @@ completions:
   - Some (EnumMember)
   - StorageMap (Struct)
   - Text (Class)
+  - Timestamp (Struct)
   - UnsignedAbs (Interface)
   - Vec (Class)
+  - Wei (Struct)
   - another_func_with_args (Function) -> "another_func_with_args(${1:x}, ${2:y})$0" [fn another_func_with_args(x: i32, y: i32) -> i32]
   - assert (Function) -> "assert(${1:b})$0" [fn assert(b: bool)]
   - byte_ptr (Function) -> "byte_ptr(${1:ptr})$0" [fn byte_ptr(ptr: *T) -> *u8]
@@ -105,6 +109,7 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
+  - Duration (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helpable (Interface) [use utils::Helpable [Helpable]] {+0:use utils::Helpable}
@@ -123,7 +128,9 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
+  - Timestamp (Struct)
   - Vec (Class)
+  - Wei (Struct)
 
 note: 
    ┌─ completion.fe:63:18
@@ -181,6 +188,7 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
+  - Duration (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helpable (Interface) [use utils::Helpable [Helpable]] {+0:use utils::Helpable}
@@ -199,7 +207,9 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
+  - Timestamp (Struct)
   - Vec (Class)
+  - Wei (Struct)
 
 note: 
    ┌─ completion.fe:78:13
@@ -247,6 +257,7 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
+  - Duration (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helper (Struct)
@@ -263,7 +274,9 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
+  - Timestamp (Struct)
   - Vec (Class)
+  - Wei (Struct)
 
 note: 
     ┌─ completion.fe:107:16
@@ -274,6 +287,7 @@ note:
 completions:
   - Address (Struct)
   - Bytes (Struct)
+  - Duration (Struct)
   - Evm (Struct)
   - FixedMemBuffer (Struct)
   - Helpable (Interface) [use utils::Helpable [Helpable]] {+104:use utils::Helpable}
@@ -292,4 +306,6 @@ completions:
   - Sol (Struct)
   - StorageMap (Struct)
   - Text (Class)
+  - Timestamp (Struct)
   - Vec (Class)
+  - Wei (Struct)

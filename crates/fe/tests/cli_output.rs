@@ -1108,6 +1108,89 @@ fn test_cli_build_sonatina_rejects_executable_emit() {
     );
 }
 
+#[cfg(feature = "sp1")]
+#[test]
+fn test_cli_build_sp1_ir_needs_no_toolchain_and_elf_preflights_it() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("guest.fe");
+    fs::write(&source, include_str!("../../../examples/sp1_increment.fe")).unwrap();
+    for emit in ["ir", "elf", "elf,ir"] {
+        let out = temp.path().join(emit);
+        let result = Command::new(fe_binary())
+            .args(["build", "--backend", "sp1", "--emit", emit, "--out-dir"])
+            .arg(&out)
+            .arg(&source)
+            .env_remove("SONATINA_SP1_TOOLCHAIN")
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        if emit == "ir" {
+            assert!(result.status.success(), "{stderr}");
+            let ir = fs::read_to_string(out.join("guest.sp1.sona")).unwrap();
+            assert!(ir.contains("riscv64im-succinct-zkvm-elf"));
+            assert!(!out.join("guest.elf").exists());
+        } else {
+            assert_eq!(result.status.code(), Some(1), "{stderr}");
+            assert!(stderr.contains("set SONATINA_SP1_TOOLCHAIN"), "{stderr}");
+            assert!(!out.exists(), "failed preflight must not write artifacts");
+        }
+    }
+}
+
+#[cfg(feature = "sp1")]
+#[test]
+fn test_cli_build_sp1_rejects_incompatible_artifacts() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("guest.fe");
+    fs::write(&source, "pub fn main() -> i32 { 0 }\n").unwrap();
+    for emit in [
+        "bytecode",
+        "runtime-bytecode",
+        "abi",
+        "metadata",
+        "executable",
+    ] {
+        let (output, exit_code) = run_fe_main(&[
+            "build",
+            "--backend",
+            "sp1",
+            "--emit",
+            emit,
+            source.to_str().unwrap(),
+        ]);
+        assert_eq!(exit_code, 1, "{output}");
+        assert!(output.contains("SP1 backend only supports"), "{output}");
+    }
+}
+
+#[test]
+fn test_cli_test_rejects_sp1_backend() {
+    let (output, exit_code) = run_fe_main(&["test", "--backend", "sp1"]);
+    assert_eq!(exit_code, 2, "{output}");
+    assert!(output.contains("invalid value 'sp1'"), "{output}");
+}
+
+#[test]
+fn test_cli_build_sonatina_rejects_elf_emit() {
+    let temp = tempdir().unwrap();
+    let source = temp.path().join("guest.fe");
+    fs::write(&source, "pub fn main() -> i32 { 0 }\n").unwrap();
+    let (output, exit_code) = run_fe_main(&["build", "--emit", "elf", source.to_str().unwrap()]);
+    assert_eq!(exit_code, 1, "{output}");
+    assert!(
+        output.contains("`--emit elf` requires `--backend sp1`"),
+        "{output}"
+    );
+}
+
+#[cfg(not(feature = "sp1"))]
+#[test]
+fn test_cli_sp1_requires_feature() {
+    let (output, exit_code) = run_fe_main(&["build", "--backend", "sp1"]);
+    assert_eq!(exit_code, 2, "{output}");
+    assert!(output.contains("invalid value 'sp1'"), "{output}");
+}
+
 #[test]
 fn test_cli_build_emit_abi_dyn_string_matches_string_selector() {
     let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -3912,7 +3995,7 @@ fn test_cli_test_unsafe_trust_rejects_untrusted_unsafe_uses() {
         ),
         (
             "unsafe_trust_create",
-            "evm.create2<dep::Vault>(value: 0, args: (), salt: 0)",
+            "evm.create2<dep::Vault>(value: Wei::zero(), args: (), salt: 0)",
             "to trust `dep`, add `allow_unsafe = true` to its entry under `[dependencies]` in fe.toml",
         ),
     ] {

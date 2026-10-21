@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 388
+assertion_line: 462
 expression: output
 input_file: crates/codegen/tests/fixtures/effect_handle_field_deref.fe
 ---
@@ -11,8 +11,6 @@ type @layout_1 = {i256, i256, i256};
 type @layout_2 = {i256, i256};
 type @layout_3 = {};
 type @layout_4 = {@layout_3};
-
-global private const @layout_0 $const_region_0 = {0};
 
 func private %__EffectHandleFieldDeref_init(v0.i256) {
     block0:
@@ -765,11 +763,8 @@ func inline(always) private %new() -> @layout_0 {
         jump block1;
 
     block1:
-        v1.constref<@layout_0> = const.ref $const_region_0;
-        v2.objref<@layout_0> = obj.alloc @layout_0;
-        obj.init.const v2 v1;
-        v3.@layout_0 = obj.load v2;
-        return v3;
+        v2.@layout_0 = insert_value undef.@layout_0 0.i256 0.i256;
+        return v2;
 }
 
 func private %payload_size(v0.i256) -> i256 {
@@ -1122,6 +1117,5 @@ object @EffectHandleFieldDeref {
     }
     section runtime {
         entry %contract_runtime_root_EffectHandleFieldDeref;
-        data $const_region_0;
     }
 }

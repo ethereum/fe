@@ -140,9 +140,11 @@ warning.
 A shape groups owned values and accesses, `-> (usize, ref T)`, and the
 caller destructures it with `let (i, x) = ..`. Two `mut` components must be
 structurally disjoint, as in `(mut self.a, mut self.b)`. An optional shape,
-`-> Option<mut T>` or `-> Result<mut T, E>`, is consumed with `if let`,
-`match`, `let .. else` or `?`; its empty variant may only be returned before
-the `yield`.
+`-> Option<mut T>` or `-> Result<E, mut T>`, is consumed with `if let`,
+`match`, `let .. else` or `?`. Its empty variant grants nothing and runs no
+slide: it may only be returned before the `yield`, and a `yield` of it,
+written out or forwarded from another projection as in
+`yield self.entry(k)`, ends the projection there, as `?` does.
 
 Each access a projection grants lies in one address space, its *result
 space*, which the compiler infers from the body for each instance. A place

@@ -193,6 +193,13 @@ pub(super) fn compile_runtime_package_sonatina_with_external_code(
     Ok(lowerer.finish().0)
 }
 
+fn is_native_architecture(architecture: Architecture) -> bool {
+    matches!(
+        architecture,
+        Architecture::X86_64 | Architecture::Aarch64 | Architecture::Riscv64im
+    )
+}
+
 pub(super) fn compile_runtime_package_sonatina_for_isa<'db, I>(
     db: &'db DriverDataBase,
     package: &RuntimePackage<'db>,
@@ -242,10 +249,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
         package: &'a RuntimePackage<'db>,
         fixed_symbol: Option<(RuntimeInstance<'db>, &str)>,
     ) -> Self {
-        let native = matches!(
-            builder.ctx.triple.architecture,
-            Architecture::X86_64 | Architecture::Aarch64
-        );
+        let native = is_native_architecture(builder.ctx.triple.architecture);
         Self {
             db,
             builder,
@@ -289,10 +293,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
     }
 
     fn is_native_target(&self) -> bool {
-        matches!(
-            self.builder.ctx.triple.architecture,
-            Architecture::X86_64 | Architecture::Aarch64
-        )
+        is_native_architecture(self.builder.ctx.triple.architecture)
     }
 
     fn function_symbol(&self, instance: RuntimeInstance<'db>) -> String {

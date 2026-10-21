@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 388
+assertion_line: 462
 expression: output
 input_file: crates/codegen/tests/fixtures/init_args_with_child_dep.fe
 ---
@@ -23,9 +23,10 @@ func private %__Parent_init(v0.i256) {
         jump block1;
 
     block1:
-        v4.@layout_0 = insert_value undef.@layout_0 0.i256 v0;
-        v6.@layout_0 = insert_value v4 1.i256 v0;
-        v7.@layout_2 = call %create 0.i256 v6;
+        v3.@layout_2 = insert_value undef.@layout_2 0.i256 0.i256;
+        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v0;
+        v8.@layout_0 = insert_value v6 1.i256 v0;
+        v9.@layout_2 = call %create v3 v8;
         return;
 }
 
@@ -81,6 +82,15 @@ func private %alloc_uninit(v0.i256) -> @layout_1 {
         v7.@layout_1 = insert_value v5 1.i256 v0;
         v9.@layout_1 = insert_value v7 2.i256 v0;
         return v9;
+}
+
+func private %as_wei(v0.@layout_2) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i256 = extract_value v0 0.i256;
+        return v3;
 }
 
 func private %base(v0.objref<@layout_0>) -> i256 {
@@ -414,7 +424,7 @@ func private %copy_returndata() -> @layout_1 {
         return v1;
 }
 
-func private %create(v0.i256, v1.@layout_0) -> @layout_2 {
+func private %create(v0.@layout_2, v1.@layout_0) -> @layout_2 {
     block0:
         v2.objref<@layout_0> = obj.alloc @layout_0;
         jump block1;
@@ -471,16 +481,17 @@ func private %create(v0.i256, v1.@layout_0) -> @layout_2 {
         jump block11;
 }
 
-func private %create_raw(v0.i256, v1.objref<@layout_0>) -> @layout_2 {
+func private %create_raw(v0.@layout_2, v1.objref<@layout_0>) -> @layout_2 {
     block0:
         jump block1;
 
     block1:
-        v3.i256 = call %ptr__g79ff v1;
-        v4.i256 = call %len__g79ff v1;
-        v6.i256 = evm_create v0 v3 v4;
-        v9.@layout_2 = insert_value undef.@layout_2 0.i256 v6;
-        return v9;
+        v3.i256 = call %as_wei v0;
+        v5.i256 = call %ptr__g79ff v1;
+        v6.i256 = call %len__g79ff v1;
+        v7.i256 = evm_create v3 v5 v6;
+        v10.@layout_2 = insert_value undef.@layout_2 0.i256 v7;
+        return v10;
 }
 
 func private %decode_error() {

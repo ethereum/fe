@@ -40,7 +40,7 @@ fn emit_with_entry() uses (records: mut StorageMap<u256, Record>, log: mut Log) 
 fn ping() uses (call: mut Call) {
     var output = MemBuffer::empty()
     let outcome = call.raw_call(
-        addr: Address::new(1), gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: Wei::zero(),
         args: MemSpan::empty(), ret: mut output,
     )
 }
@@ -50,7 +50,7 @@ fn call_with_entry() uses (records: mut StorageMap<u256, Record>, call: mut Call
     let record = mut records[7]
     var output = MemBuffer::empty()
     let outcome = call.raw_call(
-        addr: Address::new(1), gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: Wei::zero(),
         args: MemSpan::empty(), ret: mut output,
     )
     record.owner = 2

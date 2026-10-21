@@ -53,6 +53,7 @@ pub enum BuildEmit {
     Abi,
     Metadata,
     Executable,
+    Elf,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -61,6 +62,26 @@ pub enum BuildBackend {
     #[cfg(feature = "cranelift")]
     /// Host-native IR, or executables on x86-64 Linux and AArch64 macOS.
     Native,
+    #[cfg(feature = "sp1")]
+    /// RV64IM SP1 guest IR or ELF executables.
+    Sp1,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum TestBackend {
+    Sonatina,
+    #[cfg(feature = "cranelift")]
+    Native,
+}
+
+impl From<TestBackend> for BuildBackend {
+    fn from(backend: TestBackend) -> Self {
+        match backend {
+            TestBackend::Sonatina => Self::Sonatina,
+            #[cfg(feature = "cranelift")]
+            TestBackend::Native => Self::Native,
+        }
+    }
 }
 
 impl BuildBackend {
@@ -69,6 +90,8 @@ impl BuildBackend {
             Self::Sonatina => "sonatina",
             #[cfg(feature = "cranelift")]
             Self::Native => "native",
+            #[cfg(feature = "sp1")]
+            Self::Sp1 => "sp1",
         }
     }
 
@@ -89,6 +112,8 @@ impl BuildBackend {
             ],
             #[cfg(feature = "cranelift")]
             Self::Native => vec![BuildEmit::Executable],
+            #[cfg(feature = "sp1")]
+            Self::Sp1 => vec![BuildEmit::Elf],
         }
     }
 }
@@ -292,8 +317,8 @@ pub enum Command {
     /// Run Fe tests in a file or directory.
     Test {
         /// Execution backend for tests.
-        #[arg(long, value_enum, default_value_t = BuildBackend::Sonatina)]
-        backend: BuildBackend,
+        #[arg(long, value_enum, default_value_t = TestBackend::Sonatina)]
+        backend: TestBackend,
         /// Native test wall-time limit in seconds (default: 60, maximum: 3600).
         #[arg(long, value_name = "SECONDS")]
         native_timeout_secs: Option<u64>,
@@ -820,7 +845,7 @@ pub fn run(opts: &Options) {
                 *show_logs,
                 profile,
                 opt_level,
-                *backend,
+                (*backend).into(),
                 *native_timeout_secs,
                 *native_output_limit_kib,
                 emit,
