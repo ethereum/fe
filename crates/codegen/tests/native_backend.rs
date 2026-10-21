@@ -357,3 +357,27 @@ pub fn main() -> i32 {
         assert!(!artifacts.object.unwrap().is_empty());
     });
 }
+
+#[test]
+fn native_ir_distinguishes_same_named_lexical_choice_specializations() {
+    let ir = with_top_mod_for_source(
+        "native_lexical_choices.fe",
+        include_str!("../../fe/tests/fixtures/cli_output/native/local_named_choices.fe"),
+        |db, top_mod| fe_codegen::emit_module_native_ir(db, top_mod, OptLevel::O0),
+    )
+    .expect("local named choices should lower to native IR");
+    let helpers: Vec<_> = ir
+        .lines()
+        .filter(|line| line.starts_with("func ") && line.contains("helper"))
+        .collect();
+    assert_eq!(
+        helpers.len(),
+        5,
+        "four lexical choices and the ordinary choice need separate helper instances:\n{ir}",
+    );
+    let symbols: std::collections::HashSet<_> = helpers
+        .iter()
+        .map(|line| line.split('(').next().unwrap())
+        .collect();
+    assert_eq!(symbols.len(), 5, "helper symbols must be distinct:\n{ir}");
+}
