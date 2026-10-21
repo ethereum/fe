@@ -183,8 +183,10 @@ pub(super) fn compare_impl_method<'db>(
         );
         err = true;
     }
+    // A `mut?` method that differs at both modes is reported once, at the
+    // first.
     for (&(trait_mode, impl_mode), (param_subst, _)) in modes.iter().zip(&substs) {
-        err |= !compare_ty(
+        if !compare_ty(
             db,
             (impl_m, impl_mode),
             (trait_m, trait_mode),
@@ -192,21 +194,25 @@ pub(super) fn compare_impl_method<'db>(
             &listed,
             trait_inst,
             sink,
-        );
+        ) {
+            return;
+        }
     }
     if err {
         return;
     }
 
     for (&(trait_mode, impl_mode), (param_subst, _)) in modes.iter().zip(&substs) {
-        compare_constraints(
+        if !compare_constraints(
             db,
             (impl_m, impl_mode),
             (trait_m, trait_mode),
             trait_inst,
             param_subst,
             sink,
-        );
+        ) {
+            return;
+        }
     }
 }
 
@@ -345,7 +351,14 @@ fn compare_ty<'db>(
         if trait_m_ty.has_invalid(db) {
             continue;
         }
-        let impl_param = impl_param.instantiate_identity();
+        // An impl's shape may name an associated shape its impl gives
+        // (`Self::Step`).
+        let impl_param = normalize_ty(
+            db,
+            impl_param.instantiate_identity(),
+            trait_scope,
+            compare_assumptions,
+        );
         let impl_m_ty = impl_param.erased_ty(db);
 
         // 2) Substitute associated types using the provided trait instance.
@@ -376,7 +389,7 @@ fn compare_ty<'db>(
         // parts' modes for a product.
         if !impl_m_ty.has_invalid(db)
             && (trait_m_ty_normalized != impl_m_ty_normalized
-                || !trait_param.same_modes(&impl_param))
+                || !trait_param.same_modes(db, &impl_param))
         {
             sink.push(
                 ImplDiag::MethodArgTyMismatch {
@@ -438,9 +451,13 @@ fn compare_ty<'db>(
         impl_m.ret_shape(db, impl_mode),
         trait_m.ret_shape(db, trait_mode),
     ) {
-        (Some(impl_shape), Some(trait_ret)) => {
-            impl_shape.skip_binder().same_modes(&trait_shape(trait_ret))
-        }
+        (Some(impl_shape), Some(trait_ret)) => normalize_ty(
+            db,
+            impl_shape.skip_binder().clone(),
+            trait_scope,
+            compare_assumptions,
+        )
+        .same_modes(db, &trait_shape(trait_ret)),
         (impl_shape, trait_shape) => impl_shape.is_none() && trait_shape.is_none(),
     };
     if !impl_m_ret_ty.has_invalid(db)

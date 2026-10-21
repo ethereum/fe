@@ -35,19 +35,19 @@ error[3-0082]: a product's parts carry its modes
    ┌─ product_params.fe:10:25
    │
 10 │ fn outer_mode(_ (a, b): own (own u256, ref u256)) -> u256 {
-   │                         ^^^^^^^^^^^^^^^^^^^^^^^^ remove the mode before the tuple: each part takes its own
+   │                         ^^^^^^^^^^^^^^^^^^^^^^^^ remove the mode before it: each part takes its own
 
 error[3-0082]: a product's parts carry its modes
     ┌─ product_params.fe:128:35
     │
 128 │ fn mode_on_nested(_ ((a, b), c): (ref (mut u256, bool), own u256)) {}
-    │                                   ^^^^^^^^^^^^^^^^^^^^ remove the mode before the tuple: each part takes its own
+    │                                   ^^^^^^^^^^^^^^^^^^^^ remove the mode before it: each part takes its own
 
 error[3-0082]: a product's parts carry its modes
     ┌─ product_params.fe:144:22
     │
 144 │     let g = |(a, b): own (own u256, ref u256)| a + b
-    │                      ^^^^^^^^^^^^^^^^^^^^^^^^ remove the mode before the tuple: each part takes its own
+    │                      ^^^^^^^^^^^^^^^^^^^^^^^^ remove the mode before it: each part takes its own
 
 error[6-0003]: trait bound is not satisfied
     ┌─ product_params.fe:137:5

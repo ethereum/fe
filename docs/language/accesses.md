@@ -286,6 +286,46 @@ method take the trait method's `mut?` effect at their own modes. An effect
 row (`uses E = (..)`) and a contract's `uses` have no mode, so each of their
 effects is `mut` or read-only.
 
+## Associated shapes
+
+A trait may declare an associated shape, `shape Part`, which each
+implementation gives as an owned value, an access, a product of them or
+another shape, and which its methods may return:
+
+```fe
+trait Holds {
+    shape Part
+
+    fn part(mut? self) -> Self::Part
+}
+
+impl Holds for Pair {
+    shape Part = (mut? u256, mut? u256)
+
+    fn part(mut? self) -> (mut? u256, mut? u256) {
+        (mut? self.a, mut? self.b)
+    }
+}
+```
+
+A shape is named at a mode, `H::Part<ref>` or `H::Part<mut>`, and only a
+`mut?` item's own signature names it without one, at the item's mode; a
+concrete type's is named the same way, `Pair::Part<ref>`. Only an
+associated shape takes a mode argument. An implementation's shape keeps a
+contract at each mode: its accesses are at most the mode, so an access that
+is `mut` at `mut` is written `mut?`, and `shape Part = mut u256` is
+rejected, as is a shape parameter, whose accesses no one knows; and a shape
+a trait method returns has an access in every implementation, so the
+method is a projection in each (a traversal of owned values is a producer).
+A trait's default shape keeps the same contract.
+
+Before `H` is known, `H::Part<ref>` lists no parts. Generic code passes a
+value of it on whole: it returns it, alone or as part of a returned
+product, or passes it to a parameter of the same shape, `_ p: H::Part<ref>`,
+at most once. A `let`, a pattern, a field read or a copy of it is an error.
+A product's part, `(own usize, H::Part<ref>)`, a closure's parameter and a
+callable bound, `F: Fn(H::Part<ref>) -> bool`, take one the same way.
+
 ## Views
 
 A type marked `#[view]`, such as `MemSlice`, describes memory its owner

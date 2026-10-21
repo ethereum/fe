@@ -24,6 +24,7 @@ use super::{
     trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
     trait_resolution::PredicateListId,
     ty_def::{BorrowKind, InvalidCause, PrimTy, TyBase, TyId},
+    ty_error::first_invalid_ty_cause,
     ty_lower::{lower_generic_arg_list, lower_hir_ty_with_minter},
 };
 use crate::analysis::{
@@ -202,7 +203,7 @@ pub(crate) fn lower_checked_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))
     {
-        return assoc.ty(db);
+        return assoc.ty(db).map(|ty| without_cycle(db, ty));
     }
 
     let trait_inst = impl_trait.trait_inst_result(db).ok()?;
@@ -211,7 +212,8 @@ pub(crate) fn lower_checked_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))?
         .default_ty(db)?;
-    Some(Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db)))
+    let ty = Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db));
+    Some(without_cycle(db, ty))
 }
 
 pub(crate) fn complete_candidate_impl_assoc_ty<'db>(
@@ -261,6 +263,17 @@ fn lower_impl_assoc_ty_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
+/// `ty`, an associated type's definition, unless it holds its own cycle's
+/// placeholder: one naming itself inside another type, `type A = (u8,
+/// Self::A)`, would grow each round, so it is the cycle, which then
+/// converges.
+fn without_cycle<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+    match first_invalid_ty_cause(db, ty) {
+        Some(InvalidCause::TypeLoweringCycle) => TyId::invalid(db, InvalidCause::TypeLoweringCycle),
+        _ => ty,
+    }
+}
+
 /// Lowers one associated-type definition for candidate use without checking
 /// anonymous const bodies. Keeping this query per binding lets sibling
 /// references such as `type B = Self::A` resolve locally without completing
@@ -278,7 +291,7 @@ pub(crate) fn lower_candidate_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))
     {
-        return assoc.candidate_ty(db);
+        return assoc.candidate_ty(db).map(|ty| without_cycle(db, ty));
     }
 
     let trait_inst = impl_trait.candidate_trait_inst_result(db).ok()?;
@@ -287,7 +300,8 @@ pub(crate) fn lower_candidate_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))?
         .candidate_default_ty(db)?;
-    Some(Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db)))
+    let ty = Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db));
+    Some(without_cycle(db, ty))
 }
 
 /// Complete a semantically lowered candidate header with its associated type
@@ -611,9 +625,9 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     let mut assoc_bindings = IndexMap::new();
     for (arg, lowered) in generic_args.data(db).iter().zip(lowered) {
         match arg {
-            GenericArg::Type(_) | GenericArg::Const(_) | GenericArg::Mode(_) => {
-                provided_explicit.push(lowered)
-            }
+            GenericArg::Type(_) | GenericArg::Const(_) => provided_explicit.push(lowered),
+            // A trait takes no mode, which is reported where it is written.
+            GenericArg::Mode(_) => return Err(TraitArgError::Ignored),
             GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
                 if let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) {
                     let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);

@@ -35,8 +35,8 @@ use crate::analysis::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
         ty_def::{
-            BorrowKind, InvalidCause, Kind, StringFallback, TyBase, TyData, TyFlags, TyId,
-            TyVarSort,
+            BorrowKind, InvalidCause, Kind, ShapeCon, StringFallback, TyBase, TyData, TyFlags,
+            TyId, TyVarSort,
         },
         ty_error::emit_invalid_ty_error,
         ty_lower::{CompleteSubst, collect_generic_params, lower_generic_arg_list},
@@ -775,7 +775,10 @@ impl<'db> Callable<'db> {
                 tc.push_diag(diag);
             }
 
-            let expected = tc.normalize_ty(param.shape.erased_ty(db));
+            // A concrete caller knows a shape the callee names opaquely:
+            // `take<Pair>(p.at())` passes `Pair`'s step.
+            let shape = param.shape.map_tys(db, &mut |ty| tc.normalize_ty(ty));
+            let expected = tc.normalize_ty(shape.erased_ty(db));
             let given_ty = tc.normalize_ty(given.expr_prop.ty);
             let given_string_source_ty = given.expr_prop.binding.map_or(given_ty, |binding| {
                 tc.normalize_ty(tc.env.lookup_binding_ty(&binding))
@@ -803,7 +806,7 @@ impl<'db> Callable<'db> {
             };
 
             let is_receiver = has_receiver && i == 0;
-            let diagnosed = check_param_arg(tc, &mut given, &param.shape, is_receiver);
+            let diagnosed = check_param_arg(tc, &mut given, &shape, is_receiver);
 
             if !diagnosed {
                 actual = tc.equate_ty(actual, expected, given.expr_span.clone());
@@ -1074,22 +1077,30 @@ fn check_param_arg<'db>(
     shape: &Shape<'db>,
     is_receiver: bool,
 ) -> bool {
-    match shape.param_mode() {
-        Some(mode) => check_arg_mode(tc, arg, mode, is_receiver),
-        // An opaque shape takes a value of it, which a value granting it is.
-        None if matches!(shape, Shape::Opaque(_)) => {
-            if arg
-                .expr_prop
-                .shape
-                .as_ref()
-                .is_some_and(|given| given.grants(shape))
-            {
-                tc.consume_access(arg.expr);
-            }
-            false
-        }
-        None => check_product_arg(tc, arg, shape),
+    if let Some(mode) = shape.param_mode() {
+        return check_arg_mode(tc, arg, mode, is_receiver);
     }
+    let Shape::Opaque(required) = shape else {
+        return check_product_arg(tc, arg, shape);
+    };
+    // An opaque shape takes a value of it at its mode, which a value
+    // granting it is: a `mut?` call is asked for `mut` if the shape is.
+    if tc.grants_product(arg.expr, shape) {
+        tc.consume_access(arg.expr);
+        return false;
+    }
+    // A value of the shape at another mode.
+    let Some(Shape::Opaque(given)) = tc.env.typed_expr(arg.expr).and_then(|prop| prop.shape) else {
+        return false;
+    };
+    tc.consume_access(arg.expr);
+    let db = tc.db;
+    tc.push_diag(BodyDiag::TypeMismatch {
+        span: arg.expr_span.clone(),
+        expected: TyId::shape_part(db, ShapeCon::Value, *required),
+        given: TyId::shape_part(db, ShapeCon::Value, given),
+    });
+    true
 }
 
 /// Checks `arg`, passed to a product parameter of `product`: a tuple whose

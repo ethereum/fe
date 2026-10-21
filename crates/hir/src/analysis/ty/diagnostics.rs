@@ -75,8 +75,12 @@ pub enum TyLowerDiag<'db> {
     ShapeWithoutMode(DynLazySpan<'db>),
     /// A parameter pattern of a function without a body to bind it.
     DestructuredParamWithoutBody(DynLazySpan<'db>),
-    /// A mode on a product parameter's type, whose parts carry the modes.
-    ModeOnProduct(DynLazySpan<'db>),
+    /// A mode on a product parameter's type, whose parts carry the modes;
+    /// with `shape`, on an associated shape's, which is named at its mode.
+    ModeOnProduct {
+        span: DynLazySpan<'db>,
+        shape: bool,
+    },
     /// A receiver whose type is a product.
     ProductReceiver(DynLazySpan<'db>),
     /// A product parameter its function's body names instead of
@@ -339,7 +343,7 @@ impl TyLowerDiag<'_> {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
-            Self::ModeOnProduct(_) => 82,
+            Self::ModeOnProduct { .. } => 82,
             Self::ModeArgNotShape(_) => 83,
             Self::ShapeWithoutMode(_) => 84,
             Self::ProductReceiver(_) => 74,
@@ -1704,10 +1708,13 @@ pub enum ImplDiag<'db> {
         trait_: Trait<'db>,
     },
 
-    /// An impl's associated shape granting `mut` where it is named at `ref`.
+    /// An impl's associated shape granting `mut` where it is named at `ref`:
+    /// through a part written `mut`, or through `param`, a shape parameter,
+    /// whose accesses are not known.
     ShapeGrantsMut {
         primary: DynLazySpan<'db>,
         name: IdentId<'db>,
+        param: Option<TyId<'db>>,
     },
 
     /// An impl's associated shape with no access, which a trait method

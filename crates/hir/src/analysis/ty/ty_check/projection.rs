@@ -82,14 +82,14 @@ impl<'db> TyChecker<'db> {
         if prop
             .shape
             .as_ref()
-            .is_some_and(|given| !given.grants(shape))
+            .is_some_and(|given| !given.grants(self.db, shape))
             && self.select_mut_place(expr)
         {
             prop = self.env.typed_expr(expr).expect("yield site is typed");
         }
         // A projection call or `ref p`/`mut p` grants its own accesses.
         if let Some(given) = &prop.shape {
-            if given.grants(shape) {
+            if given.grants(self.db, shape) {
                 self.consume_access(expr);
             } else {
                 self.invalid_yield(expr, shape);
@@ -485,7 +485,7 @@ impl<'db> TyChecker<'db> {
             this.env
                 .typed_expr(arg)
                 .and_then(|prop| prop.shape)
-                .is_some_and(|granted| granted.grants(product))
+                .is_some_and(|granted| granted.grants(this.db, product))
         };
         grants(self)
             || product.has_access_of(self.db, BorrowKind::Mut)
@@ -556,7 +556,11 @@ impl<'db> TyChecker<'db> {
                     expr.data(self.db, self.body()),
                     Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut))
                 );
-                (explicit || matches!(shape, Shape::Tuple(_) | Shape::Sum { .. }))
+                (explicit
+                    || matches!(
+                        shape,
+                        Shape::Tuple(_) | Shape::Sum { .. } | Shape::Opaque(_)
+                    ))
                     && !self.env.is_consumed_access(expr)
             })
             .collect::<Vec<_>>();
@@ -577,9 +581,14 @@ impl<'db> TyChecker<'db> {
             .flatten()
             .collect();
         for expr in misused.into_iter().filter(|expr| !chosen.contains(expr)) {
-            self.push_diag(BodyDiag::AccessNotValue {
-                primary: expr.span(self.body()).into(),
-            });
+            let primary = expr.span(self.body()).into();
+            // A value of an opaque shape is only passed on, never used.
+            self.push_diag(
+                match self.env.typed_expr(expr).and_then(|prop| prop.shape) {
+                    Some(Shape::Opaque(shape)) => BodyDiag::OpaqueShapeBound { primary, shape },
+                    _ => BodyDiag::AccessNotValue { primary },
+                },
+            );
         }
         for expr in choices {
             self.push_diag(BodyDiag::AccessChoiceNeedsProjection {

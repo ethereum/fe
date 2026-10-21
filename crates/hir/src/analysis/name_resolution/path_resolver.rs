@@ -1380,7 +1380,10 @@ where
             if let TyData::QualifiedTy(trait_inst) = ty.data(db) {
                 // Associated type projection
                 if let Some(assoc_ty) = trait_inst.project_assoc_ty(db, ident) {
-                    let r = PathRes::Ty(shape_at_mode_arg(db, assoc_ty, path).unwrap_or(assoc_ty));
+                    let r = PathRes::Ty(match assoc_at_mode_arg(db, assoc_ty, path) {
+                        Some(res) => res?,
+                        None => assoc_ty,
+                    });
                     observer(path, &r);
                     return Ok(r);
                 }
@@ -1541,8 +1544,8 @@ where
             };
 
             if let Some(assoc_ty) = impl_self_assoc {
-                if let Some(shape) = shape_at_mode_arg(db, assoc_ty, path) {
-                    let result = PathRes::Ty(shape);
+                if let Some(res) = assoc_at_mode_arg(db, assoc_ty, path) {
+                    let result = PathRes::Ty(res?);
                     observer(path, &result);
                     return Ok(result);
                 }
@@ -1609,12 +1612,22 @@ where
             let mut dedup: IndexMap<TyId<'db>, (TraitInstId<'db>, TyId<'db>, TyId<'db>)> =
                 IndexMap::new();
             for (inst, ty_candidate) in assoc_tys.iter().copied() {
-                let applied = if let Some(shape) = shape_at_mode_arg(db, ty_candidate, path) {
-                    shape
-                } else if seg_args.is_empty() {
-                    ty_candidate
-                } else {
-                    TyId::foldl(db, ty_candidate, &seg_args)
+                // A concrete type's associated shape is its projection, as
+                // `<T as Tr>::Step`'s is, which its mode applies to; the
+                // impl's value it normalizes to has none.
+                let ty_candidate = match inst.project_assoc_ty(db, ident) {
+                    Some(projection)
+                        if *ty_candidate.kind(db) == Kind::Shape
+                            && !matches!(ty_candidate.data(db), TyData::AssocTy(_)) =>
+                    {
+                        projection
+                    }
+                    _ => ty_candidate,
+                };
+                let applied = match assoc_at_mode_arg(db, ty_candidate, path) {
+                    Some(res) => res?,
+                    None if seg_args.is_empty() => ty_candidate,
+                    None => TyId::foldl(db, ty_candidate, &seg_args),
                 };
                 if let TyData::Invalid(InvalidCause::TooManyGenericArgs { expected, given }) =
                     applied.data(db)
@@ -2210,23 +2223,37 @@ fn assoc_ty_candidate_evidence<'db>(
     evidence
 }
 
-/// `assoc`, an associated shape `path` names, at the mode its last segment
-/// gives it alone: `D::Step<ref>`. `None` for anything else.
-fn shape_at_mode_arg<'db>(
+/// What `path`'s generic arguments, a mode among them, make of `assoc`, the
+/// associated type or shape it names: a shape at the mode its last segment
+/// gives it alone, `D::Step<ref>`. A type takes no mode (3-0083), and a
+/// shape takes `ref` or `mut` alone. `None` for a path without a mode
+/// argument.
+fn assoc_at_mode_arg<'db>(
     db: &'db dyn HirAnalysisDb,
     assoc: TyId<'db>,
     path: PathId<'db>,
-) -> Option<TyId<'db>> {
-    let [GenericArg::Mode(mode)] = path.generic_args(db).data(db).as_slice() else {
+) -> Option<Result<TyId<'db>, PathResError<'db>>> {
+    let args = path.generic_args(db).data(db);
+    if !args.iter().any(|arg| matches!(arg, GenericArg::Mode(_))) {
         return None;
-    };
-    let mode = match mode {
-        TypeMode::Ref => ShapeMode::Ref,
-        TypeMode::Mut => ShapeMode::Mut,
-        TypeMode::Own | TypeMode::MaybeMut => return None,
-    };
-    matches!(assoc.data(db), TyData::AssocTy(projection) if projection.is_shape(db))
-        .then(|| assoc.with_shape_mode(db, mode))
+    }
+    let is_shape = matches!(assoc.data(db), TyData::AssocTy(projection) if projection.is_shape(db));
+    Some(match args.as_slice() {
+        [GenericArg::Mode(TypeMode::Ref)] if is_shape => {
+            Ok(assoc.with_shape_mode(db, ShapeMode::Ref))
+        }
+        [GenericArg::Mode(TypeMode::Mut)] if is_shape => {
+            Ok(assoc.with_shape_mode(db, ShapeMode::Mut))
+        }
+        [_, _, ..] if is_shape => Err(PathResError::new(
+            PathResErrorKind::ArgNumMismatch {
+                expected: 1,
+                given: args.len(),
+            },
+            path,
+        )),
+        _ => Ok(TyId::invalid(db, InvalidCause::ModeArgNotShape)),
+    })
 }
 
 fn find_associated_type_in_mode<'db>(

@@ -39,3 +39,17 @@ fn where_bound<D: Driver, F>(_ f: F)
 {}
 
 fn explicit<D: Driver, F: Fn(D::Step<ref>, D::Step<mut>) -> bool>(_ f: F) {}
+
+// A concrete type's shape is named at a mode too.
+fn concrete(_ s: One::Step<ref>) {}
+
+fn concrete_bare(_ s: One::Step) {}
+
+// A result reported where it is written is not checked against the body.
+fn bare_result(_ o: One) -> One::Step {
+    o.at()
+}
+
+fn moded_result<D: Driver>(_ d: D) -> ref D::Step<ref> {
+    d.at()
+}

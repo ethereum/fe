@@ -19,7 +19,10 @@ use super::{
     trait_def::{TraitInstId, TraitRefId, impls_for_trait_inst_with_possible_constraints},
     trait_lower::complete_impl_assoc_ty,
     trait_resolution::{PredicateListId, TraitSolveCx},
-    ty_def::{AssocTy, InvalidCause, ShapeCon, TyBase, TyData, TyId, TyParam, collect_variables},
+    ty_def::{
+        AssocTy, InvalidCause, ShapeCon, ShapeMode, TyBase, TyData, TyId, TyParam,
+        collect_variables,
+    },
     unify::UnificationTable,
     visitor::{TyVisitor, walk_ty},
 };
@@ -295,6 +298,14 @@ impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
                         con @ (ShapeCon::Value | ShapeCon::Carrier),
                     )) = base.data(db) =>
             {
+                // A value's type names its shape without a mode, which every
+                // mode erases alike.
+                let shape = match shape.data(db) {
+                    TyData::AssocTy(assoc) if assoc.mode.is_none() && *con == ShapeCon::Value => {
+                        shape.with_shape_mode(db, ShapeMode::Ref)
+                    }
+                    _ => shape,
+                };
                 match self.fold_ty(db, shape).as_shape_part(db) {
                     Shape::Opaque(term) => TyId::shape_part(db, *con, term),
                     shape if *con == ShapeCon::Value => self.fold_ty(db, shape.erased_ty(db)),

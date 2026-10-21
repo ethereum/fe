@@ -17,6 +17,13 @@ impl<D: Holds> Holds for Wrap<D> {
     shape Part = (own usize, D::Part<mut>)
 }
 
+struct Of<shape A> {}
+
+// A shape parameter's accesses may be `mut` at any mode.
+impl<shape A> Holds for Of<A> {
+    shape Part = A
+}
+
 // Accepted: accesses at the mode, and an inherited shape.
 struct Reads {}
 
@@ -46,5 +53,24 @@ impl Driver for Owned {
 
     fn peek(self) -> own u256 {
         self.x
+    }
+}
+
+// A trait's default keeps the contract an impl's shape does.
+trait Defaulted {
+    shape Step = mut u256
+
+    fn peek(mut self) -> Self::Step<ref>
+}
+
+// `Holds::Part` may be owned in an impl: nothing returns it as a
+// projection. So it gives `Step` no access every impl has.
+struct Around<H> {}
+
+impl<H: Holds> Driver for Around<H> {
+    shape Step = H::Part
+
+    fn peek(self) -> H::Part<ref> {
+        todo()
     }
 }

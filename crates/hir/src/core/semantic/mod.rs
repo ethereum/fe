@@ -825,10 +825,17 @@ impl<'db> Func<'db> {
         } else {
             collect_ty_lower_errors(db, self.scope(), hir_ty, span.clone(), assumptions)
         };
-        if diags.is_empty() && shape.is_some_and(|shape| names_shape_without_mode(db, shape)) {
+        if diags.is_empty() && self.return_lacks_mode(db) {
             return vec![TyLowerDiag::ShapeWithoutMode(span.into()).into()];
         }
         diags
+    }
+
+    /// Whether the return names an associated shape without a mode, where
+    /// nothing gives it one (3-0084).
+    pub fn return_lacks_mode(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.return_shape(db, self.modes(db)[0])
+            .is_some_and(|shape| names_shape_without_mode(db, shape))
     }
 
     /// Returns the containing `impl Trait` block if this function is a method
@@ -1496,16 +1503,17 @@ impl<'db> FuncParamView<'db> {
             };
         }
 
-        // A product's parts carry its modes, and its body takes it apart.
+        // A product's parts carry its modes, and its body takes it apart; an
+        // associated shape is named at its mode.
         if let TypeKind::Mode(_, inner) = hir_ty.data(db)
-            && inner.to_opt().is_some_and(|inner| {
-                is_param_product(db, inner)
-                    || may_name_shape(db, inner, func.is_maybe_mut(db))
-                        && lower_opaque_param(db, inner, func.scope(), assumptions, None).is_some()
-            })
+            && let Some(inner) = inner.to_opt()
         {
-            let span = self.span().ty().into();
-            return vec![TyLowerDiag::ModeOnProduct(span).into()];
+            let shape = may_name_shape(db, inner, func.is_maybe_mut(db))
+                && lower_opaque_param(db, inner, func.scope(), assumptions, None).is_some();
+            if shape || is_param_product(db, inner) {
+                let span = self.span().ty().into();
+                return vec![TyLowerDiag::ModeOnProduct { span, shape }.into()];
+            }
         }
         if let Some(product) = self.product(db, func.modes(db)[0]) {
             if self.is_self_param(db) {
@@ -5121,10 +5129,12 @@ impl<'db> ImplAssocTypeView<'db> {
         }
         // A type is of its declaration's kind: `*`, unless a bound gives
         // another.
-        if let Some(trait_) = self.owner.trait_def(db)
+        if !def.is_shape
+            && let Some(trait_) = self.owner.trait_def(db)
             && let Some(decl) = trait_
                 .assoc_types(db)
                 .find(|assoc| assoc.name(db) == def.name.to_opt())
+            && !decl.is_shape(db)
         {
             let expected = lower_kind_in_bounds(decl.bounds_raw(db)).unwrap_or(Kind::Star);
             if !ty.kind(db).does_match(&expected) {
@@ -5157,45 +5167,102 @@ impl<'db> ImplAssocTypeView<'db> {
 
         if def.is_shape
             && let Some(name) = def.name.to_opt()
+            && let Some(diag) =
+                shape_contract_diag(db, self.owner.trait_def(db), name, ty, ty_span.into())
         {
-            // A shape's accesses are at most the mode it is named at, so at
-            // `ref` it grants no `mut`.
-            let at_ref = ty.at_shape_mode(db, ShapeMode::Ref).as_shape_part(db);
-            if at_ref.has_access_of(db, BorrowKind::Mut) {
-                return vec![
-                    ImplDiag::ShapeGrantsMut {
-                        primary: ty_span.into(),
-                        name,
-                    }
-                    .into(),
-                ];
-            }
-            // A shape a trait method returns makes it a projection in every
-            // impl.
-            if let Some(trait_) = self.owner.trait_def(db)
-                && !at_ref.has_access()
-                && trait_.methods(db).any(|method| {
-                    method
-                        .return_shape(db, method.modes(db)[0])
-                        .is_some_and(|shape| {
-                            names_assoc_ty(db, shape, |assoc| {
-                                assoc.name == name && assoc.trait_.def(db) == trait_
-                            })
-                        })
-                })
-            {
-                return vec![
-                    ImplDiag::ShapeWithoutAccess {
-                        primary: ty_span.into(),
-                        name,
-                        trait_,
-                    }
-                    .into(),
-                ];
-            }
+            return vec![diag];
         }
 
         Vec::new()
+    }
+}
+
+/// The contract an associated shape's value `ty`, given for the shape `name`
+/// of `trait_`, keeps: named at `ref`, it grants no `mut`, and a shape a
+/// method of the trait returns has an access in every impl.
+pub(crate) fn shape_contract_diag<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: Option<Trait<'db>>,
+    name: IdentId<'db>,
+    ty: TyId<'db>,
+    primary: crate::span::DynLazySpan<'db>,
+) -> Option<TyDiagCollection<'db>> {
+    let at_ref = ty.at_shape_mode(db, ShapeMode::Ref).as_shape_part(db);
+    if let Some(param) = mut_grant(db, &at_ref) {
+        return Some(
+            ImplDiag::ShapeGrantsMut {
+                primary,
+                name,
+                param,
+            }
+            .into(),
+        );
+    }
+    let trait_ = trait_?;
+    (trait_returns_shape(db, trait_, name) && !has_access_in_every_impl(db, &at_ref)).then(|| {
+        ImplDiag::ShapeWithoutAccess {
+            primary,
+            name,
+            trait_,
+        }
+        .into()
+    })
+}
+
+/// What in `shape` grants `mut`, if anything does: a part written `mut` or an
+/// associated shape (`None`), or else a shape parameter, whose accesses are
+/// not known.
+fn mut_grant<'db>(db: &'db dyn HirAnalysisDb, shape: &Shape<'db>) -> Option<Option<TyId<'db>>> {
+    match shape {
+        Shape::Owned(_) => None,
+        Shape::Access(kind, _) => (*kind == BorrowKind::Mut).then_some(None),
+        Shape::Tuple(elems) => {
+            let grants: Vec<_> = elems
+                .iter()
+                .filter_map(|elem| mut_grant(db, elem))
+                .collect();
+            grants
+                .iter()
+                .find(|grant| grant.is_none())
+                .or(grants.first())
+                .copied()
+        }
+        Shape::Sum { payload, .. } => mut_grant(db, payload),
+        Shape::Opaque(term) => match term.data(db) {
+            TyData::AssocTy(_) => shape.has_access_of(db, BorrowKind::Mut).then_some(None),
+            _ => Some(Some(*term)),
+        },
+    }
+}
+
+/// Whether a method of `trait_` returns its associated shape `name`, which
+/// makes the method a projection in every impl.
+fn trait_returns_shape<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: Trait<'db>,
+    name: IdentId<'db>,
+) -> bool {
+    trait_.methods(db).any(|method| {
+        method
+            .return_shape(db, method.modes(db)[0])
+            .is_some_and(|shape| {
+                names_assoc_ty(db, shape, |assoc| {
+                    assoc.name == name && assoc.trait_.def(db) == trait_
+                })
+            })
+    })
+}
+
+/// Whether `shape` grants an access whatever its opaque parts turn out to
+/// be: an opaque part does only if its own trait returns it.
+fn has_access_in_every_impl<'db>(db: &'db dyn HirAnalysisDb, shape: &Shape<'db>) -> bool {
+    match shape {
+        Shape::Owned(_) => false,
+        Shape::Access(..) => true,
+        Shape::Tuple(elems) => elems.iter().any(|elem| has_access_in_every_impl(db, elem)),
+        Shape::Sum { payload, .. } => has_access_in_every_impl(db, payload),
+        Shape::Opaque(term) => matches!(term.data(db), TyData::AssocTy(assoc)
+            if trait_returns_shape(db, assoc.trait_.def(db), assoc.name)),
     }
 }
 

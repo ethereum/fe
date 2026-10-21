@@ -37,7 +37,8 @@ use crate::analysis::ty::trait_def::ImplementorId;
 use crate::semantic::{
     FieldView, FuncParamView, ImplAssocTypeView, InherentImplAdmissibility, VariantView,
     WherePredicateBoundView, WherePredicateView, constraints_for, header_constraints_for,
-    lower_hir_kind_local, param_env, signature_mentions_maybe_mut, trait_self_predicate,
+    lower_hir_kind_local, param_env, shape_contract_diag, signature_mentions_maybe_mut,
+    trait_self_predicate,
 };
 
 /// Unified "pull" diagnostics surface for HIR items and views.
@@ -539,6 +540,15 @@ impl<'db> Trait<'db> {
             let Some(default_ty) = assoc.default_ty(db) else {
                 continue;
             };
+            // A default shape keeps the contract an impl's does.
+            if assoc.is_shape(db)
+                && let Some(name) = assoc.name(db)
+                && let Some(diag) =
+                    shape_contract_diag(db, Some(self), name, default_ty, assoc.span().ty().into())
+            {
+                diags.push(diag);
+                continue;
+            }
             for trait_inst in assoc.bounds_on_subject(db, default_ty) {
                 match ty::trait_resolution::is_goal_satisfiable(
                     db,

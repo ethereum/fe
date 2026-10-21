@@ -118,6 +118,7 @@ pub(crate) fn path_arg_diags<'db>(
                         .unwrap_or(Kind::Star);
                     let given = lower_hir_ty(db, ty, scope, assumptions);
                     if diags.is_empty()
+                        && !decl.is_some_and(|decl| decl.is_shape())
                         && !given.has_invalid(db)
                         && !given.kind(db).does_match(&expected)
                     {

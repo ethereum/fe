@@ -73,7 +73,7 @@ error[3-0082]: a product's parts carry its modes
    ┌─ shape_params.fe:41:50
    │
 41 │ fn sugar<shape A, F: Fn(own A, Nope) -> A, G: Fn(ref (mut u256, bool))>(_ f: F, _ g: G) {}
-   │                                                  ^^^^^^^^^^^^^^^^^^^^ remove the mode before the tuple: each part takes its own
+   │                                                  ^^^^^^^^^^^^^^^^^^^^ remove the mode before it: each part takes its own
 
 error[3-0085]: `mut?` in a shape argument
    ┌─ shape_params.fe:44:26

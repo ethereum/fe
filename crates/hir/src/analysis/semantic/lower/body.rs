@@ -879,6 +879,12 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 };
                 self.lower_access(*tail)
             }
+            // `mut d.at()` with an opaque result is the call at that mode.
+            Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref))
+                if matches!(shape, Shape::Opaque(_)) =>
+            {
+                self.lower_access(*inner)
+            }
             // A transport binding of an opaque shape is passed on as it is,
             // moved: it is used at most once.
             Partial::Present(Expr::Path(_))
@@ -1784,9 +1790,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         for (&arg, param) in args.iter().zip(&params[usize::from(receiver.is_some())..]) {
             let value = match param.shape.param_mode() {
                 Some(mode) => self.lower_callable_argument(arg, callable, mode, false),
-                // An opaque shape is transported whole, as a value.
+                // An opaque shape is transported whole, as its carrier: a
+                // projection's result keeps its grant through the call.
                 None if matches!(param.shape, Shape::Opaque(_)) => {
-                    let value = self.lower_expr(arg);
+                    let value = self.lower_source(arg);
                     self.take_operand(arg, value)
                 }
                 None => {

@@ -239,7 +239,7 @@ pub(crate) fn callable_out_ty<'db>(
             && listed
                 .iter()
                 .zip(&params)
-                .all(|(listed, param)| listed.same_modes(param))
+                .all(|(listed, param)| listed.same_modes(db, param))
     });
     (name == out_ident(db) && same_modes).then(|| value.ret_ty(db))
 }

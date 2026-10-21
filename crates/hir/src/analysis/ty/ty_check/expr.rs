@@ -70,7 +70,10 @@ use crate::analysis::ty::{
     instantiate_trait_self,
     normalize::normalize_with_trait_evidence,
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
-    shape::{Shape, SumKind, is_param_product, lower_param_product, param_product_diags, sum_kind},
+    shape::{
+        Shape, SumKind, is_param_product, lower_opaque_param, lower_param_product, may_name_shape,
+        param_product_diags, sum_kind,
+    },
     trait_def::TraitInstId,
     trait_lower::complete_impl_trait,
     trait_resolution::{
@@ -686,8 +689,9 @@ impl<'db> TyChecker<'db> {
             };
             // A product parameter's binding owns the carriers of its parts,
             // which its pattern takes apart.
+            // A parameter of an opaque shape takes a value of it whole.
             let mode = shape.param_mode().unwrap_or_else(|| {
-                if !param.is_destructured() {
+                if !param.is_destructured() && !matches!(shape, Shape::Opaque(_)) {
                     self.push_diag(TyDiagCollection::from(
                         TyLowerDiag::ProductParamNotDestructured {
                             span: param_span.into(),
@@ -923,9 +927,10 @@ impl<'db> TyChecker<'db> {
         match payload {
             // A product's parts carry its modes.
             Some(ty) if is_param_product(db, ty) && mode.is_some() => {
-                self.push_diag(TyDiagCollection::from(TyLowerDiag::ModeOnProduct(
-                    span.into(),
-                )));
+                self.push_diag(TyDiagCollection::from(TyLowerDiag::ModeOnProduct {
+                    span: span.into(),
+                    shape: false,
+                }));
                 Shape::Owned(TyId::invalid(db, InvalidCause::Other))
             }
             Some(ty) if is_param_product(db, ty) => {
@@ -938,6 +943,20 @@ impl<'db> TyChecker<'db> {
                 lower_param_product(db, ty, scope, assumptions, self.env.owner().mode())
                     .expect("a product lowers to its shape")
                     .map_tys(self.db, &mut |ty| self.normalize_ty(ty))
+            }
+            // An associated shape's value, taken whole.
+            Some(ty)
+                if mode.is_none()
+                    && may_name_shape(db, ty, self.env.owner().mode().is_some())
+                    && let Some(opaque) = lower_opaque_param(
+                        db,
+                        ty,
+                        self.env.scope(),
+                        self.env.assumptions(),
+                        self.env.owner().mode(),
+                    ) =>
+            {
+                opaque.map_tys(self.db, &mut |ty| self.normalize_ty(ty))
             }
             Some(ty) => {
                 let lowered = self.lower_ty(ty, span.clone(), true);
@@ -1002,6 +1021,16 @@ impl<'db> TyChecker<'db> {
         if matches!(op, UnOp::Mut | UnOp::Ref) {
             if *op == UnOp::Mut && self.select_mut_place(*lhs) {
                 prop = self.env.typed_expr(*lhs).expect("selected place is typed");
+            }
+            // A value of an opaque shape is passed on whole, at its mode:
+            // `mut d.at()` calls the projection at `mut`.
+            if let Some(shape @ Shape::Opaque(_)) = &prop.shape {
+                self.consume_access(*lhs);
+                if *op == UnOp::Mut && !shape.has_access_of(self.db, BorrowKind::Mut) {
+                    self.report_cannot_borrow_mut(*lhs, expr.span(self.body()).into());
+                    return ExprProp::invalid(self.db);
+                }
+                return prop;
             }
             if !self.env.is_place_expr(*lhs) {
                 self.push_diag(BodyDiag::BorrowFromNonPlace {
@@ -4066,6 +4095,14 @@ impl<'db> TyChecker<'db> {
                 if captured {
                     if matches!(binding, LocalBinding::EffectParam { .. }) {
                         return self.capture_effect(binding);
+                    }
+                    // A value of an opaque shape is only passed on, never
+                    // copied into a closure.
+                    if let Some(Shape::Opaque(shape)) = self.env.param_product(&binding) {
+                        self.push_diag(BodyDiag::OpaqueShapeBound {
+                            primary: path_expr_span.clone().into(),
+                            shape: *shape,
+                        });
                     }
                     // An access's type still being inferred is checked once
                     // it is known.

@@ -1732,13 +1732,20 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::ModeOnProduct(span) => primary_diag(
-                Severity::Error,
-                "a product's parts carry its modes",
-                "remove the mode before it: each part takes its own",
-                span.resolve(db),
-                error_code,
-            ),
+            Self::ModeOnProduct { span, shape } => {
+                let (message, label) = if *shape {
+                    (
+                        "an associated shape carries its own modes",
+                        "remove the mode before it: the shape is named at its mode, as `D::Step<ref>`",
+                    )
+                } else {
+                    (
+                        "a product's parts carry its modes",
+                        "remove the mode before it: each part takes its own",
+                    )
+                };
+                primary_diag(Severity::Error, message, label, span.resolve(db), error_code)
+            }
 
             Self::ProductReceiver(span) => primary_diag(
                 Severity::Error,
@@ -6484,13 +6491,26 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 )
             }
 
-            Self::ShapeGrantsMut { primary, name } => primary_diag(
+            Self::ShapeGrantsMut {
+                primary,
+                name,
+                param,
+            } => primary_diag(
                 severity,
                 format!(
                     "`{}` grants `mut` where it is named at `ref`",
                     name.data(db)
                 ),
-                "a shape's accesses are at most its mode: write `mut?` for an access at it",
+                match param {
+                    Some(param) => format!(
+                        "`{}` is a shape parameter, whose accesses may be `mut` at any mode",
+                        param.pretty_print(db)
+                    ),
+                    None => {
+                        "a shape's accesses are at most its mode: write `mut?` for an access at it"
+                            .to_string()
+                    }
+                },
                 primary.resolve(db),
                 error_code,
             ),

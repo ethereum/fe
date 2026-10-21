@@ -988,7 +988,8 @@ pub(super) enum AccessBinding {
     /// `mut` result of a type with no values stays the access, as `let s`
     /// of a call returning `mut MemSpan`.
     LetResult,
-    /// A destructured parameter's parts, bound as a result's are.
+    /// A destructured parameter's parts, bound as a result's are; a name
+    /// binds an opaque part whole, as an opaque parameter is.
     Param,
 }
 
@@ -1481,6 +1482,7 @@ fn typed_body_for_bodyless_func<'db>(
         param_bindings: bindings.params,
         input_bindings: bindings.inputs,
         param_products: bindings.products,
+        transport_parts: Vec::new(),
         pat_bindings: SecondaryMap::new(),
         pat_binding_modes: SecondaryMap::new(),
         pattern_store: PatternStore::default(),
@@ -1634,6 +1636,10 @@ impl<'db> TyChecker<'db> {
             self.check_expr(root_expr, self.expected);
             if let Some(shape) = self.projection_shape.clone() {
                 self.check_yield_site(root_expr, &shape);
+            } else if self.expected.has_invalid(self.db) {
+                // A result reported where it is declared takes the tail,
+                // whatever it is.
+                self.consume_access(root_expr);
             }
         }
         self.check_access_uses();
@@ -2881,8 +2887,12 @@ impl<'db> TyChecker<'db> {
 
     fn new_internal(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId<'db>) -> Self {
         let table = UnificationTable::new(db);
+        // A shape whose impl is known is the parts it lists. A result
+        // reported where it is declared has no yields to check.
         let projection_shape = match env.owner() {
-            BodyOwner::Func(func, mode) => func.return_shape(db, mode).cloned(),
+            BodyOwner::Func(func, mode) if !expected.has_invalid(db) => func
+                .return_shape(db, mode)
+                .map(|shape| normalize_ty(db, shape.clone(), env.scope(), env.assumptions())),
             _ => None,
         };
         let explicit_yields = env
@@ -3593,12 +3603,23 @@ impl<'db> TyChecker<'db> {
                     self.bind_pattern_accesses(*payload_pat, payload, authority, binding);
                 }
             }
-            // A value of an opaque shape is only passed on, never bound.
+            // A value of an opaque shape is only passed on, never bound but
+            // as a parameter's part.
             (Shape::Opaque(term), Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
-                self.push_diag(BodyDiag::OpaqueShapeBound {
-                    primary: pat.span(self.body()).into(),
-                    shape: *term,
-                });
+                match self.env.pat_binding(pat) {
+                    Some(LocalBinding::Local { pat: name, .. })
+                        if binding == AccessBinding::Param =>
+                    {
+                        self.env.register_transport_part(name, shape.clone());
+                    }
+                    _ => {
+                        self.shape_bindings.insert(pat);
+                        self.push_diag(BodyDiag::OpaqueShapeBound {
+                            primary: pat.span(self.body()).into(),
+                            shape: *term,
+                        });
+                    }
+                }
             }
             (_, Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
                 self.shape_bindings.insert(pat);
@@ -4403,6 +4424,9 @@ mod typed_body_tables {
         /// The shapes of the product parameters, the body's own and its
         /// closures', by site and index.
         pub(super) param_products: Vec<(ParamSite<'db>, usize, Shape<'db>)>,
+        /// The opaque parts of products that destructured parameters bind
+        /// whole, by the name's pattern.
+        pub(super) transport_parts: Vec<(PatId, Shape<'db>)>,
         /// Bindings for local variables (keyed by the pattern that introduces them)
         pub(super) pat_bindings: SecondaryMap<PatId, Option<LocalBinding<'db>>>,
         /// Binding capture mode for local variables (keyed by the pattern that introduces them)
@@ -4736,6 +4760,9 @@ impl<'db> TypedBody<'db> {
         for (_, _, product) in &self.tables.param_products {
             product.visit_with(visitor);
         }
+        for (_, part) in &self.tables.transport_parts {
+            part.visit_with(visitor);
+        }
         for binding in self.tables.pat_bindings.values().flatten() {
             binding.visit_with(visitor);
         }
@@ -4809,6 +4836,9 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
         this.param_products
             .iter_mut()
             .for_each(|(_, _, product)| *product = product.clone().fold_with(db, folder));
+        this.transport_parts
+            .iter_mut()
+            .for_each(|(_, part)| *part = part.clone().fold_with(db, folder));
         this.pat_bindings
             .values_mut()
             .flatten()
@@ -4997,7 +5027,11 @@ impl<'db> TypedBody<'db> {
                 crate::hir_def::expr::UnOp::Mut
                 | crate::hir_def::expr::UnOp::MaybeMut
                 | crate::hir_def::expr::UnOp::Ref,
-            ) if !self.has_lowerable_place(db, *inner) => missing_plan(),
+            ) if !self.has_lowerable_place(db, *inner)
+                && !matches!(self.expr_prop(db, *inner).shape, Some(Shape::Opaque(_))) =>
+            {
+                missing_plan()
+            }
             Expr::Assign(dst, _)
                 if self.semantic_expr_lowering(*dst).is_none()
                     && !self.has_lowerable_place(db, *dst) =>
@@ -5245,12 +5279,12 @@ impl<'db> TypedBody<'db> {
             .chain(params)
             .collect();
         // A product parameter's inputs are its parts.
-        let products = &tables.param_products;
+        let (products, parts) = (&tables.param_products, &tables.transport_parts);
         tables.input_bindings = tables
             .param_bindings
             .iter()
             .flat_map(
-                |binding| match (binding, env::param_product(products, binding)) {
+                |binding| match (binding, env::param_product(products, parts, binding)) {
                     (&LocalBinding::Param { site, idx, .. }, Some(product)) => {
                         env::product_inputs(db, site, idx, product).collect()
                     }
@@ -5317,31 +5351,41 @@ impl<'db> TypedBody<'db> {
     }
 
     /// The body of an instance whose opaque parameters' shapes are known, as
-    /// `normalize` makes them: each takes the inputs its shape lists.
+    /// `normalize` makes them: each takes the inputs its shape lists, as does
+    /// a product with an opaque part.
     pub(crate) fn with_known_params(
         mut self,
         db: &'db dyn HirAnalysisDb,
         mut normalize: impl FnMut(Shape<'db>) -> Shape<'db>,
     ) -> Self {
         let tables = self.tables_mut();
-        for entry in 0..tables.param_products.len() {
-            let (site, idx, product) = tables.param_products[entry].clone();
-            if !matches!(product, Shape::Opaque(_)) {
+        for (site, idx, product) in &mut tables.param_products {
+            // An opaque part is one input, a value of the shape at its mode.
+            let has_opaque = product
+                .leaves(db)
+                .iter()
+                .any(|(access, ty)| access.is_none() && ty.as_shape_value(db).is_some());
+            if !has_opaque {
                 continue;
             }
-            let known = normalize(product);
-            if matches!(known, Shape::Opaque(_)) {
+            let known = normalize(product.clone());
+            if known == *product {
                 continue;
             }
-            let opaque = |input: &LocalBinding<'db>| {
+            let part_of = |input: &LocalBinding<'db>| {
                 matches!(*input, LocalBinding::ParamPart { site: part_site, idx: part_idx, .. }
-                    if part_site == site && part_idx == idx)
+                    if part_site == *site && part_idx == *idx)
             };
-            if let Some(at) = tables.input_bindings.iter().position(opaque) {
-                let inputs: Vec<_> = env::product_inputs(db, site, idx, &known).collect();
-                tables.input_bindings.splice(at..=at, inputs);
+            if let Some(start) = tables.input_bindings.iter().position(part_of) {
+                let end = start
+                    + tables.input_bindings[start..]
+                        .iter()
+                        .take_while(|input| part_of(input))
+                        .count();
+                let inputs: Vec<_> = env::product_inputs(db, *site, *idx, &known).collect();
+                tables.input_bindings.splice(start..end, inputs);
             }
-            tables.param_products[entry].2 = known;
+            *product = known;
         }
         self
     }
@@ -5425,10 +5469,14 @@ impl<'db> TypedBody<'db> {
         })
     }
 
-    /// The shape of `binding` if it is a product parameter's: the product the
-    /// body destructures.
+    /// The shape of `binding` if it is a product parameter's, the product
+    /// the body destructures, or an opaque part of one bound whole.
     pub fn param_product(&self, binding: LocalBinding<'db>) -> Option<&Shape<'db>> {
-        env::param_product(&self.tables.param_products, &binding)
+        env::param_product(
+            &self.tables.param_products,
+            &self.tables.transport_parts,
+            &binding,
+        )
     }
 
     /// Get the binding for a local variable by its pattern.
@@ -6791,6 +6839,7 @@ impl<'db> TypedBody<'db> {
             param_bindings: Vec::new(),
             input_bindings: Vec::new(),
             param_products: Vec::new(),
+            transport_parts: Vec::new(),
             pat_bindings: SecondaryMap::new(),
             pat_binding_modes: SecondaryMap::new(),
             pattern_store: PatternStore::default(),
