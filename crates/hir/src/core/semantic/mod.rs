@@ -2606,6 +2606,7 @@ fn resolve_recv_variant<'db>(
     if let Some(msg_mod) = msg_mod {
         match crate::analysis::ty::ty_check::resolve_variant_in_msg(
             db,
+            contract,
             msg_mod,
             variant_path,
             assumptions,

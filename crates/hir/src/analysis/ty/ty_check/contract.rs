@@ -192,15 +192,22 @@ pub struct ResolvedRecvVariant<'db> {
     pub ty: TyId<'db>,
 }
 
-/// Resolves a variant path within a msg module.
+/// Resolves the variant path of an arm of `contract`'s recv block for the msg
+/// module `msg_mod`. A bare name is looked up among the msg's variants, and a
+/// longer path where the arm is written.
 pub fn resolve_variant_in_msg<'db>(
     db: &'db dyn HirAnalysisDb,
+    contract: Contract<'db>,
     msg_mod: Mod<'db>,
     variant_path: PathId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> Result<ResolvedRecvVariant<'db>, VariantResError<'db>> {
-    let Ok(PathRes::Ty(ty)) = resolve_path(db, variant_path, msg_mod.scope(), assumptions, false)
-    else {
+    let scope = if variant_path.is_bare_ident(db) {
+        msg_mod.scope()
+    } else {
+        contract.scope()
+    };
+    let Ok(PathRes::Ty(ty)) = resolve_path(db, variant_path, scope, assumptions, false) else {
         return Err(VariantResError::NotFound);
     };
 
@@ -333,7 +340,7 @@ fn check_named_recv_block<'db>(
             continue;
         };
 
-        match resolve_variant_in_msg(db, msg_mod, path, assumptions) {
+        match resolve_variant_in_msg(db, contract, msg_mod, path, assumptions) {
             Ok(resolved) => {
                 let Some(ident) = resolved.variant_struct.name(db).to_opt() else {
                     continue;

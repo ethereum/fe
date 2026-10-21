@@ -1576,7 +1576,7 @@ impl<'db> TyChecker<'db> {
             let (pat_ty, ret_ty) =
                 self.resolve_recv_arm_types(contract, msg_path, arm, recv_span.path(), arm_span);
             self.expected = ret_ty;
-            self.check_pat(arm.pat, pat_ty);
+            self.check_recv_arm_pat(arm.pat, pat_ty);
             self.seed_pat_bindings(arm.pat);
             self.env.flush_pending_bindings();
         }
@@ -2868,7 +2868,13 @@ impl<'db> TyChecker<'db> {
             false,
         ) {
             // Named recv block - resolve within the msg module
-            match contract::resolve_variant_in_msg(self.db, msg_mod, variant_path, assumptions) {
+            match contract::resolve_variant_in_msg(
+                self.db,
+                contract,
+                msg_mod,
+                variant_path,
+                assumptions,
+            ) {
                 Ok(resolved) => resolved,
                 _ => {
                     // Return invalid types to suppress spurious type mismatch errors
