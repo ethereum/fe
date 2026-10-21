@@ -683,3 +683,12 @@ fn tree_sitter_agrees_on_named_impl_visibility_and_supported_for_syntax() {
         );
     }
 }
+
+#[test]
+fn tree_sitter_shipped_highlight_query_compiles() {
+    tree_sitter::Query::new(
+        &tree_sitter_fe::LANGUAGE.into(),
+        include_str!("../../tree-sitter-fe/queries/highlights.scm"),
+    )
+    .expect("the shipped highlight query must match the generated grammar");
+}
