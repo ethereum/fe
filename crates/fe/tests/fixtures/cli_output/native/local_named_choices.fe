@@ -1,0 +1,36 @@
+trait Pick { fn pick(self) -> i32 }
+impl Pick for i32 { fn pick(self) -> i32 { 1 } }
+
+fn helper<T: Pick>(_ value: T) -> i32 { value.pick() }
+
+fn first() -> i32 {
+    impl Pick for i32 as Local { fn pick(self) -> i32 { 20 } }
+    with (Local) { helper(0 as i32) }
+}
+
+fn second() -> i32 {
+    impl Pick for i32 as Local { fn pick(self) -> i32 { 30 } }
+    with (Local) { helper(0 as i32) }
+}
+
+fn siblings() -> (i32, i32) {
+    let left = {
+        impl Pick for i32 as Local { fn pick(self) -> i32 { 40 } }
+        with (Local) { helper(0 as i32) }
+    }
+    let right = {
+        impl Pick for i32 as Local { fn pick(self) -> i32 { 50 } }
+        with (Local) { helper(0 as i32) }
+    }
+    (left, right)
+}
+
+pub fn main() -> i32 {
+    let (left, right) = siblings()
+    if first() != 20 { return 1 }
+    if second() != 30 { return 2 }
+    if left != 40 { return 3 }
+    if right != 50 { return 4 }
+    if helper(0 as i32) != 1 { return 5 }
+    0
+}

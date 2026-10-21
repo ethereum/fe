@@ -696,6 +696,25 @@ fn test_cli_build_native_executes_representative_programs_at_o0_and_o1() {
         all(target_arch = "aarch64", target_os = "macos")
     )
 ))]
+#[test]
+fn test_cli_native_distinguishes_same_named_lexical_choices() {
+    let source = include_str!("fixtures/cli_output/native/local_named_choices.fe");
+    for level in ["0", "1"] {
+        assert_eq!(
+            native_exit_code(source, level),
+            Some(0),
+            "function-local and sibling-block choices must dispatch to 20/30/40/50 at O{level}",
+        );
+    }
+}
+
+#[cfg(all(
+    feature = "cranelift",
+    any(
+        all(target_arch = "x86_64", target_os = "linux"),
+        all(target_arch = "aarch64", target_os = "macos")
+    )
+))]
 fn native_exit_code(source: &str, level: &str) -> Option<i32> {
     let temp = tempdir().expect("tempdir");
     let executable = build_native_program(source, level, temp.path());
