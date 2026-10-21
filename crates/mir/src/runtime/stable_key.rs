@@ -1031,16 +1031,19 @@ const fn call_after() -> u256 {
         assert_ne!(id_alt20, id_alt30);
 
         // Follow helper -> Outer::outer -> selected Inner::inner method body.
-        let selected_inner_in = |helper_inst: SemanticInstance<'_>| {
-            let outer_callee = helper_inst.callees(&db)[0].key;
-            let outer_inst = get_or_build_semantic_instance(&db, outer_callee);
-            let inner_callee = outer_inst.callees(&db)[0].key;
-            get_or_build_semantic_instance(&db, inner_callee)
-        };
-        let inner_before = selected_inner_in(helper_before);
-        let inner_alt20 = selected_inner_in(helper_alt20);
-        let inner_alt30 = selected_inner_in(helper_alt30);
-        let inner_after = selected_inner_in(helper_after);
+        fn selected_inner_in<'db>(
+            db: &'db HirAnalysisTestDb,
+            helper_inst: SemanticInstance<'db>,
+        ) -> SemanticInstance<'db> {
+            let outer_callee = helper_inst.callees(db)[0].key;
+            let outer_inst = get_or_build_semantic_instance(db, outer_callee);
+            let inner_callee = outer_inst.callees(db)[0].key;
+            get_or_build_semantic_instance(db, inner_callee)
+        }
+        let inner_before = selected_inner_in(&db, helper_before);
+        let inner_alt20 = selected_inner_in(&db, helper_alt20);
+        let inner_alt30 = selected_inner_in(&db, helper_alt30);
+        let inner_after = selected_inner_in(&db, helper_after);
 
         assert_eq!(
             semantic_instance_identity(&db, inner_before),
@@ -1149,19 +1152,22 @@ fn ordinary() -> u256 { helper(0 as u256) + helper(1 as u256) }
         }
 
         // Descend from each helper instance to its selected `Pick::pick` method body.
-        let selected_pick = |helper_inst: SemanticInstance<'_>| {
-            let callees = helper_inst.callees(&db);
+        fn selected_pick<'db>(
+            db: &'db HirAnalysisTestDb,
+            helper_inst: SemanticInstance<'db>,
+        ) -> SemanticInstance<'db> {
+            let callees = helper_inst.callees(db);
             assert_eq!(callees.len(), 1);
-            get_or_build_semantic_instance(&db, callees[0].key)
-        };
+            get_or_build_semantic_instance(db, callees[0].key)
+        }
         let mut selected_methods = choices
             .iter()
             .copied()
-            .map(selected_pick)
+            .map(|instance| selected_pick(&db, instance))
             .collect::<Vec<_>>();
-        let ordinary_pick = selected_pick(ordinary[0]);
+        let ordinary_pick = selected_pick(&db, ordinary[0]);
         for instance in &ordinary {
-            let pick = selected_pick(*instance);
+            let pick = selected_pick(&db, *instance);
             assert_eq!(pick.key(&db).owner(&db), ordinary_pick.key(&db).owner(&db));
             assert_eq!(
                 semantic_instance_identity(&db, pick),
