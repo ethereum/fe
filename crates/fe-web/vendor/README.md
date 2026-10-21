@@ -19,8 +19,14 @@ To rebuild after grammar changes:
 
 ```sh
 cd crates/tree-sitter-fe
-tree-sitter build --wasm .
-cp tree-sitter-fe.wasm ../fe-web/vendor/
+npm ci --ignore-scripts
+npm rebuild tree-sitter-cli
+npx tree-sitter generate --abi=14
+cd ../..
+cargo check --locked -p fe-web
 ```
 
-Requires `tree-sitter` CLI and `emcc` (Emscripten).
+Requires Node and `emcc` (Emscripten). The `fe-web` build script runs the
+pinned tree-sitter CLI to rebuild the WASM and updates its `.inputs` stamp.
+Commit both `tree-sitter-fe.wasm` and `tree-sitter-fe.wasm.inputs`; changing
+only the stamp leaves the browser using a parser for a different grammar.
