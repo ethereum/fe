@@ -3074,7 +3074,20 @@ pub(crate) fn verify_lexical_bindings_match_typed_body<'db>(
         LocalBinding::EffectParam { .. } => LexicalBinding::EffectParam,
         LocalBinding::Local { pat, .. } => LexicalBinding::Local { pat },
     };
+    // Error recovery can leave nodes unvisited or classify a pattern using
+    // an invalid expected type. Compare the maps only where checking produced
+    // a valid type; valid siblings in an erroneous body are still verified.
     for pat in func_body.pats(db).keys() {
+        if typed
+            .tables
+            .pat_ty
+            .get(pat)
+            .copied()
+            .flatten()
+            .is_none_or(|ty| ty.has_invalid(db))
+        {
+            continue;
+        }
         let expected = typed.pat_binding(pat).map(to_lexical);
         let actual = lex
             .pat_bindings
@@ -3090,7 +3103,13 @@ pub(crate) fn verify_lexical_bindings_match_typed_body<'db>(
         if !matches!(expr.data(db, func_body), Partial::Present(Expr::Path(..))) {
             continue;
         }
-        let expected = typed.expr_binding(expr).map(to_lexical);
+        let Some(prop) = typed.tables.expr_ty.get(expr).and_then(Option::as_ref) else {
+            continue;
+        };
+        if prop.ty.has_invalid(db) {
+            continue;
+        }
+        let expected = prop.binding.map(to_lexical);
         let actual = lex
             .expr_binding(expr)
             .filter(|b| !matches!(b, LexicalBinding::Item(_)));
