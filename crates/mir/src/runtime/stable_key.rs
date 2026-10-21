@@ -170,6 +170,31 @@ pub fn semantic_owner_context_trace_identity<'db>(
     owner_context_identity_in_mode(db, owner, OwnerContextRenderMode::Textual)
 }
 
+fn impl_trait_header_identity<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_trait: hir::hir_def::ImplTrait<'db>,
+) -> String {
+    let trait_identity = impl_trait
+        .trait_inst(db)
+        .map(|trait_inst| trait_identity(db, trait_inst))
+        .unwrap_or_else(|| {
+            impl_trait
+                .hir_trait_ref(db)
+                .to_opt()
+                .map(|trait_ref| trait_ref.pretty_print(db))
+                .unwrap_or_else(|| "trait".to_string())
+        });
+    let ty_identity = type_identity(db, impl_trait.ty(db));
+    match impl_trait.selection_name(db) {
+        Some(selection_name) => format!(
+            "{trait_identity}${ty_identity}$as${}${}",
+            selection_name.data(db),
+            item_identity(db, ItemKind::ImplTrait(impl_trait))
+        ),
+        None => format!("{trait_identity}${ty_identity}"),
+    }
+}
+
 fn owner_context_identity_in_mode<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
@@ -190,29 +215,10 @@ fn owner_context_identity_in_mode<'db>(
             Some(format!("trait${trait_identity}"))
         }
         ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => {
-            let trait_identity = impl_trait
-                .trait_inst(db)
-                .map(|trait_inst| trait_identity(db, trait_inst))
-                .unwrap_or_else(|| {
-                    impl_trait
-                        .hir_trait_ref(db)
-                        .to_opt()
-                        .map(|trait_ref| trait_ref.pretty_print(db))
-                        .unwrap_or_else(|| "trait".to_string())
-                });
-            let ty_identity = type_identity(db, impl_trait.ty(db));
-            let impl_identity = if let Some(selection_name) = impl_trait.selection_name(db) {
-                let decl_identity = named_impl_identity_in_mode(db, impl_trait, mode);
-                format!(
-                    "{trait_identity}${ty_identity}$as${}${decl_identity}",
-                    selection_name.data(db)
-                )
-            } else if let Some(lexical) =
-                lexical_scope_identity_in_mode(db, impl_trait.scope(), mode)
-            {
-                format!("{trait_identity}${ty_identity}$lexical${lexical}")
-            } else {
-                format!("{trait_identity}${ty_identity}")
+            let header = impl_trait_header_identity(db, impl_trait);
+            let impl_identity = match lexical_scope_identity_in_mode(db, impl_trait.scope(), mode) {
+                Some(lexical) => format!("{header}$lexical${lexical}"),
+                None => header,
             };
             Some(match mode {
                 OwnerContextRenderMode::Fingerprinted => {
@@ -458,10 +464,31 @@ fn lexical_scope_identity_in_mode<'db>(
         match scope {
             ScopeId::Item(ItemKind::TopMod(_)) => break,
             ScopeId::Item(ItemKind::Mod(_)) => {}
-            ScopeId::Item(ItemKind::Body(_)) => {
+            ScopeId::Item(ItemKind::Body(body)) => {
                 let ordinal =
                     child_body_ordinal(db, scope).expect("body is a child of its lexical parent");
-                parents.push(format!("body{ordinal}"));
+                match assoc_const_name(db, body) {
+                    Some(name) => parents.push(format!("const${name}$body{ordinal}")),
+                    None => parents.push(format!("body{ordinal}")),
+                }
+            }
+            ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => {
+                let header = impl_trait_header_identity(db, impl_trait);
+                parents.push(match mode {
+                    OwnerContextRenderMode::Fingerprinted => {
+                        format!("impl_trait${}", stable_identity_fingerprint(&header))
+                    }
+                    OwnerContextRenderMode::Textual => format!("impl_trait${header}"),
+                });
+            }
+            ScopeId::Item(ItemKind::Impl(impl_)) => {
+                let ty_identity = type_identity(db, impl_.ty(db));
+                parents.push(match mode {
+                    OwnerContextRenderMode::Fingerprinted => {
+                        format!("impl${}", stable_identity_fingerprint(&ty_identity))
+                    }
+                    OwnerContextRenderMode::Textual => format!("impl${ty_identity}"),
+                });
             }
             ScopeId::Item(ItemKind::Func(func)) => parents.push(format!(
                 "{}${}",
@@ -1477,5 +1504,162 @@ fn pre_intern() -> u256 {
         let baseline = collect_identities(false);
         let shifted = collect_identities(true);
         assert_eq!(baseline, shifted);
+    }
+
+    #[test]
+    fn nested_assoc_const_local_choices_distinguish_enclosing_impl_headers() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "nested_constant_owner_probe.fe".into(),
+            r#"
+trait Pick {
+    const fn pick(self) -> u256
+}
+
+trait Value {
+    const VALUE: u256
+}
+
+const fn ask<T: Pick>(_ x: T) -> u256 {
+    x.pick()
+}
+
+impl Value for u8 {
+    const VALUE: u256 = {
+        impl Pick for u256 as Local {
+            const fn pick(self) -> u256 { 20 }
+        }
+        with (Local) { (0 as u256).pick() + ask(0 as u256) }
+    }
+}
+
+impl Value for u16 {
+    const VALUE: u256 = {
+        impl Pick for u256 as Local {
+            const fn pick(self) -> u256 { 30 }
+        }
+        with (Local) { (0 as u256).pick() + ask(0 as u256) }
+    }
+}
+
+struct WrapA {}
+struct WrapB {}
+
+impl WrapA {
+    const VALUE: u256 = {
+        impl Pick for u256 as Local {
+            const fn pick(self) -> u256 { 40 }
+        }
+        with (Local) { (0 as u256).pick() + ask(0 as u256) }
+    }
+}
+
+impl WrapB {
+    const VALUE: u256 = {
+        impl Pick for u256 as Local {
+            const fn pick(self) -> u256 { 50 }
+        }
+        with (Local) { (0 as u256).pick() + ask(0 as u256) }
+    }
+}
+
+const A: u256 = u8::VALUE
+const B: u256 = u16::VALUE
+const C: u256 = WrapA::VALUE
+const D: u256 = WrapB::VALUE
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+
+        let local_impls = top_mod
+            .scope_graph(&db)
+            .items_dfs(&db)
+            .filter_map(|item| match item {
+                ItemKind::ImplTrait(impl_trait)
+                    if impl_trait
+                        .selection_name(&db)
+                        .is_some_and(|name| name.data(&db) == "Local") =>
+                {
+                    Some(impl_trait)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(local_impls.len(), 4);
+        for (idx, left) in local_impls.iter().enumerate() {
+            for right in &local_impls[idx + 1..] {
+                assert_ne!(
+                    named_impl_evidence_identity(&db, *left),
+                    named_impl_evidence_identity(&db, *right),
+                    "local named impls inside distinct enclosing impl headers must have distinct evidence identities"
+                );
+            }
+        }
+
+        let top_const = |name: &str| {
+            top_mod
+                .children_non_nested(&db)
+                .find_map(|item| match item {
+                    ItemKind::Const(const_)
+                        if const_
+                            .name(&db)
+                            .to_opt()
+                            .is_some_and(|n| n.data(&db) == name) =>
+                    {
+                        Some(const_)
+                    }
+                    _ => None,
+                })
+                .unwrap()
+        };
+
+        let assoc_const_instance_for = |const_name: &str| {
+            let root = get_or_build_semantic_instance(
+                &db,
+                root_semantic_instance_key(&db, BodyOwner::Const(top_const(const_name))).unwrap(),
+            );
+            root.body(&db)
+                .blocks
+                .iter()
+                .flat_map(|block| &block.stmts)
+                .find_map(|stmt| match &stmt.kind {
+                    SStmtKind::Assign {
+                        expr: SExpr::Const(SConst::Ref(const_ref)),
+                        ..
+                    } => Some(get_or_build_semantic_instance(&db, const_ref.instance(&db))),
+                    _ => None,
+                })
+                .expect("top-level const references associated VALUE body")
+        };
+
+        let const_instances = ["A", "B", "C", "D"]
+            .into_iter()
+            .map(assoc_const_instance_for)
+            .collect::<Vec<_>>();
+        assert_pairwise_distinct_instances(&db, &const_instances);
+
+        let mut direct_methods = Vec::new();
+        let mut helper_instances = Vec::new();
+        for const_inst in &const_instances {
+            let callees = const_inst.callees(&db);
+            assert_eq!(callees.len(), 2);
+            direct_methods.push(get_or_build_semantic_instance(&db, callees[0].key));
+            helper_instances.push(get_or_build_semantic_instance(&db, callees[1].key));
+        }
+
+        assert_pairwise_distinct_instances(&db, &direct_methods);
+        for (idx, left) in helper_instances.iter().enumerate() {
+            for right in &helper_instances[idx + 1..] {
+                assert_ne!(
+                    semantic_instance_identity(&db, *left),
+                    semantic_instance_identity(&db, *right),
+                );
+                assert_ne!(
+                    semantic_instance_symbol_identity(&db, *left),
+                    semantic_instance_symbol_identity(&db, *right),
+                );
+            }
+        }
     }
 }
