@@ -2454,10 +2454,8 @@ impl<'db> TyCheckEnv<'db> {
     fn decide_bound_at_use(
         &self,
         frame: Option<FrameId>,
-        bound: TraitInstId<'db>,
-        at_use: TraitInstId<'db>,
-        own_slot: Option<TraitInstId<'db>>,
-        own: Option<Choice<'db>>,
+        (bound, at_use): (TraitInstId<'db>, TraitInstId<'db>),
+        (own_slot, own): (Option<TraitInstId<'db>>, Option<Choice<'db>>),
         nominal: bool,
         candidate: bool,
         undecided: &mut Vec<TraitInstId<'db>>,
@@ -2524,10 +2522,8 @@ impl<'db> TyCheckEnv<'db> {
         for (bound, at_call) in declared_goals(db, body, body_args) {
             let choice = self.decide_bound_at_use(
                 frame,
-                bound,
-                at_call,
-                own_slot,
-                own,
+                (bound, at_call),
+                (own_slot, own),
                 !by_name,
                 false,
                 &mut undecided_bounds,
@@ -3284,10 +3280,8 @@ impl<'db> TyCheckEnv<'db> {
         for (bound, at_use) in const_declared_goals(db, body, &subst) {
             let Some(choice) = self.decide_bound_at_use(
                 frame,
-                bound,
-                at_use,
-                own.map(|(slot, _)| slot),
-                own.map(|(_, choice)| choice),
+                (bound, at_use),
+                (own.map(|(slot, _)| slot), own.map(|(_, choice)| choice)),
                 nominal,
                 candidate,
                 undecided,
