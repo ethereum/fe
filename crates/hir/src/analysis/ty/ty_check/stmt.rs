@@ -414,6 +414,13 @@ impl<'db> TyChecker<'db> {
                 // The pattern binds the step as a `let` binds a projection's
                 // result.
                 self.check_pat(*pat, plan.shape.erased_ty(self.db));
+                if let Some(root) = self.env.pattern_store().root(*pat)
+                    && !self.env.pattern_store().is_irrefutable(self.db, root)
+                {
+                    self.push_diag(BodyDiag::RefutableLoopPattern {
+                        primary: pat.span(self.body()).into(),
+                    });
+                }
                 let authority = self.expr_has_authority(base.0);
                 self.bind_pattern_accesses(*pat, &plan.shape, authority, AccessBinding::Result);
                 self.env.register_for_loop_plan(stmt, plan);

@@ -4312,6 +4312,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
+            Self::RefutableLoopPattern { primary } => primary_diag(
+                Severity::Error,
+                "refutable pattern in `for`",
+                "this pattern may not match every step",
+                primary.resolve(db),
+                error_code,
+            ),
+
             Self::ParamBindsTwice {
                 primary,
                 first,

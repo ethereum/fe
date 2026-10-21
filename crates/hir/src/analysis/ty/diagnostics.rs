@@ -938,6 +938,11 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
     },
 
+    /// A `for` loop's pattern that may not match.
+    RefutableLoopPattern {
+        primary: DynLazySpan<'db>,
+    },
+
     /// A name a parameter pattern binds that another parameter of the same
     /// function or closure binds too; with `effect`, a name a parameter or a
     /// recv arm's pattern binds that an effect of the same signature binds
@@ -1440,6 +1445,7 @@ impl<'db> BodyDiag<'db> {
             Self::MutBindingOfRead { .. } => 123,
             Self::MaybeMutWithoutMode { .. } => 130,
             Self::RefutableParamPattern { .. } => 133,
+            Self::RefutableLoopPattern { .. } => 148,
             Self::ProductArgExpected { .. } => 135,
             Self::ProductArgTooWeak { .. } => 150,
             Self::LateClosureEffect { .. } => 151,
