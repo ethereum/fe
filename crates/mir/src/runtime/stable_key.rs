@@ -1590,8 +1590,8 @@ const D: u256 = WrapB::VALUE
         for (idx, left) in local_impls.iter().enumerate() {
             for right in &local_impls[idx + 1..] {
                 assert_ne!(
-                    named_impl_evidence_identity(&db, *left),
-                    named_impl_evidence_identity(&db, *right),
+                    super::named_impl_evidence_identity(&db, *left),
+                    super::named_impl_evidence_identity(&db, *right),
                     "local named impls inside distinct enclosing impl headers must have distinct evidence identities"
                 );
             }
