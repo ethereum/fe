@@ -372,23 +372,21 @@ fn associated_outputs_are_read_through_one_selection() {
     // implementation answers it; readers select through
     // `output_implementation`, which also answers a slot that only named
     // implementations give, not through ordinary selection alone.
-    for path in ["src/analysis/ty/effects/rows.rs"] {
-        let text = code(&text_of(path));
-        assert!(
-            !text.contains("resolve_trait_impl_instance("),
-            "{path}: an output reader selects the ordinary implementation alone"
-        );
-        assert!(text.contains("output_implementation("));
-        // One ordinary selection is allowed in rows: while an instance is
-        // still inferred, it only decides whether an empty row expands, and
-        // a named implementation's row is the same.
-        let selections = text.matches("select_impl(").count();
-        assert_eq!(
-            selections,
-            usize::from(path.ends_with("rows.rs")),
-            "{path}: an output reader selects the ordinary implementation alone"
-        );
-    }
+    let path = "src/analysis/ty/effects/rows.rs";
+    let text = code(&text_of(path));
+    assert!(
+        !text.contains("resolve_trait_impl_instance("),
+        "{path}: an output reader selects the ordinary implementation alone"
+    );
+    assert!(text.contains("output_implementation("));
+    // One ordinary selection is allowed in rows: while an instance is
+    // still inferred, it only decides whether an empty row expands, and
+    // a named implementation's row is the same.
+    let selections = text.matches("select_impl(").count();
+    assert_eq!(
+        selections, 1,
+        "{path}: an output reader selects the ordinary implementation alone"
+    );
     assert!(
         code(&text_of("src/analysis/ty/normalize.rs")).contains("named_output_implementation(")
     );
