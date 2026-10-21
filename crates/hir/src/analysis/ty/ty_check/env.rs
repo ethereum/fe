@@ -2614,8 +2614,7 @@ impl<'db> TyCheckEnv<'db> {
 
 /// Pre-inference lexical binding identity resolved for a bare identifier or
 /// pattern inside a function body, sharing `BlockEnv`, `is_pat_local_binding`,
-/// and `resolve_ident_in_blocks` with `TyChecker` without triggering type
-/// lowering.
+/// and `resolve_ident_in_blocks` with `TyChecker` without inferring the body.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub(crate) enum LexicalBinding<'db> {
     Param { idx: usize },
@@ -3011,7 +3010,9 @@ pub(crate) fn body_lexical_env<'db>(
                         collector.register_var(name, LexicalBinding::Param { idx });
                     }
                 }
-                collector.register_effects(func.declared_effects(db));
+                // An implementation's `uses E` introduces the row's bindings,
+                // just as it does when the checker seeds its effect environment.
+                collector.register_effects(func.effects(db));
             }
             BodyOwner::ContractInit { contract } => {
                 let contract_effects = contract.effects(db);
