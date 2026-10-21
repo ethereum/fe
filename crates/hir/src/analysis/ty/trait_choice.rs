@@ -384,10 +384,10 @@ impl<'db> TyVisitable<'db> for Delivery<'db> {
 }
 
 /// The slots `func` declares, each as written in its own generic context and
-/// as instantiated with `args`: every bound on its generic parameters,
-/// including, for a trait method, the trait's `Self` bound and its
-/// supertraits. A call's choices reach a body only through these and its
-/// evidence parameters; bounds on concrete types are not slots.
+/// as instantiated with `args`: every declared bound, including concrete
+/// bounds and, for a trait method, the trait's `Self` bound and supertraits.
+/// A call's choices reach a body only through these declared requirements
+/// and its evidence parameters; unrelated concrete body goals are not slots.
 pub fn declared_goals<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
