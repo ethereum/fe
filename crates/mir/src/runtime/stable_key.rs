@@ -370,7 +370,17 @@ fn named_impl_evidence_identity<'db>(
     while let Some(scope) = current {
         match scope {
             ScopeId::Item(ItemKind::TopMod(_)) => break,
-            ScopeId::Item(ItemKind::Mod(_) | ItemKind::Body(_)) => {}
+            ScopeId::Item(ItemKind::Mod(_)) => {}
+            ScopeId::Item(ItemKind::Body(_)) => {
+                let parent = scope.parent(db).expect("body has a lexical parent");
+                let ordinal = scope
+                    .scope_graph(db)
+                    .children(parent)
+                    .filter(|child| matches!(child, ScopeId::Item(ItemKind::Body(_))))
+                    .position(|child| child == scope)
+                    .expect("body is a child of its lexical parent");
+                parents.push(format!("body{ordinal}"));
+            }
             ScopeId::Item(ItemKind::Func(func)) => parents.push(format!(
                 "{}${}",
                 item_identity(db, func.into()),
@@ -941,5 +951,49 @@ fn ordinary() -> u256 { helper(0 as u256) + helper(1 as u256) }
                 semantic_instance_symbol_identity(&db, *instance)
             );
         }
+    }
+
+    #[test]
+    fn named_choice_identity_distinguishes_contract_receive_bodies() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "recv_choice_identity.fe".into(),
+            r#"
+use std::abi::sol
+trait Pick { fn pick(self) -> u256 }
+msg Reads {
+    #[selector = sol("first()")]
+    First -> u256,
+    #[selector = sol("second()")]
+    Second -> u256,
+}
+pub contract Reader {
+    recv Reads {
+        First -> u256 {
+            impl Pick for u256 as Local { fn pick(self) -> u256 { 20 } }
+            with (Local) { (0 as u256).pick() }
+        }
+        Second -> u256 {
+            impl Pick for u256 as Local { fn pick(self) -> u256 { 30 } }
+            with (Local) { (0 as u256).pick() }
+        }
+    }
+}
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+        let choices = top_mod
+            .children_nested(&db)
+            .filter_map(|item| match item {
+                ItemKind::ImplTrait(impl_) if impl_.selection_name(&db).is_some() => Some(impl_),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(choices.len(), 2);
+        assert_ne!(
+            super::named_impl_evidence_identity(&db, choices[0]),
+            super::named_impl_evidence_identity(&db, choices[1])
+        );
     }
 }
