@@ -88,23 +88,53 @@ error[8-0037]: effect `Store` must be mutable when calling `slot`
    │
    = use a mutable binding or pass a mutable reference in the `with` block
 
-error[8-0037]: effect `Store` must be mutable when calling `needs_mut`
-    ┌─ maybe_mut_effects.fe:101:5
+error[8-0037]: effect `Pair` must be mutable when calling `items`
+    ┌─ maybe_mut_effects.fe:104:18
     │
-100 │ fn pass_on_in_ref_body(_ s: mut? Store) -> mut? u256 uses (store: mut? Store) {
+103 │ fn loop_with_read() uses (pair: Pair) {
+    │                           ---------- effect `Pair` is provided here
+104 │     for mut x in items() {
+    │                  ^^^^^^^ `items` requires `mut Pair`
+    │
+    = use a mutable binding or pass a mutable reference in the `with` block
+
+error[8-0037]: effect `RawStorage` must be mutable when calling `pair_at`
+    ┌─ maybe_mut_effects.fe:117:37
+    │
+116 │ fn nested_split_with_read() uses (storage: RawStorage) {
+    │                                   ------------------- effect `RawStorage` is provided here
+117 │     let ((mut a, b), c) = unsafe { (pair_at(0), storage_at<u256>(2)) }
+    │                                     ^^^^^^^^^^ `pair_at` requires `mut RawStorage`
+    │
+    = use a mutable binding or pass a mutable reference in the `with` block
+
+error[8-0037]: effect `RawStorage` must be mutable when calling `storage_at`
+    ┌─ maybe_mut_effects.fe:117:49
+    │
+116 │ fn nested_split_with_read() uses (storage: RawStorage) {
+    │                                   ------------------- effect `RawStorage` is provided here
+117 │     let ((mut a, b), c) = unsafe { (pair_at(0), storage_at<u256>(2)) }
+    │                                                 ^^^^^^^^^^^^^^^^^^^ `storage_at` requires `mut RawStorage`
+    │
+    = use a mutable binding or pass a mutable reference in the `with` block
+
+error[8-0037]: effect `Store` must be mutable when calling `needs_mut`
+    ┌─ maybe_mut_effects.fe:128:5
+    │
+127 │ fn pass_on_in_ref_body(_ s: mut? Store) -> mut? u256 uses (store: mut? Store) {
     │                                                            ----------------- effect `Store` is provided here
-101 │     needs_mut()
+128 │     needs_mut()
     │     ^^^^^^^^^^^ `needs_mut` requires `mut Store`
     │
     = `store` is `mut?`, which a `mut?` function's `ref` body only reads
 
 error[8-0066]: mutable borrow requires a mutable place
-    ┌─ maybe_mut_effects.fe:102:15
+    ┌─ maybe_mut_effects.fe:129:15
     │
-100 │ fn pass_on_in_ref_body(_ s: mut? Store) -> mut? u256 uses (store: mut? Store) {
+127 │ fn pass_on_in_ref_body(_ s: mut? Store) -> mut? u256 uses (store: mut? Store) {
     │                          - `s` does not provide mutable access
-101 │     needs_mut()
-102 │     takes_mut(mut s)
+128 │     needs_mut()
+129 │     takes_mut(mut s)
     │               ^^^^^ cannot borrow as `mut`
     │
     = `s` is `mut?`, which a `mut?` function's `ref` body only reads

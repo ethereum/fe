@@ -197,14 +197,16 @@ impl<'db> TyChecker<'db> {
                     _ => prop.shape.clone(),
                 }
             }
-            // An unsafe split grants what its access elements do.
+            // An unsafe split grants what its access elements do, a product
+            // of accesses among them.
             Partial::Present(Expr::Tuple(elems)) if self.env.is_unsafe_split(expr) => {
                 let elems = elems.clone();
                 if !elems.iter().all(|&elem| {
-                    self.env
-                        .typed_expr(elem)
-                        .is_some_and(|elem| elem.access().is_none())
-                        || self.select_mut_place(elem)
+                    self.env.typed_expr(elem).is_some_and(|elem| {
+                        !elem
+                            .shape
+                            .is_some_and(|shape| shape.has_access_of(BorrowKind::Ref))
+                    }) || self.select_mut_place(elem)
                 }) {
                     return false;
                 }

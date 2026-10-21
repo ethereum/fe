@@ -90,3 +90,33 @@ fn trait_bodies_per_mode() {
     }
     assert(cell.value == 4 && plain.value == 9 && log.writes == 1)
 }
+
+struct Row {
+    items: [u256; 3],
+}
+
+fn row() -> mut? [u256; 3] uses (row: mut? Row) {
+    mut? row.items
+}
+
+impl Row {
+    fn entries(mut? self) -> mut? [u256; 3] {
+        mut? self.items
+    }
+}
+
+// A `mut` loop item asks a `mut?` call for `mut`, as the base of a chain
+// too.
+#[test]
+fn loops_ask_for_mut() {
+    var r = Row { items: [1, 2, 3] }
+    with (Row = r) {
+        for mut x in row() {
+            x += 1
+        }
+    }
+    for (i, mut x) in r.entries().enumerate() {
+        x += i as u256 * 10
+    }
+    assert(r.items[0] == 2 && r.items[1] == 13 && r.items[2] == 24)
+}
