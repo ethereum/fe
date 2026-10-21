@@ -654,3 +654,32 @@ fn tree_sitter_agrees_on_where_clauses_and_function_bodies() {
         ["enum", "function", "impl", "impl trait", "struct", "trait"],
     );
 }
+
+#[test]
+fn tree_sitter_agrees_on_named_impl_visibility_and_supported_for_syntax() {
+    let mut parser = new_parser();
+    for source in [
+        "impl Price for Item as Wholesale {}",
+        "pub impl Price for Item as Wholesale {}",
+        "pub unsafe impl Price for Item as Wholesale {}",
+        "pub impl<T> Price for Item<T> as Wholesale where T: Copy {}",
+        "fn run() { for x in xs {} }",
+        "fn run() { for x in by {} }",
+    ] {
+        let (_, native_errors) = parse_source_file(source, RecoveryMode::NoRecover);
+        assert!(native_errors.is_empty(), "{source}: {native_errors:?}");
+        let web_errors = parse_errors(&mut parser, source);
+        assert!(web_errors.is_empty(), "{source}: {web_errors:?}");
+    }
+    for source in [
+        "pub impl Price for Item {}",
+        "fn run() { for x in xs by driver {} }",
+    ] {
+        let (_, native_errors) = parse_source_file(source, RecoveryMode::NoRecover);
+        assert!(!native_errors.is_empty(), "native parser accepted {source}");
+        assert!(
+            !parse_errors(&mut parser, source).is_empty(),
+            "browser parser accepted {source}",
+        );
+    }
+}

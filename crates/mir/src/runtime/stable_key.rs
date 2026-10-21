@@ -329,7 +329,7 @@ fn evidence_id_identity<'db>(db: &'db dyn HirAnalysisDb, ev: EvidenceId<'db>) ->
                         .map_or_else(|| "ordinary".to_string(), |name| name.data(db).to_string());
                     format!(
                         "impl${}${name}",
-                        item_identity(db, ItemKind::ImplTrait(impl_trait))
+                        named_impl_evidence_identity(db, impl_trait)
                     )
                 }
                 ImplementorOrigin::Assumption => "assumption".to_string(),
@@ -352,6 +352,58 @@ fn evidence_id_identity<'db>(db: &'db dyn HirAnalysisDb, ev: EvidenceId<'db>) ->
                 format!("{base}$conds$[{conds}]")
             }
         }
+    }
+}
+
+/// Local choices with equal names still denote different declarations. Keep
+/// module-level identities unchanged, and name lexical parents without Salsa IDs.
+fn named_impl_evidence_identity<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_trait: hir::hir_def::ImplTrait<'db>,
+) -> String {
+    let identity = item_identity(db, ItemKind::ImplTrait(impl_trait));
+    if impl_trait.selection_name(db).is_none() {
+        return identity;
+    }
+    let mut parents = Vec::new();
+    let mut current = impl_trait.scope().parent(db);
+    while let Some(scope) = current {
+        match scope {
+            ScopeId::Item(ItemKind::TopMod(_)) => break,
+            ScopeId::Item(ItemKind::Mod(_)) => {}
+            ScopeId::Item(ItemKind::Body(_)) => {
+                let parent = scope.parent(db).expect("body has a lexical parent");
+                let ordinal = scope
+                    .scope_graph(db)
+                    .children(parent)
+                    .filter(|child| matches!(child, ScopeId::Item(ItemKind::Body(_))))
+                    .position(|child| child == scope)
+                    .expect("body is a child of its lexical parent");
+                parents.push(format!("body{ordinal}"));
+            }
+            ScopeId::Item(ItemKind::Func(func)) => parents.push(format!(
+                "{}${}",
+                item_identity(db, func.into()),
+                semantic_owner_context_identity(db, BodyOwner::Func(func, None))
+                    .unwrap_or_default()
+            )),
+            ScopeId::Item(item) => parents.push(format!(
+                "{}${}",
+                item.kind_name(),
+                item_name_component(db, item)
+            )),
+            ScopeId::Block(body, expression) => {
+                parents.push(format!("block{}", body.iter_block(db)[&expression]));
+            }
+            _ => {}
+        }
+        current = scope.parent(db);
+    }
+    if parents.is_empty() {
+        identity
+    } else {
+        parents.reverse();
+        format!("{identity}$lexical${}", parents.join("$"))
     }
 }
 
@@ -1116,5 +1168,141 @@ const fn call_named_alt30() -> u256 {
         assert_ne!(id_named_default, id_named_alt20);
         assert_ne!(id_named_default, id_named_alt30);
         assert_ne!(id_named_alt20, id_named_alt30);
+    }
+    #[test]
+    fn stable_keys_distinguish_same_named_choices_in_lexical_scopes() {
+        use super::semantic_instance_symbol_identity;
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "local_choice_identity.fe".into(),
+            r#"
+trait Pick { fn pick(self) -> u256 }
+impl Pick for u256 { fn pick(self) -> u256 { 1 } }
+fn helper<T: Pick>(x: T) -> u256 { x.pick() }
+fn first() -> u256 {
+    impl Pick for u256 as Local { fn pick(self) -> u256 { 20 } }
+    with (Local) { helper(0 as u256) }
+}
+fn second() -> u256 {
+    impl Pick for u256 as Local { fn pick(self) -> u256 { 30 } }
+    with (Local) { helper(0 as u256) }
+}
+fn sibling_blocks() -> u256 {
+    let a = {
+        impl Pick for u256 as Local { fn pick(self) -> u256 { 40 } }
+        with (Local) { helper(0 as u256) }
+    }
+    let b = {
+        impl Pick for u256 as Local { fn pick(self) -> u256 { 50 } }
+        with (Local) { helper(0 as u256) }
+    }
+    a + b
+}
+fn ordinary() -> u256 { helper(0 as u256) + helper(1 as u256) }
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+        let function = |name: &str| {
+            top_mod
+                .children_non_nested(&db)
+                .find_map(|item| match item {
+                    ItemKind::Func(func)
+                        if func.name(&db).to_opt().is_some_and(|n| n.data(&db) == name) =>
+                    {
+                        Some(func)
+                    }
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let helper = function("helper");
+        let instances = |name: &str| {
+            let root = get_or_build_semantic_instance(
+                &db,
+                root_semantic_instance_key(&db, BodyOwner::Func(function(name), None)).unwrap(),
+            );
+            root.callees(&db)
+                .iter()
+                .filter(|callee| callee.key.owner(&db) == BodyOwner::Func(helper, None))
+                .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+                .collect::<Vec<_>>()
+        };
+        let mut choices = instances("first");
+        assert_eq!(choices.len(), 1);
+        let second = instances("second");
+        assert_eq!(second.len(), 1);
+        choices.extend(second);
+        let siblings = instances("sibling_blocks");
+        assert_eq!(siblings.len(), 2);
+        choices.extend(siblings);
+        for (index, choice) in choices.iter().enumerate() {
+            for other in &choices[index + 1..] {
+                assert_ne!(
+                    semantic_instance_identity(&db, *choice),
+                    semantic_instance_identity(&db, *other)
+                );
+                assert_ne!(
+                    semantic_instance_symbol_identity(&db, *choice),
+                    semantic_instance_symbol_identity(&db, *other)
+                );
+            }
+        }
+        let ordinary = instances("ordinary");
+        assert!(!ordinary.is_empty());
+        for instance in &ordinary {
+            assert_eq!(
+                semantic_instance_identity(&db, ordinary[0]),
+                semantic_instance_identity(&db, *instance)
+            );
+            assert_eq!(
+                semantic_instance_symbol_identity(&db, ordinary[0]),
+                semantic_instance_symbol_identity(&db, *instance)
+            );
+        }
+    }
+
+    #[test]
+    fn named_choice_identity_distinguishes_contract_receive_bodies() {
+        let mut db = HirAnalysisTestDb::default();
+        let file = db.new_stand_alone(
+            "recv_choice_identity.fe".into(),
+            r#"
+use std::abi::sol
+trait Pick { fn pick(self) -> u256 }
+msg Reads {
+    #[selector = sol("first()")]
+    First -> u256,
+    #[selector = sol("second()")]
+    Second -> u256,
+}
+pub contract Reader {
+    recv Reads {
+        First -> u256 {
+            impl Pick for u256 as Local { fn pick(self) -> u256 { 20 } }
+            with (Local) { (0 as u256).pick() }
+        }
+        Second -> u256 {
+            impl Pick for u256 as Local { fn pick(self) -> u256 { 30 } }
+            with (Local) { (0 as u256).pick() }
+        }
+    }
+}
+"#,
+        );
+        let (top_mod, _) = db.top_mod(file);
+        db.assert_no_diags(top_mod);
+        let choices = top_mod
+            .children_nested(&db)
+            .filter_map(|item| match item {
+                ItemKind::ImplTrait(impl_) if impl_.selection_name(&db).is_some() => Some(impl_),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(choices.len(), 2);
+        assert_ne!(
+            super::named_impl_evidence_identity(&db, choices[0]),
+            super::named_impl_evidence_identity(&db, choices[1])
+        );
     }
 }

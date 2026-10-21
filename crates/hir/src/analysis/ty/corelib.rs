@@ -33,16 +33,7 @@ pub fn resolve_core_trait<'db>(
     // Operator syntax names a compiler library requirement, not a lexical
     // `core` binding. Reuse the dependency roots used by name resolution;
     // resolving from the user's scope would let `mod core {}` intercept it.
-    let own_ingot = scope.top_mod(db).ingot(db);
-    let core = if own_ingot.is_core(db) {
-        own_ingot
-    } else {
-        own_ingot
-            .resolved_external_ingots(db)
-            .iter()
-            .find_map(|(name, ingot)| (name.data(db) == "core").then_some(*ingot))?
-    };
-    let core_scope = core.root_mod(db).scope();
+    let core_scope = library_root_scope(db, scope, "core")?;
     let mut module_path = PathId::from_ident(db, IdentId::make_ingot(db));
 
     for segment in module_segments {
@@ -791,7 +782,7 @@ fn resolve_lib_path<'db>(
     path: LibPath<'db>,
 ) -> Option<TyId<'db>> {
     let mut segments = path.string(db).split("::");
-    let mut path = lib_root_path(db, scope, segments.next()?);
+    let (scope, mut path) = library_path_start(db, scope, segments.next()?)?;
 
     for segment in segments {
         path = path.push_str(db, segment);
@@ -811,7 +802,7 @@ fn resolve_lib_func<'db>(
     path: LibPath<'db>,
 ) -> Option<Func<'db>> {
     let mut segments = path.string(db).split("::");
-    let mut path = lib_root_path(db, scope, segments.next()?);
+    let (scope, mut path) = library_path_start(db, scope, segments.next()?)?;
 
     for segment in segments {
         path = path.push_str(db, segment);
@@ -837,7 +828,7 @@ fn resolve_lib_trait<'db>(
     path: LibPath<'db>,
 ) -> Option<Trait<'db>> {
     let mut segments = path.string(db).split("::");
-    let mut path = lib_root_path(db, scope, segments.next()?);
+    let (scope, mut path) = library_path_start(db, scope, segments.next()?)?;
 
     for segment in segments {
         path = path.push_str(db, segment);
@@ -847,6 +838,45 @@ fn resolve_lib_trait<'db>(
     match resolve_path(db, path, scope, assumptions, true).ok()? {
         PathRes::Trait(trait_) => Some(trait_.def(db)),
         _ => None,
+    }
+}
+
+/// Compiler-designated library declarations cannot be intercepted by lexical names.
+pub(crate) fn library_root_scope<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    root: &str,
+) -> Option<ScopeId<'db>> {
+    let expected = match root {
+        "core" => IngotKind::Core,
+        "std" => IngotKind::Std,
+        _ => return None,
+    };
+    let own = scope.top_mod(db).ingot(db);
+    let library = if own.kind(db) == expected {
+        own
+    } else {
+        own.resolved_external_ingots(db)
+            .iter()
+            .find_map(|(name, ingot)| {
+                (name.data(db) == root && ingot.kind(db) == expected).then_some(*ingot)
+            })?
+    };
+    Some(library.root_mod(db).scope())
+}
+
+fn library_path_start<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    root: &str,
+) -> Option<(ScopeId<'db>, PathId<'db>)> {
+    if matches!(root, "core" | "std") {
+        Some((
+            library_root_scope(db, scope, root)?,
+            PathId::from_ident(db, IdentId::make_ingot(db)),
+        ))
+    } else {
+        Some((scope, lib_root_path(db, scope, root)))
     }
 }
 

@@ -770,3 +770,56 @@ fn compiler_operator_trait_ignores_lexical_core_shadow() {
         );
     }
 }
+
+#[test]
+fn compiler_obligations_ignore_lexical_core_shadow() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "obligations_core_shadow.fe".into(),
+        r#"
+mod core {
+    pub mod obligations {
+        pub struct Evidence<T> { pub value: T }
+        pub const fn prove<T>() -> usize { 7 }
+    }
+}
+const RESULT: usize = core::obligations::prove<u256>()
+pub fn check() -> [u8; RESULT] { [0; 7] }
+"#,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+    let scope = top_mod.scope();
+    let prove = resolve_lib_func_path(&db, scope, "core::obligations::prove").unwrap();
+    assert!(prove.top_mod(&db).ingot(&db).is_core(&db));
+    let evidence = resolve_lib_type_path(&db, scope, "core::obligations::Evidence").unwrap();
+    let fe_hir::analysis::ty::ty_def::TyData::TyBase(fe_hir::analysis::ty::ty_def::TyBase::Adt(
+        adt,
+    )) = evidence.data(&db)
+    else {
+        panic!("expected designated Evidence type")
+    };
+    assert!(
+        adt.adt_ref(&db)
+            .as_item()
+            .top_mod(&db)
+            .ingot(&db)
+            .is_core(&db)
+    );
+}
+
+#[test]
+fn user_constraint_trait_is_not_the_compiler_kind_marker() {
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "constraint_core_shadow.fe".into(),
+        r#"
+mod core { pub mod obligations { pub trait Constraint {} } }
+impl core::obligations::Constraint for u256 {}
+struct Holder<G: core::obligations::Constraint> { pub value: G }
+pub fn read(x: Holder<u256>) -> u256 { x.value }
+"#,
+    );
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+}

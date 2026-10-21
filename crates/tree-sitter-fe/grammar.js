@@ -508,17 +508,33 @@ module.exports = grammar({
       field('body', $.impl_item_list),
     ),
 
-    impl_trait: $ => seq(
-      optional($.attribute_list),
-      optional('unsafe'),
-      'impl',
-      optional($.generic_param_list),
-      field('trait', $.trait_ref),
-      'for',
-      field('type', $._type),
-      optional(seq('as', field('selection_name', $.identifier))),
-      optional($.where_clause),
-      field('body', $.trait_item_list),
+    impl_trait: $ => choice(
+      seq(
+        optional($.attribute_list),
+        optional('unsafe'),
+        'impl',
+        optional($.generic_param_list),
+        field('trait', $.trait_ref),
+        'for',
+        field('type', $._type),
+        optional(seq('as', field('selection_name', $.identifier))),
+        optional($.where_clause),
+        field('body', $.trait_item_list),
+      ),
+      seq(
+        optional($.attribute_list),
+        $.visibility,
+        optional('unsafe'),
+        'impl',
+        optional($.generic_param_list),
+        field('trait', $.trait_ref),
+        'for',
+        field('type', $._type),
+        'as',
+        field('selection_name', $.identifier),
+        optional($.where_clause),
+        field('body', $.trait_item_list),
+      ),
     ),
 
     impl_item_list: $ => seq(
@@ -1301,7 +1317,6 @@ module.exports = grammar({
       field('pattern', $._pattern),
       'in',
       field('iterable', $._condition_no_let),
-      optional(seq('by', field('driver', $._condition_no_let))),
       prec.dynamic(1, field('body', $.block)),
     ),
 
