@@ -820,6 +820,10 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
+    pub(super) fn param_bindings(&self) -> &[LocalBinding<'db>] {
+        &self.param_bindings
+    }
+
     /// The shape of `binding` if it is a product parameter's.
     pub(super) fn param_product(&self, binding: &LocalBinding<'db>) -> Option<&Shape<'db>> {
         param_product(&self.param_products, binding)
@@ -1296,12 +1300,6 @@ impl<'db> TyCheckEnv<'db> {
         self.pending_vars.insert(name, binding)
     }
 
-    /// Flushes all pending variable bindings into the current variable
-    /// environment.
-    ///
-    /// This function moves all pending bindings from the `pending_vars` map
-    /// into the latest `BlockEnv` in `var_env`. After this operation, the
-    /// `pending_vars` map will be empty.
     /// The binding `name` names at this point of the body, if a binding has
     /// it.
     pub(super) fn visible_binding(&self, name: IdentId<'db>) -> Option<LocalBinding<'db>> {
@@ -1310,6 +1308,12 @@ impl<'db> TyCheckEnv<'db> {
             .find_map(|idx| self.get_block(idx).lookup_var(name))
     }
 
+    /// Flushes all pending variable bindings into the current variable
+    /// environment.
+    ///
+    /// This function moves all pending bindings from the `pending_vars` map
+    /// into the latest `BlockEnv` in `var_env`. After this operation, the
+    /// `pending_vars` map will be empty.
     pub(super) fn flush_pending_bindings(&mut self) {
         let block_idx = self.current_block_idx();
         let var_env = self.var_env.last_mut().unwrap();

@@ -4113,9 +4113,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary,
                 first,
                 name,
+                effect,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: format!("`{}` is bound by more than one parameter", name.data(db)),
+                message: if *effect {
+                    format!("`{}` is also bound by an effect", name.data(db))
+                } else {
+                    format!("`{}` is bound by more than one parameter", name.data(db))
+                },
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,

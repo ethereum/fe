@@ -40,3 +40,51 @@ fn shadows(a: u256) -> u256 {
     let f = |(a, b): (u256, u256)| a + b
     f((a, 1))
 }
+
+struct Counter {
+    count: u256,
+}
+
+// A parameter, named or in a pattern, and an effect bind no name together.
+fn named_and_effect(c: u256) -> u256 uses (c: Counter) {
+    c.count
+}
+
+fn part_and_effect(_ (c, d): (u256, u256)) -> u256 uses (c: Counter) {
+    c + d
+}
+
+msg TallyMsg {
+    #[selector = 0x11223344]
+    Set { total: u256, by: u256 } -> u256,
+    #[selector = 0x11223345]
+    Add { total: u256 } -> u256,
+}
+
+// A contract's `init` parameters, and a recv arm's pattern, as well.
+pub contract Tally {
+    mut count: u256,
+    mut total: u256,
+    init(count: u256, _ (total, rest): (u256, u256)) uses (mut count, mut total) {
+        count = rest
+    }
+
+    recv TallyMsg {
+        Set { total, by } -> u256 uses (mut total, count) {
+            total + by + count
+        }
+        // Accepted: the field bound to another name.
+        Add { total: amount } -> u256 uses (mut total) {
+            total += amount
+            total
+        }
+    }
+}
+
+// Accepted: a closure's parameter may rebind an effect of its enclosing
+// function's.
+fn closure_shadows_effect() -> u256 uses (c: Counter) {
+    let f = |c: u256| c + 1
+    let g = |(c, d): (u256, u256)| c + d
+    f(c.count) + g((1, 2))
+}

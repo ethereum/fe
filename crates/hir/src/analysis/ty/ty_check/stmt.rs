@@ -236,9 +236,11 @@ impl<'db> TyChecker<'db> {
     }
 
     /// Reports each name `pat`, the pattern of parameter `idx` of `site`,
-    /// binds that another parameter of `site` binds too. Patterns are bound
-    /// in order, after the named parameters, so a later named one is the
-    /// second binding.
+    /// binds that another parameter or an effect of `site` binds too, the
+    /// one written later as the second binding. Patterns are bound after the
+    /// named parameters and the effects, so the parameters' positions give
+    /// the order, and an effect, written after them, is the second. A
+    /// closure's parameter may shadow its enclosing body's effects.
     fn check_param_bindings(&mut self, pat: PatId, site: ParamSite<'db>, idx: usize) {
         let mut bound = Vec::new();
         self.bound_names(pat, &mut bound);
@@ -271,9 +273,59 @@ impl<'db> TyChecker<'db> {
                     primary,
                     first,
                     name,
+                    effect: false,
                 });
+            } else if matches!(site, ParamSite::Func(_) | ParamSite::ContractInit(_)) {
+                self.check_effect_name(name, binding_pat.span(self.body()).into());
             }
             self.param_pattern_sites.insert(binding_pat, site);
+        }
+    }
+
+    /// Reports each named parameter whose name an effect of the same
+    /// signature binds too, which would hide it: the effects are bound after
+    /// the parameters. A pattern's names are checked where the body binds
+    /// them (`check_param_bindings`).
+    pub(super) fn check_param_effect_names(&mut self) {
+        let params: Vec<_> = self
+            .env
+            .param_bindings()
+            .iter()
+            .filter_map(|&param| {
+                let LocalBinding::Param { site, idx, .. } = param else {
+                    return None;
+                };
+                Some((
+                    hir_param(self.db, site, idx)?.name()?,
+                    param.def_span(&self.env),
+                ))
+            })
+            .collect();
+        for (name, span) in params {
+            self.check_effect_name(name, span);
+        }
+    }
+
+    /// Reports each name the recv arm pattern `pat` binds that an effect of
+    /// the arm binds too, which the pattern, bound after the effects, would
+    /// hide.
+    pub(super) fn check_arm_effect_names(&mut self, pat: PatId) {
+        let mut bound = Vec::new();
+        self.bound_names(pat, &mut bound);
+        for (binding_pat, name) in bound {
+            self.check_effect_name(name, binding_pat.span(self.body()).into());
+        }
+    }
+
+    /// Reports `name`, which `first` binds, if an effect binds it too.
+    fn check_effect_name(&mut self, name: IdentId<'db>, first: DynLazySpan<'db>) {
+        if let Some(effect @ LocalBinding::EffectParam { .. }) = self.env.visible_binding(name) {
+            self.push_diag(BodyDiag::ParamBindsTwice {
+                primary: effect.def_span(&self.env),
+                first,
+                name,
+                effect: true,
+            });
         }
     }
 

@@ -1547,6 +1547,7 @@ impl<'db> TyChecker<'db> {
     fn run(&mut self) {
         self.check_effect_param_keys_resolve();
         self.check_own_param_types();
+        self.check_param_effect_names();
 
         if let BodyOwner::ContractRecvArm {
             contract,
@@ -1569,6 +1570,7 @@ impl<'db> TyChecker<'db> {
             self.expected = ret_ty;
             self.check_pat(arm.pat, pat_ty);
             self.seed_pat_bindings(arm.pat);
+            self.check_arm_effect_names(arm.pat);
             self.env.flush_pending_bindings();
         }
 

@@ -847,11 +847,14 @@ pub enum BodyDiag<'db> {
     },
 
     /// A name a parameter pattern binds that another parameter of the same
-    /// function or closure binds too.
+    /// function or closure binds too; with `effect`, a name a parameter or a
+    /// recv arm's pattern binds that an effect of the same signature binds
+    /// too.
     ParamBindsTwice {
         primary: DynLazySpan<'db>,
         first: DynLazySpan<'db>,
         name: IdentId<'db>,
+        effect: bool,
     },
 
     /// The `else` block of a `let … else` can complete.

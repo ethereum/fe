@@ -1,0 +1,1 @@
+Report a name that an effect binds and that a parameter, named or in its pattern, or a recv arm's pattern of the same signature also binds, such as `fn f(c: u256) uses (c: Counter)` or `Set { total } uses (mut total)`, instead of letting one silently hide the other.

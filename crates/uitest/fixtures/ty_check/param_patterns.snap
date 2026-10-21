@@ -62,3 +62,43 @@ error[8-0134]: `a` is bound by more than one parameter
    │               -                    ^ `a` is bound again here
    │               │
    │               `a` is first bound here
+
+error[8-0134]: `c` is also bound by an effect
+   ┌─ param_patterns.fe:49:44
+   │
+49 │ fn named_and_effect(c: u256) -> u256 uses (c: Counter) {
+   │                     -                      ^^^^^^^^^^ `c` is bound again here
+   │                     │
+   │                     `c` is first bound here
+
+error[8-0134]: `c` is also bound by an effect
+   ┌─ param_patterns.fe:53:58
+   │
+53 │ fn part_and_effect(_ (c, d): (u256, u256)) -> u256 uses (c: Counter) {
+   │                       -                                  ^^^^^^^^^^ `c` is bound again here
+   │                       │
+   │                       `c` is first bound here
+
+error[8-0134]: `count` is also bound by an effect
+   ┌─ param_patterns.fe:68:60
+   │
+68 │     init(count: u256, _ (total, rest): (u256, u256)) uses (mut count, mut total) {
+   │          -----                                             ^^^^^^^^^ `count` is bound again here
+   │          │
+   │          `count` is first bound here
+
+error[8-0134]: `total` is also bound by an effect
+   ┌─ param_patterns.fe:68:71
+   │
+68 │     init(count: u256, _ (total, rest): (u256, u256)) uses (mut count, mut total) {
+   │                          -----                                        ^^^^^^^^^ `total` is bound again here
+   │                          │
+   │                          `total` is first bound here
+
+error[8-0134]: `total` is also bound by an effect
+   ┌─ param_patterns.fe:73:41
+   │
+73 │         Set { total, by } -> u256 uses (mut total, count) {
+   │               -----                     ^^^^^^^^^ `total` is bound again here
+   │               │
+   │               `total` is first bound here
