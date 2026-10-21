@@ -38,8 +38,8 @@ is a part that overlaps another argument or an effect, while
 - the parts carry its modes, so `own (own u256, ref u256)` is an error;
 - a receiver cannot be one.
 
-Only a named function's parameter is a product. A closure's parameter is
-not, and a function that takes one is not a callable value.
+A closure's parameter may be a product too, and a function taking one is a
+callable value of that shape (see [closures](closures.md)).
 
 A view argument that is a scalar or a handle (an integer, `bool`,
 `Address`, a raw pointer, or any `core::marker::Snapshot` type) is a

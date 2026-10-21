@@ -493,10 +493,18 @@ pub fn lower_param_product<'db>(
     if !is_param_product(db, ty) {
         return None;
     }
+    // A mode's payload is a value's type, of kind `*`.
     let lower_opt = |ty: Partial<HirTyId<'db>>| {
         ty.to_opt().map_or_else(
             || TyId::invalid(db, InvalidCause::ParseError),
-            |ty| lower_hir_ty(db, ty, scope, assumptions),
+            |ty| {
+                let ty = lower_hir_ty(db, ty, scope, assumptions);
+                if ty.is_star_kind(db) || ty.has_invalid(db) {
+                    ty
+                } else {
+                    TyId::invalid(db, InvalidCause::NotFullyApplied)
+                }
+            },
         )
     };
     let part = |elem: HirTyId<'db>| match elem.data(db) {
@@ -556,16 +564,19 @@ pub fn param_product_diags<'db>(
             {
                 vec![TyLowerDiag::ModeOnProduct(span.into()).into()]
             }
+            // A mode's payload is a value's type.
             TypeKind::Mode(_, inner) => inner
                 .to_opt()
                 .map(|inner| {
-                    collect_hir_ty_diags(
-                        db,
-                        scope,
-                        inner,
-                        span.into_mode_type().inner(),
-                        assumptions,
-                    )
+                    let span = span.into_mode_type().inner();
+                    let diags = collect_hir_ty_diags(db, scope, inner, span.clone(), assumptions);
+                    if diags.is_empty()
+                        && !lower_hir_ty(db, inner, scope, assumptions).is_star_kind(db)
+                    {
+                        vec![TyLowerDiag::ExpectedStarKind(span.into()).into()]
+                    } else {
+                        diags
+                    }
                 })
                 .unwrap_or_default(),
             _ if mentions_mode(db, elem) => param_product_diags(db, elem, scope, span, assumptions),

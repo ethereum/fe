@@ -1,5 +1,7 @@
 use crate::{
-    hir_def::{GenericArg, PathId, PathKind, TraitRefId, TypeId, TypeKind, scope_graph::ScopeId},
+    hir_def::{
+        GenericArg, PathId, PathKind, TraitRefId, TypeId, TypeKind, TypeMode, scope_graph::ScopeId,
+    },
     span::{params::LazyGenericArgSpan, path::LazyPathSpan, types::LazyTySpan},
     visitor::{Visitor, VisitorCtxt, prelude::DynLazySpan, walk_generic_arg, walk_path, walk_type},
 };
@@ -7,9 +9,9 @@ use crate::{
 use crate::analysis::{
     HirAnalysisDb,
     name_resolution::{
-        ExpectedPathKind, PathRes, diagnostics::PathResDiag, resolve_path_with_minter,
-        resolve_path_with_observer_and_minter, resolve_trait_path_with_observer_and_minter,
-        trait_arg_path_diag,
+        ExpectedPathKind, PathRes, diagnostics::PathResDiag, resolve_path,
+        resolve_path_with_minter, resolve_path_with_observer_and_minter,
+        resolve_trait_path_with_observer_and_minter, trait_arg_path_diag,
     },
     ty::visitor::{TyVisitor, walk_ty},
 };
@@ -20,8 +22,8 @@ use super::{
     normalize::normalize_ty,
     shape::{is_param_product, param_product_diags},
     trait_resolution::{PredicateListId, TraitSolveCx, WellFormedness, check_ty_wf},
-    ty_def::{InvalidCause, TyData, TyId},
-    ty_lower::{lower_hir_ty, lower_hir_ty_in_mode},
+    ty_def::{InvalidCause, Kind, TyData, TyId},
+    ty_lower::{lower_hir_ty, lower_hir_ty_in_mode, lower_kind_in_bounds},
 };
 use crate::visitor::prelude::LazyTraitRefSpan;
 
@@ -82,7 +84,10 @@ pub(crate) fn path_arg_diags<'db>(
                     if let Some(ty) = ty_arg.ty.to_opt()
                         && is_param_product(db, ty) =>
                 {
-                    param_product_diags(db, ty, scope, span.into_type_arg().ty(), assumptions)
+                    let span = span.into_type_arg().ty();
+                    let mut diags = maybe_mut_parts(db, ty, span.clone());
+                    diags.extend(param_product_diags(db, ty, scope, span, assumptions));
+                    diags
                 }
                 GenericArg::Type(_) => {
                     let mut vis = HirTyErrVisitor {
@@ -94,15 +99,40 @@ pub(crate) fn path_arg_diags<'db>(
                     vis.visit_generic_arg(&mut VisitorCtxt::new(db, scope, span), arg);
                     vis.diags
                 }
-                GenericArg::AssocType(binding) => binding.ty.to_opt().map_or_else(Vec::new, |ty| {
-                    collect_hir_ty_diags(
-                        db,
-                        scope,
-                        ty,
-                        span.into_assoc_type_arg().ty(),
-                        assumptions,
-                    )
-                }),
+                GenericArg::AssocType(binding) => {
+                    let Some(ty) = binding.ty.to_opt() else {
+                        return Vec::new();
+                    };
+                    let span = span.into_assoc_type_arg().ty();
+                    let diags = collect_hir_ty_diags(db, scope, ty, span.clone(), assumptions);
+                    // A type is of its declaration's kind: `*`, unless a bound
+                    // gives another.
+                    let decl = binding.name.to_opt().and_then(|name| {
+                        match resolve_path(db, path, scope, assumptions, false) {
+                            Ok(PathRes::Trait(inst)) => inst.def(db).assoc_ty(db, name),
+                            _ => None,
+                        }
+                    });
+                    let expected = decl
+                        .and_then(|decl| lower_kind_in_bounds(&decl.bounds))
+                        .unwrap_or(Kind::Star);
+                    let given = lower_hir_ty(db, ty, scope, assumptions);
+                    if diags.is_empty()
+                        && !given.has_invalid(db)
+                        && !given.kind(db).does_match(&expected)
+                    {
+                        vec![
+                            TyLowerDiag::InvalidTypeArgKind {
+                                span: span.into(),
+                                expected: Some(expected),
+                                given,
+                            }
+                            .into(),
+                        ]
+                    } else {
+                        diags
+                    }
+                }
                 GenericArg::Const(_) => Vec::new(),
             }
         })
@@ -127,6 +157,30 @@ pub(crate) fn path_generic_arg_diags<'db>(
     };
     walk_path(&mut vis, &mut VisitorCtxt::new(db, scope, path_span), path);
     vis.diags
+}
+
+/// The parts of a shape argument written `mut?`, at any depth: a shape's
+/// modes are concrete, and an argument names no mode `mut?` could take.
+fn maybe_mut_parts<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TypeId<'db>,
+    span: LazyTySpan<'db>,
+) -> Vec<TyDiagCollection<'db>> {
+    match ty.data(db) {
+        TypeKind::Mode(TypeMode::MaybeMut, _) => {
+            vec![TyLowerDiag::MaybeMutInShape(span.into()).into()]
+        }
+        TypeKind::Tuple(elems) => elems
+            .data(db)
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, elem)| Some((elem.to_opt()?, idx)))
+            .flat_map(|(elem, idx)| {
+                maybe_mut_parts(db, elem, span.clone().into_tuple_type().elem_ty(idx))
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// Collect all type-lowering diagnostics for a HIR type.

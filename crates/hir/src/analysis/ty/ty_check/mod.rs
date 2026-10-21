@@ -2394,7 +2394,16 @@ impl<'db> TyChecker<'db> {
                 }
             }
             GoalSatisfiability::UnSat(subgoal) => {
-                if final_pass && self.trait_goal_is_concrete_for_diagnostics(goal) {
+                // A function item's callable shape is its own, whatever its
+                // effect providers infer to.
+                let function_item = CallableTrait::of(db, goal.def(db)).is_some()
+                    && matches!(
+                        goal.self_ty(db).decompose_ty_app(db).0.data(db),
+                        TyData::TyBase(TyBase::Func(_))
+                    );
+                if final_pass
+                    && (self.trait_goal_is_concrete_for_diagnostics(goal) || function_item)
+                {
                     let required_by = match obligation.origin {
                         env::TraitObligationOrigin::CallConstraint {
                             callable_def,

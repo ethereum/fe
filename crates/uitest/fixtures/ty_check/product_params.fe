@@ -147,3 +147,13 @@ fn closure_product() {
 fn untupled() -> u256 {
     apply(|a, b| a + b)
 }
+
+fn apply_product<F: Fn((own u256, ref u256)) -> u256>(_ f: F) -> u256 uses F::E {
+    let y: u256 = 2
+    f((1, ref y))
+}
+
+// So is a product's pair.
+fn untupled_product() -> u256 {
+    apply_product(|a, b| a + b)
+}

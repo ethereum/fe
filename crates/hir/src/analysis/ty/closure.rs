@@ -173,6 +173,19 @@ impl<'db> CallableValue<'db> {
     }
 }
 
+/// The instance of `goal`'s callable trait a function item, `goal`'s self
+/// type, implements: its own shape, which its type does not print.
+pub(crate) fn func_item_callable_inst<'db>(
+    db: &'db dyn HirAnalysisDb,
+    goal: TraitInstId<'db>,
+) -> Option<TraitInstId<'db>> {
+    let self_ty = goal.self_ty(db);
+    let value @ CallableValue::Func(..) = CallableValue::of(db, self_ty)? else {
+        return None;
+    };
+    value.callable_inst(db, self_ty, goal.def(db))
+}
+
 /// Both callable trait instances a value of type `ty` implements, `Fn` and
 /// `FnMut`, if it is a callable value.
 pub(crate) fn callable_insts<'db>(

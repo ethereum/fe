@@ -34,7 +34,10 @@ use crate::analysis::{
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
-        ty_def::{BorrowKind, Kind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
+        ty_def::{
+            BorrowKind, InvalidCause, Kind, StringFallback, TyBase, TyData, TyFlags, TyId,
+            TyVarSort,
+        },
         ty_error::emit_invalid_ty_error,
         ty_lower::{CompleteSubst, collect_generic_params, lower_generic_arg_list},
         visitor::{TyVisitable, TyVisitor, collect_flags},
@@ -1175,13 +1178,22 @@ impl<'db> TyChecker<'db> {
         callable
             .params_resolving(db, |shape| self.normalize_ty(shape))
             .map_err(|shape| {
-                // A spread of no shape is reported where it is declared.
                 if *shape.kind(db) == Kind::Shape && !shape.has_invalid(db) {
                     self.push_diag(BodyDiag::SpreadNotKnown {
                         primary: span,
                         def_span: callable.callable_def.name_span(),
                         shape,
                     });
+                    return;
+                }
+                // A spread of no shape is reported where it is declared. The
+                // call's arguments go unchecked, so what they would infer is
+                // unknown too.
+                let invalid = TyId::invalid(db, InvalidCause::Other);
+                for &arg in callable.generic_args() {
+                    if self.table.fold_ty(db, arg).is_ty_var(db) {
+                        let _ = self.table.unify(arg, invalid);
+                    }
                 }
             })
             .ok()

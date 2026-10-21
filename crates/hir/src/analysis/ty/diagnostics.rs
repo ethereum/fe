@@ -76,10 +76,16 @@ pub enum TyLowerDiag<'db> {
     ProductReceiver(DynLazySpan<'db>),
     /// A product parameter its function's body names instead of
     /// destructuring.
-    ProductParamNotDestructured(DynLazySpan<'db>),
+    ProductParamNotDestructured {
+        span: DynLazySpan<'db>,
+        /// Whether the parameter is a closure's.
+        closure: bool,
+    },
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
+    /// `mut?` in a shape argument, `Fn(mut? u256)`, which names no mode.
+    MaybeMutInShape(DynLazySpan<'db>),
     /// A `mut?` function whose result has no `mut?` part, so no call uses it
     /// at `mut`.
     MaybeMutWithoutResult(DynLazySpan<'db>),
@@ -330,13 +336,14 @@ impl TyLowerDiag<'_> {
             Self::ModeNotType(_) => 58,
             Self::ModeOnProduct(_) => 82,
             Self::ProductReceiver(_) => 74,
-            Self::ProductParamNotDestructured(_) => 75,
+            Self::ProductParamNotDestructured { .. } => 75,
             Self::DestructuredParamWithoutBody(_) => 76,
             Self::MaybeMutWithoutResult(_) => 77,
             Self::MaybeMutRowEffect { .. } => 78,
             Self::MisplacedSpread(_) => 80,
             Self::SpreadOfNonShape { .. } => 81,
             Self::MaybeMutBound(_) => 71,
+            Self::MaybeMutInShape(_) => 85,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
             Self::InvalidTypeArgKind { .. } => 1,

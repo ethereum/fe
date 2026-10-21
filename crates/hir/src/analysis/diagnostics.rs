@@ -11,6 +11,7 @@ use crate::analysis::{
     },
     ty::{
         AddressSpace,
+        closure::func_item_callable_inst,
         diagnostics::{
             BodyDiag, CallConstraintDiagInfo, ContractFieldLayoutIssue, DefConflictError,
             FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix,
@@ -1731,15 +1732,19 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::ProductParamNotDestructured(span) => CompleteDiagnostic {
+            Self::ProductParamNotDestructured { span, closure } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a product parameter must be destructured".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: "its parts are accesses, which no single name holds".to_string(),
+                    message: "its parts are passed apart, which no single name holds".to_string(),
                     span: span.resolve(db),
                 }],
-                notes: vec!["bind each part: `_ (i, ref x): (own usize, ref T)`".to_string()],
+                notes: vec![if *closure {
+                    "bind each part: `|(i, ref x)| ..`".to_string()
+                } else {
+                    "bind each part: `_ (i, ref x): (own usize, ref T)`".to_string()
+                }],
                 error_code,
             },
 
@@ -1759,6 +1764,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 Severity::Error,
                 "`mut?` bound of an item without a mode",
                 "only a function or an implementation is used at a mode",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::MaybeMutInShape(span) => primary_diag(
+                Severity::Error,
+                "`mut?` in a shape argument",
+                "a shape's modes are concrete: write `ref` or `mut`",
                 span.resolve(db),
                 error_code,
             ),
@@ -5765,11 +5778,23 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     });
                 }
 
+                // A function item's type names it alone; give its shape.
+                let notes = func_item_callable_inst(db, *primary_goal)
+                    .map(|inst| {
+                        format!(
+                            "`{}` is `{}`",
+                            primary_goal.self_ty(db).pretty_print(db),
+                            inst.pretty_print(db, false)
+                        )
+                    })
+                    .into_iter()
+                    .collect();
+
                 CompleteDiagnostic {
                     severity,
                     message: "trait bound is not satisfied".to_string(),
                     sub_diagnostics,
-                    notes: Vec::new(),
+                    notes,
                     error_code,
                 }
             }

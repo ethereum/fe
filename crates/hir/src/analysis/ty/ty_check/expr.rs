@@ -644,10 +644,14 @@ impl<'db> TyChecker<'db> {
             if expectation.params.len() == params.len() {
                 return expectation;
             }
-            let untupled = matches!(&expectation.params[..], [param]
-            if param.param_mode().is_some() && {
-                let ty = param.erased_ty(self.db);
-                ty.is_tuple(self.db) && ty.generic_args(self.db).len() == params.len()
+            // One pair, a product's or a tuple's, taken as two parameters.
+            let untupled = matches!(&expectation.params[..], [param] if match param {
+                Shape::Tuple(parts) => parts.len() == params.len(),
+                _ if param.param_mode().is_some() => {
+                    let ty = param.erased_ty(self.db);
+                    ty.is_tuple(self.db) && ty.generic_args(self.db).len() == params.len()
+                }
+                _ => false,
             });
             self.push_diag(BodyDiag::ClosureArityMismatch {
                 primary: span.clone(),
@@ -671,13 +675,24 @@ impl<'db> TyChecker<'db> {
                 .as_ref()
                 .map(|expectation| &expectation.params[idx]);
             let param_span = closure_span.clone().params().param(idx);
-            let shape = self.closure_param(param, expected, param_span.clone().ty());
+            // A spread belongs only in a trait method's declaration.
+            let shape = if param.is_spread() {
+                self.push_diag(TyDiagCollection::from(TyLowerDiag::MisplacedSpread(
+                    param_span.clone().into(),
+                )));
+                Shape::Owned(TyId::invalid(self.db, InvalidCause::Other))
+            } else {
+                self.closure_param(param, expected, param_span.clone().ty())
+            };
             // A product parameter's binding owns the carriers of its parts,
             // which its pattern takes apart.
             let mode = shape.param_mode().unwrap_or_else(|| {
                 if !param.is_destructured() {
                     self.push_diag(TyDiagCollection::from(
-                        TyLowerDiag::ProductParamNotDestructured(param_span.into()),
+                        TyLowerDiag::ProductParamNotDestructured {
+                            span: param_span.into(),
+                            closure: true,
+                        },
                     ));
                 }
                 self.env.register_param_product(site, idx, shape.clone());
@@ -924,7 +939,18 @@ impl<'db> TyChecker<'db> {
                     .expect("a product lowers to its shape")
                     .map_tys(&mut |ty| self.normalize_ty(ty))
             }
-            Some(ty) => Shape::param(param_mode, self.lower_ty(ty, span, true)),
+            Some(ty) => {
+                let lowered = self.lower_ty(ty, span.clone(), true);
+                match expected {
+                    // A mode-free annotation constrains a product's type and
+                    // keeps its parts' modes.
+                    Some(expected @ Shape::Tuple(_)) if mode.is_none() => {
+                        self.equate_ty(lowered, expected.erased_ty(db), span.into());
+                        expected.clone()
+                    }
+                    _ => Shape::param(param_mode, lowered),
+                }
+            }
             None => match expected {
                 Some(expected) if mode.is_none() => expected.clone(),
                 _ => {

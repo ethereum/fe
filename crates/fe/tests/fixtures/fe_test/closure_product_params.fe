@@ -29,8 +29,10 @@ fn product_callables() {
     let x: u256 = 2
     assert(apply(total, x) == 3)
     assert(apply(|(a, b): (own u256, ref u256)| a * b, x) == 2)
-    // An unannotated pattern takes the parts the shape lists.
+    // An unannotated pattern takes the parts the shape lists, and a
+    // mode-free annotation constrains their types alone.
     assert(apply(|(a, b)| a + b + 1, x) == 4)
+    assert(apply(|(a, b): (u256, u256)| a * 3 + b, x) == 5)
 }
 
 #[test]

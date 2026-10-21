@@ -94,8 +94,8 @@ named function, associated function or trait method can be passed where a
 closure can: `xs.fold(0, add)` with `fn add(_ acc: own u256, _ x: u256) ->
 u256`. Its row is the function's own effects. A generic function's arguments
 are inferred from the bound, as in `apply(identity, 9)`. An `unsafe fn`, a
-projection, a function with a spread, and a variant constructor are not
-callable values.
+projection (every `mut?` function is one), a function with a spread, and a
+variant constructor are not callable values.
 
 ## Captures
 

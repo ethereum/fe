@@ -111,8 +111,9 @@ use crate::analysis::ty::{
     ty_def::{InvalidCause, PrimTy, TyId},
     ty_error::{collect_ty_lower_errors, demanded_ground_const_cause, diag_from_invalid_cause},
     ty_lower::{
-        TyAlias, lower_hir_ty, lower_hir_ty_deferred, lower_hir_ty_with_minter, lower_opt_hir_ty,
-        lower_type_alias, lower_type_alias_from_hir, lower_type_alias_from_hir_deferred,
+        TyAlias, lower_hir_ty, lower_hir_ty_deferred, lower_hir_ty_with_minter,
+        lower_kind_in_bounds, lower_opt_hir_ty, lower_type_alias, lower_type_alias_from_hir,
+        lower_type_alias_from_hir_deferred,
     },
 };
 use crate::core::adt_lower::{lower_adt, lower_contract_fields};
@@ -593,6 +594,13 @@ fn func_arg_ty<'db>(
     idx: usize,
 ) -> Option<Binder<'db, TyId<'db>>> {
     let param = func.params_list(db).to_opt()?.data(db).get(idx)?;
+    // A misplaced spread is reported where it is written, and lists nothing.
+    if func.is_misplaced_spread(db, idx) {
+        return Some(Binder::bind(
+            func.into(),
+            TyId::invalid(db, InvalidCause::Other),
+        ));
+    }
     // A product's type is its parts' types.
     if let Some(product) = func_param_product(db, func, idx, None) {
         return Some(Binder::bind(func.into(), product.erased_ty(db)));
@@ -830,6 +838,18 @@ impl<'db> Func<'db> {
     }
 
     /// Returns the containing trait if this function is a method inside a trait definition.
+    /// Whether parameter `idx` is a spread where none may stand: anywhere
+    /// but last in a trait method's declaration.
+    pub fn is_misplaced_spread(self, db: &'db dyn HirDb, idx: usize) -> bool {
+        self.params_list(db).to_opt().is_some_and(|params| {
+            let params = params.data(db);
+            params.get(idx).is_some_and(|param| param.is_spread())
+                && (self.body(db).is_some()
+                    || self.containing_trait(db).is_none()
+                    || idx + 1 != params.len())
+        })
+    }
+
     pub fn containing_trait(self, db: &'db dyn HirDb) -> Option<Trait<'db>> {
         match self.scope().parent(db)? {
             ScopeId::Item(ItemKind::Trait(trait_)) => Some(trait_),
@@ -1199,13 +1219,16 @@ impl<'db> CallableDef<'db> {
     }
 
     /// The index of the callee's spread parameter, `..A`, if it has one: its
-    /// last.
+    /// last, or a misplaced one, which lists nothing.
     pub fn spread(self, db: &'db dyn HirDb) -> Option<usize> {
         let Self::Func(func) = self else {
             return None;
         };
-        let params = func.params_list(db).to_opt()?.data(db);
-        params.last()?.is_spread().then(|| params.len() - 1)
+        func.params_list(db)
+            .to_opt()?
+            .data(db)
+            .iter()
+            .position(|param| param.is_spread())
     }
 
     /// The declared parameter a call's parameter `idx` is: itself, or the
@@ -1448,10 +1471,7 @@ impl<'db> FuncParamView<'db> {
         // A spread lists a shape's parameters, last in a trait method's
         // declaration; its type is the shape, not a value's type.
         if param.is_spread() {
-            if func.body(db).is_some()
-                || func.containing_trait(db).is_none()
-                || self.idx + 1 != func.params(db).count()
-            {
+            if func.is_misplaced_spread(db, self.idx) {
                 return vec![TyLowerDiag::MisplacedSpread(self.span().into()).into()];
             }
             let errs =
@@ -1488,7 +1508,13 @@ impl<'db> FuncParamView<'db> {
             }
             if !param.is_destructured() && func.body(db).is_some() {
                 let span = self.span().into();
-                return vec![TyLowerDiag::ProductParamNotDestructured(span).into()];
+                return vec![
+                    TyLowerDiag::ProductParamNotDestructured {
+                        span,
+                        closure: false,
+                    }
+                    .into(),
+                ];
             }
         }
 
@@ -5049,7 +5075,8 @@ impl<'db> ImplAssocTypeView<'db> {
 
     /// All type-related diagnostics for this associated type.
     pub fn ty_diags(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
-        let Some(hir) = self.owner.types(db)[self.idx].type_ref.to_opt() else {
+        let def = self.owner.types(db)[self.idx];
+        let Some(hir) = def.type_ref.to_opt() else {
             return Vec::new();
         };
 
@@ -5067,6 +5094,25 @@ impl<'db> ImplAssocTypeView<'db> {
         };
         if let Some(diag) = ty.emit_diag(db, ty_span.clone().into()) {
             return vec![diag];
+        }
+        // A type is of its declaration's kind: `*`, unless a bound gives
+        // another.
+        if let Some(trait_) = self.owner.trait_def(db)
+            && let Some(decl) = trait_
+                .assoc_types(db)
+                .find(|assoc| assoc.name(db) == def.name.to_opt())
+        {
+            let expected = lower_kind_in_bounds(decl.bounds_raw(db)).unwrap_or(Kind::Star);
+            if !ty.kind(db).does_match(&expected) {
+                return vec![
+                    TyLowerDiag::InvalidTypeArgKind {
+                        span: ty_span.into(),
+                        expected: Some(expected),
+                        given: ty,
+                    }
+                    .into(),
+                ];
+            }
         }
         if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(
             db,
