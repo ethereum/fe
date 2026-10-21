@@ -75,3 +75,9 @@ fn other_base(_ xs: [u256; 3]) {
     for x in xs.by(d) {
     }
 }
+
+// A generic driver's base is its own unless a bound names the loop's.
+fn generic_base<C: Collection, D: Driver>(_ xs: C, _ d: own D) {
+    for x in xs.by(d) {
+    }
+}

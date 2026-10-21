@@ -4320,6 +4320,43 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
+            Self::LoopDriverBase {
+                primary,
+                driver,
+                base,
+                receiver,
+            } => {
+                let (driver, base) = (driver.pretty_print(db), base.pretty_print(db));
+                let (message, label, note) = match receiver {
+                    Some(receiver) => {
+                        let receiver = receiver.pretty_print(db);
+                        (
+                            format!("`{driver}` drives `{base}`, not `{receiver}`"),
+                            format!("this loop's collection is `{receiver}`"),
+                            format!(
+                                "a driver runs over its own base: use one over `{receiver}`, or bound a parameter as `Driver<Base = {receiver}>`"
+                            ),
+                        )
+                    }
+                    None => (
+                        format!("`{driver}` is a driver over `{base}`, but the loop has no collection"),
+                        "this drives no collection".to_string(),
+                        "drive a collection with it, as `xs.by(d)`".to_string(),
+                    ),
+                };
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: label,
+                        span: primary.resolve(db),
+                    }],
+                    notes: vec![note],
+                    error_code,
+                }
+            }
+
             Self::ParamBindsTwice {
                 primary,
                 first,

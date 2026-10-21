@@ -511,13 +511,62 @@ impl<'db> TyChecker<'db> {
             None => self.plan_protocol(base, None, mutates),
         };
         if plan.is_none() {
-            self.push_diag(BodyDiag::TraitNotImplemented {
-                primary: expr.span(self.body()).into(),
-                ty: ty.pretty_print(self.db).to_string(),
-                trait_name: IdentId::new(self.db, "Collection".to_string()),
-            });
+            let primary = expr.span(self.body()).into();
+            // A driver over another base, or over none of the chain's.
+            let diag = match self.driver_base(ty) {
+                Some(base) => {
+                    let mut root = expr;
+                    while let Partial::Present(Expr::MethodCall(receiver, ..)) =
+                        root.data(self.db, self.body())
+                    {
+                        root = *receiver;
+                    }
+                    let receiver = self
+                        .env
+                        .typed_expr(root)
+                        .filter(|_| root != expr)
+                        .map(|prop| prop.ty.fold_with(self.db, &mut self.table))
+                        .filter(|&root_ty| self.driver_base(root_ty).is_none());
+                    BodyDiag::LoopDriverBase {
+                        primary,
+                        driver: ty,
+                        base,
+                        receiver,
+                    }
+                }
+                None => BodyDiag::TraitNotImplemented {
+                    primary,
+                    ty: ty.pretty_print(self.db).to_string(),
+                    trait_name: IdentId::new(self.db, "Collection".to_string()),
+                },
+            };
+            self.push_diag(diag);
         }
         plan
+    }
+
+    /// The base `ty` drives if it is a driver or a producer.
+    fn driver_base(&mut self, ty: TyId<'db>) -> Option<TyId<'db>> {
+        let solve_cx =
+            TraitSolveCx::new(self.db, self.env.scope()).with_assumptions(self.env.assumptions());
+        let base = IdentId::new(self.db, "Base".to_string());
+        let projection = ["Driver", "Producer"].into_iter().find_map(|name| {
+            let trait_def = resolve_core_trait(self.db, self.env.scope(), &["iter", name])?;
+            let inst = TraitInstId::new(
+                self.db,
+                trait_def,
+                vec![ty],
+                IndexMap::new(),
+                ModeMarker::None,
+            );
+            matches!(
+                is_goal_satisfiable(self.db, solve_cx, inst),
+                GoalSatisfiability::Satisfied(_)
+            )
+            .then(|| inst.project_assoc_ty(self.db, base))
+            .flatten()
+        })?;
+        Some(self.normalize_ty(projection))
     }
 
     /// The receiver a method chain of type `ty` drives, the nearest first:

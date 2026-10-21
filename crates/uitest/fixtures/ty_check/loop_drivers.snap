@@ -41,24 +41,6 @@ error[8-0020]: `Collection` needs to be implemented for bool
   │              `Collection` needs to be implemented for `bool`
   │              consider implementing `Collection` for `bool`
 
-error[8-0020]: `Collection` needs to be implemented for Take<Reversed<[u256; 3]>>
-   ┌─ loop_drivers.fe:68:14
-   │
-68 │     for x in d.take(2) {
-   │              ^^^^^^^^^
-   │              │
-   │              `Collection` needs to be implemented for `Take<Reversed<[u256; 3]>>`
-   │              consider implementing `Collection` for `Take<Reversed<[u256; 3]>>`
-
-error[8-0020]: `Collection` needs to be implemented for Reversed<[u256; 4]>
-   ┌─ loop_drivers.fe:75:14
-   │
-75 │     for x in xs.by(d) {
-   │              ^^^^^^^^
-   │              │
-   │              `Collection` needs to be implemented for `Reversed<[u256; 4]>`
-   │              consider implementing `Collection` for `Reversed<[u256; 4]>`
-
 error[8-0123]: a `mut` binding needs a mutable place or access
    ┌─ loop_drivers.fe:40:9
    │
@@ -66,3 +48,27 @@ error[8-0123]: a `mut` binding needs a mutable place or access
    │         ^^^^^ this binds part of a read access
    │
    = write `var` for a mutable copy, or use the `mut` projection to write through
+
+error[8-0149]: `Take<Reversed<[u256; 3]>>` is a driver over `[u256; 3]`, but the loop has no collection
+   ┌─ loop_drivers.fe:68:14
+   │
+68 │     for x in d.take(2) {
+   │              ^^^^^^^^^ this drives no collection
+   │
+   = drive a collection with it, as `xs.by(d)`
+
+error[8-0149]: `Reversed<[u256; 4]>` drives `[u256; 4]`, not `[u256; 3]`
+   ┌─ loop_drivers.fe:75:14
+   │
+75 │     for x in xs.by(d) {
+   │              ^^^^^^^^ this loop's collection is `[u256; 3]`
+   │
+   = a driver runs over its own base: use one over `[u256; 3]`, or bound a parameter as `Driver<Base = [u256; 3]>`
+
+error[8-0149]: `D` drives `D::Base`, not `C`
+   ┌─ loop_drivers.fe:81:14
+   │
+81 │     for x in xs.by(d) {
+   │              ^^^^^^^^ this loop's collection is `C`
+   │
+   = a driver runs over its own base: use one over `C`, or bound a parameter as `Driver<Base = C>`
