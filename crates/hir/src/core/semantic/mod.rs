@@ -5194,6 +5194,7 @@ pub(crate) fn shape_contract_diag<'db>(
                 primary,
                 name,
                 param,
+                bound: false,
             }
             .into(),
         );
@@ -5212,7 +5213,10 @@ pub(crate) fn shape_contract_diag<'db>(
 /// What in `shape` grants `mut`, if anything does: a part written `mut` or an
 /// associated shape (`None`), or else a shape parameter, whose accesses are
 /// not known.
-fn mut_grant<'db>(db: &'db dyn HirAnalysisDb, shape: &Shape<'db>) -> Option<Option<TyId<'db>>> {
+pub(crate) fn mut_grant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    shape: &Shape<'db>,
+) -> Option<Option<TyId<'db>>> {
     match shape {
         Shape::Owned(_) => None,
         Shape::Access(kind, _) => (*kind == BorrowKind::Mut).then_some(None),

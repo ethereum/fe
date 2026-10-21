@@ -15,7 +15,7 @@ use crate::{analysis::ty::ty_check::EffectParamOwner, span::DynLazySpan};
 use crate::{
     core::hir_def::{
         CallableDef, CompBinOp, Enum, FieldIndex, FieldParent, Func, GenericParamOwner, IdentId,
-        ImplTrait, IntegerId, ModeMarker, TypeId as HirTypeId,
+        ImplTrait, IntegerId, ModeMarker, TypeId as HirTypeId, TypeMode,
     },
     hir_def::TypeAlias,
 };
@@ -95,6 +95,13 @@ pub enum TyLowerDiag<'db> {
     MaybeMutBound(DynLazySpan<'db>),
     /// `mut?` in a shape argument, `Fn(mut? u256)`, which names no mode.
     MaybeMutInShape(DynLazySpan<'db>),
+    /// A bound fixing an associated item, at `mode`, a second time.
+    DuplicateAssocBinding {
+        span: DynLazySpan<'db>,
+        first: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        mode: Option<TypeMode>,
+    },
     /// A `mut?` function whose result has no `mut?` part, so no call uses it
     /// at `mut`.
     MaybeMutWithoutResult(DynLazySpan<'db>),
@@ -355,6 +362,7 @@ impl TyLowerDiag<'_> {
             Self::SpreadOfNonShape { .. } => 81,
             Self::MaybeMutBound(_) => 71,
             Self::MaybeMutInShape(_) => 85,
+            Self::DuplicateAssocBinding { .. } => 86,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
             Self::InvalidTypeArgKind { .. } => 1,
@@ -1708,13 +1716,15 @@ pub enum ImplDiag<'db> {
         trait_: Trait<'db>,
     },
 
-    /// An impl's associated shape granting `mut` where it is named at `ref`:
-    /// through a part written `mut`, or through `param`, a shape parameter,
-    /// whose accesses are not known.
+    /// An impl's associated shape granting `mut` where it is named at `ref`,
+    /// or a bound's value for it at `ref` when `bound`: through a part
+    /// written `mut`, or through `param`, a shape parameter, whose accesses
+    /// are not known.
     ShapeGrantsMut {
         primary: DynLazySpan<'db>,
         name: IdentId<'db>,
         param: Option<TyId<'db>>,
+        bound: bool,
     },
 
     /// An impl's associated shape with no access, which a trait method

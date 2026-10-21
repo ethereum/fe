@@ -18,13 +18,14 @@ use crate::analysis::{
 
 use super::{
     const_ty::{ConstBodyLowering, ConstTyData, LoweringContext, ty_is_fully_ground},
-    diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
+    diagnostics::{ImplDiag, TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     normalize::normalize_ty,
-    shape::{lower_shape_list, param_product_diags, shape_value_diags},
+    shape::{lower_shape_list, lower_shape_value, param_product_diags, shape_value_diags},
     trait_resolution::{PredicateListId, TraitSolveCx, WellFormedness, check_ty_wf},
-    ty_def::{InvalidCause, Kind, TyData, TyId},
+    ty_def::{InvalidCause, Kind, ShapeMode, TyData, TyId},
     ty_lower::{lower_hir_ty, lower_hir_ty_in_mode, lower_kind_in_bounds},
 };
+use crate::core::semantic::mut_grant;
 use crate::visitor::prelude::LazyTraitRefSpan;
 
 /// The generic arguments written on `path`'s last segment, with their spans.
@@ -69,6 +70,27 @@ pub(crate) fn path_arg_diags<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
+    // A bound fixes each associated item, at each mode, once.
+    let mut bound: Vec<(_, LazyGenericArgSpan<'db>)> = Vec::new();
+    let mut duplicates = Vec::new();
+    for (arg, span) in path_generic_args(db, path, path_span.clone()) {
+        if let GenericArg::AssocType(binding) = arg
+            && let Some(name) = binding.name.to_opt()
+        {
+            match bound.iter().find(|(key, _)| *key == (name, binding.mode)) {
+                Some((_, first)) => duplicates.push(
+                    TyLowerDiag::DuplicateAssocBinding {
+                        span: span.into_assoc_type_arg().name().into(),
+                        first: first.clone().into_assoc_type_arg().name().into(),
+                        name,
+                        mode: binding.mode,
+                    }
+                    .into(),
+                ),
+                None => bound.push(((name, binding.mode), span)),
+            }
+        }
+    }
     path_generic_args(db, path, path_span.clone())
         .enumerate()
         .flat_map(|(idx, (arg, span))| {
@@ -113,7 +135,43 @@ pub(crate) fn path_arg_diags<'db>(
                     // An associated shape is bound to a shape at a mode, and
                     // nothing else is bound at one.
                     match (decl.is_some_and(|decl| decl.is_shape()), binding.mode) {
-                        (true, Some(_)) => shape_value_diags(db, ty, scope, span.ty(), assumptions),
+                        (true, Some(mode)) => {
+                            // A bound names concrete modes, and at `ref` no
+                            // access is `mut`.
+                            let span = span.ty();
+                            let diags = maybe_mut_parts(db, ty, span.clone());
+                            if !diags.is_empty() {
+                                return diags;
+                            }
+                            let diags = shape_value_diags(db, ty, scope, span.clone(), assumptions);
+                            if !diags.is_empty() || mode == TypeMode::Mut {
+                                return diags;
+                            }
+                            let value = lower_shape_value(
+                                db,
+                                ty,
+                                scope,
+                                assumptions,
+                                &LoweringContext::new(),
+                            )
+                            .at_shape_mode(db, ShapeMode::Ref)
+                            .as_shape_part(db);
+                            binding
+                                .name
+                                .to_opt()
+                                .zip(mut_grant(db, &value))
+                                .map(|(name, param)| {
+                                    ImplDiag::ShapeGrantsMut {
+                                        primary: span.into(),
+                                        name,
+                                        param,
+                                        bound: true,
+                                    }
+                                    .into()
+                                })
+                                .into_iter()
+                                .collect()
+                        }
                         (true, None) => {
                             vec![TyLowerDiag::ShapeWithoutMode(span.name().into()).into()]
                         }
@@ -152,6 +210,7 @@ pub(crate) fn path_arg_diags<'db>(
                 GenericArg::Mode(_) => vec![TyLowerDiag::ModeArgNotShape(span.into()).into()],
             }
         })
+        .chain(duplicates)
         .collect()
 }
 

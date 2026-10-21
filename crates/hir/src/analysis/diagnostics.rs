@@ -27,7 +27,7 @@ use crate::{
     ParserError, SpannedHirDb,
     hir_def::{
         AssocTyDecl, CallableDef, FieldIndex, GenericParamOwner, ModeMarker, PathKind, Trait,
-        params::FuncParamMode,
+        TypeMode, params::FuncParamMode,
     },
     span::{DynLazySpan, LazySpan},
 };
@@ -1790,6 +1790,38 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 span.resolve(db),
                 error_code,
             ),
+
+            Self::DuplicateAssocBinding {
+                span,
+                first,
+                name,
+                mode,
+            } => {
+                let mode = match mode {
+                    Some(TypeMode::Ref) => "<ref>",
+                    Some(TypeMode::Mut) => "<mut>",
+                    _ => "",
+                };
+                let name = format!("{}{mode}", name.data(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("`{name}` is bound more than once"),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: format!("`{name}` is bound again here"),
+                            span: span.resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: format!("`{name}` is first bound here"),
+                            span: first.resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::MaybeMutInShape(span) => primary_diag(
                 Severity::Error,
@@ -6495,6 +6527,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 primary,
                 name,
                 param,
+                bound,
             } => primary_diag(
                 severity,
                 format!(
@@ -6505,6 +6538,10 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                     Some(param) => format!(
                         "`{}` is a shape parameter, whose accesses may be `mut` at any mode",
                         param.pretty_print(db)
+                    ),
+                    None if *bound => format!(
+                        "a shape's accesses are at most its mode: bind `{}<mut>` for a `mut` access",
+                        name.data(db)
                     ),
                     None => {
                         "a shape's accesses are at most its mode: write `mut?` for an access at it"

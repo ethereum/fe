@@ -642,7 +642,10 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
                         TypeMode::Mut => ShapeMode::Mut,
                         _ => ShapeMode::Ref,
                     });
-                    assoc_bindings.insert(AssocBinding { name, mode }, ty);
+                    // A second binding is reported where it is written.
+                    assoc_bindings
+                        .entry(AssocBinding { name, mode })
+                        .or_insert(ty);
                 }
             }
         }
