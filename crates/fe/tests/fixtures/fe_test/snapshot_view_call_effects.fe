@@ -1,0 +1,69 @@
+use std::abi::sol
+use std::evm::{Address, Call, Evm}
+
+pub msg CounterMsg {
+    #[selector = sol("ping()")]
+    Ping,
+    #[selector = sol("count()")]
+    Count -> u256,
+}
+
+pub contract Counter {
+    mut count: u256,
+    recv CounterMsg {
+        Ping uses (mut count) { count += 1 }
+        Count -> u256 uses (count) { count }
+    }
+}
+
+fn invoke() uses (target: Address, call: mut Call) {
+    target.call(CounterMsg::Ping {})
+}
+
+pub msg ProbeMsg {
+    #[selector = sol("indirect()")]
+    Indirect,
+    #[selector = sol("direct()")]
+    Direct,
+}
+
+pub contract Probe {
+    mut target: Address,
+    init(address: Address) uses (mut target) { target = address }
+    recv ProbeMsg {
+        Indirect uses (target, call: mut Call) { invoke() }
+        Direct uses (target, call: mut Call) { target.call(CounterMsg::Ping {}) }
+    }
+}
+
+#[test]
+fn storage_address_snapshots_before_external_calls() uses (evm: mut Evm) {
+    let counter = evm.create2<Counter>(value: 0, args: (), salt: 0)
+    let probe = evm.create2<Probe>(value: 0, args: (counter,), salt: 0)
+    evm.call(addr: probe, gas: 1000000, value: 0, message: ProbeMsg::Indirect {})
+    evm.call(addr: probe, gas: 1000000, value: 0, message: ProbeMsg::Direct {})
+    let count = evm.call(addr: counter, gas: 1000000, value: 0, message: CounterMsg::Count {})
+    assert!(count == 2)
+}
+
+struct Handle { value: u256 }
+impl Copy for Handle {}
+impl Snapshot for Handle {}
+
+fn observe(_ snapshot: Handle) -> u256 uses (current: mut Handle) {
+    let before = snapshot.value
+    current.value += 1
+    assert!(snapshot.value == before)
+    before
+}
+
+fn through_capability(_ handle: mut Handle) -> u256 {
+    with (Handle = handle) { observe(handle) }
+}
+
+#[test]
+fn custom_snapshot_view_copies_through_capabilities() {
+    var handle = Handle { value: 7 }
+    let before = through_capability(mut handle)
+    assert!(before == 7 && handle.value == 8)
+}

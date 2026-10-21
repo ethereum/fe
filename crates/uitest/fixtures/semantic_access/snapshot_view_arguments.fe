@@ -1,0 +1,23 @@
+struct Handle { value: u256 }
+impl Copy for Handle {}
+impl Snapshot for Handle {}
+
+fn observe(_ snapshot: Handle) -> u256 uses (current: mut Handle) {
+    current.value += 1
+    snapshot.value
+}
+
+// Accepted: the shared argument is a snapshot, even through a capability.
+fn copied_view(_ handle: mut Handle) -> u256 {
+    with (Handle = handle) { observe(handle) }
+}
+
+fn mutate(_ argument: mut Handle) uses (current: mut Handle) {
+    argument.value += 1
+    current.value += 1
+}
+
+// Rejected: Snapshot does not permit overlapping exclusive accesses.
+fn exclusive_alias(_ handle: mut Handle) {
+    with (Handle = handle) { mutate(mut handle) }
+}
