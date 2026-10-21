@@ -128,9 +128,9 @@ pub contract StoredWords {
 
 #[test]
 fn case23_storage_base() uses (evm: mut Evm) {
-    let addr = evm.create2<StoredWords>(value: 0, args: (), salt: 0)
-    let first: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: Words::Get { i: 0 })
-    let last: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: Words::Get { i: 2 })
+    let addr = evm.create2<StoredWords>(value: Wei::zero(), args: (), salt: 0)
+    let first: u256 = evm.call(addr: addr, gas: 100000, value: Wei::zero(), message: Words::Get { i: 0 })
+    let last: u256 = evm.call(addr: addr, gas: 100000, value: Wei::zero(), message: Words::Get { i: 2 })
     assert!(first == 30 && last == 10)
 }
 
@@ -229,7 +229,7 @@ fn case40_owned_extra() {
 fn ping() uses (call: mut Call) {
     var output = MemBuffer::empty()
     let outcome = call.raw_call(
-        addr: Address::new(1), gas: 100000, value: 0,
+        addr: Address::new(1), gas: 100000, value: Wei::zero(),
         args: MemSpan::empty(), ret: mut output,
     )
 }
@@ -281,8 +281,8 @@ pub contract Case22OwnReservation {
 
 #[test]
 fn case22_calls_in_ramp_and_slide() uses (evm: mut Evm) {
-    let c = evm.create2<Case22OwnReservation>(value: 0, args: (), salt: 22)
-    let value: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: ValueMsg::Value {})
+    let c = evm.create2<Case22OwnReservation>(value: Wei::zero(), args: (), salt: 22)
+    let value: u256 = evm.call(addr: c, gas: 1000000, value: Wei::zero(), message: ValueMsg::Value {})
     assert(value == 8)
 }
 
@@ -329,10 +329,10 @@ pub contract Case24Board {
 
 #[test]
 fn case24_write_back_indexing() uses (evm: mut Evm) {
-    let board = evm.create2<Case24Board>(value: 0, args: (), salt: 24)
-    let first: u256 = evm.call(addr: board, gas: 300000, value: 0, message: ScoresMsg::Bump { i: 6 })
+    let board = evm.create2<Case24Board>(value: Wei::zero(), args: (), salt: 24)
+    let first: u256 = evm.call(addr: board, gas: 300000, value: Wei::zero(), message: ScoresMsg::Bump { i: 6 })
     assert(first == 9006)
-    let again: u256 = evm.call(addr: board, gas: 300000, value: 0, message: ScoresMsg::Bump { i: 6 })
+    let again: u256 = evm.call(addr: board, gas: 300000, value: Wei::zero(), message: ScoresMsg::Bump { i: 6 })
     assert(again == 9018)
 }
 
@@ -367,9 +367,9 @@ pub contract Case44Bank {
 
 #[test]
 fn case44_map_as_mut_argument() uses (evm: mut Evm) {
-    let bank = evm.create2<Case44Bank>(value: 0, args: (), salt: 44)
+    let bank = evm.create2<Case44Bank>(value: Wei::zero(), args: (), salt: 44)
     let who = Address::new(7)
-    let first: u256 = evm.call(addr: bank, gas: 300000, value: 0, message: LedgerMsg::Credit { who, amount: 5 })
+    let first: u256 = evm.call(addr: bank, gas: 300000, value: Wei::zero(), message: LedgerMsg::Credit { who, amount: 5 })
     assert(first == 15)
 }
 
@@ -399,8 +399,8 @@ pub contract Case50Nested {
 
 #[test]
 fn case50_nested_maps_are_distinct() uses (evm: mut Evm) {
-    let nested = evm.create2<Case50Nested>(value: 0, args: (), salt: 50)
-    let values: (u256, u256) = evm.call(addr: nested, gas: 300000, value: 0, message: NestedMsg::Write {})
+    let nested = evm.create2<Case50Nested>(value: Wei::zero(), args: (), salt: 50)
+    let values: (u256, u256) = evm.call(addr: nested, gas: 300000, value: Wei::zero(), message: NestedMsg::Write {})
     assert(values.0 == 6)
     assert(values.1 == 7)
 }

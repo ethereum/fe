@@ -4,7 +4,7 @@ pub use bytes::ByteBuffer
 pub use stack::FixedStack
 
 extern {
-    // Trusted by the compiler: reads process accounting without accessing Fe memory.
+    // Host process accounting. The scalar-only signature gives it no access to Fe memory.
     fn clock() -> i64
 }
 

@@ -152,9 +152,9 @@ pub contract CounterContract {
 
 #[test]
 fn storage_field() uses (evm: mut Evm) {
-    let addr = evm.create2<CounterContract>(value: 0, args: (), salt: 0)
-    evm.call(addr: addr, gas: 100000, value: 0, message: CounterMsg::Increment {})
-    evm.call(addr: addr, gas: 100000, value: 0, message: CounterMsg::Increment {})
-    let count: u256 = evm.call(addr: addr, gas: 100000, value: 0, message: CounterMsg::Count {})
+    let addr = evm.create2<CounterContract>(value: Wei::zero(), args: (), salt: 0)
+    evm.call(addr: addr, gas: 100000, value: Wei::zero(), message: CounterMsg::Increment {})
+    evm.call(addr: addr, gas: 100000, value: Wei::zero(), message: CounterMsg::Increment {})
+    let count: u256 = evm.call(addr: addr, gas: 100000, value: Wei::zero(), message: CounterMsg::Count {})
     assert!(count == 2)
 }

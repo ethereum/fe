@@ -45,7 +45,7 @@ msg M {
 
 fn call_out(_ to: Address) uses (call: mut Call) {
     var output = MemBuffer::empty()
-    let _ = call.raw_call(addr: to, gas: 0, value: 0, args: MemSpan::empty(), ret: mut output)
+    let _ = call.raw_call(addr: to, gas: 0, value: Wei::zero(), args: MemSpan::empty(), ret: mut output)
 }
 
 // Accepted: each field's projection, the vault's value grant and the named

@@ -53,8 +53,8 @@ fn test_new_rejects_high_bits() {
 
 #[test]
 fn test_new_panics_with_overflow() uses (evm: mut Evm, call: mut Call) {
-    let book = evm.create2<Book>(value: 0, args: (), salt: 0)
-    let made: Address = evm.call(addr: book, gas: 1000000, value: 0, message: AddressMsg::Make { word: 5 })
+    let book = evm.create2<Book>(value: Wei::zero(), args: (), salt: 0)
+    let made: Address = evm.call(addr: book, gas: 1000000, value: Wei::zero(), message: AddressMsg::Make { word: 5 })
     assert!(made == Address::new(5))
     let failed = book.try_call(AddressMsg::Make { word: (1 << 160) | 5 })
     assert!(!failed.success())
@@ -63,10 +63,10 @@ fn test_new_panics_with_overflow() uses (evm: mut Evm, call: mut Call) {
 
 #[test]
 fn test_addresses_key_one_entry() uses (evm: mut Evm) {
-    let book = evm.create2<Book>(value: 0, args: (), salt: 1)
+    let book = evm.create2<Book>(value: Wei::zero(), args: (), salt: 1)
     let who = Address::from_word_truncate((1 << 200) | 9)
-    evm.call(addr: book, gas: 1000000, value: 0, message: AddressMsg::Credit { who, amount: 3 })
-    evm.call(addr: book, gas: 1000000, value: 0, message: AddressMsg::Credit { who: Address::new(9), amount: 4 })
-    let balance: u256 = evm.call(addr: book, gas: 1000000, value: 0, message: AddressMsg::Balance { who: Address::new(9) })
+    evm.call(addr: book, gas: 1000000, value: Wei::zero(), message: AddressMsg::Credit { who, amount: 3 })
+    evm.call(addr: book, gas: 1000000, value: Wei::zero(), message: AddressMsg::Credit { who: Address::new(9), amount: 4 })
+    let balance: u256 = evm.call(addr: book, gas: 1000000, value: Wei::zero(), message: AddressMsg::Balance { who: Address::new(9) })
     assert!(balance == 7)
 }

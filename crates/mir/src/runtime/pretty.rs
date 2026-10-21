@@ -246,6 +246,19 @@ fn write_function_summary<'db>(
         let _ = writeln!(out, "      const_refs: [{refs}]");
     }
     if function.linkage(db) == RuntimeLinkage::External {
+        let signature = function.instance(db).interface_signature(db);
+        let args = signature
+            .params
+            .iter()
+            .map(|param| format_class(db, &param.class))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let ret = signature
+            .ret
+            .as_ref()
+            .map(|class| format_class(db, class))
+            .unwrap_or_else(|| "()".to_string());
+        let _ = writeln!(out, "      declare ({args}) -> {ret}");
         return;
     }
     let body = function.instance(db).body(db);

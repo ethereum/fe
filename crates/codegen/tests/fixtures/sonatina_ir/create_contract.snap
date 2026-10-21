@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 388
+assertion_line: 462
 expression: output
 input_file: crates/codegen/tests/fixtures/create_contract.fe
 ---
@@ -11,8 +11,6 @@ type @layout_1 = {i256, i256};
 type @layout_2 = {i256, i256, i256};
 type @layout_3 = {};
 type @layout_4 = {@layout_3};
-
-global private const @layout_0 $const_region_0 = {0};
 
 func private %__Child_init(v0.i256, v1.i256, v2.i256) {
     block0:
@@ -30,10 +28,11 @@ func private %__Factory_recv_0_0(v0.i256, v1.i256) -> @layout_0 {
         jump block1;
 
     block1:
-        v5.@layout_1 = insert_value undef.@layout_1 0.i256 v0;
-        v8.@layout_1 = insert_value v5 1.i256 v1;
-        v9.@layout_0 = call %create 0.i256 v8;
-        return v9;
+        v4.@layout_0 = insert_value undef.@layout_0 0.i256 0.i256;
+        v7.@layout_1 = insert_value undef.@layout_1 0.i256 v0;
+        v10.@layout_1 = insert_value v7 1.i256 v1;
+        v11.@layout_0 = call %create v4 v10;
+        return v11;
 }
 
 func private %__Factory_recv_0_1(v0.i256, v1.i256, v2.i256) -> @layout_0 {
@@ -41,10 +40,11 @@ func private %__Factory_recv_0_1(v0.i256, v1.i256, v2.i256) -> @layout_0 {
         jump block1;
 
     block1:
-        v6.@layout_1 = insert_value undef.@layout_1 0.i256 v0;
-        v9.@layout_1 = insert_value v6 1.i256 v1;
-        v11.@layout_0 = call %create2 0.i256 v9 v2;
-        return v11;
+        v5.@layout_0 = insert_value undef.@layout_0 0.i256 0.i256;
+        v8.@layout_1 = insert_value undef.@layout_1 0.i256 v0;
+        v11.@layout_1 = insert_value v8 1.i256 v1;
+        v13.@layout_0 = call %create2 v5 v11 v2;
+        return v13;
 }
 
 func private %abi_field_size(v0.@layout_0) -> i256 {
@@ -186,6 +186,15 @@ func inline(always) private %alloc_uninit__g1d2b() -> @layout_0 {
         v1.i256 = call %alloc_bytes 32.i256;
         v4.@layout_0 = insert_value undef.@layout_0 0.i256 v1;
         return v4;
+}
+
+func private %as_wei(v0.@layout_0) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i256 = extract_value v0 0.i256;
+        return v3;
 }
 
 func private %base(v0.objref<@layout_1>) -> i256 {
@@ -562,7 +571,7 @@ func private %copy_returndata() -> @layout_2 {
         return v1;
 }
 
-func private %create(v0.i256, v1.@layout_1) -> @layout_0 {
+func private %create(v0.@layout_0, v1.@layout_1) -> @layout_0 {
     block0:
         v2.objref<@layout_1> = obj.alloc @layout_1;
         jump block1;
@@ -619,7 +628,7 @@ func private %create(v0.i256, v1.@layout_1) -> @layout_0 {
         jump block11;
 }
 
-func private %create2(v0.i256, v1.@layout_1, v2.i256) -> @layout_0 {
+func private %create2(v0.@layout_0, v1.@layout_1, v2.i256) -> @layout_0 {
     block0:
         v3.objref<@layout_1> = obj.alloc @layout_1;
         jump block1;
@@ -676,28 +685,30 @@ func private %create2(v0.i256, v1.@layout_1, v2.i256) -> @layout_0 {
         jump block11;
 }
 
-func private %create2_raw(v0.i256, v1.objref<@layout_1>, v2.i256) -> @layout_0 {
+func private %create2_raw(v0.@layout_0, v1.objref<@layout_1>, v2.i256) -> @layout_0 {
     block0:
         jump block1;
 
     block1:
-        v4.i256 = call %ptr__g79ff v1;
-        v5.i256 = call %len__g79ff v1;
-        v8.i256 = evm_create2 v0 v4 v5 v2;
-        v11.@layout_0 = insert_value undef.@layout_0 0.i256 v8;
-        return v11;
+        v4.i256 = call %as_wei v0;
+        v6.i256 = call %ptr__g79ff v1;
+        v7.i256 = call %len__g79ff v1;
+        v9.i256 = evm_create2 v4 v6 v7 v2;
+        v12.@layout_0 = insert_value undef.@layout_0 0.i256 v9;
+        return v12;
 }
 
-func private %create_raw(v0.i256, v1.objref<@layout_1>) -> @layout_0 {
+func private %create_raw(v0.@layout_0, v1.objref<@layout_1>) -> @layout_0 {
     block0:
         jump block1;
 
     block1:
-        v3.i256 = call %ptr__g79ff v1;
-        v4.i256 = call %len__g79ff v1;
-        v6.i256 = evm_create v0 v3 v4;
-        v9.@layout_0 = insert_value undef.@layout_0 0.i256 v6;
-        return v9;
+        v3.i256 = call %as_wei v0;
+        v5.i256 = call %ptr__g79ff v1;
+        v6.i256 = call %len__g79ff v1;
+        v7.i256 = evm_create v3 v5 v6;
+        v10.@layout_0 = insert_value undef.@layout_0 0.i256 v7;
+        return v10;
 }
 
 func private %decode_error() {
@@ -1235,11 +1246,8 @@ func inline(always) private %new() -> @layout_0 {
         jump block1;
 
     block1:
-        v1.constref<@layout_0> = const.ref $const_region_0;
-        v2.objref<@layout_0> = obj.alloc @layout_0;
-        obj.init.const v2 v1;
-        v3.@layout_0 = obj.load v2;
-        return v3;
+        v2.@layout_0 = insert_value undef.@layout_0 0.i256 0.i256;
+        return v2;
 }
 
 func inline(always) private %payload_size__gbd8e(v0.@layout_1) -> i256 {
@@ -1725,7 +1733,6 @@ object @Factory {
     }
     section runtime {
         entry %contract_runtime_root_Factory;
-        data $const_region_0;
         embed @Child.init as &Child_init;
     }
 }

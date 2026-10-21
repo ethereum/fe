@@ -122,18 +122,18 @@ pub contract C uses (storage: mut RawStorage) {
 }
 
 fn bump(_ c: Address, _ key: u256) -> u32 uses (evm: mut Evm) {
-    evm.call(addr: c, gas: 300000, value: 0, message: M::Bump { key })
+    evm.call(addr: c, gas: 300000, value: Wei::zero(), message: M::Bump { key })
 }
 
 #[test]
 fn library_collection_packs_lanes() uses (evm: mut Evm) {
-    let c = evm.create2<C>(value: 0, args: (), salt: 0)
+    let c = evm.create2<C>(value: Wei::zero(), args: (), salt: 0)
     assert!(bump(c, 1) == 1)
     assert!(bump(c, 1) == 2)
     assert!(bump(c, 7) == 1)
     assert!(bump(c, 9) == 1)
     let words: (u256, u256, u256, u256) =
-        evm.call(addr: c, gas: 300000, value: 0, message: M::Words {})
+        evm.call(addr: c, gas: 300000, value: Wei::zero(), message: M::Words {})
     // Keys 1 and 7 share word 0; key 9 is lane 1 of word 1.
     assert!(words.0 == (2 << 32) | (1 << 224))
     assert!(words.1 == 1 << 32)
@@ -141,7 +141,7 @@ fn library_collection_packs_lanes() uses (evm: mut Evm) {
     // `total` is the map's own slot.
     assert!(words.3 == 4)
     // Counters 1, 7 and 9 hold 2, 1 and 1; each of the ten gains 10.
-    let swept: (u256, u32) = evm.call(addr: c, gas: 500000, value: 0, message: M::Sweep {})
+    let swept: (u256, u32) = evm.call(addr: c, gas: 500000, value: Wei::zero(), message: M::Sweep {})
     assert!(swept.0 == 104)
     assert!(swept.1 == 12)
 }

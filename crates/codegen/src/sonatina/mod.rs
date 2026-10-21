@@ -131,6 +131,14 @@ pub struct NativeArtifacts {
     pub object: Option<Vec<u8>>,
 }
 
+#[cfg(feature = "cranelift")]
+#[derive(Debug, Clone, Copy)]
+pub enum NativeTarget {
+    Host,
+    #[cfg(feature = "sp1")]
+    Sp1,
+}
+
 pub(crate) fn create_evm_isa() -> Evm {
     Evm::new(TargetTriple::new(
         Architecture::Evm,
@@ -729,6 +737,7 @@ pub fn compile_runtime_package_sonatina(
 fn compile_executable_sonatina_native(
     db: &DriverDataBase,
     top_mod: TopLevelMod<'_>,
+    target: NativeTarget,
 ) -> Result<(Module, FuncRef), LowerError> {
     let package = build_native_executable_package(db, top_mod)?;
     let entry = package
@@ -742,7 +751,11 @@ fn compile_executable_sonatina_native(
         .ok_or_else(|| LowerError::Internal("native package is missing its main section".into()))?
         .entry
         .instance(db);
-    let isa = create_native_isa()?;
+    let isa = match target {
+        NativeTarget::Host => create_native_isa()?,
+        #[cfg(feature = "sp1")]
+        NativeTarget::Sp1 => Native::new(TargetTriple::SP1),
+    };
     let (module, functions) = lower_runtime::compile_runtime_package_sonatina_for_isa(
         db,
         &package,
@@ -784,6 +797,7 @@ pub fn emit_module_native_object(
     emit_module_native_artifacts(
         db,
         top_mod,
+        NativeTarget::Host,
         opt_level,
         NativeOutputSelection {
             ir: false,
@@ -806,6 +820,7 @@ pub fn emit_module_native_ir(
     emit_module_native_artifacts(
         db,
         top_mod,
+        NativeTarget::Host,
         opt_level,
         NativeOutputSelection {
             ir: true,
@@ -819,11 +834,12 @@ pub fn emit_module_native_ir(
 pub fn emit_module_native_artifacts(
     db: &DriverDataBase,
     top_mod: TopLevelMod<'_>,
+    target: NativeTarget,
     opt_level: OptLevel,
     outputs: NativeOutputSelection,
 ) -> Result<NativeArtifacts, LowerError> {
-    let (module, main) = compile_executable_sonatina_native(db, top_mod)?;
-    let module = prepare_native_main(db, top_mod, module, main)?;
+    let (module, main) = compile_executable_sonatina_native(db, top_mod, target)?;
+    let module = prepare_native_main(db, top_mod, target, module, main)?;
 
     let mut compile = Compile::new(module, CraneliftObjectBackend::new())
         .with_opt_level(to_sonatina_opt_level(opt_level));
@@ -849,6 +865,7 @@ pub fn emit_module_native_artifacts(
 fn prepare_native_main(
     db: &DriverDataBase,
     top_mod: TopLevelMod<'_>,
+    target: NativeTarget,
     module: Module,
     main: FuncRef,
 ) -> Result<Module, LowerError> {
@@ -864,19 +881,30 @@ fn prepare_native_main(
             ty.as_view(db).unwrap_or(ty)
         })
         .collect::<Vec<_>>();
-    let with_args = args == [i32_ty, argv_ty];
+    let with_args = matches!(target, NativeTarget::Host) && args == [i32_ty, argv_ty];
     let valid = func.return_ty(db) == i32_ty && (args.is_empty() || with_args);
+    let expected_entry = match target {
+        NativeTarget::Host => {
+            "native executable `main` must have signature `pub fn main() -> i32` or `pub fn main(argc: i32, argv: **u8) -> i32`"
+        }
+        #[cfg(feature = "sp1")]
+        NativeTarget::Sp1 => "SP1 executable `main` must have signature `pub fn main() -> i32`",
+    };
     let argc_ref = Type::I32.to_obj_ref(&module.ctx);
     let argc_by_ref = module.ctx.func_sig(main, |signature| {
         signature.args().first() == Some(&argc_ref)
     });
     module.ctx.func_sig(main, |signature| {
-        let expected = if with_args { vec![if argc_by_ref { argc_ref } else { Type::I32 }, Type::I256] } else { vec![] };
+        let expected = if with_args {
+            vec![if argc_by_ref { argc_ref } else { Type::I32 }, Type::I256]
+        } else {
+            vec![]
+        };
         if valid && signature.args() == expected && signature.ret_tys() == [Type::I32] {
             Ok(())
         } else {
             Err(LowerError::Unsupported(format!(
-                "native executable `main` must have signature `pub fn main() -> i32` or `pub fn main(argc: i32, argv: **u8) -> i32`, found lowered `main({}) -> {}`",
+                "{expected_entry}, found lowered `main({}) -> {}`",
                 format_native_types(signature.args(), &module),
                 format_native_types(signature.ret_tys(), &module)
             )))
@@ -1914,7 +1942,7 @@ mod tests {
             .touch(&mut db, temp_fixture_url(name), Some(source.to_string()));
         let top_mod = db.top_mod(file);
         // Keep pointer inputs dynamic by testing before executable ABI validation.
-        let (module, main) = compile_executable_sonatina_native(&db, top_mod)
+        let (module, main) = compile_executable_sonatina_native(&db, top_mod, NativeTarget::Host)
             .expect("native pointer fixture should lower");
         module.ctx.update_func_linkage(main, Linkage::Public);
         let mut compile = Compile::new(module, CraneliftObjectBackend::new())

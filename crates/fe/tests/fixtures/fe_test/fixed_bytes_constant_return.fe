@@ -43,7 +43,7 @@ pub contract Constants {
 
 #[test]
 fn test_constant_fixed_bytes_returns() uses (evm: mut Evm, call: mut Call) {
-    let constants = evm.create2<Constants>(value: 0, args: (), salt: 0)
+    let constants = evm.create2<Constants>(value: Wei::zero(), args: (), salt: 0)
     assert!(constants.call(ConstantsMsg::Selector {}).val == SELECTOR)
     assert!(constants.call(ConstantsMsg::Key {}).val == 0xabcd)
     assert!(constants.call(ConstantsMsg::Written {}).val == 1)

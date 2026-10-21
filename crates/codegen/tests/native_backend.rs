@@ -5,6 +5,8 @@
 
 use common::InputDb;
 use driver::DriverDataBase;
+use fe_codegen::{NativeOutputSelection, NativeTarget, OptLevel, emit_module_native_artifacts};
+use mir::{build_native_executable_package, runtime::format_runtime_package};
 use url::Url;
 
 fn with_top_mod_for_source<T>(
@@ -302,4 +304,56 @@ fn native_entry_checks_fe_types_before_accepting_the_lowered_abi() {
             "{signature}: {error}"
         );
     }
+}
+
+#[test]
+fn native_external_functions_remain_declarations_with_exact_symbols() {
+    let source = r#"
+use std::io::{Read, Write, host, read_char, write_char}
+
+mod helpers {
+    pub fn getchar() -> i32 { 7 }
+}
+
+pub fn main() -> i32 {
+    with (Read = host(), Write = host()) {
+        write_char(read_char() + helpers::getchar())
+    }
+    0
+}
+"#;
+    with_top_mod_for_source("native_extern.fe", source, |db, top_mod| {
+        let package = build_native_executable_package(db, top_mod)
+            .expect("external declarations should not require runtime bodies");
+        let text = format_runtime_package(db, &package);
+        assert!(
+            text.contains("external") && text.contains("declare () -> int32"),
+            "missing external linkage:\n{text}"
+        );
+        let artifacts = emit_module_native_artifacts(
+            db,
+            top_mod,
+            NativeTarget::Host,
+            OptLevel::O0,
+            NativeOutputSelection {
+                ir: true,
+                object: true,
+            },
+        )
+        .expect("external calls should compile to object relocations");
+        let ir = artifacts.ir.unwrap();
+        assert!(
+            ir.contains("declare external %getchar() -> i32"),
+            "missing input declaration:\n{ir}"
+        );
+        assert!(
+            ir.contains("declare external %putchar(i32) -> i32"),
+            "missing output declaration:\n{ir}"
+        );
+        assert!(
+            ir.contains("helpers__getchar("),
+            "helper must not rename the external symbol:\n{ir}"
+        );
+        assert!(!artifacts.object.unwrap().is_empty());
+    });
 }

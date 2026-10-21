@@ -455,10 +455,13 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
         key: &Self::Key,
     ) -> Result<CallbackOutcome<Vec<Self::Clause>, Self::StopReason>, Self::Error> {
         let prepared = self.prepare_query(*key);
+        // An impl lives in its normalized self type's ingot or its trait's
+        // (`trait_impl_admissibility`): `<Identity as Driver<[P; 2]>>::Item:
+        // Copy` is `P: Copy`, whose impl is in `P`'s ingot, not `Identity`'s.
         let (primary, secondary) = TraitSolveCx::search_ingots_for_trait_inst_with_origin(
             self.db,
             self.origin_ingot,
-            prepared.query.goal,
+            prepared.normalized_goal,
         );
         let mut clauses = Vec::with_capacity(prepared.query.assumptions.list(self.db).len() + 1);
         if let Some(candidate) = prepared.query.selected_candidate {
@@ -470,7 +473,7 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 self.db,
                 primary,
                 secondary,
-                Canonical::new(self.db, prepared.query.goal),
+                Canonical::new(self.db, prepared.normalized_goal),
             );
             clauses.extend(implementors.iter().copied().map(Clause::Implementor));
             if callable_implementor(self.db, prepared.normalized_goal).is_some() {

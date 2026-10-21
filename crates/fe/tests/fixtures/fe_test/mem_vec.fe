@@ -181,11 +181,11 @@ fn test_to_mem_array_copies_locally()
 fn test_to_mem_array_copies_across_call()
 uses (evm: mut Evm)
 {
-    let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
+    let c = evm.create2<VecContract>(value: Wei::zero(), args: (), salt: 0)
     assert!(c.word() != 0)
 
     let values = DynArray::from_slice(MemArray::from_fn(2, |i| i as u256 + 7).as_slice())
-    let original: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: VecMsg::CopyProbe { values })
+    let original: u256 = evm.call(addr: c, gas: 1000000, value: Wei::zero(), message: VecMsg::CopyProbe { values })
     assert!(original == 7)
 }
 
@@ -193,12 +193,12 @@ uses (evm: mut Evm)
 fn test_round_trip_returndata_matches_solidity_encoding()
 uses (evm: mut Evm, call: mut Call, ctx: Ctx)
 {
-    let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
+    let c = evm.create2<VecContract>(value: Wei::zero(), args: (), salt: 0)
     assert!(c.word() != 0)
 
     let args = encode_msg_calldata(VecMsg::BuildRange { n: 3 })
     var output = MemBuffer::empty()
-    let outcome = call.raw_call(addr: c, gas: ctx.gas(), value: 0, args: args.span(), ret: mut output)
+    let outcome = call.raw_call(addr: c, gas: ctx.gas(), value: Wei::zero(), args: args.span(), ret: mut output)
     assert!(outcome.success())
     let ret = copy_returndata()
     assert!(ret.len() == 160)
@@ -217,10 +217,10 @@ uses (evm: mut Evm, call: mut Call, ctx: Ctx)
 fn test_round_trip_typed_decode()
 uses (evm: mut Evm)
 {
-    let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
+    let c = evm.create2<VecContract>(value: Wei::zero(), args: (), salt: 0)
     assert!(c.word() != 0)
 
-    let arr: DynArray<u256> = evm.call(addr: c, gas: 1000000, value: 0, message: VecMsg::BuildRange { n: 4 })
+    let arr: DynArray<u256> = evm.call(addr: c, gas: 1000000, value: Wei::zero(), message: VecMsg::BuildRange { n: 4 })
     assert!(arr.len() == 4)
     assert!(arr.get(0) == 100)
     assert!(arr.get(3) == 400)
@@ -230,10 +230,10 @@ uses (evm: mut Evm)
 fn test_encode_abi_payload_matches_solidity_encoding()
 uses (evm: mut Evm)
 {
-    let c = evm.create2<VecContract>(value: 0, args: (), salt: 0)
+    let c = evm.create2<VecContract>(value: Wei::zero(), args: (), salt: 0)
     assert!(c.word() != 0)
 
-    let hash: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: VecMsg::PayloadHash { a: 0xaaaa, b: 0xbbbb })
+    let hash: u256 = evm.call(addr: c, gas: 1000000, value: Wei::zero(), message: VecMsg::PayloadHash { a: 0xaaaa, b: 0xbbbb })
 
     let expected = MemBuffer::alloc(128)
     unsafe { store_word(ptr: expected.ptr(), value: 0x20) }

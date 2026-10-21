@@ -133,8 +133,8 @@ pub contract Counter {
 
 #[test]
 fn casts_contract_fields() uses (evm: mut Evm) {
-    let c = evm.create2<Counter>(value: 0, args: (), salt: 1)
-    evm.call(addr: c, gas: 200000, value: 0, message: CountMsg::Set { n: 42 })
-    let value: u256 = evm.call(addr: c, gas: 200000, value: 0, message: CountMsg::Get {})
+    let c = evm.create2<Counter>(value: Wei::zero(), args: (), salt: 1)
+    evm.call(addr: c, gas: 200000, value: Wei::zero(), message: CountMsg::Set { n: 42 })
+    let value: u256 = evm.call(addr: c, gas: 200000, value: Wei::zero(), message: CountMsg::Get {})
     assert(value == 42)
 }

@@ -100,9 +100,9 @@ pub contract Cells {
 
 #[test]
 fn clear_zeroes_transient_places() uses (evm: mut Evm) {
-    let cells = evm.create2<Cells>(value: 0, args: (), salt: 0)
+    let cells = evm.create2<Cells>(value: Wei::zero(), args: (), salt: 0)
     let values: (u256, u256, u256) =
-        evm.call(addr: cells, gas: 300000, value: 0, message: ClearMsg::Run {})
+        evm.call(addr: cells, gas: 300000, value: Wei::zero(), message: ClearMsg::Run {})
     assert(values.0 == 0)
     assert(values.1 == 8)
     assert(values.2 == 0)

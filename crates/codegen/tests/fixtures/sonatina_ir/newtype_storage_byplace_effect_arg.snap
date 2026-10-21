@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 388
+assertion_line: 462
 expression: output
 input_file: crates/codegen/tests/fixtures/newtype_storage_byplace_effect_arg.fe
 ---
@@ -11,8 +11,6 @@ type @layout_1 = {i256};
 type @layout_2 = {};
 type @layout_3 = {@layout_2};
 type @layout_4 = {i256, i256};
-
-global private const @layout_1 $const_region_0 = {0};
 
 func private %__NewtypeByPlaceEffectArg_init() {
     block0:
@@ -479,11 +477,8 @@ func inline(always) private %new() -> @layout_1 {
         jump block1;
 
     block1:
-        v1.constref<@layout_1> = const.ref $const_region_0;
-        v2.objref<@layout_1> = obj.alloc @layout_1;
-        obj.init.const v2 v1;
-        v3.@layout_1 = obj.load v2;
-        return v3;
+        v2.@layout_1 = insert_value undef.@layout_1 0.i256 0.i256;
+        return v2;
 }
 
 func private %payload_size(v0.i256) -> i256 {
@@ -806,6 +801,5 @@ object @NewtypeByPlaceEffectArg {
     }
     section runtime {
         entry %contract_runtime_root_NewtypeByPlaceEffectArg;
-        data $const_region_0;
     }
 }

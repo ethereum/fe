@@ -110,13 +110,13 @@ fn enum_msg_field_selector() {
 
 #[test]
 fn enum_msg_field_round_trips() uses (evm: mut Evm) {
-    let c = evm.create2<Paymaster>(value: 0, args: (), salt: 0)
+    let c = evm.create2<Paymaster>(value: Wei::zero(), args: (), salt: 0)
     let context = Bytes::from_word_prefix(word: 0, len: 3)
     let out: u256 = evm
         .call(
             addr: c,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: PaymasterMsg::PostOp {
                 mode: PostOpMode::OpReverted,
                 context,
@@ -129,7 +129,7 @@ fn enum_msg_field_round_trips() uses (evm: mut Evm) {
         .call(
             addr: c,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: PaymasterMsg::LastMode {},
         )
     assert!(
@@ -144,7 +144,7 @@ fn enum_msg_field_round_trips() uses (evm: mut Evm) {
         .call(
             addr: c,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: RawPaymasterMsg::PostOp {
                 mode: 2,
                 context: Bytes::from_word_prefix(word: 0, len: 0),
@@ -157,12 +157,12 @@ fn enum_msg_field_round_trips() uses (evm: mut Evm) {
 
 #[test]
 fn enum_msg_field_rejects_out_of_range() uses (evm: mut Evm) {
-    let c = evm.create2<Paymaster>(value: 0, args: (), salt: 0)
+    let c = evm.create2<Paymaster>(value: Wei::zero(), args: (), salt: 0)
     let failure = evm
         .try_call(
             addr: c,
             gas: 1000000,
-            value: 0,
+            value: Wei::zero(),
             message: RawPaymasterMsg::PostOp {
                 mode: 3,
                 context: Bytes::from_word_prefix(word: 0, len: 0),
