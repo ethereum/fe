@@ -1144,7 +1144,7 @@ fn force_const_term_operand_impl<'db>(
                 SemOrigin::Body(source.owner(db)),
             ) {
                 EvalOutcome::Ready(value) => Ok(value.value()),
-                EvalOutcome::Blocked(info) => Err(EvalStop::Blocked(info)),
+                EvalOutcome::Blocked(info) => Err(EvalStop::blocked(info)),
                 EvalOutcome::Failed(EvalFailure::Ctfe(error)) => Err(CtfeError::CalleeError {
                     origin,
                     callee: SemanticInstance::new(db, *source),
@@ -1174,7 +1174,7 @@ fn force_const_term_operand_impl<'db>(
                 );
                 match cx.force_computation(db, request) {
                     EvalOutcome::Ready(value) => Ok(value.value()),
-                    EvalOutcome::Blocked(info) => Err(EvalStop::Blocked(info)),
+                    EvalOutcome::Blocked(info) => Err(EvalStop::blocked(info)),
                     EvalOutcome::Failed(failure) => Err(EvalStop::Failed(failure)),
                 }
             }
@@ -1189,14 +1189,14 @@ fn force_const_term_operand_impl<'db>(
                 );
                 match cx.force_computation(db, request) {
                     EvalOutcome::Ready(value) => Ok(value.value()),
-                    EvalOutcome::Blocked(info) => Err(EvalStop::Blocked(info)),
+                    EvalOutcome::Blocked(info) => Err(EvalStop::blocked(info)),
                     EvalOutcome::Failed(failure) => Err(EvalStop::Failed(failure)),
                 }
             }
             _ => force_const_term(db, *term, *ty, cx, origin, provenance),
         },
         ConstTyData::TyParam(..) | ConstTyData::TyVar(..) => {
-            Err(EvalStop::Blocked(BlockedInfo::new(
+            Err(EvalStop::blocked(BlockedInfo::new(
                 ConstDemandKind::Value,
                 ConstDependency::Value(operand),
                 origin,
@@ -1481,7 +1481,7 @@ fn force_const_term<'db>(
         for input in inputs {
             match force_const_description_in_context(db, &input, cx, origin) {
                 EvalOutcome::Ready(value) => values.push(ConstDesc::value(db, value, scope)),
-                EvalOutcome::Blocked(info) => return Err(EvalStop::Blocked(info)),
+                EvalOutcome::Blocked(info) => return Err(EvalStop::blocked(info)),
                 EvalOutcome::Failed(failure) => return Err(EvalStop::Failed(failure)),
             }
         }
@@ -1504,7 +1504,7 @@ fn force_const_term<'db>(
                     info.trace
                         .extend(provenance.frames.iter().rev().map(|frame| frame.callee));
                 }
-                Err(EvalStop::Blocked(info))
+                Err(EvalStop::blocked(info))
             }
             EvalOutcome::Failed(EvalFailure::Ctfe(error)) => {
                 let error = if wraps_callee {
