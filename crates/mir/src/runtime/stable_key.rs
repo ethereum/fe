@@ -869,7 +869,7 @@ const fn call_after() -> u256 {
             r#"
 trait Pick { fn pick(self) -> u256 }
 impl Pick for u256 { fn pick(self) -> u256 { 1 } }
-fn helper<T: Pick>(x: T) -> u256 { x.pick() }
+fn helper<T: Pick>(_ x: T) -> u256 { x.pick() }
 fn first() -> u256 {
     impl Pick for u256 as Local { fn pick(self) -> u256 { 20 } }
     with (Local) { helper(0 as u256) }
