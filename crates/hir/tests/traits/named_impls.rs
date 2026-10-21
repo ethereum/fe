@@ -844,24 +844,33 @@ fn historical_review_mutable_evidence_parameter_is_refused_at_body_check() {
     };
     use fe_hir::test_db::find_func;
 
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        "review_mutable_evidence_parameter.fe".into(),
-        r#"
+    const SOURCE: &str = r#"
 use core::obligations::Evidence
 trait Pick {}
 impl Pick for u256 {}
 fn immutable(_ witness: Evidence<Pick<u256>>) {}
-fn mutable(mut witness: Evidence<Pick<u256>>) {}
-"#,
+fn mutable(_ witness: mut Evidence<Pick<u256>>) {}
+"#;
+    let (_, parse_errors) = parser::parse_source_file(SOURCE, parser::RecoveryMode::NoRecover);
+    assert!(
+        parse_errors.is_empty(),
+        "fixture must parse without recovery: {parse_errors:?}"
     );
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone("review_mutable_evidence_parameter.fe".into(), SOURCE);
     let (module, _) = db.top_mod(file);
+    let mutable = find_func(&db, module, "mutable");
+    assert_eq!(
+        mutable.params(&db).next().unwrap().mode_at(&db, None),
+        fe_hir::hir_def::params::FuncParamMode::Mut,
+        "fixture must lower to a mutable-access parameter",
+    );
     let (control_diags, _) = check_func_body(&db, find_func(&db, module, "immutable"));
     assert!(
         control_diags.is_empty(),
         "immutable control: {control_diags:?}"
     );
-    let (diags, _) = check_func_body(&db, find_func(&db, module, "mutable"));
+    let (diags, _) = check_func_body(&db, mutable);
     assert!(
         !diags.is_empty(),
         "mutable evidence must be refused before execution"
