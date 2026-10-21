@@ -1688,7 +1688,10 @@ const D: u256 = WrapB::VALUE
                         "one direct Local::pick call"
                     );
                 } else {
-                    assert!(func.top_mod(&db).ingot(&db).is_core(&db));
+                    assert_eq!(
+                        func.top_mod(&db).ingot(&db).kind(&db),
+                        common::ingot::IngotKind::Core
+                    );
                     assert_eq!(func.name(&db).to_opt().unwrap().data(&db), "add");
                     additions += 1;
                 }
