@@ -11,7 +11,7 @@ use crate::span::DynLazySpan;
 
 use super::{
     AccessBinding, Callable, LocalBinding, TyChecker,
-    env::{ExprProp, TraitObligation, TraitObligationOrigin},
+    env::{ExprProp, ParamSite, TraitObligation, TraitObligationOrigin, hir_param},
 };
 use crate::analysis::ty::{
     canonical::Canonicalized,
@@ -159,6 +159,8 @@ impl<'db> TyChecker<'db> {
             } else {
                 self.check_expr_unknown(*expr)
             };
+            // The `let` a destructured parameter's body begins with.
+            let param = self.destructured_param(prop.binding);
             // An access marker on the initializer binds a single name only.
             if !matches!(
                 pat.data(self.db, self.body()),
@@ -167,6 +169,9 @@ impl<'db> TyChecker<'db> {
                 self.take_initializer_marker(*expr, &[*pat], MarkerPosition::Initializer);
             }
             self.check_pat(*pat, prop.ty);
+            if let Some((site, idx)) = param {
+                self.check_param_bindings(*pat, site, idx);
+            }
             if let Some(LocalBinding::Local { pat, .. }) = self.env.pat_binding(*pat) {
                 self.env
                     .set_local_borrow_provider(pat, prop.borrow_provider);
@@ -193,8 +198,11 @@ impl<'db> TyChecker<'db> {
             } else if let Some(root) = self.env.pattern_store().root(*pat)
                 && !self.env.pattern_store().is_irrefutable(self.db, root)
             {
-                self.push_diag(BodyDiag::RefutableLetPattern {
-                    primary: pat.span(self.body()).into(),
+                let primary = pat.span(self.body()).into();
+                self.push_diag(if param.is_some() {
+                    BodyDiag::RefutableParamPattern { primary }
+                } else {
+                    BodyDiag::RefutableLetPattern { primary }
                 });
             }
         } else {
@@ -211,6 +219,145 @@ impl<'db> TyChecker<'db> {
         }
         self.env.flush_pending_bindings();
         TyId::unit(self.db)
+    }
+
+    /// The parameter `binding` is, if its body destructures it: the `let` the
+    /// body begins with reads it.
+    pub(super) fn destructured_param(
+        &self,
+        binding: Option<LocalBinding<'db>>,
+    ) -> Option<(ParamSite<'db>, usize)> {
+        let LocalBinding::Param { site, idx, .. } = binding? else {
+            return None;
+        };
+        hir_param(self.db, site, idx)?
+            .is_destructured()
+            .then_some((site, idx))
+    }
+
+    /// Reports each name `pat`, the pattern of parameter `idx` of `site`,
+    /// binds that another parameter or an effect of `site` binds too, the
+    /// one written later as the second binding. Patterns are bound after the
+    /// named parameters and the effects, so the parameters' positions give
+    /// the order, and an effect, written after them, is the second. A
+    /// closure's parameter may shadow its enclosing body's effects.
+    fn check_param_bindings(&mut self, pat: PatId, site: ParamSite<'db>, idx: usize) {
+        let mut bound = Vec::new();
+        self.bound_names(pat, &mut bound);
+        for (binding_pat, name) in bound {
+            let here: DynLazySpan<'db> = binding_pat.span(self.body()).into();
+            let spans = match self.env.visible_binding(name) {
+                Some(
+                    binding @ LocalBinding::Param {
+                        site: other,
+                        idx: other_idx,
+                        ..
+                    },
+                ) if other == site => {
+                    let other = binding.def_span(&self.env);
+                    Some(if other_idx < idx {
+                        (here, other)
+                    } else {
+                        (other, here)
+                    })
+                }
+                Some(LocalBinding::Local { pat: other, .. })
+                    if self.param_pattern_sites.get(&other) == Some(&site) =>
+                {
+                    Some((here, other.span(self.body()).into()))
+                }
+                _ => None,
+            };
+            if let Some((primary, first)) = spans {
+                self.push_diag(BodyDiag::ParamBindsTwice {
+                    primary,
+                    first,
+                    name,
+                    effect: false,
+                });
+            } else if matches!(site, ParamSite::Func(_) | ParamSite::ContractInit(_)) {
+                self.check_effect_name(name, binding_pat.span(self.body()).into());
+            }
+            self.param_pattern_sites.insert(binding_pat, site);
+        }
+    }
+
+    /// Reports each named parameter whose name an effect of the same
+    /// signature binds too, which would hide it: the effects are bound after
+    /// the parameters. A pattern's names are checked where the body binds
+    /// them (`check_param_bindings`).
+    pub(super) fn check_param_effect_names(&mut self) {
+        let params: Vec<_> = self
+            .env
+            .param_bindings()
+            .iter()
+            .filter_map(|&param| {
+                let LocalBinding::Param { site, idx, .. } = param else {
+                    return None;
+                };
+                Some((
+                    hir_param(self.db, site, idx)?.name()?,
+                    param.def_span(&self.env),
+                ))
+            })
+            .collect();
+        for (name, span) in params {
+            self.check_effect_name(name, span);
+        }
+    }
+
+    /// Reports each name the recv arm pattern `pat` binds that an effect of
+    /// the arm binds too, which the pattern, bound after the effects, would
+    /// hide.
+    pub(super) fn check_arm_effect_names(&mut self, pat: PatId) {
+        let mut bound = Vec::new();
+        self.bound_names(pat, &mut bound);
+        for (binding_pat, name) in bound {
+            self.check_effect_name(name, binding_pat.span(self.body()).into());
+        }
+    }
+
+    /// Reports `name`, which `first` binds, if an effect binds it too.
+    fn check_effect_name(&mut self, name: IdentId<'db>, first: DynLazySpan<'db>) {
+        if let Some(effect @ LocalBinding::EffectParam { .. }) = self.env.visible_binding(name) {
+            self.push_diag(BodyDiag::ParamBindsTwice {
+                primary: effect.def_span(&self.env),
+                first,
+                name,
+                effect: true,
+            });
+        }
+    }
+
+    /// The names `pat` binds, with the patterns binding them.
+    fn bound_names(&self, pat: PatId, out: &mut Vec<(PatId, IdentId<'db>)>) {
+        let Partial::Present(data) = pat.data(self.db, self.body()) else {
+            return;
+        };
+        match data {
+            Pat::Path(Partial::Present(path), _) => {
+                if matches!(self.env.pat_binding(pat), Some(LocalBinding::Local { .. }))
+                    && let Some(name) = path.as_ident(self.db)
+                {
+                    out.push((pat, name));
+                }
+            }
+            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
+                for &pat in pats {
+                    self.bound_names(pat, out);
+                }
+            }
+            Pat::Record(_, fields) => {
+                for field in fields {
+                    self.bound_names(field.pat, out);
+                }
+            }
+            Pat::Or(lhs, rhs) => {
+                self.bound_names(*lhs, out);
+                self.bound_names(*rhs, out);
+            }
+            Pat::Path(Partial::Absent, _) | Pat::WildCard | Pat::Rest | Pat::Lit(_) => {}
+        }
     }
 
     /// What a `let` of the place `expr` binds through: a lone name takes the

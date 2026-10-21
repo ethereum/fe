@@ -211,8 +211,9 @@ impl<'db> TyChecker<'db> {
 
     /// Calls the `mut?` callee of the call `expr`, typed as `prop`, at `mut`,
     /// as a use of its result that needs `mut` asks. Each argument a `mut?`
-    /// parameter takes is then passed `mut`: a receiver is accessed
-    /// implicitly, and any other argument must be a `mut` access. The base
+    /// parameter or a product's `mut?` part takes is then passed `mut`: a
+    /// receiver is accessed implicitly, and any other argument must be a
+    /// `mut` access. The base
     /// of an index that is an immutable place leaves the index at `ref`, for
     /// the use to report as it reports any immutable place; any other
     /// argument that cannot be `mut` is reported, and the call is still
@@ -243,36 +244,32 @@ impl<'db> TyChecker<'db> {
             _ => return false,
         };
         for (param, arg) in func.params(self.db).zip(args) {
+            if Some(arg) != receiver {
+                if let Some(at_ref) = param.product(self.db, Some(BorrowKind::Ref))
+                    && let Some(at_mut) = param.product(self.db, Some(BorrowKind::Mut))
+                {
+                    self.select_mut_parts(arg, at_ref, at_mut);
+                } else if param.is_maybe_mut(self.db) {
+                    self.select_mut_arg(arg);
+                }
+                continue;
+            }
             if !param.is_maybe_mut(self.db) {
                 continue;
             }
             let Some(arg_prop) = self.env.typed_expr(arg) else {
                 continue;
             };
-            if arg_prop.access() == Some(BorrowKind::Mut) || arg_prop.ty.has_invalid(self.db) {
-                continue;
-            }
-            let span = arg.span(self.body()).into();
-            if Some(arg) == receiver {
-                if !arg_prop.is_mut && !self.select_mut_place(arg) && self.env.is_place_expr(arg) {
-                    if matches!(self.env.expr_data(expr), Partial::Present(Expr::Bin(..))) {
-                        return false;
-                    }
-                    self.report_cannot_borrow_mut(arg, span);
+            if arg_prop.access() != Some(BorrowKind::Mut)
+                && !arg_prop.ty.has_invalid(self.db)
+                && !arg_prop.is_mut
+                && !self.select_mut_place(arg)
+                && self.env.is_place_expr(arg)
+            {
+                if matches!(self.env.expr_data(expr), Partial::Present(Expr::Bin(..))) {
+                    return false;
                 }
-            } else if arg_prop.access().is_some() && self.select_mut_place(arg) {
-                // A `mut?` result passed on is asked for `mut` in turn.
-            } else if self.env.is_place_expr(arg) {
-                self.push_diag(BodyDiag::ExplicitBorrowRequired {
-                    primary: span,
-                    kind: BorrowKind::Mut,
-                    suggestion: place_borrow_suggestion(self.db, self.body(), arg, BorrowKind::Mut),
-                });
-            } else {
-                self.push_diag(BodyDiag::BorrowArgMustBePlace {
-                    primary: span,
-                    kind: BorrowKind::Mut,
-                });
+                self.report_cannot_borrow_mut(arg, arg.span(self.body()).into());
             }
         }
         callable.set_mode(Some(BorrowKind::Mut));
@@ -307,6 +304,91 @@ impl<'db> TyChecker<'db> {
             },
         );
         true
+    }
+
+    /// Passes `arg`, which a `mut?` parameter takes, `mut`: it must be a `mut`
+    /// access, or a `mut?` result, which is asked for `mut` in turn.
+    fn select_mut_arg(&mut self, arg: ExprId) {
+        let Some(arg_prop) = self.env.typed_expr(arg) else {
+            return;
+        };
+        if arg_prop.access() == Some(BorrowKind::Mut)
+            || arg_prop.ty.has_invalid(self.db)
+            || arg_prop.access().is_some() && self.select_mut_place(arg)
+        {
+            return;
+        }
+        let span = arg.span(self.body()).into();
+        if self.env.is_place_expr(arg) {
+            self.push_diag(BodyDiag::ExplicitBorrowRequired {
+                primary: span,
+                kind: BorrowKind::Mut,
+                suggestion: place_borrow_suggestion(self.db, self.body(), arg, BorrowKind::Mut),
+            });
+        } else {
+            self.push_diag(BodyDiag::BorrowArgMustBePlace {
+                primary: span,
+                kind: BorrowKind::Mut,
+            });
+        }
+    }
+
+    /// Passes the parts of `arg`, which a product parameter of `at_ref` at
+    /// `ref` and `at_mut` at `mut` takes, `mut` where the two differ: the
+    /// elements of a tuple at its `mut?` parts, or a projection's result,
+    /// which must grant `at_mut`.
+    fn select_mut_parts(&mut self, arg: ExprId, at_ref: &Shape<'db>, at_mut: &Shape<'db>) {
+        if at_ref == at_mut {
+            return;
+        }
+        match (at_ref, at_mut, self.env.expr_data(arg)) {
+            (Shape::Access(..), Shape::Access(..), _) => self.select_mut_arg(arg),
+            (Shape::Tuple(at_ref), Shape::Tuple(at_mut), Partial::Present(Expr::Tuple(elems)))
+                if self.env.is_product_arg(arg) =>
+            {
+                for ((elem, at_ref), at_mut) in elems.clone().into_iter().zip(at_ref).zip(at_mut) {
+                    self.select_mut_parts(elem, at_ref, at_mut);
+                }
+            }
+            _ if self.grants_product(arg, at_mut) => {}
+            _ => self.report_product_arg(arg, at_mut, true),
+        }
+    }
+
+    /// Reports `arg` passed to a product parameter of `product`: a result
+    /// granting its parts too weakly, at `mut` when `raised`, or no tuple of
+    /// them. A result is passed all the same, so it is used.
+    pub(super) fn report_product_arg(&mut self, arg: ExprId, product: &Shape<'db>, raised: bool) {
+        let primary = arg.span(self.body()).into();
+        let given = self.env.typed_expr(arg).and_then(|prop| prop.shape);
+        if given.is_some() {
+            self.consume_access(arg);
+        }
+        self.push_diag(match given {
+            Some(given) if given.same_structure(product) => BodyDiag::ProductArgTooWeak {
+                primary,
+                given,
+                expected: product.clone(),
+                raised,
+            },
+            _ => BodyDiag::ProductArgExpected {
+                primary,
+                expected: product.clone(),
+            },
+        });
+    }
+
+    /// Whether `arg`, a projection's result, grants the parts of `product`.
+    /// A `mut?` call is asked for `mut` when a part needs it.
+    pub(super) fn grants_product(&mut self, arg: ExprId, product: &Shape<'db>) -> bool {
+        let grants = |this: &Self| {
+            this.env
+                .typed_expr(arg)
+                .and_then(|prop| prop.shape)
+                .is_some_and(|granted| granted.grants(product))
+        };
+        grants(self)
+            || product.has_access_of(BorrowKind::Mut) && self.select_mut_place(arg) && grants(self)
     }
 
     /// Marks `expr` as used as an access. A block forwards the access of its
@@ -402,8 +484,9 @@ impl<'db> TyChecker<'db> {
                 primary: expr.span(self.body()).into(),
             });
         }
-        // A tuple holds accesses only as a projection's yield or an unsafe
-        // split; elsewhere its projection-call elements would be copies.
+        // A tuple holds accesses only as a projection's yield, an unsafe split
+        // or a product parameter's argument; elsewhere its projection-call
+        // elements would be copies.
         let tuples = self
             .body()
             .exprs(self.db)
@@ -414,6 +497,7 @@ impl<'db> TyChecker<'db> {
                 };
                 !self.env.is_unsafe_split(expr)
                     && !self.env.is_yield_site(expr)
+                    && !self.env.is_product_arg(expr)
                     && elems.iter().any(|elem| {
                         !matches!(
                             elem.data(self.db, self.body()),

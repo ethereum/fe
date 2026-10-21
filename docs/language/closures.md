@@ -13,6 +13,12 @@ Each parameter has a mode and a type, as a function parameter does
 may be left out: `|x|`, or `|x: own|` for a mode without a type. The return
 type is optional too.
 
+A parameter may be a pattern, which takes its argument apart as a `let`
+would: `pairs.fold(0, |acc, (a, b)| acc + a * b)`, `|Point { x, y }| x + y`.
+A closure passed one tuple takes it apart with a pattern, `|(i, x)|`, not
+as two parameters. A closure's parameter cannot be a product of accesses
+(`(own u256, ref u256)`) yet.
+
 ## Callable shapes
 
 Because modes are not types, a closure's type is described by its *shape*,
@@ -63,7 +69,8 @@ named function, associated function or trait method can be passed where a
 closure can: `xs.fold(0, add)` with `fn add(_ acc: own u256, _ x: u256) ->
 u256`. Its row is the function's own effects. A generic function's arguments
 are inferred from the bound, as in `apply(identity, 9)`. An `unsafe fn`, a
-projection and a variant constructor are not callable values.
+projection, a function with a product parameter and a variant constructor
+are not callable values.
 
 ## Captures
 

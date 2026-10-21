@@ -1703,7 +1703,9 @@ fn visible_init_arg_fields<'db>(db: &'db dyn MirDb, semantic: SemanticInstance<'
         .iter()
         .filter_map(|entry| match entry.binding {
             LocalBinding::Param { idx, .. } => Some(idx as u32),
-            LocalBinding::Local { .. } | LocalBinding::EffectParam { .. } => None,
+            LocalBinding::Local { .. }
+            | LocalBinding::ParamPart { .. }
+            | LocalBinding::EffectParam { .. } => None,
         })
         .collect::<Vec<_>>()
         .into_boxed_slice()
@@ -1723,7 +1725,9 @@ fn visible_recv_arg_fields<'db>(
         .iter()
         .filter_map(|entry| match entry.binding {
             LocalBinding::Local { pat, .. } => tuple_indices_by_pat.get(&pat).copied(),
-            LocalBinding::Param { .. } | LocalBinding::EffectParam { .. } => None,
+            LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. }
+            | LocalBinding::EffectParam { .. } => None,
         })
         .collect::<Vec<_>>()
         .into_boxed_slice()

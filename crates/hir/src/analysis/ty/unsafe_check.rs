@@ -10,13 +10,13 @@ use crate::analysis::ty::provider::AddressSpace;
 use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::ty_check::{BodyOwner, TypedBody};
 use crate::analysis::ty::ty_check::{RecordInitLowering, transparent_newtype_field_ty};
-use crate::analysis::ty::ty_def::BorrowKind;
 use crate::analysis::ty::ty_def::TyId;
+use crate::analysis::ty::ty_def::{BorrowKind, ClosureDef};
 use crate::core::semantic::EffectEnvView;
 use crate::hir_def::{
-    BinOp, BindingMarker, BlockKind, Body, CallableDef, ClosureDef, Cond, CondId, EnumVariant,
-    Expr, ExprId, Field, FieldIndex, FieldParent, FuncParamMode, IdentId, Partial, Pat, PatId,
-    Stmt, StmtId, UnOp,
+    BinOp, BindingMarker, BlockKind, Body, CallableDef, Cond, CondId, EnumVariant, Expr, ExprId,
+    Field, FieldIndex, FieldParent, FuncParamMode, IdentId, Partial, Pat, PatId, Stmt, StmtId,
+    UnOp,
 };
 use rustc_hash::FxHashSet;
 use std::iter;
@@ -131,6 +131,7 @@ impl<'db> UnsafeChecker<'db, '_> {
                 ClosureDef {
                     body: self.body,
                     expr,
+                    mode: self.owner.mode(),
                 },
             ),
             None => effect_param_site(self.owner)

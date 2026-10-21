@@ -57,13 +57,9 @@ pub(crate) fn runtime_param_plans<'db>(
     semantic: SemanticInstance<'db>,
 ) -> Vec<RuntimeParamPlan<'db>> {
     let typed_body = semantic.key(db).typed_body(db);
-    let mut plans = Vec::new();
-    let mut idx = 0;
-    while typed_body.param_binding(idx).is_some() {
-        plans.push(desired_runtime_param_plan(db, semantic, typed_body, idx));
-        idx += 1;
-    }
-    plans
+    (0..typed_body.input_bindings().len())
+        .map(|idx| desired_runtime_param_plan(db, semantic, typed_body, idx))
+        .collect()
 }
 
 #[salsa::tracked(return_ref)]
@@ -85,8 +81,7 @@ pub(crate) fn runtime_visible_binding_plans<'db>(
         }
     };
 
-    let mut idx = 0;
-    while let Some(binding) = typed_body.param_binding(idx) {
+    for (idx, &binding) in typed_body.input_bindings().iter().enumerate() {
         push(
             binding,
             param_plans
@@ -94,7 +89,6 @@ pub(crate) fn runtime_visible_binding_plans<'db>(
                 .cloned()
                 .unwrap_or(RuntimeParamPlan::Erased),
         );
-        idx += 1;
     }
 
     if let BodyOwner::ContractRecvArm {

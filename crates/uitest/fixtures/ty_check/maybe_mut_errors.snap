@@ -12,34 +12,42 @@ error[8-0018]: left-hand side of assignment is immutable
 27 │         self.first.count = 0
    │         ^^^^^^^^^^^^^^^^ immutable assignment
 
-error[8-0066]: mutable borrow requires a mutable place
-   ┌─ maybe_mut_errors.fe:50:21
+error[8-0018]: left-hand side of assignment is immutable
+   ┌─ maybe_mut_errors.fe:39:41
    │
-49 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+39 │         let clear = |c: mut? Counter| { c.count = 0 }
+   │                      -                  ^^^^^^^ immutable assignment
+   │                      │
+   │                      `c` is `mut?`, which a `mut?` function's `ref` body only reads
+
+error[8-0066]: mutable borrow requires a mutable place
+   ┌─ maybe_mut_errors.fe:51:21
+   │
+50 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
    │         ---- `pair` does not provide mutable access
-50 │     let first = mut pair.first()
+51 │     let first = mut pair.first()
    │                     ^^^^ cannot borrow as `mut`
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ maybe_mut_errors.fe:56:21
+   ┌─ maybe_mut_errors.fe:57:21
    │
-55 │ fn immutable_through_try(_ pair: Pair) -> Option<()> {
+56 │ fn immutable_through_try(_ pair: Pair) -> Option<()> {
    │                            ---- `pair` does not provide mutable access
-56 │     let first = mut pair.maybe_first()?
+57 │     let first = mut pair.maybe_first()?
    │                     ^^^^ cannot borrow as `mut`
 
 error[8-0066]: mutable borrow requires a mutable place
-   ┌─ maybe_mut_errors.fe:63:24
+   ┌─ maybe_mut_errors.fe:64:24
    │
-62 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
+63 │     let pair = Pair { first: Counter { count: 1 }, second: Counter { count: 2 } }
    │         ---- `pair` does not provide mutable access
-63 │     let (mut a, b) = { pair.both() }
+64 │     let (mut a, b) = { pair.both() }
    │                        ^^^^ cannot borrow as `mut`
 
 error[8-0069]: explicit borrow required
-   ┌─ maybe_mut_errors.fe:69:30
+   ┌─ maybe_mut_errors.fe:70:30
    │
-69 │     let first = mut first_of(pair)
+70 │     let first = mut first_of(pair)
    │                              ^^^^ this argument must be explicitly borrowed as `mut`
    │
    = help: try `mut pair`
@@ -52,18 +60,10 @@ error[8-0130]: `mut?` outside a `mut?` function
    │
    = a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T` or `-> mut? T`
 
-error[8-0131]: a `mut?` function cannot define a closure
-   ┌─ maybe_mut_errors.fe:39:17
-   │
-39 │         let f = |x: u256| x + 1
-   │                 ^^^^^^^^^^^^^^^ this closure is in a `mut?` function
-   │
-   = move the closure into a function without a mode
-
 error[8-0132]: a `mut?` effect is not supported yet
-   ┌─ maybe_mut_errors.fe:74:71
+   ┌─ maybe_mut_errors.fe:75:71
    │
-74 │ fn with_effect(_ pair: mut? Pair) -> mut? Counter uses (counter: mut? Counter) {
+75 │ fn with_effect(_ pair: mut? Pair) -> mut? Counter uses (counter: mut? Counter) {
    │                                                                       ^^^^^^^ this effect is required at the function's mode
    │
    = write `mut` or no mode on the effect

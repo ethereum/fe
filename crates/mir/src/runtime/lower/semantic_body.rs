@@ -401,9 +401,10 @@ pub(crate) fn params_needing_place<'db>(
     };
     let typed_body = instance.key(db).typed_body(db);
     let env = RuntimeTypeEnv::for_semantic(db, instance);
-    (0..)
-        .map_while(|index| typed_body.param_binding(index))
-        .map(|binding| {
+    typed_body
+        .input_bindings()
+        .iter()
+        .map(|&binding| {
             matches!(
                 binding,
                 LocalBinding::Param {

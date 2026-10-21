@@ -294,11 +294,23 @@ impl<'db> Func<'db> {
 
     /// Diagnostics related to parameters (duplicate names/labels).
     pub fn diags_parameters(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
-        check_duplicate_names(self.params(db).map(|v| v.name(db)), |idxs| {
-            TyLowerDiag::DuplicateArgName(self, idxs).into()
-        })
-        .into_iter()
-        .collect()
+        let mut diags: Vec<_> =
+            check_duplicate_names(self.params(db).map(|v| v.name(db)), |idxs| {
+                TyLowerDiag::DuplicateArgName(self, idxs).into()
+            })
+            .into_iter()
+            .collect();
+        // The body binds a parameter pattern.
+        if self.body(db).is_none() {
+            diags.extend(
+                self.params(db)
+                    .filter(|param| param.hir(db).is_some_and(|param| param.is_destructured()))
+                    .map(|param| {
+                        TyLowerDiag::DestructuredParamWithoutBody(param.span().into()).into()
+                    }),
+            );
+        }
+        diags
     }
 
     /// Diagnostics related to the explicit return type (kind/const checks).
@@ -364,11 +376,10 @@ impl<'db> Func<'db> {
         let mut diags: Vec<TyDiagCollection<'db>> = Vec::new();
         for &mode in self.modes(db) {
             let params = self.params(db).filter_map(|param| {
-                let (ty, position) = ty::shape::view_param_misuse(
-                    db,
-                    param.mode_at(db, mode),
-                    normalize(param.ty(db)),
-                )?;
+                let (ty, position) = param
+                    .input_modes(db, mode)
+                    .into_iter()
+                    .find_map(|(mode, ty)| ty::shape::view_param_misuse(db, mode, normalize(ty)))?;
                 Some((param.span().into(), ty, position))
             });
             let shape = self
@@ -380,7 +391,8 @@ impl<'db> Func<'db> {
                 .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
             let holds_mutably = self
                 .params(db)
-                .any(|param| param.mode_at(db, mode) == FuncParamMode::Mut)
+                .flat_map(|param| param.input_modes(db, mode))
+                .any(|(mode, _)| mode == FuncParamMode::Mut)
                 || self
                     .effects(db)
                     .data(db)
@@ -415,9 +427,15 @@ impl<'db> Func<'db> {
         let normalize =
             |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
         let params = self.params(db).filter_map(|param| {
-            let ty = normalize(param.ty(db));
-            let collection =
-                (param.mode_at(db, None) == FuncParamMode::Own).then(|| ty.pinned_part(db))??;
+            let (ty, collection) =
+                param
+                    .input_modes(db, None)
+                    .into_iter()
+                    .find_map(|(mode, ty)| {
+                        let ty = normalize(ty);
+                        (mode == FuncParamMode::Own)
+                            .then(|| ty.pinned_part(db).map(|collection| (ty, collection)))?
+                    })?;
             Some((param.span().into(), ty, collection, "an `own` parameter"))
         });
         // The owned parts of a return are the same at every mode.

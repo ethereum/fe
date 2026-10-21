@@ -73,7 +73,7 @@ impl<'db> GenericSubst<'db> {
         let generic_owner = match owner {
             // A closure's body shares its parent's generic context.
             BodyOwner::Closure { def, .. } => {
-                return BodyOwner::from_body(db, def.body).map_or_else(
+                return BodyOwner::closure_parent(db, def).map_or_else(
                     || Self::none(db),
                     |parent| Self::for_body_owner(db, parent, args),
                 );

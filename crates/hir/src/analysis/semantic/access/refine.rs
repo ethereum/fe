@@ -4,27 +4,22 @@
 use cranelift_entity::EntityRef;
 use salsa::Update;
 
-use super::check::Analysis;
-use crate::{
-    analysis::{
-        HirAnalysisDb,
-        semantic::{
-            CallSiteProviderRefinement, RefinedInput, SemOrigin, SemanticInstance,
-            diagnostics::{
-                SemanticDiagnostic, SemanticDiagnosticId, SemanticDiagnosticKind,
-                SemanticDiagnosticSpan, SemanticNormalizationFailure,
-            },
-            normalized::{
-                NEffectArgValue, NExpr, NStatementKind, normalize_semantic_body_provisional,
-            },
-            provisional_provider_idx_for_requirement,
+use super::check::{Analysis, callee_input_access};
+use crate::analysis::{
+    HirAnalysisDb,
+    semantic::{
+        CallSiteProviderRefinement, RefinedInput, SemOrigin, SemanticInstance,
+        diagnostics::{
+            SemanticDiagnostic, SemanticDiagnosticId, SemanticDiagnosticKind,
+            SemanticDiagnosticSpan, SemanticNormalizationFailure,
         },
-        ty::{
-            provider::AddressSpace,
-            ty_check::{BodyOwner, EffectParamSite, EffectPassMode},
-        },
+        normalized::{NEffectArgValue, NExpr, NStatementKind, normalize_semantic_body_provisional},
+        provisional_provider_idx_for_requirement,
     },
-    hir_def::{CallableDef, FuncParamMode},
+    ty::{
+        provider::AddressSpace,
+        ty_check::{BodyOwner, EffectParamSite, EffectPassMode},
+    },
 };
 
 /// The address spaces a provisional body passes to its callees' inputs.
@@ -67,12 +62,12 @@ pub(crate) fn provisional_call_site_provider_refinements<'db>(
             else {
                 continue;
             };
-            let BodyOwner::Func(func, mode) = callee.key.owner(db) else {
+            let BodyOwner::Func(func, _) = callee.key.owner(db) else {
                 continue;
             };
             let mut inputs = Vec::new();
             for (position, arg) in args.iter().enumerate() {
-                if CallableDef::Func(func).param_mode(db, position, mode) != FuncParamMode::Own {
+                if callee_input_access(db, callee.key, position).is_some() {
                     let regions = analysis.passed_regions(arg.value);
                     inputs.push((
                         RefinedInput::Param(position as u32),

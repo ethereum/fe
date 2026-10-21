@@ -18,7 +18,7 @@ use crate::analysis::{
         },
         trait_def::TraitInstId,
         ty_check::{EffectParamOwner, RecordLike},
-        ty_def::{TyData, TyId, TyVarSort},
+        ty_def::{BorrowKind, TyData, TyId, TyVarSort},
     },
 };
 use crate::{
@@ -294,12 +294,18 @@ fn qualifying_trait_path<'db>(db: &'db dyn SpannedHirAnalysisDb, inst: TraitInst
     inst.trait_ref(db).as_predicate(db).pretty_print(db, false)
 }
 
+/// A method's parameter type with its mode, or a product's parts with
+/// theirs, where the method is used at `mode`.
 fn format_method_param_ty<'db>(
     db: &'db dyn SpannedHirAnalysisDb,
     callable: CallableDef<'db>,
     param_idx: usize,
     ty: TyId<'db>,
+    mode: Option<BorrowKind>,
 ) -> String {
+    if let Some(product) = callable.param_product(db, param_idx, mode) {
+        return product.skip_binder().pretty_print_product(db);
+    }
     let ty = ty.pretty_print(db).to_string();
     let Some(param) = (match callable {
         CallableDef::Func(func) => func.params(db).nth(param_idx),
@@ -1704,6 +1710,46 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 span.resolve(db),
                 error_code,
             ),
+
+            Self::ModeOnProduct(span) => primary_diag(
+                Severity::Error,
+                "a product's parts carry its modes",
+                "remove the mode before the tuple: each part takes its own",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::ProductReceiver(span) => primary_diag(
+                Severity::Error,
+                "a receiver cannot be a product",
+                "`self` takes one mode: `self`, `mut self` or `own self`",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::ProductParamNotDestructured(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a product parameter must be destructured".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "its parts are accesses, which no single name holds".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec!["bind each part: `_ (i, ref x): (own usize, ref T)`".to_string()],
+                error_code,
+            },
+
+            Self::DestructuredParamWithoutBody(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a parameter pattern needs a body to bind it".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this function has no body".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec!["name the parameter instead: `_ x: T`".to_string()],
+                error_code,
+            },
 
             Self::MaybeMutBound(span) => primary_diag(
                 Severity::Error,
@@ -3676,8 +3722,8 @@ impl DiagnosticVoucher for BodyDiag<'_> {
 
             Self::BorrowArgMustBePlace { primary, kind } => {
                 let kw = match kind {
-                    crate::analysis::ty::ty_def::BorrowKind::Mut => "mut",
-                    crate::analysis::ty::ty_def::BorrowKind::Ref => "ref",
+                    BorrowKind::Mut => "mut",
+                    BorrowKind::Ref => "ref",
                 };
 
                 CompleteDiagnostic {
@@ -3703,8 +3749,8 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 suggestion,
             } => {
                 let kw = match kind {
-                    crate::analysis::ty::ty_def::BorrowKind::Mut => "mut",
-                    crate::analysis::ty::ty_def::BorrowKind::Ref => "ref",
+                    BorrowKind::Mut => "mut",
+                    BorrowKind::Ref => "ref",
                 };
 
                 CompleteDiagnostic {
@@ -3870,18 +3916,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
-            Self::ClosureInMaybeMutFunc { primary } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "a `mut?` function cannot define a closure".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this closure is in a `mut?` function".to_string(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec!["move the closure into a function without a mode".to_string()],
-                error_code,
-            },
-
             Self::MutBindingOfRead { primary } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a `mut` binding needs a mutable place or access".to_string(),
@@ -4035,6 +4069,74 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
+            Self::ProductArgExpected { primary, expected } => primary_diag(
+                Severity::Error,
+                "a product parameter takes a tuple of its parts",
+                format!("pass a part for each of `{}`", expected.pretty_print_product(db)),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ProductArgTooWeak {
+                primary,
+                given,
+                expected,
+                raised,
+            } => {
+                let taker = if *raised {
+                    "the call at `mut`"
+                } else {
+                    "the parameter"
+                };
+                primary_diag(
+                    Severity::Error,
+                    "this argument grants a product's parts too weakly",
+                    format!(
+                        "it grants `{}`, but {taker} takes `{}`",
+                        given.pretty_print_product(db),
+                        expected.pretty_print_product(db)
+                    ),
+                    primary.resolve(db),
+                    error_code,
+                )
+            }
+
+            Self::RefutableParamPattern { primary } => primary_diag(
+                Severity::Error,
+                "refutable pattern in a parameter",
+                "this pattern may not match every argument",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ParamBindsTwice {
+                primary,
+                first,
+                name,
+                effect,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: if *effect {
+                    format!("`{}` is also bound by an effect", name.data(db))
+                } else {
+                    format!("`{}` is bound by more than one parameter", name.data(db))
+                },
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{}` is bound again here", name.data(db)),
+                        span: primary.resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{}` is first bound here", name.data(db)),
+                        span: first.resolve(db),
+                    },
+                ],
+                notes: vec![],
+                error_code,
+            },
+
             Self::LetElseMustDiverge { primary } => primary_diag(
                 Severity::Error,
                 "`let … else` block must diverge",
@@ -4090,13 +4192,20 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            Self::ShapeNotDestructured { primary } => primary_diag(
-                Severity::Error,
-                "a projection's yield shape must be destructured",
-                "bind the shape's components with a tuple or variant pattern",
-                primary.resolve(db),
-                error_code,
-            ),
+            Self::ShapeNotDestructured { primary, part } => {
+                let (message, label) = if *part {
+                    (
+                        "a product's part that is a product must be destructured",
+                        "bind its parts with a tuple pattern",
+                    )
+                } else {
+                    (
+                        "a projection's yield shape must be destructured",
+                        "bind the shape's components with a tuple or variant pattern",
+                    )
+                };
+                primary_diag(Severity::Error, message, label, primary.resolve(db), error_code)
+            }
 
             Self::ArrayRepeatRequiresCopy { primary, ty } => CompleteDiagnostic {
                 severity: Severity::Error,
@@ -4141,6 +4250,9 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         MutabilityFix::ReadAccess => {
                             format!("`{name}` is a read access; bind it with `mut` to write through it")
                         }
+                        MutabilityFix::RefPart => format!(
+                            "`{name}` binds a `ref` part: declare the part `mut` and bind `mut {name}` to write through it"
+                        ),
                         MutabilityFix::OwnParam => {
                             format!("write `var {name}` to make this owned parameter mutable")
                         }
@@ -5209,13 +5321,29 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary,
                 expected,
                 given,
-            } => primary_diag(
+                untupled,
+            } => CompleteDiagnostic {
                 severity,
-                "closure has the wrong number of parameters",
-                format!(
-                    "expected a closure taking {expected} parameter{}, found {given}",
-                    if *expected == 1 { "" } else { "s" }
-                ),
+                message: "closure has the wrong number of parameters".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "expected a closure taking {expected} parameter{}, found {given}",
+                        if *expected == 1 { "" } else { "s" }
+                    ),
+                    span: primary.resolve(db),
+                }],
+                notes: untupled
+                    .then(|| "the closure is passed one tuple; take it apart with a pattern, as in `|(i, x)|`".to_string())
+                    .into_iter()
+                    .collect(),
+                error_code,
+            },
+
+            BodyDiag::ClosureProductParam { primary } => primary_diag(
+                severity,
+                "a closure parameter cannot be a product",
+                "a closure takes each access as its own parameter",
                 primary.resolve(db),
                 error_code,
             ),
@@ -5691,10 +5819,13 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 trait_m_ty,
                 impl_m_ty,
                 param_idx,
+                trait_mode,
+                impl_mode,
             } => {
                 let method_name = impl_m.name(db).expect("methods have names").data(db);
-                let expected = format_method_param_ty(db, *trait_m, *param_idx, *trait_m_ty);
-                let found = format_method_param_ty(db, *impl_m, *param_idx, *impl_m_ty);
+                let expected =
+                    format_method_param_ty(db, *trait_m, *param_idx, *trait_m_ty, *trait_mode);
+                let found = format_method_param_ty(db, *impl_m, *param_idx, *impl_m_ty, *impl_mode);
 
                 CompleteDiagnostic {
                     severity,

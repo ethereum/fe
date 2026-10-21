@@ -90,13 +90,6 @@ impl ExprId {
     }
 }
 
-/// A closure expression within the body that contains it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
-pub struct ClosureDef<'db> {
-    pub body: Body<'db>,
-    pub expr: ExprId,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum Cond {
     /// A plain boolean expression condition.

@@ -12,6 +12,7 @@ use hir::analysis::{
     },
     ty::{
         AddressSpace,
+        const_ty::CallableInputOrigin,
         ty_check::{ReturnProjectionStep, ReturnProvenance},
         ty_def::TyId,
     },
@@ -245,15 +246,26 @@ pub(crate) fn declaration_runtime_return_class<'db>(
     );
     let mut replaced = FxHashSet::default();
     for source in typed_body.forwarded_return_sources(db) {
-        let Some((_, source_class)) = bindings
-            .iter()
-            .zip(key.params(db))
-            .find(|(binding, _)| binding.binding.callable_input_origin(db) == Some(source.origin))
-        else {
+        // The class of the argument the return reads, and the steps it takes
+        // from it: a product parameter's leading steps select its part.
+        let mut classes = bindings.iter().zip(key.params(db));
+        let found = match source.origin {
+            CallableInputOrigin::ValueParam(param) => typed_body
+                .return_source_input(param, &source.projection)
+                .and_then(|(input, projection)| {
+                    let input = typed_body.input_bindings()[input];
+                    let (_, class) = classes.find(|(binding, _)| binding.binding == input)?;
+                    Some((class, projection))
+                }),
+            origin => classes
+                .find(|(binding, _)| binding.binding.callable_input_origin(db) == Some(origin))
+                .map(|(_, class)| (class, source.projection.as_slice())),
+        };
+        let Some((source_class, projection)) = found else {
             continue;
         };
         let Some(projected) =
-            project_declaration_return_source(db, source_class.clone(), &source.projection)
+            project_declaration_return_source(db, source_class.clone(), projection)
         else {
             continue;
         };
@@ -552,7 +564,7 @@ fn project_declaration_return_source<'db>(
                 .clone(),
             (
                 ReturnProjectionStep::ConstantIndex(_)
-                | ReturnProjectionStep::ParamIndex(_)
+                | ReturnProjectionStep::ParamIndex { .. }
                 | ReturnProjectionStep::AnyIndex,
                 Layout::Array(layout),
             ) => layout.elem,
@@ -560,7 +572,7 @@ fn project_declaration_return_source<'db>(
             | (ReturnProjectionStep::VariantField { .. }, Layout::Struct(_) | Layout::Array(_))
             | (
                 ReturnProjectionStep::ConstantIndex(_)
-                | ReturnProjectionStep::ParamIndex(_)
+                | ReturnProjectionStep::ParamIndex { .. }
                 | ReturnProjectionStep::AnyIndex,
                 Layout::Struct(_) | Layout::Enum(_),
             ) => return None,
@@ -640,7 +652,7 @@ fn merge_declaration_return_source<'db>(
         }
         (
             ReturnProjectionStep::ConstantIndex(_)
-            | ReturnProjectionStep::ParamIndex(_)
+            | ReturnProjectionStep::ParamIndex { .. }
             | ReturnProjectionStep::AnyIndex,
             Layout::Array(mut layout),
         ) => {
@@ -658,7 +670,7 @@ fn merge_declaration_return_source<'db>(
         | (ReturnProjectionStep::VariantField { .. }, Layout::Struct(_) | Layout::Array(_))
         | (
             ReturnProjectionStep::ConstantIndex(_)
-            | ReturnProjectionStep::ParamIndex(_)
+            | ReturnProjectionStep::ParamIndex { .. }
             | ReturnProjectionStep::AnyIndex,
             Layout::Struct(_) | Layout::Enum(_),
         ) => return None,
@@ -1127,7 +1139,7 @@ mod tests {
             semantic::{
                 SemanticLocalKind, get_or_build_semantic_instance, root_semantic_instance_key,
             },
-            ty::ty_check::BodyOwner,
+            ty::ty_check::{BodyOwner, ReturnSource},
         },
         hir_def::TopLevelMod,
     };
@@ -1618,6 +1630,72 @@ pub fn main() -> u8 {
             function.instance(&db).interface_signature(&db).ret,
             Some(RuntimeClass::AggregateValue { .. })
         ));
+    }
+
+    #[test]
+    fn product_part_indices_forward_return_provenance() {
+        let mut db = DriverDataBase::default();
+        let file_url =
+            Url::parse("file:///product_part_indices_forward_return_provenance.fe").unwrap();
+        db.workspace().touch(
+            &mut db,
+            file_url.clone(),
+            Some(
+                r#"
+struct Pair {
+    a: u256,
+    b: u256,
+}
+
+fn at(_ (mut xs, i): (mut [Pair; 2], own usize)) -> mut Pair {
+    mut xs[i]
+}
+
+fn at_fwd(_ xs: mut [Pair; 2], _ i: usize) -> mut Pair {
+    mut at((mut xs, i))
+}
+"#
+                .to_string(),
+            ),
+        );
+        let file = db
+            .workspace()
+            .get(&db, &file_url)
+            .expect("file should be loaded");
+        let top_mod = db.top_mod(file);
+        let sources = |name| {
+            semantic_instance_for_named_func(&db, top_mod, name)
+                .key(&db)
+                .typed_body(&db)
+                .forwarded_return_sources(&db)
+        };
+        // A part a product parameter's `let` binds indexes as the part the
+        // call passes, and a call passing a parameter as that part forwards it.
+        assert_eq!(
+            sources("at"),
+            vec![ReturnSource {
+                result_projection: Vec::new(),
+                origin: CallableInputOrigin::ValueParam(0),
+                projection: vec![
+                    ReturnProjectionStep::Field(0),
+                    ReturnProjectionStep::ParamIndex {
+                        param: 0,
+                        part: Some(1),
+                    },
+                ],
+            }]
+        );
+        assert_eq!(
+            sources("at_fwd"),
+            vec![ReturnSource {
+                result_projection: Vec::new(),
+                origin: CallableInputOrigin::ValueParam(0),
+                projection: vec![ReturnProjectionStep::ParamIndex {
+                    param: 1,
+                    part: None,
+                }],
+            }]
+        );
     }
 
     #[test]

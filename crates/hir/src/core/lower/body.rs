@@ -3,8 +3,8 @@ use parser::ast::{self, SyntaxNodePtr, prelude::AstNode as _};
 use super::FileLowerCtxt;
 use crate::{
     hir_def::{
-        Body, BodyKind, BodySourceMap, Cond, CondId, Expr, ExprId, NodeStore, Partial, Pat, PatId,
-        PathId, Stmt, StmtId, TrackedItemId, TrackedItemVariant,
+        Body, BodyKind, BodySourceMap, Cond, CondId, Expr, ExprId, FuncParamName, NodeStore,
+        Partial, Pat, PatId, PathId, Stmt, StmtId, TrackedItemId, TrackedItemVariant,
     },
     span::HirOrigin,
 };
@@ -14,6 +14,7 @@ impl<'db> Body<'db> {
         Self::lower_ast_with_variant(
             f_ctxt,
             Some(ast),
+            None,
             TrackedItemVariant::FuncBody,
             BodyKind::FuncBody,
         )
@@ -23,6 +24,7 @@ impl<'db> Body<'db> {
         Self::lower_ast_with_variant(
             f_ctxt,
             Some(ast),
+            None,
             TrackedItemVariant::NamelessBody,
             BodyKind::Anonymous,
         )
@@ -45,15 +47,18 @@ impl<'db> Body<'db> {
         ctxt.build(None, expr, BodyKind::Anonymous)
     }
 
+    /// A body that binds `params`, if it has any.
     pub(super) fn lower_ast_with_variant(
         f_ctxt: &mut FileLowerCtxt<'db>,
         ast: Option<ast::Expr>,
+        params: Option<ast::FuncParamList>,
         variant: TrackedItemVariant<'db>,
         body_kind: BodyKind,
     ) -> Self {
         let id = f_ctxt.joined_id(variant);
         let mut ctxt = BodyCtxt::new(f_ctxt, id);
-        let body_expr = Expr::push_to_body_opt(&mut ctxt, ast.clone());
+        let lets = ctxt.lower_param_lets(params);
+        let body_expr = Expr::lower_ast_after(&mut ctxt, ast.clone(), lets);
         ctxt.build(ast.as_ref(), body_expr, body_kind)
     }
 }
@@ -109,6 +114,29 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
         let pat_id = self.pats.push(Partial::Present(pat));
         self.source_map.pat_map.insert(pat_id, origin);
         pat_id
+    }
+
+    /// `let pat = %idx` for each of `params` that destructures, which the body
+    /// binding them begins with (see `FuncParamName::Destructured`).
+    pub(super) fn lower_param_lets(&mut self, params: Option<ast::FuncParamList>) -> Vec<StmtId> {
+        params
+            .into_iter()
+            .flatten()
+            .enumerate()
+            .filter_map(|(idx, param)| {
+                let pat = Pat::lower_ast(self, param.pat()?);
+                let name = FuncParamName::destructured(self.f_ctxt.db(), idx);
+                let ptr = SyntaxNodePtr::new(param.syntax());
+                let source = self.push_expr(
+                    Expr::Path(Partial::Present(PathId::from_ident(self.f_ctxt.db(), name))),
+                    HirOrigin::Expanded(ptr),
+                );
+                Some(self.push_stmt(
+                    Stmt::Let(pat, None, Some(source), None),
+                    HirOrigin::Expanded(ptr),
+                ))
+            })
+            .collect()
     }
 
     pub(super) fn push_missing_pat(&mut self) -> PatId {

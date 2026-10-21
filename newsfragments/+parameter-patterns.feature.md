@@ -1,0 +1,1 @@
+A function or closure parameter may be a pattern that takes its argument apart, as a `let` would: `fn sum(_ (a, b): (u256, u256))`, `pairs.fold(0, |acc, (a, b)| acc + a * b)`. A function writes `_` before the pattern, since it has no label.

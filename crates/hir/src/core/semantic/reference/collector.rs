@@ -8,8 +8,8 @@ use crate::{
     analysis::ty::ty_check::EffectParamSite,
     hir_def::{
         Body, Const, Contract, ContractInit, ContractRecvArm, EffectParam, EffectParamListId, Enum,
-        Expr, ExprId, Func, Impl, ImplTrait, ItemKind, Pat, PatId, StaticAssert, Struct, Trait,
-        TraitRefId, TypeAlias, Use, UsePathId,
+        Expr, ExprId, Func, FuncParamName, Impl, ImplTrait, ItemKind, Partial, Pat, PatId,
+        StaticAssert, Struct, Trait, TraitRefId, TypeAlias, Use, UsePathId,
     },
     span::lazy_spans::{
         LazyBodySpan, LazyContractInitSpan, LazyExprSpan, LazyItemSpan, LazyPatSpan, LazyPathSpan,
@@ -205,6 +205,13 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
     ) {
         if let Some(body) = self.body {
             match expr_data {
+                // The read of a destructured parameter that its `let` begins
+                // with is not in source; its span is the whole parameter's.
+                Expr::Path(Partial::Present(path))
+                    if FuncParamName::is_destructured_read(self.db, *path) =>
+                {
+                    return;
+                }
                 Expr::Path(_) => {
                     // Set context for path expressions before walking
                     let old_ctx = self.path_context;

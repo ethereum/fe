@@ -2,6 +2,7 @@ use super::{
     adt_def::AdtCycleMember,
     effects::rows::RowKey,
     provider::AddressSpace,
+    shape::Shape,
     trait_def::TraitInstId,
     ty_check::{RecordLike, TraitOps},
     ty_def::{BorrowKind, Kind, TyId},
@@ -67,6 +68,15 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
+    /// A parameter pattern of a function without a body to bind it.
+    DestructuredParamWithoutBody(DynLazySpan<'db>),
+    /// A mode on a product parameter's type, whose parts carry the modes.
+    ModeOnProduct(DynLazySpan<'db>),
+    /// A receiver whose type is a product.
+    ProductReceiver(DynLazySpan<'db>),
+    /// A product parameter its function's body names instead of
+    /// destructuring.
+    ProductParamNotDestructured(DynLazySpan<'db>),
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
@@ -300,6 +310,10 @@ impl TyLowerDiag<'_> {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
+            Self::ModeOnProduct(_) => 82,
+            Self::ProductReceiver(_) => 74,
+            Self::ProductParamNotDestructured(_) => 75,
+            Self::DestructuredParamWithoutBody(_) => 76,
             Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
@@ -392,6 +406,9 @@ pub enum MutabilityFix {
     MutComponent,
     /// A read access: the mutable one writes.
     ReadAccess,
+    /// A name bound to a product parameter's `ref` part: the part's mode in
+    /// the signature makes it read-only.
+    RefPart,
     /// An owned parameter: `var x: own T`.
     OwnParam,
     /// A view parameter: `x: mut T`, a mutable borrow.
@@ -737,12 +754,6 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
     },
 
-    /// A closure in a `mut?` function, whose two bodies would each define
-    /// it.
-    ClosureInMaybeMutFunc {
-        primary: DynLazySpan<'db>,
-    },
-
     /// An effect required at the function's mode, `uses (x: mut? T)`, which
     /// is not supported yet.
     MaybeMutEffect {
@@ -790,9 +801,11 @@ pub enum BodyDiag<'db> {
         callee: IdentId<'db>,
     },
 
-    /// A tuple or sum yield shape bound to a single name.
+    /// A tuple or sum yield shape bound to a single name; with `part`, a
+    /// product parameter's part that is a product.
     ShapeNotDestructured {
         primary: DynLazySpan<'db>,
+        part: bool,
     },
 
     /// A projection's yield site does not grant its return shape.
@@ -809,6 +822,39 @@ pub enum BodyDiag<'db> {
     /// A `let` without `else` whose pattern may not match.
     RefutableLetPattern {
         primary: DynLazySpan<'db>,
+    },
+
+    /// An argument for a product parameter that is neither a tuple of its
+    /// parts nor a projection's result granting them.
+    ProductArgExpected {
+        primary: DynLazySpan<'db>,
+        expected: Shape<'db>,
+    },
+
+    /// A projection's result for a product parameter that grants its parts
+    /// with weaker accesses than `expected`; `raised` when the call at `mut`
+    /// takes them so.
+    ProductArgTooWeak {
+        primary: DynLazySpan<'db>,
+        given: Shape<'db>,
+        expected: Shape<'db>,
+        raised: bool,
+    },
+
+    /// A parameter pattern that may not match.
+    RefutableParamPattern {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A name a parameter pattern binds that another parameter of the same
+    /// function or closure binds too; with `effect`, a name a parameter or a
+    /// recv arm's pattern binds that an effect of the same signature binds
+    /// too.
+    ParamBindsTwice {
+        primary: DynLazySpan<'db>,
+        first: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        effect: bool,
     },
 
     /// The `else` block of a `let … else` can complete.
@@ -1122,6 +1168,15 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         expected: usize,
         given: usize,
+        /// Whether the shape's one parameter is a tuple of the closure's
+        /// parameter count, which a tuple pattern takes apart.
+        untupled: bool,
+    },
+
+    /// A closure parameter annotated with a product, which no shape trait
+    /// names yet.
+    ClosureProductParam {
+        primary: DynLazySpan<'db>,
     },
 
     /// A write to, or a `mut` access of, a binding a closure captures: the
@@ -1290,8 +1345,12 @@ impl<'db> BodyDiag<'db> {
             Self::VarOfAccess { .. } => 122,
             Self::MutBindingOfRead { .. } => 123,
             Self::MaybeMutWithoutMode { .. } => 130,
-            Self::ClosureInMaybeMutFunc { .. } => 131,
             Self::MaybeMutEffect { .. } => 132,
+            Self::RefutableParamPattern { .. } => 133,
+            Self::ProductArgExpected { .. } => 135,
+            Self::ClosureProductParam { .. } => 136,
+            Self::ProductArgTooWeak { .. } => 150,
+            Self::ParamBindsTwice { .. } => 134,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,
             Self::UnsafeFieldRequiresUnsafe { .. } => 126,
@@ -1479,6 +1538,9 @@ pub enum ImplDiag<'db> {
         trait_m_ty: TyId<'db>,
         impl_m_ty: TyId<'db>,
         param_idx: usize,
+        /// The modes the two were compared at.
+        trait_mode: Option<BorrowKind>,
+        impl_mode: Option<BorrowKind>,
     },
 
     MethodRetTyMismatch {

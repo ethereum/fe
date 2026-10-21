@@ -18,6 +18,29 @@ an owned argument is moved, or copied if its type is `Copy`. A projection's
 `mut` result is marked like a place (`bump(mut xs.at(0))`), unless its
 type has no value, as a view's does (`fill(buf.span())`).
 
+A parameter may be a pattern, written after `_` since it has no label:
+`fn sum(_ (a, b): (u256, u256))`. The body binds its names as a `let` of the
+parameter would, so from a view of a tuple a `Copy` part is copied and any
+other part is bound `ref` (`_ (i, ref x): (usize, Buf)`). A function without
+a body, such as a trait method's declaration, names its parameters.
+
+A parameter may also take several accesses at once as a *product*: a tuple
+whose parts carry their own modes, as in `_ (i, ref x): (own usize, ref T)`.
+A part without a mode is `ref`, and a `mut?` part takes its function's
+mode. The argument is either a tuple of the parts, each written as an
+argument of its part's mode (`bump((mut y, ref x))`), or a projection's
+result that grants them (`swap(p.both())`). The parts are accesses of the
+call, as separate arguments are. So `add_to((mut x, ref x))` is rejected, as
+is a part that overlaps another argument or an effect, while
+`add_to((mut p.a, ref p.b))` is accepted. No single name holds a product:
+
+- a function with a body destructures it;
+- the parts carry its modes, so `own (own u256, ref u256)` is an error;
+- a receiver cannot be one.
+
+Only a named function's parameter is a product. A closure's parameter is
+not, and a function that takes one is not a callable value.
+
 A view argument that is a scalar or a handle (an integer, `bool`,
 `Address`, a raw pointer, or any `core::marker::Snapshot` type) is a
 *snapshot*: the callee gets a copy, and the caller may change the original
@@ -241,8 +264,9 @@ or an implementation is used at a mode, so only their bounds may be `mut?`;
 a struct's or a trait's bounds, including those of its associated types
 (`type Item: mut Slot`) and of `Self`, are `mut` or plain.
 
-A `mut?` function cannot define a closure, and an effect cannot be `mut?`
-yet.
+Each body of a `mut?` function defines its own closures, and a `mut?` in
+one, such as a parameter `c: mut? T`, is that body's mode. An effect cannot
+be `mut?` yet.
 
 ## Views
 

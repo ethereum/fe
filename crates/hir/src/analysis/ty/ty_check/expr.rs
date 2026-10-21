@@ -6,10 +6,10 @@ use smallvec1::SmallVec;
 
 use crate::core::{
     hir_def::{
-        ArithBinOp, BinOp, CallArg as HirCallArg, CallableDef, ClosureDef, Cond, CondId, Expr,
-        ExprId, FieldIndex, Func, FuncParam, FuncParamListId, FuncParamMode, IdentId, IntegerId,
-        LitKind, LogicalBinOp, Partial, PatId, PathId, Stmt, StmtId, TypeId as HirTyId, TypeKind,
-        TypeMode, UnOp, VariantKind, WithBinding,
+        ArithBinOp, BinOp, CallArg as HirCallArg, CallableDef, Cond, CondId, Expr, ExprId,
+        FieldIndex, Func, FuncParam, FuncParamListId, FuncParamMode, IdentId, IntegerId, LitKind,
+        LogicalBinOp, Partial, PatId, PathId, Stmt, StmtId, TypeId as HirTyId, TypeKind, TypeMode,
+        UnOp, VariantKind, WithBinding,
     },
     semantic::{EffectRequirement, EffectRequirementKey as SemanticEffectRequirementKey},
 };
@@ -24,7 +24,7 @@ use super::{
     env::{
         BindingAccess, ClosureExpectation, EffectOrigin, EffectParamSite, ExprProp, LocalBinding,
         ParamSite, PendingPrimitiveOp, ProvidedEffect, TraitObligation, TraitObligationOrigin,
-        TyCheckEnv,
+        TyCheckEnv, hir_param,
     },
     has_invisible_newtype_field, merged_borrow_provider,
     path::ResolvedPathInBody,
@@ -70,14 +70,14 @@ use crate::analysis::ty::{
     instantiate_trait_self,
     normalize::normalize_with_trait_evidence,
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
-    shape::{Shape, SumKind, sum_kind},
+    shape::{Shape, SumKind, is_param_product, sum_kind},
     trait_def::TraitInstId,
     trait_lower::complete_impl_trait,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
     },
     ty_check::callable::{Callable, EffectProviderProvenance, EffectProviderSpecialization},
-    ty_def::{BorrowKind, ClosureTy, PrimTy, TyBase, TyData, prim_int_bits},
+    ty_def::{BorrowKind, ClosureDef, ClosureTy, PrimTy, TyBase, TyData, prim_int_bits},
     ty_error::{diag_from_invalid_cause, first_invalid_ty_cause},
     unify::UnificationTable,
 };
@@ -405,12 +405,13 @@ impl<'db> TyChecker<'db> {
             }
         };
         self.env.leave_expr();
-        // Only `ref p`, `mut p` and projection calls grant accesses; a block
-        // (`unsafe { mut *p }`) forwards its tail's. An `if` or `match` is not
-        // a place, so it grants none.
+        // Only `ref p`, `mut p`, projection calls and a product parameter grant
+        // accesses; a block (`unsafe { mut *p }`) forwards its tail's. An `if`
+        // or `match` is not a place, so it grants none.
         if !matches!(
             expr_data,
             Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut)
+                | Expr::Path(_)
                 | Expr::Call(..)
                 | Expr::MethodCall(..)
                 | Expr::Bin(_, _, BinOp::Index)
@@ -620,6 +621,7 @@ impl<'db> TyChecker<'db> {
         let def = ClosureDef {
             body: self.body(),
             expr,
+            mode: self.env.owner().mode(),
         };
         let params = params.data(self.db);
         let span: DynLazySpan<'db> = expr.span(self.body()).into();
@@ -631,11 +633,6 @@ impl<'db> TyChecker<'db> {
                 primary: span.clone(),
             });
         }
-        // Each of a `mut?` function's bodies would define the closure.
-        if self.env.owner().mode().is_some() {
-            self.push_diag(BodyDiag::ClosureInMaybeMutFunc { primary: span });
-            return ExprProp::invalid(self.db);
-        }
 
         // The shape the callee the closure is passed to expects types its
         // unannotated parameters and its result in context. Against a shape
@@ -644,10 +641,13 @@ impl<'db> TyChecker<'db> {
             if expectation.params.len() == params.len() {
                 return expectation;
             }
+            let untupled = matches!(&expectation.params[..], [param]
+                if param.is_tuple(self.db) && param.generic_args(self.db).len() == params.len());
             self.push_diag(BodyDiag::ClosureArityMismatch {
                 primary: span.clone(),
                 expected: expectation.params.len(),
                 given: params.len(),
+                untupled,
             });
             ClosureExpectation {
                 modes: vec![FuncParamMode::View; params.len()],
@@ -672,7 +672,8 @@ impl<'db> TyChecker<'db> {
                 ty,
                 is_mut: param.is_mut,
             };
-            self.env.register_closure_param(param.name(), binding);
+            self.env
+                .register_closure_param(param.binding_name(), binding);
             param_tys.push((mode, ty));
         }
         let ret = match ret_ty {
@@ -859,12 +860,18 @@ impl<'db> TyChecker<'db> {
                     TypeMode::Own => FuncParamMode::Own,
                     TypeMode::Mut => FuncParamMode::Mut,
                     TypeMode::Ref => FuncParamMode::View,
-                    // A `mut?` function has no closures.
+                    // `mut?` is the mode of the `mut?` function that defines
+                    // the closure.
                     TypeMode::MaybeMut => {
-                        self.push_diag(BodyDiag::MaybeMutWithoutMode {
-                            primary: span.clone().into(),
-                        });
-                        FuncParamMode::View
+                        if self.env.owner().mode().is_none() {
+                            self.push_diag(BodyDiag::MaybeMutWithoutMode {
+                                primary: span.clone().into(),
+                            });
+                        }
+                        match self.maybe_mut_kind() {
+                            BorrowKind::Mut => FuncParamMode::Mut,
+                            BorrowKind::Ref => FuncParamMode::View,
+                        }
                     }
                 }),
                 payload.to_opt(),
@@ -873,6 +880,12 @@ impl<'db> TyChecker<'db> {
         };
         let mode = mode.or(expected.map(|(mode, _)| mode));
         let ty = match payload {
+            Some(ty) if is_param_product(self.db, ty) => {
+                self.push_diag(BodyDiag::ClosureProductParam {
+                    primary: span.into(),
+                });
+                TyId::invalid(self.db, InvalidCause::Other)
+            }
             Some(ty) => self.lower_ty(ty, span, true),
             None => expected.map_or_else(|| self.fresh_ty(), |(_, ty)| ty),
         };
@@ -2897,7 +2910,9 @@ impl<'db> TyChecker<'db> {
                             .get(&ident)
                             .map(|field| field.declared)?
                     }
-                    LocalBinding::Local { .. } | LocalBinding::Param { .. } => provider.ty,
+                    LocalBinding::Local { .. }
+                    | LocalBinding::Param { .. }
+                    | LocalBinding::ParamPart { .. } => provider.ty,
                 };
 
                 Some(self.table.fold_ty(self.db, inferred))
@@ -3064,7 +3079,9 @@ impl<'db> TyChecker<'db> {
                 idx,
                 ..
             } => self.env.resolved_provider_binding(effect_site, idx),
-            LocalBinding::Local { .. } | LocalBinding::Param { .. } => None,
+            LocalBinding::Local { .. }
+            | LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. } => None,
         }
     }
 
@@ -3907,6 +3924,8 @@ impl<'db> TyChecker<'db> {
                 ExprProp {
                     binding: Some(binding),
                     borrow_provider: self.concrete_borrow_provider_for_binding(binding),
+                    // A product parameter is the accesses its parts grant.
+                    shape: self.env.param_product(&binding).cloned(),
                     ..ExprProp::new(ty, is_mut)
                 }
             }
@@ -5241,7 +5260,9 @@ impl<'db> TyChecker<'db> {
                 let ident = binding.binding_name(&self.env);
                 let fix = match binding {
                     LocalBinding::Local { pat, .. } => {
-                        if self.env.binding_access(&binding).is_some() {
+                        if self.ref_part_bindings.contains(&pat) {
+                            MutabilityFix::RefPart
+                        } else if self.env.binding_access(&binding).is_some() {
                             MutabilityFix::ReadAccess
                         } else if self.mutable_sources.contains(&pat) {
                             MutabilityFix::MutComponent
@@ -5249,14 +5270,9 @@ impl<'db> TyChecker<'db> {
                             MutabilityFix::Var
                         }
                     }
-                    LocalBinding::Param {
-                        site: ParamSite::Func(func),
-                        idx,
-                        ..
-                    } if func
-                        .params(self.db)
-                        .nth(idx)
-                        .is_some_and(|param| param.is_maybe_mut(self.db)) =>
+                    LocalBinding::Param { site, idx, .. }
+                        if hir_param(self.db, site, idx)
+                            .is_some_and(|param| param.is_maybe_mut(self.db)) =>
                     {
                         MutabilityFix::MaybeMutParam
                     }
@@ -5268,6 +5284,7 @@ impl<'db> TyChecker<'db> {
                             (false, false) => MutabilityFix::ViewParam,
                         }
                     }
+                    LocalBinding::ParamPart { .. } => MutabilityFix::ReadAccess,
                     LocalBinding::EffectParam { .. } => MutabilityFix::Effect,
                 };
                 (ident, binding.def_span(&self.env), fix)

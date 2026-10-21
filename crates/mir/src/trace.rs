@@ -771,9 +771,9 @@ fn local_binding_trace_info<'db>(
         is_mut: binding.is_mut(),
         storage_class: match binding {
             LocalBinding::Local { .. } => VariableStorageClass::Local,
-            LocalBinding::Param { .. } | LocalBinding::EffectParam { .. } => {
-                VariableStorageClass::Parameter
-            }
+            LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. }
+            | LocalBinding::EffectParam { .. } => VariableStorageClass::Parameter,
         },
     }
 }
@@ -794,6 +794,7 @@ fn local_binding_name<'db>(
                 .unwrap_or_else(|| "_".to_string())
         }
         LocalBinding::Param { idx, .. } => format!("%param{idx}"),
+        LocalBinding::ParamPart { idx, part, .. } => format!("%param{idx}.{part}"),
         LocalBinding::EffectParam {
             binding_name, idx, ..
         } => {

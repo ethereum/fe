@@ -11,7 +11,8 @@ use hir::{
         NameDomain, NameResKind, available_traits_in_scope, is_scope_visible_from,
     },
     hir_def::{
-        Body, Func, HirIngot, ItemKind, Partial, Pat, Stmt, TopLevelMod, scope_graph::ScopeId,
+        Body, Func, FuncParam, HirIngot, ItemKind, Partial, Pat, Stmt, TopLevelMod,
+        scope_graph::ScopeId,
     },
     lower::map_file_to_mod,
     visitor::prelude::*,
@@ -1300,7 +1301,13 @@ fn name_res_to_completion<'db>(
             // Handle other scope types
             let kind = match scope {
                 ScopeId::FuncParam(_, _) => {
-                    if matches!(context, CompletionContext::Type) {
+                    // A destructured parameter's hidden name is no source
+                    // name: its pattern's names are the body's bindings.
+                    if matches!(context, CompletionContext::Type)
+                        || scope
+                            .resolve_to::<&FuncParam>(db)
+                            .is_some_and(FuncParam::is_destructured)
+                    {
                         return None;
                     }
                     CompletionItemKind::VARIABLE

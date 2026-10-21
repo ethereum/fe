@@ -1,6 +1,6 @@
-use crate::analysis::ty::ty_def::{BorrowKind, ClosureTy, TyId};
+use crate::analysis::ty::ty_def::{BorrowKind, ClosureDef, ClosureTy, TyId};
 use crate::hir_def::{
-    ClosureDef, Expr, ExprId, ItemKind, Partial, attr::ArithmeticMode, params::FuncParamMode,
+    Expr, ExprId, ItemKind, Partial, attr::ArithmeticMode, params::FuncParamMode,
 };
 use crate::span::{DynLazySpan, types::LazyTySpan};
 use crate::{
@@ -146,12 +146,12 @@ impl<'db> BodyOwner<'db> {
         }
     }
 
-    /// The owner of the item body `body`, which a closure's body is part of.
-    /// A `mut?` function has no closures (the type checker rejects them), so
-    /// a function's body is its first.
-    pub fn from_body(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<Self> {
+    /// The owner of the item body that defines the closure `def`: a `mut?`
+    /// function's body at the mode `def` was defined at.
+    pub fn closure_parent(db: &'db dyn HirAnalysisDb, def: ClosureDef<'db>) -> Option<Self> {
+        let body = def.body;
         if let Some(func) = body.containing_func(db) {
-            return Some(Self::func(db, func));
+            return Some(Self::Func(func, def.mode));
         }
         match body.scope().parent_item(db)? {
             ItemKind::Const(const_) if const_.body(db).to_opt() == Some(body) => {

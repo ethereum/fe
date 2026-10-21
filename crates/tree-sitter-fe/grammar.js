@@ -218,6 +218,21 @@ module.exports = grammar({
         ':',
         field('type', $._type),
       ),
+      // destructured parameter: _ pattern : Type
+      // e.g., `_ (a, b): (u256, u256)`
+      seq(
+        '_',
+        field('pattern', $._parameter_pattern),
+        ':',
+        field('type', $._type),
+      ),
+    ),
+
+    // A pattern a parameter destructures with.
+    _parameter_pattern: $ => choice(
+      $.tuple_pattern,
+      $.path_tuple_pattern,
+      $.record_pattern,
     ),
 
     // Struct definition
@@ -1205,10 +1220,12 @@ module.exports = grammar({
     )),
 
     // A closure parameter's type, or the type after its mode, may be omitted:
-    // `x`, `x: own`, `x: own u256`, `x: u256`.
+    // `x`, `x: own`, `x: own u256`, `x: u256`, `(a, b)`.
     closure_parameter: $ => seq(
-      optional('mut'),
-      field('name', choice($.identifier, '_')),
+      choice(
+        seq(optional('mut'), field('name', choice($.identifier, '_'))),
+        field('pattern', $._parameter_pattern),
+      ),
       optional(seq(':', field('type', choice($._type, $.closure_mode)))),
     ),
 
@@ -1376,17 +1393,23 @@ module.exports = grammar({
       ')',
     ),
 
-    path_pattern: $ => prec(1, $.path),
+    path_pattern: $ => prec(1, $._pattern_path),
+
+    // A pattern's path starts as any path does, a qualified type included:
+    // `<T as Trait>::Out { x }`.
+    _pattern_path: $ => choice($.path, $.qualified_path_type),
 
     path_tuple_pattern: $ => prec(2, seq(
-      $.path,
+      $._pattern_path,
+      optional(field('type_arguments', $.generic_arg_list)),
       '(',
       sepTrailing($._pattern, ','),
       ')',
     )),
 
     record_pattern: $ => prec(3, seq(
-      $.path,
+      $._pattern_path,
+      optional(field('type_arguments', $.generic_arg_list)),
       '{',
       sepTrailing($.record_pattern_field, ','),
       '}',

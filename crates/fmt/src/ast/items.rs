@@ -754,7 +754,13 @@ impl ToDoc for ast::FuncParam {
                 ctx,
                 self.syntax(),
                 0,
-                |node| ast::Type::cast(node).map(|ty| TokenPiece::new(ty.to_doc(ctx))),
+                |node| {
+                    let doc = match ast::Type::cast(node.clone()) {
+                        Some(ty) => ty.to_doc(ctx),
+                        None => ast::Pat::cast(node)?.to_doc(ctx),
+                    };
+                    Some(TokenPiece::new(doc))
+                },
                 |token| {
                     let piece = TokenPiece::new(alloc.text(ctx.token(&token)));
                     match token.kind() {
@@ -799,6 +805,9 @@ impl ToDoc for ast::FuncParam {
 
         if let Some(name) = name {
             doc = doc.append(alloc.text(ctx.snippet(name.syntax().text_range()).trim()));
+        }
+        if let Some(pat) = self.pat() {
+            doc = doc.append(pat.to_doc(ctx));
         }
 
         if let Some(ty) = self.ty() {

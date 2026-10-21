@@ -624,15 +624,13 @@ fn final_call_site_data<'db>(
     };
     // Only effects, non-memory parameters and parameters holding a pinned
     // type, whose paths reach the pin's space, can supply non-memory places.
-    let pinned_param = (0..)
-        .map_while(|idx| typed_body.param_binding(idx))
-        .any(|binding| {
-            let ty = instance.normalized_binding_ty(db, binding);
-            ty.as_capability(db)
-                .map_or(ty, |(_, inner)| inner)
-                .pinned_part(db)
-                .is_some()
-        });
+    let pinned_param = typed_body.input_bindings().iter().any(|&binding| {
+        let ty = instance.normalized_binding_ty(db, binding);
+        ty.as_capability(db)
+            .map_or(ty, |(_, inner)| inner)
+            .pinned_part(db)
+            .is_some()
+    });
     let refinements = if call_sites_have_effect_args(&call_sites, &for_loop_call_sites)
         || !instance
             .key(db)
@@ -1193,7 +1191,9 @@ impl<'db> SemanticInstance<'db> {
                 }
                 .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
             }
-            LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
+            LocalBinding::Local { .. }
+            | LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. } => {
                 self.key(db).typed_body(db).binding_carrier_ty(db, binding)
             }
         }
@@ -1268,7 +1268,9 @@ impl<'db> SemanticInstance<'db> {
                 ..
             } => effect_binding_ty_from_env(db, instantiated_effect_env(db, self), idx, None),
             LocalBinding::Param { ty, .. } if self.binding_is_session_copy(db, binding) => ty,
-            LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
+            LocalBinding::Local { .. }
+            | LocalBinding::Param { .. }
+            | LocalBinding::ParamPart { .. } => {
                 self.key(db).typed_body(db).binding_carrier_ty(db, binding)
             }
         }
@@ -1287,14 +1289,15 @@ impl<'db> SemanticInstance<'db> {
             LocalBinding::Param {
                 mode: FuncParamMode::View,
                 ty,
-                idx,
                 ..
             } if self.is_projection(db)
                 && ty_is_snapshot(db, self.normalization_scope(db), ty, self.assumptions(db))
-                && !matches!(
-                    self.param_space(db, idx as u32),
-                    AddressSpace::Code | AddressSpace::Calldata
-                )
+                && self.key(db).typed_body(db).input_index(binding).is_some_and(|input| {
+                    !matches!(
+                        self.param_space(db, input as u32),
+                        AddressSpace::Code | AddressSpace::Calldata
+                    )
+                })
         )
     }
 
@@ -1321,8 +1324,9 @@ impl<'db> SemanticInstance<'db> {
         matches!(self.key(db).owner(db), BodyOwner::Func(func, _) if func.is_projection(db))
     }
 
-    /// The address space of the place data parameter `param` names in this
-    /// instantiation: the caller's, or else its type's default.
+    /// The address space of the place data input `param` (a parameter, or a
+    /// product parameter's part) names in this instantiation: the caller's,
+    /// or else its type's default.
     pub fn param_space(self, db: &'db dyn HirAnalysisDb, param: u32) -> AddressSpace {
         let key = self.key(db);
         key.effect_providers(db)
@@ -1330,9 +1334,9 @@ impl<'db> SemanticInstance<'db> {
             .iter()
             .find(|(index, _)| *index == param)
             .map_or_else(
-                || match key.typed_body(db).param_binding(param as usize) {
-                    Some(LocalBinding::Param { ty, .. }) => {
-                        let ty = self.normalized_ty(db, ty);
+                || match key.typed_body(db).input_bindings().get(param as usize) {
+                    Some(LocalBinding::Param { ty, .. } | LocalBinding::ParamPart { ty, .. }) => {
+                        let ty = self.normalized_ty(db, *ty);
                         ty.as_capability(db)
                             .map_or(ty, |(_, inner)| inner)
                             .default_space(db)
@@ -1550,7 +1554,7 @@ impl<'db> SemanticInstance<'db> {
                 let typed_body = callee.key(db).typed_body(db);
                 args.iter().enumerate().filter_map(move |(index, _)| {
                     Some((
-                        callee.normalized_binding_ty(db, typed_body.param_binding(index)?),
+                        callee.normalized_binding_ty(db, *typed_body.input_bindings().get(index)?),
                         at(origin),
                     ))
                 })
@@ -1843,7 +1847,9 @@ pub fn resolved_provider_binding_for_instance_effect<'db>(
             idx,
             ..
         } => (idx, None),
-        LocalBinding::Local { .. } | LocalBinding::Param { .. } => return None,
+        LocalBinding::Local { .. }
+        | LocalBinding::Param { .. }
+        | LocalBinding::ParamPart { .. } => return None,
     };
     provider_idx
         .and_then(|provider_idx| {
@@ -1902,7 +1908,9 @@ pub(crate) fn provisional_provider_binding_for_instance_effect<'db>(
                 )
             })
         }
-        LocalBinding::Local { .. } | LocalBinding::Param { .. } => None,
+        LocalBinding::Local { .. }
+        | LocalBinding::Param { .. }
+        | LocalBinding::ParamPart { .. } => None,
     }
 }
 

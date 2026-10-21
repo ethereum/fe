@@ -42,6 +42,21 @@ impl Pair {
     fn maybe_first(mut? self) -> Option<mut? Counter> {
         Option::Some(mut? self.first)
     }
+
+    /// Each mode's body defines its own closure.
+    fn pick_unless(mut? self, _ second: bool) -> mut? Counter {
+        let flip = |b: bool| !b
+        self.pick(flip(second))
+    }
+
+    /// A `mut?` closure parameter is at the function's mode.
+    fn counted(mut? self) -> mut? Counter {
+        let count_of = |c: mut? Counter| -> u256 {
+            c.count
+        }
+        let _ = count_of(mut? self.first)
+        mut? self.first
+    }
 }
 
 /// A `mut?` parameter other than a receiver.
@@ -132,4 +147,15 @@ fn demand_reaches_through_a_block() {
     a.bump()
     b.count = 9
     assert(pair.first.count == 2 && pair.second.count == 9)
+}
+
+#[test]
+fn closures_in_each_mode() {
+    var pair = new_pair()
+    pair.pick_unless(true).bump()
+    assert(pair.first.count == 2)
+    assert(pair.pick_unless(false).count == 2)
+    let first = mut pair.counted()
+    first.count = 7
+    assert(pair.first.count == 7)
 }

@@ -16,6 +16,7 @@ ast_node! {
     /// `self`
     /// `a: u256`
     /// `_ a: u256`
+    /// `_ (a, b): (u256, u256)`
     pub struct FuncParam,
     SK::FnParam,
 }
@@ -57,15 +58,25 @@ impl FuncParam {
             }
         });
 
-        matches!(
-            (param_names.next(), param_names.next()),
-            (Some(FuncParamName::Underscore(_)), Some(_))
-        )
+        match (param_names.next(), param_names.next()) {
+            (Some(FuncParamName::Underscore(_)), Some(_)) => true,
+            (Some(FuncParamName::Underscore(_)), None) => self.pat().is_some(),
+            _ => false,
+        }
+    }
+
+    /// Returns the pattern a parameter destructures with instead of a name.
+    /// `(a, b)` in `_ (a, b): (u256, u256)`.
+    pub fn pat(&self) -> Option<super::Pat> {
+        support::child(self.syntax())
     }
 
     /// Returns the name of the parameter.
     /// `a` in `_ a: u256`.
     pub fn name(&self) -> Option<FuncParamName> {
+        if self.pat().is_some() {
+            return None;
+        }
         let mut param_names = self.syntax().children_with_tokens().filter_map(|child| {
             if let rowan::NodeOrToken::Token(token) = child {
                 FuncParamName::from_token(token)

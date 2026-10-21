@@ -1,6 +1,9 @@
 use std::convert::Infallible;
 
-use super::{ErrProof, Parser, Recovery, define_scope, path::PathScope, token_stream::TokenStream};
+use super::{
+    Checkpoint, ErrProof, Parser, Recovery, define_scope, path::PathScope,
+    token_stream::TokenStream,
+};
 use crate::{
     ParseError, SyntaxKind,
     parser::{
@@ -11,6 +14,18 @@ use crate::{
 };
 
 pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
+    let checkpoint = parse_pat_operand(parser)?;
+    if parser.current_kind() == Some(SyntaxKind::Pipe) {
+        parser.parse_cp(OrPatScope::default(), Some(checkpoint))?;
+    }
+    Ok(())
+}
+
+/// A pattern with no `|` at its top: a parameter's, where a closure's `|`
+/// ends the list. Returns where it starts.
+pub(crate) fn parse_pat_operand<S: TokenStream>(
+    parser: &mut Parser<S>,
+) -> Result<Checkpoint, Recovery<ErrProof>> {
     use SyntaxKind::*;
     parser.bump_trivias();
     let checkpoint = parser.checkpoint();
@@ -29,11 +44,7 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<
             .unwrap(),
         _ => parser.parse_cp(PathPatScope::default(), Some(checkpoint))?,
     };
-
-    if parser.current_kind() == Some(SyntaxKind::Pipe) {
-        parser.parse_cp(OrPatScope::default(), Some(checkpoint))?;
-    }
-    Ok(())
+    Ok(checkpoint)
 }
 
 /// Bumps a binding's `mut`, `mut?`, `ref` or `var` marker, reporting one in

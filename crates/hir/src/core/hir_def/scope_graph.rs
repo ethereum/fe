@@ -344,7 +344,7 @@ impl<'db> ScopeId<'db> {
 
             ScopeId::FuncParam(..) => {
                 let param: &FuncParam = self.resolve_to(db)?;
-                param.name()
+                param.binding_name()
             }
 
             ScopeId::GenericParam(..) => {

@@ -27,8 +27,8 @@ use crate::{
             SemanticInstance, SemanticNormalizationFailure, get_or_build_semantic_instance,
             identity_semantic_instance_key,
             normalized::{
-                NBlockId, NEffectArg, NEffectArgValue, NExpr, NOperand, NPlace, NPlaceBase,
-                NRootKind, NStatementKind, NTerminatorKind, NValueId, NormalizedBody,
+                NBlockId, NDataProjection, NEffectArg, NEffectArgValue, NExpr, NOperand, NPlace,
+                NPlaceBase, NRootKind, NStatementKind, NTerminatorKind, NValueId, NormalizedBody,
                 SemanticBodyAdmission, semantic_body_admission,
             },
         },
@@ -53,9 +53,11 @@ enum AssignedTarget<'db> {
         func: Func<'db>,
         requirement_idx: u32,
     },
-    /// A `mut T` capability parameter of a function. Writes through `own`
-    /// or non-capability params stay local to the callee and are excluded.
-    FuncParam { func: Func<'db>, param_idx: u32 },
+    /// A `mut T` capability input of a function, by its position among the
+    /// inputs a call passes: a parameter, or a part of a product parameter.
+    /// Writes through `own` or non-capability inputs stay local to the
+    /// callee and are excluded.
+    FuncParam { func: Func<'db>, input_idx: u32 },
 }
 
 /// Field indices of `contract` definitely assigned on every normal exit of
@@ -337,20 +339,57 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
         }
     }
 
-    /// A capability-`mut` function parameter carried by `value`, if any.
-    fn target_of_param_carrier(&self, value: NValueId) -> Option<AssignedTarget<'db>> {
-        let Some(LocalBinding::Param {
+    /// A capability-`mut` function input carried by `value`, if any: a `mut`
+    /// parameter, or a `mut` part of a product parameter, which the body
+    /// projects out of the product it gathers from its parts.
+    fn target_of_param_carrier(&self, mut value: NValueId) -> Option<AssignedTarget<'db>> {
+        // The fields still to select, the next one last: a projection of a
+        // projection selects through both, and an aggregate selects its field.
+        let mut fields = Vec::new();
+        loop {
+            match (self.definitions.get(&value), fields.last()) {
+                (Some(NExpr::ProjectValue { value: base, path }), _) => {
+                    for step in path.0.as_slice().iter().rev() {
+                        let NDataProjection::Field(field) = step else {
+                            return None;
+                        };
+                        fields.push(*field);
+                    }
+                    value = base.value;
+                }
+                (Some(NExpr::AggregateMake { fields: parts, .. }), Some(field)) => {
+                    value = parts.get(usize::from(field.0))?.value;
+                    fields.pop();
+                }
+                _ => break,
+            }
+        }
+        if !fields.is_empty() {
+            return None;
+        }
+        let source = self.body.value(value)?.source?;
+        let (LocalBinding::Param {
             site: ParamSite::Func(func),
-            idx,
             mode: FuncParamMode::Mut,
             ..
-        }) = self.body.value(value)?.source
+        }
+        | LocalBinding::ParamPart {
+            site: ParamSite::Func(func),
+            access: Some(BorrowKind::Mut),
+            ..
+        }) = source
         else {
             return None;
         };
+        let input_idx = self
+            .body
+            .owner
+            .key(self.db)
+            .typed_body(self.db)
+            .input_index(source)?;
         Some(AssignedTarget::FuncParam {
             func,
-            param_idx: idx as u32,
+            input_idx: input_idx as u32,
         })
     }
 
@@ -399,8 +438,8 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
                         NEffectArgValue::Place(place) => self.write_target_of_place(place),
                         NEffectArgValue::Value(_) => None,
                     }),
-                AssignedTarget::FuncParam { func, param_idx } if *func == callee_func => args
-                    .get(*param_idx as usize)
+                AssignedTarget::FuncParam { func, input_idx } if *func == callee_func => args
+                    .get(*input_idx as usize)
                     .and_then(|arg| match self.borrowed_place_of(arg.value) {
                         Some(place) => self.write_target_of_place(place),
                         None => self.target_of_param_carrier(arg.value),

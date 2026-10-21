@@ -103,6 +103,34 @@ impl<'db> Shape<'db> {
         }
     }
 
+    /// The leaves of a product parameter's shape, in order: each part's
+    /// access, or `None` for an owned part, and its type.
+    pub fn leaves(&self) -> Vec<(Option<BorrowKind>, TyId<'db>)> {
+        match self {
+            Self::Owned(ty) => vec![(None, *ty)],
+            Self::Access(kind, ty) => vec![(Some(*kind), *ty)],
+            Self::Tuple(elems) => elems.iter().flat_map(Self::leaves).collect(),
+            Self::Sum { payload, .. } => payload.leaves(),
+        }
+    }
+
+    /// The mode and type of each of a product parameter's parts, in order,
+    /// as a parameter of its own would take it: an owned part is `own`, and
+    /// an access part `mut` or a view.
+    pub fn part_modes(&self) -> Vec<(FuncParamMode, TyId<'db>)> {
+        self.leaves()
+            .into_iter()
+            .map(|(access, ty)| {
+                let mode = match access {
+                    None => FuncParamMode::Own,
+                    Some(BorrowKind::Ref) => FuncParamMode::View,
+                    Some(BorrowKind::Mut) => FuncParamMode::Mut,
+                };
+                (mode, ty)
+            })
+            .collect()
+    }
+
     /// Whether this shape grants an access, i.e. whether a function returning
     /// it is a projection.
     pub fn has_access(&self) -> bool {
@@ -194,6 +222,32 @@ impl<'db> Shape<'db> {
         }
     }
 
+    /// Whether `self` has `other`'s structure: an access where it has one,
+    /// whatever the accesses' kinds.
+    pub fn same_structure(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Owned(_), Self::Owned(_)) | (Self::Access(..), Self::Access(..)) => true,
+            (Self::Tuple(lhs), Self::Tuple(rhs)) => {
+                lhs.len() == rhs.len()
+                    && lhs
+                        .iter()
+                        .zip(rhs)
+                        .all(|(lhs, rhs)| lhs.same_structure(rhs))
+            }
+            (
+                Self::Sum {
+                    variant, payload, ..
+                },
+                Self::Sum {
+                    variant: other_variant,
+                    payload: other_payload,
+                    ..
+                },
+            ) => variant == other_variant && payload.same_structure(other_payload),
+            _ => false,
+        }
+    }
+
     /// Whether two shapes grant the same accesses, ignoring the types.
     pub fn same_modes(&self, other: &Self) -> bool {
         match (self, other) {
@@ -213,6 +267,23 @@ impl<'db> Shape<'db> {
                 },
             ) => variant == other_variant && payload.same_modes(other_payload),
             _ => false,
+        }
+    }
+
+    /// Prints a product parameter's shape, whose owned parts are written
+    /// `own`: a part without a mode is a `ref` access.
+    pub fn pretty_print_product(&self, db: &'db dyn HirAnalysisDb) -> String {
+        match self {
+            Self::Owned(ty) => format!("own {}", ty.pretty_print(db)),
+            Self::Tuple(elems) => format!(
+                "({})",
+                elems
+                    .iter()
+                    .map(|elem| elem.pretty_print_product(db))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            _ => self.pretty_print(db),
         }
     }
 
@@ -382,6 +453,97 @@ pub fn lower_return_shape<'db>(
             .unwrap_or_else(|| Shape::Owned(lower_hir_ty(db, ty, scope, assumptions))),
         _ => Shape::Owned(lower_hir_ty(db, ty, scope, assumptions)),
     }
+}
+
+/// The shape of a written parameter type that is a *product*, a tuple whose
+/// parts carry modes (`(own usize, ref T)`), with `mut?` at `mode`, the mode
+/// of the function. A part written without a mode is a `ref` access, unless
+/// it is a product itself. `None` for any other parameter, which takes its
+/// mode whole.
+pub fn lower_param_product<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    mode: Option<BorrowKind>,
+) -> Option<Shape<'db>> {
+    let TypeKind::Tuple(elems) = ty.data(db) else {
+        return None;
+    };
+    if !is_param_product(db, ty) {
+        return None;
+    }
+    let lower_opt = |ty: Partial<HirTyId<'db>>| {
+        ty.to_opt().map_or_else(
+            || TyId::invalid(db, InvalidCause::ParseError),
+            |ty| lower_hir_ty(db, ty, scope, assumptions),
+        )
+    };
+    let part = |elem: HirTyId<'db>| match elem.data(db) {
+        TypeKind::Mode(TypeMode::Own, inner) => Shape::Owned(lower_opt(*inner)),
+        TypeKind::Mode(TypeMode::Mut, inner) => Shape::Access(BorrowKind::Mut, lower_opt(*inner)),
+        TypeKind::Mode(TypeMode::MaybeMut, inner) => {
+            Shape::Access(maybe_mut_kind(mode), lower_opt(*inner))
+        }
+        TypeKind::Mode(TypeMode::Ref, inner) => Shape::Access(BorrowKind::Ref, lower_opt(*inner)),
+        _ => lower_param_product(db, elem, scope, assumptions, mode).unwrap_or_else(|| {
+            Shape::Access(BorrowKind::Ref, lower_hir_ty(db, elem, scope, assumptions))
+        }),
+    };
+    Some(Shape::Tuple(
+        elems
+            .data(db)
+            .iter()
+            .map(|elem| match elem.to_opt() {
+                Some(elem) => part(elem),
+                None => Shape::Owned(TyId::invalid(db, InvalidCause::ParseError)),
+            })
+            .collect(),
+    ))
+}
+
+/// Whether a written parameter type is a product: a tuple whose parts carry
+/// modes.
+pub fn is_param_product<'db>(db: &'db dyn HirAnalysisDb, ty: HirTyId<'db>) -> bool {
+    matches!(ty.data(db), TypeKind::Tuple(_)) && mentions_mode(db, ty)
+}
+
+/// Diagnostics for a written product parameter type: each part's type is
+/// checked as a type, under its mode if it has one.
+pub fn param_product_diags<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+    span: LazyTySpan<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TyDiagCollection<'db>> {
+    let TypeKind::Tuple(elems) = ty.data(db) else {
+        return collect_hir_ty_diags(db, scope, ty, span, assumptions);
+    };
+    elems
+        .data(db)
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, elem)| {
+            Some((elem.to_opt()?, span.clone().into_tuple_type().elem_ty(idx)))
+        })
+        .flat_map(|(elem, span)| match elem.data(db) {
+            TypeKind::Mode(_, inner) => inner
+                .to_opt()
+                .map(|inner| {
+                    collect_hir_ty_diags(
+                        db,
+                        scope,
+                        inner,
+                        span.into_mode_type().inner(),
+                        assumptions,
+                    )
+                })
+                .unwrap_or_default(),
+            _ if mentions_mode(db, elem) => param_product_diags(db, elem, scope, span, assumptions),
+            _ => collect_hir_ty_diags(db, scope, elem, span, assumptions),
+        })
+        .collect()
 }
 
 /// The sums whose payload variant can carry a shape or be taken by `?`.
