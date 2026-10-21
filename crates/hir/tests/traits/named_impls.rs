@@ -579,3 +579,165 @@ pub fn nested_const_in_with() {
         "expected 3 `8-0098` refusals for nested items inside `with` referencing choice-dependent `Holder<Item>`, got {codes:?}"
     );
 }
+
+#[test]
+fn historical_review_mutable_evidence_parameter_is_refused_at_body_check() {
+    use fe_hir::analysis::ty::{
+        diagnostics::{BodyDiag, FuncBodyDiag},
+        ty_check::check_func_body,
+    };
+    use fe_hir::test_db::find_func;
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "review_mutable_evidence_parameter.fe".into(),
+        r#"
+use core::obligations::Evidence
+trait Pick {}
+impl Pick for u256 {}
+fn immutable(_ witness: Evidence<Pick<u256>>) {}
+fn mutable(mut witness: Evidence<Pick<u256>>) {}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    let (control_diags, _) = check_func_body(&db, find_func(&db, module, "immutable"));
+    assert!(
+        control_diags.is_empty(),
+        "immutable control: {control_diags:?}"
+    );
+    let (diags, _) = check_func_body(&db, find_func(&db, module, "mutable"));
+    assert!(
+        !diags.is_empty(),
+        "mutable evidence must be refused before execution"
+    );
+    assert!(
+        diags.iter().all(|diag| matches!(
+            diag,
+            FuncBodyDiag::Body(BodyDiag::EvidenceMutableStorage { .. })
+        )),
+        "expected only the evidence-storage diagnostic, not a setup error: {diags:?}",
+    );
+}
+
+#[test]
+fn historical_review_opened_evidence_cannot_relabel_associated_output_at_body_check() {
+    use fe_hir::analysis::ty::{
+        diagnostics::{BodyDiag, FuncBodyDiag},
+        ty_check::check_func_body,
+    };
+    use fe_hir::test_db::find_func;
+
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone(
+        "review_evidence_output_forwarding.fe".into(),
+        r#"
+use core::obligations::{Evidence, prove}
+trait Produce { type Output }
+struct Subject {}
+impl Produce for Subject { type Output = u64 }
+fn same(_ witness: Evidence<Produce<Subject, Output = u64>>) -> Evidence<Produce<Subject, Output = u64>> {
+    with (witness) { prove<Produce<Subject, Output = u64>>() }
+}
+fn different(_ witness: Evidence<Produce<Subject, Output = u64>>) -> Evidence<Produce<Subject, Output = bool>> {
+    with (witness) { prove<Produce<Subject, Output = bool>>() }
+}
+"#,
+    );
+    let (module, _) = db.top_mod(file);
+    let (control_diags, _) = check_func_body(&db, find_func(&db, module, "same"));
+    assert!(
+        control_diags.is_empty(),
+        "matching-output control: {control_diags:?}"
+    );
+    let (diags, _) = check_func_body(&db, find_func(&db, module, "different"));
+    assert!(
+        !diags.is_empty(),
+        "different output must be refused by the checker"
+    );
+    assert!(
+        diags.iter().all(|diag| matches!(
+            diag,
+            FuncBodyDiag::Body(BodyDiag::ObligationIntroduction { .. })
+        )),
+        "expected only obligation introduction refusal, not CTFE or a setup error: {diags:?}",
+    );
+}
+
+fn historical_review_closed_evidence_value_and_layout_policy(factory: bool) {
+    use fe_hir::analysis::ty::{
+        diagnostics::{BodyDiag, FuncBodyDiag},
+        ty_check::check_func_body,
+    };
+    use fe_hir::test_db::find_func;
+
+    let definitions = r#"
+use core::obligations::{Evidence, prove}
+trait Width { const N: usize }
+struct Item {}
+impl Width for Item { const N: usize = 1 }
+impl Width for Item as Wide { const N: usize = 2 }
+const W: Evidence<Width<Item>> = with (Wide) { prove<Width<Item>>() }
+const fn factory(_ selected: bool) -> Evidence<Width<Item>> {
+    if selected {
+        with (Wide) { prove<Width<Item>>() }
+    } else {
+        prove<Width<Item>>()
+    }
+}
+"#;
+    let operand = if factory { "factory(true)" } else { "W" };
+    let positive = format!(
+        "{definitions}\n{}",
+        r#"
+const fn chosen() -> usize { with (OPERAND) { Item::N } }
+fn ordinary_layout() -> [u8; Item::N] { [0; 1] }
+struct Verify<const N: usize> where { N == 2 } {}
+fn verifies_selected_value(_ value: Verify<{ chosen() }>) {}
+"#
+        .replace("OPERAND", operand),
+    );
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone("review_closed_evidence_values.fe".into(), &positive);
+    let (module, _) = db.top_mod(file);
+    // This checks a selected value of 2 through CTFE/nominal admission and
+    // an ordinary, non-contextual dependent layout of length 1.
+    db.assert_no_diags(module);
+
+    let negative = format!(
+        "{definitions}\n{}",
+        r#"
+fn refused_written_layout() {
+    with (OPERAND) {
+        let values: [u8; Item::N] = [0; 1]
+        let _ = values
+    }
+}
+"#
+        .replace("OPERAND", operand),
+    );
+    let mut db = HirAnalysisTestDb::default();
+    let file = db.new_stand_alone("review_closed_evidence_layout_refusal.fe".into(), &negative);
+    let (module, _) = db.top_mod(file);
+    let (diags, _) = check_func_body(&db, find_func(&db, module, "refused_written_layout"));
+    assert!(
+        !diags.is_empty(),
+        "opened-slot written layout must be refused"
+    );
+    assert!(
+        diags.iter().all(|diag| matches!(
+            diag,
+            FuncBodyDiag::Body(BodyDiag::ChoiceDependentType { .. })
+        )),
+        "expected only conservative choice-dependent-type refusal, not a setup error: {diags:?}",
+    );
+}
+
+#[test]
+fn historical_review_const_evidence_operand_selects_values_and_refuses_contextual_layout() {
+    historical_review_closed_evidence_value_and_layout_policy(false);
+}
+
+#[test]
+fn historical_review_closed_factory_argument_selects_values_and_refuses_contextual_layout() {
+    historical_review_closed_evidence_value_and_layout_policy(true);
+}
