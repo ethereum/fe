@@ -394,7 +394,7 @@ pub(super) fn attempt_optional_const_fold<'db>(
             origin,
             message: "optional CTFE fold completed with a dependent value".into(),
         }),
-        Err(EvalStop::Blocked(info)) => FoldAttempt::NotFoldable(FoldMissReason::Dependent(info)),
+        Err(EvalStop::Blocked(info)) => FoldAttempt::NotFoldable(FoldMissReason::Dependent(*info)),
         Err(EvalStop::Failed(EvalFailure::Ctfe(CtfeError::UninitializedLocal { .. }))) => {
             FoldAttempt::NotFoldable(FoldMissReason::UnknownRuntimeInput)
         }
@@ -1087,7 +1087,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     if let Some(dependency) =
                         sem_const_dependency(self.db, value.materialize(self.db))
                     {
-                        return Err(EvalStop::Blocked(BlockedInfo::new(
+                        return Err(EvalStop::blocked(BlockedInfo::new(
                             ConstDemandKind::Value,
                             dependency,
                             origin,
@@ -1380,7 +1380,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                     ty.has_param(self.db) || ty.has_var(self.db) || ty.has_projection(self.db)
                 })
             {
-                return Err(EvalStop::Blocked(BlockedInfo::new(
+                return Err(EvalStop::blocked(BlockedInfo::new(
                     ConstDemandKind::CallableSelection,
                     ConstDependency::Type(dependency),
                     origin,
@@ -2458,7 +2458,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
             })?
             // Only a type that still names a parameter has no size yet.
             .ok_or_else(|| {
-                EvalStop::Blocked(BlockedInfo::new(
+                EvalStop::blocked(BlockedInfo::new(
                     ConstDemandKind::Layout,
                     ConstDependency::Type(ty),
                     origin,

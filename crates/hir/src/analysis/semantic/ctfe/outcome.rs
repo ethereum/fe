@@ -81,7 +81,7 @@ impl<'db, T: Update + PartialEq> EvalOutcome<'db, T> {
     pub(crate) fn into_result(self) -> EvalResult<'db, T> {
         match self {
             Self::Ready(value) => Ok(value),
-            Self::Blocked(info) => Err(EvalStop::Blocked(info)),
+            Self::Blocked(info) => Err(EvalStop::blocked(info)),
             Self::Failed(failure) => Err(EvalStop::Failed(failure)),
         }
     }
@@ -96,8 +96,15 @@ impl<'db, T: Update + PartialEq> EvalOutcome<'db, T> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub(crate) enum EvalStop<'db> {
-    Blocked(BlockedInfo<'db>),
+    // Keep the exceptional propagation path small without boxing cached outcomes.
+    Blocked(Box<BlockedInfo<'db>>),
     Failed(EvalFailure<'db>),
+}
+
+impl<'db> EvalStop<'db> {
+    pub(crate) fn blocked(info: BlockedInfo<'db>) -> Self {
+        Self::Blocked(Box::new(info))
+    }
 }
 
 pub(crate) type EvalResult<'db, T> = Result<T, EvalStop<'db>>;
@@ -126,7 +133,7 @@ impl<'db, T: Update + PartialEq> From<EvalResult<'db, T>> for EvalOutcome<'db, T
     fn from(result: EvalResult<'db, T>) -> Self {
         match result {
             Ok(value) => Self::Ready(value),
-            Err(EvalStop::Blocked(info)) => Self::Blocked(info),
+            Err(EvalStop::Blocked(info)) => Self::Blocked(*info),
             Err(EvalStop::Failed(failure)) => Self::Failed(failure),
         }
     }
