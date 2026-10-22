@@ -1363,6 +1363,13 @@ ast_node! {
     SK::QuoteExpr,
 }
 impl QuoteExpr {
+    pub fn pattern(&self) -> Option<super::Pat> {
+        self.syntax()
+            .children()
+            .find(|node| node.kind() == SK::QuotePat)
+            .and_then(|node| support::child(&node))
+    }
+
     pub fn open_list(&self) -> Option<QuoteOpenList> {
         support::child(self.syntax())
     }

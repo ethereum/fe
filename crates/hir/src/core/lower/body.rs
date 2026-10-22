@@ -34,6 +34,17 @@ impl<'db> Body<'db> {
         ctxt.build(Some(&ast), body_expr, BodyKind::FuncBody)
     }
 
+    pub(super) fn lower_const_param_name(
+        f_ctxt: &mut FileLowerCtxt<'db>,
+        name: IdentId<'db>,
+    ) -> Self {
+        let id = f_ctxt.joined_id(TrackedItemVariant::NamelessBody);
+        let mut ctxt = BodyCtxt::new(f_ctxt, id);
+        let path = PathId::from_ident(ctxt.f_ctxt.db(), name);
+        let expr = ctxt.push_expr(Expr::Path(Partial::Present(path)), HirOrigin::None);
+        ctxt.build(None, expr, BodyKind::Anonymous)
+    }
+
     pub(super) fn lower_ast_nameless(f_ctxt: &mut FileLowerCtxt<'db>, ast: ast::Expr) -> Self {
         Self::lower_ast_with_variant(
             f_ctxt,
@@ -100,6 +111,25 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
         if let Some(display) = display_ident {
             let text = display.data(self.f_ctxt.db()).to_string();
             self.f_ctxt.record_bound_name(&text);
+        }
+    }
+
+    pub(super) fn validate_open_name_use(&self, name: &str, range: parser::TextRange) {
+        for frame in self.f_ctxt.quote_frames.iter().rev() {
+            if frame.open_names.iter().any(|(opened, _)| opened == name) {
+                let ident = self.f_ctxt.resolve_sub_quote_local_ident(name);
+                if !self.local_binders.contains(&ident) {
+                    self.f_ctxt.file_scoped_error(
+                        frame.quote_top_mod.file(self.f_ctxt.db()),
+                        range,
+                        format!("quoted open name `{name}` has no enclosing binder at this use"),
+                    );
+                }
+                break;
+            }
+            if !frame.is_sub_quote {
+                break;
+            }
         }
     }
 

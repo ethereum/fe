@@ -538,7 +538,11 @@ impl<'db> Func<'db> {
 
     fn lower_ast_impl(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Func, is_extern: bool) -> Self {
         let sig = ast.sig();
-        let name = IdentId::lower_token_partial(ctxt, sig.name());
+        let name = if let Some(hole) = sig.name_hole() {
+            ctxt.lower_field_hole_ident(hole.syntax().text_range())
+        } else {
+            IdentId::lower_token_partial(ctxt, sig.name())
+        };
         let id = ctxt.joined_id(TrackedItemVariant::Func(name));
         ctxt.enter_item_scope(id, false);
 
@@ -875,7 +879,28 @@ impl<'db> Impl<'db> {
 
         let mut consts = vec![];
         if let Some(item_list) = ast.item_list() {
-            for impl_item in item_list {
+            for child in item_list.syntax().children() {
+                let Some(impl_item) = ast::ImplItem::cast(child.clone()) else {
+                    if let Some(hole) = ast::QuoteHole::cast(child) {
+                        super::generated::lower_member_hole(
+                            ctxt,
+                            hole,
+                            &mut |ctxt, item| match item.kind() {
+                                Some(ast::ItemKind::Func(func)) => {
+                                    Func::lower_ast(ctxt, func);
+                                }
+                                Some(ast::ItemKind::Const(c)) => {
+                                    consts.push(AssocConstDef::lower_quoted_const(ctxt, c));
+                                }
+                                _ => ctxt.record_generation_error(
+                                    item.syntax().text_range(),
+                                    "impl member quotation requires functions or constants",
+                                ),
+                            },
+                        );
+                    }
+                    continue;
+                };
                 match impl_item.kind() {
                     ast::ImplItemKind::Func(func) => {
                         validate_func_attrs(
@@ -940,7 +965,28 @@ impl<'db> Trait<'db> {
         let mut rows = vec![];
 
         if let Some(item_list) = ast.item_list() {
-            for impl_item in item_list {
+            for child in item_list.syntax().children() {
+                let Some(impl_item) = ast::TraitItem::cast(child.clone()) else {
+                    if let Some(hole) = ast::QuoteHole::cast(child) {
+                        super::generated::lower_member_hole(
+                            ctxt,
+                            hole,
+                            &mut |ctxt, item| match item.kind() {
+                                Some(ast::ItemKind::Func(func)) => {
+                                    Func::lower_ast(ctxt, func);
+                                }
+                                Some(ast::ItemKind::Const(c)) => {
+                                    consts.push(AssocConstDecl::lower_quoted_const(ctxt, c));
+                                }
+                                _ => ctxt.record_generation_error(
+                                    item.syntax().text_range(),
+                                    "impl member quotation requires functions or constants",
+                                ),
+                            },
+                        );
+                    }
+                    continue;
+                };
                 match impl_item.kind() {
                     ast::TraitItemKind::Func(func) => {
                         validate_func_attrs(
@@ -1076,7 +1122,28 @@ impl<'db> ImplTrait<'db> {
         let mut consts = vec![];
         let mut rows = vec![];
         if let Some(item_list) = ast.item_list() {
-            for impl_item in item_list {
+            for child in item_list.syntax().children() {
+                let Some(impl_item) = ast::TraitItem::cast(child.clone()) else {
+                    if let Some(hole) = ast::QuoteHole::cast(child) {
+                        super::generated::lower_member_hole(
+                            ctxt,
+                            hole,
+                            &mut |ctxt, item| match item.kind() {
+                                Some(ast::ItemKind::Func(func)) => {
+                                    Func::lower_ast(ctxt, func);
+                                }
+                                Some(ast::ItemKind::Const(c)) => {
+                                    consts.push(AssocConstDef::lower_quoted_const(ctxt, c));
+                                }
+                                _ => ctxt.record_generation_error(
+                                    item.syntax().text_range(),
+                                    "impl member quotation requires functions or constants",
+                                ),
+                            },
+                        );
+                    }
+                    continue;
+                };
                 match impl_item.kind() {
                     ast::TraitItemKind::Func(func) => {
                         validate_func_attrs(
@@ -1150,9 +1217,32 @@ impl<'db> AssocTyDef<'db> {
 }
 
 impl<'db> AssocConstDecl<'db> {
+    fn lower_quoted_const(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Const) -> Self {
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
+        let name = if let Some(hole) = ast.name_hole() {
+            ctxt.lower_field_hole_ident(hole.syntax().text_range())
+        } else {
+            IdentId::lower_token_partial(ctxt, ast.name())
+        };
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
+        let default = ast
+            .value()
+            .map(|expr| Partial::Present(Body::lower_ast(ctxt, expr)));
+        Self {
+            attributes,
+            name,
+            ty,
+            default,
+        }
+    }
+
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitConstItem) -> Self {
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
-        let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let name = if let Some(hole) = ast.name_hole() {
+            ctxt.lower_field_hole_ident(hole.syntax().text_range())
+        } else {
+            IdentId::lower_token_partial(ctxt, ast.name())
+        };
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let default = ast
             .value()
@@ -1167,13 +1257,35 @@ impl<'db> AssocConstDecl<'db> {
 }
 
 impl<'db> AssocConstDef<'db> {
+    fn lower_quoted_const(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Const) -> Self {
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
+        let name = if let Some(hole) = ast.name_hole() {
+            ctxt.lower_field_hole_ident(hole.syntax().text_range())
+        } else {
+            IdentId::lower_token_partial(ctxt, ast.name())
+        };
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
+        let value = ast.value().map(|expr| Body::lower_ast(ctxt, expr)).into();
+        Self {
+            attributes,
+            name,
+            ty,
+            value,
+            vis: super::lower_visibility(&ast),
+        }
+    }
+
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitConstItem) -> Self {
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let value = ast.value().map(|expr| Body::lower_ast(ctxt, expr)).into();
 
         AssocConstDef {
             attributes,
-            name: IdentId::lower_token_partial(ctxt, ast.name()),
+            name: if let Some(hole) = ast.name_hole() {
+                ctxt.lower_field_hole_ident(hole.syntax().text_range())
+            } else {
+                IdentId::lower_token_partial(ctxt, ast.name())
+            },
             ty: TypeId::lower_ast_partial(ctxt, ast.ty()),
             value,
             vis: super::lower_visibility(&ast),
@@ -1183,7 +1295,11 @@ impl<'db> AssocConstDef<'db> {
 
 impl<'db> Const<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Const) -> Self {
-        let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let name = if let Some(hole) = ast.name_hole() {
+            ctxt.lower_field_hole_ident(hole.syntax().text_range())
+        } else {
+            IdentId::lower_token_partial(ctxt, ast.name())
+        };
         let id = ctxt.joined_id(TrackedItemVariant::Const(name));
         ctxt.enter_item_scope(id, false);
 

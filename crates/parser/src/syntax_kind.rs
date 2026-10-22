@@ -293,6 +293,8 @@ pub enum SyntaxKind {
     QuoteItemList,
     /// `{ where T: Trait, .. }` inside a quote.
     QuoteWhere,
+    /// A pattern-only quotation body.
+    QuotePat,
     /// `x + 1`
     BinExpr,
     /// `!x`
@@ -656,6 +658,7 @@ impl SyntaxKind {
             SyntaxKind::QuoteHole => "`${...}` splice",
             SyntaxKind::QuoteItemList => "quoted items",
             SyntaxKind::QuoteWhere => "quoted where predicates",
+            SyntaxKind::QuotePat => "quoted pattern",
             SyntaxKind::LBrace => "`{`",
             SyntaxKind::RBrace => "`}`",
             SyntaxKind::LBracket => "`[`",
