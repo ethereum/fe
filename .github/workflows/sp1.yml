@@ -71,10 +71,14 @@ jobs:
       - name: Install checksum-pinned Succinct toolchain
         run: bash target/sonatina-sp1-tools/crates/sp1/install-toolchain.sh "$SONATINA_SP1_TOOLCHAIN"
       # The SDK's prover types are generated from protobuf definitions.
-      - name: Install protoc
-        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      # arduino/setup-protoc lists every protobuf release through the GitHub API
+      # on each run, and fails when that listing comes back short.
+      - name: Install checksum-pinned protoc
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/protoc.zip" https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip
+          echo "0502f286ac9ed860b629a7965a14527b1f2dd131e4283fa23c2d7f184672aa9a  $RUNNER_TEMP/protoc.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/protoc.zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
       - name: Install cargo-nextest
         uses: taiki-e/install-action@badb8c3638e0b773c6c17a6025c2306a8f1c4303 # nextest
         with:
