@@ -1,6 +1,5 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 523
 expression: output
 input_file: crates/codegen/tests/fixtures/erc20.fe
 ---
@@ -2232,17 +2231,8 @@ func private %impl_trait_bool__encode__gf13e(v0.i1, v1.@layout_2) {
         jump block1;
 
     block1:
-        br v0 block2 block3;
-
-    block2:
-        call %impl_AbiFrame__store_word v1 0.i256 1.i256;
-        jump block4;
-
-    block3:
-        call %impl_AbiFrame__store_word v1 0.i256 0.i256;
-        jump block4;
-
-    block4:
+        v4.i256 = zext v0 i256;
+        call %impl_AbiFrame__store_word v1 0.i256 v4;
         return;
 }
 
