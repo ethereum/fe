@@ -56,7 +56,7 @@ fn input(value: u32, wide: u64) -> SP1Stdin {
 
 #[test]
 fn executes_checked_io_and_rejects_overflow_and_bad_input() {
-    let client = ProverClient::builder().cpu().build();
+    let client = ProverClient::builder().light().build();
     for elf in programs() {
         for value in [0, 41, i32::MAX as u32, u32::MAX - 1] {
             for wide in [0, i64::MAX as u64, u64::MAX] {
@@ -101,7 +101,7 @@ fn executes_checked_io_and_rejects_overflow_and_bad_input() {
 
 #[test]
 fn preserves_runtime_exit_status() {
-    let client = ProverClient::builder().cpu().build();
+    let client = ProverClient::builder().light().build();
     let source = r#"
 use std::sp1::{ProverInput, read_u32, sp1}
 pub fn main() -> i32 {
@@ -139,7 +139,7 @@ fn executes_wrapping_division_and_bounded_power_across_integer_widths() {
         }
     }
     source.push_str("commit_u32(base)\n}\n0\n}\n");
-    let client = ProverClient::builder().cpu().build();
+    let client = ProverClient::builder().light().build();
     for level in [0, 2] {
         let elf = compile(&source, level);
         let mut stdin = SP1Stdin::new();
