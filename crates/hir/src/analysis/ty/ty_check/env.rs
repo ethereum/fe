@@ -1124,7 +1124,9 @@ impl<'db> TyCheckEnv<'db> {
     /// as `name` if the row has none, with its provider if it is new. A
     /// component required `mut` anywhere is `mut`. A new trait-keyed
     /// component's provider is assumed to implement the trait for the rest
-    /// of the body; a row component has no provider.
+    /// of the body; a row component has no provider. The row of the late
+    /// closure, already checked, is fixed: it gives only a component it has,
+    /// `mut` if `is_mut`.
     pub(super) fn closure_effect(
         &mut self,
         key: EffectRequirementKey<'db>,
@@ -1142,6 +1144,13 @@ impl<'db> TyCheckEnv<'db> {
             }
             (held, key) => held == key,
         };
+        if let Some((def, _)) = &self.late_closure {
+            let effect = self.closure_effects[&def.expr]
+                .iter()
+                .find(|effect| same_key(&effect.requirement.key))?;
+            return (!is_mut || effect.requirement.is_mut)
+                .then(|| (LocalBinding::effect_param(effect), None));
+        }
         let active = self.closure_stack.last_mut()?;
         if let Some(effect) = active
             .effects

@@ -32,6 +32,32 @@ impl Note for W<u8> {
     fn bump(self) uses (log: mut Log) {}
 }
 
+struct R {}
+
+trait Apply {
+    fn apply<F: Fn(R) -> u256>(self, _ f: F) -> u256 uses F::E
+}
+
+impl Apply for W<u256> {
+    fn apply<F: Fn(R) -> u256>(self, _ f: F) -> u256 uses F::E {
+        f(R {}) + self.v
+    }
+}
+
+impl Apply for W<u8> {
+    fn apply<F: Fn(R) -> u256>(self, _ f: F) -> u256 uses F::E {
+        0
+    }
+}
+
+fn direct<F: Fn(R) -> u256>(_ f: F) -> u256 uses F::E {
+    f(R {})
+}
+
+fn logged(_ r: R) -> u256 uses (log: Log) {
+    log.n
+}
+
 fn in_with() -> u256 {
     with (Log = Log { n: 1 }) {
         let x = 5
@@ -76,6 +102,30 @@ fn with_in_closure() -> u256 {
     g()
 }
 
+// A row the call forwards is a component of the closure's row.
+fn row_in_closure<F: Fn(R) -> u256>(_ f: own F) -> u256 uses F::E {
+    let g = || {
+        let x = 5
+        let r = W { v: x }.apply(f)
+        let y: u256 = x
+        r
+    }
+    g()
+}
+
+// Resolved after `g` is checked, `apply` forwards `g`'s `F::E` component,
+// not `late_row_in_closure`'s own row.
+fn late_row_in_closure<F: Fn(R) -> u256>(_ f: own F, _ f2: own F) -> u256 uses (F::E, log: Log) {
+    let x = 5
+    let g = || {
+        let d = log.n * 100 + direct(f2)
+        let r = W { v: x }.apply(f)
+        d + r
+    }
+    let y: u256 = x
+    g()
+}
+
 fn bump_in_closure() uses (log: mut Log) {
     let g = || {
         let x = 5
@@ -93,6 +143,8 @@ fn deferred_calls_take_their_call_sites_effects() {
     with (Log = log) {
         assert!(in_closure() == 7)
         assert!(in_nested_closure() == 7)
+        assert!(row_in_closure(logged) == 7)
+        assert!(late_row_in_closure(logged, logged) == 209)
         bump_in_closure()
     }
     assert!(log.n == 7)
