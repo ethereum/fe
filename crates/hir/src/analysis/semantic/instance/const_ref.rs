@@ -15,7 +15,6 @@ use crate::{
                 ConstCanonEnv, ConstCanonMode, canonicalize_ty_for_mode,
                 inherent_const_body_and_impl_args, inherent_const_decl_ty,
             },
-            corelib::resolve_core_trait,
             effects::{
                 place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowPath, expand_rows},
@@ -40,7 +39,7 @@ use crate::{
     },
     core::semantic::{EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding},
     hir_def::{
-        CallableDef, Const, Func, GenericParamOwner, HirIngot, IdentId, params::FuncParamMode,
+        CallableDef, Const, Func, GenericParamOwner, HirIngot, params::FuncParamMode,
         scope_graph::ScopeId,
     },
     span::DynLazySpan,
@@ -454,28 +453,6 @@ pub fn generated_callee_key<'db>(
         return Err(MethodArgMapError::MissingBody);
     }
     Ok(callee.key)
-}
-
-/// The instance a compiler-generated call of core trait `trait_path`'s
-/// method `name`, on trait arguments `args`, reaches: e.g. the
-/// `StateIndex::locate` an entry `c[k]` calls.
-pub fn core_method_callee_key<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-    trait_path: &[&str],
-    name: &str,
-    args: Vec<TyId<'db>>,
-) -> Result<SemanticInstanceKey<'db>, MethodArgMapError<'db>> {
-    let trait_def = resolve_core_trait(db, scope, trait_path)
-        .unwrap_or_else(|| panic!("core declares {trait_path:?}"));
-    let func = trait_def
-        .method_defs(db)
-        .get(&IdentId::new(db, name.to_string()))
-        .copied()
-        .unwrap_or_else(|| panic!("{trait_path:?} declares {name}"));
-    let trait_inst = TraitInstId::new_simple(db, trait_def, args);
-    generated_callee_key(db, scope, assumptions, func, Some(trait_inst), &[])
 }
 
 #[allow(clippy::too_many_arguments)]
