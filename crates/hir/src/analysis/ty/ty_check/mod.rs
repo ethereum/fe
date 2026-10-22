@@ -94,7 +94,7 @@ use super::{
     instantiate_trait_self,
     trait_def::{TraitInstId, selected_assoc_const_body_template},
     trait_resolution::{
-        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx, WellFormedness,
+        GoalSatisfiability, PredicateListId, TraitSolveCx, WellFormedness,
         check_trait_inst_wf_without_self, check_ty_wf, goal_query_has_no_distinct_solution,
         is_goal_query_satisfiable, is_goal_satisfiable,
     },
@@ -1440,13 +1440,15 @@ fn typed_body_for_bodyless_func<'db>(
         pat_ty: SecondaryMap::new(),
         expr_ty: SecondaryMap::new(),
         yield_shapes: SecondaryMap::new(),
-        place_entries: FxHashSet::default(),
+        place_entries: FxHashMap::default(),
         unsafe_splits: FxHashSet::default(),
         product_args: FxHashSet::default(),
         value_calls: FxHashSet::default(),
         matched_places: FxHashSet::default(),
         inspected_places: FxHashSet::default(),
         covered_providers: FxHashSet::default(),
+        named_impl_operands: FxHashSet::default(),
+        expr_choices: SecondaryMap::new(),
         const_refs: SecondaryMap::new(),
         value_path_refs: SecondaryMap::new(),
         semantic_expr_lowering: SecondaryMap::new(),
@@ -2258,8 +2260,10 @@ impl<'db> TyChecker<'db> {
             return TraitObligationOutcome::Discharged;
         }
 
-        let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
-        let query = CanonicalGoalQuery::new(db, goal, assumptions);
+        let solve_cx = TraitSolveCx::new(db, scope)
+            .with_assumptions(assumptions)
+            .with_choices(obligation.choices);
+        let query = solve_cx.query(db, goal);
         match is_goal_query_satisfiable(db, solve_cx, &query) {
             GoalSatisfiability::Satisfied(solution) => {
                 // A function item's shape determines its generic arguments:
@@ -2434,6 +2438,7 @@ impl<'db> TyChecker<'db> {
         let db = self.db;
         let body = self.env.body();
         let scope = self.env.scope();
+
 
         // Final trait solving can still bind types after literal fallback.
         // Check retained equalities after those constraints have settled.
@@ -2627,6 +2632,7 @@ impl<'db> TyChecker<'db> {
 
                                     if candidate.needs_confirmation {
                                         self.env.register_trait_obligation(env::TraitObligation {
+                                            choices: self.env.choices,
                                             goal: inst,
                                             origin: env::TraitObligationOrigin::GenericConfirmation,
                                             span: call_span.clone().into(),
@@ -3088,7 +3094,7 @@ impl<'db> TyChecker<'db> {
             hir_ty,
             span.clone(),
             self.env.assumptions(),
-            TraitSolveCx::new(self.db, self.env.scope()).with_assumptions(self.env.assumptions()),
+            self.env.solve_cx(),
         ) {
             self.push_diag(diag);
         }
@@ -4143,6 +4149,7 @@ impl<'db> ConstRef<'db> {
                     body,
                     selection,
                     GenericSubst::complete(db, subst.clone()),
+                    use_.solve_cx(db).assumptions(),
                 )
             }
             _ => EvidenceList::none(db),
@@ -4152,15 +4159,20 @@ impl<'db> ConstRef<'db> {
 
     /// Proves, in the use's context, the bounds the trait's default value
     /// body declares, instantiated for the use, as `declared_bound_evidence`
-    /// records them.
-    pub(super) fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
+    /// records them. Return missing dictionaries when lexical selection requires
+    /// complete evidence, using the same validation as callable signatures.
+    pub(super) fn record_bound_evidence(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        choices: Option<crate::analysis::ty::trait_resolution::ChosenImpls<'db>>,
+    ) -> Vec<TraitInstId<'db>> {
         let ConstRef::TraitConst {
             use_,
             bound_evidence,
             ..
         } = self
         else {
-            return;
+            return Vec::new();
         };
         let trait_ = use_.inst().def(db);
         let (Some(body), Ok(subst)) = (
@@ -4169,16 +4181,23 @@ impl<'db> ConstRef<'db> {
                 .and_then(|constant| constant.default_body(db)),
             CompleteSubst::for_owner(db, trait_.into(), use_.inst().args(db).to_vec()),
         ) else {
-            return;
+            return Vec::new();
         };
         let declared = const_body_assumptions(db, body.scope());
-        *bound_evidence = Some(declared_bound_evidence(
+        let signature = declared.extend_all_bounds(db);
+        let recorded = declared_bound_evidence(
             db,
             declared,
-            declared.extend_all_bounds(db),
+            signature,
             &subst,
-            use_.solve_cx(db),
-        ));
+            use_.solve_cx(db).with_choices(choices),
+        );
+        *bound_evidence = Some(recorded);
+        if choices.is_some() {
+            recorded.missing_bound_goals(db, signature, &subst)
+        } else {
+            Vec::new()
+        }
     }
 }
 
@@ -4295,6 +4314,24 @@ pub(crate) fn has_invisible_newtype_field<'db>(
         && !is_scope_visible_from(db, ScopeId::Field(FieldParent::Struct(s), 0), scope)
 }
 
+/// Calls generated by a checked state-entry occurrence. Associated types
+/// describe the ordinary layout; these callables retain the selected runtime
+/// dictionaries for locating and encoding the entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlaceEntryCalls<'db> {
+    pub locate: Callable<'db>,
+    pub codec: [Callable<'db>; 2],
+    /// A lexical codec proof failed at the producer. Preserve that result even
+    /// when only substitution later determines whether the layout needs it.
+    pub codec_choice_failed: bool,
+}
+
+impl<'db> PlaceEntryCalls<'db> {
+    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut Callable<'db>> {
+        std::iter::once(&mut self.locate).chain(&mut self.codec)
+    }
+}
+
 // A private module keeps the shared tables type out of the crate's public
 // API.
 mod typed_body_tables {
@@ -4314,7 +4351,7 @@ mod typed_body_tables {
         pub(super) yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
         /// Index expressions naming an entry of a collection whose elements
         /// are places.
-        pub(super) place_entries: FxHashSet<ExprId>,
+        pub(super) place_entries: FxHashMap<ExprId, PlaceEntryCalls<'db>>,
         /// The tuples that are unsafe splits: an `unsafe` block's tail tuple
         /// of accesses, granted by one session.
         pub(super) unsafe_splits: FxHashSet<ExprId>,
@@ -4330,6 +4367,9 @@ mod typed_body_tables {
         pub(super) inspected_places: FxHashSet<ExprId>,
         /// `with` values whose resources the function's own authority covers.
         pub(super) covered_providers: FxHashSet<ExprId>,
+        pub(super) named_impl_operands: FxHashSet<ExprId>,
+        pub(super) expr_choices:
+            SecondaryMap<ExprId, Option<crate::analysis::ty::trait_resolution::ChosenImpls<'db>>>,
         pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
         pub(super) value_path_refs: SecondaryMap<ExprId, Option<ValuePathRef<'db>>>,
         pub(super) semantic_expr_lowering: SecondaryMap<ExprId, Option<SemanticExprLowering<'db>>>,
@@ -4688,6 +4728,12 @@ impl<'db> TypedBody<'db> {
         for plan in self.tables.for_loop_plans.values().flatten() {
             plan.visit_with(visitor);
         }
+        for calls in self.tables.place_entries.values() {
+            calls.locate.visit_with(visitor);
+            for callable in &calls.codec {
+                callable.visit_with(visitor);
+            }
+        }
         for (_, ty) in &self.tables.path_applications {
             ty.visit_with(visitor);
         }
@@ -4729,6 +4775,11 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
             .values_mut()
             .flatten()
             .for_each(|lowering| *lowering = lowering.clone().fold_with(db, folder));
+        for calls in this.place_entries.values_mut() {
+            for callable in calls.iter_mut() {
+                *callable = callable.clone().fold_with(db, folder);
+            }
+        }
         this.record_init_lowering
             .values_mut()
             .flatten()
@@ -4807,6 +4858,11 @@ impl<'db> TypedBody<'db> {
         let tables = self.tables_mut();
         for lowering in tables.semantic_expr_lowering.values_mut().flatten() {
             lowering.callable_mut().bind_evidence(db, bound);
+        }
+        for calls in tables.place_entries.values_mut() {
+            for callable in calls.iter_mut() {
+                callable.bind_evidence(db, bound);
+            }
         }
         for plan in tables.for_loop_plans.values_mut().flatten() {
             for call in &mut plan.calls {
@@ -5050,6 +5106,29 @@ impl<'db> TypedBody<'db> {
         }
     }
 
+    pub(super) fn has_chosen_impls(&self) -> bool {
+        !self.tables.expr_choices.is_empty()
+    }
+
+    pub(super) fn choices_in_scope(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        mut scope: ScopeId<'db>,
+    ) -> Option<crate::analysis::ty::trait_resolution::ChosenImpls<'db>> {
+        loop {
+            if let ScopeId::Block(body, expr) = scope
+                && Some(body) == self.body()
+            {
+                return self.tables.expr_choices[expr];
+            }
+            scope = scope.parent(db)?;
+        }
+    }
+
+    pub fn is_named_impl_operand(&self, expr: ExprId) -> bool {
+        self.tables.named_impl_operands.contains(&expr)
+    }
+
     pub fn assumptions(&self) -> PredicateListId<'db> {
         self.tables.assumptions
     }
@@ -5082,8 +5161,16 @@ impl<'db> TypedBody<'db> {
 
     /// Whether the index expression `expr` names an entry of a collection
     /// whose elements are places (`core::ops::StateIndex`), a path step.
+    pub fn place_entry_calls(&self, expr: ExprId) -> Option<&PlaceEntryCalls<'db>> {
+        self.tables.place_entries.get(&expr)
+    }
+
+    pub fn place_entry_callable(&self, expr: ExprId) -> Option<&Callable<'db>> {
+        self.place_entry_calls(expr).map(|calls| &calls.locate)
+    }
+
     pub fn is_place_entry(&self, expr: ExprId) -> bool {
-        self.tables.place_entries.contains(&expr)
+        self.tables.place_entries.contains_key(&expr)
     }
 
     /// Whether `expr` is a place a pattern is matched against: its bindings
@@ -6642,13 +6729,15 @@ impl<'db> TypedBody<'db> {
             pat_ty: SecondaryMap::new(),
             expr_ty: SecondaryMap::new(),
             yield_shapes: SecondaryMap::new(),
-            place_entries: FxHashSet::default(),
+            place_entries: FxHashMap::default(),
             unsafe_splits: FxHashSet::default(),
             product_args: FxHashSet::default(),
             value_calls: FxHashSet::default(),
             matched_places: FxHashSet::default(),
             inspected_places: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
+            named_impl_operands: FxHashSet::default(),
+            expr_choices: SecondaryMap::new(),
             const_refs: SecondaryMap::new(),
             value_path_refs: SecondaryMap::new(),
             semantic_expr_lowering: SecondaryMap::new(),
@@ -7120,7 +7209,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         let assumptions = checker.env.assumptions();
         checker.resolve_deferred();
         checker.check_access_captures();
-        let mut body = checker.env.finish(&mut checker.table);
+        let mut body = checker.env.finish(&mut checker.table, &mut checker.diags);
         body.tables_mut().return_borrow_provider = checker.first_return_borrow_provider;
         let direct_call_callees = body.body().map_or_else(FxHashSet::default, |body_id| {
             body_id

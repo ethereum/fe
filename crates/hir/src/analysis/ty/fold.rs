@@ -519,6 +519,16 @@ impl<'db> TyFoldable<'db> for TraitSolverQuery<'db> {
             goal: self.goal.fold_with(db, folder),
             assumptions: self.assumptions.fold_with(db, folder),
             require_impl: self.require_impl,
+            choices: self.choices.map(|choices| {
+                super::trait_resolution::ChosenImpls::new(
+                    db,
+                    choices
+                        .items(db)
+                        .iter()
+                        .map(|item| item.fold_with(db, folder))
+                        .collect::<Vec<_>>(),
+                )
+            }),
         }
     }
 }
@@ -644,9 +654,11 @@ impl<'db> TyFoldable<'db> for PlaceProjection<'db> {
                 result_ty: result_ty.fold_with(db, folder),
             },
             PlaceProjection::Entry {
+                entry_expr,
                 key_expr,
                 result_ty,
             } => PlaceProjection::Entry {
+                entry_expr,
                 key_expr,
                 result_ty: result_ty.fold_with(db, folder),
             },

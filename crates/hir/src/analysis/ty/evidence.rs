@@ -61,6 +61,13 @@ pub enum Evidence<'db> {
     /// The assumption at this position in the extended assumption list of
     /// the body the goal was proved in.
     Assumption(u32),
+    /// The compiler's provisional ordinary Solidity codec obligation. Its
+    /// element is still generic, so the whole-slot fallback is not a selection.
+    /// Substitution closes this leaf without replacing any selected parent.
+    DeferredSolCodec {
+        goal: TraitInstId<'db>,
+        scope: ScopeId<'db>,
+    },
 }
 
 impl<'db> EvidenceId<'db> {
@@ -77,7 +84,7 @@ impl<'db> EvidenceId<'db> {
                 instantiated,
                 ..
             } => Some(ResolvedImplInstance::new(*selected, *instantiated, goal)),
-            Evidence::Assumption(_) => None,
+            Evidence::Assumption(_) | Evidence::DeferredSolCodec { .. } => None,
         }
     }
 
@@ -86,6 +93,7 @@ impl<'db> EvidenceId<'db> {
     fn rebase(self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) -> Option<Self> {
         Some(match self.data(db) {
             Evidence::Assumption(index) => bound.get(db, *index as usize)?,
+            Evidence::DeferredSolCodec { .. } => self,
             Evidence::Impl {
                 selected,
                 instantiated,
@@ -109,11 +117,20 @@ impl<'db> EvidenceId<'db> {
         evidence_is_closed(db, self)
     }
 
+    /// Whether this tree selects a named implementation at any depth.
+    pub fn has_named_impl(self, db: &'db dyn HirAnalysisDb) -> bool {
+        evidence_has_named_impl(db, self)
+    }
+
+    pub(crate) fn has_deferred(self, db: &'db dyn HirAnalysisDb) -> bool {
+        evidence_has_deferred(db, self)
+    }
+
     /// The proofs of an implementation's conditions; none for an assumption.
     pub fn conds(self, db: &'db dyn HirAnalysisDb) -> &'db [EvidenceId<'db>] {
         match self.data(db) {
             Evidence::Impl { conds, .. } => conds,
-            Evidence::Assumption(_) => &[],
+            Evidence::Assumption(_) | Evidence::DeferredSolCodec { .. } => &[],
         }
     }
 
@@ -122,6 +139,7 @@ impl<'db> EvidenceId<'db> {
     pub fn bind(self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) -> Self {
         match self.data(db) {
             Evidence::Assumption(index) => bound.get(db, *index as usize).unwrap_or(self),
+            Evidence::DeferredSolCodec { .. } => self,
             Evidence::Impl {
                 selected,
                 instantiated,
@@ -139,9 +157,75 @@ impl<'db> EvidenceId<'db> {
 }
 
 #[salsa::tracked]
+fn evidence_has_deferred<'db>(db: &'db dyn HirAnalysisDb, proof: EvidenceId<'db>) -> bool {
+    match proof.data(db) {
+        Evidence::DeferredSolCodec { .. } => true,
+        Evidence::Impl { conds, .. } => conds.iter().any(|proof| proof.has_deferred(db)),
+        Evidence::Assumption(_) => false,
+    }
+}
+
+/// Complete only the ordinary obligations explicitly retained by the producer.
+/// This runs at instance finalization, never in generic substitution/folding.
+#[salsa::tracked]
+pub(crate) fn complete_deferred_evidence<'db>(
+    db: &'db dyn HirAnalysisDb,
+    proof: EvidenceId<'db>,
+) -> Option<EvidenceId<'db>> {
+    if !proof.has_deferred(db) {
+        return Some(proof);
+    }
+    match proof.data(db) {
+        Evidence::Assumption(_) => Some(proof),
+        Evidence::DeferredSolCodec { goal, scope } => {
+            if collect_flags(db, *goal).intersects(
+                TyFlags::HAS_PARAM
+                    | TyFlags::HAS_VAR
+                    | TyFlags::HAS_PROJECTION
+                    | TyFlags::HAS_INVALID,
+            ) {
+                Some(proof)
+            } else {
+                prove(db, TraitSolveCx::new(db, *scope), *goal)
+            }
+        }
+        Evidence::Impl {
+            selected,
+            instantiated,
+            conds,
+        } => Some(EvidenceId::new(
+            db,
+            Evidence::Impl {
+                selected: *selected,
+                instantiated: *instantiated,
+                conds: conds
+                    .iter()
+                    .map(|&proof| complete_deferred_evidence(db, proof))
+                    .collect::<Option<_>>()?,
+            },
+        )),
+    }
+}
+
+/// Proofs form a shared DAG. Cache this property so repeated tuple/condition
+/// children do not turn ground-key construction into an exponential walk.
+#[salsa::tracked]
+fn evidence_has_named_impl<'db>(db: &'db dyn HirAnalysisDb, evidence: EvidenceId<'db>) -> bool {
+    match evidence.data(db) {
+        Evidence::Impl {
+            selected, conds, ..
+        } => {
+            matches!(selected.origin(db), ImplementorOrigin::Hir(implementation) if implementation.selection_name(db).is_some())
+                || conds.iter().any(|cond| cond.has_named_impl(db))
+        }
+        Evidence::Assumption(_) | Evidence::DeferredSolCodec { .. } => false,
+    }
+}
+
+#[salsa::tracked]
 fn evidence_is_closed<'db>(db: &'db dyn HirAnalysisDb, evidence: EvidenceId<'db>) -> bool {
     match evidence.data(db) {
-        Evidence::Assumption(_) => false,
+        Evidence::Assumption(_) | Evidence::DeferredSolCodec { .. } => false,
         Evidence::Impl { conds, .. } => conds.iter().all(|cond| cond.is_closed(db)),
     }
 }
@@ -174,6 +258,32 @@ impl<'db> EvidenceList<'db> {
     /// The proof of the assumption at `index`, if the list supplies one.
     pub fn get(self, db: &'db dyn HirAnalysisDb, index: usize) -> Option<EvidenceId<'db>> {
         self.entries(db).get(index).copied().flatten()
+    }
+
+    /// Missing dictionaries in a settled signature. Still-schematic effect
+    /// providers and unresolved goals belong to their existing checker paths.
+    pub(crate) fn missing_bound_goals(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        signature: PredicateListId<'db>,
+        subst: &CompleteSubst<'db>,
+    ) -> Vec<TraitInstId<'db>> {
+        signature
+            .list(db)
+            .iter()
+            .enumerate()
+            .filter_map(|(index, &bound)| {
+                if self.get(db, index).is_some() {
+                    return None;
+                }
+                let goal = substitute_complete(db, bound, subst).ok()?;
+                if mentions_effect_provider(db, goal) {
+                    return None;
+                }
+                (!collect_flags(db, goal).intersects(TyFlags::HAS_VAR | TyFlags::HAS_INVALID))
+                    .then_some(goal)
+            })
+            .collect()
     }
 
     /// Each proof with the assumptions it names replaced by `bound`'s proofs.
@@ -238,6 +348,13 @@ impl<'db> TyFoldable<'db> for EvidenceId<'db> {
                         .collect(),
                 },
             ),
+            Evidence::DeferredSolCodec { goal, scope } => EvidenceId::new(
+                db,
+                Evidence::DeferredSolCodec {
+                    goal: goal.fold_with(db, folder),
+                    scope: *scope,
+                },
+            ),
             Evidence::Assumption(_) => self,
         }
     }
@@ -248,25 +365,46 @@ impl<'db> TyVisitable<'db> for EvidenceId<'db> {
     where
         V: TyVisitor<'db> + ?Sized,
     {
-        if let Evidence::Impl {
-            instantiated,
-            conds,
-            ..
-        } = self.data(visitor.db())
-        {
-            instantiated.visit_with(visitor);
-            for cond in conds {
-                cond.visit_with(visitor);
+        match self.data(visitor.db()) {
+            Evidence::Impl {
+                instantiated,
+                conds,
+                ..
+            } => {
+                instantiated.visit_with(visitor);
+                for cond in conds {
+                    cond.visit_with(visitor);
+                }
             }
+            Evidence::DeferredSolCodec { goal, .. } => goal.visit_with(visitor),
+            Evidence::Assumption(_) => {}
         }
     }
 }
 
-/// Whether `goal` names no parameter or inference variable, so neither does
-/// any projection in it: no assumption answers it, and its proof is the same
-/// in every body.
+/// Whether `goal` names no parameter or inference variable. A supplied
+/// dictionary can still distinguish two proofs of such a concrete goal.
 fn is_closed_goal<'db>(db: &'db dyn HirAnalysisDb, goal: TraitInstId<'db>) -> bool {
     !collect_flags(db, goal).intersects(TyFlags::HAS_PARAM | TyFlags::HAS_VAR)
+}
+
+/// Result owned by proof production. A deliberately deferred ordinary layout
+/// obligation is distinct from a proof that the checked context cannot supply.
+/// Consumers must not turn an unavailable lexical proof into ordinary dispatch.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
+pub(crate) enum ProofOutcome<'db> {
+    Proven(EvidenceId<'db>),
+    Deferred,
+    Unavailable,
+}
+
+impl<'db> ProofOutcome<'db> {
+    pub(crate) fn evidence(self) -> Option<EvidenceId<'db>> {
+        match self {
+            Self::Proven(evidence) => Some(evidence),
+            Self::Deferred | Self::Unavailable => None,
+        }
+    }
 }
 
 /// Proves `goal` in `solve_cx`, the context of the body that uses it. A goal
@@ -277,8 +415,40 @@ pub fn prove<'db>(
     solve_cx: TraitSolveCx<'db>,
     goal: TraitInstId<'db>,
 ) -> Option<EvidenceId<'db>> {
-    // Every body shares a closed goal's proof.
-    let solve_cx = if is_closed_goal(db, goal) {
+    prove_outcome(db, solve_cx, goal).evidence()
+}
+
+pub(crate) fn prove_outcome<'db>(
+    db: &'db dyn HirAnalysisDb,
+    solve_cx: TraitSolveCx<'db>,
+    goal: TraitInstId<'db>,
+) -> ProofOutcome<'db> {
+    // Inference variables belong to the checker's unification table. Header
+    // matching uses its own table and must only receive settled proof inputs.
+    // Unresolved calls retain their ordinary inference diagnostics; evidence
+    // is recorded after their inputs have been instantiated.
+    let unsettled = TyFlags::HAS_VAR | TyFlags::HAS_INVALID;
+    if collect_flags(db, goal).intersects(unsettled)
+        || solve_cx.choices().is_some_and(|choices| {
+            collect_flags(db, choices.items(db).as_slice()).intersects(unsettled)
+        })
+    {
+        return ProofOutcome::Deferred;
+    }
+    // A body's declared dictionary remains authoritative even when its type
+    // is concrete. A lexical override explicitly replaces that dictionary.
+    if !solve_cx.has_matching_choice(db, goal)
+        && let Some(index) = solve_cx
+            .assumptions()
+            .extend_all_bounds(db)
+            .list(db)
+            .iter()
+            .position(|&bound| bound == goal)
+    {
+        return ProofOutcome::Proven(EvidenceId::new(db, Evidence::Assumption(index as u32)));
+    }
+    // Closed goals without supplied dictionaries or choices share a proof.
+    let solve_cx = if is_closed_goal(db, goal) && solve_cx.choices().is_none() {
         solve_cx.with_assumptions(PredicateListId::empty_list(db))
     } else {
         solve_cx
@@ -289,11 +459,10 @@ pub fn prove<'db>(
 /// A use's proofs, in its body's context `solve_cx`, of the bounds a body it
 /// reaches declares (`declared`), instantiated by `subst`, by their places
 /// among the assumptions that body is checked under (`signature`). A bound
-/// whose goal is closed is left to the instance, which proves it once for
-/// every use, and so is a bound on an effect provider, which the use binds
-/// only once its providers are resolved: the use records only proofs that
-/// name its own assumptions. A goal the use's body itself assumes is that
-/// assumption.
+/// whose goal is closed can be reconstructed ordinarily only when no
+/// lexical choice or supplied dictionary affects it. Resolved effect-provider
+/// arguments supply proofs through these same slots. Implied bounds project from their declared
+/// root dictionaries rather than selecting independently in the caller.
 pub(crate) fn declared_bound_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     declared: PredicateListId<'db>,
@@ -302,27 +471,155 @@ pub(crate) fn declared_bound_evidence<'db>(
     solve_cx: TraitSolveCx<'db>,
 ) -> EvidenceList<'db> {
     let assumptions = solve_cx.assumptions().extend_all_bounds(db);
+    let declared_proof = |goal| prove(db, solve_cx, goal);
     EvidenceList::of(
         db,
         signature
             .list(db)
             .iter()
             .map(|&bound| {
-                if !declared.list(db).contains(&bound) || mentions_effect_provider(db, bound) {
-                    return None;
-                }
                 let goal = substitute_complete(db, bound, subst).ok()?;
-                if is_closed_goal(db, goal) {
+                let directly_declared = declared.list(db).contains(&bound);
+                if directly_declared
+                    && is_closed_goal(db, goal)
+                    && solve_cx.choices().is_none()
+                    && !assumptions.list(db).contains(&goal)
+                {
                     return None;
                 }
-                match assumptions
-                    .list(db)
-                    .iter()
-                    .position(|&assumption| assumption == goal)
-                {
-                    Some(index) => Some(EvidenceId::new(db, Evidence::Assumption(index as u32))),
-                    None => prove(db, solve_cx, goal),
+                let mut answer = if directly_declared {
+                    Some(declared_proof(goal)?)
+                } else {
+                    None
+                };
+                // A slot must agree with every declared dictionary that implies it,
+                // including when the same bound is also written explicitly.
+                for &root in declared.list(db) {
+                    if root == bound
+                        || !PredicateListId::new(db, vec![root])
+                            .extend_all_bounds(db)
+                            .list(db)
+                            .contains(&bound)
+                    {
+                        continue;
+                    }
+                    let source_goal = substitute_complete(db, root, subst).ok()?;
+                    let proof = declared_proof(source_goal)?;
+                    let projected = implied_bound_evidence(db, proof, goal, assumptions)?;
+                    if answer.is_some_and(|previous| previous != projected) {
+                        return None;
+                    }
+                    answer = Some(projected);
                 }
+                answer
+            })
+            .collect(),
+    )
+}
+
+/// An implementation's implied bound is proved in its declaration context,
+/// then supplied with the actual proofs of that implementation's conditions.
+/// This is projection from a dictionary, not fresh caller-side selection.
+#[salsa::tracked]
+fn implied_bound_evidence<'db>(
+    db: &'db dyn HirAnalysisDb,
+    proof: EvidenceId<'db>,
+    goal: TraitInstId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Option<EvidenceId<'db>> {
+    if matches!(proof.data(db), Evidence::Assumption(_)) {
+        let index = assumptions
+            .extend_all_bounds(db)
+            .list(db)
+            .iter()
+            .position(|&bound| bound == goal)?;
+        return Some(EvidenceId::new(db, Evidence::Assumption(index as u32)));
+    }
+    let Evidence::Impl {
+        selected,
+        instantiated,
+        ..
+    } = proof.data(db)
+    else {
+        return None;
+    };
+    let ImplementorOrigin::Hir(implementation) = selected.origin(db) else {
+        return None;
+    };
+    let subst =
+        CompleteSubst::for_owner(db, implementation.into(), instantiated.params(db).clone())
+            .ok()?;
+    let roots = PredicateListId::new(db, vec![selected.trait_inst(db)]).extend_all_bounds(db);
+    let declaration_goal = roots.list(db).iter().copied().find(|&candidate| {
+        substitute_complete(db, candidate, &subst).is_ok_and(|candidate| candidate == goal)
+    })?;
+    let declared = PredicateListId::new(db, vec![declaration_goal]);
+    let proofs = basis_proofs(
+        db,
+        implementation.scope(),
+        selected.constraints(db).extend_all_bounds(db),
+        declared,
+        declared,
+    );
+    let supplied = expanded_condition_evidence(db, proof, assumptions);
+    instantiate_proofs(db, &proofs, &subst, supplied).get(db, 0)
+}
+
+/// Extend an implementation's actual prerequisite dictionaries with their
+/// implied dictionaries. Every path to a shared slot must agree. This is
+/// projection through supplied proofs, never selection in the caller's scope.
+#[salsa::tracked]
+fn expanded_condition_evidence<'db>(
+    db: &'db dyn HirAnalysisDb,
+    proof: EvidenceId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> EvidenceList<'db> {
+    let Evidence::Impl {
+        selected,
+        instantiated,
+        conds,
+    } = proof.data(db)
+    else {
+        return EvidenceList::none(db);
+    };
+    let ImplementorOrigin::Hir(implementation) = selected.origin(db) else {
+        return EvidenceList::none(db);
+    };
+    let Ok(subst) =
+        CompleteSubst::for_owner(db, implementation.into(), instantiated.params(db).clone())
+    else {
+        return EvidenceList::none(db);
+    };
+    let basis = selected.constraints(db);
+    EvidenceList::of(
+        db,
+        basis
+            .extend_all_bounds(db)
+            .list(db)
+            .iter()
+            .map(|&bound| {
+                let goal = substitute_complete(db, bound, &subst).ok()?;
+                let mut answer = None;
+                for (index, &root) in basis.list(db).iter().enumerate() {
+                    if !PredicateListId::new(db, vec![root])
+                        .extend_all_bounds(db)
+                        .list(db)
+                        .contains(&bound)
+                    {
+                        continue;
+                    }
+                    let source = *conds.get(index)?;
+                    let projected = if root == bound {
+                        source
+                    } else {
+                        implied_bound_evidence(db, source, goal, assumptions)?
+                    };
+                    if answer.is_some_and(|previous| previous != projected) {
+                        return None;
+                    }
+                    answer = Some(projected);
+                }
+                answer
             })
             .collect(),
     )
@@ -333,49 +630,88 @@ fn prove_in<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
     goal: TraitInstId<'db>,
-) -> Option<EvidenceId<'db>> {
+) -> ProofOutcome<'db> {
     let settled = |flags: TyFlags| !flags.intersects(TyFlags::HAS_VAR | TyFlags::HAS_INVALID);
     if !settled(collect_flags(db, goal)) {
-        return None;
+        return ProofOutcome::Deferred;
     }
     let Selection::Unique(resolved) = resolve_trait_impl_instance(db, solve_cx, goal) else {
-        return None;
+        return if collect_flags(db, goal).intersects(TyFlags::HAS_PARAM | TyFlags::HAS_PROJECTION)
+            && !solve_cx.has_matching_choice(db, goal)
+        {
+            ProofOutcome::Deferred
+        } else {
+            ProofOutcome::Unavailable
+        };
     };
     if !settled(collect_flags(db, resolved)) {
-        return None;
+        return ProofOutcome::Deferred;
     }
-    let evidence = match resolved.selected().origin(db) {
-        ImplementorOrigin::Assumption => {
-            Evidence::Assumption(answering_assumption(db, solve_cx, goal)? as u32)
-        }
-        ImplementorOrigin::Hir(_) => {
-            // A `mut` goal's conditions are its implementation's `mut?`
-            // bounds at `mut`.
-            let mode = Some(if goal.is_mut(db) {
-                BorrowKind::Mut
-            } else {
-                BorrowKind::Ref
-            });
-            Evidence::Impl {
+    if matches!(
+        resolved.selected().origin(db),
+        ImplementorOrigin::Structural
+    ) && super::sol_codec::sol_codec_proof_is_deferred(db, resolved.trait_inst())
+    {
+        return ProofOutcome::Proven(EvidenceId::new(
+            db,
+            Evidence::DeferredSolCodec {
+                goal: resolved.trait_inst(),
+                scope: solve_cx.origin_scope(db),
+            },
+        ));
+    }
+    let selected_proof = || -> Option<EvidenceId<'db>> {
+        let evidence = match resolved.selected().origin(db) {
+            ImplementorOrigin::Assumption => {
+                Evidence::Assumption(answering_assumption(db, solve_cx, goal)? as u32)
+            }
+            ImplementorOrigin::Hir(_) => {
+                // A `mut` goal's conditions are its implementation's `mut?`
+                // bounds at `mut`.
+                let mode = Some(if goal.is_mut(db) {
+                    BorrowKind::Mut
+                } else {
+                    BorrowKind::Ref
+                });
+                Evidence::Impl {
+                    selected: resolved.selected(),
+                    instantiated: resolved.instantiated(),
+                    conds: resolved
+                        .instantiated_constraints(db)
+                        .list(db)
+                        .iter()
+                        .map(|&cond| prove(db, solve_cx, cond.at_mode(db, mode)))
+                        .collect::<Option<_>>()?,
+                }
+            }
+            ImplementorOrigin::VirtualContract(_)
+            | ImplementorOrigin::Callable
+            | ImplementorOrigin::Structural => Evidence::Impl {
                 selected: resolved.selected(),
                 instantiated: resolved.instantiated(),
-                conds: resolved
-                    .instantiated_constraints(db)
-                    .list(db)
-                    .iter()
-                    .map(|&cond| prove(db, solve_cx, cond.at_mode(db, mode)))
-                    .collect::<Option<_>>()?,
+                conds: Vec::new(),
+            },
+        };
+        let proof = EvidenceId::new(db, evidence);
+        // A selected implementation also receives its private prerequisite
+        // dictionaries. Validate their shared implied slots here, while this
+        // producer owns the selection, before any body could reconstruct a
+        // missing slot with an ordinary proof.
+        if proof.has_named_impl(db) {
+            let supplied = expanded_condition_evidence(db, proof, solve_cx.assumptions());
+            let count = resolved
+                .selected()
+                .constraints(db)
+                .extend_all_bounds(db)
+                .list(db)
+                .len();
+            if (0..count).any(|index| supplied.get(db, index).is_none()) {
+                return None;
             }
         }
-        ImplementorOrigin::VirtualContract(_)
-        | ImplementorOrigin::Callable
-        | ImplementorOrigin::Structural => Evidence::Impl {
-            selected: resolved.selected(),
-            instantiated: resolved.instantiated(),
-            conds: Vec::new(),
-        },
+        Some(proof)
     };
-    Some(EvidenceId::new(db, evidence))
+    selected_proof().map_or(ProofOutcome::Unavailable, ProofOutcome::Proven)
 }
 
 /// The implementation answering `inst` where a checked body is
@@ -411,8 +747,10 @@ pub(crate) fn instantiated_selection<'db>(
             };
             Some(ResolvedImplInstance::new(*selected, instantiated, goal()))
         }
+        Some(Evidence::DeferredSolCodec { .. }) => None,
         Some(Evidence::Assumption(_)) if is_closed_goal(db, inst) => {
-            instantiated_selection(db, prove(db, solve_cx, inst), solve_cx, inst)
+            let ordinary = solve_cx.with_assumptions(PredicateListId::empty_list(db));
+            instantiated_selection(db, prove(db, ordinary, inst), solve_cx, inst)
         }
         // As selection answers a goal by an assumption.
         Some(Evidence::Assumption(_)) => {
@@ -430,8 +768,8 @@ pub(crate) fn instantiated_selection<'db>(
 /// How the method `body` of an implementation proves, at `mode`, the
 /// assumptions it is checked under (`func_signature`) from what a call of the
 /// trait's method `nominal` supplies. Each proof names as its assumptions the
-/// implementation's conditions, as a proof selecting the implementation
-/// proves them, followed by the assumptions `nominal`'s body is checked
+/// implementation's extended conditions, including their implied dictionary
+/// slots, followed by the assumptions `nominal`'s body is checked
 /// under, as the call proves them. Absent for a method of no implementation.
 #[salsa::tracked(return_ref)]
 pub(crate) fn impl_method_evidence<'db>(
@@ -444,7 +782,9 @@ pub(crate) fn impl_method_evidence<'db>(
         return None;
     };
     let implementor = lower_impl_trait(db, impl_trait)?;
-    let conditions = collect_candidate_constraints(db, impl_trait.into()).instantiate_identity();
+    let conditions = collect_candidate_constraints(db, impl_trait.into())
+        .instantiate_identity()
+        .extend_all_bounds(db);
     let (subst, _, _) = trait_to_impl_param_subst(
         db,
         CallableDef::Func(body),
@@ -492,7 +832,9 @@ pub(crate) fn impl_const_evidence<'db>(
     Some(basis_proofs(
         db,
         body.scope(),
-        collect_candidate_constraints(db, impl_trait.into()).instantiate_identity(),
+        collect_candidate_constraints(db, impl_trait.into())
+            .instantiate_identity()
+            .extend_all_bounds(db),
         declared,
         declared.extend_all_bounds(db),
     ))
@@ -501,9 +843,8 @@ pub(crate) fn impl_const_evidence<'db>(
 /// Proofs, in `scope`, of the entries of `signature`, a body's assumptions,
 /// that the body declares (`declared`), from the assumptions `basis`, each
 /// naming the assumptions it uses by their positions in `basis` itself. A
-/// bound `basis` states is that assumption. What the declared bounds imply,
-/// and a bound that needs an assumption `basis` only implies, have no proof:
-/// the instance proves them.
+/// bound `basis` states is that assumption, including supplied supertrait
+/// dictionaries. Other implied bounds are left for the instance to prove.
 fn basis_proofs<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -529,11 +870,11 @@ fn basis_proofs<'db>(
         .list(db)
         .iter()
         .map(|&goal| {
-            if !declared.list(db).contains(&goal) {
-                return None;
-            }
             if let Some(index) = basis.list(db).iter().position(|&pred| pred == goal) {
                 return Some(assumption(index));
+            }
+            if !declared.list(db).contains(&goal) {
+                return None;
             }
             prove(db, solve_cx, goal)?.rebase(db, to_basis())
         })
@@ -575,6 +916,7 @@ pub(crate) fn impl_method_bound_evidence<'db>(
     selection: EvidenceId<'db>,
     bound: EvidenceList<'db>,
     subst: GenericSubst<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> EvidenceList<'db> {
     let (Some(proofs), Some(subst)) = (
         impl_method_evidence(db, body, nominal, mode),
@@ -582,12 +924,19 @@ pub(crate) fn impl_method_bound_evidence<'db>(
     ) else {
         return EvidenceList::none(db);
     };
+    let Evidence::Impl { selected, .. } = selection.data(db) else {
+        return EvidenceList::none(db);
+    };
+    let conditions = expanded_condition_evidence(db, selection, assumptions);
+    let condition_count = selected
+        .constraints(db)
+        .extend_all_bounds(db)
+        .list(db)
+        .len();
     let supplied = EvidenceList::of(
         db,
-        selection
-            .conds(db)
-            .iter()
-            .map(|&cond| Some(cond))
+        (0..condition_count)
+            .map(|index| conditions.get(db, index))
             .chain(bound.entries(db).iter().copied())
             .collect::<Vec<_>>(),
     );
@@ -603,28 +952,21 @@ pub(crate) fn impl_const_bound_evidence<'db>(
     body: Body<'db>,
     selection: EvidenceId<'db>,
     subst: GenericSubst<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> EvidenceList<'db> {
     let (Some(proofs), Some(subst)) = (impl_const_evidence(db, body), subst.mapping(db).as_ref())
     else {
         return EvidenceList::none(db);
     };
-    let supplied = EvidenceList::of(
-        db,
-        selection
-            .conds(db)
-            .iter()
-            .map(|&cond| Some(cond))
-            .collect::<Vec<_>>(),
-    );
+    let supplied = expanded_condition_evidence(db, selection, assumptions);
     instantiate_proofs(db, proofs, subst, supplied)
 }
 
 /// The evidence an instance runs with: its key's proofs, `supplied`, of the
 /// assumptions its body is checked under, instantiated as `goals`, with a
 /// proof in `solve_cx` of each closed goal `supplied` gives no closed proof
-/// of. A use leaves its callee's closed goals to the instance, and a proof
-/// of one naming the use's own assumptions names those of a body the
-/// instance does not run in.
+/// of. Closed supplied proofs are authoritative. A residual assumption from
+/// another body cannot be used as an instance dictionary.
 #[salsa::tracked]
 pub(crate) fn instance_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -640,6 +982,15 @@ pub(crate) fn instance_evidence<'db>(
             .enumerate()
             .map(|(index, &goal)| {
                 let supplied = supplied.get(db, index);
+                if let Some(proof) = supplied
+                    && proof.has_deferred(db)
+                {
+                    // A selected parent is authoritative even if one retained
+                    // obligation cannot close. Never replace that tree.
+                    let completed = complete_deferred_evidence(db, proof)?;
+                    return (!is_closed_goal(db, goal) || completed.is_closed(db))
+                        .then_some(completed);
+                }
                 if is_closed_goal(db, goal) && !supplied.is_some_and(|proof| proof.is_closed(db)) {
                     prove(db, solve_cx, goal)
                 } else {
@@ -654,16 +1005,16 @@ fn prove_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
     _solve_cx: TraitSolveCx<'db>,
     _goal: TraitInstId<'db>,
-) -> Option<EvidenceId<'db>> {
-    None
+) -> ProofOutcome<'db> {
+    ProofOutcome::Unavailable
 }
 
 fn prove_cycle_recover<'db>(
     _db: &'db dyn HirAnalysisDb,
-    _value: &Option<EvidenceId<'db>>,
+    _value: &ProofOutcome<'db>,
     _count: u32,
     _solve_cx: TraitSolveCx<'db>,
     _goal: TraitInstId<'db>,
-) -> salsa::CycleRecoveryAction<Option<EvidenceId<'db>>> {
+) -> salsa::CycleRecoveryAction<ProofOutcome<'db>> {
     salsa::CycleRecoveryAction::Iterate
 }

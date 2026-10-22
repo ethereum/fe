@@ -93,10 +93,9 @@ pub struct SemanticInstanceKey<'db> {
 impl<'db> SemanticInstanceKey<'db> {
     /// The key for `owner`'s instance with `subst`, given the proofs a use
     /// supplies of the assumptions its body is checked under. One with
-    /// closed arguments carries none: its instance proves every assumption
-    /// itself (`instance_evidence`), so the keys for one body and
-    /// substitution are the same however they are made, and a key never
-    /// holds a proof whose types can hold the key.
+    /// closed arguments retains only non-ordinary proof trees. Ordinary
+    /// assumptions can be reconstructed by `instance_evidence`; chosen
+    /// dictionaries must survive specialization to concrete types.
     pub fn of(
         db: &'db dyn HirAnalysisDb,
         owner: BodyOwner<'db>,
@@ -106,7 +105,14 @@ impl<'db> SemanticInstanceKey<'db> {
         supplied: EvidenceList<'db>,
     ) -> Self {
         let evidence = if is_ground(collect_flags(db, subst.generic_args(db))) {
-            EvidenceList::none(db)
+            EvidenceList::of(
+                db,
+                supplied
+                    .entries(db)
+                    .iter()
+                    .map(|entry| entry.filter(|proof| proof.has_named_impl(db)))
+                    .collect(),
+            )
         } else {
             supplied
         };
@@ -362,8 +368,11 @@ fn provisional_call_sites<'db>(
     );
 
     for (expr, _) in body.exprs(db).iter() {
-        let Some(SemanticExprLowering::Call { callable }) = typed_body.semantic_expr_lowering(expr)
-        else {
+        let callable = match typed_body.semantic_expr_lowering(expr) {
+            Some(SemanticExprLowering::Call { callable }) => Some(callable),
+            _ => typed_body.place_entry_callable(expr),
+        };
+        let Some(callable) = callable else {
             continue;
         };
         if regions.expr(expr) != region {
@@ -739,8 +748,11 @@ fn finalize_call_sites<'db>(
         let Some(site) = call_sites.get_mut(expr.index()).and_then(Option::as_mut) else {
             continue;
         };
-        let Some(SemanticExprLowering::Call { callable }) = typed_body.semantic_expr_lowering(expr)
-        else {
+        let callable = match typed_body.semantic_expr_lowering(expr) {
+            Some(SemanticExprLowering::Call { callable }) => Some(callable),
+            _ => typed_body.place_entry_callable(expr),
+        };
+        let Some(callable) = callable else {
             continue;
         };
         finalize_call_site(
@@ -1402,6 +1414,81 @@ impl<'db> SemanticInstance<'db> {
         )
     }
 
+    /// Codec calls belonging to one checked entry. A codec is only required
+    /// after the ordinary associated layout says this entry is packed. The
+    /// callable may defer an obligation that becomes closed on substitution;
+    /// the shared callee finalizer owns that obligation, as for written calls.
+    #[salsa::tracked]
+    pub fn entry_codec_callees(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        expr: ExprId,
+    ) -> Result<[SemanticInstanceKey<'db>; 2], SemanticDiagnosticId<'db>> {
+        let calls = self
+            .key(db)
+            .typed_body(db)
+            .place_entry_calls(expr)
+            .ok_or_else(|| {
+                method_arg_map_diagnostic(
+                    db,
+                    self,
+                    MethodArgMapError::MissingBody,
+                    SemOrigin::Expr(expr),
+                )
+            })?;
+        if calls.codec_choice_failed {
+            let goal = calls.codec[0]
+                .trait_inst()
+                .expect("a checked codec has its trait goal");
+            return Err(SemanticDiagnosticId::new(
+                db,
+                SemanticDiagnostic::new(
+                    self,
+                    SemanticDiagnosticKind::StorageViolation,
+                    format!(
+                        "trait bound `{}` is not satisfied under the implementation choices at this indexing operation",
+                        goal.pretty_print(db, true)
+                    ),
+                    SemanticDiagnosticSpan::Origin {
+                        owner: self.key(db).owner(db),
+                        origin: SemOrigin::Expr(expr),
+                    },
+                ),
+            ));
+        }
+        let finalize = || {
+            let one = |callable: &Callable<'db>| {
+                let mut callable = callable.clone();
+                if callable.evidence().is_none() {
+                    // A codec's layout obligation can first become decidable
+                    // here. Produce its proof once, including prerequisites,
+                    // before applying the ordinary shared call finalizer.
+                    // Existing named or bound proofs are never replaced.
+                    callable.record_evidence(
+                        db,
+                        TraitSolveCx::new(db, self.normalization_scope(db))
+                            .with_assumptions(self.assumptions(db)),
+                    );
+                }
+                let callee = semantic_callee_key_with_effect_providers(
+                    db,
+                    self.key(db),
+                    &callable,
+                    &[],
+                    &[],
+                )?
+                .ok_or(MethodArgMapError::MissingBody)?;
+                if !callee.concrete_dispatch {
+                    return Err(MethodArgMapError::MissingBody);
+                }
+                Ok(callee.key)
+            };
+            Ok([one(&calls.codec[0])?, one(&calls.codec[1])?])
+        };
+        finalize()
+            .map_err(|error| method_arg_map_diagnostic(db, self, error, SemOrigin::Expr(expr)))
+    }
+
     /// How `ty` packs its elements into lanes when its elements are places
     /// (`core::ops::StateIndex`), in this instance.
     #[salsa::tracked]
@@ -1634,7 +1721,17 @@ impl<'db> SemanticInstance<'db> {
         }
 
         if let Some(body) = typed_body.body() {
+            let regions = closure_regions(db, body);
+            let region = self.key(db).owner(db).closure_region();
             for (expr, _) in body.exprs(db).iter() {
+                if regions.expr(expr) == region
+                    && let Some(calls) = typed_body.place_entry_calls(expr)
+                    && let Some(goal) = calls.locate.trait_inst()
+                    && self.state_index_lanes(db, goal.self_ty(db)).is_some()
+                    && let Err(error) = self.entry_codec_callees(db, expr)
+                {
+                    return Err(SemanticBodyAdmissionError::CallSiteFinalization(error));
+                }
                 let Some(SemanticExprLowering::ConstIntrinsic { callable, kind }) =
                     typed_body.semantic_expr_lowering(expr)
                 else {

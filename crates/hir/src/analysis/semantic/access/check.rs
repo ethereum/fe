@@ -450,7 +450,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 NDataProjection::Field(field) => PlaceStep::Field(field.0 as usize),
                 NDataProjection::VariantField { .. } => PlaceStep::Variant,
                 NDataProjection::Index(_) => PlaceStep::Index,
-                NDataProjection::Entry(_) => PlaceStep::Entry,
+                NDataProjection::Entry(..) => PlaceStep::Entry,
             };
             walk.step(db, self.instance, start, (container, step, result));
             container = result;
@@ -1668,7 +1668,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     NPlaceBase::Deref { .. } => None,
                 };
                 if let Some(key) = key
-                    && !path.contains(&Step::Index(None))
+                    && !path.iter().any(Step::is_dynamic_index)
                 {
                     state.moved.retain(|(moved, moved_path)| {
                         *moved != key || !moved_path.starts_with(&path)
@@ -1867,7 +1867,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             }
             if kind == MemoryAccessKind::Move {
                 // `[*]` names no definite element to restore.
-                if path.contains(&Step::Index(None)) {
+                if path.iter().any(Step::is_dynamic_index) {
                     return Err(self.diag(
                         SemanticDiagnosticKind::MoveConflict,
                         origin,
