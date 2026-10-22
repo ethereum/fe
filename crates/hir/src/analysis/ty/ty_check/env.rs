@@ -1214,21 +1214,17 @@ impl<'db> TyCheckEnv<'db> {
         Some((binding, provided))
     }
 
-    /// Marks the closure effect `binding` as used `mut`, returning whether it
-    /// is: the row of a closure already checked is fixed.
-    pub(super) fn require_mut_closure_effect(&mut self, binding: LocalBinding<'db>) -> bool {
-        let LocalBinding::EffectParam {
-            site: EffectParamSite::Closure(def),
-            idx,
-            ..
-        } = binding
-        else {
-            return true;
-        };
+    /// Marks effect `idx` of `closure`'s row as used `mut`, returning whether
+    /// it is: the row of a closure already checked is fixed.
+    pub(super) fn require_mut_closure_effect(
+        &mut self,
+        closure: ClosureDef<'db>,
+        idx: usize,
+    ) -> bool {
         match self
             .closure_stack
             .iter_mut()
-            .find(|active| active.def == def)
+            .find(|active| active.def == closure)
         {
             Some(active) => {
                 if let Some(effect) = active.effects.get_mut(idx) {
@@ -1239,7 +1235,7 @@ impl<'db> TyCheckEnv<'db> {
             }
             None => self
                 .closure_effects
-                .get(&def.expr)
+                .get(&closure.expr)
                 .and_then(|effects| effects.get(idx))
                 .is_some_and(|effect| effect.requirement.is_mut),
         }
@@ -1474,6 +1470,13 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn register_pending_method(&mut self, pending: PendingMethod<'db>) {
         self.deferred.push(DeferredTask::Method(pending))
+    }
+
+    /// Whether a method call in `closure`'s body waits to resolve.
+    pub(super) fn has_pending_method_in(&self, closure: ClosureDef<'db>) -> bool {
+        self.deferred.iter().any(|task| {
+            matches!(task, DeferredTask::Method(pending) if pending.site.closure == Some(closure))
+        })
     }
 
     pub(super) fn register_pending_primitive_op(&mut self, pending: PendingPrimitiveOp) {

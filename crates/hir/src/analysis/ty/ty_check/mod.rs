@@ -2508,7 +2508,7 @@ impl<'db> TyChecker<'db> {
     /// Resolves deferred tasks until none progresses. A method call resolves
     /// at its call site: see `CallSite`. With `closure`, whose body has just
     /// been checked, only the calls in that body do, while its row can still
-    /// take what they need.
+    /// take what they need, and the pass ends once none of them waits.
     fn resolve_pending(&mut self, closure: Option<ClosureDef<'db>>) {
         let db = self.db;
         let body = self.env.body();
@@ -2517,7 +2517,7 @@ impl<'db> TyChecker<'db> {
 
         // Fixed-point pass over deferred tasks.
         let mut progressed = true;
-        while progressed {
+        while progressed && closure.is_none_or(|def| self.env.has_pending_method_in(def)) {
             progressed = false;
             let tasks = self.env.take_deferred_tasks();
             for task in tasks {

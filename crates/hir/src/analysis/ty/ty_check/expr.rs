@@ -2247,12 +2247,12 @@ impl<'db> TyChecker<'db> {
                     };
 
                     if req.required_mut
-                        && let Some(binding) = provider.binding
-                        && let LocalBinding::EffectParam {
+                        && let Some(LocalBinding::EffectParam {
                             site: EffectParamSite::Closure(closure),
+                            idx,
                             ..
-                        } = binding
-                        && !self.env.require_mut_closure_effect(binding)
+                        }) = provider.binding
+                        && !self.env.require_mut_closure_effect(closure, idx)
                     {
                         self.push_diag(BodyDiag::LateClosureEffect {
                             primary: call_span.clone(),
