@@ -424,7 +424,7 @@ fn insert_param_mapping<'db>(
 /// The trait method's params as the impl method's, the pairs of their
 /// effects, and whether every effect of the trait method has its pair. An
 /// impl method's extra effects are stricter bounds.
-fn trait_to_impl_param_subst<'db>(
+pub(crate) fn trait_to_impl_param_subst<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_m: CallableDef<'db>,
     trait_m: CallableDef<'db>,
@@ -928,7 +928,9 @@ pub(crate) fn normalize_compare_assoc_consts<'db>(
             }
 
             let typed_body = capture.specialize(db, typed_body.clone());
-            let ConstRef::TraitConst(assoc) = typed_body.expr_const_ref(body.expr(db))? else {
+            let ConstRef::TraitConst { use_: assoc, .. } =
+                typed_body.expr_const_ref(body.expr(db))?
+            else {
                 return None;
             };
 

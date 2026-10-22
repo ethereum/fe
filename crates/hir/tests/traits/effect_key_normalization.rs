@@ -6,13 +6,15 @@ use fe_hir::analysis::semantic::{
     root_semantic_instance_key, typed_body_template, validate_instantiated_effect_env_key,
 };
 use fe_hir::analysis::ty::effects::{EffectKeyKind, place_effect_provider_param_index_map};
-use fe_hir::analysis::ty::trait_def::resolve_trait_method_instance;
-use fe_hir::analysis::ty::trait_resolution::{Selection, TraitSolveCx};
+use fe_hir::analysis::ty::evidence::EvidenceList;
+use fe_hir::analysis::ty::evidence::prove;
+use fe_hir::analysis::ty::trait_resolution::TraitSolveCx;
 use fe_hir::analysis::ty::ty_check::{
     BodyOwner, EffectPassMode, TypedBody, check_contract_recv_arm_body, check_func_body,
 };
 use fe_hir::analysis::ty::ty_def::{TyData, TyId};
 use fe_hir::hir_def::{CallableDef, Contract, Expr, ExprId, Func, ItemKind, Partial, TopLevelMod};
+use fe_hir::semantic::param_env;
 use fe_hir::test_db::{HirAnalysisTestDb, initialize_test_analysis_pass};
 
 fn find_func<'db>(db: &'db HirAnalysisTestDb, top_mod: TopLevelMod<'db>, name: &str) -> Func<'db> {
@@ -2810,15 +2812,21 @@ fn impl_trait_method_typed_body_instantiation_substitutes_self() {
     let inst = impl_trait
         .trait_inst(&db)
         .expect("missing impl trait instance");
-    let Selection::Unique(resolved) = resolve_trait_method_instance(
+    let resolved = prove(
         &db,
-        TraitSolveCx::new(&db, impl_trait.scope()),
+        TraitSolveCx::new(&db, impl_trait.scope())
+            .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
-        method.name(&db).to_opt().expect("missing method name"),
-        None,
-    ) else {
-        panic!("missing resolved impl method");
-    };
+    )
+    .and_then(|evidence| evidence.answering(&db, inst))
+    .and_then(|selected| {
+        selected.method(
+            &db,
+            method.name(&db).to_opt().expect("missing method name"),
+            None,
+        )
+    })
+    .expect("missing resolved impl method");
     assert_eq!(resolved.body(), Some(method));
 
     let instantiated = instantiate_typed_body(
@@ -2853,15 +2861,21 @@ fn impl_trait_method_self_paths_preserve_binding_ty_after_instantiation() {
     let inst = impl_trait
         .trait_inst(&db)
         .expect("missing impl trait instance");
-    let Selection::Unique(resolved) = resolve_trait_method_instance(
+    let resolved = prove(
         &db,
-        TraitSolveCx::new(&db, impl_trait.scope()),
+        TraitSolveCx::new(&db, impl_trait.scope())
+            .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
-        method.name(&db).to_opt().expect("missing method name"),
-        None,
-    ) else {
-        panic!("missing resolved impl method");
-    };
+    )
+    .and_then(|evidence| evidence.answering(&db, inst))
+    .and_then(|selected| {
+        selected.method(
+            &db,
+            method.name(&db).to_opt().expect("missing method name"),
+            None,
+        )
+    })
+    .expect("missing resolved impl method");
 
     let instantiated = instantiate_typed_body(
         &db,
@@ -3063,15 +3077,21 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
     let inst = impl_trait
         .trait_inst(&db)
         .expect("missing impl trait instance");
-    let Selection::Unique(resolved) = resolve_trait_method_instance(
+    let resolved = prove(
         &db,
-        TraitSolveCx::new(&db, impl_trait.scope()),
+        TraitSolveCx::new(&db, impl_trait.scope())
+            .with_assumptions(param_env(&db, ItemKind::ImplTrait(impl_trait))),
         inst,
-        method.name(&db).to_opt().expect("missing method name"),
-        None,
-    ) else {
-        panic!("missing resolved impl method");
-    };
+    )
+    .and_then(|evidence| evidence.answering(&db, inst))
+    .and_then(|selected| {
+        selected.method(
+            &db,
+            method.name(&db).to_opt().expect("missing method name"),
+            None,
+        )
+    })
+    .expect("missing resolved impl method");
     let instance = get_or_build_semantic_instance(
         &db,
         fe_hir::analysis::semantic::SemanticInstanceKey::new(
@@ -3080,6 +3100,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
             GenericSubst::for_owner(&db, method.into(), resolved.body_args().to_vec()),
             fe_hir::analysis::semantic::EffectProviderSubst::empty(&db),
             fe_hir::analysis::semantic::ImplEnv::empty(&db, impl_trait.scope()),
+            EvidenceList::none(&db),
         ),
     );
     let body = instance.body(&db);

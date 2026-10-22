@@ -20,6 +20,7 @@ pub use self::contract::{
     check_contract_recv_blocks, resolve_variant_bare, resolve_variant_in_msg,
 };
 pub(crate) use self::contract::{contract_field_slot, eval_msg_variant_selector};
+pub(crate) use self::env::{func_declared_bounds, func_signature};
 pub use self::path::RecordLike;
 use crate::analysis::name_resolution::{ResolvedVariant, is_scope_visible_from};
 pub use crate::analysis::ty::AddressSpace;
@@ -84,18 +85,22 @@ use super::{
         StaticAssertComparisonValues, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
+    evidence::{
+        Evidence, EvidenceId, EvidenceList, declared_bound_evidence, impl_const_bound_evidence,
+        instantiated_selection,
+    },
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     instantiate_trait_self,
-    trait_def::{TraitInstId, resolve_trait_method_instance},
+    trait_def::{TraitInstId, selected_assoc_const_body_template},
     trait_resolution::{
-        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
-        WellFormedness, check_trait_inst_wf_without_self, check_ty_wf,
-        goal_query_has_no_distinct_solution, is_goal_query_satisfiable, is_goal_satisfiable,
+        CanonicalGoalQuery, GoalSatisfiability, PredicateListId, TraitSolveCx, WellFormedness,
+        check_trait_inst_wf_without_self, check_ty_wf, goal_query_has_no_distinct_solution,
+        is_goal_query_satisfiable, is_goal_satisfiable,
     },
     ty_def::{
         BorrowKind, InvalidCause, Kind, MAX_INLINE_STRING_BYTES, StringFallback, TyId, TyVarSort,
     },
-    ty_lower::{collect_generic_params, lower_hir_ty, lower_hir_ty_deferred},
+    ty_lower::{CompleteSubst, collect_generic_params, lower_hir_ty, lower_hir_ty_deferred},
     unify::{InferenceKey, Snapshot, UnificationError, UnificationTable},
     unsafe_check::check_unsafe_ops,
 };
@@ -111,7 +116,7 @@ use crate::analysis::ty::ty_def::{ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
     closure::{CallableShape, CallableValue},
     const_ty::{
-        CallableInputOrigin, ConstTyData, ConstTyId, LoweringContext,
+        CallableInputOrigin, ConstTyData, ConstTyId, LoweringContext, const_body_assumptions,
         invalid_cause_from_eval_failure, origin_expr_for_const_eval_diag, root_ctfe_error,
     },
     normalize::{normalize_ty, normalize_with_trait_evidence},
@@ -620,7 +625,14 @@ pub(super) fn condition_outcome_in<'db>(
     subst: GenericSubst<'db>,
     impl_env: ImplEnv<'db>,
 ) -> ConditionOutcome<'db> {
-    let key = SemanticInstanceKey::new(db, owner, subst, EffectProviderSubst::empty(db), impl_env);
+    let key = SemanticInstanceKey::of(
+        db,
+        owner,
+        subst,
+        EffectProviderSubst::empty(db),
+        impl_env,
+        EvidenceList::none(db),
+    );
     let outcome = eval_const_instance(db, get_or_build_semantic_instance(db, key));
     condition_outcome_from(db, owner, outcome)
 }
@@ -1193,12 +1205,13 @@ fn const_body_ctfe_diags_with_context<'db>(
     } else {
         // A dependent declaration may describe opaque computations, such as
         // extern const calls, that only a value demand has to execute.
-        let key = SemanticInstanceKey::new(
+        let key = SemanticInstanceKey::of(
             db,
             owner,
             GenericSubst::none(db),
             EffectProviderSubst::empty(db),
             ImplEnv::empty(db, owner.scope()),
+            EvidenceList::none(db),
         );
         let request = const_computation_for_instance(db, key, Vec::new());
         match describe_const_computation(db, request, CtfeConfig::default()) {
@@ -1243,12 +1256,13 @@ fn const_body_ctfe_diags_with_context<'db>(
                     diags.push(diag.into());
                 }
             } else if require_value {
-                let key = SemanticInstanceKey::new(
+                let key = SemanticInstanceKey::of(
                     db,
                     owner,
                     GenericSubst::none(db),
                     EffectProviderSubst::empty(db),
                     ImplEnv::empty(db, owner.scope()),
+                    EvidenceList::none(db),
                 );
                 let semantic = get_or_build_semantic_instance(db, key);
                 if reify_runtime_const_for_ty(db, semantic, expected, value).is_none() {
@@ -1420,6 +1434,7 @@ fn typed_body_for_bodyless_func<'db>(
     TypedBodyTables {
         body: None,
         result_ty,
+        signature: assumptions,
         assumptions,
         pat_ty: SecondaryMap::new(),
         expr_ty: SecondaryMap::new(),
@@ -4088,8 +4103,92 @@ pub enum RowArg {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum ConstRef<'db> {
     Const(Const<'db>),
-    TraitConst(AssocConstUse<'db>),
+    TraitConst {
+        use_: AssocConstUse<'db>,
+        /// The checker's proof of the use's trait goal, as for a call's
+        /// [`Callable`].
+        evidence: Option<EvidenceId<'db>>,
+        /// Proofs, in the checked body, of the bounds the trait's default
+        /// value body declares, by their places among the assumptions it is
+        /// checked under: the evidence that body's instance receives.
+        bound_evidence: Option<EvidenceList<'db>>,
+    },
     InherentConst(InherentConstUse<'db>),
+}
+
+impl<'db> ConstRef<'db> {
+    /// A trait constant's defining body, its declared type, the substitution
+    /// over the body's owner, and the evidence the body's instance receives:
+    /// from the implementation the checker selected, or, for a use the
+    /// checker answered by an assumption, the one the use's context selects.
+    pub fn trait_const_body(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>, EvidenceList<'db>)> {
+        let ConstRef::TraitConst {
+            use_,
+            evidence,
+            bound_evidence,
+        } = self
+        else {
+            return None;
+        };
+        let resolved = instantiated_selection(db, evidence, use_.solve_cx(db), use_.inst())?;
+        let (body, ty, subst) = selected_assoc_const_body_template(db, resolved, use_.name())?;
+        let default = use_
+            .inst()
+            .def(db)
+            .const_(db, use_.name())
+            .and_then(|constant| constant.default_body(db));
+        // The trait's default receives the use's proofs; an implementation's
+        // value receives them from the selection's proofs of its conditions.
+        let received = match (bound_evidence, evidence) {
+            (Some(bound), _) if default == Some(body) => bound,
+            (_, Some(selection))
+                if default != Some(body) && matches!(selection.data(db), Evidence::Impl { .. }) =>
+            {
+                impl_const_bound_evidence(
+                    db,
+                    body,
+                    selection,
+                    GenericSubst::complete(db, subst.clone()),
+                )
+            }
+            _ => EvidenceList::none(db),
+        };
+        Some((body, ty, subst, received))
+    }
+
+    /// Proves, in the use's context, the bounds the trait's default value
+    /// body declares, instantiated for the use, as `declared_bound_evidence`
+    /// records them.
+    pub(super) fn record_bound_evidence(&mut self, db: &'db dyn HirAnalysisDb) {
+        let ConstRef::TraitConst {
+            use_,
+            bound_evidence,
+            ..
+        } = self
+        else {
+            return;
+        };
+        let trait_ = use_.inst().def(db);
+        let (Some(body), Ok(subst)) = (
+            trait_
+                .const_(db, use_.name())
+                .and_then(|constant| constant.default_body(db)),
+            CompleteSubst::for_owner(db, trait_.into(), use_.inst().args(db).to_vec()),
+        ) else {
+            return;
+        };
+        let declared = const_body_assumptions(db, body.scope());
+        *bound_evidence = Some(declared_bound_evidence(
+            db,
+            declared,
+            declared.extend_all_bounds(db),
+            &subst,
+            use_.solve_cx(db),
+        ));
+    }
 }
 
 impl<'db> TyVisitable<'db> for ConstRef<'db> {
@@ -4099,7 +4198,19 @@ impl<'db> TyVisitable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(_) => {}
-            ConstRef::TraitConst(assoc) => assoc.visit_with(visitor),
+            ConstRef::TraitConst {
+                use_,
+                evidence,
+                bound_evidence,
+            } => {
+                use_.visit_with(visitor);
+                if let Some(evidence) = evidence {
+                    evidence.visit_with(visitor);
+                }
+                if let Some(bound_evidence) = bound_evidence {
+                    bound_evidence.visit_with(visitor);
+                }
+            }
             ConstRef::InherentConst(use_) => use_.visit_with(visitor),
         }
     }
@@ -4112,7 +4223,16 @@ impl<'db> TyFoldable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(const_def) => ConstRef::Const(const_def),
-            ConstRef::TraitConst(assoc) => ConstRef::TraitConst(assoc.fold_with(db, folder)),
+            ConstRef::TraitConst {
+                use_,
+                evidence,
+                bound_evidence,
+            } => ConstRef::TraitConst {
+                use_: use_.fold_with(db, folder),
+                evidence: evidence.map(|evidence| evidence.fold_with(db, folder)),
+                bound_evidence: bound_evidence
+                    .map(|bound_evidence| bound_evidence.fold_with(db, folder)),
+            },
             ConstRef::InherentConst(use_) => ConstRef::InherentConst(use_.fold_with(db, folder)),
         }
     }
@@ -4194,6 +4314,9 @@ mod typed_body_tables {
     pub struct TypedBodyTables<'db> {
         pub(super) body: Option<Body<'db>>,
         pub(super) result_ty: TyId<'db>,
+        /// The prefix of `assumptions` the body's owner declares; see
+        /// `TypedBody::signature`.
+        pub(super) signature: PredicateListId<'db>,
         pub(super) assumptions: PredicateListId<'db>,
         pub(super) pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
         pub(super) expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
@@ -4396,6 +4519,16 @@ pub enum SemanticExprLowering<'db> {
     },
 }
 
+impl<'db> SemanticExprLowering<'db> {
+    pub(super) fn callable_mut(&mut self) -> &mut Callable<'db> {
+        match self {
+            Self::Call { callable }
+            | Self::CodeRegionIntrinsic { callable, .. }
+            | Self::ConstIntrinsic { callable, .. } => callable,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum RecordInitLowering<'db> {
     Struct,
@@ -4579,6 +4712,7 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
         // another `TypedBody` still shares them.
         let mut this = Arc::unwrap_or_clone(self.tables);
         this.result_ty = this.result_ty.fold_with(db, folder);
+        this.signature = this.signature.fold_with(db, folder);
         this.assumptions = this.assumptions.fold_with(db, folder);
         this.pat_ty
             .values_mut()
@@ -4671,6 +4805,35 @@ impl<'db> TypedBody<'db> {
     /// them.
     fn tables_mut(&mut self) -> &mut TypedBodyTables<'db> {
         Arc::make_mut(&mut self.tables)
+    }
+
+    /// Replaces the assumptions the body's evidence names with `bound`'s
+    /// proofs of them: an instance's own.
+    pub(crate) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) {
+        if bound.entries(db).is_empty() {
+            return;
+        }
+        let tables = self.tables_mut();
+        for lowering in tables.semantic_expr_lowering.values_mut().flatten() {
+            lowering.callable_mut().bind_evidence(db, bound);
+        }
+        for plan in tables.for_loop_plans.values_mut().flatten() {
+            for call in &mut plan.calls {
+                call.callable.bind_evidence(db, bound);
+            }
+        }
+        for const_ref in tables.const_refs.values_mut().flatten() {
+            if let ConstRef::TraitConst {
+                evidence,
+                bound_evidence,
+                ..
+            } = const_ref
+            {
+                *evidence = evidence.map(|evidence| evidence.bind(db, bound));
+                *bound_evidence =
+                    bound_evidence.map(|bound_evidence| bound_evidence.bind(db, bound));
+            }
+        }
     }
 
     /// The constrained type applications that resolving the body's paths
@@ -4898,6 +5061,13 @@ impl<'db> TypedBody<'db> {
 
     pub fn assumptions(&self) -> PredicateListId<'db> {
         self.tables.assumptions
+    }
+
+    /// The assumptions the body's owner declares, in the order the body's
+    /// evidence numbers them: a prefix of `assumptions`, which a closure in
+    /// the body extends with its own. An instance receives proofs of these.
+    pub fn signature(&self) -> PredicateListId<'db> {
+        self.tables.signature
     }
 
     pub fn expr_ty(&self, db: &'db dyn HirAnalysisDb, expr: ExprId) -> TyId<'db> {
@@ -5622,16 +5792,10 @@ impl<'db> TypedBody<'db> {
         let CallableDef::Func(mut func) = callable.callable_def() else {
             return None;
         };
-        if let Some(inst) = callable.trait_inst()
-            && let Some(name) = func.name(db).to_opt()
-            && let Selection::Unique(method) = resolve_trait_method_instance(
-                db,
-                TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
-                inst,
-                name,
-                callable.mode(),
-            )
-            && let Some(body_func) = method.body()
+        if let Some(method) = callable.selected_method(
+            db,
+            TraitSolveCx::new(db, body.scope()).with_assumptions(self.assumptions()),
+        ) && let Some(body_func) = method.body()
         {
             func = body_func;
         }
@@ -6482,6 +6646,7 @@ impl<'db> TypedBody<'db> {
         TypedBodyTables {
             body: None,
             result_ty: TyId::unit(db),
+            signature: PredicateListId::empty_list(db),
             assumptions: PredicateListId::empty_list(db),
             pat_ty: SecondaryMap::new(),
             expr_ty: SecondaryMap::new(),

@@ -13,7 +13,7 @@ use salsa::Update;
 
 use super::{
     BodyOwner, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker, ValuePathRef,
-    env::ClosureExpectation,
+    env::{ClosureExpectation, func_declared_bounds, func_signature},
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -22,17 +22,20 @@ use crate::analysis::{
         const_ty::LoweringContext,
         corelib::resolve_lib_func_path,
         diagnostics::{BodyDiag, FuncBodyDiag},
+        evidence::{
+            EvidenceId, EvidenceList, declared_bound_evidence, instantiated_selection, prove,
+        },
         fold::{TyFoldable, TyFolder},
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
         shape::Shape,
-        trait_def::TraitInstId,
+        trait_def::{ResolvedMethodInstance, TraitInstId},
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
         ty_def::{BorrowKind, StringFallback, TyBase, TyData, TyFlags, TyId, TyVarSort},
         ty_error::emit_invalid_ty_error,
-        ty_lower::{collect_generic_params, lower_generic_arg_list},
+        ty_lower::{CompleteSubst, collect_generic_params, lower_generic_arg_list},
         visitor::{TyVisitable, TyVisitor, collect_flags},
     },
 };
@@ -253,6 +256,14 @@ pub struct Callable<'db> {
     /// The originating trait instance if this callable comes from a trait method
     /// (e.g., operator overloading, method call, indexing). None for inherent functions.
     pub trait_inst: Option<TraitInstId<'db>>,
+    /// The checker's proof of `trait_inst` in the checked body. A goal
+    /// proved by an assumption, a bound of that body, is selected again where
+    /// the body is instantiated.
+    evidence: Option<EvidenceId<'db>>,
+    /// Proofs, in the checked body, of the assumptions the callee's body is
+    /// checked under (`func_signature`): the evidence the callee's instance
+    /// receives.
+    bound_evidence: Option<EvidenceList<'db>>,
     /// The mode a `mut?` callee is called at: `ref` unless a use of the
     /// call's result asks for `mut`.
     mode: Option<BorrowKind>,
@@ -271,6 +282,12 @@ impl<'db> TyVisitable<'db> for Callable<'db> {
         if let Some(inst) = self.trait_inst {
             inst.visit_with(visitor);
         }
+        if let Some(evidence) = &self.evidence {
+            evidence.visit_with(visitor);
+        }
+        if let Some(bound_evidence) = &self.bound_evidence {
+            bound_evidence.visit_with(visitor);
+        }
     }
 }
 
@@ -288,6 +305,10 @@ impl<'db> TyFoldable<'db> for Callable<'db> {
                 .checked_input_tys
                 .map(|inputs| inputs.fold_with(db, folder)),
             trait_inst: self.trait_inst.map(|i| i.fold_with(db, folder)),
+            evidence: self.evidence.map(|evidence| evidence.fold_with(db, folder)),
+            bound_evidence: self
+                .bound_evidence
+                .map(|bound_evidence| bound_evidence.fold_with(db, folder)),
             mode: self.mode,
         }
     }
@@ -339,6 +360,8 @@ impl<'db> Callable<'db> {
             effect_providers: Vec::new(),
             checked_input_tys: None,
             trait_inst,
+            evidence: None,
+            bound_evidence: None,
             mode: callable_def.modes(db)[0],
         })
     }
@@ -357,6 +380,8 @@ impl<'db> Callable<'db> {
             effect_providers: Vec::new(),
             checked_input_tys: None,
             trait_inst,
+            evidence: None,
+            bound_evidence: None,
             mode: callable_def.modes(db)[0],
         }
     }
@@ -387,6 +412,76 @@ impl<'db> Callable<'db> {
 
     pub fn trait_inst(&self) -> Option<TraitInstId<'db>> {
         self.trait_inst
+    }
+
+    /// Proves the call's trait goal in the checked body's context.
+    pub(crate) fn record_evidence(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) {
+        self.evidence = self.trait_inst.and_then(|inst| prove(db, solve_cx, inst));
+    }
+
+    /// The checker's proof of the call's trait goal.
+    pub fn evidence(&self) -> Option<EvidenceId<'db>> {
+        self.evidence
+    }
+
+    /// Proves, in the checked body's context `solve_cx`, the bounds the
+    /// callee's body declares, instantiated for this call, as
+    /// `declared_bound_evidence` records them.
+    pub(crate) fn record_bound_evidence(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) {
+        let CallableDef::Func(func) = self.callable_def else {
+            return;
+        };
+        let mode = BodyOwner::func_at(db, func, self.mode).mode();
+        let Ok(subst) = CompleteSubst::for_owner(db, func.into(), self.generic_args.clone()) else {
+            return;
+        };
+        self.bound_evidence = Some(declared_bound_evidence(
+            db,
+            func_declared_bounds(db, func, mode),
+            func_signature(db, func, mode),
+            &subst,
+            solve_cx,
+        ));
+    }
+
+    /// Proofs of the assumptions the callee's body is checked under, as the
+    /// caller's checked body gives them.
+    pub fn bound_evidence(&self) -> Option<EvidenceList<'db>> {
+        self.bound_evidence
+    }
+
+    /// Replaces the assumptions this call's evidence names, its caller's,
+    /// with `bound`'s proofs of them.
+    pub(super) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) {
+        self.evidence = self.evidence.map(|evidence| evidence.bind(db, bound));
+        self.bound_evidence = self
+            .bound_evidence
+            .map(|bound_evidence| bound_evidence.bind(db, bound));
+    }
+
+    /// The trait method the call runs, with its body: from the
+    /// implementation the checker selected, or, for a call the checker
+    /// dispatched through an assumption, the one `solve_cx` selects for the
+    /// instantiated goal. Absent for a call of no trait method.
+    pub fn selected_method(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        solve_cx: TraitSolveCx<'db>,
+    ) -> Option<ResolvedMethodInstance<'db>> {
+        let inst = self.trait_inst?;
+        let CallableDef::Func(func) = self.callable_def else {
+            return None;
+        };
+        let name = func.name(db).to_opt()?;
+        instantiated_selection(db, self.evidence, solve_cx, inst)?.method(db, name, self.mode)
     }
 
     /// The mode a `mut?` callee is called at; `None` for any other.

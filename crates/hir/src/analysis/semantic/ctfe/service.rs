@@ -23,6 +23,7 @@ use crate::analysis::{
         corelib::{
             PrimitiveWrapperCallKind, core_primitive_wrapper_call_kind, ctfe_extern_intrinsic_kind,
         },
+        evidence::EvidenceList,
         subst::instantiate_scoped_into,
         ty_check::BodyOwner,
         ty_def::{TyData, TyId},
@@ -1212,12 +1213,13 @@ fn force_const_term_operand_impl<'db>(
                 body: *body,
                 expected: template_ty.unwrap_or(*expected),
             };
-            let key = SemanticInstanceKey::new(
+            let key = SemanticInstanceKey::of(
                 db,
                 owner,
                 capture.generic_subst(db),
                 EffectProviderSubst::empty(db),
                 ImplEnv::empty(db, owner.scope()),
+                EvidenceList::none(db),
             );
             let request = const_computation_for_instance(db, key, Vec::new());
             cx.force_computation(db, request)
@@ -1863,12 +1865,13 @@ fn force_selected_const_ty<'db>(
                 body: *body,
                 expected: template_ty.or(*ty).unwrap_or(expected),
             };
-            let key = SemanticInstanceKey::new(
+            let key = SemanticInstanceKey::of(
                 db,
                 owner,
                 capture.generic_subst(db),
                 EffectProviderSubst::empty(db),
                 impl_env,
+                EvidenceList::none(db),
             );
             cx.execute_body(db, key, Vec::new(), origin)
         }

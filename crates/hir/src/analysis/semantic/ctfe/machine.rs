@@ -32,6 +32,7 @@ use crate::{
                 SaturatingArithmetic, concrete_usize, core_primitive_wrapper_call_kind,
                 ctfe_extern_intrinsic_kind,
             },
+            evidence::EvidenceList,
             normalize::normalize_ty,
             provider::AddressSpace,
             ty_check::{
@@ -233,12 +234,13 @@ pub fn eval_body_owner_const<'db>(
     owner: BodyOwner<'db>,
     subst: GenericSubst<'db>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
-    let key = SemanticInstanceKey::new(
+    let key = SemanticInstanceKey::of(
         db,
         owner,
         subst,
         crate::analysis::semantic::EffectProviderSubst::empty(db),
         ImplEnv::empty(db, owner.scope()),
+        EvidenceList::none(db),
     );
     eval_const_instance(db, get_or_build_semantic_instance(db, key))
 }
@@ -270,12 +272,13 @@ pub fn eval_body_owner_const_with_args<'db>(
     subst: GenericSubst<'db>,
     args: Vec<SemConstId<'db>>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
-    let key = SemanticInstanceKey::new(
+    let key = SemanticInstanceKey::of(
         db,
         owner,
         subst,
         crate::analysis::semantic::EffectProviderSubst::empty(db),
         ImplEnv::empty(db, owner.scope()),
+        EvidenceList::none(db),
     );
     execute_resolved_const_computation(db, key, args, CtfeConfig::default(), SemOrigin::Body(owner))
 }

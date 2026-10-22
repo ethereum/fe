@@ -14,6 +14,7 @@ use super::{
     assoc_const::{AssocConstUse, InherentConstUse},
     const_check::const_body_language_failure,
     diagnostics::{BodyDiag, FuncBodyDiag},
+    evidence::EvidenceList,
     fold::{TyFoldable, TyFolder},
     generic_defaults::DefaultApplication,
     normalize::{normalize_ty, normalize_with_trait_evidence},
@@ -801,7 +802,7 @@ impl<'db> TyFolder<'db> for RebaseConstUseEnv<'db> {
         // bound currently being collected, making every cycle grow another
         // copy of its provenance. Preserve the selected body and witnesses.
         let env = key.impl_env(db);
-        let key = SemanticInstanceKey::new(
+        let key = SemanticInstanceKey::of(
             db,
             key.owner(db),
             key.subst(db),
@@ -812,6 +813,7 @@ impl<'db> TyFolder<'db> for RebaseConstUseEnv<'db> {
                 PredicateListId::empty_list(db),
                 env.witnesses(db).clone(),
             ),
+            key.evidence(db),
         )
         .super_fold_with(db, self);
         let (scope, assumptions) = self.env(
@@ -820,7 +822,7 @@ impl<'db> TyFolder<'db> for RebaseConstUseEnv<'db> {
             key.owner(db).scope(),
             mentioned_params(db, &key),
         );
-        SemanticInstanceKey::new(
+        SemanticInstanceKey::of(
             db,
             key.owner(db),
             key.subst(db),
@@ -831,6 +833,7 @@ impl<'db> TyFolder<'db> for RebaseConstUseEnv<'db> {
                 assumptions,
                 key.impl_env(db).witnesses(db).clone(),
             ),
+            key.evidence(db),
         )
     }
 
@@ -2118,12 +2121,13 @@ pub(crate) fn evaluate_const_ty<'db>(
         body,
         expected: validated.body_expected_ty,
     };
-    let key = SemanticInstanceKey::new(
+    let key = SemanticInstanceKey::of(
         db,
         owner,
         capture.generic_subst(db),
         EffectProviderSubst::empty(db),
         ImplEnv::empty(db, owner.scope()),
+        EvidenceList::none(db),
     );
     let request = const_computation_for_instance(db, key, Vec::new());
     let evaluated = match describe_const_computation(db, request, CtfeConfig::default()) {
@@ -2412,7 +2416,7 @@ pub(crate) fn const_body_resolution_reenters<'db>(
                     .body(db)
                     .to_opt()
                     .map(|next_body| (next_body, const_.ty(db), ConstCaptureEnv::Empty)),
-                ConstRef::TraitConst(assoc) => {
+                ConstRef::TraitConst { use_: assoc, .. } => {
                     // The recorded use is in the owning body's binder terms:
                     // `Self::B` in a trait default keeps `Self` as a param.
                     // Instantiate with the args this body is evaluated under
@@ -3344,6 +3348,7 @@ mod tests {
             identity.subst(&db),
             identity.effect_providers(&db),
             ImplEnv::new(&db, func.scope(), assumptions, witnesses.clone()),
+            EvidenceList::none(&db),
         );
         let term = TyId::const_ty(
             &db,
@@ -3386,6 +3391,7 @@ mod tests {
                 PredicateListId::empty_list(&db),
                 witnesses,
             ),
+            EvidenceList::none(&db),
         );
         let folded = RebaseConstUseEnv::stored(&db, assumptions.list(&db).iter().copied())
             .fold_const_context_key(&db, empty);

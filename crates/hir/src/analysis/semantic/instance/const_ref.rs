@@ -8,7 +8,7 @@ use crate::{
         HirAnalysisDb,
         semantic::{SemOrigin, SemanticConstRef},
         ty::{
-            assoc_const::{AssocConstUse, InherentConstUse},
+            assoc_const::InherentConstUse,
             binder::Binder,
             closure::{callee_closure, callee_function_item, closure_template_ty},
             const_ty::{
@@ -20,15 +20,13 @@ use crate::{
                 place_effect_provider_param_index_map,
                 rows::{RowExpansion, RowPath, expand_rows},
             },
+            evidence::{Evidence, EvidenceList, impl_method_bound_evidence},
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
-            trait_def::{
-                ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId,
-                assoc_const_body_template_for_trait_inst, resolve_trait_method_instance,
-            },
+            trait_def::{ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId},
             trait_resolution::{
-                GoalSatisfiability, PredicateListId, Selection, TraitSolveCx,
+                GoalSatisfiability, PredicateListId, TraitSolveCx,
                 constraint::collect_func_decl_constraints, is_goal_satisfiable,
             },
             ty_check::{
@@ -430,12 +428,17 @@ pub fn generated_callee_key<'db>(
     ) {
         return Err(MethodArgMapError::MissingNominalRole(key));
     }
-    let callable = Callable::from_item(
+    let mut callable = Callable::from_item(
         db,
         CallableDef::Func(func),
         inherited.iter().chain(own_args).copied().collect(),
         trait_inst,
     );
+    // The call proves its goal and its callee's bounds where it is made, as
+    // the checker proves a written call's.
+    let solve_cx = TraitSolveCx::new(db, scope).with_assumptions(assumptions);
+    callable.record_evidence(db, solve_cx);
+    callable.record_bound_evidence(db, solve_cx);
     let callee = semantic_callee_key_with_assumptions(
         db,
         None,
@@ -512,12 +515,13 @@ fn semantic_callee_key_with_assumptions<'db>(
         );
         let body_rows = row_expansion_for_key(
             db,
-            SemanticInstanceKey::new(
+            SemanticInstanceKey::of(
                 db,
                 owner,
                 subst,
                 EffectProviderSubst::empty(db),
                 ImplEnv::empty(db, owner.scope()),
+                EvidenceList::none(db),
             ),
         );
         let effect_pairs: Vec<_> = rows
@@ -561,12 +565,13 @@ fn semantic_callee_key_with_assumptions<'db>(
         })
         .collect::<Vec<_>>();
         return Ok(Some(SemanticCallCallee {
-            key: SemanticInstanceKey::new(
+            key: SemanticInstanceKey::of(
                 db,
                 owner,
                 subst,
                 EffectProviderSubst::new(db, providers, Vec::new()),
                 ImplEnv::empty(db, owner.scope()),
+                EvidenceList::none(db),
             ),
             concrete_dispatch: true,
             effect_pairs,
@@ -600,12 +605,13 @@ fn semantic_callee_key_with_assumptions<'db>(
         );
         let func_rows = row_expansion_for_key(
             db,
-            SemanticInstanceKey::new(
+            SemanticInstanceKey::of(
                 db,
                 owner,
                 GenericSubst::for_owner(db, func.into(), target.generic_args().to_vec()),
                 EffectProviderSubst::empty(db),
                 ImplEnv::empty(db, owner.scope()),
+                EvidenceList::none(db),
             ),
         );
         // Each component's index in the call and among the function's
@@ -735,13 +741,9 @@ fn semantic_callee_key_with_assumptions<'db>(
         .collect::<Vec<_>>();
     let mut subst_args = callable.generic_args().to_vec();
     let body_func = if let Some(inst) = callable.trait_inst()
-        && let Some(name) = nominal_func.name(db).to_opt()
-        && let Selection::Unique(method) = resolve_trait_method_instance(
+        && let Some(method) = callable.selected_method(
             db,
             TraitSolveCx::new(db, impl_env.normalization_scope(db)).with_assumptions(assumptions),
-            inst,
-            name,
-            callable.mode(),
         )
         && let Some(impl_func) = method.body()
     {
@@ -892,12 +894,12 @@ fn semantic_callee_key_with_assumptions<'db>(
     }
 
     // A fully concrete implementation can shed caller context only when the
-    // same implementation is selected without it. Symbolic calls and
-    // assumption-selected defaults keep the caller's proof environment.
+    // call's proof of it names none of the caller's assumptions. Symbolic
+    // calls and assumption-selected defaults keep the caller's proof
+    // environment.
     let (context_independent, nominal_witness_required) = if let Some((resolved, inst)) =
         selected_trait_method
         && selected_impl
-        && let Some(name) = nominal_func.name(db).to_opt()
     {
         let body_ground = is_ground(
             collect_flags(db, subst_args.as_slice())
@@ -906,17 +908,8 @@ fn semantic_callee_key_with_assumptions<'db>(
                 | collect_flags(db, resolved.trait_inst()),
         );
         let original_ground = is_ground(collect_flags(db, inst));
-        let independent = body_ground
-            && matches!(
-                resolve_trait_method_instance(
-                    db,
-                    TraitSolveCx::new(db, owner.scope()),
-                    resolved.trait_inst(),
-                    name,
-                    callable.mode(),
-                ),
-                Selection::Unique(method) if method.resolved() == resolved
-            );
+        let independent =
+            body_ground && callable.evidence().is_some_and(|proof| proof.is_closed(db));
         // A symbolic nominal receiver can be discarded after selection only if
         // it normalizes to the independent implementation and neither signature
         // has additional effects, method bounds, or layout slots to carry.
@@ -1101,12 +1094,35 @@ fn semantic_callee_key_with_assumptions<'db>(
             });
         }
     }
+    // A callee that runs its own body receives the call's proofs of the
+    // assumptions that body is checked under; an implementation's method
+    // receives them from the selection's proofs of the implementation's
+    // conditions and the call's proofs of the trait method's.
+    let subst = GenericSubst::for_owner(db, body_func.into(), subst_args);
+    let evidence = match (callable.bound_evidence(), callable.evidence()) {
+        (Some(bound), _) if body_func == nominal_func => bound,
+        (Some(bound), Some(selection)) if matches!(selection.data(db), Evidence::Impl { .. }) => {
+            impl_method_bound_evidence(
+                db,
+                (body_func, nominal_func, callable.mode()),
+                selection,
+                bound,
+                subst,
+            )
+        }
+        _ => EvidenceList::none(db),
+    };
+    let evidence = if collect_flags(db, evidence).contains(TyFlags::HAS_PROJECTION) {
+        normalize_ty(db, evidence, impl_env.normalization_scope(db), assumptions)
+    } else {
+        evidence
+    };
     Ok(Some(SemanticCallCallee {
         concrete_dispatch: callable.trait_inst().is_none() || selected_impl,
-        key: SemanticInstanceKey::new(
+        key: SemanticInstanceKey::of(
             db,
             owner,
-            GenericSubst::for_owner(db, body_func.into(), subst_args),
+            subst,
             EffectProviderSubst::new(
                 db,
                 effect_providers
@@ -1116,6 +1132,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                 Vec::new(),
             ),
             impl_env,
+            evidence,
         ),
         effect_pairs,
         provider_pairs,
@@ -1125,7 +1142,7 @@ fn semantic_callee_key_with_assumptions<'db>(
 
 /// Whether a value has no inference state, symbolic parameters, or
 /// unresolved projections.
-fn is_ground(flags: TyFlags) -> bool {
+pub(super) fn is_ground(flags: TyFlags) -> bool {
     !flags.intersects(
         TyFlags::HAS_INVALID | TyFlags::HAS_VAR | TyFlags::HAS_PARAM | TyFlags::HAS_PROJECTION,
     )
@@ -1249,7 +1266,28 @@ pub(crate) fn resolve_semantic_const_ref<'db>(
 ) -> Option<SemanticConstRef<'db>> {
     let instance = match const_ref {
         ConstRef::Const(const_) => semantic_const_key_for_const(db, const_),
-        ConstRef::TraitConst(assoc) => semantic_const_key_for_assoc_const(db, assoc),
+        ConstRef::TraitConst { use_, .. } => {
+            let (body, ty, subst, evidence) = const_ref.trait_const_body(db)?;
+            let evidence = if collect_flags(db, evidence).contains(TyFlags::HAS_PROJECTION) {
+                normalize_ty(db, evidence, use_.origin_scope(), use_.assumptions())
+            } else {
+                evidence
+            };
+            let subst = GenericSubst::complete(db, subst);
+            Some(SemanticInstanceKey::of(
+                db,
+                BodyOwner::AnonConstBody { body, expected: ty },
+                subst,
+                EffectProviderSubst::empty(db),
+                ImplEnv::new(
+                    db,
+                    use_.origin_scope(),
+                    use_.assumptions(),
+                    vec![use_.inst()],
+                ),
+                evidence,
+            ))
+        }
         ConstRef::InherentConst(use_) => semantic_const_key_for_inherent_const(db, use_),
     }?;
     Some(SemanticConstRef::new(db, instance, ty, origin))
@@ -1260,12 +1298,13 @@ fn semantic_const_key_for_const<'db>(
     const_: Const<'db>,
 ) -> Option<SemanticInstanceKey<'db>> {
     let owner = BodyOwner::Const(const_);
-    Some(SemanticInstanceKey::new(
+    Some(SemanticInstanceKey::of(
         db,
         owner,
         GenericSubst::none(db),
         EffectProviderSubst::empty(db),
         ImplEnv::empty(db, owner.scope()),
+        EvidenceList::none(db),
     ))
 }
 
@@ -1276,36 +1315,13 @@ fn semantic_const_key_for_inherent_const<'db>(
     let (body, impl_args) =
         inherent_const_body_and_impl_args(db, use_.impl_(), use_.receiver_ty(), use_.name())?;
     let ty = inherent_const_decl_ty(db, use_.impl_(), use_.name())?;
-    Some(SemanticInstanceKey::new(
+    Some(SemanticInstanceKey::of(
         db,
         BodyOwner::AnonConstBody { body, expected: ty },
         GenericSubst::for_owner(db, use_.impl_().into(), impl_args),
         EffectProviderSubst::empty(db),
         ImplEnv::new(db, use_.origin_scope(), use_.assumptions(), vec![]),
-    ))
-}
-
-fn semantic_const_key_for_assoc_const<'db>(
-    db: &'db dyn HirAnalysisDb,
-    assoc: AssocConstUse<'db>,
-) -> Option<SemanticInstanceKey<'db>> {
-    let (body, ty, subst) = assoc_const_body_template_for_trait_inst(
-        db,
-        assoc.solve_cx(db),
-        assoc.inst(),
-        assoc.name(),
-    )?;
-    Some(SemanticInstanceKey::new(
-        db,
-        BodyOwner::AnonConstBody { body, expected: ty },
-        GenericSubst::complete(db, subst),
-        EffectProviderSubst::empty(db),
-        ImplEnv::new(
-            db,
-            assoc.origin_scope(),
-            assoc.assumptions(),
-            vec![assoc.inst()],
-        ),
+        EvidenceList::none(db),
     ))
 }
 

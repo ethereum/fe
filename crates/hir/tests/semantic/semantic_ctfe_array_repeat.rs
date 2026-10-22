@@ -1,3 +1,4 @@
+use fe_hir::analysis::ty::evidence::EvidenceList;
 use fe_hir::{
     analysis::{
         semantic::{
@@ -229,6 +230,7 @@ const fn changed_fixed<const N: usize, const I: usize>() -> u8 { fixed_store<N, 
                 GenericSubst::for_body_owner(&db, owner, args.to_vec()),
                 identity.effect_providers(&db),
                 identity.impl_env(&db),
+                EvidenceList::none(&db),
             );
             let instance = get_or_build_semantic_instance(&db, key);
             let reified = eval_const_instance(&db, instance).into_ready();
@@ -515,6 +517,7 @@ const fn record<const N: usize, const X: u8>() -> Rows<N> { store_record<N>(X) }
                 GenericSubst::for_body_owner(&db, owner, args.to_vec()),
                 identity.effect_providers(&db),
                 identity.impl_env(&db),
+                EvidenceList::none(&db),
             );
             let expected = key.typed_body(&db).result_ty();
             let instance = get_or_build_semantic_instance(&db, key);
@@ -787,6 +790,7 @@ const fn checked<const N: usize, const X: u8>() -> [Wrapped; N] { [Wrapped { ite
                 GenericSubst::for_body_owner(&db, owner, args.to_vec()),
                 identity.effect_providers(&db),
                 identity.impl_env(&db),
+                EvidenceList::none(&db),
             );
             let reified =
                 eval_const_instance(&db, get_or_build_semantic_instance(&db, key)).into_ready();
@@ -923,6 +927,7 @@ const fn checked<const N: usize, const X: u8>() -> u8 { [(Pair { value: X }, [10
                 GenericSubst::for_body_owner(&db, owner, args.to_vec()),
                 identity.effect_providers(&db),
                 identity.impl_env(&db),
+                EvidenceList::none(&db),
             );
             let reified =
                 eval_const_instance(&db, get_or_build_semantic_instance(&db, key)).into_ready();
@@ -977,6 +982,7 @@ fn outer<const A: usize, const B: usize>() {}
             GenericSubst::for_body_owner(&db, owner, args.to_vec()),
             identity.effect_providers(&db),
             identity.impl_env(&db),
+            EvidenceList::none(&db),
         );
         let instance = get_or_build_semantic_instance(&db, key);
         let expected = key.typed_body(&db).result_ty();

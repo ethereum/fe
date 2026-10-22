@@ -14,11 +14,10 @@ use crate::analysis::semantic::{
     eval_body_owner_const_with_args, sem_const_ty,
 };
 use crate::analysis::ty::corelib::{concrete_usize, resolve_lib_trait_path};
+use crate::analysis::ty::evidence::prove;
 use crate::analysis::ty::normalize::normalize_ty;
-use crate::analysis::ty::trait_def::{
-    TraitInstId, assoc_const_body_template_for_trait_inst, resolve_trait_method_instance,
-};
-use crate::analysis::ty::trait_resolution::{Selection, TraitSolveCx};
+use crate::analysis::ty::trait_def::{TraitInstId, assoc_const_body_template_for_trait_inst};
+use crate::analysis::ty::trait_resolution::TraitSolveCx;
 use crate::analysis::ty::ty_check::BodyOwner;
 use crate::analysis::ty::{
     adt_def::{AdtRef, ConcreteTypeView, instantiate_adt_field_for_concrete_demand},
@@ -522,15 +521,11 @@ fn declared_sol_compat_abi_type<'db>(
     // event `TOPIC0` hash does: through its `as_bytes` method.
     let as_bytes = resolve_lib_trait_path(db, scope, "core::AsBytes")?;
     let inst = TraitInstId::new_simple(db, as_bytes, vec![sem_const_ty(db, value)]);
-    let Selection::Unique(method) = resolve_trait_method_instance(
+    let method = prove(db, solve_cx, inst)?.answering(db, inst)?.method(
         db,
-        solve_cx,
-        inst,
         IdentId::new(db, "as_bytes".to_string()),
         None,
-    ) else {
-        return None;
-    };
+    )?;
     let func = method.body()?;
     let subst = method.complete_body_args(db, inst.args(db)).ok()?;
     let EvalOutcome::Ready(bytes) = eval_body_owner_const_with_args(

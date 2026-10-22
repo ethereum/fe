@@ -283,8 +283,26 @@ pub struct ResolvedImplInstance<'db> {
 }
 
 impl<'db> ResolvedImplInstance<'db> {
+    /// The implementation `selected`, as `instantiated` for `trait_inst`,
+    /// answering `trait_inst`.
+    pub(crate) fn new(
+        selected: ImplementorId<'db>,
+        instantiated: ImplementorId<'db>,
+        trait_inst: TraitInstId<'db>,
+    ) -> Self {
+        Self {
+            selected,
+            instantiated,
+            trait_inst,
+        }
+    }
+
     pub fn selected(self) -> ImplementorId<'db> {
         self.selected
+    }
+
+    pub(crate) fn instantiated(self) -> ImplementorId<'db> {
+        self.instantiated
     }
 
     pub fn trait_inst(self) -> TraitInstId<'db> {
@@ -299,28 +317,68 @@ impl<'db> ResolvedImplInstance<'db> {
         self.selected.params(db)
     }
 
-    /// Resolves an implemented trait method, called at `mode`, using this
-    /// already-selected impl.
+    /// The trait method `name` of this already-selected impl, called at
+    /// `mode`, with the body it runs. Absent when the trait has no such
+    /// method.
     ///
-    /// The returned generic arguments match the selected implementation for an
+    /// The body's generic arguments match the selected implementation for an
     /// explicit method and the resolved trait instance for a default method.
-    fn method_instance(
+    pub fn method(
         self,
         db: &'db dyn HirAnalysisDb,
         name: IdentId<'db>,
         mode: Option<BorrowKind>,
-    ) -> Option<(Func<'db>, Vec<TyId<'db>>)> {
+    ) -> Option<ResolvedMethodInstance<'db>> {
         let implementor = self.selected();
-        if let Some(func) = implementor.method_at(db, name, mode) {
-            return Some((func, self.impl_args(db).to_vec()));
-        }
-        let func = implementor
+        let declaration = implementor
             .trait_def(db)
             .method_defs(db)
             .get(&name)
-            .copied()
-            .filter(|method| method.body(db).is_some())?;
-        Some((func, self.trait_inst().args(db).to_vec()))
+            .copied()?;
+        let (body, body_args) = if let Some(func) = implementor.method_at(db, name, mode) {
+            (Some(func), self.impl_args(db).to_vec())
+        } else {
+            (
+                declaration.body(db).is_some().then_some(declaration),
+                self.trait_inst().args(db).to_vec(),
+            )
+        };
+        let (body_to_nominal, effect_pairs) = body.map_or_else(
+            || (Vec::new(), Some(Vec::new())),
+            |body| {
+                if body == declaration {
+                    (
+                        (0..param_schema(db, body.into(), ParamBasis::Full)
+                            .keys(db)
+                            .len())
+                            .map(Some)
+                            .collect(),
+                        None,
+                    )
+                } else {
+                    let correspondence = method_param_correspondence(
+                        db,
+                        body.as_callable(db).expect("selected method is callable"),
+                        declaration
+                            .as_callable(db)
+                            .expect("trait method is callable"),
+                        implementor.trait_inst(db),
+                    );
+                    (
+                        correspondence.body_to_trait_slots,
+                        Some(correspondence.trait_effect_to_body),
+                    )
+                }
+            },
+        );
+        Some(ResolvedMethodInstance {
+            resolved: self,
+            declaration,
+            body,
+            body_args,
+            body_to_nominal,
+            effect_pairs,
+        })
     }
 
     pub fn assoc_ty_template(
@@ -329,6 +387,14 @@ impl<'db> ResolvedImplInstance<'db> {
         name: IdentId<'db>,
     ) -> Option<TyId<'db>> {
         self.selected.assoc_ty(db, name)
+    }
+
+    /// The selected implementation's conditions, instantiated for the goal.
+    pub(crate) fn instantiated_constraints(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> PredicateListId<'db> {
+        self.instantiated.constraints(db)
     }
 
     pub fn instantiated_assoc_ty(
@@ -563,71 +629,6 @@ impl<'db> ResolvedMethodInstance<'db> {
     }
 }
 
-/// Selects a trait method while retaining implementation versus generic-bound
-/// origin. `body` is absent when only a declaration is available.
-pub fn resolve_trait_method_instance<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-    method: IdentId<'db>,
-    mode: Option<BorrowKind>,
-) -> Selection<ResolvedMethodInstance<'db>> {
-    let resolved = match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved) => resolved,
-        Selection::Ambiguous(_) => return Selection::Ambiguous(IndexSet::new()),
-        Selection::NotFound => return Selection::NotFound,
-    };
-    let Some(declaration) = resolved
-        .selected()
-        .trait_def(db)
-        .method_defs(db)
-        .get(&method)
-        .copied()
-    else {
-        return Selection::NotFound;
-    };
-    let (body, body_args) = resolved.method_instance(db, method, mode).map_or_else(
-        || (None, resolved.trait_inst().args(db).to_vec()),
-        |(func, args)| (Some(func), args),
-    );
-    let (body_to_nominal, effect_pairs) = body.map_or_else(
-        || (Vec::new(), Some(Vec::new())),
-        |body| {
-            if body == declaration {
-                (
-                    (0..param_schema(db, body.into(), ParamBasis::Full)
-                        .keys(db)
-                        .len())
-                        .map(Some)
-                        .collect(),
-                    None,
-                )
-            } else {
-                let correspondence = method_param_correspondence(
-                    db,
-                    body.as_callable(db).expect("selected method is callable"),
-                    declaration
-                        .as_callable(db)
-                        .expect("trait method is callable"),
-                    resolved.selected().trait_inst(db),
-                );
-                (
-                    correspondence.body_to_trait_slots,
-                    Some(correspondence.trait_effect_to_body),
-                )
-            }
-        },
-    );
-    Selection::Unique(ResolvedMethodInstance {
-        resolved,
-        declaration,
-        body,
-        body_args,
-        body_to_nominal,
-        effect_pairs,
-    })
-}
-
 /// Returns all implementors for the given `ty` whose constraints are fully proven.
 pub(crate) fn impls_for_ty_with_satisfied_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -772,18 +773,6 @@ pub(crate) fn impls_for_ty<'db>(
         .collect()
 }
 
-/// Looks up the selected associated-const body, including an inherited trait
-/// default, if the trait impl is unique.
-pub fn assoc_const_body_for_trait_inst<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-    const_name: IdentId<'db>,
-) -> Option<Body<'db>> {
-    assoc_const_body_template_for_trait_inst(db, solve_cx, inst, const_name)
-        .map(|(body, _, _)| body)
-}
-
 /// Returns the selected body, its declared template type, and the checked
 /// substitution over the body's owner. Explicit impl bodies use impl
 /// arguments; inherited defaults use trait arguments.
@@ -838,28 +827,6 @@ pub(crate) fn selected_assoc_const_body_template<'db>(
             CompleteSubst::for_owner(db, trait_.into(), inst.args(db).to_vec()).ok()?,
         ))
     })
-}
-
-/// Whether `inst` is satisfied by a uniquely-selected concrete impl rather than
-/// only by an assumption (e.g. `T: Trait` inside a generic function).
-///
-/// This gates use of a trait associated const's default value: the default may
-/// stand in for the const only when a concrete impl is selected (and inherits
-/// it). For an assumption-satisfied instance the const must stay abstract, so a
-/// concrete impl that overrides it specializes correctly instead of being fixed
-/// to the default.
-pub fn trait_inst_selects_concrete_impl<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    inst: TraitInstId<'db>,
-) -> bool {
-    match resolve_trait_impl_instance(db, solve_cx, inst) {
-        Selection::Unique(resolved) => !matches!(
-            resolved.selected().origin(db),
-            ImplementorOrigin::Assumption
-        ),
-        Selection::Ambiguous(_) | Selection::NotFound => false,
-    }
 }
 
 /// Represents the trait environment of an ingot, which maintain all trait

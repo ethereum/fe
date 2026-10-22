@@ -90,12 +90,13 @@ impl<'db> ConstInvocation<'db> {
             && scope == scope.ingot(db).root_mod(db).scope()
         {
             let owner = key.owner(db);
-            SemanticInstanceKey::new(
+            SemanticInstanceKey::of(
                 db,
                 owner,
                 key.subst(db),
                 key.effect_providers(db),
                 ImplEnv::empty(db, owner.scope().ingot(db).root_mod(db).scope()),
+                key.evidence(db),
             )
         } else {
             key
