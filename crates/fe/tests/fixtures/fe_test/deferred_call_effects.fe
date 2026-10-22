@@ -149,3 +149,53 @@ fn deferred_calls_take_their_call_sites_effects() {
     }
     assert!(log.n == 7)
 }
+
+// Each deferred call keeps the `with` blocks over it, not a sibling's.
+#[test]
+fn deferred_siblings_keep_their_providers() {
+    let x = 5
+    let first: u256 = with (Log = Log { n: 65 }) {
+        W { v: x }.note()
+    }
+    let second: u256 = with (Log = Log { n: 95 }) {
+        W { v: x }.note()
+    }
+    let y: u256 = x
+    assert!(first == 70)
+    assert!(second == 100)
+}
+
+#[test]
+fn deferred_mutations_keep_their_places() {
+    var a = Log { n: 65 }
+    var b = Log { n: 95 }
+    let x = 5
+    with (Log = a) {
+        W { v: x }.bump()
+    }
+    with (Log = b) {
+        W { v: x }.bump()
+    }
+    let y: u256 = x
+    assert!(a.n == 70)
+    assert!(b.n == 100)
+}
+
+#[test]
+fn nested_closure_deferred_siblings() {
+    let g = || {
+        let h = || {
+            let x = 5
+            let first: u256 = with (Log = Log { n: 65 }) {
+                W { v: x }.note()
+            }
+            let second: u256 = with (Log = Log { n: 95 }) {
+                W { v: x }.note()
+            }
+            let y: u256 = x
+            first + second
+        }
+        h()
+    }
+    assert!(g() == 170)
+}
