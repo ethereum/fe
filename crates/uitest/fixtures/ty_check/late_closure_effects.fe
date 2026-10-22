@@ -1,0 +1,69 @@
+// A call in a closure whose receiver's type is known only after the
+// closure's body resolves once the closure's row is fixed: it cannot add an
+// effect to the row, or make one `mut`.
+struct Log {
+    n: u256,
+}
+
+struct W<T> {
+    v: T,
+}
+
+trait Note {
+    fn note(self) -> u256 uses (log: Log)
+    fn bump(self) uses (log: mut Log)
+}
+
+impl Note for W<u256> {
+    fn note(self) -> u256 uses (log: Log) {
+        log.n
+    }
+
+    fn bump(self) uses (log: mut Log) {
+        log.n += 1
+    }
+}
+
+impl Note for W<u8> {
+    fn note(self) -> u256 uses (log: Log) {
+        log.n
+    }
+
+    fn bump(self) uses (log: mut Log) {
+        log.n += 1
+    }
+}
+
+fn read_log() -> u256 uses (log: Log) {
+    log.n
+}
+
+fn row_lacks_effect() uses (log: Log) {
+    let x = 5
+    let g = || {
+        let r = W { v: x }.note()
+    }
+    let y: u256 = x
+    g()
+}
+
+fn row_has_effect_read() uses (log: mut Log) {
+    let x = 5
+    let g = || {
+        let r = read_log()
+        W { v: x }.bump()
+    }
+    let y: u256 = x
+    g()
+}
+
+// The row already reads `Log`, which is all the late `note` needs.
+fn row_has_effect() -> u256 uses (log: Log) {
+    let x = 5
+    let g = || {
+        let r = read_log()
+        W { v: x }.note()
+    }
+    let y: u256 = x
+    g()
+}

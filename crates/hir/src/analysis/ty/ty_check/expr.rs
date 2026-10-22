@@ -696,6 +696,9 @@ impl<'db> TyChecker<'db> {
         self.explicit_yields = explicit_yields;
         self.projection_shape = projection_shape;
         self.expected = expected;
+        // A call deferred in the body resolves while the row can still take
+        // its effects.
+        self.resolve_pending(Some(def));
         let (info, effects) = self.env.leave_closure(expr);
 
         let parent_args = match self.env.owner() {
@@ -1996,6 +1999,7 @@ impl<'db> TyChecker<'db> {
             method_name,
             candidates,
             span,
+            site: self.env.call_site(),
         });
         typed
     }
@@ -2244,8 +2248,20 @@ impl<'db> TyChecker<'db> {
 
                     if req.required_mut
                         && let Some(binding) = provider.binding
+                        && let LocalBinding::EffectParam {
+                            site: EffectParamSite::Closure(closure),
+                            ..
+                        } = binding
+                        && !self.env.require_mut_closure_effect(binding)
                     {
-                        self.env.require_mut_closure_effect(binding);
+                        self.push_diag(BodyDiag::LateClosureEffect {
+                            primary: call_span.clone(),
+                            func,
+                            key: key_ty,
+                            is_mut: true,
+                            closure: closure.expr.span(body).into(),
+                        });
+                        continue;
                     }
                     let (arg, pass_mode) =
                         self.effect_arg_for_provider(provider, arg_style, req.required_mut);
@@ -2366,10 +2382,19 @@ impl<'db> TyChecker<'db> {
                 }
                 EffectResolution::BlockedByBarrier => {}
                 EffectResolution::Missing => {
-                    self.push_diag(BodyDiag::MissingEffect {
-                        primary: call_span.clone(),
-                        func,
-                        key: key_ty,
+                    self.push_diag(match self.env.late_closure() {
+                        Some(closure) => BodyDiag::LateClosureEffect {
+                            primary: call_span.clone(),
+                            func,
+                            key: key_ty,
+                            is_mut: req.required_mut,
+                            closure: closure.expr.span(body).into(),
+                        },
+                        None => BodyDiag::MissingEffect {
+                            primary: call_span.clone(),
+                            func,
+                            key: key_ty,
+                        },
                     });
                 }
                 EffectResolution::Ambiguous => {

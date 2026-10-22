@@ -112,7 +112,7 @@ use crate::analysis::semantic::{
     describe_const_computation, eval_body_owner_const, eval_const_instance,
     get_or_build_semantic_instance, reify_runtime_const_for_ty, runtime_size_bytes_with_source,
 };
-use crate::analysis::ty::ty_def::{ClosureTy, TyBase, TyData};
+use crate::analysis::ty::ty_def::{ClosureDef, ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
     closure::{CallableShape, CallableValue},
     const_ty::{
@@ -1515,6 +1515,12 @@ enum TraitObligationOutcome<'db> {
     Requeue(env::TraitObligation<'db>),
 }
 
+enum Viability {
+    Viable,
+    Incompatible,
+    ReturnTypeMismatch,
+}
+
 /// Whether a projection or const computation in `ty` still waits on inference.
 fn depends_on_type_inference<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
     struct Computation<'db> {
@@ -2429,331 +2435,10 @@ impl<'db> TyChecker<'db> {
     }
 
     fn resolve_deferred(&mut self) {
+        self.resolve_pending(None);
         let db = self.db;
         let body = self.env.body();
         let scope = self.env.scope();
-        let assumptions = self.env.assumptions();
-
-        enum Viability {
-            Viable,
-            Incompatible,
-            ReturnTypeMismatch,
-        }
-
-        let check_viability =
-            |this: &mut Self,
-             pending: &env::PendingMethod<'db>,
-             expr_ty: TyId<'db>,
-             receiver: ExprId,
-             generic_args: GenericArgListId<'db>,
-             call_args: &[CallArg<'db>],
-             candidate: env::PendingMethodCandidate<'db>| {
-                let snap = this.snapshot_state();
-
-                let viability = (|| {
-                    let inst = candidate.inst;
-                    let recv_ty = {
-                        let mut prober = env::Prober::new(&mut this.table, scope);
-                        pending.recv_ty.fold_with(db, &mut prober)
-                    };
-
-                    let inst_self = this.table.instantiate_to_term(inst.self_ty(db));
-                    if this.table.unify(inst_self, recv_ty).is_err() {
-                        return Viability::Incompatible;
-                    }
-
-                    let Ok(func_ty) = try_instantiate_trait_method(
-                        db,
-                        candidate.method,
-                        &mut this.table,
-                        recv_ty,
-                        inst,
-                    ) else {
-                        return Viability::Incompatible;
-                    };
-                    let func_ty = this.table.instantiate_to_term(func_ty);
-                    let Ok(mut callable) =
-                        Callable::new(db, func_ty, receiver.span(body).into(), Some(inst))
-                    else {
-                        return Viability::Incompatible;
-                    };
-
-                    let expected_arity = callable.callable_def.arg_tys(db).len();
-                    let given_arity = call_args.len() + 1;
-                    if expected_arity != given_arity {
-                        return Viability::Incompatible;
-                    }
-
-                    match unify_explicit_call_generic_args(
-                        &mut callable,
-                        this,
-                        generic_args,
-                        CallGenericArgPhase::Probe,
-                        |this, _, given, current| this.table.unify(given, *current).is_ok(),
-                    ) {
-                        Ok(()) => {}
-                        Err(CallGenericArgUnifyError::ArityMismatch { .. })
-                        | Err(CallGenericArgUnifyError::UnificationFailed)
-                        | Err(CallGenericArgUnifyError::InvalidArgument(_)) => {
-                            return Viability::Incompatible;
-                        }
-                    }
-
-                    let Some(receiver_prop) = this.env.typed_expr(receiver) else {
-                        return Viability::Incompatible;
-                    };
-                    let mut all_arg_tys = Vec::with_capacity(call_args.len() + 1);
-                    all_arg_tys.push(receiver_prop.ty);
-                    for arg in call_args.iter() {
-                        let Some(prop) = this.env.typed_expr(arg.expr) else {
-                            return Viability::Incompatible;
-                        };
-                        all_arg_tys.push(prop.ty);
-                    }
-
-                    for (&given, expected) in all_arg_tys
-                        .iter()
-                        .zip(callable.callable_def.arg_tys(db).iter())
-                    {
-                        let mut expected = expected.instantiate(db, callable.generic_args());
-                        if let Some(inst) = callable.trait_inst() {
-                            expected = normalize_with_trait_evidence(db, expected, scope, inst);
-                        }
-                        let expected = normalize_ty(
-                            db,
-                            expected.fold_with(db, &mut this.table),
-                            scope,
-                            assumptions,
-                        );
-                        let given = normalize_ty(
-                            db,
-                            given.fold_with(db, &mut this.table),
-                            scope,
-                            assumptions,
-                        );
-                        if this.table.unify(given, expected).is_err() {
-                            return Viability::Incompatible;
-                        }
-                    }
-
-                    callable.process_constraints(this, pending.expr, pending.span.clone());
-
-                    let ret_ty = normalize_ty(
-                        db,
-                        callable.ret_ty(db).fold_with(db, &mut this.table),
-                        scope,
-                        assumptions,
-                    );
-
-                    if this.table.unify(expr_ty, ret_ty).is_ok() {
-                        Viability::Viable
-                    } else {
-                        Viability::ReturnTypeMismatch
-                    }
-                })();
-                this.rollback_state(snap);
-                viability
-            };
-
-        // Fixed-point pass over deferred tasks.
-        let mut progressed = true;
-        while progressed {
-            progressed = false;
-            let tasks = self.env.take_deferred_tasks();
-            for task in tasks {
-                match task {
-                    env::DeferredTask::TypeEquality(equality) => {
-                        progressed |= self.process_type_equality(equality);
-                    }
-                    env::DeferredTask::Obligation(obligation) => {
-                        match self.process_trait_obligation(obligation, false) {
-                            TraitObligationOutcome::Discharged => {}
-                            TraitObligationOutcome::Progressed => progressed = true,
-                            TraitObligationOutcome::Requeue(obligation) => {
-                                self.env.register_trait_obligation(obligation);
-                            }
-                        }
-                    }
-                    env::DeferredTask::Method(pending) => {
-                        let Some((receiver, generic_args, call_args)) =
-                            pending_call_parts(db, body, &self.env, pending.expr)
-                        else {
-                            continue;
-                        };
-
-                        let Some(expr_prop) = self.env.typed_expr(pending.expr) else {
-                            continue;
-                        };
-                        let expr_ty = {
-                            let mut prober = env::Prober::new(&mut self.table, scope);
-                            expr_prop.ty.fold_with(db, &mut prober)
-                        };
-                        if expr_ty.has_invalid(db) {
-                            self.env.register_pending_method(pending);
-                            continue;
-                        }
-
-                        let (strict, soft): (Vec<_>, Vec<_>) = pending
-                            .candidates
-                            .iter()
-                            .copied()
-                            .filter_map(|candidate| {
-                                let viability = check_viability(
-                                    self,
-                                    &pending,
-                                    expr_ty,
-                                    receiver,
-                                    generic_args,
-                                    call_args,
-                                    candidate,
-                                );
-                                if matches!(viability, Viability::Incompatible) {
-                                    None
-                                } else {
-                                    Some((candidate, viability))
-                                }
-                            })
-                            .partition(|(_, viability)| matches!(viability, Viability::Viable));
-                        let viable = if strict.is_empty() {
-                            soft.into_iter().map(|(candidate, _)| candidate).collect()
-                        } else {
-                            strict.into_iter().map(|(candidate, _)| candidate).collect()
-                        };
-                        let viable = self.dedup_equivalent_pending_method_candidates(viable);
-
-                        if let [candidate] = viable.as_slice() {
-                            if self.env.callable_expr(pending.expr).is_none() {
-                                let call_span = pending.expr.span(body);
-                                let inst = candidate.inst;
-
-                                let receiver_prop = self
-                                    .env
-                                    .typed_expr(receiver)
-                                    .unwrap_or_else(|| ExprProp::invalid(db));
-                                let recv_ty = {
-                                    let mut prober = env::Prober::new(&mut self.table, scope);
-                                    pending.recv_ty.fold_with(db, &mut prober)
-                                };
-
-                                let func_ty = self.instantiate_trait_method_to_term(
-                                    candidate.method,
-                                    recv_ty,
-                                    inst,
-                                );
-
-                                let mut callable = match Callable::new(
-                                    db,
-                                    func_ty,
-                                    receiver.span(body).into(),
-                                    Some(inst),
-                                ) {
-                                    Ok(callable) => callable,
-                                    Err(diag) => {
-                                        self.push_diag(diag);
-                                        progressed = true;
-                                        continue;
-                                    }
-                                };
-
-                                if candidate.needs_confirmation {
-                                    self.env.register_trait_obligation(env::TraitObligation {
-                                        goal: inst,
-                                        origin: env::TraitObligationOrigin::GenericConfirmation,
-                                        span: call_span.clone().into(),
-                                    });
-                                }
-
-                                // A value call `f(..)` has no explicit generic
-                                // arguments of its own.
-                                let args_span = if self.env.is_value_call(pending.expr) {
-                                    call_span.into_call_expr().args()
-                                } else {
-                                    let call_span = call_span.into_method_call_expr();
-                                    if !callable.unify_generic_args(
-                                        self,
-                                        generic_args,
-                                        call_span.clone().generic_args(),
-                                    ) {
-                                        progressed = true;
-                                        continue;
-                                    }
-                                    call_span.args()
-                                };
-
-                                callable.check_args(
-                                    self,
-                                    call_args,
-                                    args_span,
-                                    Some((receiver, receiver_prop)),
-                                    true,
-                                );
-
-                                callable.process_constraints(
-                                    self,
-                                    pending.expr,
-                                    pending.span.clone(),
-                                );
-
-                                let ret_ty = self.normalize_ty(callable.ret_ty(db));
-                                match self.table.unify(expr_prop.ty, ret_ty) {
-                                    Ok(()) => {}
-                                    Err(UnificationError::TypeMismatch) => {
-                                        self.push_diag(BodyDiag::TypeMismatch {
-                                            span: pending.expr.span(body).into(),
-                                            expected: expr_prop.ty,
-                                            given: ret_ty,
-                                        });
-                                        continue;
-                                    }
-                                    Err(UnificationError::OccursCheckFailed) => {
-                                        let span = pending.expr.span(body).into();
-                                        self.push_diag(BodyDiag::InfiniteOccurrence(span));
-                                        continue;
-                                    }
-                                }
-
-                                self.check_callable_effects(pending.expr, &mut callable);
-
-                                if let Some(kind) =
-                                    self.code_region_method_kind(recv_ty, pending.method_name)
-                                    && call_args.len() == 1
-                                    && self.env.typed_expr(call_args[0].expr).is_some_and(|prop| {
-                                        ty_may_be_code_region_token(
-                                            db,
-                                            normalize_ty(db, prop.ty, scope, assumptions),
-                                        )
-                                    })
-                                {
-                                    self.env.register_code_region_intrinsic(
-                                        pending.expr,
-                                        callable,
-                                        call_args[0].expr,
-                                        kind,
-                                    );
-                                } else {
-                                    self.env.register_semantic_call(pending.expr, callable);
-                                }
-                            }
-
-                            progressed = true;
-                        } else {
-                            self.env.register_pending_method(pending);
-                        }
-                    }
-                    env::DeferredTask::PrimitiveOp(pending) => {
-                        match self.resolve_pending_primitive_op(&pending) {
-                            expr::PendingPrimitiveOpResolution::Pending => {
-                                self.env.register_pending_primitive_op(pending);
-                            }
-                            expr::PendingPrimitiveOpResolution::Resolved => {
-                                progressed = true;
-                            }
-                            expr::PendingPrimitiveOpResolution::Done => {}
-                        }
-                    }
-                }
-            }
-        }
 
         // Final trait solving can still bind types after literal fallback.
         // Check retained equalities after those constraints have settled.
@@ -2790,8 +2475,7 @@ impl<'db> TyChecker<'db> {
                         .iter()
                         .copied()
                         .filter(|&candidate| {
-                            let viability = check_viability(
-                                self,
+                            let viability = self.method_viability(
                                 &pending,
                                 expr_ty,
                                 receiver,
@@ -2819,6 +2503,339 @@ impl<'db> TyChecker<'db> {
         for equality in equalities {
             self.process_type_equality(equality);
         }
+    }
+
+    /// Resolves deferred tasks until none progresses. A method call resolves
+    /// at its call site: see `CallSite`. With `closure`, whose body has just
+    /// been checked, only the calls in that body do, while its row can still
+    /// take what they need.
+    fn resolve_pending(&mut self, closure: Option<ClosureDef<'db>>) {
+        let db = self.db;
+        let body = self.env.body();
+        let scope = self.env.scope();
+        let assumptions = self.env.assumptions();
+
+        // Fixed-point pass over deferred tasks.
+        let mut progressed = true;
+        while progressed {
+            progressed = false;
+            let tasks = self.env.take_deferred_tasks();
+            for task in tasks {
+                match task {
+                    env::DeferredTask::TypeEquality(equality) => {
+                        progressed |= self.process_type_equality(equality);
+                    }
+                    env::DeferredTask::Obligation(obligation) => {
+                        match self.process_trait_obligation(obligation, false) {
+                            TraitObligationOutcome::Discharged => {}
+                            TraitObligationOutcome::Progressed => progressed = true,
+                            TraitObligationOutcome::Requeue(obligation) => {
+                                self.env.register_trait_obligation(obligation);
+                            }
+                        }
+                    }
+                    env::DeferredTask::Method(pending)
+                        if closure.is_some() && pending.site.closure != closure =>
+                    {
+                        self.env.register_pending_method(pending);
+                    }
+                    env::DeferredTask::Method(pending) => {
+                        let Some((receiver, generic_args, call_args)) =
+                            pending_call_parts(db, body, &self.env, pending.expr)
+                        else {
+                            continue;
+                        };
+
+                        let Some(expr_prop) = self.env.typed_expr(pending.expr) else {
+                            continue;
+                        };
+                        let expr_ty = {
+                            let mut prober = env::Prober::new(&mut self.table, scope);
+                            expr_prop.ty.fold_with(db, &mut prober)
+                        };
+                        if expr_ty.has_invalid(db) {
+                            self.env.register_pending_method(pending);
+                            continue;
+                        }
+
+                        let (strict, soft): (Vec<_>, Vec<_>) = pending
+                            .candidates
+                            .iter()
+                            .copied()
+                            .filter_map(|candidate| {
+                                let viability = self.method_viability(
+                                    &pending,
+                                    expr_ty,
+                                    receiver,
+                                    generic_args,
+                                    call_args,
+                                    candidate,
+                                );
+                                if matches!(viability, Viability::Incompatible) {
+                                    None
+                                } else {
+                                    Some((candidate, viability))
+                                }
+                            })
+                            .partition(|(_, viability)| matches!(viability, Viability::Viable));
+                        let viable = if strict.is_empty() {
+                            soft.into_iter().map(|(candidate, _)| candidate).collect()
+                        } else {
+                            strict.into_iter().map(|(candidate, _)| candidate).collect()
+                        };
+                        let viable = self.dedup_equivalent_pending_method_candidates(viable);
+
+                        if let [candidate] = viable.as_slice() {
+                            if self.env.callable_expr(pending.expr).is_none() {
+                                self.env.enter_call_site(&pending.site);
+                                'resolve: {
+                                    let call_span = pending.expr.span(body);
+                                    let inst = candidate.inst;
+
+                                    let receiver_prop = self
+                                        .env
+                                        .typed_expr(receiver)
+                                        .unwrap_or_else(|| ExprProp::invalid(db));
+                                    let recv_ty = {
+                                        let mut prober = env::Prober::new(&mut self.table, scope);
+                                        pending.recv_ty.fold_with(db, &mut prober)
+                                    };
+
+                                    let func_ty = self.instantiate_trait_method_to_term(
+                                        candidate.method,
+                                        recv_ty,
+                                        inst,
+                                    );
+
+                                    let mut callable = match Callable::new(
+                                        db,
+                                        func_ty,
+                                        receiver.span(body).into(),
+                                        Some(inst),
+                                    ) {
+                                        Ok(callable) => callable,
+                                        Err(diag) => {
+                                            self.push_diag(diag);
+                                            break 'resolve;
+                                        }
+                                    };
+
+                                    if candidate.needs_confirmation {
+                                        self.env.register_trait_obligation(env::TraitObligation {
+                                            goal: inst,
+                                            origin: env::TraitObligationOrigin::GenericConfirmation,
+                                            span: call_span.clone().into(),
+                                        });
+                                    }
+
+                                    // A value call `f(..)` has no explicit generic
+                                    // arguments of its own.
+                                    let args_span = if self.env.is_value_call(pending.expr) {
+                                        call_span.into_call_expr().args()
+                                    } else {
+                                        let call_span = call_span.into_method_call_expr();
+                                        if !callable.unify_generic_args(
+                                            self,
+                                            generic_args,
+                                            call_span.clone().generic_args(),
+                                        ) {
+                                            break 'resolve;
+                                        }
+                                        call_span.args()
+                                    };
+
+                                    callable.check_args(
+                                        self,
+                                        call_args,
+                                        args_span,
+                                        Some((receiver, receiver_prop)),
+                                        true,
+                                    );
+
+                                    callable.process_constraints(
+                                        self,
+                                        pending.expr,
+                                        pending.span.clone(),
+                                    );
+
+                                    let ret_ty = self.normalize_ty(callable.ret_ty(db));
+                                    match self.table.unify(expr_prop.ty, ret_ty) {
+                                        Ok(()) => {}
+                                        Err(UnificationError::TypeMismatch) => {
+                                            self.push_diag(BodyDiag::TypeMismatch {
+                                                span: pending.expr.span(body).into(),
+                                                expected: expr_prop.ty,
+                                                given: ret_ty,
+                                            });
+                                            break 'resolve;
+                                        }
+                                        Err(UnificationError::OccursCheckFailed) => {
+                                            let span = pending.expr.span(body).into();
+                                            self.push_diag(BodyDiag::InfiniteOccurrence(span));
+                                            break 'resolve;
+                                        }
+                                    }
+
+                                    self.check_callable_effects(pending.expr, &mut callable);
+
+                                    if let Some(kind) =
+                                        self.code_region_method_kind(recv_ty, pending.method_name)
+                                        && call_args.len() == 1
+                                        && self.env.typed_expr(call_args[0].expr).is_some_and(
+                                            |prop| {
+                                                ty_may_be_code_region_token(
+                                                    db,
+                                                    normalize_ty(db, prop.ty, scope, assumptions),
+                                                )
+                                            },
+                                        )
+                                    {
+                                        self.env.register_code_region_intrinsic(
+                                            pending.expr,
+                                            callable,
+                                            call_args[0].expr,
+                                            kind,
+                                        );
+                                    } else {
+                                        self.env.register_semantic_call(pending.expr, callable);
+                                    }
+                                }
+                                self.env.leave_call_site();
+                            }
+
+                            progressed = true;
+                        } else {
+                            self.env.register_pending_method(pending);
+                        }
+                    }
+                    env::DeferredTask::PrimitiveOp(pending) => {
+                        match self.resolve_pending_primitive_op(&pending) {
+                            expr::PendingPrimitiveOpResolution::Pending => {
+                                self.env.register_pending_primitive_op(pending);
+                            }
+                            expr::PendingPrimitiveOpResolution::Resolved => {
+                                progressed = true;
+                            }
+                            expr::PendingPrimitiveOpResolution::Done => {}
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// How `candidate` fits the deferred method call `pending`, typed
+    /// `expr_ty`, probed without committing to it.
+    fn method_viability(
+        &mut self,
+        pending: &env::PendingMethod<'db>,
+        expr_ty: TyId<'db>,
+        receiver: ExprId,
+        generic_args: GenericArgListId<'db>,
+        call_args: &[CallArg<'db>],
+        candidate: env::PendingMethodCandidate<'db>,
+    ) -> Viability {
+        let db = self.db;
+        let body = self.env.body();
+        let scope = self.env.scope();
+        let assumptions = self.env.assumptions();
+        let snap = self.snapshot_state();
+
+        let viability = (|| {
+            let inst = candidate.inst;
+            let recv_ty = {
+                let mut prober = env::Prober::new(&mut self.table, scope);
+                pending.recv_ty.fold_with(db, &mut prober)
+            };
+
+            let inst_self = self.table.instantiate_to_term(inst.self_ty(db));
+            if self.table.unify(inst_self, recv_ty).is_err() {
+                return Viability::Incompatible;
+            }
+
+            let Ok(func_ty) =
+                try_instantiate_trait_method(db, candidate.method, &mut self.table, recv_ty, inst)
+            else {
+                return Viability::Incompatible;
+            };
+            let func_ty = self.table.instantiate_to_term(func_ty);
+            let Ok(mut callable) =
+                Callable::new(db, func_ty, receiver.span(body).into(), Some(inst))
+            else {
+                return Viability::Incompatible;
+            };
+
+            let expected_arity = callable.callable_def.arg_tys(db).len();
+            let given_arity = call_args.len() + 1;
+            if expected_arity != given_arity {
+                return Viability::Incompatible;
+            }
+
+            match unify_explicit_call_generic_args(
+                &mut callable,
+                self,
+                generic_args,
+                CallGenericArgPhase::Probe,
+                |this, _, given, current| this.table.unify(given, *current).is_ok(),
+            ) {
+                Ok(()) => {}
+                Err(CallGenericArgUnifyError::ArityMismatch { .. })
+                | Err(CallGenericArgUnifyError::UnificationFailed)
+                | Err(CallGenericArgUnifyError::InvalidArgument(_)) => {
+                    return Viability::Incompatible;
+                }
+            }
+
+            let Some(receiver_prop) = self.env.typed_expr(receiver) else {
+                return Viability::Incompatible;
+            };
+            let mut all_arg_tys = Vec::with_capacity(call_args.len() + 1);
+            all_arg_tys.push(receiver_prop.ty);
+            for arg in call_args.iter() {
+                let Some(prop) = self.env.typed_expr(arg.expr) else {
+                    return Viability::Incompatible;
+                };
+                all_arg_tys.push(prop.ty);
+            }
+
+            for (&given, expected) in all_arg_tys
+                .iter()
+                .zip(callable.callable_def.arg_tys(db).iter())
+            {
+                let mut expected = expected.instantiate(db, callable.generic_args());
+                if let Some(inst) = callable.trait_inst() {
+                    expected = normalize_with_trait_evidence(db, expected, scope, inst);
+                }
+                let expected = normalize_ty(
+                    db,
+                    expected.fold_with(db, &mut self.table),
+                    scope,
+                    assumptions,
+                );
+                let given =
+                    normalize_ty(db, given.fold_with(db, &mut self.table), scope, assumptions);
+                if self.table.unify(given, expected).is_err() {
+                    return Viability::Incompatible;
+                }
+            }
+
+            callable.process_constraints(self, pending.expr, pending.span.clone());
+
+            let ret_ty = normalize_ty(
+                db,
+                callable.ret_ty(db).fold_with(db, &mut self.table),
+                scope,
+                assumptions,
+            );
+
+            if self.table.unify(expr_ty, ret_ty).is_ok() {
+                Viability::Viable
+            } else {
+                Viability::ReturnTypeMismatch
+            }
+        })();
+        self.rollback_state(snap);
+        viability
     }
 
     fn new_internal(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId<'db>) -> Self {
