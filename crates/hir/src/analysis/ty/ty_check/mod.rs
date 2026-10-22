@@ -2896,6 +2896,10 @@ impl<'db> TyChecker<'db> {
             return (invalid_ty, invalid_ty);
         };
 
+        // The arm's pattern doesn't resolve its path again, so the
+        // applications the path passes through are checked from here.
+        self.env
+            .register_path_applications(arm.pat.span(self.body()).into(), resolved.applications);
         let pat_ty = resolved.ty;
 
         // Get annotated return type from the arm

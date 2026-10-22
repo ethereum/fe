@@ -13,7 +13,10 @@ use ruint::aliases::U256;
 use crate::{
     analysis::{
         HirAnalysisDb,
-        name_resolution::{ExpectedPathKind, PathRes, resolve_path},
+        name_resolution::{
+            ExpectedPathKind, PathRes, PathResError, diagnostics::PathResDiag, resolve_path,
+            resolve_path_with_observer_and_minter,
+        },
         semantic::{
             ConstUsePolicy, EvalOutcome, GenericSubst, SemConstScalar, SemConstValue,
             contract_init_assigned_fields, eval_body_owner_const,
@@ -21,6 +24,7 @@ use crate::{
         ty::{
             adt_def::AdtRef,
             canonical::Canonical,
+            const_ty::LoweringContext,
             corelib::resolve_core_trait,
             diagnostics::{
                 BodyDiag, FuncBodyDiag, TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
@@ -31,23 +35,30 @@ use crate::{
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, TraitSolveCx, is_goal_satisfiable,
             },
-            ty_check::{check_anon_const_body, check_body, const_body_ctfe_diags},
+            ty_check::{
+                check_anon_const_body, check_body, const_body_ctfe_diags,
+                const_requirements::constrained_applications,
+            },
             ty_def::{PrimTy, TyBase, TyData, TyId},
         },
     },
     core::semantic::FieldStorageLayout,
     hir_def::{
-        Body, Contract, FieldParent, IdentId, ItemKind, Mod, PathId, Struct, scope_graph::ScopeId,
+        Body, Contract, ContractRecvArm, FieldParent, IdentId, ItemKind, Mod, Partial, Pat, PathId,
+        Struct, scope_graph::ScopeId,
     },
     semantic::FieldView,
-    span::{DynLazySpan, path::LazyPathSpan},
+    span::{DynLazySpan, pat::LazyPatSpan, path::LazyPathSpan},
 };
 use common::ingot::IngotKind;
 
 #[allow(clippy::enum_variant_names)]
 pub enum VariantResError<'db> {
-    /// Path doesn't resolve at all.
-    NotFound,
+    /// Path doesn't resolve to a type: the error name resolution gave, or
+    /// what the path resolved to instead.
+    NotType(Result<PathRes<'db>, PathResError<'db>>),
+    /// Path resolves to a type that isn't given all its generic arguments.
+    NotFullyApplied,
     /// Path resolves to a type that doesn't implement MsgVariant.
     NotMsgVariant(TyId<'db>),
     /// Path resolves to a type that implements MsgVariant but is not a variant
@@ -145,7 +156,7 @@ fn check_ty_decodable<'db>(
 fn check_recv_variant_param_types_decodable<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
-    variant: ResolvedRecvVariant<'db>,
+    variant_ty: TyId<'db>,
     span: DynLazySpan<'db>,
     assumptions: PredicateListId<'db>,
     diags: &mut Vec<FuncBodyDiag<'db>>,
@@ -158,7 +169,7 @@ fn check_recv_variant_param_types_decodable<'db>(
     };
     let solve_cx = TraitSolveCx::new(db, contract.scope()).with_assumptions(assumptions);
 
-    for field_ty in variant.ty.field_types(db) {
+    for field_ty in variant_ty.field_types(db) {
         check_ty_decodable(
             db,
             solve_cx,
@@ -186,10 +197,31 @@ fn msg_variants<'db>(
 }
 
 /// Resolved msg variant in a recv arm.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ResolvedRecvVariant<'db> {
     pub variant_struct: Struct<'db>,
     pub ty: TyId<'db>,
+    /// The first segment of the path that isn't visible from where the path
+    /// is resolved, with the span of the item it names.
+    pub invisible: Option<(PathId<'db>, Option<DynLazySpan<'db>>)>,
+    /// The applications with const conditions that the path passes through,
+    /// whose requirements are checked with the arm's body.
+    pub applications: Vec<TyId<'db>>,
+}
+
+impl<'db> ResolvedRecvVariant<'db> {
+    /// The diagnostic for the segment of the arm's path, at `path_span`, that
+    /// isn't visible.
+    fn invisible_diag(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        path_span: LazyPathSpan<'db>,
+    ) -> Option<FuncBodyDiag<'db>> {
+        let (segment, defined_at) = self.invisible.clone()?;
+        let ident = segment.ident(db).to_opt()?;
+        let span = path_span.segment(segment.segment_index(db)).ident();
+        Some(PathResDiag::Invisible(span.into(), ident, defined_at).into())
+    }
 }
 
 /// Resolves the variant path of an arm of `contract`'s recv block for the msg
@@ -207,26 +239,12 @@ pub fn resolve_variant_in_msg<'db>(
     } else {
         contract.scope()
     };
-    let Ok(PathRes::Ty(ty)) = resolve_path(db, variant_path, scope, assumptions, false) else {
-        return Err(VariantResError::NotFound);
-    };
-
-    if let Some(adt_def) = ty.adt_def(db)
-        && let AdtRef::Struct(struct_) = adt_def.adt_ref(db)
-        && implements_msg_variant(db, struct_)
-    {
-        if let Some(parent) = struct_.scope().parent(db)
-            && parent == ScopeId::Item(ItemKind::Mod(msg_mod))
-        {
-            return Ok(ResolvedRecvVariant {
-                variant_struct: struct_,
-                ty,
-            });
-        }
-        return Err(VariantResError::NotVariantOfMsg(ty));
+    let resolved = resolve_recv_variant(db, variant_path, scope, assumptions)?;
+    if resolved.variant_struct.scope().parent(db) == Some(ScopeId::Item(ItemKind::Mod(msg_mod))) {
+        Ok(resolved)
+    } else {
+        Err(VariantResError::NotVariantOfMsg(resolved.ty))
     }
-    // Resolved to a type but it doesn't implement MsgVariant
-    Err(VariantResError::NotMsgVariant(ty))
 }
 
 /// Resolves a variant path in a bare recv block (no msg module specified).
@@ -237,21 +255,68 @@ pub fn resolve_variant_bare<'db>(
     variant_path: PathId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> Result<ResolvedRecvVariant<'db>, VariantResError<'db>> {
-    match resolve_path(db, variant_path, contract.scope(), assumptions, false) {
-        Ok(PathRes::Ty(ty)) => {
-            if let Some(adt_def) = ty.adt_def(db)
-                && let AdtRef::Struct(s) = adt_def.adt_ref(db)
-                && implements_msg_variant(db, s)
-            {
-                return Ok(ResolvedRecvVariant {
-                    variant_struct: s,
-                    ty,
-                });
-            }
-            // Resolved to a type but it doesn't implement MsgVariant
-            Err(VariantResError::NotMsgVariant(ty))
+    resolve_recv_variant(db, variant_path, contract.scope(), assumptions)
+}
+
+/// Resolves `path` from `scope` to the msg variant that a recv arm handles,
+/// which must be a type given all its generic arguments. This is the only
+/// resolution of an arm's path, so it records what resolving a path where it
+/// is written records: the first segment that isn't visible from `scope`, and
+/// the applications whose requirements the arm's body checks.
+fn resolve_recv_variant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Result<ResolvedRecvVariant<'db>, VariantResError<'db>> {
+    let mut invisible = None;
+    let mut applications = Vec::new();
+    let mut observe_segment = |segment: PathId<'db>, reso: &PathRes<'db>| {
+        applications.extend(constrained_applications(db, reso));
+        if invisible.is_none() && !reso.is_visible_from(db, scope) {
+            invisible = Some((segment, reso.name_span(db)));
         }
-        _ => Err(VariantResError::NotFound),
+    };
+    let ty = match resolve_path_with_observer_and_minter(
+        db,
+        path,
+        scope,
+        assumptions,
+        false,
+        &mut observe_segment,
+        &LoweringContext::new(),
+    ) {
+        Ok(PathRes::Ty(ty)) => ty,
+        res => return Err(VariantResError::NotType(res)),
+    };
+    if !ty.has_star_kind(db) {
+        return Err(VariantResError::NotFullyApplied);
+    }
+    if let Some(adt_def) = ty.adt_def(db)
+        && let AdtRef::Struct(variant_struct) = adt_def.adt_ref(db)
+        && implements_msg_variant(db, variant_struct)
+    {
+        return Ok(ResolvedRecvVariant {
+            variant_struct,
+            ty,
+            invisible,
+            applications,
+        });
+    }
+    // Resolved to a type but it doesn't implement MsgVariant
+    Err(VariantResError::NotMsgVariant(ty))
+}
+
+/// The span of the variant path of `arm`, whose pattern is at `pat_span`.
+fn recv_arm_path_span<'db>(
+    db: &'db dyn HirAnalysisDb,
+    arm: &ContractRecvArm<'db>,
+    pat_span: LazyPatSpan<'db>,
+) -> LazyPathSpan<'db> {
+    match arm.pat.data(db, arm.body) {
+        Partial::Present(Pat::Record(..)) => pat_span.into_record_pat().path(),
+        Partial::Present(Pat::PathTuple(..)) => pat_span.into_path_tuple_pat().path(),
+        _ => pat_span.into_path_pat().path(),
     }
 }
 
@@ -339,9 +404,11 @@ fn check_named_recv_block<'db>(
         let Some(path) = arm.variant_path(db) else {
             continue;
         };
+        let path_span = recv_arm_path_span(db, arm, arm_span.pat());
 
         match resolve_variant_in_msg(db, contract, msg_mod, path, assumptions) {
             Ok(resolved) => {
+                diags.extend(resolved.invisible_diag(db, path_span));
                 let Some(ident) = resolved.variant_struct.name(db).to_opt() else {
                     continue;
                 };
@@ -364,7 +431,7 @@ fn check_named_recv_block<'db>(
                     check_recv_variant_param_types_decodable(
                         db,
                         contract,
-                        resolved,
+                        resolved.ty,
                         pat_span.clone(),
                         assumptions,
                         diags,
@@ -392,8 +459,13 @@ fn check_named_recv_block<'db>(
                     .into(),
                 );
             }
-            Err(VariantResError::NotFound) => {
-                // Path doesn't resolve at all - use the generic error
+            Err(VariantResError::NotFullyApplied) => {
+                diags.push(
+                    TyDiagCollection::from(TyLowerDiag::ExpectedStarKind(path_span.into())).into(),
+                );
+            }
+            Err(VariantResError::NotType(_)) => {
+                // Path doesn't resolve to a type - use the generic error
                 diags.push(
                     BodyDiag::RecvArmNotMsgVariant {
                         primary: pat_span,
@@ -462,9 +534,11 @@ fn check_bare_recv_block<'db>(
         let Some(path) = arm.variant_path(db) else {
             continue;
         };
+        let path_span = recv_arm_path_span(db, arm, arm_span.pat());
 
         match resolve_variant_bare(db, contract, path, assumptions) {
             Ok(resolved) => {
+                diags.extend(resolved.invisible_diag(db, path_span));
                 let Some(ident) = resolved.variant_struct.name(db).to_opt() else {
                     continue;
                 };
@@ -486,7 +560,7 @@ fn check_bare_recv_block<'db>(
                     check_recv_variant_param_types_decodable(
                         db,
                         contract,
-                        resolved,
+                        resolved.ty,
                         pat_span.clone(),
                         assumptions,
                         diags,
@@ -507,9 +581,26 @@ fn check_bare_recv_block<'db>(
                 // This shouldn't happen in bare recv blocks
                 unreachable!("NotVariantOfMsg should not occur in bare recv blocks");
             }
-            Err(VariantResError::NotFound) => {
-                // Path doesn't resolve - this will be caught by name resolution
-                // We don't emit a recv-specific error here
+            Err(VariantResError::NotFullyApplied) => {
+                diags.push(
+                    TyDiagCollection::from(TyLowerDiag::ExpectedStarKind(path_span.into())).into(),
+                );
+            }
+            Err(VariantResError::NotType(Err(err))) => {
+                // The arm's pattern doesn't resolve its path, so this is the
+                // only report that it doesn't resolve.
+                diags.extend(
+                    err.into_diag(db, path, path_span, ExpectedPathKind::Type)
+                        .map(Into::into),
+                );
+            }
+            Err(VariantResError::NotType(Ok(res))) => {
+                if let Some(ident) = path.ident(db).to_opt() {
+                    let span = path_span.segment(path.segment_index(db));
+                    diags.push(
+                        PathResDiag::ExpectedType(span.into(), ident, res.kind_name()).into(),
+                    );
+                }
             }
         }
     }

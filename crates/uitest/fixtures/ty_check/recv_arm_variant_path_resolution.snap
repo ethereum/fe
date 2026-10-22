@@ -1,0 +1,52 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/recv_arm_variant_path_resolution.fe
+---
+error[2-0002]: `Nope` is not found
+   ┌─ recv_arm_variant_path_resolution.fe:67:9
+   │
+67 │         Nope { x } -> u256 {
+   │         ^^^^ `Nope` is not found
+
+error[2-0002]: `W` is not found
+   ┌─ recv_arm_variant_path_resolution.fe:70:12
+   │
+70 │         M::W { y } -> u256 {
+   │            ^ `W` is not found
+
+error[2-0002]: `Gone` is not found
+   ┌─ recv_arm_variant_path_resolution.fe:73:9
+   │
+73 │         Gone -> u256 {
+   │         ^^^^ `Gone` is not found
+
+error[2-0003]: `Hidden` is not visible
+   ┌─ recv_arm_variant_path_resolution.fe:58:16
+   │
+ 9 │     msg Hidden {
+   │         ------ `Hidden` is defined here
+   ·
+58 │         inner::Hidden::V { n } -> u256 {
+   │                ^^^^^^ `Hidden` is not visible
+
+error[2-0003]: `hidden` is not visible
+   ┌─ recv_arm_variant_path_resolution.fe:84:16
+   │
+16 │     mod hidden {
+   │         ------ `hidden` is defined here
+   ·
+84 │         outer::hidden::M::V { n } -> u256 {
+   │                ^^^^^^ `hidden` is not visible
+
+error[2-0006]: expected type item here
+   ┌─ recv_arm_variant_path_resolution.fe:76:9
+   │
+76 │         inner { z } -> u256 {
+   │         ^^^^^ expected type here, but found module `inner`
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ recv_arm_variant_path_resolution.fe:61:9
+   │
+61 │         Generic { value } -> u8 {
+   │         ^^^^^^^ expected `*` kind here
