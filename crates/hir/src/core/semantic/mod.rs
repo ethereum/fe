@@ -103,7 +103,7 @@ use crate::analysis::ty::{
         provider_semantics, registered_root_providers,
     },
     trait_resolution::{PredicateListId, TraitSolveCx, WellFormedness, check_ty_wf},
-    ty_check::EffectParamSite,
+    ty_check::{EffectParamSite, RecvArmResolution, recv_arm_resolution},
     ty_def::{InvalidCause, PrimTy, TyId},
     ty_error::{collect_ty_lower_errors, demanded_ground_const_cause, diag_from_invalid_cause},
     ty_lower::{
@@ -1433,14 +1433,6 @@ impl<'db> RecvView<'db> {
         self.recv_idx(db)
     }
 
-    pub fn msg_path(self, db: &'db dyn HirDb) -> Option<PathId<'db>> {
-        self.contract(db)
-            .recvs(db)
-            .data(db)
-            .get(self.recv_idx(db) as usize)
-            .and_then(|r| r.msg_path)
-    }
-
     pub fn arm(self, db: &'db dyn HirDb, arm_idx: u32) -> Option<RecvArmView<'db>> {
         self.contract(db)
             .recv_arm(db, self.recv_idx(db) as usize, arm_idx as usize)
@@ -1505,25 +1497,17 @@ impl<'db> RecvArmView<'db> {
 
 #[salsa::tracked]
 impl<'db> RecvArmView<'db> {
-    #[salsa::tracked]
-    pub fn variant_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
-        let assumptions = PredicateListId::empty_list(db);
+    /// The arm's variant path, resolved once for every use of it.
+    pub fn resolution(self, db: &'db dyn HirAnalysisDb) -> &'db RecvArmResolution<'db> {
         let recv = self.recv(db);
-        let contract = recv.contract(db);
+        recv_arm_resolution(db, recv.contract(db), recv.recv_idx(db), self.arm_idx(db))
+    }
 
-        let recv_is_bare = recv.msg_path(db).is_none();
-        let msg_mod = recv
-            .msg_path(db)
-            .and_then(|p| resolve_msg_mod(db, contract, p, assumptions));
-
-        let Some(hir_arm) = self.arm(db) else {
-            return TyId::invalid(db, InvalidCause::Other);
-        };
-
-        let (_variant_struct, variant_ty) =
-            resolve_recv_variant(db, contract, msg_mod, recv_is_bare, hir_arm, assumptions);
-
-        variant_ty.unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
+    pub fn variant_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
+        self.resolution(db).variant.map_or_else(
+            || TyId::invalid(db, InvalidCause::Other),
+            |variant| variant.ty,
+        )
     }
 
     #[salsa::tracked]
@@ -2571,62 +2555,6 @@ fn compute_arg_bindings<'db>(
     };
 
     Some(bindings)
-}
-
-fn resolve_msg_mod<'db>(
-    db: &'db dyn HirAnalysisDb,
-    contract: Contract<'db>,
-    msg_path: PathId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Option<Mod<'db>> {
-    use crate::analysis::name_resolution::{PathRes, resolve_path};
-    use crate::hir_def::ItemKind;
-
-    if let PathRes::Mod(ScopeId::Item(ItemKind::Mod(m))) =
-        resolve_path(db, msg_path, contract.scope(), assumptions, false).ok()?
-    {
-        Some(m)
-    } else {
-        None
-    }
-}
-
-fn resolve_recv_variant<'db>(
-    db: &'db dyn HirAnalysisDb,
-    contract: Contract<'db>,
-    msg_mod: Option<Mod<'db>>,
-    recv_is_bare: bool,
-    arm: ContractRecvArm<'db>,
-    assumptions: PredicateListId<'db>,
-) -> (Option<Struct<'db>>, Option<TyId<'db>>) {
-    let Some(variant_path) = arm.variant_path(db) else {
-        return (None, None);
-    };
-
-    if let Some(msg_mod) = msg_mod {
-        match crate::analysis::ty::ty_check::resolve_variant_in_msg(
-            db,
-            contract,
-            msg_mod,
-            variant_path,
-            assumptions,
-        ) {
-            Ok(resolved) => (Some(resolved.variant_struct), Some(resolved.ty)),
-            _ => (None, None),
-        }
-    } else if recv_is_bare {
-        match crate::analysis::ty::ty_check::resolve_variant_bare(
-            db,
-            contract,
-            variant_path,
-            assumptions,
-        ) {
-            Ok(resolved) => (Some(resolved.variant_struct), Some(resolved.ty)),
-            _ => (None, None),
-        }
-    } else {
-        (None, None)
-    }
 }
 
 fn resolve_sol_abi_ty<'db>(

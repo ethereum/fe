@@ -5,7 +5,7 @@ msg M {
     U -> u256,
 }
 
-// A bare name in a named recv block is a variant of its msg; a longer path
+// A single segment in a named recv block is an item of its msg; a longer path
 // is resolved where the arm is written, so `self::V` is no variant of `M`.
 // Each arm's path is resolved once, so a bad one is reported once, and its
 // fields still bind.
