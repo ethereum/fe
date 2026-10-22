@@ -375,7 +375,7 @@ fn func_provider_bindings_canonical<'db>(
                 provider_ty,
                 is_mut: requirement.is_mut,
                 source: ProviderSource::UsesParam {
-                    site: EffectParamSite::Func(func, mode),
+                    site: EffectParamSite::Func(func, mode).slot_site(db, requirement.binding_idx),
                     requirement_idx: requirement.binding_idx,
                 },
                 semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
@@ -2216,7 +2216,9 @@ pub(crate) fn row_effect_provider<'db>(
         provider_ty,
         is_mut: requirement.is_mut,
         source: ProviderSource::UsesParam {
-            site: requirement.binding_site,
+            site: requirement
+                .binding_site
+                .slot_site(db, requirement.binding_idx),
             requirement_idx: requirement.binding_idx,
         },
         semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),

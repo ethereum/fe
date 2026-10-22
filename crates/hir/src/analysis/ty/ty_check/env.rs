@@ -1,8 +1,8 @@
 use crate::{
     analysis::place::{Place, is_grant_place_expr, is_pointer_place_expr},
     hir_def::{
-        BinOp, Body, Contract, Expr, ExprId, Func, IdentId, Partial, Pat, PatId, Stmt, StmtId,
-        TypeId as HirTypeId, UnOp, scope_graph::ScopeId,
+        BinOp, Body, Contract, Expr, ExprId, Func, IdentId, ModeMarker, Partial, Pat, PatId, Stmt,
+        StmtId, TypeId as HirTypeId, UnOp, scope_graph::ScopeId,
     },
     span::DynLazySpan,
 };
@@ -1886,6 +1886,26 @@ pub enum EffectParamSite<'db> {
     /// A closure's row: the effects its body uses that its own `with`
     /// blocks do not provide.
     Closure(ClosureDef<'db>),
+}
+
+impl<'db> EffectParamSite<'db> {
+    /// The site naming effect slot `idx` of this one, as a provider source:
+    /// both bodies of a `mut?` function share a slot whose effect is not
+    /// `mut?`, so that what they pass it to is the same instance.
+    pub fn slot_site(self, db: &'db dyn HirAnalysisDb, idx: u32) -> Self {
+        match self {
+            Self::Func(func, Some(_))
+                if func
+                    .effects(db)
+                    .data(db)
+                    .get(idx as usize)
+                    .is_none_or(|effect| effect.mode != ModeMarker::MaybeMut) =>
+            {
+                Self::Func(func, None)
+            }
+            site => site,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]

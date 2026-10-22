@@ -2314,7 +2314,7 @@ impl<'db> TyChecker<'db> {
                         Some((
                             req.binding_idx,
                             ProviderSource::UsesParam {
-                                site: callee_site,
+                                site: callee_site.slot_site(self.db, req.binding_idx),
                                 requirement_idx: req.binding_idx,
                             },
                         ))

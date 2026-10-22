@@ -327,7 +327,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     Some(LocalBinding::EffectParam { site, idx, .. }) => {
                         Some(self.domains.provider_source(
                             ProviderSource::UsesParam {
-                                site,
+                                site: site.slot_site(self.db, idx as u32),
                                 requirement_idx: idx as u32,
                             },
                             provider_semantics(self.db, value.ty).address_space,

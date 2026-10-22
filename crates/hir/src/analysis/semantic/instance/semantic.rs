@@ -546,7 +546,7 @@ fn expand_row_args<'db>(
                 provider: ProviderBinding {
                     provider_idx: target,
                     source: ProviderSource::UsesParam {
-                        site: EffectParamSite::Func(func, callable.mode()),
+                        site: EffectParamSite::Func(func, callable.mode()).slot_site(db, target),
                         requirement_idx: target,
                     },
                     ..provider.clone()
@@ -2020,7 +2020,7 @@ fn provisional_provider_binding_for_effect<'db>(
                     provider_ty,
                     is_mut,
                     source: ProviderSource::UsesParam {
-                        site,
+                        site: site.slot_site(db, requirement_idx),
                         requirement_idx,
                     },
                     semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
@@ -2519,7 +2519,9 @@ fn root_owner_effect_providers<'db>(
             ProviderSource::UsesParam {
                 site: provider_site,
                 requirement_idx,
-            } if provider_site == site => Some((requirement_idx, provider.clone())),
+            } if provider_site == site.slot_site(db, requirement_idx) => {
+                Some((requirement_idx, provider.clone()))
+            }
             ProviderSource::UsesParam { .. }
             | ProviderSource::ContractField { .. }
             | ProviderSource::RootProvider { .. } => None,
