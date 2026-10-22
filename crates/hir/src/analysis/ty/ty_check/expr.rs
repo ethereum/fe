@@ -708,7 +708,10 @@ impl<'db> TyChecker<'db> {
         let closure = ClosureTy::new(
             self.db,
             def,
-            parent_args,
+            super::super::ty_def::ClosureContext {
+                args: parent_args,
+                evidence: None,
+            },
             info.captures
                 .iter()
                 .map(|capture| capture.ty)
@@ -4464,8 +4467,7 @@ impl<'db> TyChecker<'db> {
                                 inst,
                                 name,
                             ),
-                            evidence: None,
-                            bound_evidence: None,
+                            evidence: Default::default(),
                         },
                     );
                     // Look up the associated const's declared type in the trait and

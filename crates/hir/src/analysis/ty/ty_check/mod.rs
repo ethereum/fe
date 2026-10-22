@@ -87,8 +87,8 @@ use super::{
     },
     effects::{EffectKeyKind, ResolvedEffectKey, resolve_effect_key, rows::RowPath},
     evidence::{
-        Evidence, EvidenceId, EvidenceList, declared_bound_evidence, impl_const_bound_evidence,
-        instantiated_selection,
+        BoundEvidence, BoundOwner, BoundSchemaId, Evidence, EvidenceList, UseEvidence,
+        declared_bound_evidence, impl_const_bound_evidence, instantiated_selection,
     },
     generic_defaults::{GenericDefault, default_assumptions, generic_default},
     instantiate_trait_self,
@@ -1436,6 +1436,11 @@ fn typed_body_for_bodyless_func<'db>(
         body: None,
         result_ty,
         signature: assumptions,
+        bound_schema: BoundSchemaId::new(
+            db,
+            BoundOwner::Body(BodyOwner::func_at(db, func, mode)),
+            assumptions,
+        ),
         assumptions,
         pat_ty: SecondaryMap::new(),
         expr_ty: SecondaryMap::new(),
@@ -2438,7 +2443,6 @@ impl<'db> TyChecker<'db> {
         let db = self.db;
         let body = self.env.body();
         let scope = self.env.scope();
-
 
         // Final trait solving can still bind types after literal fallback.
         // Check retained equalities after those constraints have settled.
@@ -4102,18 +4106,18 @@ pub enum ConstRef<'db> {
     Const(Const<'db>),
     TraitConst {
         use_: AssocConstUse<'db>,
-        /// The checker's proof of the use's trait goal, as for a call's
-        /// [`Callable`].
-        evidence: Option<EvidenceId<'db>>,
-        /// Proofs, in the checked body, of the bounds the trait's default
-        /// value body declares, by their places among the assumptions it is
-        /// checked under: the evidence that body's instance receives.
-        bound_evidence: Option<EvidenceList<'db>>,
+        evidence: UseEvidence<'db>,
     },
     InherentConst(InherentConstUse<'db>),
 }
 
 impl<'db> ConstRef<'db> {
+    pub(super) fn qualify_evidence(&mut self, db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) {
+        if let Self::TraitConst { evidence, .. } = self {
+            evidence.qualify(db, owner);
+        }
+    }
+
     /// A trait constant's defining body, its declared type, the substitution
     /// over the body's owner, and the evidence the body's instance receives:
     /// from the implementation the checker selected, or, for a use the
@@ -4122,15 +4126,15 @@ impl<'db> ConstRef<'db> {
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> Option<(Body<'db>, TyId<'db>, CompleteSubst<'db>, EvidenceList<'db>)> {
-        let ConstRef::TraitConst {
-            use_,
-            evidence,
-            bound_evidence,
-        } = self
-        else {
+        let ConstRef::TraitConst { use_, evidence } = self else {
             return None;
         };
-        let resolved = instantiated_selection(db, evidence, use_.solve_cx(db), use_.inst())?;
+        let resolved = instantiated_selection(
+            db,
+            evidence.dispatch_proof(),
+            use_.solve_cx(db),
+            use_.inst(),
+        )?;
         let (body, ty, subst) = selected_assoc_const_body_template(db, resolved, use_.name())?;
         let default = use_
             .inst()
@@ -4139,7 +4143,7 @@ impl<'db> ConstRef<'db> {
             .and_then(|constant| constant.default_body(db));
         // The trait's default receives the use's proofs; an implementation's
         // value receives them from the selection's proofs of its conditions.
-        let received = match (bound_evidence, evidence) {
+        let received = match (evidence.bound_proofs(), evidence.dispatch_proof()) {
             (Some(bound), _) if default == Some(body) => bound,
             (_, Some(selection))
                 if default != Some(body) && matches!(selection.data(db), Evidence::Impl { .. }) =>
@@ -4166,12 +4170,7 @@ impl<'db> ConstRef<'db> {
         db: &'db dyn HirAnalysisDb,
         choices: Option<crate::analysis::ty::trait_resolution::ChosenImpls<'db>>,
     ) -> Vec<TraitInstId<'db>> {
-        let ConstRef::TraitConst {
-            use_,
-            bound_evidence,
-            ..
-        } = self
-        else {
+        let ConstRef::TraitConst { use_, evidence, .. } = self else {
             return Vec::new();
         };
         let trait_ = use_.inst().def(db);
@@ -4192,7 +4191,18 @@ impl<'db> ConstRef<'db> {
             &subst,
             use_.solve_cx(db).with_choices(choices),
         );
-        *bound_evidence = Some(recorded);
+        let expected = trait_
+            .const_(db, use_.name())
+            .and_then(|constant| constant.ty(db))
+            .expect("typed trait constant");
+        evidence.bounds = Some(BoundEvidence {
+            schema: BoundSchemaId::new(
+                db,
+                BoundOwner::Body(BodyOwner::AnonConstBody { body, expected }),
+                signature,
+            ),
+            entries: recorded,
+        });
         if choices.is_some() {
             recorded.missing_bound_goals(db, signature, &subst)
         } else {
@@ -4208,18 +4218,9 @@ impl<'db> TyVisitable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(_) => {}
-            ConstRef::TraitConst {
-                use_,
-                evidence,
-                bound_evidence,
-            } => {
+            ConstRef::TraitConst { use_, evidence } => {
                 use_.visit_with(visitor);
-                if let Some(evidence) = evidence {
-                    evidence.visit_with(visitor);
-                }
-                if let Some(bound_evidence) = bound_evidence {
-                    bound_evidence.visit_with(visitor);
-                }
+                evidence.visit_with(visitor);
             }
             ConstRef::InherentConst(use_) => use_.visit_with(visitor),
         }
@@ -4233,15 +4234,9 @@ impl<'db> TyFoldable<'db> for ConstRef<'db> {
     {
         match self {
             ConstRef::Const(const_def) => ConstRef::Const(const_def),
-            ConstRef::TraitConst {
-                use_,
-                evidence,
-                bound_evidence,
-            } => ConstRef::TraitConst {
+            ConstRef::TraitConst { use_, evidence } => ConstRef::TraitConst {
                 use_: use_.fold_with(db, folder),
-                evidence: evidence.map(|evidence| evidence.fold_with(db, folder)),
-                bound_evidence: bound_evidence
-                    .map(|bound_evidence| bound_evidence.fold_with(db, folder)),
+                evidence: evidence.fold_with(db, folder),
             },
             ConstRef::InherentConst(use_) => ConstRef::InherentConst(use_.fold_with(db, folder)),
         }
@@ -4345,6 +4340,7 @@ mod typed_body_tables {
         /// The prefix of `assumptions` the body's owner declares; see
         /// `TypedBody::signature`.
         pub(super) signature: PredicateListId<'db>,
+        pub(super) bound_schema: BoundSchemaId<'db>,
         pub(super) assumptions: PredicateListId<'db>,
         pub(super) pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
         pub(super) expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
@@ -4851,8 +4847,8 @@ impl<'db> TypedBody<'db> {
 
     /// Replaces the assumptions the body's evidence names with `bound`'s
     /// proofs of them: an instance's own.
-    pub(crate) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: EvidenceList<'db>) {
-        if bound.entries(db).is_empty() {
+    pub(crate) fn bind_evidence(&mut self, db: &'db dyn HirAnalysisDb, bound: BoundEvidence<'db>) {
+        if bound.entries.entries(db).is_empty() {
             return;
         }
         let tables = self.tables_mut();
@@ -4870,15 +4866,8 @@ impl<'db> TypedBody<'db> {
             }
         }
         for const_ref in tables.const_refs.values_mut().flatten() {
-            if let ConstRef::TraitConst {
-                evidence,
-                bound_evidence,
-                ..
-            } = const_ref
-            {
-                *evidence = evidence.map(|evidence| evidence.bind(db, bound));
-                *bound_evidence =
-                    bound_evidence.map(|bound_evidence| bound_evidence.bind(db, bound));
+            if let ConstRef::TraitConst { evidence, .. } = const_ref {
+                evidence.bind(db, bound);
             }
         }
     }
@@ -5136,6 +5125,10 @@ impl<'db> TypedBody<'db> {
     /// The assumptions the body's owner declares, in the order the body's
     /// evidence numbers them: a prefix of `assumptions`, which a closure in
     /// the body extends with its own. An instance receives proofs of these.
+    pub fn bound_schema(&self) -> BoundSchemaId<'db> {
+        self.tables.bound_schema
+    }
+
     pub fn signature(&self) -> PredicateListId<'db> {
         self.tables.signature
     }
@@ -6724,6 +6717,11 @@ impl<'db> TypedBody<'db> {
         TypedBodyTables {
             body: None,
             result_ty: TyId::unit(db),
+            bound_schema: BoundSchemaId::new(
+                db,
+                BoundOwner::Context,
+                PredicateListId::empty_list(db),
+            ),
             signature: PredicateListId::empty_list(db),
             assumptions: PredicateListId::empty_list(db),
             pat_ty: SecondaryMap::new(),

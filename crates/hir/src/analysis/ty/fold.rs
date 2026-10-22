@@ -168,6 +168,13 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 };
                 let parent_args = fold_tys(closure.parent_args(db));
                 let captures = fold_tys(closure.captures(db));
+                let bound_evidence =
+                    closure
+                        .bound_evidence(db)
+                        .map(|bound| super::evidence::BoundEvidence {
+                            schema: bound.schema,
+                            entries: bound.entries.fold_with(db, folder),
+                        });
                 let params = closure
                     .params(db)
                     .iter()
@@ -180,7 +187,10 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                     ClosureTy::new(
                         db,
                         closure.def(db),
-                        parent_args,
+                        super::ty_def::ClosureContext {
+                            args: parent_args,
+                            evidence: bound_evidence,
+                        },
                         captures,
                         params,
                         ret_ty,
