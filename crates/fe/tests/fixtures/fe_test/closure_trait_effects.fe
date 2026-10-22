@@ -1,0 +1,49 @@
+// A closure whose body uses a trait-keyed effect takes its provider from
+// each call, as a function's does.
+use std::evm::{Evm, RawStorage, StorPtr, storage_at}
+
+trait Log {
+    fn n(self) -> u256
+}
+
+struct Fixed {
+    n: u256,
+}
+
+impl Log for Fixed {
+    fn n(self) -> u256 {
+        self.n
+    }
+}
+
+fn note() -> u256 uses (log: Log) {
+    log.n()
+}
+
+fn through_closure() -> u256 uses (log: Log) {
+    let g = || note() + 1
+    g()
+}
+
+unsafe fn slot_at(_ slot: u256) -> mut u256 uses (storage: mut RawStorage) {
+    unsafe { mut *(slot as StorPtr<u256>) }
+}
+
+fn bump_storage() uses (storage: mut RawStorage) {
+    let g = || {
+        unsafe { slot_at(0) += 1 }
+    }
+    g()
+    g()
+}
+
+#[test]
+fn closure_trait_effects() uses (evm: mut Evm) {
+    with (Log = Fixed { n: 4 }) {
+        assert!(through_closure() == 5)
+    }
+    with (RawStorage = evm) {
+        bump_storage()
+        assert!(unsafe { storage_at<u256>(0) } == 2)
+    }
+}
