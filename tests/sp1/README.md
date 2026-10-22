@@ -78,6 +78,6 @@ tests execute O0/O2 guests, including scalar I/O and integer arithmetic through
 256 bits.
 
 The main CI builds and tests the SP1 compiler path on every pull request. The
-`SP1` workflow executes the guests on Linux after each push to master; run it
-on demand to also prove and verify, e.g. when changing the SP1 SDK, the
-Succinct toolchain, or the Sonatina pin.
+`SP1` workflow executes the guests on Linux after each push to master. Dispatch
+it manually with `prove` to also prove and verify, e.g. when changing the SP1
+SDK, the Succinct toolchain, or the Sonatina pin.

@@ -1,19 +1,25 @@
 name: SP1
 
-# Building the SP1 SDK and executing guests takes much longer than the main CI,
-# whose all-feature jobs already build, lint, and test the SP1 compiler path.
-# This runs on pushes to master. Run it on demand to also generate and verify a
-# CPU core proof, e.g. when changing the SP1 SDK, toolchain, or Sonatina pin.
+# Main CI's all-feature jobs already build, lint, and test the SP1 compiler path
+# on pull requests. This executes the guests after each push to master. Dispatch
+# it manually with `prove` to also generate and verify a CPU core proof, e.g.
+# when changing the SP1 SDK, toolchain, or Sonatina pin.
 on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      prove:
+        description: Also generate and verify a CPU core proof
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: sp1-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   execute:
@@ -80,5 +86,5 @@ jobs:
       - name: Execute Fe guests
         run: cargo nextest r --locked --release --no-fail-fast --manifest-path tests/sp1/Cargo.toml
       - name: Prove and verify a Fe guest
-        if: github.event_name == 'workflow_dispatch'
+        if: inputs.prove
         run: cargo nextest r --locked --release --no-fail-fast --manifest-path tests/sp1/Cargo.toml --run-ignored only
