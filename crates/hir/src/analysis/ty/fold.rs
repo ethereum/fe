@@ -157,6 +157,7 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 TyId::assoc_ty(db, folded_trait, assoc.name)
             }
 
+            GoalDescriptor(goal) => TyId::new(db, GoalDescriptor(goal.fold_with(db, folder))),
             QualifiedTy(trait_inst) => {
                 let folded_trait = trait_inst.fold_with(db, folder);
                 TyId::qualified_ty(db, folded_trait)
