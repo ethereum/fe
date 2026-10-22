@@ -438,6 +438,10 @@ pub enum MarkerPosition {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum BodyDiag<'db> {
+    CompileTimePhase {
+        primary: DynLazySpan<'db>,
+        message: String,
+    },
     ChosenTypeRead {
         primary: DynLazySpan<'db>,
         goal: TraitInstId<'db>,
@@ -1286,6 +1290,7 @@ impl<'db> BodyDiag<'db> {
 
     pub(crate) fn local_code(&self) -> u16 {
         match self {
+            Self::CompileTimePhase { .. } => 137,
             Self::TypeMismatch { .. } => 0,
             Self::InfiniteOccurrence(..) => 1,
             Self::DuplicatedRestPat(..) => 2,

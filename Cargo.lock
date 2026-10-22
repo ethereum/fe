@@ -2386,6 +2386,7 @@ dependencies = [
  "dir-test",
  "fe-common",
  "fe-hir",
+ "fe-parser",
  "fe-resolver",
  "fe-test-utils",
  "glob",

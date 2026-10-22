@@ -198,6 +198,7 @@ impl DiagnosticVoucher for SemanticDiagnostic<'_> {
             SemanticDiagnosticKind::ProjectionRecursion => 13,
             SemanticDiagnosticKind::RawPlaceViolation => 14,
             SemanticDiagnosticKind::InstanceLimit => 16,
+            SemanticDiagnosticKind::CompileTimePhase => 17,
         };
         let severity = match self.kind {
             SemanticDiagnosticKind::DiscardedWrites => Severity::Warning,
@@ -228,6 +229,10 @@ impl DiagnosticVoucher for SemanticDiagnostic<'_> {
 impl SemanticDiagnosticKind {
     fn header<'db>(self, db: &'db dyn HirAnalysisDb, instance: SemanticInstance<'db>) -> String {
         match self {
+            Self::CompileTimePhase => format!(
+                "compile-time-only body cannot be emitted at runtime: `{}`",
+                checker_name(db, instance)
+            ),
             Self::AccessConflict => {
                 format!("access conflict in `fn {}`", checker_name(db, instance))
             }
@@ -436,6 +441,7 @@ impl<'db> From<SemanticDiagnostic<'db>> for SemanticNormalizationFailure<'db> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum SemanticDiagnosticKind {
+    CompileTimePhase,
     AccessConflict,
     MoveConflict,
     Internal,
