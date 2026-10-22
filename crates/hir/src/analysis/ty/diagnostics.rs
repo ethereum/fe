@@ -1431,6 +1431,9 @@ impl<'db> BodyDiag<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TraitLowerDiag<'db> {
+    NamedFieldQuery {
+        primary: ImplTrait<'db>,
+    },
     NamedOutputsNeedOrdinary {
         primary: ImplTrait<'db>,
     },
@@ -1488,6 +1491,7 @@ pub enum TraitLowerDiag<'db> {
 impl TraitLowerDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
+            Self::NamedFieldQuery { .. } => 7,
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
             Self::CyclicSuperTraits { .. } => 2,
