@@ -777,7 +777,12 @@ fn sol_codec_fallback_proof_waits_for_its_element_type() {
         is_goal_satisfiable(&db, solve_cx, generic),
         GoalSatisfiability::Satisfied(_)
     ));
-    assert!(prove(&db, solve_cx, generic).is_none());
+    let deferred = prove(&db, solve_cx, generic).unwrap();
+    assert!(matches!(
+        deferred.data(&db),
+        Evidence::DeferredSolCodec { .. }
+    ));
+    assert!(!deferred.is_closed(&db));
 
     let supplied = solve_cx.with_assumptions(PredicateListId::new(&db, vec![generic]));
     assert!(matches!(
