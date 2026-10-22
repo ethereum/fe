@@ -6,6 +6,7 @@
 use crate::{
     HirDb,
     analysis::ty::ty_check::EffectParamSite,
+    core::semantic::{RecvArmView, RecvView},
     hir_def::{
         Body, Const, Contract, ContractInit, ContractRecvArm, EffectParam, EffectParamListId, Enum,
         Expr, ExprId, Func, Impl, ImplTrait, ItemKind, Pat, PatId, StaticAssert, Struct, Trait,
@@ -63,6 +64,9 @@ pub(super) struct ReferenceCollector<'db> {
     /// Set while visiting such an entry, with its key, until the key is
     /// visited.
     uses_entry: Option<(PathId<'db>, UsesEntry<'db>)>,
+    /// Set while visiting a recv arm, with its variant path, until that path
+    /// is visited.
+    recv_arm: Option<(PathId<'db>, RecvArmView<'db>)>,
 }
 
 impl<'db> ReferenceCollector<'db> {
@@ -76,6 +80,7 @@ impl<'db> ReferenceCollector<'db> {
             trait_ref: false,
             uses_list: None,
             uses_entry: None,
+            recv_arm: None,
         }
     }
 
@@ -94,9 +99,14 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
             .uses_entry
             .take_if(|(key, _)| *key == path)
             .map(|(_, entry)| entry);
+        let recv_arm = self
+            .recv_arm
+            .take_if(|(variant_path, _)| *variant_path == path)
+            .map(|(_, arm)| arm);
         if let Some(span) = ctxt.span() {
             let mut path_view = PathView::new(path, ctxt.scope(), span, trait_ref);
             path_view.uses_entry = uses_entry;
+            path_view.recv_arm = recv_arm;
 
             // Attach body context if we're inside a body expression/pattern
             match self.path_context {
@@ -144,8 +154,8 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
         ctxt: &mut VisitorCtxt<'db, LazyRecvArmSpan<'db>>,
         arm: &ContractRecvArm<'db>,
     ) {
-        if let ItemKind::Contract(contract) = ctxt.scope().item() {
-            self.uses_list = contract
+        if let ItemKind::Contract(contract) = ctxt.scope().item()
+            && let Some((recv_idx, arm_idx)) = contract
                 .recvs(self.db)
                 .data(self.db)
                 .iter()
@@ -156,16 +166,22 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
                         .data(self.db)
                         .iter()
                         .position(|other| other.body == arm.body)?;
-                    let site = EffectParamSite::ContractRecvArm {
-                        contract,
-                        recv_idx: recv_idx as u32,
-                        arm_idx: arm_idx as u32,
-                    };
-                    Some((site, arm.effects))
-                });
+                    Some((recv_idx as u32, arm_idx as u32))
+                })
+        {
+            let site = EffectParamSite::ContractRecvArm {
+                contract,
+                recv_idx,
+                arm_idx,
+            };
+            self.uses_list = Some((site, arm.effects));
+            let view =
+                RecvArmView::new(self.db, RecvView::new(self.db, contract, recv_idx), arm_idx);
+            self.recv_arm = arm.variant_path(self.db).map(|path| (path, view));
         }
         walk_contract_recv_arm(self, ctxt, arm);
         self.uses_list = None;
+        self.recv_arm = None;
     }
 
     fn visit_effect_param(
