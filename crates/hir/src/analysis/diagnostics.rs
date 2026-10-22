@@ -2667,7 +2667,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
             ),
             Self::PermitConstruction { primary, reason } => primary_diag(
                 severity,
-                reason,
+                *reason,
                 "this carrier may only be issued by its designated compiler protocol",
                 primary.resolve(db),
                 error_code,
