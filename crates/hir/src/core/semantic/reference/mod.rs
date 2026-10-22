@@ -30,11 +30,10 @@ use crate::{
         },
         ty_def::TyId,
     },
-    core::semantic::EffectEnvView,
+    core::semantic::{EffectEnvView, RecvArmView},
     hir_def::scope_graph::ScopeId,
     hir_def::{
-        Body, Contract, Expr, ExprId, FieldIndex, IdentId, ItemKind, Partial, PathId, Use,
-        UsePathSegment,
+        Body, Expr, ExprId, FieldIndex, IdentId, ItemKind, Partial, PathId, Use, UsePathSegment,
     },
     hir_def::{GenericParamOwner, HirIngot},
     span::{
@@ -151,72 +150,6 @@ fn resolve_path_to_scopes<'db>(
     scopes_from_resolution(db, &result)
 }
 
-/// Resolve a path from a scope, with a fallback through the msg module
-/// if the scope belongs to a recv arm body.
-///
-/// In `recv TokenMsg { Mint { to, amount } -> bool { ... } }`, the pattern
-/// path `Mint` is stored as a bare identifier resolved from the body scope.
-/// Standard resolution fails because `Mint` lives inside the desugared
-/// `TokenMsg` module. This helper retries resolution from the msg module
-/// scope when the body belongs to a recv arm.
-fn resolve_path_with_recv_fallback<'db>(
-    db: &'db dyn HirAnalysisDb,
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-) -> Vec<ScopeId<'db>> {
-    let scopes = resolve_path_to_scopes(db, path, scope);
-    if !scopes.is_empty() {
-        return scopes;
-    }
-
-    // Fallback: if the scope is a recv arm body, resolve from the msg module
-    if let Some(body) = scope.body()
-        && let Some(msg_scope) = recv_arm_msg_scope(db, body)
-    {
-        return resolve_path_to_scopes(db, path, msg_scope);
-    }
-
-    vec![]
-}
-
-/// For a body that belongs to a recv arm with a named msg type, return the
-/// msg module's scope for path resolution fallback.
-fn recv_arm_msg_scope<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<ScopeId<'db>> {
-    let contract = recv_arm_contract(db, body)?;
-    for recv in contract.recvs(db).data(db) {
-        for arm in recv.arms.data(db) {
-            if arm.body == body {
-                let msg_path = recv.msg_path?;
-                let assumptions = PredicateListId::empty_list(db);
-                if let Ok(PathRes::Mod(scope)) =
-                    resolve_path(db, msg_path, contract.scope(), assumptions, false)
-                {
-                    return Some(scope);
-                }
-                return None;
-            }
-        }
-    }
-    None
-}
-
-/// Find the contract that owns a recv arm body.
-fn recv_arm_contract<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<Contract<'db>> {
-    let scope_graph = body.scope().scope_graph(db);
-    for item in scope_graph.items_dfs(db) {
-        if let ItemKind::Contract(contract) = item {
-            for recv in contract.recvs(db).data(db) {
-                for arm in recv.arms.data(db) {
-                    if arm.body == body {
-                        return Some(contract);
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
 /// The resolved target of a reference.
 ///
 /// References can resolve to either module-level items (scopes) or
@@ -317,6 +250,8 @@ pub struct PathView<'db> {
     /// The entry whose key the path is, for an unlabeled `uses` entry of a
     /// contract `init` or recv arm.
     pub uses_entry: Option<UsesEntry<'db>>,
+    /// The recv arm whose variant path the path is.
+    pub recv_arm: Option<RecvArmView<'db>>,
 }
 
 impl<'db> PathView<'db> {
@@ -333,6 +268,7 @@ impl<'db> PathView<'db> {
             body_ctx: None,
             trait_ref,
             uses_entry: None,
+            recv_arm: None,
         }
     }
 
@@ -424,7 +360,16 @@ impl<'db> PathView<'db> {
             );
             return scopes_from_resolution(db, &res);
         }
-        resolve_path_with_recv_fallback(db, seg_path, self.scope)
+        // A recv arm's variant path is resolved as its arm resolves it: in a
+        // named block, a single segment is one of the msg's items.
+        if let Some(arm) = self.recv_arm
+            && let Some(lookup) = arm.resolution(db).lookup
+        {
+            return lookup.segment(db, idx).map_or_else(Vec::new, |segment| {
+                resolve_path_to_scopes(db, segment, arm.contract(db).scope())
+            });
+        }
+        resolve_path_to_scopes(db, seg_path, self.scope)
     }
 
     /// Resolve at a specific cursor position (segment-aware: `foo` in `foo::Bar` → foo).

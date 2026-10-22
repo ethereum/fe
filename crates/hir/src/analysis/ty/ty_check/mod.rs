@@ -14,10 +14,11 @@ pub(crate) use projection::constructed_variant;
 mod stmt;
 
 pub use self::contract::{
-    ResolvedRecvVariant, VariantResError, check_contract_field_address_spaces,
-    check_contract_field_slots, check_contract_immutable_fields_initialized,
-    check_contract_init_body, check_contract_recv_arm_body, check_contract_recv_block,
-    check_contract_recv_blocks, resolve_variant_bare, resolve_variant_in_msg,
+    RecvArmLookup, RecvArmResolution, RecvArmVariant, RecvMsg, RecvMsgResolution,
+    check_contract_field_address_spaces, check_contract_field_slots,
+    check_contract_immutable_fields_initialized, check_contract_init_body,
+    check_contract_recv_arm_body, check_contract_recv_block, check_contract_recv_blocks,
+    recv_arm_resolution, recv_msg,
 };
 pub(crate) use self::contract::{contract_field_slot, eval_msg_variant_selector};
 pub(crate) use self::env::{func_declared_bounds, func_signature};
@@ -1570,20 +1571,14 @@ impl<'db> TyChecker<'db> {
             arm_idx,
         } = self.env.owner()
         {
-            let recv_span = self.env.owner().recv_span().unwrap();
             let arm_span = self.env.owner().recv_arm_span().unwrap();
             let arm = contract
                 .recv_arm(self.db, recv_idx as usize, arm_idx as usize)
                 .expect("recv arm exists");
-            let msg_path = contract
-                .recvs(self.db)
-                .data(self.db)
-                .get(recv_idx as usize)
-                .and_then(|r| r.msg_path);
             let (pat_ty, ret_ty) =
-                self.resolve_recv_arm_types(contract, msg_path, arm, recv_span.path(), arm_span);
+                self.resolve_recv_arm_types(contract, recv_idx, arm_idx, arm, arm_span);
             self.expected = ret_ty;
-            self.check_pat(arm.pat, pat_ty);
+            self.check_recv_arm_pat(arm.pat, pat_ty);
             self.seed_pat_bindings(arm.pat);
             self.check_arm_effect_names(arm.pat);
             self.env.flush_pending_bindings();
@@ -2857,57 +2852,29 @@ impl<'db> TyChecker<'db> {
     fn resolve_recv_arm_types(
         &mut self,
         contract: Contract<'db>,
-        msg_path: Option<PathId<'db>>,
+        recv_idx: u32,
+        arm_idx: u32,
         arm: ContractRecvArm<'db>,
-        path_span: LazyPathSpan<'db>,
         arm_span: crate::span::item::LazyRecvArmSpan<'db>,
     ) -> (TyId<'db>, TyId<'db>) {
-        let invalid_ty = TyId::invalid(self.db, InvalidCause::Other);
-
         if arm.is_fallback(self.db) {
             return (TyId::unit(self.db), TyId::unit(self.db));
         }
 
-        // Get variant path from arm pattern
-        let Some(variant_path) = arm.variant_path(self.db) else {
+        let resolution = contract::recv_arm_resolution(self.db, contract, recv_idx, arm_idx);
+        // The arm's pattern doesn't resolve its path again, so the
+        // applications the path passes through are checked from here.
+        self.env.register_path_applications(
+            arm.pat.span(self.body()).into(),
+            resolution.applications.iter().copied(),
+        );
+        let Some(variant) = resolution.variant else {
+            // Invalid types suppress spurious type mismatch errors when the
+            // pattern doesn't name a msg variant, which the recv block reports.
+            let invalid_ty = TyId::invalid(self.db, InvalidCause::Other);
             return (invalid_ty, invalid_ty);
         };
-
-        let assumptions = self.env.assumptions();
-
-        // Resolve based on whether this is a named or bare recv block
-        let resolved = if let Some(msg_mod) = contract::resolve_recv_msg_mod(
-            self.db,
-            contract,
-            msg_path,
-            path_span,
-            &mut self.diags,
-            false,
-        ) {
-            // Named recv block - resolve within the msg module
-            match contract::resolve_variant_in_msg(self.db, msg_mod, variant_path, assumptions) {
-                Ok(resolved) => resolved,
-                _ => {
-                    // Return invalid types to suppress spurious type mismatch errors
-                    // when the pattern doesn't resolve to a valid msg variant
-                    return (invalid_ty, invalid_ty);
-                }
-            }
-        } else if msg_path.is_none() {
-            // Bare recv block - resolve from contract scope
-            match contract::resolve_variant_bare(self.db, contract, variant_path, assumptions) {
-                Ok(resolved) => resolved,
-                _ => {
-                    // Return invalid types to suppress spurious type mismatch errors
-                    return (invalid_ty, invalid_ty);
-                }
-            }
-        } else {
-            // msg_path was Some but didn't resolve - diagnostics already emitted
-            return (invalid_ty, invalid_ty);
-        };
-
-        let pat_ty = resolved.ty;
+        let pat_ty = variant.ty;
 
         // Get annotated return type from the arm
         let arm_ret_span = arm_span.clone().ret_ty();

@@ -5,8 +5,8 @@ use crate::hir_def::{
 use crate::span::{DynLazySpan, types::LazyTySpan};
 use crate::{
     analysis::HirAnalysisDb,
-    hir_def::{Body, Const, Contract, EffectParamListId, Func, PathId, scope_graph::ScopeId},
-    span::item::{LazyContractRecvSpan, LazyRecvArmSpan},
+    hir_def::{Body, Const, Contract, EffectParamListId, Func, scope_graph::ScopeId},
+    span::item::LazyRecvArmSpan,
 };
 use salsa::Update;
 
@@ -284,15 +284,6 @@ impl<'db> BodyOwner<'db> {
         }
     }
 
-    pub fn recv_msg_path(self, db: &'db dyn HirAnalysisDb) -> Option<PathId<'db>> {
-        match self {
-            BodyOwner::ContractRecvArm {
-                contract, recv_idx, ..
-            } => contract.recvs(db).data(db).get(recv_idx as usize)?.msg_path,
-            _ => None,
-        }
-    }
-
     pub fn body(self, db: &'db dyn HirAnalysisDb) -> Option<Body<'db>> {
         match self {
             BodyOwner::Func(func, _) => func.body(db),
@@ -377,15 +368,6 @@ impl<'db> BodyOwner<'db> {
                 .param_idx(idx)
                 .ty()
                 .into(),
-        }
-    }
-
-    pub fn recv_span(self) -> Option<LazyContractRecvSpan<'db>> {
-        match self {
-            BodyOwner::ContractRecvArm {
-                contract, recv_idx, ..
-            } => Some(contract.span().recv(recv_idx as usize)),
-            _ => None,
         }
     }
 

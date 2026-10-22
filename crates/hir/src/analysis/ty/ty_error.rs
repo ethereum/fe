@@ -100,6 +100,26 @@ pub(crate) fn path_arg_diags<'db>(
         .collect()
 }
 
+/// Diagnostics for the types written as generic arguments of `path`'s
+/// segments, each at its own span, as a written type reports them. `path`
+/// itself isn't resolved: its resolution reports its own segments.
+pub(crate) fn path_generic_arg_diags<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    path_span: LazyPathSpan<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<TyDiagCollection<'db>> {
+    let mut vis = HirTyErrVisitor {
+        db,
+        assumptions,
+        diags: Vec::new(),
+        const_bodies: ConstBodyLowering::Eager,
+    };
+    walk_path(&mut vis, &mut VisitorCtxt::new(db, scope, path_span), path);
+    vis.diags
+}
+
 /// Collect all type-lowering diagnostics for a HIR type.
 ///
 /// This encapsulates the two-phase error collection strategy:

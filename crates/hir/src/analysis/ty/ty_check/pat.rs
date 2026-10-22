@@ -383,22 +383,6 @@ impl<'db> TyChecker<'db> {
             );
         };
 
-        if let Some(expected) = self.expected_msg_variant_for_named_recv_pat(pat, *path, expected) {
-            if !expected.field_types(self.db).is_empty() {
-                let record_like = RecordLike::from_ty(expected);
-                let actual = self.emit_unit_variant_expected(pat, record_like);
-                return self.finish_pat_check(
-                    pat,
-                    expected,
-                    actual,
-                    PatternAnalysisStatus::Invalid,
-                );
-            }
-            let analysis =
-                self.ready_constructor(expected, ConstructorKind::Type(expected), Vec::new());
-            return self.finish_pat_check(pat, expected, expected, analysis);
-        }
-
         let span = pat.span(self.body()).into_path_pat();
         let lowering_cx = LoweringContext::new();
         let res = self.resolve_path(
@@ -409,9 +393,7 @@ impl<'db> TyChecker<'db> {
             &lowering_cx,
         );
 
-        // Bare identifiers that don't resolve to a type/variant are local bindings,
-        // unless the expected type is a msg type, in which case we try to resolve
-        // the identifier as a msg variant first.
+        // Bare identifiers that don't resolve to a type/variant are local bindings.
         if let Some(name) = path.as_ident(self.db)
             && matches!(
                 res,
@@ -967,24 +949,6 @@ impl<'db> TyChecker<'db> {
 
         let span = pat.span(self.body()).into_record_pat();
 
-        if let Some(expected) = self.expected_msg_variant_for_named_recv_pat(pat, *path, expected) {
-            let record_like = RecordLike::from_ty(expected);
-            if record_like.is_record(self.db) {
-                let analysis = self.check_record_pat_fields(record_like, pat, expected);
-                return self.finish_pat_check(pat, expected, expected, analysis);
-            }
-
-            let diag =
-                BodyDiag::record_expected(self.db, pat.span(self.body()).into(), Some(record_like));
-            self.push_diag(diag);
-            return self.finish_pat_check(
-                pat,
-                expected,
-                TyId::invalid(self.db, InvalidCause::Other),
-                PatternAnalysisStatus::Invalid,
-            );
-        }
-
         let lowering_cx = LoweringContext::new();
         let (actual, analysis) = match self.resolve_path(
             *path,
@@ -1137,23 +1101,49 @@ impl<'db> TyChecker<'db> {
         self.finish_pat_check(pat, expected, actual, analysis)
     }
 
-    fn expected_msg_variant_for_named_recv_pat(
-        &self,
+    /// Checks the pattern of a recv arm against `expected`, the msg variant
+    /// that the recv block resolved the pattern's path to, so that the path
+    /// isn't resolved a second time, where it could name something else.
+    /// `expected` is invalid when the path names no variant, which checking
+    /// the recv block reports.
+    pub(super) fn check_recv_arm_pat(
+        &mut self,
         pat: PatId,
-        path: PathId<'db>,
         expected: TyId<'db>,
-    ) -> Option<TyId<'db>> {
-        if !matches!(self.env.owner().recv_arm(self.db), Some(arm) if arm.pat == pat) {
-            return None;
-        }
-        self.env.owner().recv_msg_path(self.db)?;
-        let path_ident = path.as_ident(self.db)?;
-        let adt_def = expected.adt_def(self.db)?;
-        let AdtRef::Struct(struct_) = adt_def.adt_ref(self.db) else {
-            return None;
+    ) -> PatCheckResult<'db> {
+        let invalid = TyId::invalid(self.db, InvalidCause::Other);
+        let record_like = RecordLike::from_ty(expected);
+        let (actual, analysis) = match pat.data(self.db, self.body()) {
+            Partial::Present(Pat::Path(..)) if expected.has_invalid(self.db) => {
+                (invalid, PatternAnalysisStatus::Invalid)
+            }
+            Partial::Present(Pat::Path(..)) if expected.field_types(self.db).is_empty() => {
+                let ctor = ConstructorKind::Type(expected);
+                (expected, self.ready_constructor(expected, ctor, Vec::new()))
+            }
+            Partial::Present(Pat::Path(..)) => (
+                self.emit_unit_variant_expected(pat, record_like),
+                PatternAnalysisStatus::Invalid,
+            ),
+            Partial::Present(Pat::Record(..)) if record_like.is_record(self.db) => (
+                expected,
+                self.check_record_pat_fields(record_like, pat, expected),
+            ),
+            Partial::Present(Pat::Record(_, fields)) => {
+                // The fields still bind their names, as values of an unknown
+                // type.
+                for field in fields {
+                    if field.pat.is_rest(self.db, self.body()) {
+                        self.consume_rest_pat(field.pat, invalid);
+                    } else {
+                        self.check_pat(field.pat, invalid);
+                    }
+                }
+                (invalid, PatternAnalysisStatus::Invalid)
+            }
+            _ => return self.check_pat(pat, expected),
         };
-        let struct_name = struct_.name(self.db).to_opt()?;
-        (path_ident == struct_name).then_some(expected)
+        self.finish_pat_check(pat, expected, actual, analysis)
     }
 
     fn check_record_pat_fields(
