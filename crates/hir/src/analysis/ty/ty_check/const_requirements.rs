@@ -612,7 +612,7 @@ pub(super) fn check_body_requirements<'db>(
         }
     }
     let mut check = checker.check_inferred_types(&entered);
-    for (nested, expected) in expression_const_bodies(db, body, typed) {
+    for (nested, expected) in expression_const_bodies(db, owner, body, typed) {
         check.extend(anon_const_position_check(db, nested, expected));
     }
     check
@@ -1157,6 +1157,7 @@ fn check_path_application<'db>(
 /// the body are covered by `check_declared_type_requirements`.
 fn expression_const_bodies<'db>(
     db: &'db dyn HirAnalysisDb,
+    owner: BodyOwner<'db>,
     body: Body<'db>,
     typed: &TypedBody<'db>,
 ) -> Vec<(Body<'db>, TyId<'db>)> {
@@ -1264,20 +1265,13 @@ fn expression_const_bodies<'db>(
     };
     // Arguments of the path's segments, which path resolution applies, each
     // checked against its segment's own resolution (`segment_const_args`).
-    let segment_args = |path: PathId<'db>, value: bool| {
+    let segment_args = |path: PathId<'db>, scope: ScopeId<'db>, value: bool| {
         if path_const_bodies(db, path).is_empty() {
             return Vec::new();
         }
         let lowering_cx = LoweringContext::deferred().recording_resolutions();
         let resolve = |value| {
-            resolve_path_with_minter(
-                db,
-                path,
-                body.scope(),
-                typed.assumptions(),
-                value,
-                &lowering_cx,
-            )
+            resolve_path_with_minter(db, path, scope, typed.assumptions(), value, &lowering_cx)
         };
         // A tail that is not a value can still be a type, as a record's is.
         if resolve(value).is_err() {
@@ -1293,24 +1287,49 @@ fn expression_const_bodies<'db>(
                 len.to_opt().zip(array_length_ty(db)).into_iter().collect()
             }
             Some(Expr::Path(Partial::Present(path))) => {
-                let mut entries = segment_args(*path, true);
+                let mut entries = segment_args(*path, body.scope(), true);
                 entries.extend(explicit_args(expr, path.generic_args(db)));
                 entries
             }
-            Some(Expr::RecordInit(Partial::Present(path), _)) => segment_args(*path, false),
+            Some(Expr::RecordInit(Partial::Present(path), _)) => {
+                segment_args(*path, body.scope(), false)
+            }
             Some(Expr::MethodCall(_, _, args, _)) => explicit_args(expr, *args),
             _ => Vec::new(),
         };
         found.extend(entries);
     }
-    for pat in body.pats(db).values() {
+    // A recv arm's variant path is resolved as the arm resolves it, which
+    // finds no path when the arm's block doesn't resolve its msg.
+    let recv_arm = match owner {
+        BodyOwner::ContractRecvArm {
+            contract,
+            recv_idx,
+            arm_idx,
+        } => contract
+            .recv_arm(db, recv_idx as usize, arm_idx as usize)
+            .map(|arm| {
+                let lookup = recv_arm_resolution(db, contract, recv_idx, arm_idx).lookup;
+                (arm.pat, contract.scope(), lookup)
+            }),
+        _ => None,
+    };
+    for (pat_id, pat) in body.pats(db).iter() {
+        if let Some((arm_pat, scope, lookup)) = recv_arm
+            && pat_id == arm_pat
+        {
+            if let Some(lookup) = lookup {
+                found.extend(segment_args(lookup.path, scope, false));
+            }
+            continue;
+        }
         if let Some(
             Pat::Path(Partial::Present(path), _)
             | Pat::PathTuple(Partial::Present(path), _)
             | Pat::Record(Partial::Present(path), _),
         ) = pat.borrowed().to_opt()
         {
-            found.extend(segment_args(*path, true));
+            found.extend(segment_args(*path, body.scope(), true));
         }
     }
     // A body appears in one position, but two lookups can both find it.
