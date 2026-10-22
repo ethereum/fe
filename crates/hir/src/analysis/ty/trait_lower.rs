@@ -24,7 +24,7 @@ use super::{
     trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
     trait_resolution::PredicateListId,
     ty_def::{BorrowKind, InvalidCause, PrimTy, TyBase, TyId},
-    ty_lower::{lower_generic_arg_list, lower_hir_ty_with_minter},
+    ty_lower::lower_hir_ty_with_minter,
 };
 use crate::analysis::{
     HirAnalysisDb,
