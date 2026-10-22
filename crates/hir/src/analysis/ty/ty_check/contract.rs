@@ -662,92 +662,71 @@ pub fn check_contract_recv_blocks<'db>(
             }
         }
 
-        match recv_msg(db, contract, idx as u32).msg {
+        let named = match recv_msg(db, contract, idx as u32).msg {
             RecvMsg::Module(msg_mod) => {
                 let Some(msg_name) = msg_mod.name(db).to_opt() else {
                     continue;
                 };
-
                 let path_span: DynLazySpan<'db> = recv_span.clone().path().into();
-                let is_duplicate_msg_block = seen_msg_blocks.contains_key(&msg_mod);
-                if is_duplicate_msg_block {
-                    if let Some((first_span, first_name)) = seen_msg_blocks.get(&msg_mod) {
-                        diags.push(
-                            BodyDiag::RecvDuplicateMsgBlock {
-                                primary: path_span.clone(),
-                                first_use: first_span.clone(),
-                                msg_name: *first_name,
-                            }
-                            .into(),
-                        );
-                    }
+                if let Some((first_span, first_name)) = seen_msg_blocks.get(&msg_mod) {
+                    diags.push(
+                        BodyDiag::RecvDuplicateMsgBlock {
+                            primary: path_span,
+                            first_use: first_span.clone(),
+                            msg_name: *first_name,
+                        }
+                        .into(),
+                    );
                     // Skip handler/selector conflict checks for duplicate msg blocks
                     continue;
                 }
-                seen_msg_blocks.insert(msg_mod, (path_span.clone(), msg_name));
-
-                // Check for selector and handler conflicts across all msg variants in this recv block
-                for variant in msg_variants(db, msg_mod) {
-                    let Some(variant_name) = variant.name(db).to_opt() else {
-                        continue;
-                    };
-
-                    let variant_span: DynLazySpan<'db> = variant.span().name().into();
-
-                    // Check selector conflicts
-                    let variant_ty = TyId::adt(db, AdtRef::from(variant).as_adt(db));
-                    if let Some(selector) =
-                        eval_msg_variant_selector(db, variant_ty, variant.scope(), &mut diags)
-                    {
-                        check_selector_conflict(
-                            selector,
-                            variant,
-                            variant_name,
-                            variant_span.clone(),
-                            &mut seen_selectors,
-                            &mut diags,
-                        );
-                    }
-
-                    // Check handler type conflicts
-                    let adt_def = AdtRef::from(variant).as_adt(db);
-                    let ty = TyId::adt(db, adt_def);
-                    check_handler_conflict(ty, variant_span, &mut seen_handlers, &mut diags);
-                }
+                seen_msg_blocks.insert(msg_mod, (path_span, msg_name));
+                true
             }
-            // Bare recv block - check each arm individually
-            RecvMsg::Any => {
-                for arm_idx in 0..recv.arms.data(db).len() {
-                    let pat_span: DynLazySpan<'db> =
-                        recv_span.clone().arms().arm(arm_idx).pat().into();
-                    let Some(variant) =
-                        recv_arm_resolution(db, contract, idx as u32, arm_idx as u32).variant
-                    else {
-                        continue;
-                    };
-                    let Some(variant_name) = variant.variant_struct.name(db).to_opt() else {
-                        continue;
-                    };
+            RecvMsg::Any => false,
+            RecvMsg::Invalid => continue,
+        };
 
-                    // Check selector conflicts
-                    if let Some(selector) =
-                        eval_msg_variant_selector(db, variant.ty, contract.scope(), &mut diags)
-                    {
-                        check_selector_conflict(
-                            selector,
-                            variant.variant_struct,
-                            variant_name,
-                            pat_span.clone(),
-                            &mut seen_selectors,
-                            &mut diags,
-                        );
-                    }
-
-                    // Check handler type conflicts
-                    check_handler_conflict(variant.ty, pat_span, &mut seen_handlers, &mut diags);
-                }
+        // Check for selector and handler conflicts across the variants the
+        // block's arms handle. The block's own check reports an arm that
+        // handles a variant an earlier arm of the block handles.
+        let mut handled = FxHashSet::<TyId<'db>>::default();
+        for arm_idx in 0..recv.arms.data(db).len() {
+            let Some(variant) =
+                recv_arm_resolution(db, contract, idx as u32, arm_idx as u32).variant
+            else {
+                continue;
+            };
+            let Some(variant_name) = variant.variant_struct.name(db).to_opt() else {
+                continue;
+            };
+            if !handled.insert(variant.ty) {
+                continue;
             }
-            RecvMsg::Invalid => {}
+            // A named block's variants are reported where its msg declares
+            // them, and a bare block's where its arms name them.
+            let span: DynLazySpan<'db> = if named {
+                variant.variant_struct.span().name().into()
+            } else {
+                recv_span.clone().arms().arm(arm_idx).pat().into()
+            };
+
+            // Check selector conflicts
+            if let Some(selector) =
+                eval_msg_variant_selector(db, variant.ty, contract.scope(), &mut diags)
+            {
+                check_selector_conflict(
+                    selector,
+                    variant.variant_struct,
+                    variant_name,
+                    span.clone(),
+                    &mut seen_selectors,
+                    &mut diags,
+                );
+            }
+
+            // Check handler type conflicts
+            check_handler_conflict(variant.ty, span, &mut seen_handlers, &mut diags);
         }
     }
 
