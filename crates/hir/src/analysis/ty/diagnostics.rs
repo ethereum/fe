@@ -408,6 +408,16 @@ pub enum MustUseSubject<'db> {
     Function(CallableDef<'db>),
 }
 
+/// The `mut?` choice that leaves an effect's provider read-only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub enum ReadOnlyProvider<'db> {
+    /// A `mut?` binding, which a `mut?` function's `ref` body only reads:
+    /// an effect, or a `with` value's binding.
+    Binding(IdentId<'db>),
+    /// A `with` value calling this `mut?` function at `ref`.
+    Call(Func<'db>),
+}
+
 /// How to make writable a binding that is assigned through.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum MutabilityFix {
@@ -577,9 +587,10 @@ pub enum BodyDiag<'db> {
         func: Func<'db>,
         key: HirTypeId<'db>,
         provided_span: Option<DynLazySpan<'db>>,
-        /// The provider's `mut?` binding, read-only in the `ref` body: an
-        /// effect, or a `with` value's binding.
-        maybe_mut: Option<IdentId<'db>>,
+        /// The `mut?` choice that leaves the provider read-only, if one does.
+        read_only: Option<ReadOnlyProvider<'db>>,
+        /// The unsafe split whose `mut` binding asked the call for `mut`.
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call in `closure` that resolves only after the closure's body is
@@ -725,6 +736,8 @@ pub enum BodyDiag<'db> {
         binding: Option<(IdentId<'db>, DynLazySpan<'db>)>,
         /// Whether the binding is `mut?`, read-only in the `ref` body.
         maybe_mut: bool,
+        /// The unsafe split whose `mut` binding asked a call for `mut`.
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call argument is not a place, but the callee requires a borrow handle (`mut`/`ref`).
@@ -782,8 +795,11 @@ pub enum BodyDiag<'db> {
     },
 
     /// `mut x` on a read component, which has no mutable place behind it.
+    /// `split_reads` are the read accesses of an unsafe split that kept it
+    /// from granting `mut`.
     MutBindingOfRead {
         primary: DynLazySpan<'db>,
+        split_reads: Vec<DynLazySpan<'db>>,
     },
 
     /// `mut?` in a body whose function has no mode: its signature writes no
@@ -864,12 +880,14 @@ pub enum BodyDiag<'db> {
 
     /// A projection's result for a product parameter that grants its parts
     /// with weaker accesses than `expected`; `raised` when the call at `mut`
-    /// takes them so.
+    /// takes them so. `split_reads` are the read accesses of an unsafe split
+    /// that kept it from granting `mut`.
     ProductArgTooWeak {
         primary: DynLazySpan<'db>,
         given: Shape<'db>,
         expected: Shape<'db>,
         raised: bool,
+        split_reads: Vec<DynLazySpan<'db>>,
     },
 
     /// A parameter pattern that may not match.

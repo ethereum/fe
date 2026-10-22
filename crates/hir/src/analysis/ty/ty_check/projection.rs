@@ -239,6 +239,30 @@ impl<'db> TyChecker<'db> {
         true
     }
 
+    /// The read accesses left in the unsafe split `expr` grants through, also
+    /// through a block's tail, which keep it from granting `mut`.
+    pub(super) fn split_read_accesses(&self, expr: ExprId) -> Vec<DynLazySpan<'db>> {
+        match self.env.expr_data(expr) {
+            Partial::Present(Expr::Block(stmts, _)) => {
+                match stmts.last().map(|stmt| stmt.data(self.db, self.body())) {
+                    Some(Partial::Present(Stmt::Expr(tail))) => self.split_read_accesses(*tail),
+                    _ => Vec::new(),
+                }
+            }
+            Partial::Present(Expr::Tuple(elems)) if self.env.is_unsafe_split(expr) => elems
+                .iter()
+                .filter(|&&elem| {
+                    self.env
+                        .typed_expr(elem)
+                        .and_then(|elem| elem.shape)
+                        .is_some_and(|shape| shape.has_access_of(BorrowKind::Ref))
+                })
+                .map(|elem| elem.span(self.body()).into())
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
     /// Calls the `mut?` callee of the call `expr`, typed as `prop`, at `mut`,
     /// as a use of its result that needs `mut` asks. Each argument a `mut?`
     /// parameter or a product's `mut?` part takes is then passed `mut`: a
@@ -432,12 +456,18 @@ impl<'db> TyChecker<'db> {
         if given.is_some() {
             self.consume_access(arg);
         }
+        let split_reads = if product.has_access_of(BorrowKind::Mut) {
+            self.split_read_accesses(arg)
+        } else {
+            Vec::new()
+        };
         self.push_diag(match given {
             Some(given) if given.same_structure(product) => BodyDiag::ProductArgTooWeak {
                 primary,
                 given,
                 expected: product.clone(),
                 raised,
+                split_reads,
             },
             _ => BodyDiag::ProductArgExpected {
                 primary,

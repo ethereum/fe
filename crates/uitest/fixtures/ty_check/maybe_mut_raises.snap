@@ -156,7 +156,10 @@ error[8-0037]: effect `RawStorage` must be mutable when calling `at`
 113 │ fn storage_split() uses (storage: RawStorage) {
     │                          ------------------- effect `RawStorage` is provided here
 114 │     let (mut a, mut b) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
-    │                                    ^^^^^^^^^^^^^^^^^^^^^ `at` requires `mut RawStorage`
+    │                                   -^^^^^^^^^^^^^^^^^^^^^------------------------
+    │                                   ││
+    │                                   │`at` requires `mut RawStorage`
+    │                                   a `mut` binding of this unsafe split asks each access in it for `mut`
     │
     = use a mutable binding or pass a mutable reference in the `with` block
 
@@ -166,7 +169,10 @@ error[8-0037]: effect `RawStorage` must be mutable when calling `at`
 113 │ fn storage_split() uses (storage: RawStorage) {
     │                          ------------------- effect `RawStorage` is provided here
 114 │     let (mut a, mut b) = unsafe { (SolArray<u256>::at(0), SolArray<u256>::at(1)) }
-    │                                                           ^^^^^^^^^^^^^^^^^^^^^ `at` requires `mut RawStorage`
+    │                                   ------------------------^^^^^^^^^^^^^^^^^^^^^-
+    │                                   │                       │
+    │                                   │                       `at` requires `mut RawStorage`
+    │                                   a `mut` binding of this unsafe split asks each access in it for `mut`
     │
     = use a mutable binding or pass a mutable reference in the `with` block
 
@@ -255,6 +261,40 @@ error[8-0037]: effect `RawStorage` must be mutable when calling `call`
     │
     = use a mutable binding or pass a mutable reference in the `with` block
 
+error[8-0037]: effect `RawStorage` must be mutable when calling `storage_at`
+    ┌─ maybe_mut_raises.fe:265:43
+    │
+264 │ fn split_effect(_ d: mut Cells) uses (storage: RawStorage) {
+    │                                       ------------------- effect `RawStorage` is provided here
+265 │     let (mut a, b) = unsafe { (d.first(), storage_at<u256>(9)) }
+    │                               ------------^^^^^^^^^^^^^^^^^^^-
+    │                               │           │
+    │                               │           `storage_at` requires `mut RawStorage`
+    │                               a `mut` binding of this unsafe split asks each access in it for `mut`
+    │
+    = use a mutable binding or pass a mutable reference in the `with` block
+
+error[8-0037]: effect `Counter` must be mutable when calling `bump_counter`
+    ┌─ maybe_mut_raises.fe:276:9
+    │
+275 │     with (Counter = cell()) {
+    │                     ------ effect `Counter` is provided here
+276 │         bump_counter()
+    │         ^^^^^^^^^^^^^^ `bump_counter` requires `mut Counter`
+    │
+    = the `with` value calls `cell`, which is `mut?`, at `ref`: write `mut` before the call to provide `Counter` mutably
+
+error[8-0066]: mutable borrow requires a mutable place
+    ┌─ maybe_mut_raises.fe:261:43
+    │
+260 │ fn split_receiver(_ d: mut Cells, _ e: Cells) {
+    │                                     - `e` does not provide mutable access
+261 │     let (mut a, b) = unsafe { (d.first(), e.first()) }
+    │                               ------------^---------
+    │                               │           │
+    │                               │           cannot borrow as `mut`
+    │                               a `mut` binding of this unsafe split asks each access in it for `mut`
+
 error[8-0069]: explicit borrow required
     ┌─ maybe_mut_raises.fe:193:62
     │
@@ -292,7 +332,10 @@ error[8-0123]: a `mut` binding needs a mutable place or access
     ┌─ maybe_mut_raises.fe:181:10
     │
 181 │     let (mut a, mut b) = unsafe { (ref c.a, ref c.b) }
-    │          ^^^^^ this binds part of a read access
+    │          ^^^^^                     -------  ------- this read access keeps the unsafe split from granting `mut`
+    │          │                         │
+    │          │                         this read access keeps the unsafe split from granting `mut`
+    │          this binds part of a read access
     │
     = write `var` for a mutable copy, or use the `mut` projection to write through
 
@@ -300,7 +343,10 @@ error[8-0123]: a `mut` binding needs a mutable place or access
     ┌─ maybe_mut_raises.fe:181:17
     │
 181 │     let (mut a, mut b) = unsafe { (ref c.a, ref c.b) }
-    │                 ^^^^^ this binds part of a read access
+    │                 ^^^^^              -------  ------- this read access keeps the unsafe split from granting `mut`
+    │                 │                  │
+    │                 │                  this read access keeps the unsafe split from granting `mut`
+    │                 this binds part of a read access
     │
     = write `var` for a mutable copy, or use the `mut` projection to write through
 
@@ -308,7 +354,9 @@ error[8-0123]: a `mut` binding needs a mutable place or access
     ┌─ maybe_mut_raises.fe:200:10
     │
 200 │     let (mut a, mut b) = unsafe { (ref c.a, cell_of(e, false)) }
-    │          ^^^^^ this binds part of a read access
+    │          ^^^^^                     ------- this read access keeps the unsafe split from granting `mut`
+    │          │
+    │          this binds part of a read access
     │
     = write `var` for a mutable copy, or use the `mut` projection to write through
 
@@ -316,7 +364,9 @@ error[8-0123]: a `mut` binding needs a mutable place or access
     ┌─ maybe_mut_raises.fe:200:17
     │
 200 │     let (mut a, mut b) = unsafe { (ref c.a, cell_of(e, false)) }
-    │                 ^^^^^ this binds part of a read access
+    │                 ^^^^^              ------- this read access keeps the unsafe split from granting `mut`
+    │                 │
+    │                 this binds part of a read access
     │
     = write `var` for a mutable copy, or use the `mut` projection to write through
 
@@ -324,7 +374,9 @@ error[8-0123]: a `mut` binding needs a mutable place or access
     ┌─ maybe_mut_raises.fe:204:10
     │
 204 │     let (mut a, mut b) = unsafe { (cell_of(e, false), ref c.a) }
-    │          ^^^^^ this binds part of a read access
+    │          ^^^^^                                        ------- this read access keeps the unsafe split from granting `mut`
+    │          │
+    │          this binds part of a read access
     │
     = write `var` for a mutable copy, or use the `mut` projection to write through
 
@@ -332,9 +384,20 @@ error[8-0123]: a `mut` binding needs a mutable place or access
     ┌─ maybe_mut_raises.fe:204:17
     │
 204 │     let (mut a, mut b) = unsafe { (cell_of(e, false), ref c.a) }
-    │                 ^^^^^ this binds part of a read access
+    │                 ^^^^^                                 ------- this read access keeps the unsafe split from granting `mut`
+    │                 │
+    │                 this binds part of a read access
     │
     = write `var` for a mutable copy, or use the `mut` projection to write through
+
+error[8-0150]: this argument grants a product's parts too weakly
+    ┌─ maybe_mut_raises.fe:293:16
+    │
+293 │     take_parts(unsafe { (ref c.a, cell_of(mut d, true)) })
+    │                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    │                │         │
+    │                │         this read access keeps the unsafe split from granting `mut`
+    │                it grants `(ref u256, ref u256)`, but the parameter takes `(ref u256, mut u256)`
 
 error[8-0151]: `w_at` needs `mut RawStorage` after its closure's effects are inferred
     ┌─ maybe_mut_raises.fe:246:27

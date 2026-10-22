@@ -13,8 +13,9 @@ use crate::analysis::{
         AddressSpace,
         diagnostics::{
             BodyDiag, CallConstraintDiagInfo, ContractFieldLayoutIssue, DefConflictError,
-            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix, RevealedBy,
-            TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag,
+            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix,
+            ReadOnlyProvider, RevealedBy, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection,
+            TyLowerDiag,
         },
         trait_def::TraitInstId,
         ty_check::{EffectParamOwner, RecordLike},
@@ -27,7 +28,7 @@ use crate::{
         CallableDef, FieldIndex, GenericParamOwner, ModeMarker, PathKind, Trait,
         params::FuncParamMode,
     },
-    span::LazySpan,
+    span::{DynLazySpan, LazySpan},
 };
 use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, Span, SpanKind,
@@ -3185,7 +3186,8 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 func,
                 key,
                 provided_span,
-                maybe_mut,
+                read_only,
+                split,
             } => {
                 let func_name = func
                     .name(db)
@@ -3205,6 +3207,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         span,
                     });
                 }
+                sub_diagnostics.extend(split_demand_label(db, split));
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
@@ -3212,14 +3215,22 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         "effect `{key_str}` must be mutable when calling `{func_name}`"
                     ),
                     sub_diagnostics,
-                    notes: vec![if let Some(name) = maybe_mut {
-                        format!(
+                    notes: vec![match read_only {
+                        Some(ReadOnlyProvider::Binding(name)) => format!(
                             "`{}` is `mut?`, which a `mut?` function's `ref` body only reads",
                             name.data(db)
-                        )
-                    } else {
-                        "use a mutable binding or pass a mutable reference in the `with` block"
-                            .to_string()
+                        ),
+                        Some(ReadOnlyProvider::Call(callee)) => format!(
+                            "the `with` value calls `{}`, which is `mut?`, at `ref`: write `mut` before the call to provide `{key_str}` mutably",
+                            callee
+                                .name(db)
+                                .to_opt()
+                                .map_or("<unknown>", |name| name.data(db))
+                        ),
+                        None => {
+                            "use a mutable binding or pass a mutable reference in the `with` block"
+                                .to_string()
+                        }
                     }],
                     error_code,
                 }
@@ -3782,6 +3793,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary,
                 binding,
                 maybe_mut,
+                split,
             } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
@@ -3803,6 +3815,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         ));
                     }
                 }
+                sub_diagnostics.extend(split_demand_label(db, split));
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
@@ -4008,14 +4021,20 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             },
 
-            Self::MutBindingOfRead { primary } => CompleteDiagnostic {
+            Self::MutBindingOfRead {
+                primary,
+                split_reads,
+            } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a `mut` binding needs a mutable place or access".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
+                sub_diagnostics: [SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "this binds part of a read access".to_string(),
                     span: primary.resolve(db),
-                }],
+                }]
+                .into_iter()
+                .chain(split_read_labels(db, split_reads))
+                .collect(),
                 notes: vec![
                     "write `var` for a mutable copy, or use the `mut` projection to write through"
                         .to_string(),
@@ -4174,23 +4193,31 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 given,
                 expected,
                 raised,
+                split_reads,
             } => {
                 let taker = if *raised {
                     "the call at `mut`"
                 } else {
                     "the parameter"
                 };
-                primary_diag(
-                    Severity::Error,
-                    "this argument grants a product's parts too weakly",
-                    format!(
-                        "it grants `{}`, but {taker} takes `{}`",
-                        given.pretty_print_product(db),
-                        expected.pretty_print_product(db)
-                    ),
-                    primary.resolve(db),
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "this argument grants a product's parts too weakly".to_string(),
+                    sub_diagnostics: [SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "it grants `{}`, but {taker} takes `{}`",
+                            given.pretty_print_product(db),
+                            expected.pretty_print_product(db)
+                        ),
+                        span: primary.resolve(db),
+                    }]
+                    .into_iter()
+                    .chain(split_read_labels(db, split_reads))
+                    .collect(),
+                    notes: Vec::new(),
                     error_code,
-                )
+                }
             }
 
             Self::RefutableParamPattern { primary } => primary_diag(
@@ -6517,13 +6544,26 @@ impl DiagnosticVoucher for ImplDiag<'_> {
 /// for `mut`.
 fn split_demand_label<'db>(
     db: &'db dyn SpannedHirAnalysisDb,
-    split: &Option<crate::span::DynLazySpan<'db>>,
+    split: &Option<DynLazySpan<'db>>,
 ) -> Option<SubDiagnostic> {
     split.as_ref().map(|split| SubDiagnostic {
         style: LabelStyle::Secondary,
         message: "a `mut` binding of this unsafe split asks each access in it for `mut`"
             .to_string(),
         span: split.resolve(db),
+    })
+}
+
+/// The labels naming the read accesses that kept an unsafe split from
+/// granting `mut`.
+fn split_read_labels<'db>(
+    db: &'db dyn SpannedHirAnalysisDb,
+    split_reads: &[DynLazySpan<'db>],
+) -> impl Iterator<Item = SubDiagnostic> {
+    split_reads.iter().map(move |span| SubDiagnostic {
+        style: LabelStyle::Secondary,
+        message: "this read access keeps the unsafe split from granting `mut`".to_string(),
+        span: span.resolve(db),
     })
 }
 

@@ -1533,6 +1533,9 @@ pub struct TyChecker<'db> {
     /// The unsafe split whose `mut` binding is asking its accesses for
     /// `mut`, which the errors that asks for name.
     split_demand: Option<ExprId>,
+    /// The read accesses of the unsafe split a pattern is bound to that
+    /// kept it from granting `mut`, which a `mut` binding of it names.
+    split_reads: Vec<DynLazySpan<'db>>,
     diags: Vec<FuncBodyDiag<'db>>,
     /// Set once deferred work is resolved for the last time, after which type
     /// equalities are decided rather than retained.
@@ -2900,6 +2903,7 @@ impl<'db> TyChecker<'db> {
             missing_effects: Vec::new(),
             effect_providers: FxHashMap::default(),
             split_demand: None,
+            split_reads: Vec::new(),
             diags: Vec::new(),
             final_pass: false,
         }
@@ -3205,9 +3209,11 @@ impl<'db> TyChecker<'db> {
         };
         // A `mut` binding of an access component asks the `mut?` call the
         // source grants through for `mut`, as an earlier arm may have.
-        if self.pattern_asks_mut(pat, shape) {
-            self.select_mut_place(source);
-        }
+        let split_reads = if self.pattern_asks_mut(pat, shape) && !self.select_mut_place(source) {
+            self.split_read_accesses(source)
+        } else {
+            Vec::new()
+        };
         let selected = self.env.typed_expr(source).and_then(|source| source.shape);
         let shape = selected.as_ref().unwrap_or(shape);
         self.consume_access(source);
@@ -3232,7 +3238,9 @@ impl<'db> TyChecker<'db> {
         } else {
             AccessBinding::Result
         };
+        self.split_reads = split_reads;
         self.bind_pattern_accesses(pat, shape, authority, binding);
+        self.split_reads.clear();
     }
 
     /// Whether `expr` names the accesses it grants: `ref p`, `mut p`, an
@@ -3703,7 +3711,10 @@ impl<'db> TyChecker<'db> {
             _ if ty.has_invalid(self.db) => Some(kind),
             (_, BindingMarker::Mut) if kind == BorrowKind::Mut => Some(kind),
             (_, BindingMarker::Mut) => {
-                self.push_diag(BodyDiag::MutBindingOfRead { primary: primary() });
+                self.push_diag(BodyDiag::MutBindingOfRead {
+                    primary: primary(),
+                    split_reads: self.split_reads.clone(),
+                });
                 Some(BorrowKind::Ref)
             }
             (AccessBinding::LetResult, BindingMarker::Plain) if kind == BorrowKind::Mut => {

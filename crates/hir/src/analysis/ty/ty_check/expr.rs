@@ -41,8 +41,8 @@ use crate::analysis::ty::{
         resolve_core_range_types, resolve_core_trait, resolve_lib_func_path, resolve_lib_type_path,
     },
     diagnostics::{
-        BodyDiag, FuncBodyDiag, MarkerPosition, MustUseSubject, MutabilityFix, TraitConstraintDiag,
-        TyDiagCollection, TyLowerDiag,
+        BodyDiag, FuncBodyDiag, MarkerPosition, MustUseSubject, MutabilityFix, ReadOnlyProvider,
+        TraitConstraintDiag, TyDiagCollection, TyLowerDiag,
     },
     effects::{
         BarrierReason, EffectBarrier, EffectKeyKind, EffectPatternKey, EffectQuery,
@@ -2872,13 +2872,46 @@ impl<'db> TyChecker<'db> {
                 func,
                 key,
                 provided_span: Some(provider.origin.span(self.db, self.body())),
-                maybe_mut: provider
+                read_only: provider
                     .binding
                     .filter(|&binding| self.binding_is_maybe_mut(binding))
-                    .map(|binding| binding.binding_name(&self.env)),
+                    .map(|binding| ReadOnlyProvider::Binding(binding.binding_name(&self.env)))
+                    .or_else(|| match provider.origin {
+                        EffectOrigin::With { value_expr } => self
+                            .ref_maybe_mut_callee(value_expr)
+                            .map(ReadOnlyProvider::Call),
+                        EffectOrigin::Param { .. } => None,
+                    }),
+                split: self
+                    .split_demand
+                    .map(|split| split.span(self.body()).into()),
             });
         }
         provider.is_mut
+    }
+
+    /// The `mut?` function `expr`, or the tail of the block it is, calls at
+    /// `ref`: `mut` before the call would call it at `mut`.
+    fn ref_maybe_mut_callee(&self, expr: ExprId) -> Option<Func<'db>> {
+        match self.env.expr_data(expr) {
+            Partial::Present(Expr::Block(stmts, _)) => {
+                let Partial::Present(Stmt::Expr(tail)) = stmts.last()?.data(self.db, self.body())
+                else {
+                    return None;
+                };
+                self.ref_maybe_mut_callee(*tail)
+            }
+            Partial::Present(Expr::Call(..) | Expr::MethodCall(..)) => {
+                let callable = self.env.callable_expr(expr)?;
+                match callable.callable_def() {
+                    CallableDef::Func(func) if callable.mode() == Some(BorrowKind::Ref) => {
+                        Some(func)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
     }
 
     /// Reports a missing effect, or keeps it until the mode of the call
@@ -5387,6 +5420,9 @@ impl<'db> TyChecker<'db> {
             binding: binding
                 .map(|binding| (binding.binding_name(&self.env), binding.def_span(&self.env))),
             maybe_mut: binding.is_some_and(|binding| self.binding_is_maybe_mut(binding)),
+            split: self
+                .split_demand
+                .map(|split| split.span(self.body()).into()),
         });
     }
 
