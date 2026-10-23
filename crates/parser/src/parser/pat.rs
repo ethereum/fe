@@ -149,10 +149,10 @@ impl super::Parse for PathPatScope {
 
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::LParen) {
-            self.set_kind(SyntaxKind::PathTuplePat);
+            parser.set_scope_kind(SyntaxKind::PathTuplePat);
             parser.parse(TuplePatElemListScope::default())
         } else if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            self.set_kind(SyntaxKind::RecordPat);
+            parser.set_scope_kind(SyntaxKind::RecordPat);
             parser.parse(RecordPatFieldListScope::default())
         } else {
             Ok(())
@@ -222,7 +222,7 @@ impl super::Parse for RecvArmPatScope {
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         if parser.current_kind() == Some(SyntaxKind::Underscore) {
-            self.set_kind(SyntaxKind::WildCardPat);
+            parser.set_scope_kind(SyntaxKind::WildCardPat);
             parser
                 .parse(WildCardPatScope::default())
                 .expect("wildcard recv arm pattern parsing should be infallible");
@@ -238,7 +238,7 @@ impl super::Parse for RecvArmPatScope {
         parser.set_newline_as_trivia(false);
         match parser.current_kind() {
             Some(SyntaxKind::LBrace) => {
-                self.set_kind(SyntaxKind::RecordPat);
+                parser.set_scope_kind(SyntaxKind::RecordPat);
                 // Use restricted record field list parsing for recv arms
                 parser.parse(RecvArmRecordPatFieldListScope::default())
             }
@@ -247,7 +247,7 @@ impl super::Parse for RecvArmPatScope {
                 parser.error_msg_on_current_token(
                     "tuple patterns are not allowed in recv arms; use record pattern syntax `{ field, .. }` instead",
                 );
-                self.set_kind(SyntaxKind::PathTuplePat);
+                parser.set_scope_kind(SyntaxKind::PathTuplePat);
                 parser.parse(TuplePatElemListScope::default())
             }
             _ => Ok(()),
@@ -348,11 +348,11 @@ impl super::Parse for RecvArmFieldPathPatScope {
 
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::LParen) {
-            self.set_kind(SyntaxKind::PathTuplePat);
+            parser.set_scope_kind(SyntaxKind::PathTuplePat);
             // Allow tuple destructuring in nested patterns
             parser.parse(RecvArmTuplePatElemListScope::default())
         } else if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            self.set_kind(SyntaxKind::RecordPat);
+            parser.set_scope_kind(SyntaxKind::RecordPat);
             // Recursively use restricted record field parsing
             parser.parse(RecvArmRecordPatFieldListScope::default())
         } else {

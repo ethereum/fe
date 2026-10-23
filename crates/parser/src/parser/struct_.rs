@@ -96,7 +96,7 @@ impl super::Parse for RecordFieldDefScope {
         //    to Fe-V2.
         if parser.current_kind() == Some(SyntaxKind::FnKw) {
             parser.error_msg_on_current_token("function definition in struct is not allowed");
-            let checkpoint = parser.enter(super::ErrorScope::new(), None);
+            let checkpoint = parser.enter::<super::ErrorScope>(None);
             let result = parser.parse(FuncScope::default());
             parser.leave(checkpoint);
             result?;
