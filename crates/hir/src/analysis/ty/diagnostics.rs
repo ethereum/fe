@@ -447,6 +447,10 @@ pub enum MarkerPosition {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum BodyDiag<'db> {
+    PermitConstruction {
+        primary: DynLazySpan<'db>,
+        reason: &'static str,
+    },
     CompileTimePhase {
         primary: DynLazySpan<'db>,
         message: String,
@@ -1300,6 +1304,7 @@ impl<'db> BodyDiag<'db> {
     pub(crate) fn local_code(&self) -> u16 {
         match self {
             Self::CompileTimePhase { .. } => 137,
+            Self::PermitConstruction { .. } => 139,
             Self::TypeMismatch { .. } => 0,
             Self::InfiniteOccurrence(..) => 1,
             Self::DuplicatedRestPat(..) => 2,
@@ -1440,6 +1445,13 @@ impl<'db> BodyDiag<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TraitLowerDiag<'db> {
+    CanonicalEstablishment {
+        primary: ImplTrait<'db>,
+        reason: &'static str,
+    },
+    NamedCanonicalImplementation {
+        primary: ImplTrait<'db>,
+    },
     NamedFieldQuery {
         primary: ImplTrait<'db>,
     },
@@ -1500,6 +1512,8 @@ pub enum TraitLowerDiag<'db> {
 impl TraitLowerDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
+            Self::CanonicalEstablishment { .. } => 8,
+            Self::NamedCanonicalImplementation { .. } => 9,
             Self::NamedFieldQuery { .. } => 7,
             Self::ExternalTraitForExternalType(_) => 0,
             Self::ConflictTraitImpl { .. } => 1,
@@ -1566,6 +1580,9 @@ impl TraitConstraintDiag<'_> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum ImplDiag<'db> {
+    UnfulfilledDeriveRequest {
+        primary: DynLazySpan<'db>,
+    },
     ConflictMethodImpl {
         primary: CallableDef<'db>,
         conflict_with: CallableDef<'db>,
@@ -1747,7 +1764,9 @@ pub enum ImplDiag<'db> {
 
     /// A `Pinned` implementation whose space is not a state space, nor
     /// another pinned type's.
-    PinNotStateSpace { primary: DynLazySpan<'db> },
+    PinNotStateSpace {
+        primary: DynLazySpan<'db>,
+    },
 
     /// An implementation of an `unsafe trait` without `unsafe impl`, or an
     /// `unsafe impl` of a safe trait.
@@ -1766,7 +1785,9 @@ pub enum ImplDiag<'db> {
 
     /// A `Copy` implementation for a bare type parameter, which covers types
     /// whose fields, views and state the checks of a `Copy` type never see.
-    BlanketCopy { primary: DynLazySpan<'db> },
+    BlanketCopy {
+        primary: DynLazySpan<'db>,
+    },
 
     /// An effect row whose components, expanded through the rows they name,
     /// come back to it.
@@ -1779,6 +1800,7 @@ pub enum ImplDiag<'db> {
 impl ImplDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
+            Self::UnfulfilledDeriveRequest { .. } => 37,
             Self::ConflictMethodImpl { .. } => 0,
             Self::MethodNotDefinedInTrait { .. } => 1,
             Self::NotAllTraitItemsImplemented { .. } => 2,

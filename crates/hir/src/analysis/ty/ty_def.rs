@@ -225,6 +225,7 @@ impl<'db> TyId<'db> {
         }
 
         match self.data(db) {
+            TyData::TyBase(TyBase::TraitDescriptor(def)) => Some(def.ingot(db)),
             TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
             TyData::TyBase(TyBase::Contract(contract)) => contract.top_mod(db).ingot(db).into(),
             TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
@@ -266,6 +267,7 @@ impl<'db> TyId<'db> {
             TyData::TyApp(..)
             | TyData::AssocTy(_)
             | TyData::QualifiedTy(_)
+            | TyData::GoalDescriptor(_)
             | TyData::ConstTy(_) => ty_flags(db, self),
         }
     }
@@ -309,6 +311,7 @@ impl<'db> TyId<'db> {
                     assoc_ty.name.data(db)
                 )
             }
+            TyData::GoalDescriptor(goal) => format!("goal<{}>", goal.pretty_print(db, true)),
             TyData::QualifiedTy(trait_inst) => {
                 format!(
                     "<{} as {}>",
@@ -744,7 +747,10 @@ impl<'db> TyId<'db> {
         match self.base_ty(db).data(db) {
             TyData::TyParam(param) => Some(param.scope(db)),
             TyData::AssocTy(assoc_ty) => assoc_ty.scope(db),
-            TyData::QualifiedTy(trait_inst) => Some(trait_inst.def(db).scope()),
+            TyData::QualifiedTy(trait_inst) | TyData::GoalDescriptor(trait_inst) => {
+                Some(trait_inst.def(db).scope())
+            }
+            TyData::TyBase(TyBase::TraitDescriptor(trait_)) => Some(trait_.scope()),
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.scope(db)),
             TyData::TyBase(TyBase::Contract(c)) => Some(c.scope()),
             TyData::TyBase(TyBase::Func(func)) => Some(func.scope()),
@@ -770,8 +776,11 @@ impl<'db> TyId<'db> {
             TyData::TyVar(_) => None,
             TyData::TyParam(param) => param.scope(db).name_span(db),
             TyData::AssocTy(assoc_ty) => assoc_ty.scope(db)?.name_span(db),
-            TyData::QualifiedTy(trait_inst) => trait_inst.def(db).scope().name_span(db),
+            TyData::QualifiedTy(trait_inst) | TyData::GoalDescriptor(trait_inst) => {
+                trait_inst.def(db).scope().name_span(db)
+            }
 
+            TyData::TyBase(TyBase::TraitDescriptor(def)) => def.scope().name_span(db),
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
             TyData::TyBase(TyBase::Contract(c)) => c.scope().name_span(db),
             TyData::TyBase(TyBase::Func(func)) => Some(func.name_span()),
@@ -892,7 +901,7 @@ impl<'db> TyId<'db> {
             );
         }
 
-        Self::new(db, TyData::TyApp(lhs, rhs))
+        Self::app_structural(db, lhs, rhs)
     }
 
     /// Whether application must retain this const argument as deferred metadata.
@@ -1198,6 +1207,9 @@ pub enum TyData<'db> {
 
     /// Qualified type, e.g., `<T as Iterator>`.
     QualifiedTy(TraitInstId<'db>),
+
+    /// Compiler-issued canonical protocol metadata, not a proof of this goal.
+    GoalDescriptor(TraitInstId<'db>),
 
     // Type application,
     // e.g., `Option<i32>` is represented as `TApp(TyConst(Option), TyConst(i32))`.
@@ -2060,6 +2072,8 @@ enum Variant {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, Update)]
 pub enum TyBase<'db> {
+    /// Compiler-issued nominal trait descriptor for canonical protocol arguments.
+    TraitDescriptor(crate::hir_def::Trait<'db>),
     Prim(PrimTy),
     Adt(AdtDef<'db>),
     Contract(crate::hir_def::Contract<'db>),
@@ -2127,6 +2141,10 @@ impl<'db> TyBase<'db> {
                 .to_opt()
                 .map_or_else(|| "<unknown>".to_string(), |i| i.data(db).to_string()),
 
+            Self::TraitDescriptor(def) => def
+                .name(db)
+                .to_opt()
+                .map_or_else(|| "<trait>".into(), |name| name.data(db).to_string()),
             Self::Func(func) => format!(
                 "fn {}",
                 func.name(db)
@@ -2297,7 +2315,7 @@ impl HasKind for TyData<'_> {
                 .assoc_ty(db, assoc.name)
                 .and_then(|decl| super::ty_lower::lower_kind_in_bounds(&decl.bounds))
                 .unwrap_or(Kind::Star),
-            TyData::QualifiedTy(_) => Kind::Star,
+            TyData::QualifiedTy(_) | TyData::GoalDescriptor(_) => Kind::Star,
             TyData::TyBase(base) => base.kind(db),
             TyData::TyApp(abs, _) => match abs.kind(db) {
                 // `TyId::app` method handles the kind mismatch, so we don't need to verify it again
@@ -2328,6 +2346,7 @@ impl HasKind for TyBase<'_> {
             TyBase::Adt(adt) => adt.kind(db),
             TyBase::Contract(_) => Kind::Star, // Contracts have no generic params
             TyBase::Func(func) => func.kind(db),
+            TyBase::TraitDescriptor(_) => Kind::Star,
             TyBase::Closure(_) => Kind::Star,
         }
     }
