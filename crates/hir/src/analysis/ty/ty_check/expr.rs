@@ -5750,15 +5750,9 @@ fn resolve_ident_expr<'db>(
         let Ok(res) = bucket.pick_any(&[NameDomain::VALUE, NameDomain::TYPE]) else {
             return ResolvedPathInBody::Invalid;
         };
-        let Ok(reso) = resolve_name_res_with_minter(
-            db,
-            res,
-            None,
-            path,
-            scope,
-            env.assumptions(),
-            lowering_cx,
-        ) else {
+        let Ok(reso) =
+            resolve_name_res_with_minter(db, res, path, scope, env.assumptions(), lowering_cx)
+        else {
             return ResolvedPathInBody::Invalid;
         };
         ResolvedPathInBody::Reso(reso)

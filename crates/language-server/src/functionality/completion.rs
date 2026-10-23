@@ -1517,6 +1517,24 @@ mod tests {
         );
     }
 
+    /// An import named `_` brings in no name, so it doesn't settle the
+    /// ambiguity between two glob-imported names.
+    #[test]
+    fn test_underscore_import_is_not_visible() {
+        use hir::analysis::name_resolution::NameDomain;
+
+        let mut db = DriverDataBase::default();
+        let source = "use a::*\nuse b::*\nuse c::T as _\n\
+                      mod a { pub trait T {} }\nmod b { pub trait T {} }\nmod c { pub trait T {} }\n";
+        let url = url::Url::parse("file:///underscore_import.fe").unwrap();
+        let file = db.workspace().touch(&mut db, url, Some(source.to_string()));
+        let top_mod = map_file_to_mod(&db, file);
+
+        let visible = top_mod.scope().items_in_scope(&db, NameDomain::TYPE);
+        assert!(visible.contains_key("c"));
+        assert!(!visible.contains_key("T"));
+    }
+
     /// Test auto-import completions
     #[test]
     fn test_auto_import_completions() {

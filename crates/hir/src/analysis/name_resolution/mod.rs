@@ -20,8 +20,7 @@ pub use name_resolver::{
 pub(crate) use path_resolver::resolve_type_path_definition;
 pub(crate) use path_resolver::{FindAssociatedTypeError, find_associated_type};
 pub use path_resolver::{
-    PathRes, PathResError, PathResErrorKind, ResolvedVariant, resolve_ident_to_bucket,
-    resolve_name_res, resolve_path,
+    PathRes, PathResError, PathResErrorKind, ResolvedVariant, resolve_ident_to_bucket, resolve_path,
 };
 pub(crate) use path_resolver::{
     TypePosition, resolve_name_res_with_minter, resolve_path_with_minter,

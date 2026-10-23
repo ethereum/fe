@@ -1,0 +1,1 @@
+A path whose later segment names a value where a type is expected now reports that segment. `m::f` in a type, with `f` a function in module `m`, reported "`m` can't be used as a middle segment of a path" and labeled `f` as `m`'s definition; it now reports that a type is expected but `f` is a function, and `m::f::X` reports that `f` can't be used as a middle segment.
