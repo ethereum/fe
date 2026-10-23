@@ -522,6 +522,21 @@ impl<'db> ImportResolver<'db> {
             .to_opt()
             .and_then(UsePathSegment::ident)
             .ok_or((idx, NameResolutionError::Invalid))?;
+        // A prelude use names an ingot dependency, whatever the names of the
+        // scope it's in.
+        if idx == 0
+            && use_.is_synthetic_use(db)
+            && let Some((_, ingot)) = self
+                .ingot
+                .resolved_external_ingots(db)
+                .iter()
+                .find(|(ingot_name, _)| *ingot_name == name)
+        {
+            let root = ScopeId::from_item(ingot.root_mod(db).into());
+            return Ok(
+                NameRes::new_from_scope(root, NameDomain::TYPE, NameDerivation::External).into(),
+            );
+        }
         let directive = if idx == 0 {
             QueryDirective::new()
         } else {
