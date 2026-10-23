@@ -2456,10 +2456,8 @@ impl<'db> TyChecker<'db> {
                     let Some(expr_prop) = self.env.typed_expr(pending.expr) else {
                         continue;
                     };
-                    let expr_ty = {
-                        let mut prober = env::Prober::new(&mut self.table, scope);
-                        expr_prop.ty.fold_with(db, &mut prober)
-                    };
+                    let [expr_ty, recv_ty] = [expr_prop.ty, pending.recv_ty]
+                        .map(|ty| ty.fold_with(db, &mut env::Prober::new(&mut self.table, scope)));
                     if expr_ty.has_invalid(db) {
                         continue;
                     }
@@ -2477,6 +2475,7 @@ impl<'db> TyChecker<'db> {
                         .filter(|&candidate| {
                             let viability = self.method_viability(
                                 &pending,
+                                recv_ty,
                                 expr_ty,
                                 receiver,
                                 generic_args,
@@ -2509,6 +2508,10 @@ impl<'db> TyChecker<'db> {
     /// at its call site: see `CallSite`. With `closure`, whose body has just
     /// been checked, only the calls in that body do, while its row can still
     /// take what they need, and the pass ends once none of them waits.
+    ///
+    /// A method call sees a literal's fallback type (`"a"` as `String<1>`)
+    /// only once nothing resolves without it, and not with `closure`: the
+    /// enclosing body can still fix the type of a literal the closure uses.
     fn resolve_pending(&mut self, closure: Option<ClosureDef<'db>>) {
         let db = self.db;
         let body = self.env.body();
@@ -2516,8 +2519,15 @@ impl<'db> TyChecker<'db> {
         let assumptions = self.env.assumptions();
 
         // Fixed-point pass over deferred tasks.
+        let mut fallback = false;
         let mut progressed = true;
-        while progressed && closure.is_none_or(|def| self.env.has_pending_method_in(def)) {
+        while closure.is_none_or(|def| self.env.has_pending_method_in(def)) {
+            if !progressed {
+                if fallback || closure.is_some() {
+                    break;
+                }
+                fallback = true;
+            }
             progressed = false;
             let tasks = self.env.take_deferred_tasks();
             for task in tasks {
@@ -2549,10 +2559,13 @@ impl<'db> TyChecker<'db> {
                         let Some(expr_prop) = self.env.typed_expr(pending.expr) else {
                             continue;
                         };
-                        let expr_ty = {
-                            let mut prober = env::Prober::new(&mut self.table, scope);
-                            expr_prop.ty.fold_with(db, &mut prober)
-                        };
+                        let [expr_ty, recv_ty] = [expr_prop.ty, pending.recv_ty].map(|ty| {
+                            if fallback {
+                                ty.fold_with(db, &mut env::Prober::new(&mut self.table, scope))
+                            } else {
+                                ty.fold_with(db, &mut self.table)
+                            }
+                        });
                         if expr_ty.has_invalid(db) {
                             self.env.register_pending_method(pending);
                             continue;
@@ -2565,6 +2578,7 @@ impl<'db> TyChecker<'db> {
                             .filter_map(|candidate| {
                                 let viability = self.method_viability(
                                     &pending,
+                                    recv_ty,
                                     expr_ty,
                                     receiver,
                                     generic_args,
@@ -2596,10 +2610,6 @@ impl<'db> TyChecker<'db> {
                                         .env
                                         .typed_expr(receiver)
                                         .unwrap_or_else(|| ExprProp::invalid(db));
-                                    let recv_ty = {
-                                        let mut prober = env::Prober::new(&mut self.table, scope);
-                                        pending.recv_ty.fold_with(db, &mut prober)
-                                    };
 
                                     let func_ty = self.instantiate_trait_method_to_term(
                                         candidate.method,
@@ -2724,11 +2734,13 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// How `candidate` fits the deferred method call `pending`, typed
-    /// `expr_ty`, probed without committing to it.
+    /// How `candidate` fits the deferred method call `pending` on a receiver
+    /// of type `recv_ty`, typed `expr_ty`, probed without committing to it.
+    #[allow(clippy::too_many_arguments)]
     fn method_viability(
         &mut self,
         pending: &env::PendingMethod<'db>,
+        recv_ty: TyId<'db>,
         expr_ty: TyId<'db>,
         receiver: ExprId,
         generic_args: GenericArgListId<'db>,
@@ -2743,11 +2755,6 @@ impl<'db> TyChecker<'db> {
 
         let viability = (|| {
             let inst = candidate.inst;
-            let recv_ty = {
-                let mut prober = env::Prober::new(&mut self.table, scope);
-                pending.recv_ty.fold_with(db, &mut prober)
-            };
-
             let inst_self = self.table.instantiate_to_term(inst.self_ty(db));
             if self.table.unify(inst_self, recv_ty).is_err() {
                 return Viability::Incompatible;
