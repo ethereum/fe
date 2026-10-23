@@ -48,10 +48,6 @@ pub struct QueryDirective {
     /// external ingot and builtin types as well.
     allow_external: bool,
 
-    /// If `allow_glob` is `true`, then the resolver uses the glob import to
-    /// resolve the name.
-    allow_glob: bool,
-
     /// If `allow_assoc_fn` is `false`, functions defined in an `impl`,
     /// `impl trait` or `trait` scope are not visible. This is the case for
     /// queries propagated to a lexical parent: like in Rust, associated
@@ -74,7 +70,6 @@ impl QueryDirective {
         Self {
             allow_lex: true,
             allow_external: true,
-            allow_glob: true,
             allow_assoc_fn: true,
         }
     }
@@ -87,11 +82,6 @@ impl QueryDirective {
 
     pub(super) fn disallow_external(mut self) -> Self {
         self.allow_external = false;
-        self
-    }
-
-    pub(super) fn disallow_glob(mut self) -> Self {
-        self.allow_glob = false;
         self
     }
 
@@ -224,8 +214,14 @@ impl<'db> NameResBucket<'db> {
     }
 
     fn set_lexed_derivation(&mut self) {
-        for res in self.iter_ok_mut() {
-            res.derivation.lexed()
+        for (_, res) in &mut self.bucket {
+            match res {
+                Ok(res) => res.derivation.lexed(),
+                Err(NameResolutionError::Ambiguous(cands)) => {
+                    cands.iter_mut().for_each(|cand| cand.derivation.lexed())
+                }
+                Err(_) => {}
+            }
         }
     }
 }
@@ -253,28 +249,14 @@ pub struct NameRes<'db> {
 impl<'db> NameRes<'db> {
     /// Returns `true` if the name is visible from the given `scope`.
     pub fn is_visible(&self, db: &'db dyn HirAnalysisDb, from: ScopeId<'db>) -> bool {
-        match self.derivation {
-            NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
-                match self.kind {
-                    NameResKind::Scope(scope) => is_scope_visible_from(db, scope, from),
-                    NameResKind::Prim(_) => true,
-                }
-            }
+        match self.derivation.origin() {
             NameDerivation::NamedImported(use_) | NameDerivation::GlobImported(use_) => {
-                is_use_visible(db, from, use_)
+                is_use_visible(db, from, *use_)
             }
-            NameDerivation::Lex(ref inner) => {
-                let mut inner = inner;
-                while let NameDerivation::Lex(parent) = inner.as_ref() {
-                    inner = parent;
-                }
-
-                Self {
-                    derivation: inner.as_ref().clone(),
-                    ..self.clone()
-                }
-                .is_visible(db, from)
-            }
+            _ => match self.kind {
+                NameResKind::Scope(scope) => is_scope_visible_from(db, scope, from),
+                NameResKind::Prim(_) => true,
+            },
         }
     }
 
@@ -343,23 +325,10 @@ impl<'db> NameRes<'db> {
     }
 
     pub(super) fn derived_from(&self, db: &'db dyn HirAnalysisDb) -> Option<DynLazySpan<'db>> {
-        match self.derivation {
-            NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
-                self.kind.name_span(db)
-            }
+        match self.derivation.origin() {
             NameDerivation::NamedImported(use_) => use_.imported_name_span(db),
             NameDerivation::GlobImported(use_) => use_.glob_span(db),
-            NameDerivation::Lex(ref inner) => {
-                let mut inner = inner;
-                while let NameDerivation::Lex(parent) = inner.as_ref() {
-                    inner = parent;
-                }
-                Self {
-                    derivation: inner.as_ref().clone(),
-                    ..self.clone()
-                }
-                .derived_from(db)
-            }
+            _ => self.kind.name_span(db),
         }
     }
 
@@ -395,7 +364,7 @@ impl<'db> NameRes<'db> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, derive_more::From, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
 pub enum NameResKind<'db> {
     /// The name is resolved to a scope.
     Scope(ScopeId<'db>),
@@ -438,16 +407,24 @@ pub enum NameDerivation<'db> {
     Prim,
 }
 
-impl NameDerivation<'_> {
+impl<'db> NameDerivation<'db> {
     fn lexed(&mut self) {
         let inner = mem::replace(self, NameDerivation::Def);
         *self = NameDerivation::Lex(Box::new(inner));
     }
 
-    pub fn use_stmt(&self) -> Option<Use<'_>> {
+    /// Returns the derivation in the scope that the name is found in, looking
+    /// through lexical parents.
+    pub fn origin(&self) -> &Self {
         match self {
-            NameDerivation::NamedImported(u) | NameDerivation::GlobImported(u) => Some(*u),
-            NameDerivation::Lex(deriv) => deriv.use_stmt(),
+            NameDerivation::Lex(inner) => inner.origin(),
+            _ => self,
+        }
+    }
+
+    pub fn use_stmt(&self) -> Option<Use<'db>> {
+        match self.origin() {
+            NameDerivation::NamedImported(use_) | NameDerivation::GlobImported(use_) => Some(*use_),
             _ => None,
         }
     }
@@ -456,7 +433,7 @@ impl NameDerivation<'_> {
     /// scope, a definition shadows a named import, which shadows a glob
     /// import, and those shadow the names of lexical parents, external ingots
     /// and builtin types, in that order.
-    fn cmp_precedence(&self, other: &Self) -> cmp::Ordering {
+    pub(super) fn cmp_precedence(&self, other: &Self) -> cmp::Ordering {
         let rank = |derivation: &Self| match derivation {
             NameDerivation::Prim => 0,
             NameDerivation::External => 1,
@@ -545,9 +522,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         }
 
         // 3. Look for the name in the glob imports.
-        if query.directive(self.db).allow_glob
-            && let Some(imported) = self.importer.glob_imports(self.db, query.scope(self.db))
-        {
+        if let Some(imported) = self.importer.glob_imports(self.db, query.scope(self.db)) {
             for res in imported.name_res_for(query.name(self.db)) {
                 bucket.push(res);
             }
@@ -612,11 +587,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     /// for this is
     /// - Ambiguous error should be reported lazily, meaning it should be
     ///   reported when the resolution is actually used.
-    /// - The function is used for glob imports, so it's necessary to return
-    ///   monotonously increasing results. Also, we can't arbitrarily choose the
-    ///   possible resolution from multiple candidates to avoid hiding
-    ///   ambiguity. That's also the reason why we can't use [`ResBucket`] and
-    ///   [`ResBucket::merge`] in this function.
+    /// - We can't arbitrarily choose one of several candidates without hiding
+    ///   the ambiguity, which is why [`NameResBucket::merge`] isn't used here.
     ///
     /// The below examples demonstrates the second point.
     /// We need to report ambiguous error at `const C: S = S` because `S` is
@@ -643,7 +615,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         &mut self,
         target: ScopeId<'db>,
         use_scope: ScopeId<'db>,
-        unresolved_named_imports: FxHashSet<IdentId<'db>>,
     ) -> FxHashMap<IdentId<'db>, Vec<NameRes<'db>>> {
         let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
         let mut found_domains: FxHashMap<IdentId, NameDomain> = FxHashMap::default();
@@ -693,14 +664,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         if let Some(glob_imports) = self.importer.glob_imports(self.db, target) {
             for (_, resolutions) in glob_imports.iter() {
-                // if !is_use_visible(self.db, ref_scope, use_) {
-                //     continue;
-                // }
                 for (&name, res_for_name) in resolutions.iter() {
-                    if unresolved_named_imports.contains(&name) {
-                        continue;
-                    }
-
                     for res in res_for_name
                         .iter()
                         .filter(|res| res.is_visible(self.db, use_scope))

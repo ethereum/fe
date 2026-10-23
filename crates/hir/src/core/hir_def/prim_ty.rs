@@ -3,7 +3,7 @@ use salsa::Update;
 use super::IdentId;
 use crate::HirDb;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
 pub enum PrimTy {
     Bool,
     Int(IntTy),
@@ -69,7 +69,7 @@ impl PrimTy {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum IntTy {
     I8,
     I16,
@@ -80,7 +80,7 @@ pub enum IntTy {
     Isize,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum UintTy {
     U8,
     U16,
