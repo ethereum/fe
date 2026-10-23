@@ -67,9 +67,10 @@ pub fn decode_array_view<T, I>(_ input: own I) -> ArrayView<I, T>
 ///   `base + offset + 32 + len * stride <= input.len()`, where `stride` is
 ///   `T::HEAD_SIZE` for static `T` and 32 for dynamic `T`.
 ///
-/// Solidity additionally rejects offset and length words of `2**64` or more,
-/// and so does this function, also for inputs longer than `2**64` bytes.
-/// Lengths are checked explicitly, including zero-sized element types.
+/// An input is shorter than `2**64` bytes (`ByteSource::size`), so offset and
+/// length words of `2**64` or more are rejected, like in Solidity. A length is
+/// also limited below `2**64` for a zero-sized element type, whose elements
+/// take no input.
 ///
 /// Element tails of dynamic `T` are not inspected here; they are validated
 /// when accessed, exactly like Solidity. Solidity also rejects calldata
@@ -82,25 +83,16 @@ pub fn decode_array_view_at<T, I>(_ input: own I, base: u256, head_pos: u256) ->
     let input_len = input.len()
     let head_at = checked_tail<Sol>(base, head_pos)
     checked_frame_end<Sol>(head_at, 32, input_len)
-    let tail_at = checked_tail<Sol>(base, checked_offset(input.word_at(head_at)))
+    let tail_at = checked_tail<Sol>(base, input.word_at(head_at))
     let elems = checked_frame_end<Sol>(tail_at, 32, input_len)
     let len = input.word_at(tail_at)
     let stride = abi_field_head_size<T>()
     // `elems <= input_len` holds after the frame check, and the division
     // bounds `len * stride` without overflow.
-    if len >= 0x10000000000000000 || (stride != 0 && len > (input_len - elems) / stride) {
+    if (stride == 0 && len >= 0x10000000000000000) || (stride != 0 && len > (input_len - elems) / stride) {
         Sol::decode_error()
     }
     ArrayView { input, elems, len: len as usize }
-}
-
-/// An ABI offset word, rejecting values of `2**64` or more like Solidity.
-/// The frame checks alone only reject them for inputs shorter than that.
-fn checked_offset(_ offset: u256) -> u256 {
-    if offset >= 0x10000000000000000 {
-        Sol::decode_error()
-    }
-    offset
 }
 
 impl<I, T> ArrayView<I, T>
@@ -195,7 +187,7 @@ impl<I, T> ArrayView<I, T>
         if !T::IS_DYNAMIC {
             return head_at
         }
-        let tail_at = checked_tail<Sol>(self.elems, checked_offset(self.input.word_at(head_at)))
+        let tail_at = checked_tail<Sol>(self.elems, self.input.word_at(head_at))
         checked_frame_end<Sol>(tail_at, T::HEAD_SIZE, self.input.len())
         tail_at
     }
@@ -220,9 +212,6 @@ impl<I, T> ArrayView<I, T>
     {
         self.check_index(index)
         let head_at = self.elems + index as u256 * abi_field_head_size<T>()
-        if T::IS_DYNAMIC {
-            let _ = checked_offset(self.input.word_at(head_at))
-        }
         decode_field_from_prechecked_head<Sol, T, I>(
             self.input,
             base: self.elems,

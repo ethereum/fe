@@ -17,13 +17,18 @@ pub enum AbiError {
     AllocationFailed,
 }
 
-/// Generic read-only byte input for ABI decoding.
+/// A read-only byte input for ABI decoding, such as calldata or a memory
+/// span. Implement this trait for an input; code that reads one bounds it by
+/// `ByteInput`, which every `ByteSource` is.
 ///
 /// Implementations may return padded values (e.g. EVM calldata loads) so callers
 /// must use `len()` to enforce bounds/canonicality. Inputs are passed by view;
 /// only `Copy` inputs can be stored, as in `Cursor` and `BytesView`.
-pub trait ByteInput {
-    fn len(self) -> u256
+pub trait ByteSource {
+    /// The input's length in bytes. Like any calldata, returndata or memory,
+    /// an input is shorter than `2**64` bytes, so the offset and length words
+    /// that fit it are below `2**64`, as Solidity requires of them.
+    fn size(self) -> u64
     fn word_at(self, _ byte_offset: u256) -> u256
     fn byte_at(self, _ byte_offset: u256) -> u8
     /// Copy `len` bytes starting at `src_offset` into linear memory at `dest`.
@@ -43,6 +48,19 @@ pub trait ByteInput {
     /// Arbitrary byte lengths are supported.
     unsafe fn copy_to_memory_unchecked(self, dest: *u8, src_offset: u256, len: u256) {
         self.copy_to_memory(dest: dest, src_offset: src_offset, len: len)
+    }
+}
+
+/// A `ByteSource` with its length as a word for bounds arithmetic. Only the
+/// impl below provides it, so the length is always the input's `size`.
+pub trait ByteInput: ByteSource {
+    fn len(self) -> u256
+}
+
+impl<I: ByteSource> ByteInput for I {
+    #[inline(always)]
+    fn len(self) -> u256 {
+        self.size() as u256
     }
 }
 
@@ -834,11 +852,12 @@ impl<I> BytesView<I>
     }
 }
 
-impl<I> ByteInput for BytesView<I>
+impl<I> ByteSource for BytesView<I>
     where I: ByteInput + Copy
 {
-    fn len(self) -> u256 {
-        self.len as u256
+    // A view lies within its input (`try_new`), so it is shorter.
+    fn size(self) -> u64 {
+        self.len.downcast_truncate()
     }
 
     fn word_at(self, _ byte_offset: u256) -> u256 {
@@ -1183,9 +1202,9 @@ unsafe fn mem_word_at(base: *u8, offset: u256) -> u256 {
 }
 
 /// A span's bytes read past its end as zeros, like calldata's.
-impl ByteInput for ptr::MemSpan {
-    fn len(self) -> u256 {
-        self.len() as u256
+impl ByteSource for ptr::MemSpan {
+    fn size(self) -> u64 {
+        self.len().downcast_truncate()
     }
 
     #[arithmetic(unchecked)]

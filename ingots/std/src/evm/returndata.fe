@@ -1,4 +1,4 @@
-use core::abi::{AbiSize, ByteInput, Bytes, Decode, DynString, store_word}
+use core::abi::{AbiSize, ByteInput, ByteSource, Bytes, Decode, DynString, store_word}
 use core::Copy
 use core::error::ErrorVariant
 use core::num::IntDowncast
@@ -75,16 +75,16 @@ impl ReturnData {
     }
 }
 
-impl ByteInput for ReturnData {
+impl ByteSource for ReturnData {
     /// Bytes visible through the view: `returndatasize() - base`, or zero if
     /// `base` is past the end.
     #[inline(always)]
-    fn len(self) -> u256 {
+    fn size(self) -> u64 {
         let total = returndatasize()
         if self.base > total {
             0
         } else {
-            total - self.base
+            (total - self.base).downcast_truncate()
         }
     }
 
