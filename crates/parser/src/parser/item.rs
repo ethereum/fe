@@ -833,7 +833,7 @@ impl super::Parse for ImplScope {
         });
 
         if is_impl_trait {
-            self.set_kind(SyntaxKind::ImplTrait);
+            parser.set_scope_kind(SyntaxKind::ImplTrait);
             parser.set_scope_recovery_stack(&[
                 SyntaxKind::ForKw,
                 SyntaxKind::WhereKw,
