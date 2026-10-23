@@ -33,8 +33,8 @@ fn external_call() uses (call: mut Call, storage: mut RawStorage) {
 
 // Rejected: raw roots from two `unsafe` blocks are two all-storage sessions.
 fn two_blocks() uses (storage: mut RawStorage) {
-    let a = unsafe { SolArray<u256>::at(0) }
-    let b = unsafe { SolArray<u256>::at(1) }
+    let a = unsafe { mut SolArray<u256>::at(0) }
+    let b = unsafe { mut SolArray<u256>::at(1) }
     a.push(1)
     b.push(2)
 }

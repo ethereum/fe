@@ -62,7 +62,7 @@ pub(crate) fn provisional_call_site_provider_refinements<'db>(
             else {
                 continue;
             };
-            let BodyOwner::Func(func, _) = callee.key.owner(db) else {
+            let BodyOwner::Func(func, mode) = callee.key.owner(db) else {
                 continue;
             };
             let mut inputs = Vec::new();
@@ -97,7 +97,7 @@ pub(crate) fn provisional_call_site_provider_refinements<'db>(
                     binding_idx: arg.binding_idx,
                     provider_idx: provisional_provider_idx_for_requirement(
                         db,
-                        EffectParamSite::Func(func),
+                        EffectParamSite::Func(func, mode),
                         arg.binding_idx,
                     ),
                 };

@@ -1102,15 +1102,17 @@ pub(crate) fn impl_method_evidence<'db>(
     let conditions = collect_candidate_constraints(db, impl_trait.into())
         .instantiate_identity()
         .extend_all_bounds(db);
+    let nominal_mode = BodyOwner::func_at(db, nominal, mode).mode();
+    let body_mode = BodyOwner::func_at(db, body, mode).mode();
     let (subst, _, _) = trait_to_impl_param_subst(
         db,
-        CallableDef::Func(body),
-        CallableDef::Func(nominal),
+        (CallableDef::Func(body), body_mode),
+        (CallableDef::Func(nominal), nominal_mode),
         implementor.trait_inst(db),
     );
     let nominal_signature = substitute_complete(
         db,
-        func_signature(db, nominal, BodyOwner::func_at(db, nominal, mode).mode()),
+        func_signature(db, nominal, nominal_mode),
         &subst.residualize(db),
     )
     .ok()?;
@@ -1128,14 +1130,13 @@ pub(crate) fn impl_method_evidence<'db>(
         nominal,
         mode,
     };
-    let mode = BodyOwner::func_at(db, body, mode).mode();
     Some(basis_proofs(
         db,
         body.scope(),
         origin,
         basis,
-        func_declared_bounds(db, body, mode),
-        func_signature(db, body, mode),
+        func_declared_bounds(db, body, body_mode),
+        func_signature(db, body, body_mode),
     ))
 }
 

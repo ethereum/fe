@@ -73,6 +73,15 @@ error[6-0003]: trait bound is not satisfied
 105 │ impl Writable for Fixed {}
     │                   ^^^^^ `Fixed` doesn't implement `mut Slot`
 
+error[6-0008]: method `slot` has incompatible return type
+    ┌─ maybe_mut_traits.fe:127:8
+    │
+  2 │     fn slot(mut? self) -> mut? u256
+    │        ---- trait requires this return type
+    ·
+127 │     fn slot(mut? self) -> mut? u8 {
+    │        ^^^^ expected `ref u256`, found `ref u8`
+
 error[6-0035]: method `get` is `mut?`, but the trait method is not
    ┌─ maybe_mut_traits.fe:66:8
    │

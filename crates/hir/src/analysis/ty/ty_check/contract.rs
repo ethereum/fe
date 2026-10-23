@@ -413,7 +413,7 @@ pub fn recv_arm_resolution<'db>(
         }
         return resolution;
     }
-    if !ty.has_star_kind(db) {
+    if !ty.is_star_kind(db) {
         diags.push(TyDiagCollection::from(TyLowerDiag::ExpectedStarKind(path_span.into())).into());
         return resolution;
     }

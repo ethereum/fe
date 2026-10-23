@@ -11,10 +11,12 @@ use crate::analysis::{
     },
     ty::{
         AddressSpace,
+        closure::func_item_callable_inst,
         diagnostics::{
             BodyDiag, CallConstraintDiagInfo, ContractFieldLayoutIssue, DefConflictError,
-            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix, RevealedBy,
-            TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag,
+            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix,
+            ReadOnlyProvider, RevealedBy, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection,
+            TyLowerDiag,
         },
         trait_def::TraitInstId,
         ty_check::{EffectParamOwner, RecordLike},
@@ -23,8 +25,11 @@ use crate::analysis::{
 };
 use crate::{
     ParserError, SpannedHirDb,
-    hir_def::{CallableDef, FieldIndex, GenericParamOwner, PathKind, Trait, params::FuncParamMode},
-    span::LazySpan,
+    hir_def::{
+        AssocTyDecl, CallableDef, FieldIndex, GenericParamOwner, ModeMarker, PathKind, Trait,
+        TypeMode, params::FuncParamMode,
+    },
+    span::{DynLazySpan, LazySpan},
 };
 use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, Span, SpanKind,
@@ -66,7 +71,7 @@ fn pretty_print_ty_for_mismatch<'db>(db: &'db dyn SpannedHirAnalysisDb, ty: TyId
                     .scope()
                     .pretty_path(db)
                     .unwrap_or_else(|| ty.pretty_print(db).to_string()),
-                TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) => {
+                TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) | TyBase::Shape(_) => {
                     ty.pretty_print(db).to_string()
                 }
             }
@@ -1717,13 +1722,36 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::ModeOnProduct(span) => primary_diag(
+            Self::ShapeWithoutMode(span) => primary_diag(
                 Severity::Error,
-                "a product's parts carry its modes",
-                "remove the mode before the tuple: each part takes its own",
+                "an associated shape needs a mode here",
+                "write `<ref>` or `<mut>` after it, as in `D::Step<ref>`; only a `mut?` item's own signature names one without",
                 span.resolve(db),
                 error_code,
             ),
+
+            Self::ModeArgNotShape(span) => primary_diag(
+                Severity::Error,
+                "a mode argument names an associated shape's mode",
+                "only an associated shape takes `ref` or `mut`, as in `D::Step<ref>`",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::ModeOnProduct { span, shape } => {
+                let (message, label) = if *shape {
+                    (
+                        "an associated shape carries its own modes",
+                        "remove the mode before it: the shape is named at its mode, as `D::Step<ref>`",
+                    )
+                } else {
+                    (
+                        "a product's parts carry its modes",
+                        "remove the mode before it: each part takes its own",
+                    )
+                };
+                primary_diag(Severity::Error, message, label, span.resolve(db), error_code)
+            }
 
             Self::ProductReceiver(span) => primary_diag(
                 Severity::Error,
@@ -1733,15 +1761,19 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
-            Self::ProductParamNotDestructured(span) => CompleteDiagnostic {
+            Self::ProductParamNotDestructured { span, closure } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a product parameter must be destructured".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: "its parts are accesses, which no single name holds".to_string(),
+                    message: "its parts are passed apart, which no single name holds".to_string(),
                     span: span.resolve(db),
                 }],
-                notes: vec!["bind each part: `_ (i, ref x): (own usize, ref T)`".to_string()],
+                notes: vec![if *closure {
+                    "bind each part: `|(i, ref x)| ..`".to_string()
+                } else {
+                    "bind each part: `_ (i, ref x): (own usize, ref T)`".to_string()
+                }],
                 error_code,
             },
 
@@ -1764,6 +1796,89 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 span.resolve(db),
                 error_code,
             ),
+
+            Self::DuplicateAssocBinding {
+                span,
+                first,
+                name,
+                mode,
+            } => {
+                let mode = match mode {
+                    Some(TypeMode::Ref) => "<ref>",
+                    Some(TypeMode::Mut) => "<mut>",
+                    _ => "",
+                };
+                let name = format!("{}{mode}", name.data(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("`{name}` is bound more than once"),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: format!("`{name}` is bound again here"),
+                            span: span.resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: format!("`{name}` is first bound here"),
+                            span: first.resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::MaybeMutInShape(span) => primary_diag(
+                Severity::Error,
+                "`mut?` in a shape argument",
+                "a shape's modes are concrete: write `ref` or `mut`",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::MisplacedSpread(span) => primary_diag(
+                Severity::Error,
+                "a spread parameter is a trait method declaration's last",
+                "`..A` spreads a shape's parameters in a bodiless trait method",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::SpreadOfNonShape { span, ty } => primary_diag(
+                Severity::Error,
+                format!("`{}` is not a shape", ty.pretty_print(db)),
+                "a spread takes the parameters of a shape parameter, `..A` with `shape A`",
+                span.resolve(db),
+                error_code,
+            ),
+
+            Self::MaybeMutRowEffect { span, entry } => {
+                let (message, label) = if *entry {
+                    ("`mut?` on a row", "a row's effects carry their own modes")
+                } else {
+                    (
+                        "`mut?` effect of a row",
+                        "a row has no mode: only a function is used at a mode",
+                    )
+                };
+                primary_diag(Severity::Error, message, label, span.resolve(db), error_code)
+            }
+
+            Self::MaybeMutWithoutResult(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut?` function's result needs a `mut?` part".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "nothing this function returns is `mut?`".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "a call is at `mut` only when a use of its result asks for `mut`, so this function's `mut` body would never run"
+                        .to_string(),
+                ],
+                error_code,
+            },
 
             Self::ExpectedStarKind(span) => {
                 // find expected ty name, num of generic args, etc
@@ -3093,7 +3208,12 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
-            Self::MissingEffect { primary, func, key } => {
+            Self::MissingEffect {
+                primary,
+                func,
+                key,
+                mode,
+            } => {
                 let func_name = func
                     .name(db)
                     .to_opt().map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string());
@@ -3112,7 +3232,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     notes: vec![
                         format!(
                             "require it in this function's signature with `uses {}`, so that its callers provide it",
-                            effect_clause(db, *func, *key)
+                            effect_clause(db, *func, *key, *mode)
                         ),
                         format!(
                             "or provide it to a block of this function with `with ({key_str} = value) {{ .. }}`"
@@ -3163,6 +3283,8 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 func,
                 key,
                 provided_span,
+                read_only,
+                split,
             } => {
                 let func_name = func
                     .name(db)
@@ -3182,6 +3304,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         span,
                     });
                 }
+                sub_diagnostics.extend(split_demand_label(db, split));
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
@@ -3189,10 +3312,23 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         "effect `{key_str}` must be mutable when calling `{func_name}`"
                     ),
                     sub_diagnostics,
-                    notes: vec![
-                        "use a mutable binding or pass a mutable reference in the `with` block"
-                            .to_string(),
-                    ],
+                    notes: vec![match read_only {
+                        Some(ReadOnlyProvider::Binding(name)) => format!(
+                            "`{}` is `mut?`, which a `mut?` function's `ref` body only reads",
+                            name.data(db)
+                        ),
+                        Some(ReadOnlyProvider::Call(callee)) => format!(
+                            "the `with` value calls `{}`, which is `mut?`, at `ref`: write `mut` before the call to provide `{key_str}` mutably",
+                            callee
+                                .name(db)
+                                .to_opt()
+                                .map_or("<unknown>", |name| name.data(db))
+                        ),
+                        None => {
+                            "use a mutable binding or pass a mutable reference in the `with` block"
+                                .to_string()
+                        }
+                    }],
                     error_code,
                 }
             }
@@ -3750,31 +3886,48 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            Self::CannotBorrowMut { primary, binding } => {
+            Self::CannotBorrowMut {
+                primary,
+                binding,
+                maybe_mut,
+                split,
+            } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "cannot borrow as `mut`".to_string(),
                     span: primary.resolve(db),
                 }];
 
+                let mut notes = Vec::new();
                 if let Some((name, span)) = binding {
+                    let name = name.data(db);
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("`{}` does not provide mutable access", name.data(db)),
+                        message: format!("`{name}` does not provide mutable access"),
                         span: span.resolve(db),
                     });
+                    if *maybe_mut {
+                        notes.push(format!(
+                            "`{name}` is `mut?`, which a `mut?` function's `ref` body only reads"
+                        ));
+                    }
                 }
+                sub_diagnostics.extend(split_demand_label(db, split));
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "mutable borrow requires a mutable place".to_string(),
                     sub_diagnostics,
-                    notes: vec![],
+                    notes,
                     error_code,
                 }
             }
 
-            Self::BorrowArgMustBePlace { primary, kind } => {
+            Self::BorrowArgMustBePlace {
+                primary,
+                kind,
+                split,
+            } => {
                 let kw = match kind {
                     BorrowKind::Mut => "mut",
                     BorrowKind::Ref => "ref",
@@ -3783,13 +3936,16 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: format!("`{kw}` argument must be a place"),
-                    sub_diagnostics: vec![SubDiagnostic {
+                    sub_diagnostics: [SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!(
                             "temporaries and literal values cannot be used where `{kw}` is expected"
                         ),
                         span: primary.resolve(db),
-                    }],
+                    }]
+                    .into_iter()
+                    .chain(split_demand_label(db, split))
+                    .collect(),
                     notes: vec![format!(
                         "help: bind the value to a named local first, then pass `{kw} <place>`"
                     )],
@@ -3801,6 +3957,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary,
                 kind,
                 suggestion,
+                split,
             } => {
                 let kw = match kind {
                     BorrowKind::Mut => "mut",
@@ -3810,11 +3967,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "explicit borrow required".to_string(),
-                    sub_diagnostics: vec![SubDiagnostic {
+                    sub_diagnostics: [SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!("this argument must be explicitly borrowed as `{kw}`"),
                         span: primary.resolve(db),
-                    }],
+                    }]
+                    .into_iter()
+                    .chain(split_demand_label(db, split))
+                    .collect(),
                     notes: vec![
                         suggestion
                             .as_ref()
@@ -3952,32 +4112,26 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }],
                 notes: vec![
-                    "a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T` or `-> mut? T`"
+                    "a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T`, `-> mut? T`, `uses (x: mut? T)` or a `mut?` bound"
                         .to_string(),
                 ],
                 error_code,
             },
 
-            Self::MaybeMutEffect { owner, idx } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "a `mut?` effect is not supported yet".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this effect is required at the function's mode".to_string(),
-                    span: owner.effect_param_ty_span(db, *idx).resolve(db),
-                }],
-                notes: vec!["write `mut` or no mode on the effect".to_string()],
-                error_code,
-            },
-
-            Self::MutBindingOfRead { primary } => CompleteDiagnostic {
+            Self::MutBindingOfRead {
+                primary,
+                split_reads,
+            } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a `mut` binding needs a mutable place or access".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
+                sub_diagnostics: [SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "this binds part of a read access".to_string(),
                     span: primary.resolve(db),
-                }],
+                }]
+                .into_iter()
+                .chain(split_read_labels(db, split_reads))
+                .collect(),
                 notes: vec![
                     "write `var` for a mutable copy, or use the `mut` projection to write through"
                         .to_string(),
@@ -4136,23 +4290,31 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 given,
                 expected,
                 raised,
+                split_reads,
             } => {
                 let taker = if *raised {
                     "the call at `mut`"
                 } else {
                     "the parameter"
                 };
-                primary_diag(
-                    Severity::Error,
-                    "this argument grants a product's parts too weakly",
-                    format!(
-                        "it grants `{}`, but {taker} takes `{}`",
-                        given.pretty_print_product(db),
-                        expected.pretty_print_product(db)
-                    ),
-                    primary.resolve(db),
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "this argument grants a product's parts too weakly".to_string(),
+                    sub_diagnostics: [SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "it grants `{}`, but {taker} takes `{}`",
+                            given.pretty_print_product(db),
+                            expected.pretty_print_product(db)
+                        ),
+                        span: primary.resolve(db),
+                    }]
+                    .into_iter()
+                    .chain(split_read_labels(db, split_reads))
+                    .collect(),
+                    notes: Vec::new(),
                     error_code,
-                )
+                }
             }
 
             Self::RefutableParamPattern { primary } => primary_diag(
@@ -4316,7 +4478,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         MutabilityFix::ViewSelf => {
                             "write `mut self` for a mutable borrow".to_string()
                         }
-                        MutabilityFix::MaybeMutParam => format!(
+                        MutabilityFix::MaybeMut => format!(
                             "`{name}` is `mut?`, which a `mut?` function's `ref` body only reads"
                         ),
                         MutabilityFix::OwnSelf => {
@@ -4545,6 +4707,40 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!("expected {expected} arguments, but {given} given"),
+                        span: primary.resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: "function defined here".to_string(),
+                        span: def_span.resolve(db),
+                    },
+                ],
+                notes: vec![],
+                error_code,
+            },
+
+            Self::OpaqueShapeBound { primary, shape } => primary_diag(
+                Severity::Error,
+                format!("a value of `{}` can only be passed on", shape.pretty_print(db)),
+                "its parts are not known here: return it, or pass it to a parameter of the same shape",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::SpreadNotKnown {
+                primary,
+                def_span,
+                shape,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "the callee's parameters are not known".to_string(),
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "its spread is `..{}`, which lists no known parameters",
+                            shape.pretty_print(db)
+                        ),
                         span: primary.resolve(db),
                     },
                     SubDiagnostic {
@@ -5350,8 +5546,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }],
                 notes: vec![if *in_closure {
                     format!(
-                        "a closure takes none of the enclosing function's authority; use `storage_at{}`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
-                        if *is_mut { "_mut" } else { "" },
+                        "a closure takes none of the enclosing function's authority; use `storage_at`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
                         if *is_mut { "mut " } else { "" }
                     )
                 } else {
@@ -5393,14 +5588,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     .collect(),
                 error_code,
             },
-
-            BodyDiag::ClosureProductParam { primary } => primary_diag(
-                severity,
-                "a closure parameter cannot be a product",
-                "a closure takes each access as its own parameter",
-                primary.resolve(db),
-                error_code,
-            ),
 
             BodyDiag::WriteToCapture { primary, name } => CompleteDiagnostic {
                 severity,
@@ -5783,11 +5970,23 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     });
                 }
 
+                // A function item's type names it alone; give its shape.
+                let notes = func_item_callable_inst(db, *primary_goal)
+                    .map(|inst| {
+                        format!(
+                            "`{}` is `{}`",
+                            primary_goal.self_ty(db).pretty_print(db),
+                            inst.pretty_print(db, false)
+                        )
+                    })
+                    .into_iter()
+                    .collect();
+
                 CompleteDiagnostic {
                     severity,
                     message: "trait bound is not satisfied".to_string(),
                     sub_diagnostics,
-                    notes: Vec::new(),
+                    notes,
                     error_code,
                 }
             }
@@ -5938,17 +6137,49 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 )
             }
 
-            Self::MethodArgNumMismatch { trait_m, impl_m } => primary_diag(
+            Self::MethodArgNumMismatch {
+                impl_m, expected, ..
+            } => primary_diag(
                 severity,
                 "method argument count mismatch",
                 format!(
-                    "expected {} arguments, but {} given",
-                    trait_m.arg_tys(db).len(),
+                    "expected {expected} arguments, but {} given",
                     impl_m.arg_tys(db).len(),
                 ),
                 impl_m.param_list_span().resolve(db),
                 error_code,
             ),
+
+            Self::SpreadNotListed {
+                trait_m,
+                impl_m,
+                shape,
+            } => CompleteDiagnostic {
+                severity,
+                message: format!(
+                    "cannot implement `{}`: its parameters are not known",
+                    impl_m.name(db).expect("methods have names").data(db)
+                ),
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "the trait's spread is `..{}` here, which lists no known parameters",
+                            shape.pretty_print(db)
+                        ),
+                        span: impl_m.param_list_span().resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: "spread declared here".to_string(),
+                        span: trait_m
+                            .param_span(trait_m.spread(db).expect("the trait method spreads"))
+                            .resolve(db),
+                    },
+                ],
+                notes: vec![],
+                error_code,
+            },
 
             Self::MethodArgLabelMismatch {
                 trait_m,
@@ -5963,7 +6194,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         message: format!(
                             "expected `{}` label, but the given label is `{}`",
                             trait_m
-                                .param_label_or_name(db, *param_idx)
+                                .param_label_or_name(db, trait_m.declared_param(db, *param_idx))
                                 .unwrap()
                                 .pretty_print(db),
                             impl_m
@@ -5976,7 +6207,9 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "argument label defined here".to_string(),
-                        span: trait_m.param_span(*param_idx).resolve(db),
+                        span: trait_m
+                            .param_span(trait_m.declared_param(db, *param_idx))
+                            .resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -5991,10 +6224,15 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 param_idx,
                 trait_mode,
                 impl_mode,
+                spread_part,
             } => {
                 let method_name = impl_m.name(db).expect("methods have names").data(db);
-                let expected =
-                    format_method_param_ty(db, *trait_m, *param_idx, *trait_m_ty, *trait_mode);
+                let expected = match spread_part {
+                    Some(part) => part.pretty_print_product(db),
+                    None => {
+                        format_method_param_ty(db, *trait_m, *param_idx, *trait_m_ty, *trait_mode)
+                    }
+                };
                 let found = format_method_param_ty(db, *impl_m, *param_idx, *impl_m_ty, *impl_mode);
 
                 CompleteDiagnostic {
@@ -6009,7 +6247,9 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: "trait requires this type".to_string(),
-                            span: trait_m.param_span(*param_idx).resolve(db),
+                            span: trait_m
+                                .param_span(trait_m.declared_param(db, *param_idx))
+                                .resolve(db),
                         },
                     ],
                     notes: vec![],
@@ -6058,17 +6298,25 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 }
             }
 
-            Self::MethodEffectMismatch { trait_m, impl_m } => {
-                let trait_count = match trait_m {
-                    CallableDef::Func(func) => func.effect_requirements(db).len(),
+            Self::MethodEffectMismatch {
+                trait_m,
+                impl_m,
+                mode,
+            } => {
+                let count = |m: CallableDef| match m {
+                    CallableDef::Func(func) => {
+                        func.effect_requirements(db, func.modes(db)[0]).len()
+                    }
                     CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
                 };
-                let impl_count = match impl_m {
-                    CallableDef::Func(func) => func.effect_requirements(db).len(),
-                    CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
-                };
+                let (trait_count, impl_count) = (count(*trait_m), count(*impl_m));
                 let detail = if trait_count == impl_count {
-                    "effect keys or mutability differ from the trait method".to_string()
+                    let at = match mode {
+                        Some(BorrowKind::Ref) => " at `ref`",
+                        Some(BorrowKind::Mut) => " at `mut`",
+                        None => "",
+                    };
+                    format!("effect keys or mutability differ from the trait method{at}")
                 } else {
                     format!("expected {trait_count} effects, found {impl_count}")
                 };
@@ -6382,17 +6630,91 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 primary,
                 type_name,
                 trait_,
+            } => {
+                let item = if trait_
+                    .assoc_ty(db, *type_name)
+                    .is_some_and(AssocTyDecl::is_shape)
+                {
+                    "shape"
+                } else {
+                    "type"
+                };
+                primary_diag(
+                    severity,
+                    format!("missing associated {item} in trait implementation"),
+                    format!(
+                        "missing associated {item} `{}` from trait `{}`",
+                        type_name.data(db),
+                        trait_.name(db).unwrap().data(db)
+                    ),
+                    primary.resolve(db),
+                    error_code,
+                )
+            }
+
+            Self::ShapeGrantsMut {
+                primary,
+                name,
+                param,
+                bound,
             } => primary_diag(
                 severity,
-                "missing associated type in trait implementation",
                 format!(
-                    "missing associated type `{}` from trait `{}`",
-                    type_name.data(db),
+                    "`{}` grants `mut` where it is named at `ref`",
+                    name.data(db)
+                ),
+                match param {
+                    Some(param) => format!(
+                        "`{}` is a shape parameter, whose accesses may be `mut` at any mode",
+                        param.pretty_print(db)
+                    ),
+                    None if *bound => format!(
+                        "a shape's accesses are at most its mode: bind `{}<mut>` for a `mut` access",
+                        name.data(db)
+                    ),
+                    None => {
+                        "a shape's accesses are at most its mode: write `mut?` for an access at it"
+                            .to_string()
+                    }
+                },
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ShapeWithoutAccess {
+                primary,
+                name,
+                trait_,
+            } => primary_diag(
+                severity,
+                format!("`{}` has no access", name.data(db)),
+                format!(
+                    "`{}` returns it as a projection, so it needs a `ref`, `mut?` or `mut` part",
                     trait_.name(db).unwrap().data(db)
                 ),
                 primary.resolve(db),
                 error_code,
             ),
+
+            Self::AssocShapeMismatch {
+                primary,
+                trait_,
+                name,
+                is_shape,
+            } => {
+                let item = if *is_shape { "shape" } else { "type" };
+                primary_diag(
+                    severity,
+                    format!(
+                        "`{}` is an associated {item} of `{}`",
+                        name.data(db),
+                        trait_.name(db).unwrap().data(db)
+                    ),
+                    format!("give it with `{item} {} = ..`", name.data(db)),
+                    primary.resolve(db),
+                    error_code,
+                )
+            }
 
             Self::MissingAssociatedConstValue {
                 primary,
@@ -6584,12 +6906,40 @@ impl DiagnosticVoucher for ImplDiag<'_> {
     }
 }
 
-/// The `uses` entry of `func` whose key is `key`, as a clause naming it with
-/// its mode: `(storage: mut RawStorage)`.
+/// The label naming the unsafe split whose `mut` binding asked a call in it
+/// for `mut`.
+fn split_demand_label<'db>(
+    db: &'db dyn SpannedHirAnalysisDb,
+    split: &Option<DynLazySpan<'db>>,
+) -> Option<SubDiagnostic> {
+    split.as_ref().map(|split| SubDiagnostic {
+        style: LabelStyle::Secondary,
+        message: "a `mut` binding of this unsafe split asks each access in it for `mut`"
+            .to_string(),
+        span: split.resolve(db),
+    })
+}
+
+/// The labels naming the read accesses that kept an unsafe split from
+/// granting `mut`.
+fn split_read_labels<'db>(
+    db: &'db dyn SpannedHirAnalysisDb,
+    split_reads: &[DynLazySpan<'db>],
+) -> impl Iterator<Item = SubDiagnostic> {
+    split_reads.iter().map(move |span| SubDiagnostic {
+        style: LabelStyle::Secondary,
+        message: "this read access keeps the unsafe split from granting `mut`".to_string(),
+        span: span.resolve(db),
+    })
+}
+
+/// The `uses` entry naming `func`'s effect keyed `key`, at the mode `mode` a
+/// call needs it.
 fn effect_clause<'db>(
     db: &'db dyn HirAnalysisDb,
     func: crate::hir_def::Func<'db>,
     key: crate::hir_def::TypeId<'db>,
+    mode: ModeMarker,
 ) -> String {
     let key_str = key.pretty_print(db);
     func.effects(db)
@@ -6603,8 +6953,7 @@ fn effect_clause<'db>(
                     .name
                     .map(|name| format!("{}: ", name.data(db)))
                     .unwrap_or_default();
-                let mode = param.mode.prefix();
-                format!("({name}{mode}{key_str})")
+                format!("({name}{}{key_str})", mode.prefix())
             },
         )
 }

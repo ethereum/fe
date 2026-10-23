@@ -170,9 +170,18 @@ where
             + private::ScratchOps<'db>,
     {
         let value = U::unbrand(value).fold_with(self.db, &mut self.table);
+        // A query variable unified with a scratch one, such as an impl's
+        // parameter, may have it as its root, which then stands for it.
+        let mut subst = self.local_to_canonical.clone();
+        for (&local, &canonical) in &self.local_to_canonical {
+            let root = local.fold_with(self.db, &mut self.table);
+            if root != local && is_var(self.db, root) {
+                subst.entry(root).or_insert(canonical);
+            }
+        }
         let mut remapper = RemapToCanonical {
             db: self.db,
-            subst: &self.local_to_canonical,
+            subst: &subst,
         };
         let value = value.fold_with(self.db, &mut remapper);
         uses_only_query_canonical_vars(self.db, &self.canonical_to_original, &value).then(|| {
@@ -360,6 +369,15 @@ where
     }
 }
 
+/// Whether `ty` is an inference variable, of a type or a constant.
+fn is_var<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    match ty.data(db) {
+        TyData::TyVar(_) => true,
+        TyData::ConstTy(const_ty) => matches!(const_ty.data(db), ConstTyData::TyVar(..)),
+        _ => false,
+    }
+}
+
 struct RemapToCanonical<'a, 'db> {
     db: &'db dyn HirAnalysisDb,
     subst: &'a FxHashMap<TyId<'db>, TyId<'db>>,
@@ -464,6 +482,32 @@ mod tests {
         canonicalized.with_materialized(&db, |cx| {
             assert_eq!(cx.try_extract::<TyId<'_>>(cx.query()), Some(original));
         });
+    }
+
+    /// A scratch variable unified with the query's, such as an impl's
+    /// parameter, extracts as the query's whichever is the root.
+    #[test]
+    fn with_materialized_extracts_scratch_vars_unified_with_query() {
+        let db = HirAnalysisTestDb::default();
+        let mut table = super::UnificationTable::new(&db);
+        let original = table.new_var(TyVarSort::General, &Kind::Star);
+        let canonicalized = Canonicalized::new(&db, original);
+
+        for scratch_first in [true, false] {
+            canonicalized.with_materialized(&db, |cx| {
+                let query = cx.query();
+                let scratch =
+                    super::ScratchTy::new(cx.table.new_var(TyVarSort::General, &Kind::Star));
+                let unified = if scratch_first {
+                    cx.unify::<TyId<'_>>(scratch, query)
+                } else {
+                    cx.unify::<TyId<'_>>(query, scratch)
+                };
+                assert!(unified.is_ok());
+                assert_eq!(cx.try_extract::<TyId<'_>>(scratch), Some(original));
+                assert_eq!(cx.try_extract::<TyId<'_>>(query), Some(original));
+            });
+        }
     }
 
     #[test]

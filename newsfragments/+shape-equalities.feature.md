@@ -1,0 +1,1 @@
+A bound can fix an associated shape at a mode, `D: Driver<Step<ref> = ref u256>`, so generic code binds, copies and destructures what a `D::Step<ref>` holds. Each mode is bound on its own: `Step<mut> = mut u256` fixes the `mut` one.

@@ -15,7 +15,7 @@ use crate::{analysis::ty::ty_check::EffectParamOwner, span::DynLazySpan};
 use crate::{
     core::hir_def::{
         CallableDef, CompBinOp, Enum, FieldIndex, FieldParent, Func, GenericParamOwner, IdentId,
-        ImplTrait, IntegerId, TypeId as HirTypeId,
+        ImplTrait, IntegerId, ModeMarker, TypeId as HirTypeId, TypeMode,
     },
     hir_def::TypeAlias,
 };
@@ -77,18 +77,58 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
+    /// `ref` or `mut` as a generic argument of anything but an associated
+    /// shape.
+    ModeArgNotShape(DynLazySpan<'db>),
+    /// An associated shape named without a mode where nothing gives it one.
+    ShapeWithoutMode(DynLazySpan<'db>),
     /// A parameter pattern of a function without a body to bind it.
     DestructuredParamWithoutBody(DynLazySpan<'db>),
-    /// A mode on a product parameter's type, whose parts carry the modes.
-    ModeOnProduct(DynLazySpan<'db>),
+    /// A mode on a product parameter's type, whose parts carry the modes;
+    /// with `shape`, on an associated shape's, which is named at its mode.
+    ModeOnProduct {
+        span: DynLazySpan<'db>,
+        shape: bool,
+    },
     /// A receiver whose type is a product.
     ProductReceiver(DynLazySpan<'db>),
     /// A product parameter its function's body names instead of
     /// destructuring.
-    ProductParamNotDestructured(DynLazySpan<'db>),
+    ProductParamNotDestructured {
+        span: DynLazySpan<'db>,
+        /// Whether the parameter is a closure's.
+        closure: bool,
+    },
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
+    /// `mut?` in a shape argument, `Fn(mut? u256)`, which names no mode.
+    MaybeMutInShape(DynLazySpan<'db>),
+    /// A bound fixing an associated item, at `mode`, a second time.
+    DuplicateAssocBinding {
+        span: DynLazySpan<'db>,
+        first: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        mode: Option<TypeMode>,
+    },
+    /// A `mut?` function whose result has no `mut?` part, so no call uses it
+    /// at `mut`.
+    MaybeMutWithoutResult(DynLazySpan<'db>),
+    /// A `mut?` effect of an implementation's row, which has no mode; with
+    /// `entry`, `mut?` on a function's `uses` entry naming a row, whose
+    /// components carry their own modes.
+    MaybeMutRowEffect {
+        span: DynLazySpan<'db>,
+        entry: bool,
+    },
+    /// A spread parameter, `..A`, that is not the last of a trait method's
+    /// declaration.
+    MisplacedSpread(DynLazySpan<'db>),
+    /// A spread parameter whose type is not a shape.
+    SpreadOfNonShape {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+    },
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -319,11 +359,19 @@ impl TyLowerDiag<'_> {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
-            Self::ModeOnProduct(_) => 82,
+            Self::ModeOnProduct { .. } => 82,
+            Self::ModeArgNotShape(_) => 83,
+            Self::ShapeWithoutMode(_) => 84,
             Self::ProductReceiver(_) => 74,
-            Self::ProductParamNotDestructured(_) => 75,
+            Self::ProductParamNotDestructured { .. } => 75,
             Self::DestructuredParamWithoutBody(_) => 76,
+            Self::MaybeMutWithoutResult(_) => 77,
+            Self::MaybeMutRowEffect { .. } => 78,
+            Self::MisplacedSpread(_) => 80,
+            Self::SpreadOfNonShape { .. } => 81,
             Self::MaybeMutBound(_) => 71,
+            Self::MaybeMutInShape(_) => 85,
+            Self::DuplicateAssocBinding { .. } => 86,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
             Self::InvalidTypeArgKind { .. } => 1,
@@ -405,6 +453,16 @@ pub enum MustUseSubject<'db> {
     Function(CallableDef<'db>),
 }
 
+/// The `mut?` choice that leaves an effect's provider read-only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub enum ReadOnlyProvider<'db> {
+    /// A `mut?` binding, which a `mut?` function's `ref` body only reads:
+    /// an effect, or a `with` value's binding.
+    Binding(IdentId<'db>),
+    /// A `with` value calling this `mut?` function at `ref`.
+    Call(Func<'db>),
+}
+
 /// How to make writable a binding that is assigned through.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum MutabilityFix {
@@ -424,8 +482,9 @@ pub enum MutabilityFix {
     ViewParam,
     /// A view receiver: `mut self`.
     ViewSelf,
-    /// A `mut?` parameter, which the `ref` body of its function only reads.
-    MaybeMutParam,
+    /// A `mut?` parameter, effect or binding, which the `ref` body of its
+    /// function only reads.
+    MaybeMut,
     /// An owned receiver: `var own self`.
     OwnSelf,
     /// An effect binding: `uses (mut x)`.
@@ -554,10 +613,13 @@ pub enum BodyDiag<'db> {
         given: TyId<'db>,
     },
 
+    /// A call's missing effect, which the call needs at `mode`: `mut?` when
+    /// each body of a `mut?` caller needs it at its own mode.
     MissingEffect {
         primary: DynLazySpan<'db>,
         func: Func<'db>,
         key: HirTypeId<'db>,
+        mode: ModeMarker,
     },
 
     /// A call needs an abstract row, which only the caller's own can supply.
@@ -578,6 +640,10 @@ pub enum BodyDiag<'db> {
         func: Func<'db>,
         key: HirTypeId<'db>,
         provided_span: Option<DynLazySpan<'db>>,
+        /// The `mut?` choice that leaves the provider read-only, if one does.
+        read_only: Option<ReadOnlyProvider<'db>>,
+        /// The unsafe split whose `mut` binding asked the call for `mut`.
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call in `closure` that resolves only after the closure's body is
@@ -721,19 +787,29 @@ pub enum BodyDiag<'db> {
     CannotBorrowMut {
         primary: DynLazySpan<'db>,
         binding: Option<(IdentId<'db>, DynLazySpan<'db>)>,
+        /// Whether the binding is `mut?`, read-only in the `ref` body.
+        maybe_mut: bool,
+        /// The unsafe split whose `mut` binding asked a call for `mut`.
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call argument is not a place, but the callee requires a borrow handle (`mut`/`ref`).
+    /// With `split`, the unsafe split whose `mut` binding asked the call for
+    /// `mut`.
     BorrowArgMustBePlace {
         primary: DynLazySpan<'db>,
         kind: BorrowKind,
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call argument is a place, but the callee requires an explicit borrow handle (`mut`/`ref`).
+    /// With `split`, the unsafe split whose `mut` binding asked the call for
+    /// `mut`.
     ExplicitBorrowRequired {
         primary: DynLazySpan<'db>,
         kind: BorrowKind,
         suggestion: Option<String>,
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A plain binding of a projection's read result that is neither `Copy`
@@ -772,21 +848,17 @@ pub enum BodyDiag<'db> {
     },
 
     /// `mut x` on a read component, which has no mutable place behind it.
+    /// `split_reads` are the read accesses of an unsafe split that kept it
+    /// from granting `mut`.
     MutBindingOfRead {
         primary: DynLazySpan<'db>,
+        split_reads: Vec<DynLazySpan<'db>>,
     },
 
     /// `mut?` in a body whose function has no mode: its signature writes no
     /// `mut?`.
     MaybeMutWithoutMode {
         primary: DynLazySpan<'db>,
-    },
-
-    /// An effect required at the function's mode, `uses (x: mut? T)`, which
-    /// is not supported yet.
-    MaybeMutEffect {
-        owner: EffectParamOwner<'db>,
-        idx: usize,
     },
 
     /// `var x` binding a type with no value reading (`#[view]` or
@@ -836,6 +908,13 @@ pub enum BodyDiag<'db> {
         part: bool,
     },
 
+    /// A value of an opaque shape, `D::Step<ref>` before `D` is known, bound
+    /// to a name: it is only passed on.
+    OpaqueShapeBound {
+        primary: DynLazySpan<'db>,
+        shape: TyId<'db>,
+    },
+
     /// A projection's yield site does not grant its return shape.
     InvalidYield {
         primary: DynLazySpan<'db>,
@@ -861,12 +940,14 @@ pub enum BodyDiag<'db> {
 
     /// A projection's result for a product parameter that grants its parts
     /// with weaker accesses than `expected`; `raised` when the call at `mut`
-    /// takes them so.
+    /// takes them so. `split_reads` are the read accesses of an unsafe split
+    /// that kept it from granting `mut`.
     ProductArgTooWeak {
         primary: DynLazySpan<'db>,
         given: Shape<'db>,
         expected: Shape<'db>,
         raised: bool,
+        split_reads: Vec<DynLazySpan<'db>>,
     },
 
     /// A parameter pattern that may not match.
@@ -990,6 +1071,14 @@ pub enum BodyDiag<'db> {
         def_span: DynLazySpan<'db>,
         given: usize,
         expected: usize,
+    },
+
+    /// A call of a callee whose spread `..A` is instantiated with a shape
+    /// that lists no known parameters.
+    SpreadNotKnown {
+        primary: DynLazySpan<'db>,
+        def_span: DynLazySpan<'db>,
+        shape: TyId<'db>,
     },
 
     AssertArgNumMismatch {
@@ -1201,12 +1290,6 @@ pub enum BodyDiag<'db> {
         untupled: bool,
     },
 
-    /// A closure parameter annotated with a product, which no shape trait
-    /// names yet.
-    ClosureProductParam {
-        primary: DynLazySpan<'db>,
-    },
-
     /// A write to, or a `mut` access of, a binding a closure captures: the
     /// closure has its own copy, read-only.
     WriteToCapture {
@@ -1374,12 +1457,12 @@ impl<'db> BodyDiag<'db> {
             Self::VarOfAccess { .. } => 122,
             Self::MutBindingOfRead { .. } => 123,
             Self::MaybeMutWithoutMode { .. } => 130,
-            Self::MaybeMutEffect { .. } => 132,
             Self::RefutableParamPattern { .. } => 133,
             Self::ProductArgExpected { .. } => 135,
-            Self::ClosureProductParam { .. } => 136,
             Self::ProductArgTooWeak { .. } => 150,
             Self::LateClosureEffect { .. } => 151,
+            Self::SpreadNotKnown { .. } => 146,
+            Self::OpaqueShapeBound { .. } => 147,
             Self::ParamBindsTwice { .. } => 134,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,
@@ -1596,6 +1679,8 @@ pub enum ImplDiag<'db> {
     MethodArgNumMismatch {
         trait_m: CallableDef<'db>,
         impl_m: CallableDef<'db>,
+        /// The trait method's parameter count, with those its spread lists.
+        expected: usize,
     },
 
     MethodArgLabelMismatch {
@@ -1613,6 +1698,17 @@ pub enum ImplDiag<'db> {
         /// The modes the two were compared at.
         trait_mode: Option<BorrowKind>,
         impl_mode: Option<BorrowKind>,
+        /// The trait's parameter, when its spread lists it.
+        spread_part: Option<Shape<'db>>,
+    },
+
+    /// An impl method of a trait method whose spread `..A` the impl's
+    /// trait arguments instantiate with a shape that lists no known
+    /// parameters.
+    SpreadNotListed {
+        trait_m: CallableDef<'db>,
+        impl_m: CallableDef<'db>,
+        shape: TyId<'db>,
     },
 
     MethodRetTyMismatch {
@@ -1639,9 +1735,11 @@ pub enum ImplDiag<'db> {
         missing: IdentId<'db>,
     },
 
+    /// With `mode`, the trait method's mode at which alone they differ.
     MethodEffectMismatch {
         trait_m: CallableDef<'db>,
         impl_m: CallableDef<'db>,
+        mode: Option<BorrowKind>,
     },
 
     MethodUnsafeMismatch {
@@ -1676,6 +1774,35 @@ pub enum ImplDiag<'db> {
         primary: DynLazySpan<'db>,
         type_name: IdentId<'db>,
         trait_: Trait<'db>,
+    },
+
+    /// An impl's associated shape granting `mut` where it is named at `ref`,
+    /// or a bound's value for it at `ref` when `bound`: through a part
+    /// written `mut`, or through `param`, a shape parameter, whose accesses
+    /// are not known.
+    ShapeGrantsMut {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        param: Option<TyId<'db>>,
+        bound: bool,
+    },
+
+    /// An impl's associated shape with no access, which a trait method
+    /// returns as a projection.
+    ShapeWithoutAccess {
+        primary: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        trait_: Trait<'db>,
+    },
+
+    /// An impl giving an associated shape with `type`, or an associated
+    /// type with `shape`.
+    AssocShapeMismatch {
+        primary: DynLazySpan<'db>,
+        trait_: Trait<'db>,
+        name: IdentId<'db>,
+        /// Whether the trait declares a shape.
+        is_shape: bool,
     },
 
     MissingAssociatedConstValue {
@@ -1813,6 +1940,10 @@ impl ImplDiag<'_> {
             Self::CyclicEffectRow { .. } => 34,
             Self::MethodMaybeMutMismatch { .. } => 35,
             Self::PartialMutImpl { .. } => 36,
+            Self::AssocShapeMismatch { .. } => 38,
+            Self::ShapeGrantsMut { .. } => 39,
+            Self::ShapeWithoutAccess { .. } => 40,
+            Self::SpreadNotListed { .. } => 37,
         }
     }
 }

@@ -26,7 +26,7 @@ fn by_value_traversal_mutates_its_base() {
 #[test]
 fn by_value_traversal_shrinks_its_base() uses (evm: mut Evm) {
     with (RawStorage = evm) {
-        let xs = unsafe { SolArray<u256>::at(0) }
+        let xs = unsafe { mut SolArray<u256>::at(0) }
         xs.push(1)
         xs.push(2)
         xs.push(3)

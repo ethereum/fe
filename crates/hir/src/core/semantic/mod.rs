@@ -33,10 +33,11 @@ use crate::analysis::ty::effects::rows::RowKey;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{
-    Shape, is_param_product, lower_param_product, lower_return_shape, mentions_mode,
-    param_product_diags, return_shape_diags,
+    Shape, assoc_tys, is_param_product, lower_opaque_param, lower_param_product,
+    lower_return_shape, lower_shape_value, may_name_shape, mentions_mode, names_assoc_ty,
+    names_shape_without_mode, param_product_diags, return_shape_diags, shape_value_diags,
 };
-use crate::analysis::ty::ty_def::{BorrowKind, Kind};
+use crate::analysis::ty::ty_def::{AssocTy, BorrowKind, Kind, ShapeMode};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
 use crate::hir_def::params::{FuncParamMode, KindBound as HirKindBound};
 use crate::hir_def::scope_graph::ScopeId;
@@ -62,6 +63,7 @@ pub fn lower_hir_kind_local(k: &HirKindBound) -> Kind {
     use crate::hir_def::Partial;
     match k {
         HirKindBound::Mono => Kind::Star,
+        HirKindBound::Shape => Kind::Shape,
         HirKindBound::Abs(lhs, rhs) => {
             let lhs_k = match lhs {
                 Partial::Present(inner) => lower_hir_kind_local(inner),
@@ -83,7 +85,7 @@ use crate::analysis::semantic::capability::array::ArrayLength;
 use crate::analysis::ty::adt_def::{AdtCycleMember, AdtDef, AdtField, AdtRef};
 use crate::analysis::ty::const_ty::{ConstTyData, LoweringContext};
 use crate::analysis::ty::effects::{
-    EffectKeyKind, place_effect_provider_param_index_map, resolve_effect_key,
+    EffectKeyKind, ResolvedEffectKey, place_effect_provider_param_index_map, resolve_effect_key,
 };
 use crate::analysis::ty::trait_def::{
     ImplementorId, ImplementorOrigin, TraitInstId, does_impl_trait_conflict, impls_for_trait_def,
@@ -110,8 +112,9 @@ use crate::analysis::ty::{
     ty_def::{InvalidCause, PrimTy, TyId},
     ty_error::{collect_ty_lower_errors, demanded_ground_const_cause, diag_from_invalid_cause},
     ty_lower::{
-        TyAlias, lower_hir_ty, lower_hir_ty_deferred, lower_hir_ty_with_minter, lower_opt_hir_ty,
-        lower_type_alias, lower_type_alias_from_hir, lower_type_alias_from_hir_deferred,
+        TyAlias, lower_hir_ty, lower_hir_ty_deferred, lower_hir_ty_with_minter,
+        lower_kind_in_bounds, lower_opt_hir_ty, lower_type_alias, lower_type_alias_from_hir,
+        lower_type_alias_from_hir_deferred,
     },
 };
 use crate::core::adt_lower::{lower_adt, lower_contract_fields};
@@ -306,9 +309,12 @@ fn canonicalize_effect_binding_trait_inst<'db>(
     )
 }
 
+/// `func`'s effects where it is used at `mode`: a `mut?` effect is `mut` at
+/// `mut`.
 fn func_effect_requirements_canonical<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Vec<EffectRequirement<'db>> {
     let assumptions = collect_func_decl_constraints(db, func.into(), true).instantiate_identity();
     func.effects(db)
@@ -332,8 +338,12 @@ fn func_effect_requirements_canonical<'db>(
             Some(EffectRequirement {
                 binding_name,
                 key,
-                is_mut: effect.is_mut(),
-                binding_site: EffectParamSite::Func(func),
+                is_mut: match effect.mode {
+                    ModeMarker::None => false,
+                    ModeMarker::Mut => true,
+                    ModeMarker::MaybeMut => mode == Some(BorrowKind::Mut),
+                },
+                binding_site: EffectParamSite::Func(func, mode),
                 binding_idx: idx as u32,
                 binding_ty: key_syntax,
             })
@@ -344,8 +354,9 @@ fn func_effect_requirements_canonical<'db>(
 fn func_provider_bindings_canonical<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Vec<ProviderBinding<'db>> {
-    let requirements = func_effect_requirements_canonical(db, func);
+    let requirements = func.effect_requirements(db, mode);
     let provider_map = place_effect_provider_param_index_map(db, func);
     let provider_params = CallableDef::Func(func).params(db);
     let mut providers = requirements
@@ -367,7 +378,7 @@ fn func_provider_bindings_canonical<'db>(
                 provider_ty,
                 is_mut: requirement.is_mut,
                 source: ProviderSource::UsesParam {
-                    site: EffectParamSite::Func(func),
+                    site: EffectParamSite::Func(func, mode).slot_site(db, requirement.binding_idx),
                     requirement_idx: requirement.binding_idx,
                 },
                 semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
@@ -376,7 +387,7 @@ fn func_provider_bindings_canonical<'db>(
         .collect::<Vec<_>>();
 
     providers.extend(
-        registered_root_providers(db, EffectParamSite::Func(func))
+        registered_root_providers(db, EffectParamSite::Func(func, mode))
             .iter()
             .cloned()
             .map(|registration| {
@@ -399,8 +410,9 @@ fn func_provider_bindings_canonical<'db>(
 fn func_effect_resolutions_canonical<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Vec<ResolvedEffectBinding> {
-    let providers = provider_bindings_for_site(db, EffectParamSite::Func(func));
+    let providers = provider_bindings_for_site(db, EffectParamSite::Func(func, mode));
     let explicit_provider_idx = providers
         .iter()
         .filter_map(|provider| match provider.source {
@@ -418,8 +430,8 @@ fn func_effect_resolutions_canonical<'db>(
         ProviderSource::UsesParam { .. } | ProviderSource::ContractField { .. } => None,
     });
 
-    func_effect_requirements_canonical(db, func)
-        .into_iter()
+    func.effect_requirements(db, mode)
+        .iter()
         .filter(|requirement| {
             matches!(
                 requirement.key.kind(),
@@ -500,6 +512,13 @@ fn func_param_product<'db>(
         .get(idx)?
         .ty
         .to_opt()?;
+    // A parameter naming an associated shape takes a value of it whole.
+    if may_name_shape(db, hir_ty, func.is_maybe_mut(db))
+        && let Some(opaque) =
+            lower_opaque_param(db, hir_ty, func.scope(), func.assumptions(db), mode)
+    {
+        return Some(opaque);
+    }
     // Decided from the written type, before the function's constraints,
     // which may need its other parameters' types.
     if !is_param_product(db, hir_ty) {
@@ -522,9 +541,20 @@ fn func_return_shape<'db>(
 }
 
 /// Whether `func` is a `mut?` function: its signature mentions `mut?`, in a
-/// parameter, its return, an effect or a bound.
+/// parameter, its return, an effect or a bound. Only syntax decides it, since
+/// nearly every query asks for a function's modes.
 #[salsa::tracked]
 fn func_is_maybe_mut<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
+    signature_mentions_maybe_mut(db, func, |_| true)
+}
+
+/// Whether `func`'s signature mentions `mut?` in a parameter, its return, a
+/// bound, or an effect that `counts`.
+pub(crate) fn signature_mentions_maybe_mut<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    counts: impl Fn(&EffectParam<'db>) -> bool,
+) -> bool {
     let mentions = |ty: Option<TypeId<'db>>| ty.is_some_and(|ty| ty.mentions_maybe_mut(db));
     let bounds_mention = |bounds: &[TypeBound<'db>]| {
         bounds
@@ -541,7 +571,7 @@ fn func_is_maybe_mut<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
             .declared_effects(db)
             .data(db)
             .iter()
-            .any(|effect| effect.mode == ModeMarker::MaybeMut)
+            .any(|effect| effect.mode == ModeMarker::MaybeMut && counts(effect))
         || func
             .generic_params(db)
             .data(db)
@@ -572,6 +602,13 @@ fn func_arg_ty<'db>(
     idx: usize,
 ) -> Option<Binder<'db, TyId<'db>>> {
     let param = func.params_list(db).to_opt()?.data(db).get(idx)?;
+    // A misplaced spread is reported where it is written, and lists nothing.
+    if func.is_misplaced_spread(db, idx) {
+        return Some(Binder::bind(
+            func.into(),
+            TyId::invalid(db, InvalidCause::Other),
+        ));
+    }
     // A product's type is its parts' types.
     if let Some(product) = func_param_product(db, func, idx, None) {
         return Some(Binder::bind(func.into(), product.erased_ty(db)));
@@ -781,22 +818,24 @@ impl<'db> Func<'db> {
             return Vec::new();
         };
         let assumptions = self.assumptions(db);
-        if mentions_mode(db, hir_ty) {
-            return return_shape_diags(
-                db,
-                hir_ty,
-                self.scope(),
-                self.span().sig().ret_ty(),
-                assumptions,
-            );
+        let span = self.span().sig().ret_ty();
+        let shape = self.return_shape(db, self.modes(db)[0]);
+        let diags = if mentions_mode(db, hir_ty) || shape.is_some() {
+            return_shape_diags(db, hir_ty, self.scope(), span.clone(), assumptions)
+        } else {
+            collect_ty_lower_errors(db, self.scope(), hir_ty, span.clone(), assumptions)
+        };
+        if diags.is_empty() && self.return_lacks_mode(db) {
+            return vec![TyLowerDiag::ShapeWithoutMode(span.into()).into()];
         }
-        collect_ty_lower_errors(
-            db,
-            self.scope(),
-            hir_ty,
-            self.span().sig().ret_ty(),
-            assumptions,
-        )
+        diags
+    }
+
+    /// Whether the return names an associated shape without a mode, where
+    /// nothing gives it one (3-0084).
+    pub fn return_lacks_mode(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.return_shape(db, self.modes(db)[0])
+            .is_some_and(|shape| names_shape_without_mode(db, shape))
     }
 
     /// Returns the containing `impl Trait` block if this function is a method
@@ -809,6 +848,18 @@ impl<'db> Func<'db> {
     }
 
     /// Returns the containing trait if this function is a method inside a trait definition.
+    /// Whether parameter `idx` is a spread where none may stand: anywhere
+    /// but last in a trait method's declaration.
+    pub fn is_misplaced_spread(self, db: &'db dyn HirDb, idx: usize) -> bool {
+        self.params_list(db).to_opt().is_some_and(|params| {
+            let params = params.data(db);
+            params.get(idx).is_some_and(|param| param.is_spread())
+                && (self.body(db).is_some()
+                    || self.containing_trait(db).is_none()
+                    || idx + 1 != params.len())
+        })
+    }
+
     pub fn containing_trait(self, db: &'db dyn HirDb) -> Option<Trait<'db>> {
         match self.scope().parent(db)? {
             ScopeId::Item(ItemKind::Trait(trait_)) => Some(trait_),
@@ -1142,6 +1193,60 @@ impl<'db> CallableDef<'db> {
         }
     }
 
+    /// The shape of the argument parameter `idx` takes in a call at `mode`:
+    /// an owned value, a view or `mut` access, or a product's parts. `None`
+    /// for a spread, whose shape lists parameters.
+    pub fn param_shape(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        idx: usize,
+        mode: Option<BorrowKind>,
+    ) -> Option<Binder<'db, Shape<'db>>> {
+        if let Some(product) = self.param_product(db, idx, mode) {
+            return Some(product);
+        }
+        if self.spread(db) == Some(idx) {
+            return None;
+        }
+        let param_mode = self.param_mode(db, idx, mode);
+        Some(self.arg_ty(db, idx)?.map(|ty| Shape::param(param_mode, ty)))
+    }
+
+    /// The callee's parameters in a call at `mode`: the shape of each before
+    /// its spread, and the spread's shape, if it has one.
+    pub fn param_shapes(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
+    ) -> (Vec<Binder<'db, Shape<'db>>>, Option<Binder<'db, TyId<'db>>>) {
+        let declared = (0..)
+            .map_while(|idx| self.param_shape(db, idx, mode))
+            .collect();
+        (
+            declared,
+            self.spread(db).and_then(|idx| self.arg_ty(db, idx)),
+        )
+    }
+
+    /// The index of the callee's spread parameter, `..A`, if it has one: its
+    /// last, or a misplaced one, which lists nothing.
+    pub fn spread(self, db: &'db dyn HirDb) -> Option<usize> {
+        let Self::Func(func) = self else {
+            return None;
+        };
+        func.params_list(db)
+            .to_opt()?
+            .data(db)
+            .iter()
+            .position(|param| param.is_spread())
+    }
+
+    /// The declared parameter a call's parameter `idx` is: itself, or the
+    /// spread that lists it.
+    pub fn declared_param(self, db: &'db dyn HirDb, idx: usize) -> usize {
+        self.spread(db).map_or(idx, |spread| idx.min(spread))
+    }
+
     /// The modes the callee is called at: `ref` and `mut` for a `mut?`
     /// function, none for any other.
     pub fn modes(self, db: &'db dyn HirAnalysisDb) -> &'static [Option<BorrowKind>] {
@@ -1243,7 +1348,7 @@ impl<'db> FuncParamView<'db> {
         mode: Option<BorrowKind>,
     ) -> Vec<(FuncParamMode, TyId<'db>)> {
         match self.product(db, mode) {
-            Some(product) => product.part_modes(),
+            Some(product) => product.part_modes(db),
             None => vec![(self.mode_at(db, mode), self.ty(db))],
         }
     }
@@ -1373,22 +1478,64 @@ impl<'db> FuncParamView<'db> {
             return vec![TyLowerDiag::VarParamNotOwned { span }.into()];
         }
 
-        // A product's parts carry its modes, and its body takes it apart.
-        if let TypeKind::Mode(_, inner) = hir_ty.data(db)
-            && inner
-                .to_opt()
-                .is_some_and(|inner| is_param_product(db, inner))
-        {
-            let span = self.span().ty().into();
-            return vec![TyLowerDiag::ModeOnProduct(span).into()];
+        // A spread lists a shape's parameters, last in a trait method's
+        // declaration; its type is the shape, not a value's type.
+        if param.is_spread() {
+            if func.is_misplaced_spread(db, self.idx) {
+                return vec![TyLowerDiag::MisplacedSpread(self.span().into()).into()];
+            }
+            let errs =
+                collect_hir_ty_diags(db, func.scope(), hir_ty, self.lazy_ty_span(db), assumptions);
+            if !errs.is_empty() {
+                return errs;
+            }
+            let ty = self.ty(db);
+            return if *ty.kind(db) == Kind::Shape {
+                Vec::new()
+            } else {
+                vec![
+                    TyLowerDiag::SpreadOfNonShape {
+                        span: self.ty_span(db),
+                        ty,
+                    }
+                    .into(),
+                ]
+            };
         }
-        if self.product(db, None).is_some() {
+
+        // A product's parts carry its modes, and its body takes it apart; an
+        // associated shape is named at its mode.
+        if let TypeKind::Mode(_, inner) = hir_ty.data(db)
+            && let Some(inner) = inner.to_opt()
+        {
+            let shape = may_name_shape(db, inner, func.is_maybe_mut(db))
+                && lower_opaque_param(db, inner, func.scope(), assumptions, None).is_some();
+            if shape || is_param_product(db, inner) {
+                let span = self.span().ty().into();
+                return vec![TyLowerDiag::ModeOnProduct { span, shape }.into()];
+            }
+        }
+        if let Some(product) = self.product(db, func.modes(db)[0]) {
             if self.is_self_param(db) {
                 return vec![TyLowerDiag::ProductReceiver(self.span().into()).into()];
             }
-            if !param.is_destructured() && func.body(db).is_some() {
-                let span = self.span().into();
-                return vec![TyLowerDiag::ProductParamNotDestructured(span).into()];
+            match product {
+                // A value of an opaque shape is passed on whole.
+                Shape::Opaque(_) if names_shape_without_mode(db, product) => {
+                    return vec![TyLowerDiag::ShapeWithoutMode(self.span().ty().into()).into()];
+                }
+                Shape::Opaque(_) => {}
+                _ if !param.is_destructured() && func.body(db).is_some() => {
+                    let span = self.span().into();
+                    return vec![
+                        TyLowerDiag::ProductParamNotDestructured {
+                            span,
+                            closure: false,
+                        }
+                        .into(),
+                    ];
+                }
+                _ => {}
             }
         }
 
@@ -1415,7 +1562,12 @@ impl<'db> FuncParamView<'db> {
 
         let mut out = Vec::new();
 
-        if !ty.has_star_kind(db) {
+        // An associated shape outside a `mut?` function needs its mode.
+        if matches!(ty.data(db), TyData::AssocTy(assoc) if assoc.is_shape(db)) {
+            out.push(TyLowerDiag::ShapeWithoutMode(ty_span).into());
+            return out;
+        }
+        if !ty.is_star_kind(db) {
             out.push(TyDiagCollection::from(TyLowerDiag::ExpectedStarKind(
                 ty_span.clone(),
             )));
@@ -2124,17 +2276,14 @@ impl<'db> Contract<'db> {
 
 #[salsa::tracked]
 impl<'db> Func<'db> {
+    /// The function's effects where it is used at `mode`.
     #[salsa::tracked(return_ref)]
-    pub fn effect_requirements(self, db: &'db dyn HirAnalysisDb) -> Vec<EffectRequirement<'db>> {
-        func_effect_requirements_canonical(db, self)
-    }
-
-    #[salsa::tracked(return_ref)]
-    pub fn effective_effect_requirements(
+    pub fn effect_requirements(
         self,
         db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
     ) -> Vec<EffectRequirement<'db>> {
-        func_effect_requirements_canonical(db, self)
+        func_effect_requirements_canonical(db, self, mode)
     }
 }
 
@@ -2162,7 +2311,7 @@ pub fn effect_requirements_for_site<'db>(
     site: EffectParamSite<'db>,
 ) -> Vec<EffectRequirement<'db>> {
     match site {
-        EffectParamSite::Func(func) => func.effective_effect_requirements(db).clone(),
+        EffectParamSite::Func(func, mode) => func.effect_requirements(db, mode).clone(),
         EffectParamSite::Contract(contract) => contract.effect_requirements(db).clone(),
         EffectParamSite::ContractInit { contract } => contract.init_effect_requirements(db).clone(),
         EffectParamSite::ContractRecvArm {
@@ -2199,7 +2348,9 @@ pub(crate) fn row_effect_provider<'db>(
         provider_ty,
         is_mut: requirement.is_mut,
         source: ProviderSource::UsesParam {
-            site: requirement.binding_site,
+            site: requirement
+                .binding_site
+                .slot_site(db, requirement.binding_idx),
             requirement_idx: requirement.binding_idx,
         },
         semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
@@ -2237,7 +2388,7 @@ fn provider_bindings_for_site_query<'db>(
 ) -> Vec<ProviderBinding<'db>> {
     let site = site.site(db);
     match site {
-        EffectParamSite::Func(func) => func_provider_bindings_canonical(db, func),
+        EffectParamSite::Func(func, mode) => func_provider_bindings_canonical(db, func, mode),
         EffectParamSite::Contract(contract)
         | EffectParamSite::ContractInit { contract }
         | EffectParamSite::ContractRecvArm { contract, .. } => {
@@ -2266,7 +2417,7 @@ fn effect_resolutions_for_site_query<'db>(
 ) -> Vec<ResolvedEffectBinding> {
     let site = site.site(db);
     match site {
-        EffectParamSite::Func(func) => func_effect_resolutions_canonical(db, func),
+        EffectParamSite::Func(func, mode) => func_effect_resolutions_canonical(db, func, mode),
         EffectParamSite::Contract(contract) => {
             contract_effect_resolutions_canonical(db, contract, site, contract.effects(db))
         }
@@ -2346,7 +2497,7 @@ fn contract_scoped_effect_requirements_canonical<'db>(
     list_site: EffectParamSite<'db>,
     list: EffectParamListId<'db>,
 ) -> Vec<EffectRequirement<'db>> {
-    if matches!(list_site, EffectParamSite::Func(_)) {
+    if matches!(list_site, EffectParamSite::Func(..)) {
         unreachable!("contract-scoped effect bindings require a contract init/recv/decl site");
     }
 
@@ -3152,6 +3303,19 @@ impl<'db> Func<'db> {
     /// Returns true if this function has any effect parameters.
     pub fn has_effects(self, db: &'db dyn HirAnalysisDb) -> bool {
         !self.effects(db).data(db).is_empty()
+    }
+
+    /// Whether `effect`, an entry of the function's `uses`, names a row,
+    /// whose components carry their own modes.
+    pub fn names_row(self, db: &'db dyn HirAnalysisDb, effect: &EffectParam<'db>) -> bool {
+        let assumptions =
+            collect_func_decl_constraints(db, self.into(), true).instantiate_identity();
+        effect.key_ty.to_opt().is_some_and(|key| {
+            matches!(
+                resolve_effect_key(db, key, self.scope(), assumptions),
+                ResolvedEffectKey::Row(_)
+            )
+        })
     }
 }
 
@@ -4621,7 +4785,7 @@ impl<'db> ImplTrait<'db> {
         Self::impl_trait_local_nominal_root(db, impl_trait).is_some_and(|root| match root {
             TyBase::Adt(adt) => adt.ingot(db) == impl_trait_ingot,
             TyBase::Contract(contract) => contract.top_mod(db).ingot(db) == impl_trait_ingot,
-            TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) => false,
+            TyBase::Prim(_) | TyBase::Func(_) | TyBase::Closure(_) | TyBase::Shape(_) => false,
         })
     }
 
@@ -4982,43 +5146,50 @@ impl<'db> ImplAssocTypeView<'db> {
 
     /// Semantic type of this associated type implementation.
     pub fn ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
-        let hir = self.owner.types(db)[self.idx].type_ref.to_opt()?;
         let assumptions = constraints_for(db, self.owner.into());
-        let lowering_cx = LoweringContext::new().for_impl_assoc_type(self.owner);
-        Some(lower_hir_ty_with_minter(
-            db,
-            hir,
-            self.owner.scope(),
-            assumptions,
-            &lowering_cx,
-        ))
+        self.lower(db, assumptions, LoweringContext::new())
     }
 
     pub(crate) fn candidate_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
-        let hir = self.owner.types(db)[self.idx].type_ref.to_opt()?;
         let assumptions =
             collect_candidate_constraints(db, self.owner.into()).instantiate_identity();
-        let lowering_cx = LoweringContext::deferred().for_impl_assoc_type(self.owner);
-        Some(lower_hir_ty_with_minter(
-            db,
-            hir,
-            self.owner.scope(),
-            assumptions,
-            &lowering_cx,
-        ))
+        self.lower(db, assumptions, LoweringContext::deferred())
+    }
+
+    /// The type or, for `shape Step = ..`, the shape term the impl gives.
+    fn lower(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        assumptions: PredicateListId<'db>,
+        lowering_cx: LoweringContext<'db>,
+    ) -> Option<TyId<'db>> {
+        let def = self.owner.types(db)[self.idx];
+        let hir = def.type_ref.to_opt()?;
+        let lowering_cx = lowering_cx.for_impl_assoc_type(self.owner);
+        let scope = self.owner.scope();
+        Some(if def.is_shape {
+            lower_shape_value(db, hir, scope, assumptions, &lowering_cx)
+        } else {
+            lower_hir_ty_with_minter(db, hir, scope, assumptions, &lowering_cx)
+        })
     }
 
     /// All type-related diagnostics for this associated type.
     pub fn ty_diags(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
-        let Some(hir) = self.owner.types(db)[self.idx].type_ref.to_opt() else {
+        let def = self.owner.types(db)[self.idx];
+        let Some(hir) = def.type_ref.to_opt() else {
             return Vec::new();
         };
 
         let ty_span = self.span().ty();
         let assumptions = constraints_for(db, self.owner.into());
 
-        let errs =
-            collect_ty_lower_errors(db, self.owner.scope(), hir, ty_span.clone(), assumptions);
+        let scope = self.owner.scope();
+        let errs = if def.is_shape {
+            shape_value_diags(db, hir, scope, ty_span.clone(), assumptions)
+        } else {
+            collect_ty_lower_errors(db, scope, hir, ty_span.clone(), assumptions)
+        };
         if !errs.is_empty() {
             return errs;
         }
@@ -5028,6 +5199,27 @@ impl<'db> ImplAssocTypeView<'db> {
         };
         if let Some(diag) = ty.emit_diag(db, ty_span.clone().into()) {
             return vec![diag];
+        }
+        // A type is of its declaration's kind: `*`, unless a bound gives
+        // another.
+        if !def.is_shape
+            && let Some(trait_) = self.owner.trait_def(db)
+            && let Some(decl) = trait_
+                .assoc_types(db)
+                .find(|assoc| assoc.name(db) == def.name.to_opt())
+            && !decl.is_shape(db)
+        {
+            let expected = lower_kind_in_bounds(decl.bounds_raw(db)).unwrap_or(Kind::Star);
+            if !ty.kind(db).does_match(&expected) {
+                return vec![
+                    TyLowerDiag::InvalidTypeArgKind {
+                        span: ty_span.into(),
+                        expected: Some(expected),
+                        given: ty,
+                    }
+                    .into(),
+                ];
+            }
         }
         if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(
             db,
@@ -5046,7 +5238,151 @@ impl<'db> ImplAssocTypeView<'db> {
             ];
         }
 
+        if def.is_shape
+            && let Some(name) = def.name.to_opt()
+            && let Some(diag) = shape_contract_diag(
+                db,
+                self.owner.trait_def(db),
+                name,
+                ty,
+                param_env(db, self.owner.into()),
+                ty_span.into(),
+            )
+        {
+            return vec![diag];
+        }
+
         Vec::new()
+    }
+}
+
+/// The contract an associated shape's value `ty`, given for the shape `name`
+/// of `trait_` under `assumptions`, keeps: named at `ref`, it grants no
+/// `mut`, and a shape a method of the trait returns has an access in every
+/// impl.
+pub(crate) fn shape_contract_diag<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: Option<Trait<'db>>,
+    name: IdentId<'db>,
+    ty: TyId<'db>,
+    assumptions: PredicateListId<'db>,
+    primary: crate::span::DynLazySpan<'db>,
+) -> Option<TyDiagCollection<'db>> {
+    let at_ref = ty.at_shape_mode(db, ShapeMode::Ref).as_shape_part(db);
+    if let Some(param) = mut_grant(db, &at_ref) {
+        return Some(
+            ImplDiag::ShapeGrantsMut {
+                primary,
+                name,
+                param,
+                bound: false,
+            }
+            .into(),
+        );
+    }
+    let trait_ = trait_?;
+    (trait_returns_shape(db, trait_, name) && !has_access_in_every_impl(db, assumptions, &at_ref))
+        .then(|| {
+            ImplDiag::ShapeWithoutAccess {
+                primary,
+                name,
+                trait_,
+            }
+            .into()
+        })
+}
+
+/// What in `shape` grants `mut`, if anything does: a part written `mut` or an
+/// associated shape (`None`), or else a shape parameter, whose accesses are
+/// not known.
+pub(crate) fn mut_grant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    shape: &Shape<'db>,
+) -> Option<Option<TyId<'db>>> {
+    match shape {
+        Shape::Owned(_) => None,
+        Shape::Access(kind, _) => (*kind == BorrowKind::Mut).then_some(None),
+        Shape::Tuple(elems) => {
+            let grants: Vec<_> = elems
+                .iter()
+                .filter_map(|elem| mut_grant(db, elem))
+                .collect();
+            grants
+                .iter()
+                .find(|grant| grant.is_none())
+                .or(grants.first())
+                .copied()
+        }
+        Shape::Sum { payload, .. } => mut_grant(db, payload),
+        Shape::Opaque(term) => match term.data(db) {
+            TyData::AssocTy(_) => shape.has_access_of(db, BorrowKind::Mut).then_some(None),
+            _ => Some(Some(*term)),
+        },
+    }
+}
+
+/// Whether a method of `trait_` returns its associated shape `name`, which
+/// makes the method a projection in every impl.
+pub(crate) fn trait_returns_shape<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: Trait<'db>,
+    name: IdentId<'db>,
+) -> bool {
+    trait_.methods(db).any(|method| {
+        method
+            .return_shape(db, method.modes(db)[0])
+            .is_some_and(|shape| {
+                names_assoc_ty(db, shape, |assoc| {
+                    assoc.name == name && assoc.trait_.def(db) == trait_
+                })
+            })
+    })
+}
+
+/// The associated shapes the methods of `inst`'s trait return, for `inst`
+/// and without a mode: each method is a projection in every impl of the
+/// trait, so a shape it returns, the trait's or a super-trait's, has an
+/// access there.
+pub(crate) fn returned_shapes<'db>(
+    db: &'db dyn HirAnalysisDb,
+    inst: TraitInstId<'db>,
+) -> IndexSet<AssocTy<'db>> {
+    let trait_ = inst.def(db);
+    trait_
+        .methods(db)
+        .filter_map(|method| method.return_shape(db, method.modes(db)[0]))
+        .flat_map(|shape| {
+            let shape = Binder::bind(trait_.into(), shape.clone()).instantiate(db, inst.args(db));
+            assoc_tys(db, &shape)
+        })
+        .filter(|assoc| assoc.is_shape(db))
+        .map(|assoc| AssocTy {
+            mode: None,
+            ..assoc
+        })
+        .collect()
+}
+
+/// Whether `shape` grants an access whatever its opaque parts turn out to
+/// be: an opaque part does if its own trait returns it, or a trait it is
+/// bound by in `assumptions` does.
+pub(crate) fn has_access_in_every_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assumptions: PredicateListId<'db>,
+    shape: &Shape<'db>,
+) -> bool {
+    match shape {
+        Shape::Owned(_) => false,
+        Shape::Access(..) => true,
+        Shape::Tuple(elems) => elems
+            .iter()
+            .any(|elem| has_access_in_every_impl(db, assumptions, elem)),
+        Shape::Sum { payload, .. } => has_access_in_every_impl(db, assumptions, payload),
+        Shape::Opaque(term) => matches!(term.data(db), TyData::AssocTy(assoc)
+        if trait_returns_shape(db, assoc.trait_.def(db), assoc.name)
+            || assumptions.list(db).iter().any(|&pred| {
+                returned_shapes(db, pred).contains(&AssocTy { mode: None, ..*assoc })
+            })),
     }
 }
 
@@ -5149,6 +5485,11 @@ impl<'db> TraitAssocTypeView<'db> {
         self.owner.span().item_list().assoc_type(self.idx)
     }
 
+    /// Whether this is an associated shape, `shape Step`.
+    pub fn is_shape(self, db: &'db dyn HirDb) -> bool {
+        self.decl(db).is_shape()
+    }
+
     /// Raw bounds for this associated type (HIR). Prefer semantic checks where possible.
     pub(in crate::core) fn bounds_raw(self, db: &'db dyn HirDb) -> &'db [TypeBound<'db>] {
         &self.decl(db).bounds
@@ -5163,7 +5504,17 @@ impl<'db> TraitAssocTypeView<'db> {
         let hir = self.decl(db).default?;
         let trait_ = self.owner;
         let assumptions = constraints_for(db, trait_.into());
-        Some(lower_hir_ty(db, hir, trait_.scope(), assumptions))
+        Some(if self.is_shape(db) {
+            lower_shape_value(
+                db,
+                hir,
+                trait_.scope(),
+                assumptions,
+                &LoweringContext::new(),
+            )
+        } else {
+            lower_hir_ty(db, hir, trait_.scope(), assumptions)
+        })
     }
 
     pub(crate) fn candidate_default_ty(
@@ -5173,7 +5524,12 @@ impl<'db> TraitAssocTypeView<'db> {
         let hir = self.decl(db).default?;
         let trait_ = self.owner;
         let assumptions = collect_candidate_constraints(db, trait_.into()).instantiate_identity();
-        Some(lower_hir_ty_deferred(db, hir, trait_.scope(), assumptions))
+        Some(if self.is_shape(db) {
+            let lowering_cx = LoweringContext::deferred();
+            lower_shape_value(db, hir, trait_.scope(), assumptions, &lowering_cx)
+        } else {
+            lower_hir_ty_deferred(db, hir, trait_.scope(), assumptions)
+        })
     }
 
     /// Semantic trait bounds using the trait's own `Self` as the subject.
@@ -5725,7 +6081,7 @@ impl<'db> FieldView<'db> {
         let ty = self.ty(db);
         let span = self.ty_span();
 
-        if !ty.has_star_kind(db) {
+        if !ty.is_star_kind(db) {
             out.push(TyLowerDiag::ExpectedStarKind(span.clone()).into());
             return out;
         }

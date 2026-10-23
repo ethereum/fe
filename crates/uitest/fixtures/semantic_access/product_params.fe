@@ -145,3 +145,12 @@ pub contract Store {
         }
     }
 }
+
+// A closure's product parameter takes its parts as the call's accesses too.
+fn closure_parts() {
+    var swap = |(mut a, mut b): (mut u256, mut u256)| {
+        a = b
+    }
+    var y: u256 = 1
+    swap((mut y, mut y))
+}

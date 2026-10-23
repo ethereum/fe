@@ -10,7 +10,7 @@ use parser::ast;
 
 use super::{
     AttrListId, Body, CompBinOp, EffectParamListId, FuncParamListId, FuncParamName,
-    GenericParamListId, HirIngot, IdentId, InlineAttr, InlineAttrErrorKind, InlineHint,
+    GenericParamListId, HirIngot, IdentId, InlineAttr, InlineAttrErrorKind, InlineHint, KindBound,
     ManualContractRootAttr, Partial, Pat, PatId, TupleTypeId, TypeBound, TypeId, UseAlias,
     WhereClauseId,
     scope_graph::{ScopeGraph, ScopeId},
@@ -821,7 +821,8 @@ impl<'db> Func<'db> {
 
     pub fn param_label_or_name(self, db: &'db dyn HirDb, idx: usize) -> Option<FuncParamName<'db>> {
         let param = self.params_list(db).to_opt()?.data(db).get(idx)?;
-        if param.is_label_suppressed {
+        // A spread's parameters have no labels.
+        if param.is_label_suppressed || param.is_spread() {
             Some(FuncParamName::Underscore)
         } else {
             param.name.to_opt()
@@ -1302,6 +1303,16 @@ pub struct AssocTyDecl<'db> {
     pub default: Option<TypeId<'db>>,
 }
 
+impl AssocTyDecl<'_> {
+    /// Whether the item is an associated shape, `shape Step`: an associated
+    /// type of the `shape` kind.
+    pub fn is_shape(&self) -> bool {
+        self.bounds
+            .iter()
+            .any(|bound| matches!(bound, TypeBound::Kind(Partial::Present(KindBound::Shape))))
+    }
+}
+
 /// An associated effect row: `uses E` in a trait, with an optional default
 /// `uses E = (..)`, or `uses E = (..)` in an implementation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
@@ -1427,6 +1438,9 @@ pub struct AssocTyDef<'db> {
     pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
     pub(crate) type_ref: Partial<TypeId<'db>>,
+    /// Whether the item is written `shape Step = ..`, giving an associated
+    /// shape, rather than `type`.
+    pub is_shape: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
