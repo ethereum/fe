@@ -7,9 +7,9 @@ use crate::{
             TopLevelMod, Trait, Use,
             prim_ty::PrimTy,
             scope_graph::{
-                AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge,
-                ScopeId, SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TraitTypeEdge, TypeEdge,
-                ValueEdge, VariantEdge,
+                AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, ImplEdge, IngotEdge, LexEdge,
+                ModEdge, ScopeId, SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TraitTypeEdge,
+                TypeEdge, ValueEdge, VariantEdge,
             },
         },
         span::DynLazySpan,
@@ -400,7 +400,10 @@ impl<'db> NameRes<'db> {
     }
 
     pub(super) fn is_importable(&self) -> bool {
-        matches!(self.domain, NameDomain::TYPE | NameDomain::VALUE)
+        matches!(
+            self.domain,
+            NameDomain::TYPE | NameDomain::VALUE | NameDomain::IMPL
+        )
     }
 
     fn new_prim(prim: PrimTy) -> Self {
@@ -543,7 +546,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                         if found_scopes.insert(edge.dest) {
                             let res = NameRes::new_from_scope(
                                 edge.dest,
-                                NameDomain::from_scope(self.db, edge.dest),
+                                NameDomain::from_edge(self.db, edge),
                                 NameDerivation::Def,
                             );
                             bucket.push(&res);
@@ -699,7 +702,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             }
             let res = NameRes::new_from_scope(
                 scope,
-                NameDomain::from_scope(self.db, scope),
+                NameDomain::from_edge(self.db, edge),
                 NameDerivation::Def,
             );
 
@@ -826,12 +829,24 @@ bitflags! {
             const TYPE = 0b00000001;
             const VALUE = 0b00000010;
             const FIELD = 0b100;
+            /// A named implementation's name.
+            const IMPL = 0b1000;
             const Invalid = 0b0;
         }
 }
 
 #[allow(non_upper_case_globals)]
 impl NameDomain {
+    /// The domain of a name found through `edge`: a named implementation's
+    /// name is in its own domain, while its scope is a type's (where `Self`
+    /// resolves inside it).
+    pub(super) fn from_edge(db: &dyn HirAnalysisDb, edge: &ScopeEdge<'_>) -> Self {
+        match edge.kind {
+            EdgeKind::Impl(_) => Self::IMPL,
+            _ => Self::from_scope(db, edge.dest),
+        }
+    }
+
     pub(super) fn from_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
         match scope {
             ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_))
@@ -959,6 +974,25 @@ impl<'db> QueryPropagator<'db> for TraitEdge<'db> {
 }
 
 impl<'db> QueryPropagator<'db> for TraitTypeEdge<'db> {
+    fn propagate(
+        self,
+        _db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+        _allow_lex: bool,
+    ) -> PropagationResult {
+        if self.0 == name {
+            PropagationResult::Terminated
+        } else {
+            PropagationResult::UnPropagated
+        }
+    }
+
+    fn propagate_glob(self) -> PropagationResult {
+        PropagationResult::Terminated
+    }
+}
+
+impl<'db> QueryPropagator<'db> for ImplEdge<'db> {
     fn propagate(
         self,
         _db: &'db dyn HirAnalysisDb,
@@ -1159,6 +1193,7 @@ impl<'db> QueryPropagator<'db> for EdgeKind<'db> {
             EdgeKind::TraitType(edge) => edge.propagate(db, name, allow_lex),
             EdgeKind::GenericParam(edge) => edge.propagate(db, name, allow_lex),
             EdgeKind::Value(edge) => edge.propagate(db, name, allow_lex),
+            EdgeKind::Impl(edge) => edge.propagate(db, name, allow_lex),
             EdgeKind::Field(edge) => edge.propagate(db, name, allow_lex),
             EdgeKind::Variant(edge) => edge.propagate(db, name, allow_lex),
             EdgeKind::Super(edge) => edge.propagate(db, name, allow_lex),
@@ -1178,6 +1213,7 @@ impl<'db> QueryPropagator<'db> for EdgeKind<'db> {
             EdgeKind::TraitType(edge) => edge.propagate_glob(),
             EdgeKind::GenericParam(edge) => edge.propagate_glob(),
             EdgeKind::Value(edge) => edge.propagate_glob(),
+            EdgeKind::Impl(edge) => edge.propagate_glob(),
             EdgeKind::Field(edge) => edge.propagate_glob(),
             EdgeKind::Variant(edge) => edge.propagate_glob(),
             EdgeKind::Super(edge) => edge.propagate_glob(),
