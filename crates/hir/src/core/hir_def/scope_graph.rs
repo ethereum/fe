@@ -19,11 +19,14 @@ use crate::{
     span::DynLazySpan,
 };
 
-/// Represents a scope relation graph in a top-level module.
+/// Represents a scope relation graph in a top-level module, or in a function
+/// body that is lowered on its own (see [`Body::scope_graph`]).
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct ScopeGraph<'db> {
     /// The top-level module containing the scope graph.
     pub top_mod: TopLevelMod<'db>,
+    /// The outermost scope of the graph: the top-level module, or the body.
+    pub root: ScopeId<'db>,
     /// The scopes in the graph.
     pub scopes: IndexMap<ScopeId<'db>, Scope<'db>>,
     /// The all unresolved uses in the graph, this is used in name resolution.
@@ -31,13 +34,12 @@ pub struct ScopeGraph<'db> {
 }
 
 impl<'db> ScopeGraph<'db> {
-    /// Represents all item scopes in a top-level module in depth-first order.
-    pub fn items_dfs<'a>(&'a self, db: &'a dyn HirDb) -> impl Iterator<Item = ItemKind<'a>> + 'a {
+    /// Represents all item scopes in the graph in depth-first order.
+    pub fn items_dfs<'a>(&'a self) -> impl Iterator<Item = ItemKind<'a>> + 'a {
         ScopeGraphItemIterDfs {
-            db,
             graph: self,
             visited: Default::default(),
-            stack: vec![self.top_mod.scope()],
+            stack: vec![self.root],
         }
     }
 
@@ -194,7 +196,10 @@ impl<'db> ScopeId<'db> {
 
     /// Returns the scope graph containing this scope.
     pub fn scope_graph(self, db: &'db dyn HirDb) -> &'db ScopeGraph<'db> {
-        self.top_mod(db).scope_graph(db)
+        match self {
+            ScopeId::Item(ItemKind::Body(body)) | ScopeId::Block(body, _) => body.scope_graph(db),
+            _ => self.top_mod(db).scope_graph(db),
+        }
     }
 
     pub fn edges(self, db: &'db dyn HirDb) -> &'db IndexSet<ScopeEdge<'db>> {
@@ -437,7 +442,6 @@ impl<'db> ScopeId<'db> {
 }
 
 struct ScopeGraphItemIterDfs<'db, 'a> {
-    db: &'db dyn HirDb,
     graph: &'a ScopeGraph<'db>,
     visited: FxHashSet<ScopeId<'db>>,
     stack: Vec<ScopeId<'db>>,
@@ -451,8 +455,7 @@ impl<'db> std::iter::Iterator for ScopeGraphItemIterDfs<'db, '_> {
             self.visited.insert(scope);
             for edge in self.graph.edges(scope).iter().rev() {
                 let dest = edge.dest;
-                let top_mod = dest.top_mod(self.db);
-                if top_mod != self.graph.top_mod || self.visited.contains(&dest) {
+                if !self.graph.scopes.contains_key(&dest) || self.visited.contains(&dest) {
                     continue;
                 }
 
@@ -761,6 +764,44 @@ mod tests {
     };
 
     #[test]
+    fn item_free_func_bodies_are_lowered_on_demand() {
+        let mut db = TestDb::default();
+        let text = r#"
+            fn lazy() { let x = { 1 } }
+            fn eager() { struct S {} }
+        "#;
+
+        let file = db.standalone_file(text);
+        let graph = db.parse_source(file);
+        let &[lazy, eager] = graph.top_mod.all_funcs(&db).as_slice() else {
+            panic!("expected two functions");
+        };
+        let lazy_body = lazy.body(&db).unwrap();
+        let eager_body = eager.body(&db).unwrap();
+
+        assert!(!graph.scopes.contains_key(&lazy_body.scope()));
+        assert!(graph.scopes.contains_key(&eager_body.scope()));
+        assert_eq!(lazy_body.scope().scope_graph(&db).root, lazy_body.scope());
+        assert_eq!(lazy_body.containing_func(&db), Some(lazy));
+        let items: Vec<_> = graph
+            .top_mod
+            .all_items(&db)
+            .iter()
+            .copied()
+            .filter(|item| !matches!(item, ItemKind::TopMod(_) | ItemKind::Use(_)))
+            .collect();
+        assert_eq!(
+            items[..4],
+            [
+                ItemKind::Func(lazy),
+                ItemKind::Body(lazy_body),
+                ItemKind::Func(eager),
+                ItemKind::Body(eager_body),
+            ]
+        );
+    }
+
+    #[test]
     fn item_tree() {
         let mut db = TestDb::default();
 
@@ -780,9 +821,11 @@ mod tests {
         "#;
 
         let file = db.standalone_file(text);
-        let scope_graph = db.parse_source(file);
-        let items: Vec<_> = scope_graph
-            .items_dfs(&db)
+        let top_mod = db.parse_source(file).top_mod;
+        let items: Vec<_> = top_mod
+            .all_items(&db)
+            .iter()
+            .copied()
             .filter(|item| !matches!(item, ItemKind::Use(use_) if use_.is_synthetic_use(&db)))
             .collect();
         assert_eq!(items.len(), 8);

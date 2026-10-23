@@ -75,8 +75,7 @@ pub async fn handle_semantic_tokens_full(
     let mut tokens: Vec<(u32, u32, u32, u32, u32)> = vec![]; // (line, col, length, type, modifiers)
 
     // Collect tokens from all items in the module
-    let scope_graph = top_mod.scope_graph(&backend.db);
-    for item in scope_graph.items_dfs(&backend.db) {
+    for &item in top_mod.all_items(&backend.db) {
         for reference in item.references(&backend.db) {
             // For path references, emit a separate token per segment so that
             // each part of `C::init_code_offset` gets its own token type

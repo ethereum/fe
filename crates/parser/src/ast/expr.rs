@@ -1,4 +1,4 @@
-use rowan::ast::AstNode;
+use rowan::{GreenNodeData, ast::AstNode};
 
 use super::{GenericArgsOwner, LitInt, ast_node, support};
 use crate::{SyntaxKind as SK, SyntaxNode, SyntaxToken};
@@ -87,6 +87,18 @@ impl BlockExpr {
     /// Returns items declared in the block.
     pub fn items(&self) -> impl Iterator<Item = super::Item> {
         support::children(self.syntax())
+    }
+
+    /// Returns `true` if the block or any block nested in it declares an item.
+    pub fn declares_items(&self) -> bool {
+        fn contains_item(node: &GreenNodeData) -> bool {
+            node.children().any(|child| {
+                child
+                    .into_node()
+                    .is_some_and(|node| node.kind() == SK::Item.into() || contains_item(node))
+            })
+        }
+        contains_item(&self.syntax().green())
     }
 }
 

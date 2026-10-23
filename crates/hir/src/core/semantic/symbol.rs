@@ -264,7 +264,7 @@ impl<'db> SymbolView<'db> {
             return Vec::new();
         };
         let scope = ScopeId::from_item(item);
-        let scope_graph = scope.top_mod(db).scope_graph(db);
+        let scope_graph = scope.scope_graph(db);
         scope_graph
             .children(scope)
             .filter(|child| matches!(child, ScopeId::GenericParam(..)))
@@ -519,7 +519,7 @@ fn item_children<'db>(db: &'db dyn HirDb, item: ItemKind<'db>) -> Vec<SymbolView
         }
         ItemKind::Mod(m) => {
             let scope = m.scope();
-            let scope_graph = scope.top_mod(db).scope_graph(db);
+            let scope_graph = scope.scope_graph(db);
             for child_item in scope_graph.child_items(scope) {
                 children.push(SymbolView::from_item(child_item));
             }

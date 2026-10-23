@@ -1,0 +1,1 @@
+Checking and building small projects is faster: a function body that declares no items is lowered when it is first needed instead of whenever its module is loaded, so most of `core` and `std` is never lowered (`fe check` on a trivial file drops from 81 ms to 68 ms).

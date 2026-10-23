@@ -20,6 +20,21 @@ impl<'db> Body<'db> {
         )
     }
 
+    /// The body of the function `func`, which binds its parameters.
+    pub(super) fn lower_func_body(
+        f_ctxt: &mut FileLowerCtxt<'db>,
+        func: &ast::Func,
+        body: ast::BlockExpr,
+    ) -> Self {
+        Self::lower_ast_with_variant(
+            f_ctxt,
+            ast::Expr::cast(body.syntax().clone()),
+            func.sig().params(),
+            TrackedItemVariant::FuncBody,
+            BodyKind::FuncBody,
+        )
+    }
+
     pub(super) fn lower_ast_nameless(f_ctxt: &mut FileLowerCtxt<'db>, ast: ast::Expr) -> Self {
         Self::lower_ast_with_variant(
             f_ctxt,
@@ -175,6 +190,7 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
             self.conds,
             self.pats,
             self.f_ctxt.top_mod(),
+            self.f_ctxt.lazy_func(),
             self.source_map,
             origin,
         );
