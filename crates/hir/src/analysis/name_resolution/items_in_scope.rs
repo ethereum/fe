@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::core::hir_def::{ItemKind, scope_graph::ScopeId};
 use common::indexmap::IndexMap;
 
@@ -13,7 +11,8 @@ use crate::analysis::{
 /// Returns all items visible in the given scope for the specified domain(s).
 ///
 /// This includes:
-/// - Items from imports (named, glob, and unnamed/implicit)
+/// - Items from named and glob imports; an import named `_` brings in no
+///   name
 /// - Direct child items in the scope
 /// - Items from parent scopes (recursively)
 pub fn items_in_scope<'db>(
@@ -26,15 +25,14 @@ pub fn items_in_scope<'db>(
 
 /// Returns the innermost module or block scope containing `scope`, which
 /// holds the items and imports visible in `scope`.
-pub(super) fn item_scope<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> ScopeId<'db> {
-    iter::successors(Some(scope), |scope| scope.parent(db))
-        .find(|scope| {
-            matches!(
-                scope,
-                ScopeId::Item(ItemKind::TopMod(_) | ItemKind::Mod(_)) | ScopeId::Block(..)
-            )
-        })
-        .unwrap()
+pub(super) fn item_scope<'db>(db: &'db dyn HirAnalysisDb, mut scope: ScopeId<'db>) -> ScopeId<'db> {
+    while !matches!(
+        scope,
+        ScopeId::Item(ItemKind::TopMod(_) | ItemKind::Mod(_)) | ScopeId::Block(..)
+    ) {
+        scope = scope.parent(db).unwrap();
+    }
+    scope
 }
 
 #[salsa::tracked(return_ref)]
@@ -93,23 +91,6 @@ fn items_in_scope_impl<'db>(
                             .or_default()
                             .merge(&name_res.clone().into());
                     }
-                }
-            }
-        }
-    }
-
-    // Collect unnamed/implicit imports
-    if let Some(unnamed) = imports.unnamed_resolved.get(&scope) {
-        for bucket in unnamed {
-            for name_res in bucket.iter_ok() {
-                if name_res.domain & domain != NameDomain::Invalid
-                    && let Some(scope) = name_res.scope()
-                    && let Some(name) = scope.name(db)
-                {
-                    buckets
-                        .entry(name.data(db).to_string())
-                        .or_default()
-                        .merge(&name_res.clone().into());
                 }
             }
         }
