@@ -57,7 +57,7 @@ fn native_buffer_word_writes_preserve_unaligned_values_and_zero_gaps() {
     fs::write(
         &source,
         r#"
-use core::abi::ByteInput
+use core::abi::ByteSource
 use core::ptr::MemBuffer
 
 pub fn main() -> i32 {

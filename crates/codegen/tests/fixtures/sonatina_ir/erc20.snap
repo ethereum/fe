@@ -484,7 +484,29 @@ func inline(always) private %alloc__g03ed() -> @layout_0 {
         return v0;
 }
 
-func inline(always) private %alloc_bytes(v0.i256) -> i256 {
+func inline(always) private %core__lib__ptr__alloc_bytes_8b3e(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.i1 = gt v0 18446744073709551615.i256;
+        br v3 block2 block3;
+
+    block2:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 65.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block3:
+        jump block4;
+
+    block4:
+        v12.*i8 = evm_malloc v0;
+        v13.i256 = ptr_to_int v12 i256;
+        return v13;
+}
+
+func inline(always) private %core__lib__ptr__alloc_bytes_de6b(v0.i256) -> i256 {
     block0:
         jump block1;
 
@@ -511,7 +533,7 @@ func inline(always) private %alloc_uninit__g1d2b() -> @layout_0 {
         jump block1;
 
     block1:
-        v1.i256 = call %alloc_bytes 32.i256;
+        v1.i256 = call %core__lib__ptr__alloc_bytes_de6b 32.i256;
         v4.@layout_0 = insert_value undef.@layout_0 0.i256 v1;
         return v4;
 }
@@ -521,7 +543,7 @@ func private %impl_MemBuffer__alloc_uninit(v0.i256) -> @layout_1 {
         jump block1;
 
     block1:
-        v2.i256 = call %alloc_bytes v0;
+        v2.i256 = call %core__lib__ptr__alloc_bytes_de6b v0;
         v5.@layout_1 = insert_value undef.@layout_1 0.i256 v2;
         v7.@layout_1 = insert_value v5 1.i256 v0;
         v9.@layout_1 = insert_value v7 2.i256 v0;
@@ -533,7 +555,7 @@ func inline(always) private %alloc_uninit__g03ed() -> @layout_0 {
         jump block1;
 
     block1:
-        v1.i256 = call %alloc_bytes 64.i256;
+        v1.i256 = call %core__lib__ptr__alloc_bytes_de6b 64.i256;
         v4.@layout_0 = insert_value undef.@layout_0 0.i256 v1;
         return v4;
 }
@@ -1341,7 +1363,7 @@ func inline(always) private %impl_trait_Approve__decode_from__g8f43(v0.@layout_0
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1380,7 +1402,7 @@ func inline(always) private %impl_trait_Burn__decode_from__g8f43(v0.@layout_0, v
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.i256 = call %decode_msg_field_from__g7f14 v0 v1 v1 v3;
         v8.@layout_0 = insert_value undef.@layout_0 0.i256 v5;
         return v8;
@@ -1391,7 +1413,7 @@ func inline(always) private %impl_trait_DecreaseAllowance__decode_from__g8f43(v0
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1421,7 +1443,7 @@ func inline(always) private %impl_trait_TransferFrom__decode_from__g8f43(v0.@lay
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1453,7 +1475,7 @@ func inline(always) private %impl_trait_Mint__decode_from__g8f43(v0.@layout_0, v
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1483,7 +1505,7 @@ func inline(always) private %impl_trait_IncreaseAllowance__decode_from__g8f43(v0
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1505,7 +1527,7 @@ func inline(always) private %impl_trait_BalanceOf__decode_from__g8f43(v0.@layout
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         v8.@layout_5 = insert_value undef.@layout_5 0.i256 v5;
         return v8;
@@ -1516,7 +1538,7 @@ func inline(always) private %impl_trait_Transfer__decode_from__g8f43(v0.@layout_
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1558,7 +1580,7 @@ func inline(always) private %impl_trait_BurnFrom__decode_from__g8f43(v0.@layout_
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1580,7 +1602,7 @@ func inline(always) private %impl_trait_Allowance__decode_from__g8f43(v0.@layout
         jump block1;
 
     block1:
-        v3.i256 = call %impl_trait_CallData__len v0;
+        v3.i256 = call %len__g8f43 v0;
         v5.@layout_0 = call %decode_msg_field_from__g877a v0 v1 v1 v3;
         (v7.i256, v8.i1) = uaddo v1 32.i256;
         br v8 block2 block3;
@@ -1840,7 +1862,7 @@ func inline(always) private %decode_runtime_args__g6a7c(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 64.i256;
         v6.@layout_3 = call %decode_from_prechecked_head__g97fa v1 4.i256 v3;
         return v6;
@@ -1852,7 +1874,7 @@ func inline(always) private %decode_runtime_args__g216b(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 64.i256;
         v6.@layout_3 = call %decode_from_prechecked_head__g4830 v1 4.i256 v3;
         return v6;
@@ -1864,7 +1886,7 @@ func inline(always) private %decode_runtime_args__gce2e(v0.objref<@layout_9>) {
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 0.i256;
         call %decode_from_prechecked_head__g1b32 v1 4.i256 v3;
         return;
@@ -1876,7 +1898,7 @@ func inline(always) private %decode_runtime_args__ge035(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 64.i256;
         v6.@layout_3 = call %decode_from_prechecked_head__g868c v1 4.i256 v3;
         return v6;
@@ -1888,7 +1910,7 @@ func inline(always) private %decode_runtime_args__gc772(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 64.i256;
         v6.@layout_6 = call %decode_from_prechecked_head__g8b96 v1 4.i256 v3;
         return v6;
@@ -1900,7 +1922,7 @@ func inline(always) private %decode_runtime_args__gf629(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 32.i256;
         v6.@layout_0 = call %decode_from_prechecked_head__gc770 v1 4.i256 v3;
         return v6;
@@ -1912,7 +1934,7 @@ func inline(always) private %decode_runtime_args__g953d(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 32.i256;
         v6.@layout_5 = call %decode_from_prechecked_head__ga131 v1 4.i256 v3;
         return v6;
@@ -1924,7 +1946,7 @@ func inline(always) private %decode_runtime_args__g5a0b(v0.objref<@layout_9>) {
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 0.i256;
         call %decode_from_prechecked_head__g30ad v1 4.i256 v3;
         return;
@@ -1936,7 +1958,7 @@ func inline(always) private %decode_runtime_args__gce7d(v0.objref<@layout_9>) {
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 0.i256;
         call %decode_from_prechecked_head__g7259 v1 4.i256 v3;
         return;
@@ -1948,7 +1970,7 @@ func inline(always) private %decode_runtime_args__g2273(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 64.i256;
         v6.@layout_3 = call %decode_from_prechecked_head__g3ff4 v1 4.i256 v3;
         return v6;
@@ -1960,7 +1982,7 @@ func inline(always) private %decode_runtime_args__g295c(v0.objref<@layout_9>) {
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 0.i256;
         call %decode_from_prechecked_head__g6905 v1 4.i256 v3;
         return;
@@ -1972,7 +1994,7 @@ func inline(always) private %decode_runtime_args__g7a2c(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 64.i256;
         v6.@layout_3 = call %decode_from_prechecked_head__g5919 v1 4.i256 v3;
         return v6;
@@ -1984,7 +2006,7 @@ func inline(always) private %decode_runtime_args__g698d(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 64.i256;
         v6.@layout_3 = call %decode_from_prechecked_head__g7bad v1 4.i256 v3;
         return v6;
@@ -1996,7 +2018,7 @@ func inline(always) private %decode_runtime_args__g4e54(v0.objref<@layout_9>) ->
 
     block1:
         v1.@layout_0 = call %input;
-        v3.i256 = call %impl_trait_CallData__len v1;
+        v3.i256 = call %len__g8f43 v1;
         call %validate_runtime_head v3 4.i256 96.i256;
         v6.@layout_4 = call %decode_from_prechecked_head__g1a5b v1 4.i256 v3;
         return v6;
@@ -2009,6 +2031,52 @@ func private %decoder_new() -> @layout_2 {
     block1:
         v1.@layout_2 = call %with_base 0.i256;
         return v1;
+}
+
+func private %downcast_truncate__g3ef4(v0.i256) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i256 = call %impl_trait_usize__to_word v0;
+        br 0.i1 block2 block3;
+
+    block2:
+        v7.i256 = call %sign_extend v2 18446744073709551615.i256 0.i256;
+        v8.i64 = call %impl_trait_u64__from_word v7;
+        jump block4;
+
+    block3:
+        v10.i256 = and v2 18446744073709551615.i256;
+        v11.i64 = call %impl_trait_u64__from_word v10;
+        jump block4;
+
+    block4:
+        v12.i64 = phi (v8 block2) (v11 block3);
+        return v12;
+}
+
+func private %downcast_truncate__gaa81(v0.i256) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i256 = call %impl_trait_u256__to_word v0;
+        br 0.i1 block2 block3;
+
+    block2:
+        v7.i256 = call %sign_extend v2 18446744073709551615.i256 0.i256;
+        v8.i64 = call %impl_trait_u64__from_word v7;
+        jump block4;
+
+    block3:
+        v10.i256 = and v2 18446744073709551615.i256;
+        v11.i64 = call %impl_trait_u64__from_word v10;
+        jump block4;
+
+    block4:
+        v12.i64 = phi (v8 block2) (v11 block3);
+        return v12;
 }
 
 func private %dynamic_payload_size(v0.i256) -> i256 {
@@ -2637,7 +2705,7 @@ func inline(always) private %encode_single_root_alloc__g0c18(v0.i256) -> @layout
         return v3;
 }
 
-func private %impl_trait_Address__encoded_len(v0.@layout_0) -> i256 {
+func private %std__lib__evm__storage_map__impl_trait_Address_4d4e__encoded_len_1549(v0.@layout_0) -> i256 {
     block0:
         jump block1;
 
@@ -2653,7 +2721,7 @@ func inline(always) private %encoded_len__g6d15(v0.@layout_7) -> i256 {
         v3.i256 = extract_value v0 0.i256;
         v4.i256 = call %impl_trait_u256__encoded_len v3;
         v6.@layout_0 = extract_value v0 1.i256;
-        v7.i256 = call %impl_trait_Address__encoded_len v6;
+        v7.i256 = call %std__lib__evm__storage_map__impl_trait_Address_4d4e__encoded_len_1549 v6;
         (v8.i256, v9.i1) = uaddo v4 v7;
         br v9 block2 block3;
 
@@ -2666,15 +2734,23 @@ func inline(always) private %encoded_len__g6d15(v0.@layout_7) -> i256 {
         return v8;
 }
 
+func private %std__lib__evm__storage_map__impl_trait_Address_4d4e__encoded_len_7653(v0.@layout_0) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        return 32.i256;
+}
+
 func inline(always) private %encoded_len__g7528(v0.@layout_6) -> i256 {
     block0:
         jump block1;
 
     block1:
         v3.@layout_0 = extract_value v0 0.i256;
-        v4.i256 = call %impl_trait_Address__encoded_len v3;
+        v4.i256 = call %std__lib__evm__storage_map__impl_trait_Address_4d4e__encoded_len_7653 v3;
         v6.@layout_0 = extract_value v0 1.i256;
-        v7.i256 = call %impl_trait_Address__encoded_len v6;
+        v7.i256 = call %std__lib__evm__storage_map__impl_trait_Address_4d4e__encoded_len_7653 v6;
         (v8.i256, v9.i1) = uaddo v4 v7;
         br v9 block2 block3;
 
@@ -2716,7 +2792,16 @@ func inline(always) private %from_raw_parts(v0.i256, v1.i256) -> @layout_2 {
         return v8;
 }
 
-func private %from_word(v0.i256) -> i256 {
+func private %impl_trait_u64__from_word(v0.i256) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i64 = trunc v0 i64;
+        return v2;
+}
+
+func private %impl_trait_i256__from_word(v0.i256) -> i256 {
     block0:
         jump block1;
 
@@ -2779,18 +2864,39 @@ func private %input() -> @layout_0 {
         return v0;
 }
 
-func private %keccak256(v0.objref<@layout_2>) -> i256 {
+func private %std__lib__evm__crypto__keccak256_372a(v0.objref<@layout_2>) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v2.i256 = call %ptr__g79ff v0;
-        v3.i256 = call %len__g79ff v0;
+        v2.i256 = call %core__lib__ptr__impl_MemSlice_aa77__ptr__g79ff_daec v0;
+        v3.i256 = call %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8a5a v0;
         v4.i256 = evm_keccak256 v2 v3;
         return v4;
 }
 
-func private %len__g79ff(v0.objref<@layout_2>) -> i256 {
+func private %std__lib__evm__crypto__keccak256_bdb6(v0.objref<@layout_2>) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i256 = call %core__lib__ptr__impl_MemSlice_aa77__ptr__g79ff_a7c1 v0;
+        v3.i256 = call %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8d1e v0;
+        v4.i256 = evm_keccak256 v2 v3;
+        return v4;
+}
+
+func inline(always) private %len__g140d(v0.objref<@layout_2>) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i64 = call %impl_trait_MemSlice__size v0;
+        v3.i256 = zext v2 i256;
+        return v3;
+}
+
+func private %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8a5a(v0.objref<@layout_2>) -> i256 {
     block0:
         jump block1;
 
@@ -2800,13 +2906,14 @@ func private %len__g79ff(v0.objref<@layout_2>) -> i256 {
         return v4;
 }
 
-func private %impl_trait_MemSlice__len(v0.objref<@layout_2>) -> i256 {
+func private %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8d1e(v0.objref<@layout_2>) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v2.i256 = call %len__g79ff v0;
-        return v2;
+        v3.objref<i256> = obj.proj v0 1.i256;
+        v4.i256 = obj.load v3;
+        return v4;
 }
 
 func inline(always) private %impl_AbiFrame__len(v0.@layout_2) -> i256 {
@@ -2818,35 +2925,14 @@ func inline(always) private %impl_AbiFrame__len(v0.@layout_2) -> i256 {
         return v3;
 }
 
-func inline(always) private %impl_trait_CallData__len(v0.@layout_0) -> i256 {
+func inline(always) private %len__g8f43(v0.@layout_0) -> i256 {
     block0:
         jump block1;
 
     block1:
-        v1.i256 = evm_calldata_size;
-        v4.i256 = extract_value v0 0.i256;
-        v5.i1 = gt v4 v1;
-        br v5 block2 block3;
-
-    block2:
-        jump block4;
-
-    block3:
-        v7.i256 = extract_value v0 0.i256;
-        (v9.i256, v10.i1) = usubo v1 v7;
-        br v10 block5 block6;
-
-    block4:
-        v15.i256 = phi (0.i256 block2) (v9 block6);
-        return v15;
-
-    block5:
-        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
-        mstore 4.i256 17.i256 i256;
-        evm_revert 0.i256 36.i256;
-
-    block6:
-        jump block4;
+        v2.i64 = call %impl_trait_CallData__size v0;
+        v3.i256 = zext v2 i256;
+        return v3;
 }
 
 func inline(always) private %locate__g4007(v0.i256, v1.i256, v2.@layout_6) -> @layout_2 {
@@ -2887,10 +2973,58 @@ func private %log3(v0.objref<@layout_2>, v1.i256, v2.i256, v3.i256) {
         jump block1;
 
     block1:
-        v5.i256 = call %ptr__g79ff v0;
-        v6.i256 = call %len__g79ff v0;
+        v5.i256 = call %core__lib__ptr__impl_MemSlice_aa77__ptr__g79ff_daec v0;
+        v6.i256 = call %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8a5a v0;
         evm_log3 v5 v6 v1 v2 v3;
         return;
+}
+
+func inline(always) private %mapping_slot__g67a8(v0.i256, v1.@layout_0) -> i256 {
+    block0:
+        v2.objref<@layout_2> = obj.alloc @layout_2;
+        jump block1;
+
+    block1:
+        v4.i256 = call %std__lib__evm__storage_map__impl_trait_Address_4d4e__encoded_len_7653 v1;
+        (v6.i256, v7.i1) = uaddo v4 32.i256;
+        br v7 block6 block7;
+
+    block2:
+        v24.i256 = call %std__lib__evm__crypto__keccak256_bdb6 v2;
+        jump block5;
+
+    block3:
+        v27.@layout_2 = insert_value undef.@layout_2 0.i256 v13;
+        v30.@layout_2 = insert_value v27 1.i256 v20;
+        v31.objref<i256> = obj.proj v2 0.i256;
+        v32.i256 = extract_value v30 0.i256;
+        obj.store v31 v32;
+        v33.objref<i256> = obj.proj v2 1.i256;
+        v34.i256 = extract_value v30 1.i256;
+        obj.store v33 v34;
+        jump block2;
+
+    block4:
+        return v24;
+
+    block5:
+        jump block4;
+
+    block6:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 17.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block7:
+        v13.i256 = call %core__lib__ptr__alloc_bytes_8b3e v6;
+        call %std__lib__evm__storage_map__impl_trait_Address_4d4e__write_key_fad7 v13 v1;
+        v17.i256 = add v13 v4;
+        mstore v17 v0 i256;
+        (v20.i256, v21.i1) = uaddo v4 32.i256;
+        br v21 block6 block8;
+
+    block8:
+        jump block3;
 }
 
 func inline(always) private %mapping_slot__g9379(v0.i256, v1.@layout_7) -> i256 {
@@ -2904,7 +3038,7 @@ func inline(always) private %mapping_slot__g9379(v0.i256, v1.@layout_7) -> i256 
         br v7 block6 block7;
 
     block2:
-        v24.i256 = call %keccak256 v2;
+        v24.i256 = call %std__lib__evm__crypto__keccak256_372a v2;
         jump block5;
 
     block3:
@@ -2930,56 +3064,8 @@ func inline(always) private %mapping_slot__g9379(v0.i256, v1.@layout_7) -> i256 
         evm_revert 0.i256 36.i256;
 
     block7:
-        v13.i256 = call %alloc_bytes v6;
+        v13.i256 = call %core__lib__ptr__alloc_bytes_de6b v6;
         call %write_key__g6d15 v13 v1;
-        v17.i256 = add v13 v4;
-        mstore v17 v0 i256;
-        (v20.i256, v21.i1) = uaddo v4 32.i256;
-        br v21 block6 block8;
-
-    block8:
-        jump block3;
-}
-
-func inline(always) private %mapping_slot__g67a8(v0.i256, v1.@layout_0) -> i256 {
-    block0:
-        v2.objref<@layout_2> = obj.alloc @layout_2;
-        jump block1;
-
-    block1:
-        v4.i256 = call %impl_trait_Address__encoded_len v1;
-        (v6.i256, v7.i1) = uaddo v4 32.i256;
-        br v7 block6 block7;
-
-    block2:
-        v24.i256 = call %keccak256 v2;
-        jump block5;
-
-    block3:
-        v27.@layout_2 = insert_value undef.@layout_2 0.i256 v13;
-        v30.@layout_2 = insert_value v27 1.i256 v20;
-        v31.objref<i256> = obj.proj v2 0.i256;
-        v32.i256 = extract_value v30 0.i256;
-        obj.store v31 v32;
-        v33.objref<i256> = obj.proj v2 1.i256;
-        v34.i256 = extract_value v30 1.i256;
-        obj.store v33 v34;
-        jump block2;
-
-    block4:
-        return v24;
-
-    block5:
-        jump block4;
-
-    block6:
-        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
-        mstore 4.i256 17.i256 i256;
-        evm_revert 0.i256 36.i256;
-
-    block7:
-        v13.i256 = call %alloc_bytes v6;
-        call %impl_trait_Address__write_key v13 v1;
         v17.i256 = add v13 v4;
         mstore v17 v0 i256;
         (v20.i256, v21.i1) = uaddo v4 32.i256;
@@ -3000,7 +3086,7 @@ func inline(always) private %mapping_slot__g7bf4(v0.i256, v1.@layout_6) -> i256 
         br v7 block6 block7;
 
     block2:
-        v24.i256 = call %keccak256 v2;
+        v24.i256 = call %std__lib__evm__crypto__keccak256_bdb6 v2;
         jump block5;
 
     block3:
@@ -3026,7 +3112,7 @@ func inline(always) private %mapping_slot__g7bf4(v0.i256, v1.@layout_6) -> i256 
         evm_revert 0.i256 36.i256;
 
     block7:
-        v13.i256 = call %alloc_bytes v6;
+        v13.i256 = call %core__lib__ptr__alloc_bytes_8b3e v6;
         call %write_key__g7528 v13 v1;
         v17.i256 = add v13 v4;
         mstore v17 v0 i256;
@@ -3322,6 +3408,16 @@ func inline(always) private %ptr__g03ed(v0.@layout_0) -> i256 {
         return v3;
 }
 
+func private %core__lib__ptr__impl_MemSlice_aa77__ptr__g79ff_a7c1(v0.objref<@layout_2>) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v3.objref<i256> = obj.proj v0 0.i256;
+        v4.i256 = obj.load v3;
+        return v4;
+}
+
 func private %impl_MemBuffer__ptr(v0.@layout_1) -> i256 {
     block0:
         jump block1;
@@ -3331,7 +3427,7 @@ func private %impl_MemBuffer__ptr(v0.@layout_1) -> i256 {
         return v3;
 }
 
-func private %ptr__g79ff(v0.objref<@layout_2>) -> i256 {
+func private %core__lib__ptr__impl_MemSlice_aa77__ptr__g79ff_daec(v0.objref<@layout_2>) -> i256 {
     block0:
         jump block1;
 
@@ -3375,7 +3471,7 @@ func inline(always) private %read_word(v0.objref<@layout_2>, v1.objref<@layout_2
         return v21;
 
     block5:
-        v25.i256 = call %impl_trait_MemSlice__len v1;
+        v25.i256 = call %len__g140d v1;
         v27.i1 = gt v7 v25;
         br v27 block2 block3;
 
@@ -3435,8 +3531,8 @@ func private %return_data(v0.objref<@layout_2>) {
         jump block1;
 
     block1:
-        v2.i256 = call %ptr__g79ff v0;
-        v3.i256 = call %len__g79ff v0;
+        v2.i256 = call %core__lib__ptr__impl_MemSlice_aa77__ptr__g79ff_daec v0;
+        v3.i256 = call %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8a5a v0;
         evm_return v2 v3;
 }
 
@@ -4087,6 +4183,72 @@ func private %set_pos(v0.objref<@layout_2>, v1.i256) {
         return;
 }
 
+func private %sign_extend(v0.i256, v1.i256, v2.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        v5.i256 = and v0 v1;
+        v7.i256 = and v5 v2;
+        v9.i1 = eq v7 0.i256;
+        v10.i1 = is_zero v9;
+        br v10 block2 block3;
+
+    block2:
+        v13.i256 = xor -1.i256 v1;
+        v15.i256 = or v5 v13;
+        jump block4;
+
+    block3:
+        jump block4;
+
+    block4:
+        v17.i256 = phi (v15 block2) (v5 block3);
+        return v17;
+}
+
+func private %impl_trait_MemSlice__size(v0.objref<@layout_2>) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v2.i256 = call %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8a5a v0;
+        v3.i64 = call %downcast_truncate__g3ef4 v2;
+        return v3;
+}
+
+func inline(always) private %impl_trait_CallData__size(v0.@layout_0) -> i64 {
+    block0:
+        jump block1;
+
+    block1:
+        v1.i256 = evm_calldata_size;
+        v4.i256 = extract_value v0 0.i256;
+        v5.i1 = gt v4 v1;
+        br v5 block2 block3;
+
+    block2:
+        jump block4;
+
+    block3:
+        v8.i256 = extract_value v0 0.i256;
+        (v10.i256, v11.i1) = usubo v1 v8;
+        br v11 block5 block6;
+
+    block4:
+        v17.i64 = phi (0.i64 block2) (v16 block6);
+        return v17;
+
+    block5:
+        mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
+        mstore 4.i256 17.i256 i256;
+        evm_revert 0.i256 36.i256;
+
+    block6:
+        v16.i64 = call %downcast_truncate__gaa81 v10;
+        jump block4;
+}
+
 func inline(always) private %slice(v0.@layout_2, v1.i256, v2.i256) -> @layout_2 {
     block0:
         jump block1;
@@ -4205,6 +4367,14 @@ func inline(always) private %tail(v0.@layout_2, v1.i256) -> @layout_2 {
         return v16;
 }
 
+func private %impl_trait_u256__to_word(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        return v0;
+}
+
 func private %to_word__g3eb7(v0.i256) -> i256 {
     block0:
         jump block1;
@@ -4221,6 +4391,14 @@ func private %to_word__gc7cf(v0.i256) -> i256 {
     block1:
         v7.i256 = and v0 18446744073709551615.i256;
         return v7;
+}
+
+func private %impl_trait_usize__to_word(v0.i256) -> i256 {
+    block0:
+        jump block1;
+
+    block1:
+        return v0;
 }
 
 func private %transfer(v0.@layout_0, v1.@layout_0, v2.i256, v3.i256) {
@@ -4315,8 +4493,8 @@ func inline(always) private %validate_runtime_head(v0.i256, v1.i256, v2.i256) {
 
     block2:
         v9.i256 = sub v0 v1;
-        v10.i256 = call %from_word v9;
-        v12.i256 = call %from_word v2;
+        v10.i256 = call %impl_trait_i256__from_word v9;
+        v12.i256 = call %impl_trait_i256__from_word v2;
         v13.i1 = slt v10 v12;
         br v13 block5 block6;
 
@@ -4351,7 +4529,7 @@ func inline(always) private %impl_trait_MemSlice__word_at(v0.objref<@layout_2>, 
         jump block1;
 
     block1:
-        v3.i256 = call %len__g79ff v0;
+        v3.i256 = call %core__lib__ptr__impl_MemSlice_aa77__len__g79ff_8a5a v0;
         v5.i1 = lt v1 v3;
         v6.i1 = is_zero v5;
         br v6 block2 block3;
@@ -4363,7 +4541,7 @@ func inline(always) private %impl_trait_MemSlice__word_at(v0.objref<@layout_2>, 
         jump block4;
 
     block4:
-        v9.i256 = call %ptr__g79ff v0;
+        v9.i256 = call %core__lib__ptr__impl_MemSlice_aa77__ptr__g79ff_daec v0;
         v11.i256 = call %mem_word_at v9 v1;
         v13.i256 = sub v3 v1;
         v15.i1 = lt v13 32.i256;
@@ -4404,10 +4582,10 @@ func inline(always) private %write_key__g6d15(v0.i256, v1.@layout_7) {
         v4.i256 = extract_value v1 0.i256;
         v5.i256 = call %impl_trait_u256__encoded_len v4;
         v6.i256 = extract_value v1 0.i256;
-        call %impl_trait_u256__write_key v0 v6;
+        call %std__lib__evm__storage_map__impl_trait_u256_0dfe__write_key_a18a v0 v6;
         v9.i256 = add v0 v5;
         v11.@layout_0 = extract_value v1 1.i256;
-        call %impl_trait_Address__write_key v9 v11;
+        call %std__lib__evm__storage_map__impl_trait_Address_4d4e__write_key_80da v9 v11;
         return;
 }
 
@@ -4417,31 +4595,50 @@ func inline(always) private %write_key__g7528(v0.i256, v1.@layout_6) {
 
     block1:
         v4.@layout_0 = extract_value v1 0.i256;
-        v5.i256 = call %impl_trait_Address__encoded_len v4;
+        v5.i256 = call %std__lib__evm__storage_map__impl_trait_Address_4d4e__encoded_len_7653 v4;
         v6.@layout_0 = extract_value v1 0.i256;
-        call %impl_trait_Address__write_key v0 v6;
+        call %std__lib__evm__storage_map__impl_trait_Address_4d4e__write_key_fad7 v0 v6;
         v9.i256 = add v0 v5;
         v11.@layout_0 = extract_value v1 1.i256;
-        call %impl_trait_Address__write_key v9 v11;
+        call %std__lib__evm__storage_map__impl_trait_Address_4d4e__write_key_fad7 v9 v11;
         return;
 }
 
-func inline(always) private %impl_trait_Address__write_key(v0.i256, v1.@layout_0) {
+func inline(always) private %std__lib__evm__storage_map__impl_trait_Address_4d4e__write_key_80da(v0.i256, v1.@layout_0) {
     block0:
         jump block1;
 
     block1:
         v4.i256 = extract_value v1 0.i256;
-        call %impl_trait_u256__write_key v0 v4;
+        call %std__lib__evm__storage_map__impl_trait_u256_0dfe__write_key_a18a v0 v4;
         return;
 }
 
-func inline(always) private %impl_trait_u256__write_key(v0.i256, v1.i256) {
+func inline(always) private %std__lib__evm__storage_map__impl_trait_u256_0dfe__write_key_a18a(v0.i256, v1.i256) {
     block0:
         jump block1;
 
     block1:
         mstore v0 v1 i256;
+        return;
+}
+
+func inline(always) private %std__lib__evm__storage_map__impl_trait_u256_0dfe__write_key_cd96(v0.i256, v1.i256) {
+    block0:
+        jump block1;
+
+    block1:
+        mstore v0 v1 i256;
+        return;
+}
+
+func inline(always) private %std__lib__evm__storage_map__impl_trait_Address_4d4e__write_key_fad7(v0.i256, v1.@layout_0) {
+    block0:
+        jump block1;
+
+    block1:
+        v4.i256 = extract_value v1 0.i256;
+        call %std__lib__evm__storage_map__impl_trait_u256_0dfe__write_key_cd96 v0 v4;
         return;
 }
 
