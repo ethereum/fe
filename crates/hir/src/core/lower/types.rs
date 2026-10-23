@@ -4,8 +4,7 @@ use super::FileLowerCtxt;
 use crate::core::hir_def::{
     AssocTypeGenericArg, Body, GenericArg, GenericArgListId, IdentId, ItemKind, Partial, PathId,
     PathKind, TraitRefId, TupleTypeId, TypeGenericArg, TypeId, TypeKind, TypeMode, VariantKind,
-    params::{FuncParamMode, GenericParamListId, callable_shape_name},
-    scope_graph::ScopeId,
+    params::GenericParamListId, scope_graph::ScopeId,
 };
 
 impl<'db> TypeId<'db> {
@@ -363,6 +362,7 @@ fn bind_generic_arg_list_to_scope<'db>(
             GenericArg::Const(c) => GenericArg::Const(c.clone()),
             GenericArg::AssocType(assoc) => GenericArg::AssocType(AssocTypeGenericArg {
                 name: assoc.name,
+                mode: assoc.mode,
                 ty: assoc
                     .ty
                     .to_opt()
