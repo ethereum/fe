@@ -585,6 +585,7 @@ fn lower_sol_compat_impl<'db>(
             body_ctxt.conds,
             body_ctxt.pats,
             body_ctxt.f_ctxt.top_mod(),
+            body_ctxt.f_ctxt.lazy_func(),
             body_ctxt.source_map,
             origin.clone(),
         );

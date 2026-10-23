@@ -1,10 +1,10 @@
-use cranelift_entity::{PrimaryMap, entity_impl};
+use cranelift_entity::{EntityRef, PrimaryMap, entity_impl};
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     HirDb,
     hir_def::{
-        Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, FuncParamListId,
+        Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, Func, FuncParamListId,
         FuncParamName, GenericParamListId, GenericParamOwner, HirIngot, Impl, ItemKind,
         TopLevelMod, TrackedItemId, TrackedItemVariant, Trait, Use, VariantDefListId, VariantKind,
         Visibility,
@@ -31,6 +31,8 @@ use crate::{
 pub(super) struct ScopeGraphBuilder<'db> {
     pub(super) db: &'db dyn HirDb,
     pub(super) top_mod: TopLevelMod<'db>,
+    /// The function whose body is lowered on its own into the graph.
+    pub(super) lazy_func: Option<Func<'db>>,
     graph: IntermediateScopeGraph<'db>,
     scope_stack: Vec<NodeId>,
     module_stack: Vec<NodeId>,
@@ -43,6 +45,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         let mut builder = Self {
             db,
             top_mod,
+            lazy_func: None,
             graph: IntermediateScopeGraph::default(),
             scope_stack: Default::default(),
             module_stack: Default::default(),
@@ -53,6 +56,20 @@ impl<'db> ScopeGraphBuilder<'db> {
         let id = TrackedItemId::new(db, None, TrackedItemVariant::TopLevelMod(top_mod.name(db)));
         builder.enter_item_scope(id, true);
         builder
+    }
+
+    /// Starts a graph for the body of `func`, which the caller lowers next.
+    pub(super) fn enter_func_body(db: &'db dyn HirDb, func: Func<'db>) -> Self {
+        Self {
+            db,
+            top_mod: func.top_mod(db),
+            lazy_func: Some(func),
+            graph: IntermediateScopeGraph::default(),
+            scope_stack: Default::default(),
+            module_stack: Default::default(),
+            id_stack: vec![func.id(db)],
+            declared_blocks: vec![],
+        }
     }
 
     pub(super) fn build(self) -> ScopeGraph<'db> {
@@ -102,7 +119,17 @@ impl<'db> ScopeGraphBuilder<'db> {
             return;
         }
 
-        let parent_node = *self.scope_stack.last().unwrap();
+        // The root of a lazily lowered body's graph, whose lexical parent is
+        // its function in the module graph.
+        let Some(&parent_node) = self.scope_stack.last() else {
+            let (Some(func), Body(body)) = (self.lazy_func, item) else {
+                unreachable!()
+            };
+            self.graph
+                .add_external_edge(item_node, func.scope(), EdgeKind::lex());
+            self.finalize_block_scopes(body);
+            return;
+        };
         let parent_to_child_edge = match item {
             Mod(inner) => {
                 self.module_stack.pop().unwrap();
@@ -287,10 +314,7 @@ impl<'db> ScopeGraphBuilder<'db> {
 
             Body(body) => {
                 self.graph.add_lex_edge(item_node, parent_node);
-                for (node, block) in self.declared_blocks.pop().unwrap() {
-                    let block = block.unwrap();
-                    self.finalize_block_scope(node, body, block);
-                }
+                self.finalize_block_scopes(body);
                 EdgeKind::anon()
             }
 
@@ -339,8 +363,10 @@ impl<'db> ScopeGraphBuilder<'db> {
         self.graph.initialize_item_scope(self.db, node, item)
     }
 
-    fn finalize_block_scope(&mut self, node: NodeId, body: Body<'db>, block: ExprId) {
-        self.graph.finalize_block_scope(node, body, block);
+    fn finalize_block_scopes(&mut self, body: Body<'db>) {
+        for (node, block) in self.declared_blocks.pop().unwrap() {
+            self.graph.finalize_block_scope(node, body, block.unwrap());
+        }
     }
 
     fn add_field_scope(
@@ -500,6 +526,8 @@ struct IntermediateScopeGraph<'db> {
 
 impl<'db> IntermediateScopeGraph<'db> {
     fn build(mut self, top_mod: TopLevelMod<'db>) -> ScopeGraph<'db> {
+        // The first scope entered is the root.
+        let root = self.nodes[NodeId::new(0)].0;
         for (from_node, edges) in self.edges {
             for (dest_node, kind) in edges {
                 let dest = self.nodes[dest_node].0;
@@ -516,6 +544,7 @@ impl<'db> IntermediateScopeGraph<'db> {
 
         ScopeGraph {
             top_mod,
+            root,
             scopes,
             unresolved_uses: self.unresolved_uses,
         }

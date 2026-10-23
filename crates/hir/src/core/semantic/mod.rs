@@ -3769,9 +3769,10 @@ pub fn ingot_growing_cycles<'db>(
     }
 
     let adts: Vec<_> = ingot
-        .all_items(db)
+        .all_modules(db)
         .iter()
-        .filter_map(|item| AdtRef::try_from_item(*item))
+        .flat_map(|top_mod| top_mod.scope_graph(db).items_dfs())
+        .filter_map(AdtRef::try_from_item)
         .map(|adt| lower_adt(db, adt))
         .collect();
     let mut fields = IndexMap::default();

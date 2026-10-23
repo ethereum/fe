@@ -313,8 +313,7 @@ impl<'db> TopLevelMod<'db> {
             // token); generic/func params and trait types are excluded because
             // their spans are broader and can overlap references we'd rather
             // resolve through `reference_at`.
-            let scope_graph = self.scope_graph(db);
-            for child in scope_graph.children(ScopeId::from_item(item)) {
+            for child in ScopeId::from_item(item).children(db) {
                 match child {
                     ScopeId::Variant(_)
                     | ScopeId::Field(_, _)
@@ -340,7 +339,7 @@ impl<'db> TopLevelMod<'db> {
         db: &'db dyn SpannedHirDb,
         cursor: TextSize,
     ) -> Vec<ItemKind<'db>> {
-        let items = self.scope_graph(db).items_dfs(db);
+        let items = self.all_items(db).iter().copied();
 
         let mut smallest_items = Vec::new();
         let mut smallest_range_size = None;
@@ -399,7 +398,7 @@ impl<'db> TopLevelMod<'db> {
         match target {
             Target::Scope(scope) => {
                 let mut results = Vec::new();
-                for item in self.scope_graph(db).items_dfs(db) {
+                for &item in self.all_items(db) {
                     for resolved in resolved_item_scope_targets(db, item) {
                         if resolved.scope == *scope {
                             results.push(MatchedReference {

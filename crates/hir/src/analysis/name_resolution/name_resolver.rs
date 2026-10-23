@@ -530,8 +530,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
         let scope = query.scope(self.db);
-        let top_mod = scope.top_mod(self.db);
-        let s_graph = top_mod.scope_graph(self.db);
+        let s_graph = scope.scope_graph(self.db);
 
         {
             // Edges only need the query's name and whether lexical scopes apply.

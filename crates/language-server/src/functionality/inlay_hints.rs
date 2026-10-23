@@ -38,7 +38,7 @@ pub async fn handle_inlay_hints(
 
 fn collect_hints_from_mod(db: &DriverDataBase, top_mod: TopLevelMod, hints: &mut Vec<InlayHint>) {
     // Iterate through all items in the module
-    let items = top_mod.scope_graph(db).items_dfs(db);
+    let items = top_mod.all_items(db).iter().copied();
 
     for item in items {
         match item {
