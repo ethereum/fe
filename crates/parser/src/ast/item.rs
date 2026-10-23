@@ -1,6 +1,6 @@
-use rowan::ast::{AstNode, support};
+use rowan::ast::AstNode;
 
-use super::{TraitRef, TupleType, TypeBoundList, ast_node, use_tree::UsePath};
+use super::{TraitRef, TupleType, TypeBoundList, ast_node, support, use_tree::UsePath};
 use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
 
 ast_node! {

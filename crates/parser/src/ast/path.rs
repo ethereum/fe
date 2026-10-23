@@ -1,6 +1,6 @@
-use rowan::ast::{AstNode, support};
+use rowan::ast::AstNode;
 
-use super::{AstChildren, GenericArgsOwner, ast_node};
+use super::{AstChildren, GenericArgsOwner, ast_node, support};
 use crate::{SyntaxKind as SK, syntax_node::SyntaxToken};
 
 ast_node! {
