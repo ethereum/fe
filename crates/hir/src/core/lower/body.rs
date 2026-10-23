@@ -3,8 +3,8 @@ use parser::ast::{self, SyntaxNodePtr, prelude::AstNode as _};
 use super::FileLowerCtxt;
 use crate::{
     hir_def::{
-        Body, BodyKind, BodySourceMap, Cond, CondId, Expr, ExprId, FuncParamName, NodeStore,
-        Partial, Pat, PatId, PathId, Stmt, StmtId, TrackedItemId, TrackedItemVariant,
+        Body, BodyKind, BodySourceMap, Cond, CondId, Expr, ExprId, FuncParamName, IdentId,
+        NodeStore, Partial, Pat, PatId, PathId, Stmt, StmtId, TrackedItemId, TrackedItemVariant,
     },
     span::HirOrigin,
 };
@@ -18,6 +18,31 @@ impl<'db> Body<'db> {
             TrackedItemVariant::FuncBody,
             BodyKind::FuncBody,
         )
+    }
+
+    pub(super) fn lower_func_body(
+        f_ctxt: &mut FileLowerCtxt<'db>,
+        ast: ast::Expr,
+        params: Option<ast::FuncParamList>,
+        initial_binders: Vec<IdentId<'db>>,
+    ) -> Self {
+        let id = f_ctxt.joined_id(TrackedItemVariant::FuncBody);
+        let mut ctxt = BodyCtxt::new(f_ctxt, id);
+        ctxt.local_binders = initial_binders;
+        let lets = ctxt.lower_param_lets(params);
+        let body_expr = Expr::lower_ast_after(&mut ctxt, Some(ast.clone()), lets);
+        ctxt.build(Some(&ast), body_expr, BodyKind::FuncBody)
+    }
+
+    pub(super) fn lower_const_param_name(
+        f_ctxt: &mut FileLowerCtxt<'db>,
+        name: IdentId<'db>,
+    ) -> Self {
+        let id = f_ctxt.joined_id(TrackedItemVariant::NamelessBody);
+        let mut ctxt = BodyCtxt::new(f_ctxt, id);
+        let path = PathId::from_ident(ctxt.f_ctxt.db(), name);
+        let expr = ctxt.push_expr(Expr::Path(Partial::Present(path)), HirOrigin::None);
+        ctxt.build(None, expr, BodyKind::Anonymous)
     }
 
     pub(super) fn lower_ast_nameless(f_ctxt: &mut FileLowerCtxt<'db>, ast: ast::Expr) -> Self {
@@ -72,9 +97,60 @@ pub(super) struct BodyCtxt<'ctxt, 'db> {
     pub(super) conds: NodeStore<CondId, Partial<Cond>>,
     pub(super) pats: NodeStore<PatId, Partial<Pat<'db>>>,
     pub(super) source_map: BodySourceMap,
+    pub(super) active_binder_groups: Vec<(common::generation::FrozenRecordRef, usize)>,
+    pub(super) local_binders: Vec<IdentId<'db>>,
 }
 
 impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
+    pub(super) fn record_local_binder(
+        &mut self,
+        local_ident: IdentId<'db>,
+        display_ident: Option<IdentId<'db>>,
+    ) {
+        self.local_binders.push(local_ident);
+        if let Some(display) = display_ident {
+            let text = display.data(self.f_ctxt.db()).to_string();
+            self.f_ctxt.record_bound_name(&text);
+        }
+    }
+
+    pub(super) fn validate_open_name_use(&self, name: &str, range: parser::TextRange) {
+        for frame in self.f_ctxt.quote_frames.iter().rev() {
+            if frame.open_names.iter().any(|(opened, _)| opened == name) {
+                let ident = self.f_ctxt.resolve_sub_quote_local_ident(name);
+                if !self.local_binders.contains(&ident) {
+                    self.f_ctxt.file_scoped_error(
+                        frame.quote_top_mod.file(self.f_ctxt.db()),
+                        range,
+                        format!("quoted open name `{name}` has no enclosing binder at this use"),
+                    );
+                }
+                break;
+            }
+            if !frame.is_sub_quote {
+                break;
+            }
+        }
+    }
+
+    pub(super) fn validate_frame_open_names(
+        &self,
+        frame: &super::generated::ActiveQuoteFrame<'db>,
+    ) {
+        let db = self.f_ctxt.db();
+        let file = frame.quote_top_mod.file(db);
+        for (name, range) in &frame.open_names {
+            let target_ident = self.f_ctxt.resolve_sub_quote_local_ident(name);
+            if !self.local_binders.contains(&target_ident) {
+                self.f_ctxt.file_scoped_error(
+                    file,
+                    *range,
+                    format!("quoted open name `{name}` has no enclosing binder"),
+                );
+            }
+        }
+    }
+
     pub(super) fn push_expr(&mut self, expr: Expr<'db>, origin: HirOrigin<ast::Expr>) -> ExprId {
         let expr_id = self.exprs.push(Partial::Present(expr));
         self.source_map.expr_map.insert(expr_id, origin);
@@ -155,6 +231,8 @@ impl<'ctxt, 'db> BodyCtxt<'ctxt, 'db> {
             conds: NodeStore::new(),
             pats: NodeStore::new(),
             source_map: BodySourceMap::default(),
+            active_binder_groups: Vec::new(),
+            local_binders: Vec::new(),
         }
     }
 
