@@ -1662,7 +1662,7 @@ fn resolve_segment<'db>(
         *decided_by_value = true;
         res.clone()
     } else {
-        pick_type_domain_from_bucket(db, parent_res, bucket, path)?
+        pick_type_domain_from_bucket(parent_res, bucket, path)?
     };
     resolve_name_res_with_minter(db, &res, path, scope, assumptions, lowering_cx)
 }
@@ -2637,7 +2637,6 @@ fn ty_from_adtref<'db>(
 }
 
 fn pick_type_domain_from_bucket<'db>(
-    db: &'db dyn HirAnalysisDb,
     parent: Option<PathRes<'db>>,
     bucket: &NameResBucket<'db>,
     path: PathId<'db>,
@@ -2646,22 +2645,13 @@ fn pick_type_domain_from_bucket<'db>(
         .pick(NameDomain::TYPE)
         .clone()
         .map_err(|err| match err {
-            NameResolutionError::NotFound => {
-                // If something was found in a different domain, mark the failure at
-                // the parent segment to surface an InvalidPathSegment diagnostic.
-                let failed_at = if bucket.iter_ok().next().is_some() {
-                    path.parent(db).unwrap_or(path)
-                } else {
-                    path
-                };
-                PathResError::new(
-                    PathResErrorKind::NotFound {
-                        parent: parent.clone(),
-                        bucket: bucket.clone(),
-                    },
-                    failed_at,
-                )
-            }
+            NameResolutionError::NotFound => PathResError::new(
+                PathResErrorKind::NotFound {
+                    parent: parent.clone(),
+                    bucket: bucket.clone(),
+                },
+                path,
+            ),
             err => PathResError::from_name_res_error(err, path),
         })
 }
