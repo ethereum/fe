@@ -452,7 +452,7 @@ impl<'db> ImportResolver<'db> {
         let mut merged = NameResBucket::default();
         for use_ in &self.named_uses[&(scope, name)] {
             if let Some(bucket) = self.buckets.get(use_) {
-                merged.merge(bucket);
+                merged.merge(self.db, bucket);
             }
         }
         let named = self.imports.named_resolved.entry(scope).or_default();

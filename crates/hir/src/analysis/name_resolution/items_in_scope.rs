@@ -62,7 +62,7 @@ fn items_in_scope_impl<'db>(
             buckets
                 .entry(name.data(db).to_string())
                 .or_default()
-                .merge(&name_res.into());
+                .merge(db, &name_res.into());
         }
     }
 
@@ -74,7 +74,7 @@ fn items_in_scope_impl<'db>(
                     buckets
                         .entry(name.data(db).to_string())
                         .or_default()
-                        .merge(&name_res.clone().into());
+                        .merge(db, &name_res.clone().into());
                 }
             }
         }
@@ -89,7 +89,7 @@ fn items_in_scope_impl<'db>(
                         buckets
                             .entry(name.data(db).to_string())
                             .or_default()
-                            .merge(&name_res.clone().into());
+                            .merge(db, &name_res.clone().into());
                     }
                 }
             }
@@ -106,7 +106,7 @@ fn items_in_scope_impl<'db>(
             buckets
                 .entry(name.clone())
                 .or_default()
-                .merge(&lexed_res.into());
+                .merge(db, &lexed_res.into());
         }
     }
 

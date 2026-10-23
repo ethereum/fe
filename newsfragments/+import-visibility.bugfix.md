@@ -1,0 +1,1 @@
+An item that a module brings in through both a private and a `pub` import is now re-exported. Depending on the order of the `use`s, `use b::S` reported "`S` is not visible" when `b` had both `use super::x::*` and `pub use super::a::*`.

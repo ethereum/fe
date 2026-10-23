@@ -4,7 +4,7 @@ use crate::{
     core::{
         hir_def::{
             Enum, EnumVariant, GenericParam, GenericParamOwner, HirIngot, IdentId, ItemKind, Mod,
-            TopLevelMod, Trait, Use,
+            TopLevelMod, Trait, Use, Visibility,
             prim_ty::PrimTy,
             scope_graph::{
                 EdgeKind, FieldEdge, GenericParamEdge, ModEdge, ScopeId, TraitEdge, TraitTypeEdge,
@@ -158,14 +158,14 @@ impl<'db> NameResBucket<'db> {
         res
     }
 
-    pub(super) fn merge(&mut self, bucket: &NameResBucket<'db>) {
+    pub(super) fn merge(&mut self, db: &dyn HirAnalysisDb, bucket: &NameResBucket<'db>) {
         for (domain, err) in bucket.errors() {
             if let Err(NameResolutionError::NotFound) = self.pick(domain) {
                 self.bucket.push((domain, Err(err.clone())));
             }
         }
         for res in bucket.iter_ok() {
-            self.push(res);
+            self.push(db, res);
         }
     }
 
@@ -177,8 +177,9 @@ impl<'db> NameResBucket<'db> {
 
     /// Pushes `res` into the bucket. In each of its domains, `res` shadows a
     /// resolution of lower precedence, and is ambiguous with a resolution of a
-    /// different scope of the same precedence.
-    fn push(&mut self, res: &NameRes<'db>) {
+    /// different scope of the same precedence. Of two imports of the same
+    /// scope, the more visible one is kept.
+    fn push(&mut self, db: &dyn HirAnalysisDb, res: &NameRes<'db>) {
         for domain in res.domain.iter() {
             let Some((_, existing)) = self.bucket.iter_mut().find(|(d, _)| *d == domain) else {
                 self.bucket.push((domain, Ok(res.clone())));
@@ -187,7 +188,11 @@ impl<'db> NameResBucket<'db> {
             match existing {
                 Ok(old) => match res.derivation.cmp_precedence(&old.derivation) {
                     cmp::Ordering::Less => {}
-                    cmp::Ordering::Equal if old.kind == res.kind => {}
+                    cmp::Ordering::Equal if old.kind == res.kind => {
+                        if res.import_vis_rank(db) > old.import_vis_rank(db) {
+                            *existing = Ok(res.clone())
+                        }
+                    }
                     cmp::Ordering::Equal => {
                         *existing = Err(NameResolutionError::Ambiguous(ThinVec::from([
                             old.clone(),
@@ -351,6 +356,17 @@ impl<'db> NameRes<'db> {
         }
     }
 
+    /// Returns how widely the use that the name is imported through is
+    /// visible, from private up to `pub`.
+    fn import_vis_rank(&self, db: &dyn HirAnalysisDb) -> Option<u8> {
+        self.derivation.use_stmt().map(|use_| match use_.vis(db) {
+            Visibility::Private => 0,
+            Visibility::PubSuper => 1,
+            Visibility::PubIngot => 2,
+            Visibility::Public => 3,
+        })
+    }
+
     pub(super) fn is_importable(&self) -> bool {
         matches!(self.domain, NameDomain::TYPE | NameDomain::VALUE)
     }
@@ -487,7 +503,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                                 NameDomain::from_scope(self.db, edge.dest),
                                 NameDerivation::Def,
                             );
-                            bucket.push(&res);
+                            bucket.push(self.db, &res);
                         }
                     }
 
@@ -518,13 +534,13 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             .named_imports(self.db, query.scope(self.db))
             .and_then(|imports| imports.get(&query.name(self.db)))
         {
-            bucket.merge(imported);
+            bucket.merge(self.db, imported);
         }
 
         // 3. Look for the name in the glob imports.
         if let Some(imported) = self.importer.glob_imports(self.db, query.scope(self.db)) {
             for res in imported.name_res_for(query.name(self.db)) {
-                bucket.push(res);
+                bucket.push(self.db, res);
             }
         }
 
@@ -539,7 +555,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
             let mut resolved = self.resolve_query(query_for_parent);
             resolved.set_lexed_derivation();
-            bucket.merge(&resolved);
+            bucket.merge(self.db, &resolved);
         }
 
         if !query.directive(self.db).allow_external {
@@ -557,11 +573,14 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 if *name == query.name(self.db) {
                     // We don't care about the result of `push` because we assume ingots are
                     // guaranteed to be unique.
-                    bucket.push(&NameRes::new_from_scope(
-                        ScopeId::from_item((ingot.root_mod(self.db)).into()),
-                        NameDomain::TYPE,
-                        NameDerivation::External,
-                    ))
+                    bucket.push(
+                        self.db,
+                        &NameRes::new_from_scope(
+                            ScopeId::from_item((ingot.root_mod(self.db)).into()),
+                            NameDomain::TYPE,
+                            NameDerivation::External,
+                        ),
+                    )
                 }
             });
 
@@ -569,7 +588,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         if let Some(prim) = PrimTy::from_name(self.db, query.name(self.db)) {
             // We don't care about the result of `push` because we assume builtin types are
             // guaranteed to be unique.
-            bucket.push(&NameRes::new_prim(prim));
+            bucket.push(self.db, &NameRes::new_prim(prim));
         }
 
         bucket
