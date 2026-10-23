@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use common::diagnostics::{CompleteDiagnostic, cmp_complete_diagnostics};
-use dir_test::{Fixture, dir_test};
 use fe_hir::analysis::ty::{
     ty_check::{check_contract_recv_arm_body, check_func_body},
     ty_def::{Kind, TyId},
@@ -9,14 +8,17 @@ use fe_hir::analysis::ty::{
 use fe_hir::hir_def::{Expr, Partial, TopLevelMod};
 use fe_hir::span::LazySpan;
 use fe_hir::test_db::{HirAnalysisTestDb, initialize_test_analysis_pass};
-use test_utils::snap_test;
+use test_utils::{fixture_shards, fixtures::Fixture, snap_test};
 
-#[dir_test(
-    dir: "$CARGO_MANIFEST_DIR/test_files/ty_check",
-    glob: "**/*.fe"
-)]
-fn ty_check_standalone(fixture: Fixture<&str>) {
-    let mut db = HirAnalysisTestDb::default();
+fixture_shards!(
+    ty_check_standalone,
+    concat!(env!("CARGO_MANIFEST_DIR"), "/test_files/ty_check"),
+    "**/*.fe",
+    HirAnalysisTestDb::default,
+    ty_check_standalone,
+);
+
+fn ty_check_standalone(db: &mut HirAnalysisTestDb, fixture: &Fixture) {
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let file = db.new_stand_alone(file_name.into(), fixture.content());
@@ -24,25 +26,25 @@ fn ty_check_standalone(fixture: Fixture<&str>) {
 
     db.assert_no_diags(top_mod);
 
-    for &func in top_mod.all_funcs(&db) {
-        if let Some(body) = func.body(&db) {
-            let typed_body = &check_func_body(&db, func).1;
-            collect_body_props(&db, body, typed_body, &mut prop_formatter);
+    for &func in top_mod.all_funcs(db) {
+        if let Some(body) = func.body(db) {
+            let typed_body = &check_func_body(db, func).1;
+            collect_body_props(db, body, typed_body, &mut prop_formatter);
         }
     }
 
-    for &contract in top_mod.all_contracts(&db) {
-        let recvs = contract.recvs(&db);
-        for (recv_idx, recv) in recvs.data(&db).iter().enumerate() {
-            for (arm_idx, arm) in recv.arms.data(&db).iter().enumerate() {
+    for &contract in top_mod.all_contracts(db) {
+        let recvs = contract.recvs(db);
+        for (recv_idx, recv) in recvs.data(db).iter().enumerate() {
+            for (arm_idx, arm) in recv.arms.data(db).iter().enumerate() {
                 let typed_body =
-                    &check_contract_recv_arm_body(&db, contract, recv_idx as u32, arm_idx as u32).1;
-                collect_body_props(&db, arm.body, typed_body, &mut prop_formatter);
+                    &check_contract_recv_arm_body(db, contract, recv_idx as u32, arm_idx as u32).1;
+                collect_body_props(db, arm.body, typed_body, &mut prop_formatter);
             }
         }
     }
 
-    let res = prop_formatter.finish(&db);
+    let res = prop_formatter.finish(db);
     snap_test!(res, fixture.path());
 }
 
