@@ -3184,6 +3184,47 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
+            Self::LateClosureEffect {
+                primary,
+                func,
+                key,
+                is_mut,
+                closure,
+            } => {
+                let func_name = func
+                    .name(db)
+                    .to_opt()
+                    .map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string());
+                let mode = if *is_mut { "mut " } else { "" };
+                let key = format!("{mode}{}", key.pretty_print(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!(
+                        "`{func_name}` needs `{key}` after its closure's effects are inferred"
+                    ),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: "this call's effects are known only after the closure's body is checked"
+                                .to_string(),
+                            span: primary.resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: format!(
+                                "this closure's effects are inferred from its body, without `{key}`"
+                            ),
+                            span: closure.resolve(db),
+                        },
+                    ],
+                    notes: vec![
+                        "annotate the types the call depends on in the closure's body, so that it resolves there"
+                            .to_string(),
+                    ],
+                    error_code,
+                }
+            }
+
             Self::EffectTypeMismatch {
                 primary,
                 func,

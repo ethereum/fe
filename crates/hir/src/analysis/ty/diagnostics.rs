@@ -563,6 +563,17 @@ pub enum BodyDiag<'db> {
         provided_span: Option<DynLazySpan<'db>>,
     },
 
+    /// A call in `closure` that resolves only after the closure's body is
+    /// checked needs an effect (`mut` if `is_mut`) its row, inferred from
+    /// that body, does not give.
+    LateClosureEffect {
+        primary: DynLazySpan<'db>,
+        func: Func<'db>,
+        key: HirTypeId<'db>,
+        is_mut: bool,
+        closure: DynLazySpan<'db>,
+    },
+
     EffectTypeMismatch {
         primary: DynLazySpan<'db>,
         func: Func<'db>,
@@ -1350,6 +1361,7 @@ impl<'db> BodyDiag<'db> {
             Self::ProductArgExpected { .. } => 135,
             Self::ClosureProductParam { .. } => 136,
             Self::ProductArgTooWeak { .. } => 150,
+            Self::LateClosureEffect { .. } => 151,
             Self::ParamBindsTwice { .. } => 134,
             Self::InitializerMarker { .. } => 124,
             Self::VarOfNoValue { .. } => 125,

@@ -1,0 +1,1 @@
+A method call whose receiver's type is inferred later in the body now takes its effects from where it is written: a `with` block around it provides them, and in a closure they become part of the closure's effects. A call that resolves only after its closure's body, and needs an effect the closure does not use there, is an error (8-0151).

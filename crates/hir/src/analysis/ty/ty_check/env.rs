@@ -152,6 +152,12 @@ pub(crate) struct TyCheckEnv<'db> {
     access_captures: Vec<(ExprId, LocalBinding<'db>, TyId<'db>)>,
     /// The rows of the closures checked so far.
     closure_effects: FxHashMap<ExprId, Vec<ResolvedEffectBindingInfo<'db>>>,
+    /// The effect environments of the closures checked so far, where their
+    /// deferred calls resolve.
+    closure_envs: FxHashMap<ExprId, keyed_effect_env::EffectEnv<'db>>,
+    /// The checked closure a deferred call being resolved is in, with the
+    /// environment its own replaced.
+    late_closure: Option<(ClosureDef<'db>, keyed_effect_env::EffectEnv<'db>)>,
     /// The components of the rows a function's effects name, when its view
     /// expands every row: the body uses them as its own effects.
     row_components: Vec<ResolvedEffectBindingInfo<'db>>,
@@ -301,6 +307,8 @@ impl<'db> TyCheckEnv<'db> {
             closure_expectations: FxHashMap::default(),
             access_captures: Vec::new(),
             closure_effects: FxHashMap::default(),
+            closure_envs: FxHashMap::default(),
+            late_closure: None,
             row_components: Vec::new(),
             pending_vars: FxHashMap::default(),
             loop_stack: Vec::new(),
@@ -1088,7 +1096,8 @@ impl<'db> TyCheckEnv<'db> {
             .closure_stack
             .pop()
             .expect("closure stack is non-empty");
-        self.effect_env = active.enclosing_effects;
+        let env = std::mem::replace(&mut self.effect_env, active.enclosing_effects);
+        self.closure_envs.insert(expr, env);
         let effects = active
             .effects
             .iter()
@@ -1115,7 +1124,9 @@ impl<'db> TyCheckEnv<'db> {
     /// as `name` if the row has none, with its provider if it is new. A
     /// component required `mut` anywhere is `mut`. A new trait-keyed
     /// component's provider is assumed to implement the trait for the rest
-    /// of the body; a row component has no provider.
+    /// of the body; a row component has no provider. The row of the late
+    /// closure, already checked, is fixed: it gives only a component it has,
+    /// `mut` if `is_mut`.
     pub(super) fn closure_effect(
         &mut self,
         key: EffectRequirementKey<'db>,
@@ -1133,6 +1144,13 @@ impl<'db> TyCheckEnv<'db> {
             }
             (held, key) => held == key,
         };
+        if let Some((def, _)) = &self.late_closure {
+            let effect = self.closure_effects[&def.expr]
+                .iter()
+                .find(|effect| same_key(&effect.requirement.key))?;
+            return (!is_mut || effect.requirement.is_mut)
+                .then(|| (LocalBinding::effect_param(effect), None));
+        }
         let active = self.closure_stack.last_mut()?;
         if let Some(effect) = active
             .effects
@@ -1196,22 +1214,77 @@ impl<'db> TyCheckEnv<'db> {
         Some((binding, provided))
     }
 
-    /// Marks the closure effect `binding` as used `mut`.
-    pub(super) fn require_mut_closure_effect(&mut self, binding: LocalBinding<'db>) {
-        if let LocalBinding::EffectParam {
-            site: EffectParamSite::Closure(def),
-            idx,
-            ..
-        } = binding
-            && let Some(effect) = self
-                .closure_stack
-                .iter_mut()
-                .find(|active| active.def == def)
-                .and_then(|active| active.effects.get_mut(idx))
+    /// Marks effect `idx` of `closure`'s row as used `mut`, returning whether
+    /// it is: the row of a closure already checked is fixed.
+    pub(super) fn require_mut_closure_effect(
+        &mut self,
+        closure: ClosureDef<'db>,
+        idx: usize,
+    ) -> bool {
+        match self
+            .closure_stack
+            .iter_mut()
+            .find(|active| active.def == closure)
         {
-            effect.requirement.is_mut = true;
-            effect.provider.is_mut = true;
+            Some(active) => {
+                if let Some(effect) = active.effects.get_mut(idx) {
+                    effect.requirement.is_mut = true;
+                    effect.provider.is_mut = true;
+                }
+                true
+            }
+            None => self
+                .closure_effects
+                .get(&closure.expr)
+                .and_then(|effects| effects.get(idx))
+                .is_some_and(|effect| effect.requirement.is_mut),
         }
+    }
+
+    /// Where a call checked now is: see `CallSite`.
+    pub(super) fn call_site(&self) -> CallSite<'db> {
+        CallSite {
+            frames: self.effect_env.with_frames(),
+            closure: self.closure_stack.last().map(|active| active.def),
+        }
+    }
+
+    /// Resolves what follows at `site`, a deferred call's, until
+    /// `leave_call_site`: under its `with` blocks, in its closure's body. A
+    /// closure already checked gives its finished environment, whose row is
+    /// fixed.
+    pub(super) fn enter_call_site(&mut self, site: &CallSite<'db>) {
+        debug_assert!(
+            site.closure.is_some() || self.closure_stack.is_empty(),
+            "a call outside closures resolves after them"
+        );
+        if let Some(def) = site.closure
+            && self
+                .closure_stack
+                .last()
+                .is_none_or(|active| active.def != def)
+        {
+            let env = self
+                .closure_envs
+                .remove(&def.expr)
+                .expect("a checked closure keeps its effect environment");
+            let enclosing = std::mem::replace(&mut self.effect_env, env);
+            self.late_closure = Some((def, enclosing));
+        }
+        self.effect_env.reopen_with_frames(site.frames.clone());
+    }
+
+    pub(super) fn leave_call_site(&mut self) {
+        self.effect_env.close_with_frames();
+        if let Some((def, enclosing)) = self.late_closure.take() {
+            let env = std::mem::replace(&mut self.effect_env, enclosing);
+            self.closure_envs.insert(def.expr, env);
+        }
+    }
+
+    /// The checked closure a deferred call being resolved is in.
+    pub(super) fn late_closure(&self) -> Option<ClosureDef<'db>> {
+        self.late_closure.as_ref().map(|(def, _)| *def)
     }
 
     pub(super) fn in_closure(&self) -> bool {
@@ -1397,6 +1470,13 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn register_pending_method(&mut self, pending: PendingMethod<'db>) {
         self.deferred.push(DeferredTask::Method(pending))
+    }
+
+    /// Whether a method call in `closure`'s body waits to resolve.
+    pub(super) fn has_pending_method_in(&self, closure: ClosureDef<'db>) -> bool {
+        self.deferred.iter().any(|task| {
+            matches!(task, DeferredTask::Method(pending) if pending.site.closure == Some(closure))
+        })
     }
 
     pub(super) fn register_pending_primitive_op(&mut self, pending: PendingPrimitiveOp) {
@@ -2389,6 +2469,16 @@ pub(super) struct PendingMethod<'db> {
     pub method_name: crate::core::hir_def::IdentId<'db>,
     pub candidates: Vec<PendingMethodCandidate<'db>>,
     pub span: DynLazySpan<'db>,
+    pub site: CallSite<'db>,
+}
+
+/// Where a call is checked, for one resolved later to take its effects
+/// there: the frames of the `with` blocks it is under, and the closure whose
+/// body it is in.
+#[derive(Debug, Clone)]
+pub(super) struct CallSite<'db> {
+    frames: Vec<keyed_effect_env::EffectFrame<'db>>,
+    pub closure: Option<ClosureDef<'db>>,
 }
 
 #[derive(Debug, Clone, Copy)]
