@@ -1,5 +1,6 @@
 #[doc(hidden)]
 pub mod _macro_support;
+pub mod fixtures;
 pub mod normalize;
 pub mod url_utils;
 pub use tracing::Level;
