@@ -1,6 +1,6 @@
 use common::InputDb;
 use dir_test::{Fixture, dir_test};
-use driver::DriverDataBase;
+use driver::{DriverDataBase, generation::prepare_file};
 use fmt::{Config, format_str};
 use url::Url;
 
@@ -15,7 +15,17 @@ fn test_fmt_fe_test_fixtures_semantic_roundtrip(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file_url = Url::from_file_path(fixture.path())
         .unwrap_or_else(|_| panic!("fixture path should be absolute: {}", fixture.path()));
-    let file = db.workspace().touch(&mut db, file_url, Some(formatted));
+    let file = db
+        .workspace()
+        .touch(&mut db, file_url.clone(), Some(formatted));
+    let prepared = prepare_file(&db, file).unwrap_or_else(|err| {
+        panic!(
+            "formatted output failed generation for {}: {err:?}",
+            fixture.path()
+        )
+    });
+    let db = prepared.unwrap_or(db);
+    let file = db.workspace().get(&db, &file_url).unwrap();
     let top_mod = db.top_mod(file);
 
     let diagnostics = db.run_on_top_mod(top_mod);

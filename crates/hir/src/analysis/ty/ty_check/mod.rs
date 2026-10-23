@@ -43,7 +43,7 @@ use crate::analysis::ty::trait_resolution::constraint::{
 };
 use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty, walk_ty};
 use crate::hir_def::{
-    CallArg, CallableDef, FieldParent, GenericArgListId, ImplTrait, ModeMarker, Trait,
+    CallArg, CallableDef, FieldParent, GenericArgListId, ImplTrait, ItemKind, ModeMarker, Trait,
     params::FuncParamMode, scope_graph::ScopeId,
 };
 use crate::{
@@ -379,17 +379,15 @@ pub fn check_generic_default_bodies<'db>(
     owner: GenericParamOwner<'db>,
 ) -> Vec<FuncBodyDiag<'db>> {
     let mut diags = Vec::new();
-    for view in owner.params(db) {
-        for checked in check_generic_default_body_types(db, owner, view.idx) {
-            diags.extend(checked.diagnostics.iter().cloned());
-            if checked.ctfe_ready {
-                diags.extend(const_body_ctfe_diags(
-                    db,
-                    checked.body,
-                    checked.expected,
-                    ConstUsePolicy::AllowDependent,
-                ));
-            }
+    for checked in generic_default_body_checks(db, owner) {
+        diags.extend(checked.diagnostics.iter().cloned());
+        if checked.ctfe_ready {
+            diags.extend(const_body_ctfe_diags(
+                db,
+                checked.body,
+                checked.expected,
+                ConstUsePolicy::AllowDependent,
+            ));
         }
     }
     diags
@@ -401,6 +399,17 @@ pub(crate) struct DefaultConstBodyCheck<'db> {
     pub(crate) expected: TyId<'db>,
     pub(crate) diagnostics: Vec<FuncBodyDiag<'db>>,
     pub(crate) ctfe_ready: bool,
+}
+
+/// Share the actual checked default bodies and their declared expected types
+/// with consumers of retained metadata. Do not rediscover defaults from syntax.
+fn generic_default_body_checks<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: GenericParamOwner<'db>,
+) -> impl Iterator<Item = &'db DefaultConstBodyCheck<'db>> + 'db {
+    owner
+        .params(db)
+        .flat_map(move |view| check_generic_default_body_types(db, owner, view.idx).iter())
 }
 
 /// Name/type checking stays separate from const execution so structural
@@ -816,13 +825,21 @@ pub(crate) fn effect_key_wf_diag<'db>(
     ))
 }
 
+/// The declaration-owned condition and expected type used both for checking
+/// and for recovering the checked body's retained preparation metadata.
+fn static_assert_body<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assert_: StaticAssert<'db>,
+) -> (Body<'db>, TyId<'db>) {
+    (assert_.condition(db), TyId::bool(db))
+}
+
 #[salsa::tracked(return_ref)]
 pub fn check_static_assert<'db>(
     db: &'db dyn HirAnalysisDb,
     assert_: StaticAssert<'db>,
 ) -> Vec<FuncBodyDiag<'db>> {
-    let condition = assert_.condition(db);
-    let expected = TyId::bool(db);
+    let (condition, expected) = static_assert_body(db, assert_);
     let owner = BodyOwner::AnonConstBody {
         body: condition,
         expected,
@@ -953,6 +970,99 @@ pub fn check_body<'db>(
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
     let CheckedBody { diags, typed, .. } = checked_body(db, owner);
     (diags, typed)
+}
+
+pub(crate) fn provider_opening_at<'db>(
+    db: &'db dyn HirAnalysisDb,
+    key: &common::generation::ScopedDeriveOpeningKey,
+    offered_trait: crate::hir_def::Trait<'db>,
+) -> Option<super::trait_resolution::generation::ProviderOpening<'db>> {
+    let file = db.workspace().get(db, &key.file)?;
+    let module = crate::lower::map_file_to_mod_impl(db, file);
+    let mut owners = Vec::new();
+    for &function in module.all_funcs(db) {
+        owners.extend(BodyOwner::func_bodies(db, function));
+    }
+    for item in module.all_items(db) {
+        if let ItemKind::Const(constant) = item {
+            owners.push(BodyOwner::Const(*constant));
+        }
+    }
+    for &contract in module.all_contracts(db) {
+        owners.push(BodyOwner::ContractInit { contract });
+        for (recv_idx, recv) in contract.recvs(db).data(db).iter().enumerate() {
+            for arm_idx in 0..recv.arms.data(db).len() {
+                owners.push(BodyOwner::ContractRecvArm {
+                    contract,
+                    recv_idx: recv_idx as u32,
+                    arm_idx: arm_idx as u32,
+                });
+            }
+        }
+    }
+    for &implementation in module.all_impl_traits(db) {
+        let Some(implementor) = super::trait_lower::lower_impl_trait(db, implementation) else {
+            continue;
+        };
+        for constant in implementation.assoc_consts(db) {
+            let Some(body) = constant.value_body(db) else {
+                continue;
+            };
+            let expected = constant
+                .name(db)
+                .and_then(|name| implementor.trait_def(db).const_(db, name))
+                .and_then(|constant| constant.ty_binder(db))
+                .map(|binder| binder.instantiate(db, implementor.trait_(db).args(db)))
+                .or_else(|| constant.ty(db));
+            if let Some(expected) = expected {
+                owners.push(BodyOwner::AnonConstBody { body, expected });
+            }
+        }
+    }
+    // Inherent associated constants use the same declared expected type as
+    // BodyAnalysisPass::run_on_module and check_anon_const_body.
+    for &implementation in module.all_impls(db) {
+        for constant in implementation.assoc_consts(db) {
+            if let (Some(body), Some(expected)) = (constant.value_body(db), constant.ty(db)) {
+                owners.push(BodyOwner::AnonConstBody { body, expected });
+            }
+        }
+    }
+    for &trait_ in module.all_traits(db) {
+        for constant in trait_.assoc_consts(db) {
+            if let (Some(body), Some(expected)) = (constant.default_body(db), constant.ty(db)) {
+                owners.push(BodyOwner::AnonConstBody { body, expected });
+            }
+        }
+    }
+    for &item in module.all_items(db) {
+        owners.extend(BodyOwner::const_predicates_of(db, item));
+        if let Some(owner) = GenericParamOwner::from_item_opt(item) {
+            owners.extend(generic_default_body_checks(db, owner).map(|checked| {
+                BodyOwner::AnonConstBody {
+                    body: checked.body,
+                    expected: checked.expected,
+                }
+            }));
+        }
+    }
+    for &assert_ in module.all_static_asserts(db) {
+        let (body, expected) = static_assert_body(db, assert_);
+        owners.push(BodyOwner::AnonConstBody { body, expected });
+    }
+    let mut retained = None;
+    for owner in owners {
+        let typed = &infer_body(db, owner).1;
+        for &opening in &typed.tables.provider_openings {
+            if opening.key(db) == key && opening.offered_trait(db) == offered_trait {
+                if retained.is_some_and(|previous| previous != opening) {
+                    return None;
+                }
+                retained = Some(opening);
+            }
+        }
+    }
+    retained
 }
 
 /// How the bindings of a pattern take what its source grants.
@@ -1502,6 +1612,7 @@ fn typed_body_for_bodyless_func<'db>(
         inspected_places: FxHashSet::default(),
         covered_providers: FxHashSet::default(),
         named_impl_operands: FxHashSet::default(),
+        provider_openings: Vec::new(),
         expr_choices: SecondaryMap::new(),
         const_refs: SecondaryMap::new(),
         value_path_refs: SecondaryMap::new(),
@@ -2504,6 +2615,13 @@ impl<'db> TyChecker<'db> {
                 } else {
                     TraitObligationOutcome::Requeue(obligation)
                 }
+            }
+            GoalSatisfiability::NeedsGeneration(_) => {
+                self.push_diag(BodyDiag::CompileTimePhase {
+                    primary: obligation.span,
+                    message: "scoped derive requires a prepared generated implementation".into(),
+                });
+                TraitObligationOutcome::Discharged
             }
             GoalSatisfiability::ContainsInvalid => TraitObligationOutcome::Discharged,
         }
@@ -4482,6 +4600,8 @@ mod typed_body_tables {
         /// `with` values whose resources the function's own authority covers.
         pub(super) covered_providers: FxHashSet<ExprId>,
         pub(super) named_impl_operands: FxHashSet<ExprId>,
+        pub(super) provider_openings:
+            Vec<crate::analysis::ty::trait_resolution::generation::ProviderOpening<'db>>,
         pub(super) expr_choices:
             SecondaryMap<ExprId, Option<crate::analysis::ty::trait_resolution::ChosenImpls<'db>>>,
         pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
@@ -6853,6 +6973,7 @@ impl<'db> TypedBody<'db> {
             inspected_places: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
             named_impl_operands: FxHashSet::default(),
+            provider_openings: Vec::new(),
             expr_choices: SecondaryMap::new(),
             const_refs: SecondaryMap::new(),
             value_path_refs: SecondaryMap::new(),

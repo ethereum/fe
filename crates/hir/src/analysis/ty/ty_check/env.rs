@@ -40,7 +40,7 @@ use crate::analysis::{
             model::EffectRequirementDecl,
             rows::{RowComponent, expand_rows},
         },
-        evidence::{BoundOwner, BoundSchemaId, prove_outcome},
+        evidence::{BoundOwner, BoundSchemaId, ProofOutcome, prove_outcome},
         fold::{TyFoldable, TyFolder},
         provider::AddressSpace,
         shape::Shape,
@@ -208,6 +208,8 @@ pub(crate) struct TyCheckEnv<'db> {
     value_calls: FxHashSet<ExprId>,
     covered_providers: FxHashSet<ExprId>,
     pub(super) named_impl_operands: FxHashSet<ExprId>,
+    pub(super) provider_openings:
+        Vec<super::super::trait_resolution::generation::ProviderOpening<'db>>,
     /// The part of a projection's return shape each yield site grants.
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
 
@@ -368,6 +370,7 @@ impl<'db> TyCheckEnv<'db> {
             value_calls: FxHashSet::default(),
             covered_providers: FxHashSet::default(),
             named_impl_operands: FxHashSet::default(),
+            provider_openings: Vec::new(),
             yield_shapes: SecondaryMap::new(),
             for_loop_plans: SecondaryMap::new(),
             path_applications: Vec::new(),
@@ -865,6 +868,7 @@ impl<'db> TyCheckEnv<'db> {
             choices
                 .items(self.db)
                 .iter()
+                .filter_map(|entry| entry.implementation())
                 .map(|choice| choice.implementation().trait_inst(self.db)),
         );
         PredicateListId::new(self.db, assumptions).extend_all_bounds(self.db)
@@ -1638,22 +1642,36 @@ impl<'db> TyCheckEnv<'db> {
                 ),
             )
         };
+        let pending_proof = |span: DynLazySpan<'db>| {
+            super::super::diagnostics::FuncBodyDiag::from(
+                super::super::diagnostics::BodyDiag::CompileTimePhase {
+                    primary: span,
+                    message: "scoped derive requires a prepared generated implementation".into(),
+                },
+            )
+        };
         // Each trait goal a call or constant uses is now final: prove it once,
         // here, for every later stage.
         let solve_cx = TraitSolveCx::new(self.db, prober.scope).with_assumptions(assumptions);
         for (&expr, calls) in &mut self.place_entries {
             let solve_cx = solve_cx.with_choices(self.expr_choices[expr]);
             let mut codec_choice_failed = false;
+            let mut pending = false;
             for (index, callable) in calls.iter_mut().enumerate() {
                 *callable = callable.clone().fold_with(self.db, &mut prober);
                 let outcome = callable.record_evidence(self.db, solve_cx);
+                pending |= matches!(outcome, ProofOutcome::NeedsGeneration);
                 codec_choice_failed |= index > 0
                     && solve_cx.choices().is_some()
                     && matches!(outcome, super::super::evidence::ProofOutcome::Unavailable);
-                callable.record_bound_evidence(self.db, solve_cx);
+                pending |= callable.record_bound_evidence(self.db, solve_cx);
                 callable.qualify_evidence(self.db, self.owner);
             }
             calls.codec_choice_failed = codec_choice_failed;
+            if pending {
+                diags.push(pending_proof(expr.span(self.body).into()));
+                continue;
+            }
             if let Some(goal) = calls.locate.trait_inst()
                 && calls.locate.evidence().is_none()
                 && !super::super::visitor::collect_flags(self.db, goal).intersects(
@@ -1670,10 +1688,13 @@ impl<'db> TyCheckEnv<'db> {
             };
             let solve_cx = solve_cx.with_choices(self.expr_choices[expr]);
             let callable = lowering.callable_mut();
-            callable.record_evidence(self.db, solve_cx);
-            callable.record_bound_evidence(self.db, solve_cx);
+            let outcome = callable.record_evidence(self.db, solve_cx);
+            let pending_bounds = callable.record_bound_evidence(self.db, solve_cx);
             callable.qualify_evidence(self.db, self.owner);
-
+            if matches!(outcome, ProofOutcome::NeedsGeneration) || pending_bounds {
+                diags.push(pending_proof(expr.span(self.body).into()));
+                continue;
+            }
             if solve_cx.choices().is_some() {
                 for goal in callable.missing_bound_evidence(self.db) {
                     diags.push(failed_proof(goal, expr.span(self.body).into()));
@@ -1696,10 +1717,13 @@ impl<'db> TyCheckEnv<'db> {
             };
             let solve_cx = solve_cx.with_choices(self.stmt_choices[stmt]);
             for call in &mut plan.calls {
-                call.callable.record_evidence(self.db, solve_cx);
-                call.callable.record_bound_evidence(self.db, solve_cx);
+                let outcome = call.callable.record_evidence(self.db, solve_cx);
+                let pending_bounds = call.callable.record_bound_evidence(self.db, solve_cx);
                 call.callable.qualify_evidence(self.db, self.owner);
-
+                if matches!(outcome, ProofOutcome::NeedsGeneration) || pending_bounds {
+                    diags.push(pending_proof(stmt.span(self.body).into()));
+                    continue;
+                }
                 if solve_cx.choices().is_some() {
                     for goal in call.callable.missing_bound_evidence(self.db) {
                         diags.push(failed_proof(goal, stmt.span(self.body).into()));
@@ -1725,6 +1749,10 @@ impl<'db> TyCheckEnv<'db> {
                     use_.inst(),
                 );
                 evidence.record_dispatch(use_.inst(), outcome.evidence());
+                if matches!(outcome, ProofOutcome::NeedsGeneration) {
+                    diags.push(pending_proof(expr.span(self.body).into()));
+                    continue;
+                }
                 if choices.is_some() && evidence.dispatch_proof().is_none() {
                     diags.push(failed_proof(use_.inst(), expr.span(self.body).into()));
                 }
@@ -1783,6 +1811,7 @@ impl<'db> TyCheckEnv<'db> {
             inspected_places: self.inspected_places,
             covered_providers: self.covered_providers,
             named_impl_operands: self.named_impl_operands,
+            provider_openings: self.provider_openings,
             expr_choices: self.expr_choices,
             const_refs: self.const_refs,
             value_path_refs: self.value_path_refs,

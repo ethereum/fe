@@ -90,7 +90,8 @@ use crate::analysis::{
         is_scope_visible_from,
         method_selection::{
             AmbiguousTraitMethods, MethodCandidate, MethodSelectionError,
-            select_callable_value_method, select_method_candidate, select_trait_method_candidates,
+            select_callable_value_method, select_method_candidate_with_choices,
+            select_trait_method_candidates,
         },
         resolve_name_res_with_minter, resolve_query,
     },
@@ -1826,6 +1827,107 @@ impl<'db> TyChecker<'db> {
         }
     }
 
+    fn try_open_derive_provider(
+        &mut self,
+        value: ExprId,
+        provider_ty: TyId<'db>,
+        alias_scope: Option<crate::hir_def::scope_graph::ScopeId<'db>>,
+    ) -> bool {
+        use super::super::trait_resolution::{
+            ChosenImpls,
+            generation::{ProviderOpening, offered_traits},
+        };
+        use parser::ast::prelude::*;
+        let offers = offered_traits(self.db, self.env.scope(), provider_ty);
+        if offers.is_empty() {
+            return false;
+        }
+        let mut owner_scope = Some(self.env.owner().scope());
+        let mut generated_owner = false;
+        while let Some(scope) = owner_scope {
+            generated_owner |= scope.data(self.db).publication_parent.is_some();
+            owner_scope = scope.parent(self.db);
+        }
+        let body = self.body();
+        let origin = body.source_map(self.db).expr_map.node_to_source(value);
+        let key = if !generated_owner
+            && let crate::span::HirOrigin::Raw(pointer) = origin
+            && let Some(file) = body.top_mod(self.db).file(self.db).url(self.db)
+        {
+            let root = crate::lower::top_mod_ast(self.db, body.top_mod(self.db));
+            Some(common::generation::ScopedDeriveOpeningKey {
+                file,
+                binding_range: pointer.to_node(root.syntax()).syntax().text_range(),
+            })
+        } else {
+            None
+        };
+        let Some(key) = key else {
+            self.push_diag(BodyDiag::CompileTimePhase {
+                primary: value.span(body).into(),
+                message: "scoped derive openings require a uniquely identified authored body; generated openings need a portable generated-owner identity".into(),
+            });
+            self.env.named_impl_operands.insert(value);
+            self.env.type_expr(value, ExprProp::invalid(self.db));
+            return true;
+        };
+        for scope in [alias_scope, provider_ty.as_scope(self.db)]
+            .into_iter()
+            .flatten()
+        {
+            if !is_scope_visible_from(self.db, scope, self.env.scope()) {
+                use salsa::Accumulator;
+                super::super::trait_resolution::generation::GenerationDemand {
+                    opening: key,
+                    demand: Err("scoped derive provider path is not visible".into()),
+                }
+                .accumulate(self.db);
+                if let Some(name) = scope.name(self.db) {
+                    self.push_diag(PathResDiag::Invisible(
+                        value.span(body).into(),
+                        name,
+                        scope.name_span(self.db),
+                    ));
+                }
+                self.env.named_impl_operands.insert(value);
+                self.env.type_expr(value, ExprProp::invalid(self.db));
+                return true;
+            }
+        }
+        if let Partial::Present(Expr::RecordInit(_, fields)) = value.data(self.db, body)
+            && !fields.is_empty()
+        {
+            use salsa::Accumulator;
+            let message = "scoped derive provider literals must have no fields; provider values are not evaluated";
+            super::super::trait_resolution::generation::GenerationDemand {
+                opening: key,
+                demand: Err(message.into()),
+            }
+            .accumulate(self.db);
+            self.push_diag(BodyDiag::CompileTimePhase {
+                primary: value.span(body).into(),
+                message: message.into(),
+            });
+            self.env.named_impl_operands.insert(value);
+            self.env.type_expr(value, ExprProp::invalid(self.db));
+            return true;
+        }
+        for trait_ in offers {
+            let opening =
+                ProviderOpening::new(self.db, key.clone(), provider_ty, trait_, self.env.scope());
+            self.env.provider_openings.push(opening);
+            self.env.choices = Some(ChosenImpls::push_provider(
+                self.db,
+                self.env.choices,
+                opening,
+            ));
+        }
+        self.env.named_impl_operands.insert(value);
+        self.env
+            .type_expr(value, ExprProp::new(TyId::unit(self.db), false));
+        true
+    }
+
     fn check_with(
         &mut self,
         bindings: &[WithBinding<'db>],
@@ -1984,7 +2086,49 @@ impl<'db> TyChecker<'db> {
                     .type_expr(binding.value, ExprProp::new(TyId::unit(self.db), false));
                 continue;
             }
+            if binding.key_path.is_none()
+                && let Partial::Present(Expr::Path(Partial::Present(path))) =
+                    binding.value.data(self.db, self.body())
+                && !(path.is_bare_ident(self.db)
+                    && self
+                        .env
+                        .visible_binding(
+                            path.local_ident(self.db)
+                                .unwrap_or_else(|| path.ident(self.db).unwrap()),
+                        )
+                        .is_some())
+                && let Ok(resolved) = crate::analysis::name_resolution::resolve_path(
+                    self.db,
+                    *path,
+                    self.env.scope(),
+                    self.env.assumptions(),
+                    false,
+                )
+                && let Some((provider_ty, alias_scope)) = (match resolved {
+                    crate::analysis::name_resolution::PathRes::Ty(ty) => Some((ty, None)),
+                    crate::analysis::name_resolution::PathRes::TyAlias(alias, ty) => {
+                        Some((ty, Some(alias.alias.scope())))
+                    }
+                    _ => None,
+                })
+                && self.try_open_derive_provider(binding.value, provider_ty, alias_scope)
+            {
+                continue;
+            }
             let value_prop = self.check_expr_unknown(binding.value);
+            // A record literal is also a spelling of a compile-time provider.
+            // Its type is owned by ordinary expression checking, not re-resolved
+            // from the constructor's source spelling.
+            let provider_ty = self.table.fold_ty(self.db, value_prop.ty);
+            if binding.key_path.is_none()
+                && matches!(
+                    binding.value.data(self.db, self.body()),
+                    Partial::Present(Expr::RecordInit(..))
+                )
+                && self.try_open_derive_provider(binding.value, provider_ty, None)
+            {
+                continue;
+            }
             // A provider confers authority over its place for the body; it
             // opens no access.
             self.consume_access(binding.value);
@@ -2047,6 +2191,62 @@ impl<'db> TyChecker<'db> {
             }
         }
 
+        if let Some(choices) = self.env.choices {
+            use super::super::trait_resolution::ChoiceEntry;
+            let start = outer_choices.map_or(0, |outer| outer.items(self.db).len());
+            let entries = &choices.items(self.db)[start..];
+            if entries
+                .iter()
+                .any(|entry| matches!(entry, ChoiceEntry::Provider(_)))
+            {
+                let mut seen = rustc_hash::FxHashMap::default();
+                let mut conflict = None;
+                for entry in entries {
+                    let (trait_, provider) = match entry {
+                        ChoiceEntry::Impl(choice) => (
+                            choice.implementation().trait_inst(self.db).def(self.db),
+                            false,
+                        ),
+                        ChoiceEntry::Provider(opening) => (opening.offered_trait(self.db), true),
+                    };
+                    if let Some(previous_provider) = seen.insert(trait_, provider)
+                        && (previous_provider || provider)
+                    {
+                        conflict = Some(if previous_provider && provider {
+                            "one `with` header gives two derive providers for the same trait"
+                        } else {
+                            "one `with` header gives a derive provider and a choice for the same trait"
+                        });
+                        break;
+                    }
+                }
+                if let Some(message) = conflict {
+                    use salsa::Accumulator;
+                    let opening = entries
+                        .iter()
+                        .find_map(|entry| match entry {
+                            ChoiceEntry::Provider(opening) => Some(*opening),
+                            ChoiceEntry::Impl(_) => None,
+                        })
+                        .expect("provider-containing group");
+                    super::super::trait_resolution::generation::GenerationDemand {
+                        opening: opening.key(self.db).clone(),
+                        demand: Err(message.into()),
+                    }
+                    .accumulate(self.db);
+                    self.push_diag(BodyDiag::CompileTimePhase {
+                        primary: body_expr.span(self.body()).into(),
+                        message: message.into(),
+                    });
+                    // An invalid opening supplies no candidates or requests.
+                    // In particular, do not check its body under a winning
+                    // provider or silently retry it under ordinary selection.
+                    self.env.effect_env_mut().pop_frame();
+                    self.env.choices = outer_choices;
+                    return ExprProp::invalid(self.db);
+                }
+            }
+        }
         let result = if result_discarded {
             self.check_expr_with_discarded_result(body_expr, expected)
         } else {
@@ -4013,13 +4213,14 @@ impl<'db> TyChecker<'db> {
 
         let mut selected_receiver_ty = receiver_tys[0];
         let mut canonical_r_ty = Canonicalized::new(self.db, selected_receiver_ty);
-        let mut candidate = select_method_candidate(
+        let mut candidate = select_method_candidate_with_choices(
             self.db,
             &canonical_r_ty,
             method_name,
             self.env.scope(),
             method_assumptions,
             None,
+            self.env.choices,
         );
         if matches!(
             candidate,
@@ -4027,13 +4228,14 @@ impl<'db> TyChecker<'db> {
         ) {
             for &receiver_ty in receiver_tys.iter().skip(1) {
                 let fallback_canonical = Canonicalized::new(self.db, receiver_ty);
-                let fallback = select_method_candidate(
+                let fallback = select_method_candidate_with_choices(
                     self.db,
                     &fallback_canonical,
                     method_name,
                     self.env.scope(),
                     method_assumptions,
                     None,
+                    self.env.choices,
                 );
 
                 if fallback.is_ok() || !matches!(fallback, Err(MethodSelectionError::NotFound)) {
@@ -4198,7 +4400,7 @@ impl<'db> TyChecker<'db> {
         let idx = path.segment_index(self.db);
         let generic_args = path.generic_args(self.db);
         let generic_args_span = path_span.clone().segment(idx).generic_args();
-        let lowering_cx = LoweringContext::new();
+        let lowering_cx = LoweringContext::new().with_method_choices(self.env.choices);
         let unify_generic_args = |tc: &mut Self, callable: &mut Callable<'db>| {
             callable.unify_generic_args(tc, generic_args, generic_args_span.clone())
         };
@@ -5467,13 +5669,14 @@ impl<'db> TyChecker<'db> {
         } else {
             let mut selected_lhs_ty = lhs_candidates[0];
             let mut c_lhs_ty = Canonicalized::new(self.db, selected_lhs_ty);
-            let mut method_candidate = select_method_candidate(
+            let mut method_candidate = select_method_candidate_with_choices(
                 self.db,
                 &c_lhs_ty,
                 op.trait_method(self.db),
                 self.env.scope(),
                 method_assumptions,
                 Some(trait_def),
+                self.env.choices,
             );
             if matches!(
                 method_candidate,
@@ -5481,13 +5684,14 @@ impl<'db> TyChecker<'db> {
             ) {
                 for &candidate_ty in lhs_candidates.iter().skip(1) {
                     let c_candidate_ty = Canonicalized::new(self.db, candidate_ty);
-                    let fallback = select_method_candidate(
+                    let fallback = select_method_candidate_with_choices(
                         self.db,
                         &c_candidate_ty,
                         op.trait_method(self.db),
                         self.env.scope(),
                         method_assumptions,
                         Some(trait_def),
+                        self.env.choices,
                     );
                     if fallback.is_ok() || !matches!(fallback, Err(MethodSelectionError::NotFound))
                     {
