@@ -7,6 +7,8 @@ on:
       - v*
 
   pull_request:
+    # Merging or closing a PR starts a run that only cancels the PR's run.
+    types: [opened, synchronize, reopened, closed]
 
   workflow_dispatch:
 
@@ -14,6 +16,7 @@ permissions:
   contents: read
 
 concurrency:
+  # Keyed on the PR number: a merged PR's `closed` event has github.ref = refs/heads/master.
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
@@ -27,6 +30,7 @@ env:
 
 jobs:
   lint:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -68,6 +72,7 @@ jobs:
   test:
     # PRs skip macOS: the org shares 5 concurrent macOS runners. To test a PR
     # branch on macOS, run `gh workflow run CI --ref <branch>`.
+    if: github.event.action != 'closed'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -173,6 +178,7 @@ jobs:
           retention-days: 14
 
   wasm-wasi-check:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
