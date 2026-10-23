@@ -6,7 +6,7 @@ use crate::{
             adt_def::{AdtRef, instantiate_adt_field_shape},
             normalize::normalize_ty,
             trait_resolution::PredicateListId,
-            ty_def::TyId,
+            ty_def::{ShapeCon, TyBase, TyData, TyId},
         },
     },
     hir_def::scope_graph::ScopeId,
@@ -67,13 +67,15 @@ fn contains_capability_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
-/// Whether a semantic-IR value of `ty` carries accesses: a carrier, or a
-/// projection's tuple or sum shape holding one.
+/// Whether a semantic-IR value of `ty` carries accesses: a carrier, a
+/// projection's tuple or sum shape holding one, or the carrier of a shape
+/// not known here, which may hold any.
 pub fn holds_carrier<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    let (base, args) = ty.decompose_ty_app(db);
     ty.as_capability(db).is_some()
-        || ty
-            .decompose_ty_app(db)
-            .1
-            .iter()
-            .any(|arg| holds_carrier(db, *arg))
+        || matches!(
+            base.data(db),
+            TyData::TyBase(TyBase::Shape(ShapeCon::Carrier))
+        )
+        || args.iter().any(|arg| holds_carrier(db, *arg))
 }

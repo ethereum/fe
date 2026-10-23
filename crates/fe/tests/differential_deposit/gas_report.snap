@@ -1,18 +1,17 @@
 ---
 source: crates/fe/tests/differential_deposit.rs
-assertion_line: 592
 expression: report
 ---
 bytecode size
 path         fe-O2        sol     sol-IR   fe vs sol-IR
 -----------------------------------------------------------
-init          2360       4819       3082  -722 (-23.4%)
-runtime       2279       4445       2844  -565 (-19.9%)
+init          2340       4819       3082  -742 (-24.1%)
+runtime       2259       4445       2844  -585 (-20.6%)
 
 deployment gas
 path        fe-O2        sol     sol-IR     fe vs sol-IR
 ------------------------------------------------------------
-deploy    1246757    1738847    1379411  -132654 (-9.6%)
+deploy    1242466    1738847    1379411  -136945 (-9.9%)
 
 call gas
 path                            fe-O2        sol     sol-IR    fe vs sol-IR

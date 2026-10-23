@@ -116,3 +116,18 @@ trait MaybeSlotted<S: mut? Slot> {}
 struct MaybeWrap<S: mut? Slot> {
     inner: S,
 }
+
+struct Narrow {
+    narrow: u8,
+    wide: u256,
+}
+
+// A `mut?` method differing from the trait's at both modes is reported once.
+impl Slot for Narrow {
+    fn slot(mut? self) -> mut? u8 {
+        mut? self.narrow
+    }
+    fn other(mut? self) -> mut? u256 {
+        mut? self.wide
+    }
+}

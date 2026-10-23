@@ -644,7 +644,7 @@ fn option_map_should_infer_the_inner_type_from_closure() {
 use core::option
 use core::functional::Fn
 struct Doubler {}
-impl Fn<u256, u256> for Doubler { fn call(self, _ x: own u256) -> u256 { x * 2 } }
+impl Fn(own u256) -> u256 for Doubler { fn call(self, _ x: own u256) -> u256 { x * 2 } }
 
 fn map_no_annotation() {
     let n = Option::Some(42)

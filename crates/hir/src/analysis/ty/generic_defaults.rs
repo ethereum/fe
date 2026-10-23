@@ -9,10 +9,11 @@ use super::{
         LoweringContext, UnevaluatedConstPolicy, canonicalize_ty_for_mode,
     },
     diagnostics::{TyDiagCollection, TyLowerDiag},
+    shape::Shape,
     subst::substitute_complete,
     trait_resolution::{PredicateListId, constraint::collect_candidate_constraints},
     ty_check::check_generic_default_body_types,
-    ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
+    ty_def::{BorrowKind, InvalidCause, Kind, PrimTy, TyBase, TyData, TyId, TyParam},
     ty_error::{collect_hir_ty_diags_deferred, emit_invalid_ty_error, first_invalid_ty_cause},
     ty_lower::{
         CompleteSubst, GenericParamTypeSet, ParamBasis, SourceParamIndex, collect_generic_params,
@@ -361,6 +362,22 @@ fn check_argument<'db>(
         arg.evaluate_const_ty(db, expected)?
     } else {
         arg.check_const_ty_without_eval(db, expected)?
+    };
+    // A tuple type given for a shape lists views: `Fn<(A, B)>` takes `ref A`
+    // and `ref B`.
+    let (base, elems) = arg.decompose_ty_app(db);
+    let arg = if *kind == Kind::Shape
+        && matches!(
+            base.data(db),
+            TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
+        ) {
+        let params: Vec<_> = elems
+            .iter()
+            .map(|&elem| Shape::Access(BorrowKind::Ref, elem))
+            .collect();
+        TyId::params_shape(db, &params)
+    } else {
+        arg
     };
     if !kind.does_match(arg.kind(db)) {
         return Err(InvalidCause::KindMismatch {

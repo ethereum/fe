@@ -15,7 +15,7 @@ use crate::{
         HirAnalysisDb,
         ty::{
             binder::Binder,
-            closure::{CallableShape, CallableValue},
+            closure::{CallableTrait, CallableValue},
             effects::resolve_effect_key,
             fold::{TyFoldable, TyFolder},
             trait_def::{ImplementorOrigin, TraitInstId, resolve_trait_impl_instance},
@@ -309,7 +309,7 @@ fn direct_row_components<'db>(
     assumptions: PredicateListId<'db>,
 ) -> Option<Vec<RowComponent<'db>>> {
     // A callable value's row is the effects a call of it runs.
-    if CallableShape::of(db, key.inst.def(db)).is_some()
+    if CallableTrait::of(db, key.inst.def(db)).is_some()
         && let Some(value) = CallableValue::of(db, key.inst.self_ty(db))
     {
         return Some(value.effects(db));

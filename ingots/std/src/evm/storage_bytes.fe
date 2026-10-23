@@ -2,7 +2,7 @@ use core::abi::ByteInput
 use core::ptr
 
 use super::ops
-use super::effects::{RawStorage, storage_at_mut}
+use super::effects::{RawStorage, storage_at}
 use super::storage_map::{StorageKey, StorageMap}
 
 fn offset(_ base: *u8, _ bytes: u256) -> *u8 {
@@ -134,8 +134,8 @@ impl<K: StorageKey + Copy> StorageBytes<K> {
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses those slots or the entries' slots.
     #[raw_place]
-    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        unsafe { storage_at_mut(slot) }
+    pub unsafe fn at(_ slot: u256) -> mut? Self uses (storage: mut? RawStorage) {
+        unsafe { storage_at(slot) }
     }
 
     pub fn len(self, key: K) -> u256 {

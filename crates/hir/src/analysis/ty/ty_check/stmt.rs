@@ -483,15 +483,22 @@ impl<'db> TyChecker<'db> {
 
     /// Opens the loop base `base` mutably for the `mut` item `mut_pat`, as a
     /// `mut` component opens a matched place, returning whether it could: a
-    /// `mut` result already is open, and a place must be mutable. A read
-    /// result or an owned value has no mutable place, which the item's
-    /// binding reports.
+    /// `mut` result already is open, a `mut?` call's read result is asked
+    /// for `mut`, and a place must be mutable. Any other read result or an
+    /// owned value has no mutable place, which the item's binding reports.
     fn open_loop_base(&mut self, base: ExprId, mut_pat: PatId) -> bool {
         let Some(prop) = self.env.typed_expr(base) else {
             return false;
         };
         match prop.shape {
             Some(Shape::Access(BorrowKind::Mut, _)) => return true,
+            Some(Shape::Access(BorrowKind::Ref, _)) => {
+                return self.select_mut_place(base)
+                    && matches!(
+                        self.env.typed_expr(base).and_then(|prop| prop.shape),
+                        Some(Shape::Access(BorrowKind::Mut, _))
+                    );
+            }
             Some(_) => return false,
             None => {}
         }
@@ -645,7 +652,7 @@ impl<'db> TyChecker<'db> {
                 callable.set_mode(Some(BorrowKind::Mut));
             }
             callable.set_checked_input_tys(inputs);
-            let effect_args = this.resolve_callable_effects(span.clone(), &mut callable);
+            let effect_args = this.resolve_callable_effects(span.clone(), &mut callable, None);
             Some(ForLoopCall {
                 callable,
                 effect_args,
@@ -658,7 +665,7 @@ impl<'db> TyChecker<'db> {
         let next = call(self, protocol, inst, "next", with_state())?;
         let at = call(self, protocol, inst, at_name, with_state())?;
         let shape = match at.callable.ret_shape(self.db) {
-            Some(shape) => shape.map_tys(&mut |ty| self.normalize_ty(ty)),
+            Some(shape) => shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)),
             None => Shape::Owned(self.normalize_ty(at.callable.ret_ty(self.db))),
         };
         // The element, beside what a driver yields with it.

@@ -10,6 +10,7 @@ use core::abi::{
     ByteInput,
     Decode,
     Encode,
+    abi_payload_size,
     encode_alloc,
     encode_return_alloc,
     encode_single_root_alloc,
@@ -234,22 +235,15 @@ pub trait RawStorage: EvmCapabilitySeal {
     unsafe fn sstore(mut self, slot: u256, value: u256)
 }
 
-/// The `T` at storage slot `slot`, as a storage place to read.
+/// The `T` at storage slot `slot`, as a storage place to read, or to write
+/// where its use asks for `mut`.
 ///
 /// The caller must ensure that `slot` holds a `T` and that nothing the
 /// compiler allocates, such as a contract field, uses `slot` or the slots the
 /// `T` derives from it.
 #[raw_place]
-pub unsafe fn storage_at<T>(_ slot: u256) -> ref T uses (storage: RawStorage) {
-    unsafe { ref *(slot as StorPtr<T>) }
-}
-
-/// The `T` at storage slot `slot`, as a storage place to read and write.
-///
-/// The caller must ensure what `storage_at` requires.
-#[raw_place]
-pub unsafe fn storage_at_mut<T>(_ slot: u256) -> mut T uses (storage: mut RawStorage) {
-    unsafe { mut *(slot as StorPtr<T>) }
+pub unsafe fn storage_at<T>(_ slot: u256) -> mut? T uses (storage: mut? RawStorage) {
+    unsafe { mut? *(slot as StorPtr<T>) }
 }
 
 /// Copies one word from the current contract's persistent storage.
@@ -1143,21 +1137,24 @@ impl Log for Evm {
 
 impl Create for Evm {}
 
+/// The selector followed by the message's ABI payload, encoded in place in
+/// one allocation.
 #[arithmetic(unchecked)]
 #[inline(always)]
 fn encode_calldata<M>(_ selector: u32, _ message: own M) -> MemBuffer
 where M: Encode<Sol>
 {
     let selector_size = size_of<Sol::Selector>()
-    let selector_word = (selector as u256) << 224
-    let encoded = encode_abi_payload(message)
-    let buffer = unsafe { MemBuffer::alloc_uninit(selector_size as usize + encoded.len()) }
+    let payload_size = abi_payload_size(message)
+    let buffer = unsafe { MemBuffer::alloc_uninit(selector_size as usize + payload_size as usize) }
+    let payload = ptr::offset_bytes(buffer.ptr(), selector_size)
     unsafe {
-        ops::mstore(addr: buffer.ptr(), value: selector_word)
-        ptr::copy(
-            dest: ptr::offset_bytes(buffer.ptr(), selector_size),
-            source: encoded.span(),
-        )
+        // The selector word's low bytes are overwritten by the payload, or
+        // lie past the buffer's end in unallocated memory.
+        ops::mstore(addr: buffer.ptr(), value: (selector as u256) << 224)
+        // The payload bytes, zeroed for the encoding to fill.
+        ptr::zero_bytes(payload, payload_size)
+        message.encode(AbiFrame::from_raw_parts(ptr: payload, len: payload_size))
     }
     buffer
 }
@@ -1249,6 +1246,10 @@ pub fn revert<T>(_ value: own T) -> !
 ///
 /// Encodes the error with its 4-byte selector prefix followed by
 /// ABI-encoded fields, matching Solidity's custom error encoding.
+///
+/// Never inlined: a revert is a cold path, and one shared instance per error
+/// type is smaller than a copy of the encoding at every call site.
+#[inline(never)]
 pub fn revert_error<T>(_ error: own T) -> !
     where T: ErrorVariant<Sol> + Encode<Sol>
 {

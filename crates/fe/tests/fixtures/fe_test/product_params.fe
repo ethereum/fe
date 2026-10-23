@@ -113,17 +113,17 @@ fn take_big(_ (big, mut n): (own Big, mut u256)) -> Big {
 
 // A `mut?` part's two modes may have their own bodies.
 trait ReadWrite {
-    fn go(_ parts: (mut? u256, own u256)) -> u256
+    fn go(_ parts: (mut? u256, own u256)) -> mut? u256
 }
 
 impl ReadWrite for Big {
-    fn go(_ (a, n): (ref u256, own u256)) -> u256 {
-        a + n
+    fn go(_ (a, _): (ref u256, own u256)) -> ref u256 {
+        a
     }
 
-    fn go(_ (mut a, n): (mut u256, own u256)) -> u256 {
+    fn go(_ (mut a, n): (mut u256, own u256)) -> mut u256 {
         a += n
-        a
+        mut a
     }
 }
 
@@ -236,7 +236,11 @@ fn methods_and_traits() {
     assert(x == 5)
     via(mut p, mut x)
     assert(x == 15 && p.b == 15)
-    assert(Big::go((ref x, 2)) == 17)
+    assert(Big::go((ref x, 2)) == 15)
+    let r = mut Big::go((mut x, 2))
+    assert(r == 17)
+    r = 1
+    assert(x == 1)
 }
 
 #[test]

@@ -159,3 +159,24 @@ fn closures_in_each_mode() {
     first.count = 7
     assert(pair.first.count == 7)
 }
+
+struct Cells {
+    a: u256,
+    b: u256,
+}
+
+/// A cell of `cells`: a raw place, so an unsafe split may hold two.
+#[raw_place]
+fn cell(_ cells: mut? Cells, _ first: bool) -> mut? u256 {
+    if first { mut? cells.a } else { mut? cells.b }
+}
+
+#[test]
+fn demand_reaches_an_unsafe_split() {
+    var first = Cells { a: 1, b: 2 }
+    var second = Cells { a: 3, b: 4 }
+    let (mut a, mut b) = unsafe { (cell(mut first, true), cell(mut second, false)) }
+    a += 10
+    b += 20
+    assert(first.a == 11 && second.b == 24)
+}

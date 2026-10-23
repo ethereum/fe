@@ -1088,7 +1088,7 @@ impl<'a, 'db> BodyRequirements<'a, 'db> {
         // that names the function. A call through anything else, such as a
         // binding, block, branch or field, calls such a value, whose
         // requirements were checked there. A call of a callable value runs
-        // its shape trait's method, whose requirements are checked here.
+        // its callable trait's method, whose requirements are checked here.
         if let Some(Expr::Call(callee, _)) = data.borrowed().to_opt()
             && !self.names_function_value(*callee)
             && self.typed.call_receiver(self.db, expr).is_none()

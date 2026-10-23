@@ -143,22 +143,16 @@ fn unify_trait_inst_with_normalized_assoc_bindings<'db>(
 ) -> UnificationResult {
     table.unify(trait_inst_head(db, candidate), trait_inst_head(db, goal))?;
 
-    for (name, &candidate_assoc_ty) in candidate.assoc_type_bindings(db) {
-        if let Some(&goal_assoc_ty) = goal.assoc_type_bindings(db).get(name) {
-            let candidate_assoc_ty =
-                normalize_assoc_binding(db, table, candidate_assoc_ty, scope, assumptions);
-            let goal_assoc_ty =
-                normalize_assoc_binding(db, table, goal_assoc_ty, scope, assumptions);
-            table.unify(candidate_assoc_ty, goal_assoc_ty)?;
-        }
-    }
-
-    if goal
-        .assoc_type_bindings(db)
-        .keys()
-        .any(|name| !candidate.assoc_type_bindings(db).contains_key(name))
-    {
-        return Err(UnificationError::TypeMismatch);
+    // Each of the goal's equalities holds by the candidate's, which may bind
+    // an associated shape at every mode where the goal names one.
+    for (&binding, &goal_assoc_ty) in goal.assoc_type_bindings(db) {
+        let candidate_assoc_ty = candidate
+            .bound_assoc_ty(db, binding)
+            .ok_or(UnificationError::TypeMismatch)?;
+        let candidate_assoc_ty =
+            normalize_assoc_binding(db, table, candidate_assoc_ty, scope, assumptions);
+        let goal_assoc_ty = normalize_assoc_binding(db, table, goal_assoc_ty, scope, assumptions);
+        table.unify(candidate_assoc_ty, goal_assoc_ty)?;
     }
 
     Ok(())
@@ -595,8 +589,8 @@ impl<'db> ResolutionContext for TraitResolutionContext<'db> {
                 let Some(candidate) = normalized_goal
                     .assoc_type_bindings(self.db)
                     .keys()
-                    .try_fold(selected_impl, |implementor, &name| {
-                        complete_candidate_impl_assoc_ty(self.db, implementor, name)
+                    .try_fold(selected_impl, |implementor, binding| {
+                        complete_candidate_impl_assoc_ty(self.db, implementor, binding.name)
                     })
                 else {
                     return Ok(Transition::Reject);

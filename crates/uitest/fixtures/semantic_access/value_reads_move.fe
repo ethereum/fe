@@ -1,4 +1,3 @@
-use core::functional::FnMut_v
 use core::option::Option
 use core::ptr::MemBuffer
 
@@ -38,7 +37,7 @@ struct Bump {
     buf: MemBuffer,
 }
 
-impl FnMut_v<u256> for Bump {
+impl FnMut(u256) -> _ for Bump {
     uses E = ()
     type Out = u256
     fn call_mut(mut self, _ a: u256) -> u256 {

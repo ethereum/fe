@@ -4,7 +4,6 @@ use ingot::ops::{WrappingAdd, WrappingSub}
 use ingot::ptr::{MemArray, MemSlice, MemVec}
 use ingot::{assert, panic_code}
 use ingot::panics::PANIC_ASSERT
-use ingot::functional::FnMut_v
 
 /// A collection a loop traverses by cursor, projecting each element in turn.
 ///
@@ -60,7 +59,7 @@ pub trait Collection {
     }
 
     /// The values `f` makes of the elements, owned.
-    fn map<F: FnMut_v<Self::Item>>(self, _ f: own F) -> Map<Identity, F> {
+    fn map<F: FnMut(Self::Item) -> _>(self, _ f: own F) -> Map<Identity, F> {
         Identity {}.map(f)
     }
 
@@ -657,7 +656,7 @@ pub struct Map<D, F> {
     f: F,
 }
 
-impl<B: Collection, D: Driver<B>, F: FnMut_v<D::Item>> Producer<B> for Map<D, F> {
+impl<B: Collection, D: Driver<B>, F: FnMut(D::Item) -> _> Producer<B> for Map<D, F> {
     uses E = (D::E, F::E)
     type State = D::State
     type Out = F::Out
