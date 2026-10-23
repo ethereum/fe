@@ -10,14 +10,14 @@ use crate::analysis::{
         fold::{TyFoldable, TyFolder},
         instantiate_trait_self,
         method_cmp::trait_effect_key_matches_with,
-        trait_def::TraitInstId,
+        trait_def::{AssocBinding, TraitInstId},
         ty_def::{InvalidCause, Kind, TyBase, TyData, TyId, TyVarSort},
         ty_lower::collect_generic_params,
         unify::UnificationTable,
     },
 };
 use crate::hir_def::ModeMarker;
-use crate::hir_def::{CallableDef, IdentId, Trait};
+use crate::hir_def::{CallableDef, Trait};
 use common::indexmap::IndexMap;
 use rustc_hash::FxHashMap;
 
@@ -75,7 +75,7 @@ pub fn query_matches_witness<'db>(
             // witness's provider is.
             let db = tc.db;
             let provided =
-                |args_no_self: &[TyId<'db>], assoc_bindings: &[(IdentId<'db>, TyId<'db>)]| {
+                |args_no_self: &[TyId<'db>], assoc_bindings: &[(AssocBinding<'db>, TyId<'db>)]| {
                     let inst = instantiate_trait_self(
                         db,
                         trait_inst_from_parts(
@@ -355,7 +355,7 @@ fn trait_inst_from_parts<'db>(
     db: &'db dyn HirAnalysisDb,
     def: Trait<'db>,
     args_no_self: impl IntoIterator<Item = TyId<'db>>,
-    assoc_bindings: impl IntoIterator<Item = (IdentId<'db>, TyId<'db>)>,
+    assoc_bindings: impl IntoIterator<Item = (AssocBinding<'db>, TyId<'db>)>,
 ) -> TraitInstId<'db> {
     let self_ty = TyId::invalid(db, InvalidCause::Other);
     TraitInstId::new(

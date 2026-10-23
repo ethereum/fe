@@ -110,6 +110,7 @@ where
         TyBase::Contract(c) => visitor.visit_contract(*c),
         TyBase::Func(func) => visitor.visit_func(*func),
         TyBase::Closure(closure) => visitor.visit_closure(*closure),
+        TyBase::Shape(_) => {}
     }
 }
 
@@ -119,7 +120,7 @@ where
 {
     closure.parent_args(visitor.db()).visit_with(visitor);
     closure.captures(visitor.db()).visit_with(visitor);
-    closure.param_tys(visitor.db()).visit_with(visitor);
+    closure.params(visitor.db()).visit_with(visitor);
     closure.ret_ty(visitor.db()).visit_with(visitor);
     closure.effects(visitor.db()).visit_with(visitor);
 }

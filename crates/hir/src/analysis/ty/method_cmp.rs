@@ -16,13 +16,14 @@ use super::{
     },
     fold::{TyFoldable, TyFolder},
     normalize::{normalize_from_assumptions, normalize_ty},
+    shape::{Shape, names_shape_without_mode},
     trait_def::TraitInstId,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitSolveCx,
         constraint::collect_func_def_constraints, is_goal_satisfiable,
     },
     ty_check::{ConstRef, check_anon_const_body},
-    ty_def::{BorrowKind, InvalidCause, TyData, TyId},
+    ty_def::{BorrowKind, InvalidCause, Kind, TyData, TyId},
     ty_lower::{CompleteSubst, ParamDomainId, ParamSchemaId, PartialSubst},
     unify::UnificationTable,
 };
@@ -81,10 +82,6 @@ pub(super) fn compare_impl_method<'db>(
         return;
     }
 
-    if !compare_arity(db, impl_m, trait_m, sink) {
-        return;
-    }
-
     let both = [
         (Some(BorrowKind::Ref), Some(BorrowKind::Ref)),
         (Some(BorrowKind::Mut), Some(BorrowKind::Mut)),
@@ -101,10 +98,6 @@ pub(super) fn compare_impl_method<'db>(
             _ => &both,
         };
 
-    // Compare the argument labels, argument types, and return type of the impl
-    // method with the trait method.
-    let mut err = !compare_arg_label(db, impl_m, trait_m, sink);
-
     // The effects pair at each mode, where a `mut?` effect has its mode.
     let substs: Vec<_> = modes
         .iter()
@@ -118,6 +111,52 @@ pub(super) fn compare_impl_method<'db>(
             (subst.residualize(db), paired)
         })
         .collect();
+
+    // A spread lists the parameters of the shape the impl's trait instance
+    // gives it.
+    let spread = trait_m.spread(db).and_then(|idx| trait_m.arg_ty(db, idx));
+    let listed = match spread {
+        Some(spread) => {
+            let shape = normalize_from_assumptions(
+                db,
+                instantiate_trait_method_template(db, spread, &substs[0].0),
+                impl_m.scope(),
+                PredicateListId::new(db, vec![trait_inst]),
+            );
+            let Some(listed) = shape.as_params_shape(db) else {
+                // A spread of no shape is reported where it is declared.
+                if *shape.kind(db) == Kind::Shape && !shape.has_invalid(db) {
+                    sink.push(
+                        ImplDiag::SpreadNotListed {
+                            trait_m,
+                            impl_m,
+                            shape,
+                        }
+                        .into(),
+                    );
+                }
+                return;
+            };
+            listed
+        }
+        None => Vec::new(),
+    };
+    let arity = trait_m.arg_tys(db).len() - usize::from(spread.is_some()) + listed.len();
+    if impl_m.arg_tys(db).len() != arity {
+        sink.push(
+            ImplDiag::MethodArgNumMismatch {
+                trait_m,
+                impl_m,
+                expected: arity,
+            }
+            .into(),
+        );
+        return;
+    }
+
+    // Compare the argument labels, argument types, and return type of the impl
+    // method with the trait method.
+    let mut err = !compare_arg_label(db, impl_m, trait_m, sink);
     let unpaired: Vec<_> = modes
         .iter()
         .zip(&substs)
@@ -144,29 +183,36 @@ pub(super) fn compare_impl_method<'db>(
         );
         err = true;
     }
+    // A `mut?` method that differs at both modes is reported once, at the
+    // first.
     for (&(trait_mode, impl_mode), (param_subst, _)) in modes.iter().zip(&substs) {
-        err |= !compare_ty(
+        if !compare_ty(
             db,
             (impl_m, impl_mode),
             (trait_m, trait_mode),
             param_subst,
+            &listed,
             trait_inst,
             sink,
-        );
+        ) {
+            return;
+        }
     }
     if err {
         return;
     }
 
     for (&(trait_mode, impl_mode), (param_subst, _)) in modes.iter().zip(&substs) {
-        compare_constraints(
+        if !compare_constraints(
             db,
             (impl_m, impl_mode),
             (trait_m, trait_mode),
             trait_inst,
             param_subst,
             sink,
-        );
+        ) {
+            return;
+        }
     }
 }
 
@@ -224,27 +270,6 @@ fn compare_generic_param_kind<'db>(
     !err
 }
 
-/// Checks if the arity of the implemented method is the same as the arity of
-/// the trait method.
-/// Returns `false` if the comparison fails.
-fn compare_arity<'db>(
-    db: &'db dyn HirAnalysisDb,
-    impl_m: CallableDef<'db>,
-    trait_m: CallableDef<'db>,
-    sink: &mut Vec<TyDiagCollection<'db>>,
-) -> bool {
-    let impl_m_arity = impl_m.arg_tys(db).len();
-    let trait_m_arity = trait_m.arg_tys(db).len();
-
-    // Checks if the arity are the same.
-    if impl_m_arity == trait_m_arity {
-        true
-    } else {
-        sink.push(ImplDiag::MethodArgNumMismatch { impl_m, trait_m }.into());
-        false
-    }
-}
-
 /// Checks if the argument labels of the implemented method are the same as the
 /// argument labels of the trait method.
 /// Returns `false` if the comparison fails.
@@ -255,9 +280,9 @@ fn compare_arg_label<'db>(
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
-    let len = impl_m.arg_tys(db).len().min(trait_m.arg_tys(db).len());
-    for idx in 0..len {
-        let Some(expected_label) = trait_m.param_label_or_name(db, idx) else {
+    for idx in 0..impl_m.arg_tys(db).len() {
+        let trait_param = trait_m.declared_param(db, idx);
+        let Some(expected_label) = trait_m.param_label_or_name(db, trait_param) else {
             continue;
         };
         let Some(method_label) = impl_m.param_label_or_name(db, idx) else {
@@ -288,13 +313,11 @@ fn compare_ty<'db>(
     (impl_m, impl_mode): (CallableDef<'db>, Option<BorrowKind>),
     (trait_m, trait_mode): (CallableDef<'db>, Option<BorrowKind>),
     param_subst: &CompleteSubst<'db>,
+    listed: &[Shape<'db>],
     trait_inst: TraitInstId<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
-    let impl_m_arg_tys = impl_m.arg_tys(db);
-    let trait_m_arg_tys = trait_m.arg_tys(db);
-
     let evidence = PredicateListId::new(db, vec![trait_inst]);
     let impl_assumptions = collect_func_def_constraints(db, impl_m, true).instantiate_identity();
     let trait_assumptions = instantiate_trait_method_template(
@@ -306,18 +329,37 @@ fn compare_ty<'db>(
         .merge(db, trait_assumptions)
         .extend_all_bounds(db);
     let trait_scope = impl_m.scope();
+    // A trait shape at the impl, where an associated shape it names is known.
+    let trait_shape = |shape: Binder<'db, Shape<'db>>| {
+        let shape = instantiate_trait_method_template(db, shape, param_subst);
+        let shape = normalize_from_assumptions(db, shape, trait_scope, evidence);
+        normalize_ty(db, shape, trait_scope, compare_assumptions)
+    };
 
-    for (idx, (trait_m_ty, impl_m_ty)) in trait_m_arg_tys
-        .iter()
-        .zip(impl_m_arg_tys.iter())
-        .enumerate()
-    {
+    // The trait method's parameters, with those its spread lists.
+    let trait_params = trait_m
+        .param_shapes(db, trait_mode)
+        .0
+        .into_iter()
+        .map(trait_shape)
+        .chain(listed.iter().cloned());
+    let impl_params = impl_m.param_shapes(db, impl_mode).0;
+
+    for (idx, (trait_param, impl_param)) in trait_params.zip(impl_params).enumerate() {
         // 1) Instantiate trait method's type params into the impl's generics
-        let trait_m_ty = instantiate_trait_method_template(db, *trait_m_ty, param_subst);
+        let trait_m_ty = trait_param.erased_ty(db);
         if trait_m_ty.has_invalid(db) {
             continue;
         }
-        let impl_m_ty = impl_m_ty.instantiate_identity();
+        // An impl's shape may name an associated shape its impl gives
+        // (`Self::Step`).
+        let impl_param = normalize_ty(
+            db,
+            impl_param.instantiate_identity(),
+            trait_scope,
+            compare_assumptions,
+        );
+        let impl_m_ty = impl_param.erased_ty(db);
 
         // 2) Substitute associated types using the provided trait instance.
         let trait_m_ty_substituted =
@@ -345,18 +387,9 @@ fn compare_ty<'db>(
         );
         // 4) Compare for equality, including the parameter's mode, or its
         // parts' modes for a product.
-        let same_parts = match (
-            trait_m.param_product(db, idx, trait_mode),
-            impl_m.param_product(db, idx, impl_mode),
-        ) {
-            (None, None) => true,
-            (Some(trait_p), Some(impl_p)) => trait_p.skip_binder().same_modes(impl_p.skip_binder()),
-            _ => false,
-        };
         if !impl_m_ty.has_invalid(db)
             && (trait_m_ty_normalized != impl_m_ty_normalized
-                || trait_m.param_mode(db, idx, trait_mode) != impl_m.param_mode(db, idx, impl_mode)
-                || !same_parts)
+                || !trait_param.same_modes(db, &impl_param))
         {
             sink.push(
                 ImplDiag::MethodArgTyMismatch {
@@ -367,6 +400,8 @@ fn compare_ty<'db>(
                     param_idx: idx,
                     trait_mode,
                     impl_mode,
+                    spread_part: (Some(trait_m.declared_param(db, idx)) == trait_m.spread(db))
+                        .then_some(trait_param),
                 }
                 .into(),
             );
@@ -374,6 +409,13 @@ fn compare_ty<'db>(
         }
     }
 
+    // A trait return naming a shape without a mode is reported at the trait.
+    if trait_m
+        .ret_shape(db, trait_mode)
+        .is_some_and(|shape| names_shape_without_mode(db, shape.skip_binder()))
+    {
+        return !err;
+    }
     let impl_m_ret_ty = impl_m.ret_ty(db).instantiate_identity();
     let trait_m_ret_ty = instantiate_trait_method_template(db, trait_m.ret_ty(db), param_subst);
 
@@ -409,9 +451,13 @@ fn compare_ty<'db>(
         impl_m.ret_shape(db, impl_mode),
         trait_m.ret_shape(db, trait_mode),
     ) {
-        (Some(impl_shape), Some(trait_shape)) => impl_shape
-            .skip_binder()
-            .same_modes(trait_shape.skip_binder()),
+        (Some(impl_shape), Some(trait_ret)) => normalize_ty(
+            db,
+            impl_shape.skip_binder().clone(),
+            trait_scope,
+            compare_assumptions,
+        )
+        .same_modes(db, &trait_shape(trait_ret)),
         (impl_shape, trait_shape) => impl_shape.is_none() && trait_shape.is_none(),
     };
     if !impl_m_ret_ty.has_invalid(db)
@@ -859,7 +905,7 @@ pub(crate) fn normalize_predicate_for_comparison<'db>(
             )
         })
         .collect();
-    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.data(db).cmp(rhs.data(db)));
+    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.canonical_cmp(db, rhs));
     TraitInstId::new(
         db,
         pred.def(db),

@@ -664,7 +664,7 @@ impl<'db> TyChecker<'db> {
         let next = call(self, protocol, inst, "next", with_state())?;
         let at = call(self, protocol, inst, at_name, with_state())?;
         let shape = match at.callable.ret_shape(self.db) {
-            Some(shape) => shape.map_tys(&mut |ty| self.normalize_ty(ty)),
+            Some(shape) => shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)),
             None => Shape::Owned(self.normalize_ty(at.callable.ret_ty(self.db))),
         };
         // The element, beside what a driver yields with it.

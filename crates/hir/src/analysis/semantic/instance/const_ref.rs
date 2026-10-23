@@ -24,6 +24,7 @@ use crate::{
             fold::{TyFoldable, TyFolder},
             method_cmp::{normalize_compare_assoc_consts, normalize_predicate_for_comparison},
             normalize::normalize_ty,
+            shape::Shape,
             trait_def::{ImplementorOrigin, MethodArgMapError, ResolvedImplInstance, TraitInstId},
             trait_resolution::{
                 GoalSatisfiability, PredicateListId, TraitSolveCx,
@@ -40,8 +41,7 @@ use crate::{
     },
     core::semantic::{EffectEnvView, EffectRequirement, EffectRequirementKey, ProviderBinding},
     hir_def::{
-        CallableDef, Const, Func, GenericParamOwner, HirIngot, IdentId, params::FuncParamMode,
-        scope_graph::ScopeId,
+        CallableDef, Const, Func, GenericParamOwner, HirIngot, IdentId, scope_graph::ScopeId,
     },
     span::DynLazySpan,
 };
@@ -56,7 +56,7 @@ enum ProviderResolutionMode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct InstantiatedMethodSignature<'db> {
-    inputs: Vec<(FuncParamMode, TyId<'db>)>,
+    inputs: Vec<Shape<'db>>,
     result: TyId<'db>,
     /// Each effect's index, mutability, key and provider, with the rows the
     /// signature's instantiation selects expanded to their components.
@@ -68,9 +68,7 @@ impl<'db> TyVisitable<'db> for InstantiatedMethodSignature<'db> {
     where
         V: TyVisitor<'db> + ?Sized,
     {
-        for (_, ty) in &self.inputs {
-            ty.visit_with(visitor);
-        }
+        self.inputs.visit_with(visitor);
         self.result.visit_with(visitor);
         for (_, _, key, provider_ty) in &self.effects {
             key.visit_with(visitor);
@@ -86,11 +84,7 @@ impl<'db> TyFoldable<'db> for InstantiatedMethodSignature<'db> {
     where
         F: TyFolder<'db>,
     {
-        let inputs = self
-            .inputs
-            .into_iter()
-            .map(|(mode, ty)| (mode, ty.fold_with(db, folder)))
-            .collect();
+        let inputs = self.inputs.fold_with(db, folder);
         let result = self.result.fold_with(db, folder);
         let effects = self
             .effects
@@ -117,7 +111,7 @@ impl<'db> InstantiatedMethodSignature<'db> {
         let inputs = self
             .inputs
             .iter()
-            .map(|(mode, ty)| format!("{mode:?} {}", ty.pretty_print(db)))
+            .map(|shape| shape.pretty_print_product(db))
             .collect::<Vec<_>>();
         let effects = self
             .effects
@@ -169,7 +163,7 @@ fn instantiated_method_signature<'db>(
             parameter_inputs: params.len(),
         });
     }
-    let normalize = |ty| {
+    let mut normalize = |ty| {
         normalize_compare_assoc_consts(
             db,
             normalize_ty(db, ty, scope, evidence),
@@ -179,11 +173,18 @@ fn instantiated_method_signature<'db>(
             rebase_same_trait_uses,
         )
     };
-    let inputs = arg_tys
-        .iter()
-        .zip(params)
-        .map(|(ty, param)| (param.mode_at(db, mode), normalize(ty.instantiate(db, args))))
+    let (declared, spread) = CallableDef::Func(func).param_shapes(db, mode);
+    let mut inputs: Vec<_> = declared
+        .into_iter()
+        .map(|shape| shape.instantiate(db, args).map_tys(db, &mut normalize))
         .collect();
+    if let Some(spread) = spread {
+        let shape = normalize(spread.instantiate(db, args));
+        let listed = shape
+            .as_params_shape(db)
+            .ok_or(MethodArgMapError::SpreadNotListed { func, shape })?;
+        inputs.extend(listed);
+    }
     let result = normalize(CallableDef::Func(func).ret_ty(db).instantiate(db, args));
     let provider_slots = place_effect_provider_param_index_map(db, func);
     let (requirements, rows) = instantiated_effects(db, (func, mode), args, scope, evidence);
@@ -315,7 +316,7 @@ pub(crate) struct SemanticCallCallee<'db> {
     pub effect_pairs: Vec<(usize, usize)>,
     pub provider_pairs: Vec<(u32, u32)>,
     /// Whether the callee takes the call's operands after its receiver: a
-    /// callable shape's method called on a function item runs the function,
+    /// callable trait's method called on a function item runs the function,
     /// and the item holds nothing.
     pub drops_receiver: bool,
 }
@@ -492,7 +493,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     let CallableDef::Func(nominal_func) = callable.callable_def() else {
         return Ok(None);
     };
-    // A callable shape's method called on a closure runs the closure's body.
+    // A callable trait's method called on a closure runs the closure's body.
     if let Some(inst) = callable.trait_inst()
         && let Some((closure, receiver)) = callee_closure(
             db,
@@ -579,7 +580,7 @@ fn semantic_callee_key_with_assumptions<'db>(
             drops_receiver: false,
         }));
     }
-    // A callable shape's method called on a function item runs the function,
+    // A callable trait's method called on a function item runs the function,
     // with the call's operands after the receiver. The components of `call`'s
     // row are the function's effects, in order.
     if let Some(inst) = callable.trait_inst()
@@ -946,11 +947,10 @@ fn semantic_callee_key_with_assumptions<'db>(
                 })
             && {
                 let body_args = body_func.arg_tys(db);
-                nominal_func.arg_tys(db).len() == body_args.len()
-                    && body_args.iter().enumerate().all(|(idx, body)| {
-                        let nominal = callable
-                            .arg_ty(db, idx)
-                            .expect("nominal input arity changed");
+                let params = callable.params(db).unwrap_or_default();
+                params.len() == body_args.len()
+                    && params.iter().zip(body_args).all(|(param, body)| {
+                        let nominal = param.shape.erased_ty(db);
                         let body = body.instantiate(db, &subst_args);
                         normalize_ty(db, nominal, impl_env.normalization_scope(db), assumptions)
                             == normalize_ty(
@@ -1008,13 +1008,11 @@ fn semantic_callee_key_with_assumptions<'db>(
                     GoalSatisfiability::Satisfied(_)
                 )
         }) && subst_args.iter().all(|&arg| same_without_caller(arg))
-            && (0..nominal_func.arg_tys(db).len()).all(|idx| {
-                same_without_caller(
-                    callable
-                        .arg_ty(db, idx)
-                        .expect("nominal input arity changed"),
-                )
-            })
+            && callable
+                .params(db)
+                .unwrap_or_default()
+                .iter()
+                .all(|param| same_without_caller(param.shape.erased_ty(db)))
             && same_without_caller(callable.ret_ty(db))
             && checked_effect_inputs
                 .iter()

@@ -380,14 +380,16 @@ impl<'db> LazyTraitItemListSpan<'db> {
             origin.map(|node| {
                 ast::TraitItemList::cast(node)
                     .and_then(|list| {
+                        // Associated types and shapes, in order.
                         list.into_iter()
                             .filter_map(|item| match item.kind() {
-                                ast::TraitItemKind::Type(ty) => Some(ty),
+                                ast::TraitItemKind::Type(ty) => Some(ty.syntax().clone()),
+                                ast::TraitItemKind::Shape(shape) => Some(shape.syntax().clone()),
                                 _ => None,
                             })
                             .nth(idx)
                     })
-                    .map(|n| n.syntax().clone().into())
+                    .map(Into::into)
             })
         }
 
@@ -508,15 +510,31 @@ impl<'db> LazyTraitUsesSpan<'db> {
 define_lazy_span_node!(
     LazyTraitTypeSpan,
     ast::TraitTypeItem,
-    @token {
-        (name, name),
-    }
     @node {
         (bounds, bounds, LazyTypeBoundListSpan),
         (attributes, attr_list, LazyAttrListSpan),
     }
 );
 impl<'db> LazyTraitTypeSpan<'db> {
+    /// The item's name, after `type`, or after `shape` for an associated
+    /// shape.
+    pub fn name(mut self) -> LazySpanAtom<'db> {
+        fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
+            origin.map(|node| {
+                ast::TraitTypeItem::cast(node.clone())
+                    .and_then(|item| item.name())
+                    .or_else(|| ast::TraitShapeItem::cast(node)?.name())
+                    .map(Into::into)
+            })
+        }
+
+        self.0.push(LazyTransitionFn {
+            f,
+            arg: LazyArg::None,
+        });
+        LazySpanAtom(self.0)
+    }
+
     /// The associated type's definition or default, as in `type Out = u8`.
     /// For the `type Return` that a `msg` variant generates, this is the
     /// variant's written return type, which the definition is lowered from,
@@ -525,8 +543,9 @@ impl<'db> LazyTraitTypeSpan<'db> {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {
-                    ast::TraitTypeItem::cast(node)
+                    ast::TraitTypeItem::cast(node.clone())
                         .and_then(|item| item.ty())
+                        .or_else(|| ast::TraitShapeItem::cast(node)?.ty())
                         .map(|ty| ty.syntax().clone().into())
                 })
                 .map_desugared(|root, desugared| match desugared {

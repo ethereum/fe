@@ -27,10 +27,10 @@ use crate::{
             normalize::normalize_ty,
             shape::{Shape, SumKind, sum_kind},
             ty_check::{
-                BindingAccess, BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind,
-                ConstRef, ForLoopItem, ForLoopStep, LocalBinding, PathReadSemantics,
-                RecordInitLowering, RecordLike, SemanticExprLowering, TypedBody, ValuePathRef,
-                constructed_variant, infer_body, transparent_newtype_field_ty,
+                BindingAccess, BodyOwner, CallParam, Callable, CodeRegionIntrinsicKind,
+                ConstIntrinsicKind, ConstRef, ForLoopItem, ForLoopStep, LocalBinding,
+                PathReadSemantics, RecordInitLowering, RecordLike, SemanticExprLowering, TypedBody,
+                ValuePathRef, constructed_variant, infer_body, transparent_newtype_field_ty,
             },
             ty_def::{BorrowKind, TyData, TyId},
             ty_is_copy, ty_is_snapshot,
@@ -393,22 +393,30 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     /// Gathers each product parameter's parts, the inputs a call passes, into
     /// the product its body destructures.
     fn bind_param_products(&mut self) {
-        for (idx, binding) in
-            (0..).map_while(|idx| Some((idx, self.typed_body.param_binding(idx)?)))
-        {
+        for binding in (0..).map_while(|idx| self.typed_body.param_binding(idx)) {
             let Some(product) = self.typed_body.param_product(binding).cloned() else {
                 continue;
+            };
+            let LocalBinding::Param { site, idx, .. } = binding else {
+                unreachable!("a product is a parameter's")
             };
             let parts: Vec<_> = self
                 .typed_body
                 .input_bindings()
                 .iter()
                 .filter(|input| {
-                    matches!(input, LocalBinding::ParamPart { idx: param, .. } if *param == idx)
+                    matches!(input, LocalBinding::ParamPart { site: part_site, idx: param, .. }
+                        if *part_site == site && *param == idx)
                 })
                 .map(|input| self.binding_locals[input])
                 .collect();
-            let expr = self.gather_product(&product, &mut parts.into_iter());
+            // An opaque parameter's binding is its one input, passed on
+            // whole, as is a known one of a single part.
+            let expr = match (&product, parts.as_slice()) {
+                (Shape::Tuple(_), _) => self.gather_product(&product, &mut parts.into_iter()),
+                (_, &[part]) => SExpr::Forward(SOperand::synthetic(part)),
+                _ => unreachable!("a parameter's inputs are its shape's parts"),
+            };
             let local = self.alloc_binding_local(binding);
             self.push_synthetic_stmt(SStmtKind::Assign { dst: local, expr });
         }
@@ -870,6 +878,25 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     panic!("an access block ends in an expression")
                 };
                 self.lower_access(*tail)
+            }
+            // `mut d.at()` with an opaque result is the call at that mode.
+            Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::MaybeMut | UnOp::Ref))
+                if matches!(shape, Shape::Opaque(_)) =>
+            {
+                self.lower_access(*inner)
+            }
+            // A transport binding of an opaque shape is passed on as it is,
+            // moved: it is used at most once.
+            Partial::Present(Expr::Path(_))
+                if matches!(shape, Shape::Opaque(_))
+                    && let Some(binding) = self.typed_body.expr_binding(expr) =>
+            {
+                let value = self.binding_locals[&binding];
+                self.emit_expr_with_origin(
+                    SemOrigin::Expr(expr),
+                    ty,
+                    SExpr::UseValue(SOperand::expr(value, expr)),
+                )
             }
             // `ref p`, `mut p`, or a place matched through the `mut` access
             // its `mut` pattern bindings open.
@@ -1748,15 +1775,32 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         args: &[ExprId],
         callable: &Callable<'db>,
     ) -> SValueId {
-        let offset = usize::from(receiver.is_some());
-        let mut values = Vec::with_capacity(args.len() + offset);
-        for (index, &arg) in args.iter().enumerate() {
-            let param = index + offset;
-            if let Some(product) = callable.param_product(self.db, param) {
-                self.lower_product_arg(arg, &product, &mut values);
-                continue;
-            }
-            let value = self.lower_callable_argument(arg, callable, param, false);
+        // An instance knows the shapes a template's opaque parameters are.
+        let scope = self.body.scope();
+        let params: Vec<_> = callable
+            .params(self.db)
+            .expect("a checked call's spread lists its parameters")
+            .into_iter()
+            .map(|param| CallParam {
+                shape: normalize_ty(self.db, param.shape, scope, self.assumptions),
+                ..param
+            })
+            .collect();
+        let mut values = Vec::with_capacity(params.len());
+        for (&arg, param) in args.iter().zip(&params[usize::from(receiver.is_some())..]) {
+            let value = match param.shape.param_mode() {
+                Some(mode) => self.lower_callable_argument(arg, callable, mode, false),
+                // An opaque shape is transported whole, as its carrier: a
+                // projection's result keeps its grant through the call.
+                None if matches!(param.shape, Shape::Opaque(_)) => {
+                    let value = self.lower_source(arg);
+                    self.take_operand(arg, value)
+                }
+                None => {
+                    self.lower_product_arg(arg, &param.shape, &mut values);
+                    continue;
+                }
+            };
             values.push(SOperand::expr(value, arg));
         }
         if let Some((receiver, prepared)) = receiver {
@@ -1813,7 +1857,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         }
     }
 
-    /// Lowers the call input for parameter `param`. A place passed to a view
+    /// Lowers the call input for a parameter of `mode`. A place passed to a view
     /// parameter is viewed in place unless it is a snapshot (a scalar or
     /// handle) or a `Copy` value an ordinary function may take by value:
     /// loading a non-`Copy` place would move it, and a projection's result
@@ -1828,13 +1872,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         &mut self,
         expr: ExprId,
         callable: &Callable<'db>,
-        param: usize,
+        mode: FuncParamMode,
         receiver: bool,
     ) -> SValueId {
         let ty = self.expr_ty(expr);
-        let mode = callable
-            .callable_def()
-            .param_mode(self.db, param, callable.mode());
         if mode == FuncParamMode::Own {
             let value = self.lower_expr(expr);
             return self.take_operand(expr, value);
@@ -1925,7 +1966,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     self.lower_product_arg(elem, part, values);
                     continue;
                 }
-                Shape::Owned(_) => {
+                // An opaque part is transported whole, as a value.
+                Shape::Owned(_) | Shape::Opaque(_) => {
                     let value = self.lower_expr(elem);
                     self.take_operand(elem, value)
                 }
@@ -2027,7 +2069,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             return Receiver::Place(None);
         }
         if mode != FuncParamMode::Mut {
-            return Receiver::Value(self.lower_callable_argument(receiver, callable, 0, true));
+            return Receiver::Value(self.lower_callable_argument(receiver, callable, mode, true));
         }
         let place = self.try_lower_place(receiver).unwrap_or_else(|| {
             let ty = normalize_ty(
@@ -2090,15 +2132,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         prepared: Receiver<'db>,
         callable: &Callable<'db>,
     ) -> SValueId {
+        let mode = callable
+            .callable_def()
+            .param_mode(self.db, 0, callable.mode());
         match prepared {
             Receiver::Value(value) => value,
-            Receiver::Place(None)
-                if callable
-                    .callable_def()
-                    .param_mode(self.db, 0, callable.mode())
-                    != FuncParamMode::Mut =>
-            {
-                self.lower_callable_argument(receiver, callable, 0, true)
+            Receiver::Place(None) if mode != FuncParamMode::Mut => {
+                self.lower_callable_argument(receiver, callable, mode, true)
             }
             Receiver::Chain(root, prepared) => {
                 let Some(SemanticExprLowering::Call { callable: inner }) =

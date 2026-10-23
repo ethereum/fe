@@ -450,6 +450,7 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
     match ty.data(db) {
         TyData::TyBase(base) => match base {
             TyBase::Prim(prim) => format!("prim${prim:?}"),
+            TyBase::Shape(con) => format!("shape${con:?}"),
             TyBase::Adt(adt) => format!("adt${}", item_identity(db, adt.adt_ref(db).as_item())),
             TyBase::Contract(contract) => {
                 format!("contract${}", item_identity(db, (*contract).into()))
@@ -470,20 +471,27 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
                 // and its position there identify it.
                 let def = closure.def(db);
                 let owner = closure_owner_identity(db, def);
+                let leaves: Vec<_> = closure
+                    .params(db)
+                    .iter()
+                    .flat_map(|param| param.leaves(db))
+                    .collect();
                 let tys = closure
                     .parent_args(db)
                     .iter()
                     .chain(closure.captures(db))
-                    .chain(&closure.param_tys(db))
-                    .chain([closure.ret_ty(db)].iter())
-                    .map(|ty| type_identity(db, *ty))
+                    .copied()
+                    .chain(leaves.iter().map(|&(_, ty)| ty))
+                    .chain([closure.ret_ty(db)])
+                    .map(|ty| type_identity(db, ty))
                     .collect::<Vec<_>>()
                     .join("$");
-                format!(
-                    "closure${owner}${}${:?}${tys}",
-                    def.expr.as_u32(),
-                    closure.modes(db)
-                )
+                let shapes: Vec<_> = closure
+                    .params(db)
+                    .iter()
+                    .map(|param| param.pretty_print_product(db))
+                    .collect();
+                format!("closure${owner}${}${shapes:?}${tys}", def.expr.as_u32(),)
             }
         },
         TyData::TyParam(param) => {
@@ -494,9 +502,10 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
             )
         }
         TyData::AssocTy(assoc) => format!(
-            "assoc${}${}",
+            "assoc${}${}${:?}",
             trait_ref_identity(db, assoc.trait_),
-            assoc.name.data(db)
+            assoc.name.data(db),
+            assoc.mode
         ),
         TyData::QualifiedTy(trait_inst) => format!("qualified${}", trait_identity(db, *trait_inst)),
         TyData::ConstTy(const_ty) => {
@@ -522,7 +531,7 @@ fn trait_identity<'db>(db: &'db dyn HirAnalysisDb, trait_inst: TraitInstId<'db>)
     let assoc_types = trait_inst
         .assoc_type_bindings(db)
         .iter()
-        .map(|(name, ty)| format!("{}${}", name.data(db), type_identity(db, *ty)))
+        .map(|(binding, ty)| format!("{}${}", binding.pretty_print(db), type_identity(db, *ty)))
         .collect::<Vec<_>>()
         .join("$");
     format!("{trait_ref}$assoc${assoc_types}")

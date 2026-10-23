@@ -131,6 +131,11 @@ impl<'db> GenericArg<'db> {
             ast::GenericArgKind::AssocType(assoc_type_param) => {
                 AssocTypeGenericArg::lower_ast(ctxt, assoc_type_param).into()
             }
+            ast::GenericArgKind::Mode(mode) => Self::Mode(if mode.is_mut() {
+                TypeMode::Mut
+            } else {
+                TypeMode::Ref
+            }),
         }
     }
 }
@@ -156,8 +161,15 @@ impl<'db> ConstGenericArg<'db> {
 impl<'db> AssocTypeGenericArg<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::AssocTypeGenericArg) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let mode = ast.mode().map(|mode| {
+            if mode.is_mut() {
+                TypeMode::Mut
+            } else {
+                TypeMode::Ref
+            }
+        });
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        Self { name, ty }
+        Self { name, mode, ty }
     }
 }
 
@@ -170,6 +182,13 @@ impl<'db> GenericParam<'db> {
             ast::GenericParamKind::Const(const_param) => {
                 ConstGenericParam::lower_ast(ctxt, const_param).into()
             }
+            // A type parameter of the `shape` kind.
+            ast::GenericParamKind::Shape(shape_param) => TypeGenericParam {
+                name: IdentId::lower_token_partial(ctxt, shape_param.name()),
+                bounds: vec![TypeBound::Kind(Partial::Present(KindBound::Shape))],
+                default_ty: None,
+            }
+            .into(),
         }
     }
 }
@@ -182,7 +201,9 @@ impl<'db> FuncParam<'db> {
         let is_own = ast.own_token().is_some();
         let is_maybe_mut = ast.maybe_mut_token().is_some();
         let is_label_suppressed = ast.is_label_suppressed();
-        let name = if ast.pat().is_some() {
+        let name = if ast.spread_token().is_some() {
+            Some(FuncParamName::Spread)
+        } else if ast.pat().is_some() {
             Some(FuncParamName::Destructured(FuncParamName::destructured(
                 ctxt.db(),
                 idx,

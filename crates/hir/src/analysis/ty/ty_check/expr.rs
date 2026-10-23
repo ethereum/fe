@@ -70,7 +70,10 @@ use crate::analysis::ty::{
     instantiate_trait_self,
     normalize::normalize_with_trait_evidence,
     provider::{ProviderTransport, provider_semantics_for_specialized_call},
-    shape::{Shape, SumKind, is_param_product, sum_kind},
+    shape::{
+        Shape, SumKind, is_param_product, lower_opaque_param, lower_param_product, may_name_shape,
+        param_product_diags, sum_kind,
+    },
     trait_def::TraitInstId,
     trait_lower::complete_impl_trait,
     trait_resolution::{
@@ -490,7 +493,7 @@ impl<'db> TyChecker<'db> {
                 && let Some(shape) = self.check_unsafe_split(*tail)
             {
                 return ExprProp {
-                    is_mut: !shape.has_access_of(BorrowKind::Ref),
+                    is_mut: !shape.has_access_of(self.db, BorrowKind::Ref),
                     shape: Some(shape),
                     ..res
                 };
@@ -554,7 +557,7 @@ impl<'db> TyChecker<'db> {
         self.env.type_expr(
             tail,
             ExprProp {
-                is_mut: !shape.has_access_of(BorrowKind::Ref),
+                is_mut: !shape.has_access_of(self.db, BorrowKind::Ref),
                 shape: Some(shape.clone()),
                 ..prop
             },
@@ -644,40 +647,71 @@ impl<'db> TyChecker<'db> {
             if expectation.params.len() == params.len() {
                 return expectation;
             }
-            let untupled = matches!(&expectation.params[..], [param]
-                if param.is_tuple(self.db) && param.generic_args(self.db).len() == params.len());
+            // One pair, a product's or a tuple's, taken as two parameters.
+            let untupled = matches!(&expectation.params[..], [param] if match param {
+                Shape::Tuple(parts) => parts.len() == params.len(),
+                _ if param.param_mode().is_some() => {
+                    let ty = param.erased_ty(self.db);
+                    ty.is_tuple(self.db) && ty.generic_args(self.db).len() == params.len()
+                }
+                _ => false,
+            });
             self.push_diag(BodyDiag::ClosureArityMismatch {
                 primary: span.clone(),
                 expected: expectation.params.len(),
                 given: params.len(),
                 untupled,
             });
+            let invalid = TyId::invalid(self.db, InvalidCause::Other);
             ClosureExpectation {
-                modes: vec![FuncParamMode::View; params.len()],
-                params: vec![TyId::invalid(self.db, InvalidCause::Other); params.len()],
+                params: vec![Shape::Access(BorrowKind::Ref, invalid); params.len()],
                 ret: expectation.ret,
             }
         });
 
         self.env.enter_closure(def);
         let closure_span = expr.span(self.body()).into_closure_expr();
-        let mut param_tys = Vec::new();
+        let site = ParamSite::Closure(def);
+        let mut param_shapes = Vec::new();
         for (idx, param) in params.iter().enumerate() {
             let expected = expectation
                 .as_ref()
-                .map(|expectation| (expectation.modes[idx], expectation.params[idx]));
-            let span = closure_span.clone().params().param(idx).ty();
-            let (mode, ty) = self.closure_param(param, expected, span);
+                .map(|expectation| &expectation.params[idx]);
+            let param_span = closure_span.clone().params().param(idx);
+            // A spread belongs only in a trait method's declaration.
+            let shape = if param.is_spread() {
+                self.push_diag(TyDiagCollection::from(TyLowerDiag::MisplacedSpread(
+                    param_span.clone().into(),
+                )));
+                Shape::Owned(TyId::invalid(self.db, InvalidCause::Other))
+            } else {
+                self.closure_param(param, expected, param_span.clone().ty())
+            };
+            // A product parameter's binding owns the carriers of its parts,
+            // which its pattern takes apart.
+            // A parameter of an opaque shape takes a value of it whole.
+            let mode = shape.param_mode().unwrap_or_else(|| {
+                if !param.is_destructured() && !matches!(shape, Shape::Opaque(_)) {
+                    self.push_diag(TyDiagCollection::from(
+                        TyLowerDiag::ProductParamNotDestructured {
+                            span: param_span.into(),
+                            closure: true,
+                        },
+                    ));
+                }
+                self.env.register_param_product(site, idx, shape.clone());
+                FuncParamMode::Own
+            });
             let binding = LocalBinding::Param {
-                site: ParamSite::Closure(def),
+                site,
                 idx,
                 mode,
-                ty,
+                ty: shape.erased_ty(self.db),
                 is_mut: param.is_mut,
             };
             self.env
                 .register_closure_param(param.binding_name(), binding);
-            param_tys.push((mode, ty));
+            param_shapes.push(shape);
         }
         let ret = match ret_ty {
             Some(ret_ty) => self.lower_ty(ret_ty, closure_span.ret_ty(), true),
@@ -716,7 +750,7 @@ impl<'db> TyChecker<'db> {
                 .iter()
                 .map(|capture| capture.ty)
                 .collect::<Vec<_>>(),
-            param_tys,
+            param_shapes,
             ret,
             effects,
         );
@@ -850,17 +884,20 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    /// A closure parameter's mode and type: as annotated, else as the
-    /// expected shape has them, else a view of an inferred type. A mode
-    /// written without a type (`x: own`) keeps the mode and infers the type.
+    /// The shape of a closure parameter: as annotated, where a product
+    /// carries its parts' modes, else as `expected`, the shape the closure's
+    /// callable bound gives the parameter, has it, else a view of an inferred
+    /// type. A mode written without a type (`x: own`) keeps the mode and
+    /// infers the type.
     fn closure_param(
         &mut self,
         param: &FuncParam<'db>,
-        expected: Option<(FuncParamMode, TyId<'db>)>,
+        expected: Option<&Shape<'db>>,
         span: LazyTySpan<'db>,
-    ) -> (FuncParamMode, TyId<'db>) {
+    ) -> Shape<'db> {
+        let db = self.db;
         let annotation = param.ty.to_opt();
-        let (mode, payload) = match annotation.map(|ty| ty.data(self.db)) {
+        let (mode, payload) = match annotation.map(|ty| ty.data(db)) {
             Some(TypeKind::Mode(mode, payload)) => (
                 Some(match mode {
                     TypeMode::Own => FuncParamMode::Own,
@@ -884,18 +921,63 @@ impl<'db> TyChecker<'db> {
             ),
             _ => (None, annotation),
         };
-        let mode = mode.or(expected.map(|(mode, _)| mode));
-        let ty = match payload {
-            Some(ty) if is_param_product(self.db, ty) => {
-                self.push_diag(BodyDiag::ClosureProductParam {
-                    primary: span.into(),
-                });
-                TyId::invalid(self.db, InvalidCause::Other)
+        let param_mode = mode
+            .or_else(|| expected.and_then(Shape::param_mode))
+            .unwrap_or(FuncParamMode::View);
+        match payload {
+            // A product's parts carry its modes.
+            Some(ty) if is_param_product(db, ty) && mode.is_some() => {
+                self.push_diag(TyDiagCollection::from(TyLowerDiag::ModeOnProduct {
+                    span: span.into(),
+                    shape: false,
+                }));
+                Shape::Owned(TyId::invalid(db, InvalidCause::Other))
             }
-            Some(ty) => self.lower_ty(ty, span, true),
-            None => expected.map_or_else(|| self.fresh_ty(), |(_, ty)| ty),
-        };
-        (mode.unwrap_or(FuncParamMode::View), ty)
+            Some(ty) if is_param_product(db, ty) => {
+                let (scope, assumptions) = (self.env.scope(), self.env.assumptions());
+                let diags = param_product_diags(db, ty, scope, span, assumptions);
+                if !diags.is_empty() {
+                    diags.into_iter().for_each(|diag| self.push_diag(diag));
+                    return Shape::Owned(TyId::invalid(db, InvalidCause::Other));
+                }
+                lower_param_product(db, ty, scope, assumptions, self.env.owner().mode())
+                    .expect("a product lowers to its shape")
+                    .map_tys(self.db, &mut |ty| self.normalize_ty(ty))
+            }
+            // An associated shape's value, taken whole.
+            Some(ty)
+                if mode.is_none()
+                    && may_name_shape(db, ty, self.env.owner().mode().is_some())
+                    && let Some(opaque) = lower_opaque_param(
+                        db,
+                        ty,
+                        self.env.scope(),
+                        self.env.assumptions(),
+                        self.env.owner().mode(),
+                    ) =>
+            {
+                opaque.map_tys(self.db, &mut |ty| self.normalize_ty(ty))
+            }
+            Some(ty) => {
+                let lowered = self.lower_ty(ty, span.clone(), true);
+                match expected {
+                    // A mode-free annotation constrains a product's type and
+                    // keeps its parts' modes.
+                    Some(expected @ Shape::Tuple(_)) if mode.is_none() => {
+                        self.equate_ty(lowered, expected.erased_ty(db), span.into());
+                        expected.clone()
+                    }
+                    _ => Shape::param(param_mode, lowered),
+                }
+            }
+            None => match expected {
+                Some(expected) if mode.is_none() => expected.clone(),
+                _ => {
+                    let ty = expected.map_or_else(|| self.fresh_ty(), |shape| shape.erased_ty(db));
+                    Shape::param(param_mode, ty)
+                }
+            },
+        }
     }
 
     fn check_unary(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
@@ -939,6 +1021,16 @@ impl<'db> TyChecker<'db> {
         if matches!(op, UnOp::Mut | UnOp::Ref) {
             if *op == UnOp::Mut && self.select_mut_place(*lhs) {
                 prop = self.env.typed_expr(*lhs).expect("selected place is typed");
+            }
+            // A value of an opaque shape is passed on whole, at its mode:
+            // `mut d.at()` calls the projection at `mut`.
+            if let Some(shape @ Shape::Opaque(_)) = &prop.shape {
+                self.consume_access(*lhs);
+                if *op == UnOp::Mut && !shape.has_access_of(self.db, BorrowKind::Mut) {
+                    self.report_cannot_borrow_mut(*lhs, expr.span(self.body()).into());
+                    return ExprProp::invalid(self.db);
+                }
+                return prop;
             }
             if !self.env.is_place_expr(*lhs) {
                 self.push_diag(BodyDiag::BorrowFromNonPlace {
@@ -1819,7 +1911,7 @@ impl<'db> TyChecker<'db> {
     }
 
     /// Checks a call `f(..)` of a callable value as the call `f.call(..)` of
-    /// the callable shape trait it implements, or `f.call_mut(..)` of an
+    /// the callable trait it implements, or `f.call_mut(..)` of an
     /// `FnMut` shape: the callee is the method's receiver.
     fn check_value_call(
         &mut self,
@@ -1872,7 +1964,10 @@ impl<'db> TyChecker<'db> {
                 return ExprProp::invalid(self.db);
             }
         };
-        let expected = callable.callable_def.arg_tys(self.db).len() - 1;
+        let Some(params) = self.call_params(&callable, call_span.clone().args().into()) else {
+            return ExprProp::invalid(self.db);
+        };
+        let expected = params.len() - 1;
         if args.len() != expected {
             let def_span = callee_ty
                 .as_closure(self.db)
@@ -3915,7 +4010,7 @@ impl<'db> TyChecker<'db> {
         self.report_instantiated_const_fault(&callable, ret_ty, expr);
         let shape = callable
             .ret_shape(self.db)
-            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
+            .map(|shape| shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)));
         if let Some(kind) = self.const_intrinsic_kind(callable.callable_def()) {
             if !self.check_and_register_const_intrinsic(expr, callable, kind) {
                 return ExprProp::invalid(self.db);
@@ -4000,6 +4095,14 @@ impl<'db> TyChecker<'db> {
                 if captured {
                     if matches!(binding, LocalBinding::EffectParam { .. }) {
                         return self.capture_effect(binding);
+                    }
+                    // A value of an opaque shape is only passed on, never
+                    // copied into a closure.
+                    if let Some(Shape::Opaque(shape)) = self.env.param_product(&binding) {
+                        self.push_diag(BodyDiag::OpaqueShapeBound {
+                            primary: path_expr_span.clone().into(),
+                            shape: *shape,
+                        });
                     }
                     // An access's type still being inferred is checked once
                     // it is known.
@@ -4251,7 +4354,7 @@ impl<'db> TyChecker<'db> {
                             .map(|&ty| ty.fold_with(self.db, &mut folder))
                             .collect::<Vec<_>>();
 
-                        let assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>> = trait_inst
+                        let assoc_type_bindings: IndexMap<_, _> = trait_inst
                             .assoc_type_bindings(self.db)
                             .iter()
                             .map(|(name, ty)| (*name, ty.fold_with(self.db, &mut folder)))
@@ -5292,7 +5395,7 @@ impl<'db> TyChecker<'db> {
         let ret_ty = self.normalize_ty(callable.ret_ty(self.db));
         let shape = callable
             .ret_shape(self.db)
-            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
+            .map(|shape| shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)));
         self.env.register_semantic_call(expr, callable);
         ExprProp {
             is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
