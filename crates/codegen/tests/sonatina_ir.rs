@@ -13,7 +13,10 @@ use driver::DriverDataBase;
 use fe_codegen::emit_module_native_ir;
 use fe_codegen::{OptLevel, emit_module_sonatina_ir, emit_module_sonatina_ir_optimized};
 use std::{collections::HashSet, path::Path};
-use test_utils::_macro_support::_insta::{self, Settings};
+use test_utils::{
+    _macro_support::_insta::{self, Settings},
+    fixture_shards,
+};
 use tracing::info;
 use url::Url;
 
@@ -477,31 +480,25 @@ fn runtime_abi_head_guard_matches_modern_solidity_signed_size_check(fixture: Fix
     );
 }
 
-// NOTE: `dir_test` discovers fixtures at compile time; new fixture files will be picked up on a
-// clean build (e.g. CI) or whenever this test target is recompiled.
-//
 // Sonatina IR tests only run on fixtures that the backend currently supports. Unsupported
 // fixtures will produce LowerError::Unsupported, which we skip gracefully.
-#[dir_test(
-    dir: "$CARGO_MANIFEST_DIR/tests/fixtures",
-    glob: "*.fe"
-)]
-fn sonatina_ir_snap(fixture: Fixture<&str>) {
+fixture_shards!(
+    sonatina_ir_snap,
+    concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures"),
+    "*.fe",
+    DriverDataBase::default,
+    check_sonatina_ir,
+);
+
+fn check_sonatina_ir(db: &mut DriverDataBase, fixture: &test_utils::fixtures::Fixture) {
     let _logging = test_utils::setup_test_tracing();
-    let mut db = DriverDataBase::default();
     let file_url = Url::from_file_path(fixture.path()).expect("fixture path should be absolute");
-    db.workspace().touch(
-        &mut db,
-        file_url.clone(),
-        Some(fixture.content().to_string()),
-    );
     let file = db
         .workspace()
-        .get(&db, &file_url)
-        .expect("file should be loaded");
+        .touch(db, file_url, Some(fixture.content().to_string()));
     let top_mod = db.top_mod(file);
 
-    let output = match emit_module_sonatina_ir(&db, top_mod) {
+    let output = match emit_module_sonatina_ir(db, top_mod) {
         Ok(ir) => ir,
         Err(fe_codegen::LowerError::Unsupported(msg)) => {
             info!("SKIP {}: unsupported ({msg})", fixture.path());
