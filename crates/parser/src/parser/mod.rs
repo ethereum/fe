@@ -71,9 +71,8 @@ pub struct Parser<S: TokenStream> {
 
     /// Outcomes of the speculative probes run so far, see [`Parser::probe`].
     probe_cache: HashMap<(rowan::TextSize, bool, ProbeKind), bool>,
-    /// `parents.len()` on entry to each [`Parser::probe`] currently running, so
-    /// `recover` can confine itself to the scopes the innermost probe created.
-    probe_scope_floors: Vec<usize>,
+    /// The number of [`Parser::probe`]s currently running.
+    probe_depth: usize,
 
     /// Whether or not to recover from syntax errors automatically.
     recovery_mode: RecoveryMode,
@@ -111,7 +110,7 @@ impl<S: TokenStream> Parser<S> {
             dry_run_states: Vec::new(),
             dry_run_next_trivias_pool: Vec::new(),
             probe_cache: HashMap::new(),
-            probe_scope_floors: Vec::new(),
+            probe_depth: 0,
             recovery_mode,
         }
     }
@@ -420,15 +419,11 @@ impl<S: TokenStream> Parser<S> {
     /// it starts from and on whether newlines are trivia there. The input never
     /// changes during a parse, so an outcome stays valid.
     ///
-    /// Error recovery is the one thing that would otherwise read more than the
-    /// input: `recover` searches the enclosing scope stack for a token to stop
-    /// at, so how far it consumes depends on where the probe was run from. A
-    /// probe therefore records its scope depth in `probe_scope_floors` and
-    /// `recover` searches no further out than that, which is what a probe
-    /// already means -- would this construct parse here, on its own? -- since a
-    /// probe's tree and errors are discarded either way. With recovery confined,
-    /// every outcome is a function of the key alone and can be reused, malformed
-    /// input included.
+    /// A probe asks whether a construct parses here on its own, so it fails at
+    /// its first error and never recovers. Recovery would read past the
+    /// construct: `recover` searches the enclosing scopes for a token to stop at,
+    /// so its reach depends on where the probe ran from, and with no stopping
+    /// token it consumes the rest of the file.
     ///
     /// Nesting is what makes caching worthwhile: each level of
     /// `Wrap<<T as Model>::Point>` probes the positions inside it, and every
@@ -442,9 +437,12 @@ impl<S: TokenStream> Parser<S> {
         if let Some(&outcome) = self.probe_cache.get(&key) {
             return outcome;
         }
-        self.probe_scope_floors.push(self.parents.len());
-        let outcome = self.dry_run(f);
-        self.probe_scope_floors.pop();
+        self.probe_depth += 1;
+        let outcome = self.dry_run(|parser| {
+            let err_num = parser.errors.len();
+            f(parser) && parser.errors.len() == err_num
+        });
+        self.probe_depth -= 1;
         self.probe_cache.insert(key, outcome);
         outcome
     }
@@ -566,12 +564,9 @@ impl<S: TokenStream> Parser<S> {
     /// Returns the index of the scope that matched the recovery token,
     /// and the total string length of the unexpected tokens.
     fn recover(&mut self) -> (Option<ScopeIndex>, Option<rowan::TextSize>) {
-        if self.recovery_mode == RecoveryMode::NoRecover {
+        if self.recovery_mode == RecoveryMode::NoRecover || self.probe_depth > 0 {
             return (None, None);
         }
-        // Inside a probe, only the scopes the probe itself opened may stop the
-        // scan, so its outcome does not depend on the enclosing context.
-        let floor = self.probe_scope_floors.last().copied().unwrap_or(0);
 
         let mut unexpected = None;
         let mut match_scope_index = None;
@@ -580,7 +575,6 @@ impl<S: TokenStream> Parser<S> {
                 .parents
                 .iter()
                 .enumerate()
-                .skip(floor)
                 .rev()
                 .find(|(_i, scope)| scope.is_recovery_match(kind))
             {
