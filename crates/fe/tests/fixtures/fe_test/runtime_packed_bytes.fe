@@ -1,5 +1,5 @@
 use core::{AsBytes, ByteWriter, PackedBytes, concat}
-use core::abi::{ByteInput, encode_alloc}
+use core::abi::{ByteSource, encode_alloc}
 use core::ptr
 use std::abi::Sol
 
@@ -277,8 +277,8 @@ fn computed_extents_and_held_reads() {
     assert!(IDENTITY == PAIR && HELD_READS == 98)
     let encoded = encode_alloc<Sol, String<2>>("ab")
     let input = encoded.span()
-    let a = <ptr::MemSpan as ByteInput>::byte_at(input, 32)
-    let b = <ptr::MemSpan as ByteInput>::byte_at(input, 33)
+    let a = <ptr::MemSpan as ByteSource>::byte_at(input, 32)
+    let b = <ptr::MemSpan as ByteSource>::byte_at(input, 33)
     let text = (((a as u256) << 8) | (b as u256)) as String<2>
     let word = (a - 96) as u256
     assert!(held_reads(word, text) == 98)

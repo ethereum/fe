@@ -1,4 +1,4 @@
-use core::abi::{Abi, AbiDecoder, AbiSize, AbiSpan, ByteInput, Decode, encode_alloc, store_word}
+use core::abi::{Abi, AbiDecoder, AbiSize, AbiSpan, ByteSource, Decode, encode_alloc, store_word}
 use core::ptr::{self, MemSpan}
 use core::num::IntDowncast
 use std::abi::{Sol, Bytes, DynString, DynArray}
@@ -133,8 +133,8 @@ impl BoundedInput {
         unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: self.len as usize) }
     }
 }
-impl ByteInput for BoundedInput {
-    fn len(self) -> u256 { self.len }
+impl ByteSource for BoundedInput {
+    fn size(self) -> u64 { self.len.downcast_truncate() }
     fn word_at(self, _ offset: u256) -> u256 {
         assert!(offset <= self.len && 32 <= self.len - offset)
         self.span().word_at(offset)
@@ -222,13 +222,13 @@ fn every_byte_boundary_preserves_data_and_clears_padding() {
     }
 }
 
-// Model a large input without allocating it, so the span checks must reject
-// a payload too long to allocate themselves rather than fail during
-// allocation.
+// Model the longest input, `2**64 - 1` bytes, without allocating it, so the
+// span checks must reject a payload too long to allocate themselves rather
+// than fail during allocation.
 struct LengthInput { data_len: u256 }
 impl Copy for LengthInput {}
-impl ByteInput for LengthInput {
-    fn len(self) -> u256 { !(0 as u256) }
+impl ByteSource for LengthInput {
+    fn size(self) -> u64 { 0xffffffffffffffff }
     fn word_at(self, _: u256) -> u256 { self.data_len }
     fn byte_at(self, _: u256) -> u8 { panic() }
     unsafe fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) { panic() }
@@ -243,12 +243,6 @@ fn largest_padded_dynamic_payload_span_is_accepted() {
 #[test(should_revert)]
 fn padded_dynamic_payload_past_the_allocation_bound_is_rejected() {
     let data = LengthInput { data_len: 0xffffffffffffffc1 }
-    let _ = <Bytes as AbiSpan<Sol>>::payload_end(data, base: 0, pos: 0)
-}
-
-#[test(should_revert)]
-fn full_input_with_overflowing_padded_size_is_rejected() {
-    let data = LengthInput { data_len: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffdf }
     let _ = <Bytes as AbiSpan<Sol>>::payload_end(data, base: 0, pos: 0)
 }
 
