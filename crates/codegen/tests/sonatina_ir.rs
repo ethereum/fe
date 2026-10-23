@@ -523,3 +523,19 @@ fn sonatina_ir_snap(fixture: Fixture<&str>) {
         _insta::assert_snapshot!(fixture_name, output);
     });
 }
+
+#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "maybe_mut_bodies_share_callees.fe")]
+fn maybe_mut_bodies_share_callees(fixture: Fixture<&str>) {
+    let ir = with_top_mod_for_source(&fixture, |db, top_mod| {
+        emit_module_sonatina_ir(db, top_mod).expect("Sonatina IR should emit")
+    });
+
+    let notes = ir
+        .lines()
+        .filter(|line| line.starts_with("func ") && line.contains("note"))
+        .count();
+    assert_eq!(
+        notes, 1,
+        "both bodies of `slot` should call one instance of `note`:\n{ir}"
+    );
+}

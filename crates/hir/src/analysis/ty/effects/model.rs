@@ -4,7 +4,7 @@ use crate::{
         HirAnalysisDb,
         ty::{
             const_ty::{ConstTyData, ConstTyId},
-            trait_def::TraitInstId,
+            trait_def::{AssocBinding, TraitInstId},
             ty_def::{InvalidCause, TyData, TyId},
             visitor::{TyVisitable, TyVisitor, walk_const_ty, walk_ty},
         },
@@ -44,7 +44,7 @@ pub struct TypeKeySchema<'db> {
 pub struct TraitKeySchema<'db> {
     pub def: Trait<'db>,
     pub args_no_self: SmallVec<[TyId<'db>; 2]>,
-    pub assoc_bindings: SmallVec<[(IdentId<'db>, TyId<'db>); 2]>,
+    pub assoc_bindings: SmallVec<[(AssocBinding<'db>, TyId<'db>); 2]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -64,7 +64,7 @@ pub struct TypePatternKey<'db> {
 pub struct TraitPatternKey<'db> {
     pub def: Trait<'db>,
     pub args_no_self: SmallVec<[TyId<'db>; 2]>,
-    pub assoc_bindings: SmallVec<[(IdentId<'db>, TyId<'db>); 2]>,
+    pub assoc_bindings: SmallVec<[(AssocBinding<'db>, TyId<'db>); 2]>,
     pub family: EffectFamily<'db>,
     pub slots: PatternSlots<'db>,
 }
@@ -133,7 +133,7 @@ pub struct ForwardedTypeKey<'db> {
 pub struct StoredTraitKey<'db> {
     pub def: Trait<'db>,
     pub args_no_self: SmallVec<[TyId<'db>; 2]>,
-    pub assoc_bindings: SmallVec<[(IdentId<'db>, TyId<'db>); 2]>,
+    pub assoc_bindings: SmallVec<[(AssocBinding<'db>, TyId<'db>); 2]>,
     pub family: EffectFamily<'db>,
 }
 
@@ -141,7 +141,7 @@ pub struct StoredTraitKey<'db> {
 pub struct ForwardedTraitKey<'db> {
     pub def: Trait<'db>,
     pub args_no_self: SmallVec<[TyId<'db>; 2]>,
-    pub assoc_bindings: SmallVec<[(IdentId<'db>, TyId<'db>); 2]>,
+    pub assoc_bindings: SmallVec<[(AssocBinding<'db>, TyId<'db>); 2]>,
     pub family: EffectFamily<'db>,
 }
 
@@ -227,7 +227,7 @@ impl<'db> TraitKeySchema<'db> {
         db: &'db dyn HirAnalysisDb,
         trait_inst: TraitInstId<'db>,
     ) -> Self {
-        let mut assoc_bindings: SmallVec<[(IdentId<'db>, TyId<'db>); 2]> =
+        let mut assoc_bindings: SmallVec<[(AssocBinding<'db>, TyId<'db>); 2]> =
             trait_inst.assoc_ty_bindings(db).into();
         assoc_bindings.sort_by_key(|(lhs, _)| *lhs);
         Self {

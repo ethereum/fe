@@ -8,7 +8,7 @@ use crate::analysis::{
     name_resolution::{is_scope_visible_from, traits_in_scope::traits_available_for_selection},
     ty::{
         canonical::{Canonical, Canonicalized, Solution},
-        closure::{CallableShape, callable_shape_insts},
+        closure::{CallableTrait, callable_insts},
         fold::TyFoldable as _,
         method_table::{MethodProbe, ProbedMethod, probe_method},
         trait_def::{ImplementorId, TraitInstId, impls_for_trait_and_ty, impls_for_ty},
@@ -151,7 +151,7 @@ pub(crate) fn select_method_candidate_with_choices<'db>(
 }
 
 /// Selects the method a call `f(..)` of the value `receiver` runs: `call`
-/// of a core callable shape trait whose receiver is `self`, else `call_mut`
+/// of a core callable trait whose receiver is `self`, else `call_mut`
 /// of one whose receiver is `mut self`. Other methods named `call` do not
 /// make a type callable.
 pub(crate) fn select_callable_value_method<'db>(
@@ -168,7 +168,7 @@ pub(crate) fn select_callable_value_method<'db>(
             name,
             scope,
             assumptions,
-            TraitFilter::CallableShapes,
+            TraitFilter::CallableTraits,
             None,
         )
     };
@@ -222,9 +222,9 @@ enum TraitFilter<'db> {
     Any,
     /// The methods of one trait.
     Trait(Trait<'db>),
-    /// The methods of the core callable shape traits, which are visible
+    /// The methods of the core callable traits, which are visible
     /// whether or not they are in scope.
-    CallableShapes,
+    CallableTraits,
 }
 
 pub(crate) fn select_trait_method_candidates<'db>(
@@ -341,10 +341,10 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
 
     fn assemble_trait_method_candidates(&mut self) {
         let scope_ingot = self.scope.ingot(self.db);
-        // Callable values implement their callable shapes without HIR impls.
+        // Callable values implement their callable traits without HIR impls.
         // The shapes are built from the canonical receiver, whose variables
         // are the ones a candidate's check seeds its table with.
-        for inst in callable_shape_insts(self.db, self.receiver.canonical().value()) {
+        for inst in callable_insts(self.db, self.receiver.canonical().value()) {
             self.insert_assumption_trait_method_cand(inst);
         }
 
@@ -436,7 +436,7 @@ impl<'db, 'a> CandidateAssembler<'db, 'a> {
         match self.filter {
             TraitFilter::Any => true,
             TraitFilter::Trait(trait_) => trait_ == trait_def,
-            TraitFilter::CallableShapes => CallableShape::of(self.db, trait_def).is_some(),
+            TraitFilter::CallableTraits => CallableTrait::of(self.db, trait_def).is_some(),
         }
     }
 
@@ -603,7 +603,7 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
             .iter()
             .copied()
             .filter(|(cand, _)| {
-                self.filter == TraitFilter::CallableShapes
+                self.filter == TraitFilter::CallableTraits
                     || available_traits.contains(&cand.trait_def(self.db))
             })
             .collect();
@@ -997,7 +997,7 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
 
     fn available_traits(&self) -> IndexSet<Trait<'db>> {
         // A callable value's shapes are intrinsic to its type.
-        let shapes = callable_shape_insts(self.db, self.receiver.canonical().value());
+        let shapes = callable_insts(self.db, self.receiver.canonical().value());
         traits_available_for_selection(
             self.db,
             self.scope,

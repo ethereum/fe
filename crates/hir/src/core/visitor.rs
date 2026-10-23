@@ -1749,6 +1749,8 @@ pub fn walk_generic_arg<'db, V>(
                 );
             }
         }
+
+        GenericArg::Mode(_) => {}
     }
 }
 

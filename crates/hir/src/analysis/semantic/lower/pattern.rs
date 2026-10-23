@@ -96,6 +96,10 @@ fn with_source_carriers<'db>(
     source: TyId<'db>,
     matched: TyId<'db>,
 ) -> TyId<'db> {
+    // A value of an opaque shape is held by the shape's carrier.
+    if matched.as_shape_value(db).is_some() {
+        return source;
+    }
     let (source_base, source_args) = source.decompose_ty_app(db);
     if let Some((_, inner)) = source.as_capability(db)
         && matched.as_capability(db).is_none()

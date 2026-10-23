@@ -9,7 +9,7 @@ use fe_hir::{
         ty::{
             binder::Binder,
             normalize::normalize_ty,
-            trait_def::TraitInstId,
+            trait_def::{AssocBinding, TraitInstId},
             trait_resolution::PredicateListId,
             ty_check::BodyOwner,
             ty_def::{Kind, TyData, TyId, TyVarSort},
@@ -380,7 +380,7 @@ fn substituting_projection_and_evidence_preserves_both_arguments_and_bindings() 
         &db,
         trait_,
         vec![param],
-        IndexMap::from_iter([(item, param)]),
+        IndexMap::from_iter([(AssocBinding::of(item), param)]),
         fe_hir::hir_def::ModeMarker::None,
     );
     let projection = TyId::assoc_ty(&db, inst.trait_ref(&db), item);
@@ -391,7 +391,9 @@ fn substituting_projection_and_evidence_preserves_both_arguments_and_bindings() 
     };
     assert_eq!(result.trait_.args(&db), &[TyId::bool(&db)]);
     assert_eq!(
-        evidence.assoc_type_bindings(&db).get(&item),
+        evidence
+            .assoc_type_bindings(&db)
+            .get(&AssocBinding::of(item)),
         Some(&TyId::bool(&db)),
         "associated binding retained a stale declaration parameter"
     );
@@ -422,7 +424,7 @@ fn projection_normalization_does_not_commit_speculative_trait_arguments() {
         &db,
         trait_,
         vec![TyId::bool(&db), TyId::u8(&db)],
-        IndexMap::from_iter([(item, TyId::u256(&db))]),
+        IndexMap::from_iter([(AssocBinding::of(item), TyId::u256(&db))]),
         fe_hir::hir_def::ModeMarker::None,
     );
     let assumptions = PredicateListId::new(&db, vec![assumption]);

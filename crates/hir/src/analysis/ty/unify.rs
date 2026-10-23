@@ -169,15 +169,26 @@ where
                         .parent_args(db)
                         .iter()
                         .chain(closure.captures(db))
-                        .chain(&closure.param_tys(db))
-                        .chain([closure.ret_ty(db)].iter())
                         .copied()
+                        .chain(
+                            closure
+                                .params(db)
+                                .iter()
+                                .flat_map(|param| param.leaves(db))
+                                .map(|(_, ty)| ty),
+                        )
+                        .chain([closure.ret_ty(db)])
                         .collect::<Vec<_>>()
                 };
+                let (params1, params2) = (closure1.params(db), closure2.params(db));
                 let (lhs, rhs) = (components(*closure1), components(*closure2));
                 let (lhs_row, rhs_row) = (closure1.effects(db), closure2.effects(db));
                 if closure1.def(db) != closure2.def(db)
-                    || closure1.modes(db) != closure2.modes(db)
+                    || params1.len() != params2.len()
+                    || !params1
+                        .iter()
+                        .zip(params2)
+                        .all(|(param1, param2)| param1.same_modes(db, param2))
                     || lhs.len() != rhs.len()
                     || lhs_row.len() != rhs_row.len()
                 {
@@ -285,7 +296,7 @@ where
             (TyData::AssocTy(a1), TyData::AssocTy(a2)) => {
                 if a1 == a2 {
                     Ok(())
-                } else if a1.name == a2.name {
+                } else if a1.name == a2.name && a1.mode == a2.mode {
                     self.unify(a1.trait_, a2.trait_)
                 } else {
                     Err(UnificationError::TypeMismatch)
@@ -833,20 +844,14 @@ impl<'db> Unifiable<'db> for TraitInstId<'db> {
         // (with bindings) should be able to satisfy a less specific constraint
         // (without bindings).
 
-        // First, unify all bindings that are present in both
-        for (name, &self_assoc_ty) in self.assoc_type_bindings(db) {
-            if let Some(&other_assoc_ty) = other.assoc_type_bindings(db).get(name) {
-                table.unify_ty(self_assoc_ty, other_assoc_ty)?;
-            }
-        }
-
-        // For bindings that are only in other, we need to check if self can satisfy them
-        for (name, &_other_assoc_ty) in other.assoc_type_bindings(db) {
-            if !self.assoc_type_bindings(db).contains_key(name) {
-                // other has a binding that self doesn't have
-                // This means other is more specific than self, so unification fails
-                return Err(UnificationError::TypeMismatch);
-            }
+        // Each of other's bindings must be one of self's, which may bind an
+        // associated shape at every mode where other names one. A binding
+        // other lacks makes it less specific.
+        for (&binding, &other_assoc_ty) in other.assoc_type_bindings(db) {
+            let self_assoc_ty = self
+                .bound_assoc_ty(db, binding)
+                .ok_or(UnificationError::TypeMismatch)?;
+            table.unify_ty(self_assoc_ty, other_assoc_ty)?;
         }
 
         Ok(())

@@ -1,8 +1,8 @@
 use crate::{
     analysis::place::{Place, is_grant_place_expr, is_pointer_place_expr},
     hir_def::{
-        BinOp, Body, Contract, Expr, ExprId, Func, IdentId, Partial, Pat, PatId, Stmt, StmtId,
-        TypeId as HirTypeId, UnOp, scope_graph::ScopeId,
+        BinOp, Body, Contract, Expr, ExprId, Func, IdentId, ModeMarker, Partial, Pat, PatId, Stmt,
+        StmtId, TypeId as HirTypeId, UnOp, scope_graph::ScopeId,
     },
     span::DynLazySpan,
 };
@@ -42,6 +42,7 @@ use crate::analysis::{
         },
         evidence::{BoundOwner, BoundSchemaId, ProofOutcome, prove_outcome},
         fold::{TyFoldable, TyFolder},
+        normalize::normalize_ty,
         provider::AddressSpace,
         shape::Shape,
         trait_def::TraitInstId,
@@ -92,7 +93,7 @@ pub(crate) fn func_declared_bounds<'db>(
         // row expands.
         let rows = expand_rows(
             db,
-            func.effect_requirements(db),
+            func.effect_requirements(db, mode),
             func.scope(),
             base.extend_all_bounds(db),
         );
@@ -174,8 +175,11 @@ pub(crate) struct TyCheckEnv<'db> {
     /// The inputs a call passes the body: each parameter, or each part of a
     /// product parameter.
     input_bindings: Vec<LocalBinding<'db>>,
-    /// Each parameter's shape if it is a product, by index.
-    param_products: Vec<Option<Shape<'db>>>,
+    /// The shapes of the product parameters, by index.
+    param_products: Vec<(ParamSite<'db>, usize, Shape<'db>)>,
+    /// The opaque parts of products that destructured parameters bind whole,
+    /// by the name's pattern.
+    transport_parts: Vec<(PatId, Shape<'db>)>,
     /// Pat bindings for transfer to TypedBody
     pat_bindings: SecondaryMap<PatId, Option<LocalBinding<'db>>>,
     local_borrow_providers: SecondaryMap<PatId, Option<AddressSpace>>,
@@ -254,8 +258,8 @@ struct ActiveClosure<'db> {
 /// checked.
 #[derive(Debug, Clone)]
 pub(super) struct ClosureExpectation<'db> {
-    pub(super) modes: Vec<FuncParamMode>,
-    pub(super) params: Vec<TyId<'db>>,
+    /// The shape of each parameter.
+    pub(super) params: Vec<Shape<'db>>,
     pub(super) ret: Option<TyId<'db>>,
 }
 
@@ -355,6 +359,7 @@ impl<'db> TyCheckEnv<'db> {
             param_bindings: Vec::new(),
             input_bindings: Vec::new(),
             param_products: Vec::new(),
+            transport_parts: Vec::new(),
             pat_bindings: SecondaryMap::new(),
             local_borrow_providers: SecondaryMap::new(),
             pat_binding_modes: SecondaryMap::new(),
@@ -444,7 +449,7 @@ impl<'db> TyCheckEnv<'db> {
 
     fn register_effect_bindings(&mut self, base_assumptions: PredicateListId<'db>) {
         match self.owner {
-            BodyOwner::Func(func, _) => self.register_func_effect_bindings(func),
+            BodyOwner::Func(func, mode) => self.register_func_effect_bindings(func, mode),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
             BodyOwner::ContractInit { .. } => {
                 self.register_contract_effect_bindings(base_assumptions)
@@ -455,8 +460,8 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
-    fn register_func_effect_bindings(&mut self, func: Func<'db>) {
-        for binding in func.effect_requirements(self.db) {
+    fn register_func_effect_bindings(&mut self, func: Func<'db>, mode: Option<BorrowKind>) {
+        for binding in func.effect_requirements(self.db, mode) {
             if !matches!(
                 binding.key.kind(),
                 EffectKeyKind::Type | EffectKeyKind::Trait
@@ -465,7 +470,7 @@ impl<'db> TyCheckEnv<'db> {
             }
             let idx = binding.binding_idx as usize;
             let Some(resolved_binding) =
-                self.resolved_effect_binding(EffectParamSite::Func(func), idx)
+                self.resolved_effect_binding(EffectParamSite::Func(func, mode), idx)
             else {
                 continue;
             };
@@ -479,7 +484,7 @@ impl<'db> TyCheckEnv<'db> {
         // row expands.
         let rows = expand_rows(
             self.db,
-            func.effect_requirements(self.db),
+            func.effect_requirements(self.db, mode),
             func.scope(),
             self.base_assumptions,
         );
@@ -600,7 +605,7 @@ impl<'db> TyCheckEnv<'db> {
 
     fn effect_binding_scope(&self, site: EffectParamSite<'db>) -> ScopeId<'db> {
         match site {
-            EffectParamSite::Func(func) => func.scope(),
+            EffectParamSite::Func(func, _) => func.scope(),
             EffectParamSite::Contract(contract)
             | EffectParamSite::ContractInit { contract }
             | EffectParamSite::ContractRecvArm { contract, .. } => contract.scope(),
@@ -896,12 +901,11 @@ impl<'db> TyCheckEnv<'db> {
         match self.owner {
             BodyOwner::Func(func, _) => {
                 let rt = func.return_ty(self.db);
-                if func.has_explicit_return_ty(self.db) {
-                    if rt.is_star_kind(self.db) {
-                        rt
-                    } else {
-                        TyId::invalid(self.db, InvalidCause::Other)
-                    }
+                // A return reported where it is written checks nothing.
+                if func.has_explicit_return_ty(self.db)
+                    && (!rt.is_star_kind(self.db) || func.return_lacks_mode(self.db))
+                {
+                    TyId::invalid(self.db, InvalidCause::Other)
                 } else {
                     rt
                 }
@@ -945,9 +949,27 @@ impl<'db> TyCheckEnv<'db> {
         &self.param_bindings
     }
 
-    /// The shape of `binding` if it is a product parameter's.
+    /// The shape of `binding` if it is a product parameter's, or an opaque
+    /// part of one that a destructured parameter binds whole.
     pub(super) fn param_product(&self, binding: &LocalBinding<'db>) -> Option<&Shape<'db>> {
-        param_product(&self.param_products, binding)
+        param_product(&self.param_products, &self.transport_parts, binding)
+    }
+
+    /// Records that the name `pat` binds an opaque part of a destructured
+    /// parameter, of `shape`, whole: a transport binding, as an opaque
+    /// parameter is.
+    pub(super) fn register_transport_part(&mut self, pat: PatId, shape: Shape<'db>) {
+        self.transport_parts.push((pat, shape));
+    }
+
+    /// Records that parameter `idx` of `site` is a product of `shape`.
+    pub(super) fn register_param_product(
+        &mut self,
+        site: ParamSite<'db>,
+        idx: usize,
+        shape: Shape<'db>,
+    ) {
+        self.param_products.push((site, idx, shape));
     }
 
     pub(super) fn lookup_binding_ty(&self, binding: &LocalBinding<'db>) -> TyId<'db> {
@@ -1079,6 +1101,13 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(crate) fn effect_env(&self) -> &keyed_effect_env::EffectEnv<'db> {
         &self.effect_env
+    }
+
+    pub(super) fn call_effect_args_mut(
+        &mut self,
+        call_expr: ExprId,
+    ) -> Option<&mut Vec<super::ResolvedEffectArg<'db>>> {
+        self.call_effect_args[call_expr].as_mut()
     }
 
     pub(super) fn push_call_effect_arg(
@@ -1824,6 +1853,7 @@ impl<'db> TyCheckEnv<'db> {
             param_bindings: self.param_bindings,
             input_bindings: self.input_bindings,
             param_products: self.param_products,
+            transport_parts: self.transport_parts,
             pat_bindings: self.pat_bindings,
             pat_binding_modes: self.pat_binding_modes,
             pattern_store,
@@ -1864,7 +1894,7 @@ impl<'db> TyCheckEnv<'db> {
 impl<'db> TyChecker<'db> {
     pub(super) fn seed_effect_witnesses(&mut self) {
         match self.env.owner {
-            BodyOwner::Func(func, _) => self.seed_func_effect_witnesses(func),
+            BodyOwner::Func(func, mode) => self.seed_func_effect_witnesses(func, mode),
             BodyOwner::Const(_) | BodyOwner::AnonConstBody { .. } | BodyOwner::Closure { .. } => {}
             BodyOwner::ContractInit { .. } | BodyOwner::ContractRecvArm { .. } => {
                 self.seed_contract_effect_witnesses();
@@ -1872,10 +1902,11 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn seed_func_effect_witnesses(&mut self, func: Func<'db>) {
+    fn seed_func_effect_witnesses(&mut self, func: Func<'db>, mode: Option<BorrowKind>) {
         let assumptions = self.env.base_assumptions();
+        let site = EffectParamSite::Func(func, mode);
 
-        for binding in func.effect_requirements(self.db) {
+        for binding in func.effect_requirements(self.db, mode) {
             if !matches!(
                 binding.key.kind(),
                 EffectKeyKind::Type | EffectKeyKind::Trait
@@ -1886,16 +1917,16 @@ impl<'db> TyChecker<'db> {
             let idx = binding.binding_idx as usize;
             let resolved_binding = self
                 .env
-                .resolved_effect_binding(EffectParamSite::Func(func), idx)
+                .resolved_effect_binding(site, idx)
                 .unwrap_or_else(|| panic!("missing provider binding for effect at index {idx}"));
             let local_binding = LocalBinding::effect_param(&resolved_binding);
             let provided = ProvidedEffect {
                 origin: EffectOrigin::Param {
-                    site: EffectParamSite::Func(func),
+                    site,
                     index: idx,
                     name: Some(resolved_binding.requirement.binding_name),
                 },
-                ty: EffectEnvView::new(EffectParamSite::Func(func))
+                ty: EffectEnvView::new(site)
                     .visible_effect_binding_ty(self.db, idx)
                     .unwrap_or_else(|| self.env.lookup_binding_ty(&local_binding)),
                 is_mut: local_binding.is_mut(),
@@ -1917,7 +1948,7 @@ impl<'db> TyChecker<'db> {
             let local_binding = LocalBinding::effect_param(&component);
             let provided = ProvidedEffect {
                 origin: EffectOrigin::Param {
-                    site: EffectParamSite::Func(func),
+                    site,
                     index: requirement.binding_idx as usize,
                     name: Some(requirement.binding_name),
                 },
@@ -1997,10 +2028,7 @@ impl<'db> TyChecker<'db> {
             self.rollback_state(snapshot);
             return false;
         };
-        let span = match provider.origin {
-            EffectOrigin::Param { site, index, .. } => effect_param_span(self.db, site, index),
-            EffectOrigin::With { value_expr } => value_expr.span(self.body()).into(),
-        };
+        let span = provider.origin.span(self.db, self.body());
         let Some((witness, commit)) = self
             .build_keyed_witness_from_pattern_in_scope(
                 pattern,
@@ -2054,7 +2082,9 @@ impl<'db> BlockEnv<'db> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum EffectParamSite<'db> {
-    Func(Func<'db>),
+    /// A function's effects, at the mode of the body that binds them (`None`
+    /// for a function without one).
+    Func(Func<'db>, Option<BorrowKind>),
     Contract(Contract<'db>),
     ContractInit {
         contract: Contract<'db>,
@@ -2067,6 +2097,26 @@ pub enum EffectParamSite<'db> {
     /// A closure's row: the effects its body uses that its own `with`
     /// blocks do not provide.
     Closure(ClosureDef<'db>),
+}
+
+impl<'db> EffectParamSite<'db> {
+    /// The site naming effect slot `idx` of this one, as a provider source:
+    /// both bodies of a `mut?` function share a slot whose effect is not
+    /// `mut?`, so that what they pass it to is the same instance.
+    pub fn slot_site(self, db: &'db dyn HirAnalysisDb, idx: u32) -> Self {
+        match self {
+            Self::Func(func, Some(_))
+                if func
+                    .effects(db)
+                    .data(db)
+                    .get(idx as usize)
+                    .is_none_or(|effect| effect.mode != ModeMarker::MaybeMut) =>
+            {
+                Self::Func(func, None)
+            }
+            site => site,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
@@ -2120,21 +2170,46 @@ fn param_name<'db>(
     }
 }
 
-/// The shape of `binding` among `products` if it is a product parameter's:
-/// the product its body destructures.
+/// The shape of `binding` among `products` if it is a product parameter's,
+/// the product its body destructures, or among `parts` if it binds an opaque
+/// part of one whole.
 pub(super) fn param_product<'a, 'db>(
-    products: &'a [Option<Shape<'db>>],
+    products: &'a [(ParamSite<'db>, usize, Shape<'db>)],
+    parts: &'a [(PatId, Shape<'db>)],
     binding: &LocalBinding<'db>,
 ) -> Option<&'a Shape<'db>> {
-    let LocalBinding::Param {
-        site: ParamSite::Func(_),
-        idx,
-        ..
-    } = binding
-    else {
-        return None;
-    };
-    products.get(*idx)?.as_ref()
+    match binding {
+        LocalBinding::Param { site, idx, .. } => {
+            products.iter().find_map(|(param_site, param, product)| {
+                (param_site == site && param == idx).then_some(product)
+            })
+        }
+        LocalBinding::Local { pat, .. } => parts
+            .iter()
+            .find_map(|(part, shape)| (part == pat).then_some(shape)),
+        LocalBinding::ParamPart { .. } | LocalBinding::EffectParam { .. } => None,
+    }
+}
+
+/// The inputs a call passes parameter `idx` of `site`, a product of shape
+/// `product`: one for each of its parts.
+pub(super) fn product_inputs<'db>(
+    db: &'db dyn HirAnalysisDb,
+    site: ParamSite<'db>,
+    idx: usize,
+    product: &Shape<'db>,
+) -> impl Iterator<Item = LocalBinding<'db>> {
+    product
+        .leaves(db)
+        .into_iter()
+        .zip(0..)
+        .map(move |((access, ty), part)| LocalBinding::ParamPart {
+            site,
+            idx,
+            part,
+            access,
+            ty,
+        })
 }
 
 /// The bindings of a function's parameters at a mode.
@@ -2146,8 +2221,8 @@ pub(super) struct FuncParamBindings<'db> {
     /// The inputs a call passes the function: each parameter, or each part
     /// of a product parameter.
     pub(super) inputs: Vec<LocalBinding<'db>>,
-    /// Each parameter's shape if it is a product, by index.
-    pub(super) products: Vec<Option<Shape<'db>>>,
+    /// The shapes of the product parameters, by site and index.
+    pub(super) products: Vec<(ParamSite<'db>, usize, Shape<'db>)>,
 }
 
 /// The bindings of `func`'s parameters where it is used at `mode`.
@@ -2168,7 +2243,11 @@ pub(super) fn func_param_bindings<'db>(
         if !ty.is_star_kind(db) {
             ty = TyId::invalid(db, InvalidCause::Other);
         }
-        let product = view.product(db, mode);
+        // A shape whose impl is known is the parts it lists (`Self::Step` in
+        // an impl).
+        let product = view
+            .product(db, mode)
+            .map(|product| normalize_ty(db, product.clone(), func.scope(), func.assumptions(db)));
         // A product parameter's binding owns the carriers of its parts.
         let param = LocalBinding::Param {
             site,
@@ -2182,21 +2261,15 @@ pub(super) fn func_param_bindings<'db>(
             is_mut: view.is_mut(db),
         };
         bindings.params.push(param);
-        bindings.products.push(product.cloned());
         match product {
             Some(product) => {
                 bindings
                     .inputs
-                    .extend(product.leaves().into_iter().enumerate().map(
-                        |(part, (access, ty))| LocalBinding::ParamPart {
-                            site,
-                            idx,
-                            part: part as u16,
-                            access,
-                            ty,
-                        },
-                    ));
+                    .extend(product_inputs(db, site, idx, &product));
+                bindings.products.push((site, idx, product));
             }
+            // A spread's inputs are an instance's: those its shape lists.
+            None if view.hir(db).is_some_and(FuncParam::is_spread) => {}
             None => bindings.inputs.push(param),
         }
     }
@@ -2228,7 +2301,7 @@ fn effect_param_name<'db>(
     idx: usize,
 ) -> Option<IdentId<'db>> {
     match site {
-        EffectParamSite::Func(func) => func.effect_params(db).nth(idx).and_then(|p| p.name(db)),
+        EffectParamSite::Func(func, _) => func.effect_params(db).nth(idx).and_then(|p| p.name(db)),
         EffectParamSite::Contract(contract) => {
             contract.effects(db).data(db).get(idx).and_then(|p| p.name)
         }
@@ -2260,7 +2333,7 @@ pub(super) fn effect_param_span<'db>(
     idx: usize,
 ) -> DynLazySpan<'db> {
     match site {
-        EffectParamSite::Func(func) => func
+        EffectParamSite::Func(func, _) => func
             .span()
             .effects()
             .param_idx(func.effect_origin(db, idx))
@@ -2303,6 +2376,16 @@ pub(crate) enum EffectOrigin<'db> {
     With {
         value_expr: ExprId,
     },
+}
+
+impl<'db> EffectOrigin<'db> {
+    /// Where the effect is given: a `with` value or an effect parameter.
+    pub(super) fn span(self, db: &'db dyn HirAnalysisDb, body: Body<'db>) -> DynLazySpan<'db> {
+        match self {
+            Self::Param { site, index, .. } => effect_param_span(db, site, index),
+            Self::With { value_expr } => value_expr.span(body).into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
@@ -2508,7 +2591,7 @@ impl<'db> LocalBinding<'db> {
     }
 
     /// The first parameter of a closure body: the closure value itself, its
-    /// environment of captures, viewed or `mut` as the callable shape trait's
+    /// environment of captures, viewed or `mut` as the callable trait's
     /// receiver is. The body's lowering and its callers must agree on it, so
     /// it is constructed only here.
     pub fn closure_env(

@@ -14,7 +14,7 @@
 //!
 //! ```fe
 //! // `address[] owners;` at slot 2, which no contract field uses
-//! let owners = unsafe { SolArray<Address>::at(2) }
+//! let owners = unsafe { mut SolArray<Address>::at(2) }
 //! owners.push(owner)
 //! let first = owners[0]
 //! ```
@@ -25,7 +25,7 @@ use core::marker::{Clearable, Pinned, Storage}
 use core::ops::{LaneCodec, Location, StateIndex, WrappingAdd, WrappingSub, clear_storage}
 use core::ptr
 use ingot::abi::{Sol, StaticAbiElement}
-use super::effects::{RawStorage, revert_error, storage_at_mut}
+use super::effects::{RawStorage, revert_error, storage_at}
 use super::panic::{PANIC_INDEX_OUT_OF_BOUNDS, PANIC_OUT_OF_MEMORY, PANIC_POP_EMPTY, Panic}
 use super::layout::{array_data_slot, element_location}
 use super::sol_slot::{SolPacked, field_mask}
@@ -80,8 +80,8 @@ impl<T> SolArray<T> {
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses `slot` or the elements' slots.
     #[raw_place]
-    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        unsafe { storage_at_mut(slot) }
+    pub unsafe fn at(_ slot: u256) -> mut? Self uses (storage: mut? RawStorage) {
+        unsafe { storage_at(slot) }
     }
 
     /// Number of elements.

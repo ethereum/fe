@@ -8,10 +8,10 @@ use crate::{
             lower_impl_trait_header,
         },
         trait_resolution::{GoalSatisfiability, PredicateListId, Selection},
+        ty_check::BodyOwner,
     },
     hir_def::{
         Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, ModeMarker, Trait,
-        params::FuncParamMode,
     },
 };
 use common::{
@@ -23,15 +23,16 @@ use salsa::Update;
 
 use super::{
     canonical::Canonical,
-    closure::CallableShape,
+    closure::{CallableTrait, callable_params},
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
+    shape::Shape,
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         TraitSolveCx, constraint::collect_candidate_constraints, is_goal_satisfiable,
         normalize_trait_inst_preserving_validity,
     },
-    ty_def::{BorrowKind, TyBase, TyData, TyId},
+    ty_def::{BorrowKind, ShapeMode, TyBase, TyData, TyId},
     ty_lower::{CompleteSubst, ParamBasis, ParamDomainId, ParamKey, PartialSubst, param_schema},
     unify::UnificationTable,
     visitor::{TyVisitable, TyVisitor},
@@ -244,7 +245,7 @@ pub enum ImplementorOrigin<'db> {
     Hir(ImplTrait<'db>),
     VirtualContract(Contract<'db>),
     Assumption,
-    /// A callable value's implementation of its callable shape traits: a
+    /// A callable value's implementation of its callable traits: a
     /// closure's or a function item's (`ty::closure`).
     Callable,
     /// The compiler's structural implementation of a marker trait
@@ -359,9 +360,11 @@ impl<'db> ResolvedImplInstance<'db> {
                     let correspondence = method_param_correspondence(
                         db,
                         body.as_callable(db).expect("selected method is callable"),
+                        BodyOwner::func_at(db, body, mode).mode(),
                         declaration
                             .as_callable(db)
                             .expect("trait method is callable"),
+                        BodyOwner::func_at(db, declaration, mode).mode(),
                         implementor.trait_inst(db),
                     );
                     (
@@ -579,6 +582,11 @@ pub enum MethodArgMapError<'db> {
         given_generics: usize,
         declared_inputs: usize,
         parameter_inputs: usize,
+    },
+    /// A spread instantiated with a shape that lists no parameters.
+    SpreadNotListed {
+        func: Func<'db>,
+        shape: TyId<'db>,
     },
     SignatureMismatch {
         nominal: Func<'db>,
@@ -1234,7 +1242,7 @@ impl<'db> ImplementorId<'db> {
 
         let mut assoc_type_bindings = trait_inst.assoc_type_bindings(db).clone();
         for (name, ty) in self.types(db) {
-            assoc_type_bindings.insert(*name, *ty);
+            assoc_type_bindings.insert(AssocBinding::of(*name), *ty);
         }
 
         TraitInstId::new(
@@ -1490,6 +1498,37 @@ impl<'db> TraitRefId<'db> {
     }
 }
 
+/// What an associated equality binds: an associated type, or an associated
+/// shape, at one mode (`Step<ref> = ref u256`) or at every mode as an impl
+/// gives it (`shape Step = mut? u256`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+pub struct AssocBinding<'db> {
+    pub name: IdentId<'db>,
+    pub mode: Option<ShapeMode>,
+}
+
+impl<'db> AssocBinding<'db> {
+    /// The binding of the associated type `name`, or of the associated shape
+    /// `name` at every mode.
+    pub fn of(name: IdentId<'db>) -> Self {
+        Self { name, mode: None }
+    }
+
+    /// The order equalities are compared in: by name, then mode.
+    pub fn canonical_cmp(&self, db: &'db dyn HirAnalysisDb, other: &Self) -> std::cmp::Ordering {
+        (self.name.data(db), self.mode).cmp(&(other.name.data(db), other.mode))
+    }
+
+    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
+        let mode = match self.mode {
+            Some(ShapeMode::Ref) => "<ref>",
+            Some(ShapeMode::Mut) => "<mut>",
+            Some(ShapeMode::Inherit) | None => "",
+        };
+        format!("{}{mode}", self.name.data(db))
+    }
+}
+
 /// A trait predicate, including associated equality evidence when present.
 #[salsa::interned]
 #[derive(Debug)]
@@ -1499,9 +1538,10 @@ pub struct TraitInstId<'db> {
     #[return_ref]
     pub args: Vec<TyId<'db>>,
 
-    /// Associated type bounds specified by user, eg `Iterator<Item=i32>`
+    /// Associated equalities specified by user, eg `Iterator<Item=i32>` or
+    /// `Driver<Step<ref> = ref u256>`
     #[return_ref]
-    pub assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>>,
+    pub assoc_type_bindings: IndexMap<AssocBinding<'db>, TyId<'db>>,
 
     /// The modes the predicate grants the trait's `mut?` methods at:
     /// `T: Trait` grants `ref`, `T: mut Trait` both. `mut?` (`T: mut? Trait`)
@@ -1594,19 +1634,34 @@ impl<'db> TraitInstId<'db> {
         Self::new_simple(db, def, args)
     }
 
-    pub fn assoc_ty_bindings(self, db: &'db dyn HirAnalysisDb) -> Vec<(IdentId<'db>, TyId<'db>)> {
+    pub fn assoc_ty_bindings(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Vec<(AssocBinding<'db>, TyId<'db>)> {
         self.assoc_type_bindings(db)
             .iter()
-            .map(|(&name, &ty)| (name, ty))
+            .map(|(&binding, &ty)| (binding, ty))
             .collect()
     }
 
+    /// The type the predicate binds `binding` to: its own equality, or, for
+    /// an associated shape at a mode, the shape it binds at every mode, at
+    /// that mode.
     pub fn bound_assoc_ty(
         self,
         db: &'db dyn HirAnalysisDb,
-        name: IdentId<'db>,
+        binding: AssocBinding<'db>,
     ) -> Option<TyId<'db>> {
-        self.assoc_type_bindings(db).get(&name).copied()
+        let bindings = self.assoc_type_bindings(db);
+        if let Some(&ty) = bindings.get(&binding) {
+            return Some(ty);
+        }
+        let shape = *bindings.get(&AssocBinding::of(binding.name))?;
+        Some(
+            binding
+                .mode
+                .map_or(shape, |mode| shape.at_shape_mode(db, mode)),
+        )
     }
 
     pub fn project_assoc_ty(
@@ -1643,33 +1698,22 @@ impl<'db> TraitInstId<'db> {
             let inst = self.pretty_print(db, false);
             let self_ty = self.self_ty(db);
             format!("{}: {}", self_ty.pretty_print(db), inst)
-        } else if let Some(shape) = CallableShape::of(db, self.def(db)) {
-            // A callable shape prints as the sugar that names it,
-            // `Fn(own A, B) -> R`; `-> _` when the result is left open.
-            let args = &self.args(db)[1..];
-            let (params, ret) = match args.split_last() {
-                Some((ret, params)) if shape.result_is_arg() => (params, Some(*ret)),
-                _ => (
-                    args,
-                    self.assoc_type_bindings(db)
-                        .get(&IdentId::new(db, "Out".to_string()))
-                        .copied(),
-                ),
-            };
-            let params: Vec<_> = shape
-                .modes
+        } else if let Some(callable) = CallableTrait::of(db, self.def(db))
+            && let Some(params) = callable_params(db, self)
+        {
+            // A callable trait whose shape lists its parameters prints as the
+            // sugar that names it, `Fn(own A, B) -> R`; `-> _` when the
+            // result is left open.
+            let ret =
+                self.bound_assoc_ty(db, AssocBinding::of(IdentId::new(db, "Out".to_string())));
+            let params: Vec<_> = params
                 .iter()
-                .zip(params)
-                .map(|(mode, ty)| {
-                    let ty = ty.pretty_print(db);
-                    match mode {
-                        FuncParamMode::Own => format!("own {ty}"),
-                        FuncParamMode::Mut => format!("mut {ty}"),
-                        FuncParamMode::View => ty.clone(),
-                    }
+                .map(|param| match param {
+                    Shape::Access(BorrowKind::Ref, ty) => ty.pretty_print(db).to_string(),
+                    _ => param.pretty_print_product(db),
                 })
                 .collect();
-            let name = if shape.mut_receiver { "FnMut" } else { "Fn" };
+            let name = if callable.mut_receiver { "FnMut" } else { "Fn" };
             let ret = match ret {
                 Some(ret) if ret == TyId::unit(db) => String::new(),
                 Some(ret) => format!(" -> {}", ret.pretty_print(db)),
@@ -1709,12 +1753,12 @@ impl<'db> TraitInstId<'db> {
                 }
 
                 let mut first_assoc = true;
-                for (name, ty) in self.assoc_type_bindings(db) {
+                for (binding, ty) in self.assoc_type_bindings(db) {
                     if !first_assoc {
                         s.push_str(", ");
                     }
                     first_assoc = false;
-                    s.push_str(name.data(db));
+                    s.push_str(&binding.pretty_print(db));
                     s.push_str(" = ");
                     s.push_str(ty.pretty_print(db));
                 }

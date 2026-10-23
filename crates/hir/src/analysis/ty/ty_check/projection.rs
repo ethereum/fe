@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     analysis::ty::{diagnostics::BodyDiag, shape::Shape, ty_def::BorrowKind},
-    hir_def::{BinOp, CallableDef, Expr, ExprId, Partial, Stmt, UnOp},
+    hir_def::{BinOp, CallableDef, Expr, ExprId, ModeMarker, Partial, Stmt, UnOp},
     span::DynLazySpan,
 };
 
@@ -82,14 +82,14 @@ impl<'db> TyChecker<'db> {
         if prop
             .shape
             .as_ref()
-            .is_some_and(|given| !given.grants(shape))
+            .is_some_and(|given| !given.grants(self.db, shape))
             && self.select_mut_place(expr)
         {
             prop = self.env.typed_expr(expr).expect("yield site is typed");
         }
         // A projection call or `ref p`/`mut p` grants its own accesses.
         if let Some(given) = &prop.shape {
-            if given.grants(shape) {
+            if given.grants(self.db, shape) {
                 self.consume_access(expr);
             } else {
                 self.invalid_yield(expr, shape);
@@ -98,6 +98,8 @@ impl<'db> TyChecker<'db> {
         }
         match shape {
             Shape::Owned(_) => {}
+            // Only a value granting it yields an opaque shape.
+            Shape::Opaque(_) => self.invalid_yield(expr, shape),
             Shape::Access(kind, _) => {
                 let binding_access = prop
                     .binding
@@ -147,8 +149,9 @@ impl<'db> TyChecker<'db> {
     /// `mut?` callees along its place chain at `mut`: the trait-lowered
     /// indexes in `a[i].x = v`, `mut a[i]` and `a[i].bump()` with a
     /// `mut self` method, and calls such as `xs.at(i).bump()`, also through
-    /// a block's tail (`{ xs.at(i) }`) and `?` (`xs.find(v)?`). Returns
-    /// whether the place is mutable.
+    /// a block's tail (`{ xs.at(i) }`), `?` (`xs.find(v)?`) and the
+    /// elements of an unsafe split (`unsafe { (xs.at(i), ys.at(j)) }`).
+    /// Returns whether the place is mutable.
     pub(super) fn select_mut_place(&mut self, expr: ExprId) -> bool {
         let Some(prop) = self.env.typed_expr(expr) else {
             return false;
@@ -196,6 +199,35 @@ impl<'db> TyChecker<'db> {
                     _ => prop.shape.clone(),
                 }
             }
+            // An unsafe split grants what its access elements do, a product
+            // of accesses among them.
+            Partial::Present(Expr::Tuple(elems)) if self.env.is_unsafe_split(expr) => {
+                let elems = elems.clone();
+                let outer = self.split_demand.replace(expr);
+                // Every access element is asked, whatever an earlier one
+                // answers, so each reports what it cannot pass `mut`.
+                let mut all = true;
+                for &elem in &elems {
+                    all &= self.env.typed_expr(elem).is_some_and(|elem| {
+                        !elem
+                            .shape
+                            .is_some_and(|shape| shape.has_access_of(self.db, BorrowKind::Ref))
+                    }) || self.select_mut_place(elem);
+                }
+                self.split_demand = outer;
+                if !all {
+                    return false;
+                }
+                Some(Shape::Tuple(
+                    elems
+                        .iter()
+                        .map(|&elem| {
+                            let elem = self.env.typed_expr(elem).expect("an element is typed");
+                            elem.shape.unwrap_or(Shape::Owned(elem.ty))
+                        })
+                        .collect(),
+                ))
+            }
             _ => return false,
         };
         self.env.type_expr(
@@ -207,6 +239,30 @@ impl<'db> TyChecker<'db> {
             },
         );
         true
+    }
+
+    /// The read accesses left in the unsafe split `expr` grants through, also
+    /// through a block's tail, which keep it from granting `mut`.
+    pub(super) fn split_read_accesses(&self, expr: ExprId) -> Vec<DynLazySpan<'db>> {
+        match self.env.expr_data(expr) {
+            Partial::Present(Expr::Block(stmts, _)) => {
+                match stmts.last().map(|stmt| stmt.data(self.db, self.body())) {
+                    Some(Partial::Present(Stmt::Expr(tail))) => self.split_read_accesses(*tail),
+                    _ => Vec::new(),
+                }
+            }
+            Partial::Present(Expr::Tuple(elems)) if self.env.is_unsafe_split(expr) => elems
+                .iter()
+                .filter(|&&elem| {
+                    self.env
+                        .typed_expr(elem)
+                        .and_then(|elem| elem.shape)
+                        .is_some_and(|shape| shape.has_access_of(self.db, BorrowKind::Ref))
+                })
+                .map(|elem| elem.span(self.body()).into())
+                .collect(),
+            _ => Vec::new(),
+        }
     }
 
     /// Calls the `mut?` callee of the call `expr`, typed as `prop`, at `mut`,
@@ -273,9 +329,42 @@ impl<'db> TyChecker<'db> {
             }
         }
         callable.set_mode(Some(BorrowKind::Mut));
-        // At `mut`, the callee's `mut?` bounds are `mut`, and a trait method
-        // needs a `mut` implementation of its trait.
+        // At `mut`, the callee's `mut?` bounds and effects are `mut`, and a
+        // trait method needs a `mut` implementation of its trait. Each effect
+        // resolved at `ref` that the callee takes `mut` at `mut` needs a
+        // mutable provider, and a closure's effect it provides becomes `mut`.
         let span: DynLazySpan<'db> = expr.span(self.body()).into();
+        let at_mut = func.effect_requirements(self.db, Some(BorrowKind::Mut));
+        let mut_at_mut = |binding_idx: u32| {
+            at_mut
+                .iter()
+                .any(|requirement| requirement.binding_idx == binding_idx && requirement.is_mut)
+        };
+        // A missing effect is missing at `mut` now.
+        for (call, binding_idx, diag) in &mut self.missing_effects {
+            if *call != expr || !mut_at_mut(*binding_idx) {
+                continue;
+            }
+            match diag {
+                BodyDiag::MissingEffect { mode, .. } => *mode = ModeMarker::Mut,
+                BodyDiag::LateClosureEffect { is_mut, .. } => *is_mut = true,
+                _ => {}
+            }
+        }
+        let mut raised = Vec::new();
+        if let Some(args) = self.env.call_effect_args_mut(expr) {
+            for arg in args.iter_mut().filter(|arg| {
+                !arg.required_mut && arg.row_arg.is_none() && mut_at_mut(arg.binding_idx)
+            }) {
+                arg.required_mut = true;
+                raised.push((arg.binding_idx, arg.key));
+            }
+        }
+        for (binding_idx, key) in raised {
+            if let Some(&provider) = self.effect_providers.get(&(expr, binding_idx)) {
+                self.require_mut_provider(span.clone(), func, key, provider);
+            }
+        }
         callable.process_maybe_mut_constraints(self, expr, span.clone());
         if let Some(inst) = callable.trait_inst()
             && func.containing_trait(self.db).is_some()
@@ -294,7 +383,7 @@ impl<'db> TyChecker<'db> {
         }
         let shape = callable
             .ret_shape(self.db)
-            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
+            .map(|shape| shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)));
         self.env.set_call_mode(expr, Some(BorrowKind::Mut));
         self.env.type_expr(
             expr,
@@ -320,16 +409,21 @@ impl<'db> TyChecker<'db> {
             return;
         }
         let span = arg.span(self.body()).into();
+        let split = self
+            .split_demand
+            .map(|split| split.span(self.body()).into());
         if self.env.is_place_expr(arg) {
             self.push_diag(BodyDiag::ExplicitBorrowRequired {
                 primary: span,
                 kind: BorrowKind::Mut,
                 suggestion: place_borrow_suggestion(self.db, self.body(), arg, BorrowKind::Mut),
+                split,
             });
         } else {
             self.push_diag(BodyDiag::BorrowArgMustBePlace {
                 primary: span,
                 kind: BorrowKind::Mut,
+                split,
             });
         }
     }
@@ -365,12 +459,18 @@ impl<'db> TyChecker<'db> {
         if given.is_some() {
             self.consume_access(arg);
         }
+        let split_reads = if product.has_access_of(self.db, BorrowKind::Mut) {
+            self.split_read_accesses(arg)
+        } else {
+            Vec::new()
+        };
         self.push_diag(match given {
             Some(given) if given.same_structure(product) => BodyDiag::ProductArgTooWeak {
                 primary,
                 given,
                 expected: product.clone(),
                 raised,
+                split_reads,
             },
             _ => BodyDiag::ProductArgExpected {
                 primary,
@@ -386,10 +486,12 @@ impl<'db> TyChecker<'db> {
             this.env
                 .typed_expr(arg)
                 .and_then(|prop| prop.shape)
-                .is_some_and(|granted| granted.grants(product))
+                .is_some_and(|granted| granted.grants(this.db, product))
         };
         grants(self)
-            || product.has_access_of(BorrowKind::Mut) && self.select_mut_place(arg) && grants(self)
+            || product.has_access_of(self.db, BorrowKind::Mut)
+                && self.select_mut_place(arg)
+                && grants(self)
     }
 
     /// Marks `expr` as used as an access. A block forwards the access of its
@@ -455,7 +557,11 @@ impl<'db> TyChecker<'db> {
                     expr.data(self.db, self.body()),
                     Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut | UnOp::MaybeMut))
                 );
-                (explicit || matches!(shape, Shape::Tuple(_) | Shape::Sum { .. }))
+                (explicit
+                    || matches!(
+                        shape,
+                        Shape::Tuple(_) | Shape::Sum { .. } | Shape::Opaque(_)
+                    ))
                     && !self.env.is_consumed_access(expr)
             })
             .collect::<Vec<_>>();
@@ -476,9 +582,14 @@ impl<'db> TyChecker<'db> {
             .flatten()
             .collect();
         for expr in misused.into_iter().filter(|expr| !chosen.contains(expr)) {
-            self.push_diag(BodyDiag::AccessNotValue {
-                primary: expr.span(self.body()).into(),
-            });
+            let primary = expr.span(self.body()).into();
+            // A value of an opaque shape is only passed on, never used.
+            self.push_diag(
+                match self.env.typed_expr(expr).and_then(|prop| prop.shape) {
+                    Some(Shape::Opaque(shape)) => BodyDiag::OpaqueShapeBound { primary, shape },
+                    _ => BodyDiag::AccessNotValue { primary },
+                },
+            );
         }
         for expr in choices {
             self.push_diag(BodyDiag::AccessChoiceNeedsProjection {

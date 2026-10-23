@@ -1,0 +1,1 @@
+Contracts that call other contracts or revert with custom errors are smaller and use less gas: messages and errors are encoded in place after their selector instead of being encoded and then copied, `revert_error` keeps one shared instance per error type, and a `bool` encodes as one store (the eight contracts of a Fe port of Seaport shrink by 1.7% at -Os).

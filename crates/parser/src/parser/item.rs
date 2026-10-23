@@ -813,6 +813,28 @@ impl super::Parse for TraitUsesItemScope {
     }
 }
 
+define_scope! { TraitShapeItemScope, TraitShapeItem }
+impl super::Parse for TraitShapeItemScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        // `shape`, a keyword only before the item's name.
+        parser.bump_expected(SyntaxKind::Ident);
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Eq]);
+        if parser.find_and_pop(
+            SyntaxKind::Ident,
+            ExpectedKind::Name(SyntaxKind::TraitShapeItem),
+        )? {
+            parser.bump();
+        }
+        if parser.bump_if(SyntaxKind::Eq) {
+            parse_type(parser, None)?;
+        }
+        Ok(())
+    }
+}
+
 define_scope! { TraitConstItemScope, TraitConstItem }
 impl super::Parse for TraitConstItemScope {
     type Error = Recovery<ErrProof>;
@@ -1193,9 +1215,16 @@ fn parse_trait_item_block<S: TokenStream>(
             Some(SyntaxKind::UsesKw) => {
                 parser.parse_cp(TraitUsesItemScope::default(), checkpoint)?;
             }
+            Some(SyntaxKind::Ident)
+                if parser.is_ident("shape")
+                    && parser.peek_n_non_trivia(2).as_slice()
+                        == [SyntaxKind::Ident, SyntaxKind::Ident] =>
+            {
+                parser.parse_cp(TraitShapeItemScope::default(), checkpoint)?;
+            }
             _ => {
                 let proof = parser.error_msg_on_current_token(
-                    "only `fn`, `type`, `const`, or `uses` is allowed in this block",
+                    "only `fn`, `type`, `shape`, `const`, or `uses` is allowed in this block",
                 );
                 parser.try_recover().map_err(|r| r.add_err_proof(proof))?;
             }

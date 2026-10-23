@@ -48,7 +48,7 @@ use crate::{
             shape::Shape,
             trait_resolution::PredicateListId,
             ty_check::{BindingAccess, BodyOwner, LocalBinding, infer_body},
-            ty_def::{BorrowKind, CapabilityKind, TyId},
+            ty_def::{BorrowKind, CapabilityKind, ShapeMode, TyData, TyId},
             ty_is_snapshot,
         },
     },
@@ -327,7 +327,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     Some(LocalBinding::EffectParam { site, idx, .. }) => {
                         Some(self.domains.provider_source(
                             ProviderSource::UsesParam {
-                                site,
+                                site: site.slot_site(self.db, idx as u32),
                                 requirement_idx: idx as u32,
                             },
                             provider_semantics(self.db, value.ty).address_space,
@@ -894,7 +894,9 @@ impl<'a, 'db> Analysis<'a, 'db> {
             reservations.push(id);
         }
         let mut held = Held::new();
-        for (component, (path, mode, _)) in access_components(shape).into_iter().enumerate() {
+        for (component, (path, mode, _)) in
+            access_components(self.db, shape).into_iter().enumerate()
+        {
             let mut grant = self.new_token(TokenKind::Grant, mode, origin);
             grant.regions.push(AbsPlace::new(Base::Grant {
                 session: result,
@@ -961,11 +963,19 @@ impl<'a, 'db> Analysis<'a, 'db> {
         {
             return None;
         }
-        // The declared type, before the callee's generic arguments.
+        // The declared type, before the callee's generic arguments. A
+        // parameter a spread lists declares none.
         let typed_body = &infer_body(self.db, owner).1;
-        let input = *typed_body.input_bindings().get(position)?;
-        let declared =
-            matches!(owner, BodyOwner::Func(..)).then(|| typed_body.binding_ty(self.db, input));
+        let (input, declared) = match typed_body.input_bindings().get(position) {
+            Some(&input) => (
+                input,
+                matches!(owner, BodyOwner::Func(..)).then(|| typed_body.binding_ty(self.db, input)),
+            ),
+            None => (
+                *callee.typed_body(self.db).input_bindings().get(position)?,
+                None,
+            ),
+        };
         let ty = self.body.values[arg.value.index()].ty;
         let ty = ty.as_capability(self.db).map_or(ty, |(_, inner)| inner);
         // A view or a `ref` part only reads; an owned or `mut` input may write.
@@ -1500,7 +1510,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         let Some(shape) = func.return_shape(self.db, mode) else {
             return Vec::new();
         };
-        let components = access_components(shape);
+        let components = access_components(self.db, shape);
         self.body
             .blocks
             .iter()
@@ -2295,7 +2305,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             return Ok(());
         };
         let held = &self.values[value.value.index()];
-        for (path, mode, _) in access_components(shape) {
+        for (path, mode, _) in access_components(self.db, shape) {
             let own: TokenSet = held
                 .iter()
                 .filter(|(_, rest)| *rest == path)
@@ -2351,7 +2361,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
         let Some(shape) = func.return_shape(self.db, mode) else {
             return Ok(Vec::new());
         };
-        let components = access_components(shape);
+        let components = access_components(self.db, shape);
         let mut spaces: Vec<Option<(AddressSpace, SemOrigin<'db>)>> = vec![None; components.len()];
         for block in &self.body.blocks {
             let NTerminatorKind::Yield { value, .. } = &block.terminator.kind else {
@@ -2448,9 +2458,14 @@ fn reaches_owner<'db>(
 }
 
 /// The access components of a shape, by their path in its carrier, with
-/// their mode and type.
-pub(super) fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKind, TyId<'db>)> {
+/// their mode and type. An opaque part is one abstract component, at its
+/// mode, or `mut` when that is not known.
+pub(super) fn access_components<'db>(
+    db: &'db dyn HirAnalysisDb,
+    shape: &Shape<'db>,
+) -> Vec<(Path, BorrowKind, TyId<'db>)> {
     fn walk<'db>(
+        db: &'db dyn HirAnalysisDb,
         shape: &Shape<'db>,
         path: &mut Path,
         out: &mut Vec<(Path, BorrowKind, TyId<'db>)>,
@@ -2458,10 +2473,21 @@ pub(super) fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKin
         match shape {
             Shape::Owned(_) => {}
             Shape::Access(kind, ty) => out.push((path.clone(), *kind, *ty)),
+            Shape::Opaque(term) => {
+                let kind = match term.data(db) {
+                    TyData::AssocTy(assoc) => assoc.mode.and_then(ShapeMode::kind),
+                    _ => None,
+                };
+                out.push((
+                    path.clone(),
+                    kind.unwrap_or(BorrowKind::Mut),
+                    shape.erased_ty(db),
+                ));
+            }
             Shape::Tuple(elems) => {
                 for (field, elem) in elems.iter().enumerate() {
                     path.push(Step::Field(field as u16));
-                    walk(elem, path, out);
+                    walk(db, elem, path, out);
                     path.pop();
                 }
             }
@@ -2472,13 +2498,13 @@ pub(super) fn access_components<'db>(shape: &Shape<'db>) -> Vec<(Path, BorrowKin
                     variant: *variant,
                     field: 0,
                 });
-                walk(payload, path, out);
+                walk(db, payload, path, out);
                 path.pop();
             }
         }
     }
     let mut out = Vec::new();
-    walk(shape, &mut Path::new(), &mut out);
+    walk(db, shape, &mut Path::new(), &mut out);
     out
 }
 

@@ -20,11 +20,12 @@ use super::{
     fold::{TyFoldable, TyFolder},
     generic_defaults::DefaultApplication,
     provider::AddressSpace,
-    shape::Shape,
-    trait_def::{ImplementorId, ImplementorOrigin, TraitInstId},
+    shape::{Shape, lower_shape_value},
+    trait_def::{AssocBinding, ImplementorId, ImplementorOrigin, TraitInstId},
     trait_resolution::PredicateListId,
-    ty_def::{BorrowKind, InvalidCause, PrimTy, TyBase, TyId},
-    ty_lower::lower_hir_ty_with_minter,
+    ty_def::{BorrowKind, InvalidCause, PrimTy, ShapeMode, TyBase, TyId},
+    ty_error::first_invalid_ty_cause,
+    ty_lower::{lower_generic_arg_list, lower_hir_ty_with_minter},
 };
 use crate::analysis::{
     HirAnalysisDb,
@@ -82,9 +83,8 @@ fn raw_impl_self_key<'db>(
                     | TyBase::Contract(_)
                     | TyBase::Func(_)
                     | TyBase::Closure(_)
-                    | TyBase::TraitDescriptor(_) => {
-                        unreachable!()
-                    }
+                    | TyBase::TraitDescriptor(_)
+                    | TyBase::Shape(_) => unreachable!(),
                 },
                 NameResKind::Scope(
                     scope @ ScopeId::Item(
@@ -210,7 +210,7 @@ pub(crate) fn lower_checked_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))
     {
-        return assoc.ty(db);
+        return assoc.ty(db).map(|ty| without_cycle(db, ty));
     }
 
     let trait_inst = impl_trait.trait_inst_result(db).ok()?;
@@ -219,7 +219,8 @@ pub(crate) fn lower_checked_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))?
         .default_ty(db)?;
-    Some(Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db)))
+    let ty = Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db));
+    Some(without_cycle(db, ty))
 }
 
 pub(crate) fn complete_candidate_impl_assoc_ty<'db>(
@@ -269,6 +270,17 @@ fn lower_impl_assoc_ty_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
+/// `ty`, an associated type's definition, unless it holds its own cycle's
+/// placeholder: one naming itself inside another type, `type A = (u8,
+/// Self::A)`, would grow each round, so it is the cycle, which then
+/// converges.
+fn without_cycle<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
+    match first_invalid_ty_cause(db, ty) {
+        Some(InvalidCause::TypeLoweringCycle) => TyId::invalid(db, InvalidCause::TypeLoweringCycle),
+        _ => ty,
+    }
+}
+
 /// Lowers one associated-type definition for candidate use without checking
 /// anonymous const bodies. Keeping this query per binding lets sibling
 /// references such as `type B = Self::A` resolve locally without completing
@@ -286,7 +298,7 @@ pub(crate) fn lower_candidate_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))
     {
-        return assoc.candidate_ty(db);
+        return assoc.candidate_ty(db).map(|ty| without_cycle(db, ty));
     }
 
     let trait_inst = impl_trait.candidate_trait_inst_result(db).ok()?;
@@ -295,7 +307,8 @@ pub(crate) fn lower_candidate_impl_assoc_ty<'db>(
         .assoc_types(db)
         .find(|assoc| assoc.name(db) == Some(name))?
         .candidate_default_ty(db)?;
-    Some(Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db)))
+    let ty = Binder::bind(trait_inst.def(db).into(), default).instantiate(db, trait_inst.args(db));
+    Some(without_cycle(db, ty))
 }
 
 /// Complete a semantically lowered candidate header with its associated type
@@ -633,10 +646,26 @@ pub(crate) fn lower_trait_ref_impl_with_minter<'db>(
     for (arg, lowered) in generic_args.data(db).iter().zip(lowered) {
         match arg {
             GenericArg::Type(_) | GenericArg::Const(_) => provided_explicit.push(lowered),
-            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
+            // A trait takes no mode, which is reported where it is written.
+            GenericArg::Mode(_) => return Err(TraitArgError::Ignored),
+            GenericArg::AssocType(AssocTypeGenericArg { name, mode, ty }) => {
                 if let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) {
-                    let ty = lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx);
-                    assoc_bindings.insert(name, ty);
+                    // An associated shape is bound to a shape, at a mode.
+                    let ty = if mode.is_some()
+                        || t.assoc_ty(db, name).is_some_and(|decl| decl.is_shape())
+                    {
+                        lower_shape_value(db, ty, scope, assumptions, lowering_cx)
+                    } else {
+                        lower_hir_ty_with_minter(db, ty, scope, assumptions, lowering_cx)
+                    };
+                    let mode = mode.map(|mode| match mode {
+                        TypeMode::Mut => ShapeMode::Mut,
+                        _ => ShapeMode::Ref,
+                    });
+                    // A second binding is reported where it is written.
+                    assoc_bindings
+                        .entry(AssocBinding { name, mode })
+                        .or_insert(ty);
                 }
             }
         }

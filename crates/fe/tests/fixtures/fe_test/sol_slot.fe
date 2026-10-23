@@ -10,7 +10,7 @@ use std::evm::{Address, Evm, RawStorage, SolMapping, SolSlot, keccak256}
 fn packed_fields_round_trip() uses (evm: mut Evm) {
     with (RawStorage = evm) {
         // address currency; uint24 fee; int24 tickSpacing; bool flag; int8 small
-        let slot = unsafe { SolSlot::at(7) }
+        let slot = unsafe { mut SolSlot::at(7) }
         slot.write(offset: 0, value: Address::new(0xabc))
         slot.write(offset: 20, value: Uint24 { val: 3000 })
         slot.write(offset: 23, value: Int24 { val: -60 })
@@ -43,7 +43,7 @@ fn packed_fields_round_trip() uses (evm: mut Evm) {
 #[test]
 fn bytes_and_strings_use_solidity_layout() uses (evm: mut Evm) {
     with (RawStorage = evm) {
-        let slot = unsafe { SolSlot::at(3) }
+        let slot = unsafe { mut SolSlot::at(3) }
         slot.write_string("short")
         // Short strings live in the slot: data in the high bytes, 2 * len low.
         let head: u256 = slot.read(offset: 0)
@@ -67,7 +67,7 @@ fn bytes_and_strings_use_solidity_layout() uses (evm: mut Evm) {
         slot.write_bytes(Bytes::from_word_prefix(word: 0xabcd << 240, len: 2))
         let second_word: u256 = unsafe { SolSlot::at(hash_words(3, 0, 1) + 1).read(offset: 0) }
         assert(second_word == 0)
-        let slot = unsafe { SolSlot::at(3) }
+        let slot = unsafe { mut SolSlot::at(3) }
         assert(slot.read_bytes().len() == 2)
         assert(slot.read_bytes().byte_at(1) == 0xcd)
     }
