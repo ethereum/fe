@@ -15,7 +15,7 @@ use crate::{analysis::ty::ty_check::EffectParamOwner, span::DynLazySpan};
 use crate::{
     core::hir_def::{
         CallableDef, CompBinOp, Enum, FieldIndex, FieldParent, Func, GenericParamOwner, IdentId,
-        ImplTrait, IntegerId, TypeId as HirTypeId,
+        ImplTrait, IntegerId, ModeMarker, TypeId as HirTypeId,
     },
     hir_def::TypeAlias,
 };
@@ -80,6 +80,16 @@ pub enum TyLowerDiag<'db> {
     /// A `T: mut? Trait` bound of an item without a mode: one that is not a
     /// function or an implementation.
     MaybeMutBound(DynLazySpan<'db>),
+    /// A `mut?` function whose result has no `mut?` part, so no call uses it
+    /// at `mut`.
+    MaybeMutWithoutResult(DynLazySpan<'db>),
+    /// A `mut?` effect of an implementation's row, which has no mode; with
+    /// `entry`, `mut?` on a function's `uses` entry naming a row, whose
+    /// components carry their own modes.
+    MaybeMutRowEffect {
+        span: DynLazySpan<'db>,
+        entry: bool,
+    },
     /// An `own` parameter or a `mut` yield of a `#[view]` type.
     ViewTypeMode {
         span: DynLazySpan<'db>,
@@ -314,6 +324,8 @@ impl TyLowerDiag<'_> {
             Self::ProductReceiver(_) => 74,
             Self::ProductParamNotDestructured(_) => 75,
             Self::DestructuredParamWithoutBody(_) => 76,
+            Self::MaybeMutWithoutResult(_) => 77,
+            Self::MaybeMutRowEffect { .. } => 78,
             Self::MaybeMutBound(_) => 71,
             Self::ViewTypeMode { .. } => 59,
             Self::StateOnlyValue { .. } => 61,
@@ -396,6 +408,16 @@ pub enum MustUseSubject<'db> {
     Function(CallableDef<'db>),
 }
 
+/// The `mut?` choice that leaves an effect's provider read-only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub enum ReadOnlyProvider<'db> {
+    /// A `mut?` binding, which a `mut?` function's `ref` body only reads:
+    /// an effect, or a `with` value's binding.
+    Binding(IdentId<'db>),
+    /// A `with` value calling this `mut?` function at `ref`.
+    Call(Func<'db>),
+}
+
 /// How to make writable a binding that is assigned through.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum MutabilityFix {
@@ -415,8 +437,9 @@ pub enum MutabilityFix {
     ViewParam,
     /// A view receiver: `mut self`.
     ViewSelf,
-    /// A `mut?` parameter, which the `ref` body of its function only reads.
-    MaybeMutParam,
+    /// A `mut?` parameter, effect or binding, which the `ref` body of its
+    /// function only reads.
+    MaybeMut,
     /// An owned receiver: `var own self`.
     OwnSelf,
     /// An effect binding: `uses (mut x)`.
@@ -537,10 +560,13 @@ pub enum BodyDiag<'db> {
         given: TyId<'db>,
     },
 
+    /// A call's missing effect, which the call needs at `mode`: `mut?` when
+    /// each body of a `mut?` caller needs it at its own mode.
     MissingEffect {
         primary: DynLazySpan<'db>,
         func: Func<'db>,
         key: HirTypeId<'db>,
+        mode: ModeMarker,
     },
 
     /// A call needs an abstract row, which only the caller's own can supply.
@@ -561,6 +587,10 @@ pub enum BodyDiag<'db> {
         func: Func<'db>,
         key: HirTypeId<'db>,
         provided_span: Option<DynLazySpan<'db>>,
+        /// The `mut?` choice that leaves the provider read-only, if one does.
+        read_only: Option<ReadOnlyProvider<'db>>,
+        /// The unsafe split whose `mut` binding asked the call for `mut`.
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call in `closure` that resolves only after the closure's body is
@@ -704,19 +734,29 @@ pub enum BodyDiag<'db> {
     CannotBorrowMut {
         primary: DynLazySpan<'db>,
         binding: Option<(IdentId<'db>, DynLazySpan<'db>)>,
+        /// Whether the binding is `mut?`, read-only in the `ref` body.
+        maybe_mut: bool,
+        /// The unsafe split whose `mut` binding asked a call for `mut`.
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call argument is not a place, but the callee requires a borrow handle (`mut`/`ref`).
+    /// With `split`, the unsafe split whose `mut` binding asked the call for
+    /// `mut`.
     BorrowArgMustBePlace {
         primary: DynLazySpan<'db>,
         kind: BorrowKind,
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A call argument is a place, but the callee requires an explicit borrow handle (`mut`/`ref`).
+    /// With `split`, the unsafe split whose `mut` binding asked the call for
+    /// `mut`.
     ExplicitBorrowRequired {
         primary: DynLazySpan<'db>,
         kind: BorrowKind,
         suggestion: Option<String>,
+        split: Option<DynLazySpan<'db>>,
     },
 
     /// A plain binding of a projection's read result that is neither `Copy`
@@ -755,21 +795,17 @@ pub enum BodyDiag<'db> {
     },
 
     /// `mut x` on a read component, which has no mutable place behind it.
+    /// `split_reads` are the read accesses of an unsafe split that kept it
+    /// from granting `mut`.
     MutBindingOfRead {
         primary: DynLazySpan<'db>,
+        split_reads: Vec<DynLazySpan<'db>>,
     },
 
     /// `mut?` in a body whose function has no mode: its signature writes no
     /// `mut?`.
     MaybeMutWithoutMode {
         primary: DynLazySpan<'db>,
-    },
-
-    /// An effect required at the function's mode, `uses (x: mut? T)`, which
-    /// is not supported yet.
-    MaybeMutEffect {
-        owner: EffectParamOwner<'db>,
-        idx: usize,
     },
 
     /// `var x` binding a type with no value reading (`#[view]` or
@@ -844,12 +880,14 @@ pub enum BodyDiag<'db> {
 
     /// A projection's result for a product parameter that grants its parts
     /// with weaker accesses than `expected`; `raised` when the call at `mut`
-    /// takes them so.
+    /// takes them so. `split_reads` are the read accesses of an unsafe split
+    /// that kept it from granting `mut`.
     ProductArgTooWeak {
         primary: DynLazySpan<'db>,
         given: Shape<'db>,
         expected: Shape<'db>,
         raised: bool,
+        split_reads: Vec<DynLazySpan<'db>>,
     },
 
     /// A parameter pattern that may not match.
@@ -1356,7 +1394,6 @@ impl<'db> BodyDiag<'db> {
             Self::VarOfAccess { .. } => 122,
             Self::MutBindingOfRead { .. } => 123,
             Self::MaybeMutWithoutMode { .. } => 130,
-            Self::MaybeMutEffect { .. } => 132,
             Self::RefutableParamPattern { .. } => 133,
             Self::ProductArgExpected { .. } => 135,
             Self::ClosureProductParam { .. } => 136,
@@ -1579,9 +1616,11 @@ pub enum ImplDiag<'db> {
         missing: IdentId<'db>,
     },
 
+    /// With `mode`, the trait method's mode at which alone they differ.
     MethodEffectMismatch {
         trait_m: CallableDef<'db>,
         impl_m: CallableDef<'db>,
+        mode: Option<BorrowKind>,
     },
 
     MethodUnsafeMismatch {

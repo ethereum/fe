@@ -83,7 +83,7 @@ use crate::analysis::semantic::capability::array::ArrayLength;
 use crate::analysis::ty::adt_def::{AdtCycleMember, AdtDef, AdtField, AdtRef};
 use crate::analysis::ty::const_ty::{ConstTyData, LoweringContext};
 use crate::analysis::ty::effects::{
-    EffectKeyKind, place_effect_provider_param_index_map, resolve_effect_key,
+    EffectKeyKind, ResolvedEffectKey, place_effect_provider_param_index_map, resolve_effect_key,
 };
 use crate::analysis::ty::trait_def::{
     ImplementorId, ImplementorOrigin, TraitInstId, does_impl_trait_conflict, impls_for_trait_def,
@@ -306,9 +306,12 @@ fn canonicalize_effect_binding_trait_inst<'db>(
     )
 }
 
+/// `func`'s effects where it is used at `mode`: a `mut?` effect is `mut` at
+/// `mut`.
 fn func_effect_requirements_canonical<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Vec<EffectRequirement<'db>> {
     let assumptions = collect_func_decl_constraints(db, func.into(), true).instantiate_identity();
     func.effects(db)
@@ -332,8 +335,12 @@ fn func_effect_requirements_canonical<'db>(
             Some(EffectRequirement {
                 binding_name,
                 key,
-                is_mut: effect.is_mut(),
-                binding_site: EffectParamSite::Func(func),
+                is_mut: match effect.mode {
+                    ModeMarker::None => false,
+                    ModeMarker::Mut => true,
+                    ModeMarker::MaybeMut => mode == Some(BorrowKind::Mut),
+                },
+                binding_site: EffectParamSite::Func(func, mode),
                 binding_idx: idx as u32,
                 binding_ty: key_syntax,
             })
@@ -344,8 +351,9 @@ fn func_effect_requirements_canonical<'db>(
 fn func_provider_bindings_canonical<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Vec<ProviderBinding<'db>> {
-    let requirements = func_effect_requirements_canonical(db, func);
+    let requirements = func.effect_requirements(db, mode);
     let provider_map = place_effect_provider_param_index_map(db, func);
     let provider_params = CallableDef::Func(func).params(db);
     let mut providers = requirements
@@ -367,7 +375,7 @@ fn func_provider_bindings_canonical<'db>(
                 provider_ty,
                 is_mut: requirement.is_mut,
                 source: ProviderSource::UsesParam {
-                    site: EffectParamSite::Func(func),
+                    site: EffectParamSite::Func(func, mode).slot_site(db, requirement.binding_idx),
                     requirement_idx: requirement.binding_idx,
                 },
                 semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
@@ -376,7 +384,7 @@ fn func_provider_bindings_canonical<'db>(
         .collect::<Vec<_>>();
 
     providers.extend(
-        registered_root_providers(db, EffectParamSite::Func(func))
+        registered_root_providers(db, EffectParamSite::Func(func, mode))
             .iter()
             .cloned()
             .map(|registration| {
@@ -399,8 +407,9 @@ fn func_provider_bindings_canonical<'db>(
 fn func_effect_resolutions_canonical<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
+    mode: Option<BorrowKind>,
 ) -> Vec<ResolvedEffectBinding> {
-    let providers = provider_bindings_for_site(db, EffectParamSite::Func(func));
+    let providers = provider_bindings_for_site(db, EffectParamSite::Func(func, mode));
     let explicit_provider_idx = providers
         .iter()
         .filter_map(|provider| match provider.source {
@@ -418,8 +427,8 @@ fn func_effect_resolutions_canonical<'db>(
         ProviderSource::UsesParam { .. } | ProviderSource::ContractField { .. } => None,
     });
 
-    func_effect_requirements_canonical(db, func)
-        .into_iter()
+    func.effect_requirements(db, mode)
+        .iter()
         .filter(|requirement| {
             matches!(
                 requirement.key.kind(),
@@ -522,9 +531,20 @@ fn func_return_shape<'db>(
 }
 
 /// Whether `func` is a `mut?` function: its signature mentions `mut?`, in a
-/// parameter, its return, an effect or a bound.
+/// parameter, its return, an effect or a bound. Only syntax decides it, since
+/// nearly every query asks for a function's modes.
 #[salsa::tracked]
 fn func_is_maybe_mut<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
+    signature_mentions_maybe_mut(db, func, |_| true)
+}
+
+/// Whether `func`'s signature mentions `mut?` in a parameter, its return, a
+/// bound, or an effect that `counts`.
+pub(crate) fn signature_mentions_maybe_mut<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    counts: impl Fn(&EffectParam<'db>) -> bool,
+) -> bool {
     let mentions = |ty: Option<TypeId<'db>>| ty.is_some_and(|ty| ty.mentions_maybe_mut(db));
     let bounds_mention = |bounds: &[TypeBound<'db>]| {
         bounds
@@ -541,7 +561,7 @@ fn func_is_maybe_mut<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
             .declared_effects(db)
             .data(db)
             .iter()
-            .any(|effect| effect.mode == ModeMarker::MaybeMut)
+            .any(|effect| effect.mode == ModeMarker::MaybeMut && counts(effect))
         || func
             .generic_params(db)
             .data(db)
@@ -2124,17 +2144,14 @@ impl<'db> Contract<'db> {
 
 #[salsa::tracked]
 impl<'db> Func<'db> {
+    /// The function's effects where it is used at `mode`.
     #[salsa::tracked(return_ref)]
-    pub fn effect_requirements(self, db: &'db dyn HirAnalysisDb) -> Vec<EffectRequirement<'db>> {
-        func_effect_requirements_canonical(db, self)
-    }
-
-    #[salsa::tracked(return_ref)]
-    pub fn effective_effect_requirements(
+    pub fn effect_requirements(
         self,
         db: &'db dyn HirAnalysisDb,
+        mode: Option<BorrowKind>,
     ) -> Vec<EffectRequirement<'db>> {
-        func_effect_requirements_canonical(db, self)
+        func_effect_requirements_canonical(db, self, mode)
     }
 }
 
@@ -2162,7 +2179,7 @@ pub fn effect_requirements_for_site<'db>(
     site: EffectParamSite<'db>,
 ) -> Vec<EffectRequirement<'db>> {
     match site {
-        EffectParamSite::Func(func) => func.effective_effect_requirements(db).clone(),
+        EffectParamSite::Func(func, mode) => func.effect_requirements(db, mode).clone(),
         EffectParamSite::Contract(contract) => contract.effect_requirements(db).clone(),
         EffectParamSite::ContractInit { contract } => contract.init_effect_requirements(db).clone(),
         EffectParamSite::ContractRecvArm {
@@ -2199,7 +2216,9 @@ pub(crate) fn row_effect_provider<'db>(
         provider_ty,
         is_mut: requirement.is_mut,
         source: ProviderSource::UsesParam {
-            site: requirement.binding_site,
+            site: requirement
+                .binding_site
+                .slot_site(db, requirement.binding_idx),
             requirement_idx: requirement.binding_idx,
         },
         semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
@@ -2237,7 +2256,7 @@ fn provider_bindings_for_site_query<'db>(
 ) -> Vec<ProviderBinding<'db>> {
     let site = site.site(db);
     match site {
-        EffectParamSite::Func(func) => func_provider_bindings_canonical(db, func),
+        EffectParamSite::Func(func, mode) => func_provider_bindings_canonical(db, func, mode),
         EffectParamSite::Contract(contract)
         | EffectParamSite::ContractInit { contract }
         | EffectParamSite::ContractRecvArm { contract, .. } => {
@@ -2266,7 +2285,7 @@ fn effect_resolutions_for_site_query<'db>(
 ) -> Vec<ResolvedEffectBinding> {
     let site = site.site(db);
     match site {
-        EffectParamSite::Func(func) => func_effect_resolutions_canonical(db, func),
+        EffectParamSite::Func(func, mode) => func_effect_resolutions_canonical(db, func, mode),
         EffectParamSite::Contract(contract) => {
             contract_effect_resolutions_canonical(db, contract, site, contract.effects(db))
         }
@@ -2346,7 +2365,7 @@ fn contract_scoped_effect_requirements_canonical<'db>(
     list_site: EffectParamSite<'db>,
     list: EffectParamListId<'db>,
 ) -> Vec<EffectRequirement<'db>> {
-    if matches!(list_site, EffectParamSite::Func(_)) {
+    if matches!(list_site, EffectParamSite::Func(..)) {
         unreachable!("contract-scoped effect bindings require a contract init/recv/decl site");
     }
 
@@ -3152,6 +3171,19 @@ impl<'db> Func<'db> {
     /// Returns true if this function has any effect parameters.
     pub fn has_effects(self, db: &'db dyn HirAnalysisDb) -> bool {
         !self.effects(db).data(db).is_empty()
+    }
+
+    /// Whether `effect`, an entry of the function's `uses`, names a row,
+    /// whose components carry their own modes.
+    pub fn names_row(self, db: &'db dyn HirAnalysisDb, effect: &EffectParam<'db>) -> bool {
+        let assumptions =
+            collect_func_decl_constraints(db, self.into(), true).instantiate_identity();
+        effect.key_ty.to_opt().is_some_and(|key| {
+            matches!(
+                resolve_effect_key(db, key, self.scope(), assumptions),
+                ResolvedEffectKey::Row(_)
+            )
+        })
     }
 }
 

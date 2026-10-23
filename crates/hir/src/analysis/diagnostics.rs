@@ -13,8 +13,9 @@ use crate::analysis::{
         AddressSpace,
         diagnostics::{
             BodyDiag, CallConstraintDiagInfo, ContractFieldLayoutIssue, DefConflictError,
-            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix, RevealedBy,
-            TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag,
+            FuncBodyDiag, ImplDiag, MarkerPosition, MustUseSubject, MutabilityFix,
+            ReadOnlyProvider, RevealedBy, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection,
+            TyLowerDiag,
         },
         trait_def::TraitInstId,
         ty_check::{EffectParamOwner, RecordLike},
@@ -23,8 +24,11 @@ use crate::analysis::{
 };
 use crate::{
     ParserError, SpannedHirDb,
-    hir_def::{CallableDef, FieldIndex, GenericParamOwner, PathKind, Trait, params::FuncParamMode},
-    span::LazySpan,
+    hir_def::{
+        CallableDef, FieldIndex, GenericParamOwner, ModeMarker, PathKind, Trait,
+        params::FuncParamMode,
+    },
+    span::{DynLazySpan, LazySpan},
 };
 use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, Span, SpanKind,
@@ -1759,6 +1763,33 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             ),
 
+            Self::MaybeMutRowEffect { span, entry } => {
+                let (message, label) = if *entry {
+                    ("`mut?` on a row", "a row's effects carry their own modes")
+                } else {
+                    (
+                        "`mut?` effect of a row",
+                        "a row has no mode: only a function is used at a mode",
+                    )
+                };
+                primary_diag(Severity::Error, message, label, span.resolve(db), error_code)
+            }
+
+            Self::MaybeMutWithoutResult(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "a `mut?` function's result needs a `mut?` part".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "nothing this function returns is `mut?`".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec![
+                    "a call is at `mut` only when a use of its result asks for `mut`, so this function's `mut` body would never run"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
             Self::ExpectedStarKind(span) => {
                 // find expected ty name, num of generic args, etc
                 primary_diag(
@@ -3080,7 +3111,12 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
-            Self::MissingEffect { primary, func, key } => {
+            Self::MissingEffect {
+                primary,
+                func,
+                key,
+                mode,
+            } => {
                 let func_name = func
                     .name(db)
                     .to_opt().map_or_else(|| "<unknown>".to_string(), |n| n.data(db).to_string());
@@ -3099,7 +3135,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     notes: vec![
                         format!(
                             "require it in this function's signature with `uses {}`, so that its callers provide it",
-                            effect_clause(db, *func, *key)
+                            effect_clause(db, *func, *key, *mode)
                         ),
                         format!(
                             "or provide it to a block of this function with `with ({key_str} = value) {{ .. }}`"
@@ -3150,6 +3186,8 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 func,
                 key,
                 provided_span,
+                read_only,
+                split,
             } => {
                 let func_name = func
                     .name(db)
@@ -3169,6 +3207,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         span,
                     });
                 }
+                sub_diagnostics.extend(split_demand_label(db, split));
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
@@ -3176,10 +3215,23 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         "effect `{key_str}` must be mutable when calling `{func_name}`"
                     ),
                     sub_diagnostics,
-                    notes: vec![
-                        "use a mutable binding or pass a mutable reference in the `with` block"
-                            .to_string(),
-                    ],
+                    notes: vec![match read_only {
+                        Some(ReadOnlyProvider::Binding(name)) => format!(
+                            "`{}` is `mut?`, which a `mut?` function's `ref` body only reads",
+                            name.data(db)
+                        ),
+                        Some(ReadOnlyProvider::Call(callee)) => format!(
+                            "the `with` value calls `{}`, which is `mut?`, at `ref`: write `mut` before the call to provide `{key_str}` mutably",
+                            callee
+                                .name(db)
+                                .to_opt()
+                                .map_or("<unknown>", |name| name.data(db))
+                        ),
+                        None => {
+                            "use a mutable binding or pass a mutable reference in the `with` block"
+                                .to_string()
+                        }
+                    }],
                     error_code,
                 }
             }
@@ -3737,31 +3789,48 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 error_code,
             ),
 
-            Self::CannotBorrowMut { primary, binding } => {
+            Self::CannotBorrowMut {
+                primary,
+                binding,
+                maybe_mut,
+                split,
+            } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "cannot borrow as `mut`".to_string(),
                     span: primary.resolve(db),
                 }];
 
+                let mut notes = Vec::new();
                 if let Some((name, span)) = binding {
+                    let name = name.data(db);
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("`{}` does not provide mutable access", name.data(db)),
+                        message: format!("`{name}` does not provide mutable access"),
                         span: span.resolve(db),
                     });
+                    if *maybe_mut {
+                        notes.push(format!(
+                            "`{name}` is `mut?`, which a `mut?` function's `ref` body only reads"
+                        ));
+                    }
                 }
+                sub_diagnostics.extend(split_demand_label(db, split));
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "mutable borrow requires a mutable place".to_string(),
                     sub_diagnostics,
-                    notes: vec![],
+                    notes,
                     error_code,
                 }
             }
 
-            Self::BorrowArgMustBePlace { primary, kind } => {
+            Self::BorrowArgMustBePlace {
+                primary,
+                kind,
+                split,
+            } => {
                 let kw = match kind {
                     BorrowKind::Mut => "mut",
                     BorrowKind::Ref => "ref",
@@ -3770,13 +3839,16 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: format!("`{kw}` argument must be a place"),
-                    sub_diagnostics: vec![SubDiagnostic {
+                    sub_diagnostics: [SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!(
                             "temporaries and literal values cannot be used where `{kw}` is expected"
                         ),
                         span: primary.resolve(db),
-                    }],
+                    }]
+                    .into_iter()
+                    .chain(split_demand_label(db, split))
+                    .collect(),
                     notes: vec![format!(
                         "help: bind the value to a named local first, then pass `{kw} <place>`"
                     )],
@@ -3788,6 +3860,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 primary,
                 kind,
                 suggestion,
+                split,
             } => {
                 let kw = match kind {
                     BorrowKind::Mut => "mut",
@@ -3797,11 +3870,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "explicit borrow required".to_string(),
-                    sub_diagnostics: vec![SubDiagnostic {
+                    sub_diagnostics: [SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!("this argument must be explicitly borrowed as `{kw}`"),
                         span: primary.resolve(db),
-                    }],
+                    }]
+                    .into_iter()
+                    .chain(split_demand_label(db, split))
+                    .collect(),
                     notes: vec![
                         suggestion
                             .as_ref()
@@ -3939,32 +4015,26 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }],
                 notes: vec![
-                    "a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T` or `-> mut? T`"
+                    "a function has a mode when its signature writes `mut?`: `mut? self`, `x: mut? T`, `-> mut? T`, `uses (x: mut? T)` or a `mut?` bound"
                         .to_string(),
                 ],
                 error_code,
             },
 
-            Self::MaybeMutEffect { owner, idx } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "a `mut?` effect is not supported yet".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "this effect is required at the function's mode".to_string(),
-                    span: owner.effect_param_ty_span(db, *idx).resolve(db),
-                }],
-                notes: vec!["write `mut` or no mode on the effect".to_string()],
-                error_code,
-            },
-
-            Self::MutBindingOfRead { primary } => CompleteDiagnostic {
+            Self::MutBindingOfRead {
+                primary,
+                split_reads,
+            } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "a `mut` binding needs a mutable place or access".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
+                sub_diagnostics: [SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "this binds part of a read access".to_string(),
                     span: primary.resolve(db),
-                }],
+                }]
+                .into_iter()
+                .chain(split_read_labels(db, split_reads))
+                .collect(),
                 notes: vec![
                     "write `var` for a mutable copy, or use the `mut` projection to write through"
                         .to_string(),
@@ -4123,23 +4193,31 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 given,
                 expected,
                 raised,
+                split_reads,
             } => {
                 let taker = if *raised {
                     "the call at `mut`"
                 } else {
                     "the parameter"
                 };
-                primary_diag(
-                    Severity::Error,
-                    "this argument grants a product's parts too weakly",
-                    format!(
-                        "it grants `{}`, but {taker} takes `{}`",
-                        given.pretty_print_product(db),
-                        expected.pretty_print_product(db)
-                    ),
-                    primary.resolve(db),
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "this argument grants a product's parts too weakly".to_string(),
+                    sub_diagnostics: [SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "it grants `{}`, but {taker} takes `{}`",
+                            given.pretty_print_product(db),
+                            expected.pretty_print_product(db)
+                        ),
+                        span: primary.resolve(db),
+                    }]
+                    .into_iter()
+                    .chain(split_read_labels(db, split_reads))
+                    .collect(),
+                    notes: Vec::new(),
                     error_code,
-                )
+                }
             }
 
             Self::RefutableParamPattern { primary } => primary_diag(
@@ -4303,7 +4381,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         MutabilityFix::ViewSelf => {
                             "write `mut self` for a mutable borrow".to_string()
                         }
-                        MutabilityFix::MaybeMutParam => format!(
+                        MutabilityFix::MaybeMut => format!(
                             "`{name}` is `mut?`, which a `mut?` function's `ref` body only reads"
                         ),
                         MutabilityFix::OwnSelf => {
@@ -5337,8 +5415,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }],
                 notes: vec![if *in_closure {
                     format!(
-                        "a closure takes none of the enclosing function's authority; use `storage_at{}`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
-                        if *is_mut { "_mut" } else { "" },
+                        "a closure takes none of the enclosing function's authority; use `storage_at`, or a function with `uses (storage: {}RawStorage)`, whose requirement the closure's row takes",
                         if *is_mut { "mut " } else { "" }
                     )
                 } else {
@@ -5929,17 +6006,25 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 }
             }
 
-            Self::MethodEffectMismatch { trait_m, impl_m } => {
-                let trait_count = match trait_m {
-                    CallableDef::Func(func) => func.effect_requirements(db).len(),
+            Self::MethodEffectMismatch {
+                trait_m,
+                impl_m,
+                mode,
+            } => {
+                let count = |m: CallableDef| match m {
+                    CallableDef::Func(func) => {
+                        func.effect_requirements(db, func.modes(db)[0]).len()
+                    }
                     CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
                 };
-                let impl_count = match impl_m {
-                    CallableDef::Func(func) => func.effect_requirements(db).len(),
-                    CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => 0,
-                };
+                let (trait_count, impl_count) = (count(*trait_m), count(*impl_m));
                 let detail = if trait_count == impl_count {
-                    "effect keys or mutability differ from the trait method".to_string()
+                    let at = match mode {
+                        Some(BorrowKind::Ref) => " at `ref`",
+                        Some(BorrowKind::Mut) => " at `mut`",
+                        None => "",
+                    };
+                    format!("effect keys or mutability differ from the trait method{at}")
                 } else {
                     format!("expected {trait_count} effects, found {impl_count}")
                 };
@@ -6455,12 +6540,40 @@ impl DiagnosticVoucher for ImplDiag<'_> {
     }
 }
 
-/// The `uses` entry of `func` whose key is `key`, as a clause naming it with
-/// its mode: `(storage: mut RawStorage)`.
+/// The label naming the unsafe split whose `mut` binding asked a call in it
+/// for `mut`.
+fn split_demand_label<'db>(
+    db: &'db dyn SpannedHirAnalysisDb,
+    split: &Option<DynLazySpan<'db>>,
+) -> Option<SubDiagnostic> {
+    split.as_ref().map(|split| SubDiagnostic {
+        style: LabelStyle::Secondary,
+        message: "a `mut` binding of this unsafe split asks each access in it for `mut`"
+            .to_string(),
+        span: split.resolve(db),
+    })
+}
+
+/// The labels naming the read accesses that kept an unsafe split from
+/// granting `mut`.
+fn split_read_labels<'db>(
+    db: &'db dyn SpannedHirAnalysisDb,
+    split_reads: &[DynLazySpan<'db>],
+) -> impl Iterator<Item = SubDiagnostic> {
+    split_reads.iter().map(move |span| SubDiagnostic {
+        style: LabelStyle::Secondary,
+        message: "this read access keeps the unsafe split from granting `mut`".to_string(),
+        span: span.resolve(db),
+    })
+}
+
+/// The `uses` entry naming `func`'s effect keyed `key`, at the mode `mode` a
+/// call needs it.
 fn effect_clause<'db>(
     db: &'db dyn HirAnalysisDb,
     func: crate::hir_def::Func<'db>,
     key: crate::hir_def::TypeId<'db>,
+    mode: ModeMarker,
 ) -> String {
     let key_str = key.pretty_print(db);
     func.effects(db)
@@ -6474,8 +6587,7 @@ fn effect_clause<'db>(
                     .name
                     .map(|name| format!("{}: ", name.data(db)))
                     .unwrap_or_default();
-                let mode = param.mode.prefix();
-                format!("({name}{mode}{key_str})")
+                format!("({name}{}{key_str})", mode.prefix())
             },
         )
 }

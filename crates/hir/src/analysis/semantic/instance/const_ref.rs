@@ -186,7 +186,7 @@ fn instantiated_method_signature<'db>(
         .collect();
     let result = normalize(CallableDef::Func(func).ret_ty(db).instantiate(db, args));
     let provider_slots = place_effect_provider_param_index_map(db, func);
-    let (requirements, rows) = instantiated_effects(db, func, args, scope, evidence);
+    let (requirements, rows) = instantiated_effects(db, (func, mode), args, scope, evidence);
     // A row's components take their providers from the call.
     let effects = requirements
         .iter()
@@ -238,17 +238,17 @@ fn instantiated_method_signature<'db>(
     })
 }
 
-/// `func`'s effect requirements as `args` instantiate them, and their rows
-/// as `scope` expands them.
+/// `func`'s effect requirements at `mode` as `args` instantiate them, and
+/// their rows as `scope` expands them.
 fn instantiated_effects<'db>(
     db: &'db dyn HirAnalysisDb,
-    func: Func<'db>,
+    (func, mode): (Func<'db>, Option<BorrowKind>),
     args: &[TyId<'db>],
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> (Vec<EffectRequirement<'db>>, RowExpansion<'db>) {
     let requirements: Vec<_> = func
-        .effect_requirements(db)
+        .effect_requirements(db, mode)
         .iter()
         .map(|requirement| EffectRequirement {
             key: Binder::bind(func.into(), requirement.key.clone()).instantiate(db, args),
@@ -368,11 +368,11 @@ pub(super) fn root_impl_env<'db>(
     subst: GenericSubst<'db>,
 ) -> ImplEnv<'db> {
     let env = ImplEnv::empty(db, owner.scope());
-    let BodyOwner::Func(func, _) = owner else {
+    let BodyOwner::Func(func, mode) = owner else {
         return env;
     };
     if !(func.containing_impl(db).is_some() || !func.is_associated_func(db))
-        || !func.effect_requirements(db).is_empty()
+        || !func.effect_requirements(db, mode).is_empty()
         || !is_ground(collect_flags(db, subst.generic_args(db)))
     {
         return env;
@@ -508,7 +508,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         // component at the same place.
         let (_, rows) = instantiated_effects(
             db,
-            nominal_func,
+            (nominal_func, callable.mode()),
             callable.generic_args(),
             impl_env.normalization_scope(db),
             assumptions,
@@ -598,7 +598,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         let owner = BodyOwner::Func(func, None);
         let (_, rows) = instantiated_effects(
             db,
-            nominal_func,
+            (nominal_func, callable.mode()),
             callable.generic_args(),
             impl_env.normalization_scope(db),
             assumptions,
@@ -645,7 +645,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         // component's is numbered as the component, as the instance's
         // effect env numbers it.
         let provider_of = |effect: usize| {
-            EffectEnvView::new(EffectParamSite::Func(func))
+            EffectEnvView::new(EffectParamSite::Func(func, None))
                 .resolved_binding(db, effect)
                 .map(|binding| binding.provider.provider_idx)
                 .or_else(|| {
@@ -750,7 +750,7 @@ fn semantic_callee_key_with_assumptions<'db>(
         let scope = impl_env.normalization_scope(db);
         let (nominal_effects, nominal_rows) = instantiated_effects(
             db,
-            nominal_func,
+            (nominal_func, callable.mode()),
             callable.generic_args(),
             scope,
             assumptions,
@@ -817,12 +817,18 @@ fn semantic_callee_key_with_assumptions<'db>(
         };
 
         subst_args = method.complete_body_args(db, &subst_args)?.into_values();
-        let (_, body_rows) =
-            instantiated_effects(db, impl_func, &subst_args, impl_func.scope(), assumptions);
+        let impl_mode = BodyOwner::func_at(db, impl_func, callable.mode()).mode();
+        let (_, body_rows) = instantiated_effects(
+            db,
+            (impl_func, impl_mode),
+            &subst_args,
+            impl_func.scope(),
+            assumptions,
+        );
         effect_pairs = component_pairs(Some(&body_rows));
         // A row component's provider has the component's index.
-        let provider_idx = |func, idx| {
-            let env = EffectEnvView::new(EffectParamSite::Func(func));
+        let provider_idx = |site, idx| {
+            let env = EffectEnvView::new(site);
             if idx < env.requirements(db).len() {
                 env.resolved_binding(db, idx)
                     .map(|binding| binding.provider.provider_idx)
@@ -832,8 +838,11 @@ fn semantic_callee_key_with_assumptions<'db>(
         };
         for &(nominal_idx, body_idx) in &effect_pairs {
             let (Some(nominal), Some(body)) = (
-                provider_idx(nominal_func, nominal_idx),
-                provider_idx(impl_func, body_idx),
+                provider_idx(
+                    EffectParamSite::Func(nominal_func, callable.mode()),
+                    nominal_idx,
+                ),
+                provider_idx(EffectParamSite::Func(impl_func, impl_mode), body_idx),
             ) else {
                 continue;
             };
@@ -881,7 +890,7 @@ fn semantic_callee_key_with_assumptions<'db>(
     let effect_providers = resolve_callable_effect_providers(
         db,
         caller,
-        body_func,
+        (body_func, owner.mode()),
         &mut subst_args,
         &effect_providers,
         provider_resolution_mode,
@@ -915,8 +924,10 @@ fn semantic_callee_key_with_assumptions<'db>(
         // has additional effects, method bounds, or layout slots to carry.
         let nominal_redundant = independent
             && inst.assoc_type_bindings(db).is_empty()
-            && nominal_func.effect_requirements(db).is_empty()
-            && body_func.effect_requirements(db).is_empty()
+            && nominal_func
+                .effect_requirements(db, callable.mode())
+                .is_empty()
+            && body_func.effect_requirements(db, owner.mode()).is_empty()
             && effect_args.is_empty()
             && effect_providers.is_empty()
             && [nominal_func, body_func].into_iter().all(|func| {
@@ -1151,14 +1162,15 @@ pub(super) fn is_ground(flags: TyFlags) -> bool {
 fn resolve_callable_effect_providers<'db>(
     db: &'db dyn HirAnalysisDb,
     caller: Option<SemanticInstance<'db>>,
-    func: Func<'db>,
+    (func, mode): (Func<'db>, Option<BorrowKind>),
     subst_args: &mut [TyId<'db>],
     effect_providers: &[EffectProviderSpecialization<'db>],
     provider_resolution_mode: ProviderResolutionMode,
 ) -> Vec<EffectProviderSpecialization<'db>> {
     let providers =
         resolve_provider_specializations(db, caller, effect_providers, provider_resolution_mode);
-    let effect_env = EffectEnvView::new(EffectParamSite::Func(func));
+    let site = EffectParamSite::Func(func, mode);
+    let effect_env = EffectEnvView::new(site);
     let resolution_by_req = match provider_resolution_mode {
         ProviderResolutionMode::Final => effect_env
             .resolutions(db)
@@ -1169,12 +1181,8 @@ fn resolve_callable_effect_providers<'db>(
             .requirements(db)
             .into_iter()
             .filter_map(|requirement| {
-                provisional_provider_idx_for_requirement(
-                    db,
-                    EffectParamSite::Func(func),
-                    requirement.binding_idx,
-                )
-                .map(|provider_idx| (requirement.binding_idx as usize, provider_idx))
+                provisional_provider_idx_for_requirement(db, site, requirement.binding_idx)
+                    .map(|provider_idx| (requirement.binding_idx as usize, provider_idx))
             })
             .collect::<FxHashMap<_, _>>(),
     };

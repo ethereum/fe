@@ -7,7 +7,7 @@
 //!
 //! ```fe
 //! // `address owner; bool paused;` share slot 0: owner at byte 0, paused at 20.
-//! let slot = unsafe { SolSlot::at(0) }
+//! let slot = unsafe { mut SolSlot::at(0) }
 //! let owner: Address = slot.read(offset: 0)
 //! slot.write(offset: 20, value: true)
 //! ```
@@ -17,7 +17,7 @@
 //! the slot into a `SolWord` and `store` it back:
 //!
 //! ```fe
-//! let slot = unsafe { SolSlot::at(0) }
+//! let slot = unsafe { mut SolSlot::at(0) }
 //! var word = slot.load()
 //! let owner: Address = word.get(offset: 0)
 //! word.set(offset: 20, value: false)
@@ -34,7 +34,7 @@ use core::num::IntDowncast
 use core::marker::{Pinned, Storage}
 use core::ops::{Location, StateIndex, WrappingAdd}
 use core::ptr::{self, MemSpan}
-use super::effects::{Address, RawStorage, revert_error, storage_at_mut}
+use super::effects::{Address, RawStorage, revert_error, storage_at}
 use super::layout::array_data_slot
 use super::ops::{revert_empty, signextend}
 use super::panic::{PANIC_STORAGE_ENCODING, Panic}
@@ -78,8 +78,8 @@ impl SolSlot {
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses `slot` or the slots its payload derives.
     #[raw_place]
-    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        unsafe { storage_at_mut(slot) }
+    pub unsafe fn at(_ slot: u256) -> mut? Self uses (storage: mut? RawStorage) {
+        unsafe { storage_at(slot) }
     }
 
     /// Reads the `T` stored `offset` bytes above the low end of the slot.

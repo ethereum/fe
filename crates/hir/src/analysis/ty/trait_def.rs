@@ -8,6 +8,7 @@ use crate::{
             lower_impl_trait_header,
         },
         trait_resolution::{GoalSatisfiability, PredicateListId, Selection},
+        ty_check::BodyOwner,
     },
     hir_def::{
         Body, Contract, Func, GenericParamOwner, HirIngot, IdentId, ImplTrait, ModeMarker, Trait,
@@ -359,9 +360,11 @@ impl<'db> ResolvedImplInstance<'db> {
                     let correspondence = method_param_correspondence(
                         db,
                         body.as_callable(db).expect("selected method is callable"),
+                        BodyOwner::func_at(db, body, mode).mode(),
                         declaration
                             .as_callable(db)
                             .expect("trait method is callable"),
+                        BodyOwner::func_at(db, declaration, mode).mode(),
                         implementor.trait_inst(db),
                     );
                     (

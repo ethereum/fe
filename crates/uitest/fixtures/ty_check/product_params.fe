@@ -124,6 +124,9 @@ fn nested_marked_whole(_ (ref p, c): ((mut u256, mut u256), own u256)) -> u256 {
     c
 }
 
+// A part that is a product carries its own parts' modes.
+fn mode_on_nested(_ ((a, b), c): (ref (mut u256, bool), own u256)) {}
+
 // A function with a product parameter is no callable value, and a closure's
 // parameter is no product: no shape trait names one.
 fn apply<F: Fn((u256, u256)) -> u256>(_ f: F) -> u256 uses F::E {

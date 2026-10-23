@@ -10,7 +10,7 @@ use salsa::Update;
 
 use super::{
     corelib::resolve_lib_type_path,
-    diagnostics::TyDiagCollection,
+    diagnostics::{TyDiagCollection, TyLowerDiag},
     fold::{TyFoldable, TyFolder},
     trait_resolution::PredicateListId,
     ty_def::{BorrowKind, InvalidCause, TyId},
@@ -528,6 +528,14 @@ pub fn param_product_diags<'db>(
             Some((elem.to_opt()?, span.clone().into_tuple_type().elem_ty(idx)))
         })
         .flat_map(|(elem, span)| match elem.data(db) {
+            // A product's parts carry its modes.
+            TypeKind::Mode(_, inner)
+                if inner
+                    .to_opt()
+                    .is_some_and(|inner| is_param_product(db, inner)) =>
+            {
+                vec![TyLowerDiag::ModeOnProduct(span.into()).into()]
+            }
             TypeKind::Mode(_, inner) => inner
                 .to_opt()
                 .map(|inner| {

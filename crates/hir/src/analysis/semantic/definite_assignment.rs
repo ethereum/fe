@@ -319,7 +319,7 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
                         Some(AssignedTarget::ContractField(field))
                     }
                     ProviderSource::UsesParam {
-                        site: EffectParamSite::Func(func),
+                        site: EffectParamSite::Func(func, _),
                         requirement_idx,
                     } => Some(AssignedTarget::FuncEffect {
                         func,

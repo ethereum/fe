@@ -105,23 +105,51 @@ pub(super) fn compare_impl_method<'db>(
     // method with the trait method.
     let mut err = !compare_arg_label(db, impl_m, trait_m, sink);
 
-    let (param_subst, _, effects_paired) =
-        trait_to_impl_param_subst(db, impl_m, trait_m, trait_inst);
+    // The effects pair at each mode, where a `mut?` effect has its mode.
+    let substs: Vec<_> = modes
+        .iter()
+        .map(|&(trait_mode, impl_mode)| {
+            let (subst, _, paired) = trait_to_impl_param_subst(
+                db,
+                (impl_m, impl_mode),
+                (trait_m, trait_mode),
+                trait_inst,
+            );
+            (subst.residualize(db), paired)
+        })
+        .collect();
+    let unpaired: Vec<_> = modes
+        .iter()
+        .zip(&substs)
+        .filter(|(_, (_, paired))| !paired)
+        .map(|(&(trait_mode, _), _)| trait_mode)
+        .collect();
     if matches!(
         (impl_m, trait_m),
         (CallableDef::Func(_), CallableDef::Func(_))
-    ) && !effects_paired
+    ) && !unpaired.is_empty()
     {
-        sink.push(ImplDiag::MethodEffectMismatch { trait_m, impl_m }.into());
+        // A `mut?` trait method's effects differ at one of its modes alone.
+        let mode = match unpaired.as_slice() {
+            [mode] => *mode,
+            _ => None,
+        };
+        sink.push(
+            ImplDiag::MethodEffectMismatch {
+                trait_m,
+                impl_m,
+                mode,
+            }
+            .into(),
+        );
         err = true;
     }
-    let param_subst = param_subst.residualize(db);
-    for &(trait_mode, impl_mode) in modes {
+    for (&(trait_mode, impl_mode), (param_subst, _)) in modes.iter().zip(&substs) {
         err |= !compare_ty(
             db,
             (impl_m, impl_mode),
             (trait_m, trait_mode),
-            &param_subst,
+            param_subst,
             trait_inst,
             sink,
         );
@@ -130,13 +158,13 @@ pub(super) fn compare_impl_method<'db>(
         return;
     }
 
-    for &(trait_mode, impl_mode) in modes {
+    for (&(trait_mode, impl_mode), (param_subst, _)) in modes.iter().zip(&substs) {
         compare_constraints(
             db,
             (impl_m, impl_mode),
             (trait_m, trait_mode),
             trait_inst,
-            &param_subst,
+            param_subst,
             sink,
         );
     }
@@ -422,12 +450,12 @@ fn insert_param_mapping<'db>(
 }
 
 /// The trait method's params as the impl method's, the pairs of their
-/// effects, and whether every effect of the trait method has its pair. An
-/// impl method's extra effects are stricter bounds.
+/// effects at the methods' modes, and whether every effect of the trait
+/// method has its pair. An impl method's extra effects are stricter bounds.
 pub(crate) fn trait_to_impl_param_subst<'db>(
     db: &'db dyn HirAnalysisDb,
-    impl_m: CallableDef<'db>,
-    trait_m: CallableDef<'db>,
+    (impl_m, impl_mode): (CallableDef<'db>, Option<BorrowKind>),
+    (trait_m, trait_mode): (CallableDef<'db>, Option<BorrowKind>),
     trait_inst: TraitInstId<'db>,
 ) -> (PartialSubst<'db>, Vec<(usize, usize)>, bool) {
     let schema = ParamSchemaId::callable(db, trait_m);
@@ -459,8 +487,13 @@ pub(crate) fn trait_to_impl_param_subst<'db>(
         insert_param_mapping(db, &mut out, trait_param, impl_param);
     }
 
-    let (effect_pairs, effects_paired) =
-        map_effect_provider_params_by_identity(db, &mut out, impl_m, trait_m, trait_inst);
+    let (effect_pairs, effects_paired) = map_effect_provider_params_by_identity(
+        db,
+        &mut out,
+        (impl_m, impl_mode),
+        (trait_m, trait_mode),
+        trait_inst,
+    );
 
     (out, effect_pairs, effects_paired)
 }
@@ -471,18 +504,21 @@ pub(crate) struct MethodParamCorrespondence {
     pub trait_effect_to_body: Vec<(usize, usize)>,
 }
 
-/// The same declaration correspondence used by method conformance, expressed
-/// as body slots so call elaboration cannot reinterpret it by position.
-/// Resolving the same trait method at many call sites asks for it repeatedly.
+/// The same declaration correspondence used by method conformance, at the
+/// methods' modes, expressed as body slots so call elaboration cannot
+/// reinterpret it by position. Resolving the same trait method at many call
+/// sites asks for it repeatedly.
 #[salsa::tracked]
 pub(crate) fn method_param_correspondence<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_m: CallableDef<'db>,
+    impl_mode: Option<BorrowKind>,
     trait_m: CallableDef<'db>,
+    trait_mode: Option<BorrowKind>,
     trait_inst: TraitInstId<'db>,
 ) -> MethodParamCorrespondence {
     let (mapping, trait_effect_to_body, _) =
-        trait_to_impl_param_subst(db, impl_m, trait_m, trait_inst);
+        trait_to_impl_param_subst(db, (impl_m, impl_mode), (trait_m, trait_mode), trait_inst);
     let impl_params = impl_m.params(db);
     let mut body_to_trait = vec![None; impl_params.len()];
     for (trait_slot, &trait_param) in trait_m.params(db).iter().enumerate() {
@@ -512,8 +548,8 @@ struct EffectProviderEntry<'db> {
 fn map_effect_provider_params_by_identity<'db>(
     db: &'db dyn HirAnalysisDb,
     out: &mut PartialSubst<'db>,
-    impl_m: CallableDef<'db>,
-    trait_m: CallableDef<'db>,
+    (impl_m, impl_mode): (CallableDef<'db>, Option<BorrowKind>),
+    (trait_m, trait_mode): (CallableDef<'db>, Option<BorrowKind>),
     trait_inst: TraitInstId<'db>,
 ) -> (Vec<(usize, usize)>, bool) {
     let assumptions = collect_func_def_constraints(db, impl_m, true).instantiate_identity();
@@ -526,7 +562,7 @@ fn map_effect_provider_params_by_identity<'db>(
     };
     let trait_entries: Vec<_> = collect_effect_provider_entries(
         db,
-        trait_m,
+        (trait_m, trait_mode),
         Some(out),
         trait_inst,
         impl_m.scope(),
@@ -544,13 +580,17 @@ fn map_effect_provider_params_by_identity<'db>(
         })
     })
     .collect();
-    let impl_entries: Vec<_> =
-        collect_effect_provider_entries(db, impl_m, None, trait_inst, impl_m.scope(), assumptions)
-            .into_iter()
-            .filter(|entry| {
-                !impl_func.is_some_and(|func| func.effect_from_row(db, entry.effect_idx))
-            })
-            .collect();
+    let impl_entries: Vec<_> = collect_effect_provider_entries(
+        db,
+        (impl_m, impl_mode),
+        None,
+        trait_inst,
+        impl_m.scope(),
+        assumptions,
+    )
+    .into_iter()
+    .filter(|entry| !impl_func.is_some_and(|func| func.effect_from_row(db, entry.effect_idx)))
+    .collect();
     let mut used_impl_entries = vec![false; impl_entries.len()];
     let mut effect_pairs = Vec::new();
     let trait_effects = trait_entries.len();
@@ -578,7 +618,7 @@ fn map_effect_provider_params_by_identity<'db>(
 
 fn collect_effect_provider_entries<'db>(
     db: &'db dyn HirAnalysisDb,
-    method: CallableDef<'db>,
+    (method, mode): (CallableDef<'db>, Option<BorrowKind>),
     param_subst: Option<&PartialSubst<'db>>,
     trait_inst: TraitInstId<'db>,
     scope: ScopeId<'db>,
@@ -592,7 +632,7 @@ fn collect_effect_provider_entries<'db>(
     let provider_param_map = place_effect_provider_param_index_map(db, func);
     let params = method.params(db);
 
-    func.effect_requirements(db)
+    func.effect_requirements(db, mode)
         .iter()
         .map(|binding| {
             let effect_idx = binding.binding_idx as usize;

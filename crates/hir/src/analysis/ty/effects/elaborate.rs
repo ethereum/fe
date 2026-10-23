@@ -21,7 +21,7 @@ use crate::{
             trait_def::TraitInstId,
             trait_resolution::PredicateListId,
             ty_check::{Callable, TyChecker},
-            ty_def::{InvalidCause, TyBase, TyData, TyId, TyParam, inference_keys},
+            ty_def::{BorrowKind, InvalidCause, TyBase, TyData, TyId, TyParam, inference_keys},
             ty_lower::collect_generic_params,
             visitor::{TyVisitable, TyVisitor, walk_ty},
         },
@@ -37,9 +37,10 @@ use common::indexmap::IndexMap;
 pub fn effect_requirement_decls_for_callable<'db>(
     db: &'db dyn HirAnalysisDb,
     callable_def: CallableDef<'db>,
+    mode: Option<BorrowKind>,
 ) -> SmallVec<[EffectRequirementDecl<'db>; 2]> {
     let bindings: &[EffectRequirement<'db>] = match callable_def {
-        CallableDef::Func(func) => func.effective_effect_requirements(db),
+        CallableDef::Func(func) => func.effect_requirements(db, mode),
         CallableDef::VariantCtor(_) | CallableDef::StructCtor(_) => &[],
     };
     bindings

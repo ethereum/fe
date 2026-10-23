@@ -235,22 +235,15 @@ pub trait RawStorage: EvmCapabilitySeal {
     unsafe fn sstore(mut self, slot: u256, value: u256)
 }
 
-/// The `T` at storage slot `slot`, as a storage place to read.
+/// The `T` at storage slot `slot`, as a storage place to read, or to write
+/// where its use asks for `mut`.
 ///
 /// The caller must ensure that `slot` holds a `T` and that nothing the
 /// compiler allocates, such as a contract field, uses `slot` or the slots the
 /// `T` derives from it.
 #[raw_place]
-pub unsafe fn storage_at<T>(_ slot: u256) -> ref T uses (storage: RawStorage) {
-    unsafe { ref *(slot as StorPtr<T>) }
-}
-
-/// The `T` at storage slot `slot`, as a storage place to read and write.
-///
-/// The caller must ensure what `storage_at` requires.
-#[raw_place]
-pub unsafe fn storage_at_mut<T>(_ slot: u256) -> mut T uses (storage: mut RawStorage) {
-    unsafe { mut *(slot as StorPtr<T>) }
+pub unsafe fn storage_at<T>(_ slot: u256) -> mut? T uses (storage: mut? RawStorage) {
+    unsafe { mut? *(slot as StorPtr<T>) }
 }
 
 /// Copies one word from the current contract's persistent storage.

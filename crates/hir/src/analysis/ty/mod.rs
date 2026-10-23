@@ -783,6 +783,12 @@ impl ModuleAnalysisPass for ContractAnalysisPass {
             .first()
             .map(|registration| registration.provider_ty);
             for (idx, effect) in contract.effects(db).data(db).iter().enumerate() {
+                // A contract has no mode.
+                if effect.mode == crate::hir_def::ModeMarker::MaybeMut {
+                    diags.push(Box::new(BodyDiag::MaybeMutWithoutMode {
+                        primary: contract.span().effects().param_idx(idx).into(),
+                    }) as _);
+                }
                 let Some(key_ty) = effect.key_ty.to_opt() else {
                     continue;
                 };
