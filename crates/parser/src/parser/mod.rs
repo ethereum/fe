@@ -197,7 +197,12 @@ impl<S: TokenStream> Parser<S> {
     pub(super) fn in_scope_set(&self, scopes: &[SyntaxKind]) -> bool {
         self.parents
             .last()
-            .is_some_and(|scope| scopes.contains(&scope.scope.syntax_kind()))
+            .is_some_and(|scope| scopes.contains(&scope.kind))
+    }
+
+    /// Changes the node kind of the current scope.
+    pub(super) fn set_scope_kind(&mut self, kind: SyntaxKind) {
+        self.parents.last_mut().unwrap().kind = kind;
     }
 
     pub fn expect_and_pop_recovery_stack(&mut self) -> Result<(), Recovery<ErrProof>> {
@@ -285,10 +290,10 @@ impl<S: TokenStream> Parser<S> {
         checkpoint: Option<Checkpoint>,
     ) -> Result<Checkpoint, E>
     where
-        T: Parse<Error = E> + 'static,
+        T: Parse<Error = E>,
         E: Recoverable,
     {
-        let checkpoint = self.enter(scope.clone(), checkpoint);
+        let checkpoint = self.enter::<T>(checkpoint);
         let start_checkpoint = self.checkpoint();
         let res = scope.parse(self);
         self.leave(checkpoint);
@@ -298,7 +303,7 @@ impl<S: TokenStream> Parser<S> {
 
     pub fn parse<T, E>(&mut self, scope: T) -> Result<(), E>
     where
-        T: Parse<Error = E> + 'static,
+        T: Parse<Error = E>,
         E: Recoverable,
     {
         self.parse_ok(scope).map(|_| ())
@@ -306,10 +311,10 @@ impl<S: TokenStream> Parser<S> {
 
     pub fn parse_ok<T, E>(&mut self, mut scope: T) -> Result<bool, E>
     where
-        T: Parse<Error = E> + 'static,
+        T: Parse<Error = E>,
         E: Recoverable,
     {
-        let checkpoint = self.enter(scope.clone(), None);
+        let checkpoint = self.enter::<T>(None);
         let res = scope.parse(self);
         self.leave(checkpoint);
         let ok = res.is_ok();
@@ -319,10 +324,10 @@ impl<S: TokenStream> Parser<S> {
 
     pub fn parses_without_error<T, E>(&mut self, mut scope: T) -> bool
     where
-        T: Parse<Error = E> + 'static,
+        T: Parse<Error = E>,
         E: Recoverable,
     {
-        let checkpoint = self.enter(scope.clone(), None);
+        let checkpoint = self.enter::<T>(None);
         let ok = scope.parse(self).is_ok();
         self.leave(checkpoint);
         ok && !self.dry_run_states.last().unwrap().err
@@ -330,7 +335,7 @@ impl<S: TokenStream> Parser<S> {
 
     pub fn parse_or_recover<T>(&mut self, scope: T) -> Result<(), Recovery<ErrProof>>
     where
-        T: Parse<Error = ParseError> + 'static,
+        T: Parse<Error = ParseError>,
     {
         self.or_recover(|parser| parser.parse(scope))
     }
@@ -350,17 +355,19 @@ impl<S: TokenStream> Parser<S> {
     /// Enter the scope and return the checkpoint. The checkpoint branch will be
     /// wrapped up by the scope's node when [`leave`] is called.
     // NOTE: This method is limited to testing and internal usage.
-    pub fn enter<T>(&mut self, scope: T, checkpoint: Option<Checkpoint>) -> Checkpoint
-    where
-        T: ParsingScope + 'static,
-    {
+    pub fn enter<T: ParsingScope>(&mut self, checkpoint: Option<Checkpoint>) -> Checkpoint {
         // Ensure the leading trivias are added to the parent node.
         if !self.parents.is_empty() {
             self.bump_trivias();
         }
 
-        self.parents
-            .push(ScopeEntry::new(Box::new(scope), self.is_newline_trivia));
+        self.parents.push(ScopeEntry {
+            kind: T::KIND,
+            recovery_tokens: T::RECOVERY_TOKENS,
+            is_newline_trivia: self.is_newline_trivia,
+            is_err: false,
+            aux_recovery_tokens: SmallVec::new(),
+        });
         // `is_newline_trivia` is always `true` when entering a scope.
         self.is_newline_trivia = true;
         checkpoint.unwrap_or_else(|| self.checkpoint())
@@ -381,8 +388,7 @@ impl<S: TokenStream> Parser<S> {
         }
 
         if !self.is_dry_run() {
-            self.builder
-                .start_node_at(checkpoint, scope.scope.syntax_kind().into());
+            self.builder.start_node_at(checkpoint, scope.kind.into());
             self.builder.finish_node();
         } else {
             self.dry_run_states.last_mut().unwrap().err |= scope.is_err;
@@ -600,7 +606,7 @@ impl<S: TokenStream> Parser<S> {
                 self.add_error(ParseError::Unexpected(
                     format!(
                         "unexpected syntax while parsing {}",
-                        self.parents.last().unwrap().scope.syntax_kind().describe()
+                        self.parents.last().unwrap().kind.describe()
                     ),
                     TextRange::new(start_pos, self.current_pos),
                 ));
@@ -821,7 +827,7 @@ impl<S: TokenStream> Parser<S> {
     /// Wrap the current token in a `SyntaxKind::Error`, and add a
     /// `ParseError::Unexpected`.
     fn unexpected_token_error(&mut self, msg: String) -> ErrProof {
-        let checkpoint = self.enter(ErrorScope::default(), None);
+        let checkpoint = self.enter::<ErrorScope>(None);
 
         let start_pos = self.current_pos;
         self.bump();
@@ -845,18 +851,20 @@ impl<S: TokenStream> Parser<S> {
 }
 
 pub trait ParsingScope {
-    /// Returns the recovery method of the current scope.
-    fn recovery_tokens(&self) -> &[SyntaxKind];
+    /// The kind of the node the scope wraps up, unless its `parse` changes it
+    /// with [`Parser::set_scope_kind`].
+    const KIND: SyntaxKind;
 
-    fn syntax_kind(&self) -> SyntaxKind;
+    /// The tokens that stop error recovery in the scope.
+    const RECOVERY_TOKENS: &'static [SyntaxKind];
 }
 
-pub trait Parse: ParsingScope + Clone {
+pub trait Parse: ParsingScope {
     type Error;
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error>;
 }
 
-pub trait ParseInfalible: ParsingScope + Clone {
+pub trait ParseInfalible: ParsingScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>);
 }
 
@@ -909,35 +917,17 @@ struct DryRunState<S: TokenStream> {
     err: bool,
 }
 
+#[derive(Debug)]
 struct ScopeEntry {
-    scope: Box<dyn ParsingScope>,
+    kind: SyntaxKind,
+    recovery_tokens: &'static [SyntaxKind],
     is_newline_trivia: bool,
     is_err: bool,
     aux_recovery_tokens: SmallVec<SyntaxKind, 4>,
 }
 impl ScopeEntry {
-    fn new(scope: Box<dyn ParsingScope>, is_newline_trivia: bool) -> Self {
-        Self {
-            scope,
-            is_newline_trivia,
-            is_err: false,
-            aux_recovery_tokens: SmallVec::new(),
-        }
-    }
-
     fn is_recovery_match(&self, kind: SyntaxKind) -> bool {
-        self.scope.recovery_tokens().contains(&kind) || self.aux_recovery_tokens.contains(&kind)
-    }
-}
-
-impl std::fmt::Debug for ScopeEntry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ScopeEntry")
-            .field("scope", &self.scope.syntax_kind())
-            .field("is_newline_trivia", &self.is_newline_trivia)
-            .field("is_err", &self.is_err)
-            .field("aux_recovery_tokens", &self.aux_recovery_tokens)
-            .finish()
+        self.recovery_tokens.contains(&kind) || self.aux_recovery_tokens.contains(&kind)
     }
 }
 
@@ -963,15 +953,8 @@ macro_rules! define_scope {
         $visibility: vis $scope_name: ident $({ $($field: ident: $ty: ty),* })?,
         $kind: path
     ) => {
-        crate::parser::define_scope_struct! {$visibility $scope_name {$($($field: $ty), *)?}, $kind}
-        impl crate::parser::ParsingScope for $scope_name {
-            fn recovery_tokens(&self) -> &[crate::SyntaxKind] {
-                &[]
-            }
-
-            fn syntax_kind(&self) -> crate::SyntaxKind {
-                self.__inner.get()
-            }
+        crate::parser::define_scope! {
+            $(#[$attrs])* $visibility $scope_name $({ $($field: $ty),* })?, $kind, ()
         }
     };
 
@@ -981,70 +964,33 @@ macro_rules! define_scope {
         $kind: path,
         ($($recoveries: path), *)
     ) => {
-        crate::parser::define_scope_struct! {$visibility $scope_name {$($($field: $ty), *)?}, $kind}
-
-        impl crate::parser::ParsingScope for $scope_name {
-            fn recovery_tokens(&self) -> &[crate::SyntaxKind] {
-                lazy_static::lazy_static! {
-                    pub(super) static ref RECOVERY_TOKENS: smallvec::SmallVec<SyntaxKind, 4> = {
-                        #[allow(unused)]
-                        use crate::SyntaxKind::*;
-                        smallvec::smallvec![$($recoveries), *]
-                    };
-                }
-
-                &RECOVERY_TOKENS
-            }
-
-            fn syntax_kind(&self) -> crate::SyntaxKind {
-                self.__inner.get()
-            }
-        }
-    };
-}
-
-macro_rules! define_scope_struct {
-    (
-        $(#[$attrs: meta])*
-        $visibility: vis $scope_name: ident { $($field: ident: $ty: ty),* },
-        $kind: path
-    ) => {
         $(#[$attrs])*
-        #[derive(Debug, Clone)]
+        #[derive(Debug, Clone, Default)]
         $visibility struct $scope_name {
-            __inner: std::rc::Rc<std::cell::Cell<crate::SyntaxKind>>,
-            $($field: $ty),*
+            $($($field: $ty),*)?
         }
         impl $scope_name {
             #[allow(unused)]
-            $visibility fn new($($field: $ty),*) -> Self {
-                use crate::SyntaxKind::*;
-                Self {
-                    $($field,)*
-                    __inner: std::cell::Cell::new($kind).into(),
-                }
-            }
-            #[allow(unused)]
-            fn set_kind(&mut self, kind: crate::SyntaxKind) {
-                self.__inner.set(kind);
+            $visibility fn new($($($field: $ty),*)?) -> Self {
+                Self { $($($field),*)? }
             }
         }
-        impl Default for $scope_name {
-            fn default() -> Self {
+        impl crate::parser::ParsingScope for $scope_name {
+            const KIND: crate::SyntaxKind = {
                 #[allow(unused_imports)]
                 use crate::SyntaxKind::*;
-                Self {
-                    __inner: std::cell::Cell::new($kind).into(),
-                    $($field: Default::default()),*
-                }
-            }
+                $kind
+            };
+            const RECOVERY_TOKENS: &'static [crate::SyntaxKind] = {
+                #[allow(unused_imports)]
+                use crate::SyntaxKind::*;
+                &[$($recoveries), *]
+            };
         }
     };
 }
 
 use define_scope;
-#[doc(hidden)]
-use define_scope_struct;
 
 /// Parse a comma-separated list of elements, with trailing commas allowed.
 /// Panics if `parser.current_kind() != Some(brackets.0)`

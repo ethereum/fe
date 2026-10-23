@@ -562,7 +562,7 @@ impl super::Parse for GenericArgScope {
                 SyntaxKind::Gt | SyntaxKind::Comma
             ]
         ) {
-            self.set_kind(SyntaxKind::ModeGenericArg);
+            parser.set_scope_kind(SyntaxKind::ModeGenericArg);
             parser.bump();
             return Ok(());
         }
@@ -584,7 +584,7 @@ impl super::Parse for GenericArgScope {
         );
 
         if is_assoc_type {
-            self.set_kind(SyntaxKind::AssocTypeGenericArg);
+            parser.set_scope_kind(SyntaxKind::AssocTypeGenericArg);
             // Parse the identifier name
             parser.bump_expected(SyntaxKind::Ident);
 
@@ -606,19 +606,19 @@ impl super::Parse for GenericArgScope {
             });
 
             if is_const_call {
-                self.set_kind(SyntaxKind::ConstGenericArg);
+                parser.set_scope_kind(SyntaxKind::ConstGenericArg);
                 parse_const_generic_expr(parser)?;
                 return Ok(());
             }
 
             match parser.current_kind() {
                 Some(SyntaxKind::LBrace) => {
-                    self.set_kind(SyntaxKind::ConstGenericArg);
+                    parser.set_scope_kind(SyntaxKind::ConstGenericArg);
                     parser.parse(BlockExprScope::default())?;
                 }
 
                 Some(kind) if kind.is_literal_leaf() => {
-                    self.set_kind(SyntaxKind::ConstGenericArg);
+                    parser.set_scope_kind(SyntaxKind::ConstGenericArg);
                     parser.parse(LitExprScope::default()).unwrap_infallible();
                 }
 

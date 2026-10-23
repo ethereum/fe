@@ -2515,7 +2515,6 @@ dependencies = [
  "derive_more 1.0.0",
  "dir-test",
  "fe-test-utils",
- "lazy_static",
  "logos",
  "num_enum",
  "rowan",
