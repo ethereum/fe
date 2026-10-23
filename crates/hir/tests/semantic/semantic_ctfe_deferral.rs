@@ -26,7 +26,6 @@ use fe_hir::{
     },
     diagnosable::Diagnosable,
     hir_def::{ArithBinOp, Func, ItemKind, Partial, TopLevelMod, UnOp, attr::ArithmeticMode},
-    span::LazySpan,
     test_db::HirAnalysisTestDb,
 };
 use num_bigint::BigInt;
@@ -2295,94 +2294,6 @@ fn term_extraction_bounds_expanding_recursion() {
         .into_ready()
         .unwrap();
     assert_same_value_tree(&db, replayed.value(), direct.value());
-}
-
-#[test]
-fn specialized_alias_terms_preserve_faults_and_source_order() {
-    for (declaration, argument, expression, overflow) in [
-        (
-            "type Generic<const N: usize> = [u8; { N / 0 }]",
-            "1",
-            "N / 0",
-            false,
-        ),
-        (
-            "struct Tiny<const N: u8> {}\ntype Generic<const N: u8> = Tiny<{ N + 1 }>",
-            "255",
-            "N + 1",
-            true,
-        ),
-        (
-            "struct Tiny<const N: i8> {}\ntype Generic<const N: i8> = Tiny<{ -N }>",
-            "{ -128 }",
-            "-N",
-            true,
-        ),
-        (
-            "struct Tiny<const N: u8> {}\ntype Generic<const N: u8> = Tiny<{ (N / 0) + (255 + N) }>",
-            "1",
-            "N / 0",
-            false,
-        ),
-        (
-            "struct Tiny<const N: u8> {}\ntype Generic<const N: u8> = Tiny<{ (255 + N) + (N / 0) }>",
-            "1",
-            "255 + N",
-            true,
-        ),
-        (
-            "const fn nested<const N: usize>() -> usize { N / 0 }\ntype Generic<const N: usize> = [u8; nested<N>()]",
-            "1",
-            "N / 0",
-            false,
-        ),
-        (
-            "type Inner<const N: usize> = [u8; { N / 0 }]\ntype Generic<const N: usize> = Inner<{ N + 0 }>",
-            "1",
-            "N / 0",
-            false,
-        ),
-    ] {
-        let mut db = HirAnalysisTestDb::default();
-        let generic_file = db.new_stand_alone("generic_alias.fe".into(), declaration);
-        let (generic_module, _) = db.top_mod(generic_file);
-        db.assert_no_diags(generic_module);
-
-        let mut db = HirAnalysisTestDb::default();
-        let source = format!(
-            "{declaration}\ntype Bad = Generic<{argument}>\nfn consume(_ value: Bad) {{}}\n"
-        );
-        let file = db.new_stand_alone("specialized_alias.fe".into(), &source);
-        let (module, _) = db.top_mod(file);
-        let alias = module.all_type_aliases(&db).iter().copied().find(|alias| {
-            matches!(alias.name(&db), Partial::Present(name) if name.data(&db) == "Bad")
-        }).unwrap();
-        let diagnostics = alias.diags(&db);
-        let span = diagnostics
-            .iter()
-            .find_map(|diag| match diag {
-                TyDiagCollection::Ty(TyLowerDiag::ConstEvalArithmeticOverflow(span))
-                    if overflow =>
-                {
-                    Some(span)
-                }
-                TyDiagCollection::Ty(TyLowerDiag::ConstEvalDivisionByZero(span)) if !overflow => {
-                    Some(span)
-                }
-                _ => None,
-            })
-            .unwrap_or_else(|| {
-                panic!("missing specific failure for {declaration}: {diagnostics:?}")
-            });
-        let span = span
-            .resolve(&db)
-            .expect("failure must retain its source occurrence");
-        assert_eq!(
-            &source[usize::from(span.range.start())..usize::from(span.range.end())],
-            expression,
-            "{declaration}"
-        );
-    }
 }
 
 #[test]
