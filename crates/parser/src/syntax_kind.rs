@@ -305,6 +305,9 @@ pub enum SyntaxKind {
     ConstGenericArg,
     /// `Output = u64`
     AssocTypeGenericArg,
+    /// `ref` or `mut`: the mode an associated shape is named at,
+    /// `D::Step<ref>`
+    ModeGenericArg,
     /// `FOO::Bar`
     PathExpr,
     /// `Foo { x: 1, y: "String"` }`
@@ -432,6 +435,9 @@ pub enum SyntaxKind {
     TraitConstItem,
     /// `uses E` or `uses E = (storage: mut Store)`: an associated effect row
     TraitUsesItem,
+    /// `shape Step` or `shape Step = (own usize, D::Step)`: an associated
+    /// shape
+    TraitShapeItem,
     /// `{ fn foo() {..} }`
     TraitItemList,
     /// `impl Trait for Foo { .. }`
@@ -518,6 +524,8 @@ pub enum SyntaxKind {
     TypeGenericParam,
     /// `const N: usize`
     ConstGenericParam,
+    /// `shape A`
+    ShapeGenericParam,
     /// `<T: Trait, U, const N: usize>`
     GenericParamList,
 
@@ -746,6 +754,7 @@ impl SyntaxKind {
             SyntaxKind::TypeGenericArg => "generic type argument",
             SyntaxKind::ConstGenericArg => "generic const argument",
             SyntaxKind::AssocTypeGenericArg => "associated type argument",
+            SyntaxKind::ModeGenericArg => "mode argument",
             SyntaxKind::PathExpr => "path",
             SyntaxKind::RecordInitExpr => "record initialization expression",
             SyntaxKind::RecordFieldList => "record field list",
@@ -806,6 +815,7 @@ impl SyntaxKind {
             SyntaxKind::TraitTypeItem => "`trait` type item",
             SyntaxKind::TraitConstItem => "`trait` const item",
             SyntaxKind::TraitUsesItem => "`trait` effect row item",
+            SyntaxKind::TraitShapeItem => "`trait` shape item",
             SyntaxKind::ImplTrait => "`impl` trait block",
             SyntaxKind::Const => "const definition",
             SyntaxKind::StaticAssert => "static assertion",
@@ -838,6 +848,7 @@ impl SyntaxKind {
             SyntaxKind::VariantDefList => "`enum` variant list",
             SyntaxKind::TypeGenericParam => "generic type parameter",
             SyntaxKind::ConstGenericParam => "constant generic parameter",
+            SyntaxKind::ShapeGenericParam => "shape generic parameter",
             SyntaxKind::GenericParamList => "generic parameter list",
             SyntaxKind::FuncSignature => "function signature",
             SyntaxKind::FuncParamList => "function parameter list",

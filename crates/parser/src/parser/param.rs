@@ -119,6 +119,11 @@ impl super::Parse for FnParamScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        // `..A`: the parameters a shape lists.
+        if parser.bump_if(SyntaxKind::Dot2) {
+            parse_type(parser, None)?;
+            return Ok(());
+        }
         let has_mut = parser.bump_if(SyntaxKind::MutKw);
         let has_maybe_mut = !has_mut && parser.bump_if(SyntaxKind::MaybeMutKw);
         let has_var = !has_mut && !has_maybe_mut && parser.bump_if(SyntaxKind::VarKw);
@@ -263,6 +268,14 @@ impl super::Parse for GenericParamListScope {
                 )?;
                 match parser.current_kind() {
                     Some(SyntaxKind::ConstKw) => parser.parse(ConstGenericParamScope::default()),
+                    // `shape` is a keyword only before a parameter's name.
+                    Some(SyntaxKind::Ident)
+                        if parser.is_ident("shape")
+                            && parser.peek_n_non_trivia(2).as_slice()
+                                == [SyntaxKind::Ident, SyntaxKind::Ident] =>
+                    {
+                        parser.parse(ShapeGenericParamScope::default())
+                    }
                     Some(SyntaxKind::Ident) => {
                         parser.parse(TypeGenericParamScope::new(self.disallow_trait_bound))
                     }
@@ -307,6 +320,18 @@ impl super::Parse for ConstGenericParamScope {
         if parser.bump_if(SyntaxKind::Eq) {
             parse_const_generic_expr(parser)?;
         }
+        Ok(())
+    }
+}
+
+define_scope! { ShapeGenericParamScope, ShapeGenericParam }
+impl super::Parse for ShapeGenericParamScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        parser.bump_expected(SyntaxKind::Ident);
+        parser.bump_expected(SyntaxKind::Ident);
         Ok(())
     }
 }
@@ -464,7 +489,8 @@ impl super::Parse for FnShapeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Ident);
         parser.parse(TupleTypeScope::default())?;
-        if parser.bump_if(SyntaxKind::Arrow) {
+        // `-> _` leaves the result open.
+        if parser.bump_if(SyntaxKind::Arrow) && !parser.bump_if(SyntaxKind::Underscore) {
             parse_type(parser, None)?;
         }
         Ok(())
@@ -528,16 +554,44 @@ impl super::Parse for GenericArgScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
 
-        // Check if this is an associated type argument (Ident = Type)
+        // `ref` or `mut` alone is the mode of an associated shape.
+        if matches!(
+            parser.peek_n_non_trivia(2).as_slice(),
+            [
+                SyntaxKind::RefKw | SyntaxKind::MutKw,
+                SyntaxKind::Gt | SyntaxKind::Comma
+            ]
+        ) {
+            self.set_kind(SyntaxKind::ModeGenericArg);
+            parser.bump();
+            return Ok(());
+        }
+
+        // Check if this is an associated type argument (`Ident = Type`), or
+        // an associated shape's at a mode (`Ident<ref> = Shape`).
         let is_assoc_type = matches!(
             parser.peek_n_non_trivia(2).as_slice(),
             [SyntaxKind::Ident, SyntaxKind::Eq]
+        ) || matches!(
+            parser.peek_n_non_trivia(5).as_slice(),
+            [
+                SyntaxKind::Ident,
+                SyntaxKind::Lt,
+                SyntaxKind::RefKw | SyntaxKind::MutKw,
+                SyntaxKind::Gt,
+                SyntaxKind::Eq
+            ]
         );
 
         if is_assoc_type {
             self.set_kind(SyntaxKind::AssocTypeGenericArg);
             // Parse the identifier name
             parser.bump_expected(SyntaxKind::Ident);
+
+            // The mode an associated shape is bound at
+            if parser.current_kind() == Some(SyntaxKind::Lt) {
+                parser.parse(GenericArgListScope::default())?;
+            }
 
             // Parse the equals sign
             parser.bump_expected(SyntaxKind::Eq);

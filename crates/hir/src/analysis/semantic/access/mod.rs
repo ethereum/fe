@@ -127,7 +127,7 @@ pub fn projection_component_spaces<'db>(
         return Vec::new();
     };
     let spaces = projection_result_spaces(db, instance);
-    access_components(shape)
+    access_components(db, shape)
         .into_iter()
         .enumerate()
         .map(|(index, (path, _, _))| {

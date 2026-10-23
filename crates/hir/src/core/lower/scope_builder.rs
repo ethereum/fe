@@ -483,7 +483,7 @@ impl<'db> ScopeGraphBuilder<'db> {
                     FuncParamName::Ident(ident) | FuncParamName::Destructured(ident) => {
                         EdgeKind::value(ident)
                     }
-                    FuncParamName::Underscore => EdgeKind::anon(),
+                    FuncParamName::Underscore | FuncParamName::Spread => EdgeKind::anon(),
                 });
             self.graph.add_edge(parent_node, func_param_node, kind)
         }

@@ -1,14 +1,13 @@
 ---
 source: crates/fe/tests/merkle_verification.rs
-assertion_line: 124
 expression: report
 ---
-runtime bytes: 336
+runtime bytes: 317
 verify gas by proof length:
-  0: 500
-  1: 677
-  2: 841
-  8: 1877
-  16: 3255
-  32: 5998
-  64: 11461
+  0: 467
+  1: 644
+  2: 808
+  8: 1844
+  16: 3222
+  32: 5965
+  64: 11428

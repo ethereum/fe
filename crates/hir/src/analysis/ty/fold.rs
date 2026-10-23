@@ -1,6 +1,5 @@
 use std::hash::Hash;
 
-use crate::core::hir_def::IdentId;
 use crate::hir_def::scope_graph::ScopeId;
 use common::indexmap::{IndexMap, IndexSet};
 
@@ -153,8 +152,11 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
 
             AssocTy(assoc) => {
                 let folded_trait = assoc.trait_.fold_with(db, folder);
-
-                TyId::assoc_ty(db, folded_trait, assoc.name)
+                let folded = TyId::assoc_ty(db, folded_trait, assoc.name);
+                match assoc.mode {
+                    Some(mode) => folded.with_shape_mode(db, mode),
+                    None => folded,
+                }
             }
 
             QualifiedTy(trait_inst) => {
@@ -175,11 +177,7 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                             schema: bound.schema,
                             entries: bound.entries.fold_with(db, folder),
                         });
-                let params = closure
-                    .params(db)
-                    .iter()
-                    .map(|&(mode, ty)| (mode, folder.fold_ty(db, ty)))
-                    .collect::<Vec<_>>();
+                let params = closure.params(db).clone().fold_with(db, folder);
                 let ret_ty = folder.fold_ty(db, closure.ret_ty(db));
                 let effects = closure.effects(db).clone().fold_with(db, folder);
                 TyId::closure(
@@ -480,7 +478,7 @@ impl<'db> TyFoldable<'db> for TraitInstId<'db> {
             .map(|ty| ty.fold_with(db, folder))
             .collect::<Vec<_>>();
 
-        let assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>> = self
+        let assoc_type_bindings: IndexMap<_, _> = self
             .assoc_type_bindings(db)
             .iter()
             .map(|(name, ty)| (*name, ty.fold_with(db, folder)))

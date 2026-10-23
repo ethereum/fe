@@ -92,7 +92,7 @@ pub enum RootProviderScope<'db> {
 impl<'db> RootProviderScope<'db> {
     pub fn of_site(site: EffectParamSite<'db>) -> Self {
         match site {
-            EffectParamSite::Func(func) => Self::Func(func),
+            EffectParamSite::Func(func, _) => Self::Func(func),
             EffectParamSite::Contract(contract)
             | EffectParamSite::ContractInit { contract }
             | EffectParamSite::ContractRecvArm { contract, .. } => Self::Contract(contract),
@@ -121,7 +121,7 @@ pub fn registered_root_providers<'db>(
     site: EffectParamSite<'db>,
 ) -> &'db [RootProviderRegistration<'db>] {
     match site {
-        EffectParamSite::Func(func) => registered_root_providers_for_func(db, func).as_slice(),
+        EffectParamSite::Func(func, _) => registered_root_providers_for_func(db, func).as_slice(),
         EffectParamSite::Closure(_) => &[],
         EffectParamSite::Contract(contract) => {
             registered_root_providers_for_contract(db, contract, RootProviderSiteKind::Contract)

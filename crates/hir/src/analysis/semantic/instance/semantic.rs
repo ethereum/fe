@@ -187,7 +187,7 @@ pub struct CallSiteLowering<'db> {
     pub effect_pairs: Box<[(usize, usize)]>,
     pub provider_pairs: Box<[(u32, u32)]>,
     /// Whether the callee takes the operands after the call's receiver (a
-    /// function item called through a callable shape).
+    /// function item called through a callable trait).
     pub drops_receiver: bool,
 }
 
@@ -298,6 +298,28 @@ pub fn instantiated_typed_body<'db>(
 ) -> TypedBody<'db> {
     let mut body =
         instantiate_typed_body(db, typed_body_template(db, key.owner(db)), key.subst(db));
+    // A spread's inputs are those its instantiated shape lists.
+    if let BodyOwner::Func(func, _) = key.owner(db)
+        && let Some(spread) = CallableDef::Func(func).spread(db)
+        && let Some(shape) = func.arg_ty(db, spread)
+    {
+        let env = key.impl_env(db);
+        let shape = normalize_ty(
+            db,
+            shape.instantiate(db, key.subst(db).generic_args(db)),
+            env.normalization_scope(db),
+            env.assumptions(db),
+        );
+        if let Some(listed) = shape.as_params_shape(db) {
+            body = body.with_spread_inputs(db, func, spread, listed);
+        }
+    }
+    // An opaque parameter's inputs are those its instantiated shape lists.
+    if let BodyOwner::Func(..) | BodyOwner::Closure { .. } = key.owner(db) {
+        let env = key.impl_env(db);
+        let (scope, assumptions) = (env.normalization_scope(db), env.assumptions(db));
+        body = body.with_known_params(db, |shape| normalize_ty(db, shape, scope, assumptions));
+    }
     let raw_goals = if matches!(key.owner(db), BodyOwner::Closure { .. }) {
         body.assumptions()
     } else {
@@ -572,7 +594,7 @@ fn expand_row_args<'db>(
     let scope = key.owner(db).scope();
     let assumptions = semantic_instance_base_assumptions_for_key(db, key);
     let requirements: Vec<_> = func
-        .effective_effect_requirements(db)
+        .effect_requirements(db, callable.mode())
         .iter()
         .map(|requirement| match requirement.key {
             EffectRequirementKey::Row(row) => EffectRequirement {
@@ -682,7 +704,7 @@ fn expand_row_args<'db>(
                 provider: ProviderBinding {
                     provider_idx: target,
                     source: ProviderSource::UsesParam {
-                        site: EffectParamSite::Func(func),
+                        site: EffectParamSite::Func(func, callable.mode()).slot_site(db, target),
                         requirement_idx: target,
                     },
                     ..provider.clone()
@@ -1820,6 +1842,7 @@ impl<'db> SemanticInstance<'db> {
             if body.is_none() && cause.const_eval_fault().is_none() {
                 return None;
             }
+
             Some(invalid_size_diagnostic(
                 db,
                 self,
@@ -2182,7 +2205,7 @@ pub(crate) fn provisional_provider_idx_for_requirement<'db>(
     requirement_idx: u32,
 ) -> Option<u32> {
     match site {
-        EffectParamSite::Func(func) => place_effect_provider_param_index_map(db, func)
+        EffectParamSite::Func(func, _) => place_effect_provider_param_index_map(db, func)
             .get(requirement_idx as usize)
             .and_then(|param_idx| param_idx.map(|_| requirement_idx))
             .or_else(|| {
@@ -2227,7 +2250,7 @@ fn provisional_provider_binding_for_effect<'db>(
     is_mut: bool,
 ) -> Option<ProviderBinding<'db>> {
     match site {
-        EffectParamSite::Func(func) => {
+        EffectParamSite::Func(func, _) => {
             let provider_map = place_effect_provider_param_index_map(db, func);
             if provider_map
                 .get(requirement_idx as usize)
@@ -2244,7 +2267,7 @@ fn provisional_provider_binding_for_effect<'db>(
                     provider_ty,
                     is_mut,
                     source: ProviderSource::UsesParam {
-                        site,
+                        site: site.slot_site(db, requirement_idx),
                         requirement_idx,
                     },
                     semantics: effect_param_provider_semantics(db, provider_ty, &requirement.key),
@@ -2624,7 +2647,7 @@ fn instantiate_provider_bindings_for_key<'db>(
     }
     if matches!(
         site,
-        crate::analysis::ty::ty_check::EffectParamSite::Func(_)
+        crate::analysis::ty::ty_check::EffectParamSite::Func(..)
     ) && !specializations.is_empty()
     {
         for resolution in resolutions {
@@ -2743,7 +2766,9 @@ fn root_owner_effect_providers<'db>(
             ProviderSource::UsesParam {
                 site: provider_site,
                 requirement_idx,
-            } if provider_site == site => Some((requirement_idx, provider.clone())),
+            } if provider_site == site.slot_site(db, requirement_idx) => {
+                Some((requirement_idx, provider.clone()))
+            }
             ProviderSource::UsesParam { .. }
             | ProviderSource::ContractField { .. }
             | ProviderSource::RootProvider { .. } => None,

@@ -11,7 +11,7 @@
 //! ```fe
 //! // `EnumerableSet.AddressSet operators;` at slot 4, which no contract
 //! // field uses
-//! let operators = unsafe { SolEnumerableSet<Address>::at(4) }
+//! let operators = unsafe { mut SolEnumerableSet<Address>::at(4) }
 //! if operators.add(operator) { /* newly added */ }
 //! let n = operators.len()
 //! ```
@@ -21,7 +21,7 @@ use core::iter::{Bidirectional, Collection}
 use core::ops::{WrappingAdd, WrappingSub}
 use core::ptr
 use ingot::abi::{Sol, StaticAbiElement}
-use super::effects::{RawStorage, storage_at_mut}
+use super::effects::{RawStorage, storage_at}
 use super::sol_array::SolArray
 use super::sol_slot::{SolPacked, field_mask}
 use super::storage_map::StorageMap
@@ -73,8 +73,8 @@ impl<T: SolPacked> SolEnumerableSet<T> {
     /// The caller must ensure that nothing the compiler allocates, such as a
     /// contract field, uses the slots the set occupies or derives.
     #[raw_place]
-    pub unsafe fn at(_ slot: u256) -> mut Self uses (storage: mut RawStorage) {
-        unsafe { storage_at_mut(slot) }
+    pub unsafe fn at(_ slot: u256) -> mut? Self uses (storage: mut? RawStorage) {
+        unsafe { storage_at(slot) }
     }
 
     /// Number of elements.

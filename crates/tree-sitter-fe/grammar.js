@@ -61,6 +61,8 @@ module.exports = grammar({
     [$.self_type, $._expression, $.path_segment],
     // `Fn(..)` callable shape vs a path in a where-clause bound
     [$.fn_shape, $.path_segment],
+    // `Step<ref> = ..` vs a generic type argument `Step<T>`, until the `=`
+    [$.assoc_type_generic_arg, $.path_segment],
     // recv arm pattern
     [$.recv_arm_pattern],
     // _condition variants use the same terminals as expressions.
@@ -199,6 +201,8 @@ module.exports = grammar({
     ),
 
     parameter: $ => choice(
+      // spread parameter: `..A`, the parameters a shape lists
+      seq('..', field('type', $._type)),
       // self parameter: [mut|mut?|var] [ref|own] self [: Type]
       // e.g., `self`, `mut self`, `mut? self`, `own self`, `var own self`, `ref self`
       seq(optional(choice('mut', 'mut?', 'var')), optional(choice('ref', 'own')), 'self', optional(seq(':', $._type))),
@@ -459,11 +463,12 @@ module.exports = grammar({
       $.fn_shape,
     ),
 
-    // `Fn(own A, B) -> R`: the callable trait of a shape
+    // `Fn(own A, B) -> R`: the callable trait of a parameter list; `-> _`
+    // leaves the result open
     fn_shape: $ => prec.right(seq(
       field('name', $.identifier),
       field('params', $.tuple_type),
-      optional(seq('->', field('return_type', $._type))),
+      optional(seq('->', field('return_type', choice($._type, '_')))),
     )),
 
     trait_item_list: $ => seq(
@@ -473,8 +478,17 @@ module.exports = grammar({
         $.trait_type_item,
         $.trait_const_item,
         $.trait_uses_item,
+        $.trait_shape_item,
       )),
       '}',
+    ),
+
+    // Associated shape: `shape Step`, or `shape Step = (own usize, D::Step)`
+    trait_shape_item: $ => seq(
+      optional($.attribute_list),
+      'shape',
+      field('name', $.identifier),
+      optional(seq('=', $._type)),
     ),
 
     // Associated effect row: `uses E`, or `uses E = (store: mut Store)`
@@ -596,8 +610,14 @@ module.exports = grammar({
 
     generic_param_list: $ => seq(
       $._generic_open,
-      sepTrailing(choice($.type_generic_param, $.const_generic_param), ','),
+      sepTrailing(choice($.type_generic_param, $.const_generic_param, $.shape_generic_param), ','),
       '>',
+    ),
+
+    // `shape A`: a callable's parameter list
+    shape_generic_param: $ => seq(
+      'shape',
+      field('name', $.identifier),
     ),
 
     type_generic_param: $ => seq(
@@ -647,17 +667,23 @@ module.exports = grammar({
 
     _generic_arg: $ => choice(
       $.assoc_type_generic_arg,
+      $.mode_generic_arg,
       $._type,
       // Const generic args: block expressions like {3 + 4} and literals
       $.block,
       $.literal,
     ),
 
-    assoc_type_generic_arg: $ => prec(1, seq(
+    // `ref` or `mut`: the mode an associated shape is named at, `D::Step<ref>`
+    mode_generic_arg: $ => choice('ref', 'mut'),
+
+    // `Item = T`, or an associated shape at a mode, `Step<ref> = ref T`
+    assoc_type_generic_arg: $ => seq(
       field('name', $.identifier),
+      optional(field('mode', $.generic_arg_list)),
       '=',
       field('type', $._type),
-    )),
+    ),
 
     where_clause: $ => seq(
       'where',

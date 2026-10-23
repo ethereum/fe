@@ -75,3 +75,11 @@ error[16-0001]: access conflict in `fn Store::recv[0][3]`
     │                     ----------------- access opened here
 144 │             write_part((mut s, 0)) + r
     │             ^^^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `ref` access of it is open
+
+error[16-0001]: access conflict in `fn closure_parts`
+    ┌─ product_params.fe:155:18
+    │
+155 │     swap((mut y, mut y))
+    │           -----  ^^^^^ cannot mutably access this place while a `mut` access of it is open
+    │           │
+    │           access opened here

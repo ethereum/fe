@@ -1290,12 +1290,18 @@ pub fn canonicalize_ty_for_mode<'db>(
             TyData::ConstTy(const_ty) => {
                 TyId::const_ty(db, canonicalize_const_ty_for_mode(db, *const_ty, env, mode))
             }
-            TyData::AssocTy(assoc) => TyId::assoc_ty(
-                db,
-                canonicalize_trait_inst_for_mode(db, assoc.trait_.as_predicate(db), env, mode)
-                    .trait_ref(db),
-                assoc.name,
-            ),
+            TyData::AssocTy(assoc) => {
+                let canonical = TyId::assoc_ty(
+                    db,
+                    canonicalize_trait_inst_for_mode(db, assoc.trait_.as_predicate(db), env, mode)
+                        .trait_ref(db),
+                    assoc.name,
+                );
+                match assoc.mode {
+                    Some(shape_mode) => canonical.with_shape_mode(db, shape_mode),
+                    None => canonical,
+                }
+            }
             TyData::QualifiedTy(trait_inst) => TyId::qualified_ty(
                 db,
                 canonicalize_trait_inst_for_mode(db, *trait_inst, env, mode),
@@ -1340,7 +1346,7 @@ pub fn canonicalize_trait_inst_for_mode<'db>(
         .iter()
         .map(|(name, &ty)| (*name, canonicalize_ty_for_mode(db, ty, env, mode)))
         .collect();
-    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.data(db).cmp(rhs.data(db)));
+    assoc_type_bindings.sort_by(|(lhs, _), (rhs, _)| lhs.canonical_cmp(db, rhs));
     TraitInstId::new(
         db,
         trait_inst.def(db),

@@ -539,6 +539,13 @@ impl ToDoc for ast::GenericParam {
         match self.kind() {
             GenericParamKind::Type(ty_param) => ty_param.to_doc(ctx),
             GenericParamKind::Const(const_param) => const_param.to_doc(ctx),
+            GenericParamKind::Shape(shape_param) => {
+                let alloc = &ctx.alloc;
+                let name = shape_param
+                    .name()
+                    .map_or_else(|| alloc.nil(), |n| alloc.text(ctx.token(&n)));
+                alloc.text("shape ").append(name)
+            }
         }
     }
 }
@@ -845,10 +852,11 @@ impl ToDoc for ast::TraitRef {
                 .text("(")
                 .append(intersperse(alloc, params, alloc.text(", ")))
                 .append(alloc.text(")"));
-            let ret = shape.ret_ty().map_or_else(
-                || alloc.nil(),
-                |ty| alloc.text(" -> ").append(ty.to_doc(ctx)),
-            );
+            let ret = match shape.ret_ty() {
+                _ if shape.infers_ret() => alloc.text(" -> _"),
+                Some(ty) => alloc.text(" -> ").append(ty.to_doc(ctx)),
+                None => alloc.nil(),
+            };
             return name.append(params).append(ret);
         }
         match self.path() {
@@ -1137,6 +1145,7 @@ impl ToDoc for ast::GenericArg {
             GenericArgKind::Type(ty_arg) => ty_arg.to_doc(ctx),
             GenericArgKind::Const(const_arg) => const_arg.to_doc(ctx),
             GenericArgKind::AssocType(assoc_arg) => assoc_arg.to_doc(ctx),
+            GenericArgKind::Mode(mode) => ctx.alloc.text(if mode.is_mut() { "mut" } else { "ref" }),
         }
     }
 }
@@ -1168,8 +1177,12 @@ impl ToDoc for ast::AssocTypeGenericArg {
             return alloc.nil();
         };
 
+        let args = self
+            .generic_args()
+            .map_or_else(|| alloc.nil(), |args| args.to_doc(ctx));
         alloc
             .text(ctx.token(&name))
+            .append(args)
             .append(alloc.text(" = "))
             .append(ty.to_doc(ctx))
     }
