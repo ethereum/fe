@@ -33,11 +33,11 @@ use crate::analysis::ty::effects::rows::RowKey;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::{normalize_from_assumptions, normalize_ty};
 use crate::analysis::ty::shape::{
-    Shape, is_param_product, lower_opaque_param, lower_param_product, lower_return_shape,
-    lower_shape_value, may_name_shape, mentions_mode, names_assoc_ty, names_shape_without_mode,
-    param_product_diags, return_shape_diags, shape_value_diags,
+    Shape, assoc_tys, is_param_product, lower_opaque_param, lower_param_product,
+    lower_return_shape, lower_shape_value, may_name_shape, mentions_mode, names_assoc_ty,
+    names_shape_without_mode, param_product_diags, return_shape_diags, shape_value_diags,
 };
-use crate::analysis::ty::ty_def::{BorrowKind, Kind, ShapeMode};
+use crate::analysis::ty::ty_def::{AssocTy, BorrowKind, Kind, ShapeMode};
 use crate::analysis::ty::ty_error::{collect_hir_ty_diags, qualified_path_wf_diags};
 use crate::hir_def::params::{FuncParamMode, KindBound as HirKindBound};
 use crate::hir_def::scope_graph::ScopeId;
@@ -5167,8 +5167,14 @@ impl<'db> ImplAssocTypeView<'db> {
 
         if def.is_shape
             && let Some(name) = def.name.to_opt()
-            && let Some(diag) =
-                shape_contract_diag(db, self.owner.trait_def(db), name, ty, ty_span.into())
+            && let Some(diag) = shape_contract_diag(
+                db,
+                self.owner.trait_def(db),
+                name,
+                ty,
+                param_env(db, self.owner.into()),
+                ty_span.into(),
+            )
         {
             return vec![diag];
         }
@@ -5178,13 +5184,15 @@ impl<'db> ImplAssocTypeView<'db> {
 }
 
 /// The contract an associated shape's value `ty`, given for the shape `name`
-/// of `trait_`, keeps: named at `ref`, it grants no `mut`, and a shape a
-/// method of the trait returns has an access in every impl.
+/// of `trait_` under `assumptions`, keeps: named at `ref`, it grants no
+/// `mut`, and a shape a method of the trait returns has an access in every
+/// impl.
 pub(crate) fn shape_contract_diag<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: Option<Trait<'db>>,
     name: IdentId<'db>,
     ty: TyId<'db>,
+    assumptions: PredicateListId<'db>,
     primary: crate::span::DynLazySpan<'db>,
 ) -> Option<TyDiagCollection<'db>> {
     let at_ref = ty.at_shape_mode(db, ShapeMode::Ref).as_shape_part(db);
@@ -5200,14 +5208,15 @@ pub(crate) fn shape_contract_diag<'db>(
         );
     }
     let trait_ = trait_?;
-    (trait_returns_shape(db, trait_, name) && !has_access_in_every_impl(db, &at_ref)).then(|| {
-        ImplDiag::ShapeWithoutAccess {
-            primary,
-            name,
-            trait_,
-        }
-        .into()
-    })
+    (trait_returns_shape(db, trait_, name) && !has_access_in_every_impl(db, assumptions, &at_ref))
+        .then(|| {
+            ImplDiag::ShapeWithoutAccess {
+                primary,
+                name,
+                trait_,
+            }
+            .into()
+        })
 }
 
 /// What in `shape` grants `mut`, if anything does: a part written `mut` or an
@@ -5241,7 +5250,7 @@ pub(crate) fn mut_grant<'db>(
 
 /// Whether a method of `trait_` returns its associated shape `name`, which
 /// makes the method a projection in every impl.
-fn trait_returns_shape<'db>(
+pub(crate) fn trait_returns_shape<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: Trait<'db>,
     name: IdentId<'db>,
@@ -5257,16 +5266,50 @@ fn trait_returns_shape<'db>(
     })
 }
 
+/// The associated shapes the methods of `inst`'s trait return, for `inst`
+/// and without a mode: each method is a projection in every impl of the
+/// trait, so a shape it returns, the trait's or a super-trait's, has an
+/// access there.
+pub(crate) fn returned_shapes<'db>(
+    db: &'db dyn HirAnalysisDb,
+    inst: TraitInstId<'db>,
+) -> IndexSet<AssocTy<'db>> {
+    let trait_ = inst.def(db);
+    trait_
+        .methods(db)
+        .filter_map(|method| method.return_shape(db, method.modes(db)[0]))
+        .flat_map(|shape| {
+            let shape = Binder::bind(trait_.into(), shape.clone()).instantiate(db, inst.args(db));
+            assoc_tys(db, &shape)
+        })
+        .filter(|assoc| assoc.is_shape(db))
+        .map(|assoc| AssocTy {
+            mode: None,
+            ..assoc
+        })
+        .collect()
+}
+
 /// Whether `shape` grants an access whatever its opaque parts turn out to
-/// be: an opaque part does only if its own trait returns it.
-fn has_access_in_every_impl<'db>(db: &'db dyn HirAnalysisDb, shape: &Shape<'db>) -> bool {
+/// be: an opaque part does if its own trait returns it, or a trait it is
+/// bound by in `assumptions` does.
+pub(crate) fn has_access_in_every_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assumptions: PredicateListId<'db>,
+    shape: &Shape<'db>,
+) -> bool {
     match shape {
         Shape::Owned(_) => false,
         Shape::Access(..) => true,
-        Shape::Tuple(elems) => elems.iter().any(|elem| has_access_in_every_impl(db, elem)),
-        Shape::Sum { payload, .. } => has_access_in_every_impl(db, payload),
+        Shape::Tuple(elems) => elems
+            .iter()
+            .any(|elem| has_access_in_every_impl(db, assumptions, elem)),
+        Shape::Sum { payload, .. } => has_access_in_every_impl(db, assumptions, payload),
         Shape::Opaque(term) => matches!(term.data(db), TyData::AssocTy(assoc)
-            if trait_returns_shape(db, assoc.trait_.def(db), assoc.name)),
+        if trait_returns_shape(db, assoc.trait_.def(db), assoc.name)
+            || assumptions.list(db).iter().any(|&pred| {
+                returned_shapes(db, pred).contains(&AssocTy { mode: None, ..*assoc })
+            })),
     }
 }
 

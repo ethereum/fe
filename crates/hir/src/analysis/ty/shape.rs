@@ -698,28 +698,34 @@ pub(crate) fn names_assoc_ty<'db>(
     value: &impl TyVisitable<'db>,
     found: impl Fn(&AssocTy<'db>) -> bool,
 ) -> bool {
-    struct Finder<'db, F> {
+    assoc_tys(db, value).iter().any(found)
+}
+
+/// The associated types and shapes `value` names, nested ones included.
+pub(crate) fn assoc_tys<'db>(
+    db: &'db dyn HirAnalysisDb,
+    value: &impl TyVisitable<'db>,
+) -> Vec<AssocTy<'db>> {
+    struct Collector<'db> {
         db: &'db dyn HirAnalysisDb,
-        found: F,
-        any: bool,
+        found: Vec<AssocTy<'db>>,
     }
-    impl<'db, F: Fn(&AssocTy<'db>) -> bool> TyVisitor<'db> for Finder<'db, F> {
+    impl<'db> TyVisitor<'db> for Collector<'db> {
         fn db(&self) -> &'db dyn HirAnalysisDb {
             self.db
         }
 
         fn visit_assoc_ty(&mut self, assoc_ty: &AssocTy<'db>) {
-            self.any |= (self.found)(assoc_ty);
+            self.found.push(*assoc_ty);
             walk_assoc_ty(self, assoc_ty);
         }
     }
-    let mut finder = Finder {
+    let mut collector = Collector {
         db,
-        found,
-        any: false,
+        found: Vec::new(),
     };
-    value.visit_with(&mut finder);
-    finder.any
+    value.visit_with(&mut collector);
+    collector.found
 }
 
 /// The parameter list a tuple type written for a shape argument is, when

@@ -19,7 +19,7 @@ use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
 use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
-use crate::analysis::ty::ty_def::{BorrowKind, InvalidCause, TyId};
+use crate::analysis::ty::ty_def::{BorrowKind, InvalidCause, ShapeMode, TyData, TyId};
 use crate::analysis::ty::ty_error::{
     collect_ty_lower_errors, emit_invalid_ty_error, path_generic_args, trait_ref_arg_diags,
 };
@@ -36,9 +36,9 @@ use crate::analysis::ty::binder::Binder;
 use crate::analysis::ty::trait_def::ImplementorId;
 use crate::semantic::{
     FieldView, FuncParamView, ImplAssocTypeView, InherentImplAdmissibility, VariantView,
-    WherePredicateBoundView, WherePredicateView, constraints_for, header_constraints_for,
-    lower_hir_kind_local, param_env, shape_contract_diag, signature_mentions_maybe_mut,
-    trait_self_predicate,
+    WherePredicateBoundView, WherePredicateView, constraints_for, has_access_in_every_impl,
+    header_constraints_for, lower_hir_kind_local, param_env, returned_shapes, shape_contract_diag,
+    signature_mentions_maybe_mut, trait_returns_shape, trait_self_predicate,
 };
 
 /// Unified "pull" diagnostics surface for HIR items and views.
@@ -543,8 +543,14 @@ impl<'db> Trait<'db> {
             // A default shape keeps the contract an impl's does.
             if assoc.is_shape(db)
                 && let Some(name) = assoc.name(db)
-                && let Some(diag) =
-                    shape_contract_diag(db, Some(self), name, default_ty, assoc.span().ty().into())
+                && let Some(diag) = shape_contract_diag(
+                    db,
+                    Some(self),
+                    name,
+                    default_ty,
+                    assumptions,
+                    assoc.span().ty().into(),
+                )
             {
                 diags.push(diag);
                 continue;
@@ -1166,6 +1172,40 @@ impl<'db> ImplTrait<'db> {
             }
         }
         diags
+    }
+
+    /// Diagnostics for the super-trait shapes the trait's methods return:
+    /// each has an access in this impl (6-0040). A shape its own trait
+    /// returns is checked where an impl gives it.
+    fn diags_super_trait_shapes(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Vec<TyDiagCollection<'db>> {
+        let trait_ = implementor.trait_def(db);
+        let assumptions = param_env(db, self.into());
+        returned_shapes(db, implementor.trait_(db))
+            .into_iter()
+            .filter(|assoc| {
+                let decl = assoc.trait_.def(db);
+                if decl == trait_ || trait_returns_shape(db, decl, assoc.name) {
+                    return false;
+                }
+                let value =
+                    TyId::new(db, TyData::AssocTy(*assoc)).with_shape_mode(db, ShapeMode::Ref);
+                let value = normalize_ty(db, value, self.scope(), assumptions);
+                !value.has_invalid(db)
+                    && !has_access_in_every_impl(db, assumptions, &value.as_shape_part(db))
+            })
+            .map(|assoc| {
+                ty::diagnostics::ImplDiag::ShapeWithoutAccess {
+                    primary: self.span().trait_ref().into(),
+                    name: assoc.name,
+                    trait_,
+                }
+                .into()
+            })
+            .collect()
     }
 
     /// Diagnostics for effect rows: each one the trait declares, and none
@@ -2241,6 +2281,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));
+        out.extend(self.diags_super_trait_shapes(db, implementor));
         out.extend(self.diags_access_items(db));
         out.extend(self.diags_assoc_types_bounds(db));
         out.extend(self.diags_missing_assoc_consts(db));

@@ -74,3 +74,67 @@ impl<H: Holds> Driver for Around<H> {
         todo()
     }
 }
+
+// A super-trait's shape a method returns has an access in every impl of
+// the method's trait, which is checked there.
+trait Viewed: Holds {
+    fn view(self) -> Self::Part<ref>
+}
+
+struct Cell {
+    x: u256,
+}
+
+impl Holds for Cell {
+    shape Part = own u256
+}
+
+impl Viewed for Cell {
+    fn view(self) -> own u256 {
+        self.x
+    }
+}
+
+// Accepted: `Reads` gives `Part` an access.
+impl Viewed for Reads {
+    fn view(self) -> (ref u256, ref u256) {
+        todo()
+    }
+}
+
+// Accepted: `D: Viewed` gives `D::Part` an access, here and in a shape
+// that names it.
+struct Fwd<D> {}
+
+impl<D: Viewed> Holds for Fwd<D> {
+    shape Part = D::Part
+}
+
+impl<D: Viewed> Viewed for Fwd<D> {
+    fn view(self) -> D::Part<ref> {
+        todo()
+    }
+}
+
+struct Seen<H> {}
+
+impl<H: Viewed> Driver for Seen<H> {
+    shape Step = H::Part
+
+    fn peek(self) -> H::Part<ref> {
+        todo()
+    }
+}
+
+// Any `Holds` impl may give `Part` no access.
+struct Any<D> {}
+
+impl<D: Holds> Holds for Any<D> {
+    shape Part = D::Part
+}
+
+impl<D: Holds> Viewed for Any<D> {
+    fn view(self) -> D::Part<ref> {
+        todo()
+    }
+}

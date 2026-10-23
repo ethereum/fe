@@ -315,9 +315,10 @@ associated shape takes a mode argument. An implementation's shape keeps a
 contract at each mode: its accesses are at most the mode, so an access that
 is `mut` at `mut` is written `mut?`, and `shape Part = mut u256` is
 rejected, as is a shape parameter, whose accesses no one knows; and a shape
-a trait method returns has an access in every implementation, so the
-method is a projection in each (a traversal of owned values is a producer).
-A trait's default shape keeps the same contract.
+a trait method returns, the trait's own or a super-trait's, has an access in
+every implementation of that trait, so the method is a projection in each (a
+traversal of owned values is a producer). A trait's default shape keeps the
+same contract.
 
 Before `H` is known, `H::Part<ref>` lists no parts. Generic code passes a
 value of it on whole: it returns it, alone or as part of a returned
