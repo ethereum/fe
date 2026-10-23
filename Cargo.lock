@@ -2305,6 +2305,7 @@ dependencies = [
  "fe-trace-facts",
  "hex",
  "num-bigint",
+ "rayon",
  "ruint",
  "rustc-hash 2.1.1",
  "serde",

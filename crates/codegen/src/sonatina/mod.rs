@@ -16,6 +16,7 @@ use mir::runtime::ir::RuntimePackagePlan;
 use mir::{RuntimePackage, build_runtime_package, build_test_runtime_package};
 #[cfg(feature = "cranelift")]
 use mir::{RuntimeSectionName, build_native_executable_package, native_executable_entry};
+use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 #[cfg(feature = "cranelift")]
 use smallvec1::smallvec;
@@ -1363,14 +1364,15 @@ fn emit_runtime_package_sonatina_bytecode_with_options(
         opt_level,
         emit_observability,
         compiled: HashMap::new(),
-        in_progress: FxHashSet::default(),
         trace_owner: None,
         trace_facts: BTreeMap::new(),
     };
+    let roots = package.root_objects(db);
+    compiler.precompile(&roots);
     let mut out = BTreeMap::new();
-    for object in package.root_objects(db) {
+    for object in roots {
         let object_name = object.name(db);
-        compiler.compile(&object_name)?;
+        compiler.compile(std::slice::from_ref(&object_name))?;
         let artifact = &compiler.compiled[object_name.as_str()];
         let objects_by_name = HashMap::from([(object_name.clone(), object)]);
         let artifacts_by_name = HashMap::from([(object_name.as_str(), artifact)]);
@@ -1395,32 +1397,175 @@ struct IsolatedObjectCompiler<'db, 'a> {
     opt_level: OptLevel,
     emit_observability: bool,
     compiled: HashMap<String, ObjectArtifact>,
-    in_progress: FxHashSet<String>,
     trace_owner: Option<String>,
-    trace_facts: BTreeMap<String, (String, Vec<trace_facts::TraceFact>)>,
+    trace_facts: BTreeMap<String, ObjectTrace>,
+}
+
+/// An isolated object's trace owner and facts.
+type ObjectTrace = (String, Vec<trace_facts::TraceFact>);
+
+/// An object in the order [`IsolatedObjectCompiler::compile`] compiles them:
+/// after every object it embeds.
+struct OrderedObject {
+    name: String,
+    embeds: Vec<String>,
+}
+
+/// An object lowered to its own Sonatina module.
+struct LoweredObject {
+    name: String,
+    module: Module,
+    trace: Option<ObjectTrace>,
 }
 
 impl<'db> IsolatedObjectCompiler<'db, '_> {
-    /// Compile `object_name` in isolation, after compiling the objects its
-    /// sections embed.
-    fn compile(&mut self, object_name: &str) -> Result<(), LowerError> {
-        if self.compiled.contains_key(object_name) {
+    /// Compiles `roots` together, so that they compile in parallel. A root
+    /// that fails stays uncompiled, and compiling it alone reports why.
+    fn precompile(&mut self, roots: &[mir::RuntimeObject<'db>]) {
+        let names: Vec<_> = roots.iter().map(|object| object.name(self.db)).collect();
+        let _ = self.compile(&names);
+    }
+
+    /// Compile `object_names` in isolation, each after the objects its
+    /// sections embed. An object's code depends only on its own module, so
+    /// the objects whose embeds are compiled are lowered here and then
+    /// compiled in parallel, a pool's worth at a time. The error, if any, is
+    /// the one compiling the objects one at a time would stop at.
+    fn compile(&mut self, object_names: &[String]) -> Result<(), LowerError> {
+        let mut order = Vec::new();
+        let mut visiting = FxHashSet::default();
+        let order_error = object_names
+            .iter()
+            .try_for_each(|name| self.order_object(name, &mut order, &mut visiting))
+            .err();
+
+        let mut depths: HashMap<&str, usize> = HashMap::new();
+        for object in &order {
+            let depth = object
+                .embeds
+                .iter()
+                .filter_map(|embed| depths.get(embed.as_str()))
+                .map(|depth| depth + 1)
+                .max()
+                .unwrap_or(0);
+            depths.insert(&object.name, depth);
+        }
+        let max_depth = depths.values().copied().max().unwrap_or(0);
+
+        let mut errors: Vec<(usize, LowerError)> = Vec::new();
+        let mut failed: FxHashSet<&str> = FxHashSet::default();
+        for depth in 0..=max_depth {
+            let mut ready = Vec::new();
+            for (index, object) in order.iter().enumerate() {
+                if depths[object.name.as_str()] != depth {
+                    continue;
+                }
+                if object
+                    .embeds
+                    .iter()
+                    .any(|embed| failed.contains(embed.as_str()))
+                {
+                    failed.insert(&object.name);
+                } else {
+                    ready.push(index);
+                }
+            }
+            for chunk in ready.chunks(rayon::current_num_threads()) {
+                let lowered: Vec<_> = chunk
+                    .iter()
+                    .map(|&index| (index, self.lower(&order[index].name)))
+                    .collect();
+                let (opt_level, emit_observability) = (self.opt_level, self.emit_observability);
+                let compile = |(index, lowered): (usize, Result<LoweredObject, LowerError>)| {
+                    (
+                        index,
+                        lowered.and_then(|lowered| {
+                            compile_lowered_object(lowered, opt_level, emit_observability)
+                        }),
+                    )
+                };
+                // A lone object compiles here rather than waking the pool.
+                let results: Vec<_> = if lowered.len() == 1 {
+                    lowered.into_iter().map(compile).collect()
+                } else {
+                    lowered.into_par_iter().map(compile).collect()
+                };
+                for (index, result) in results {
+                    let name = &order[index].name;
+                    match result {
+                        Ok((artifact, trace)) => {
+                            if let Some(trace) = trace {
+                                self.trace_facts.insert(name.clone(), trace);
+                            }
+                            self.compiled.insert(name.clone(), artifact);
+                        }
+                        Err(err) => {
+                            failed.insert(name);
+                            errors.push((index, err));
+                        }
+                    }
+                }
+            }
+        }
+
+        match errors.into_iter().min_by_key(|(index, _)| *index) {
+            Some((_, err)) => Err(err),
+            None => order_error.map_or(Ok(()), Err),
+        }
+    }
+
+    /// Appends `object_name` to `order` after the objects its sections embed.
+    fn order_object(
+        &self,
+        object_name: &str,
+        order: &mut Vec<OrderedObject>,
+        visiting: &mut FxHashSet<String>,
+    ) -> Result<(), LowerError> {
+        if self.compiled.contains_key(object_name)
+            || order.iter().any(|object| object.name == object_name)
+        {
             return Ok(());
         }
-        if !self.in_progress.insert(object_name.to_string()) {
+        if !visiting.insert(object_name.to_string()) {
             return Err(LowerError::Internal(format!(
                 "runtime object `{object_name}` embeds itself"
             )));
         }
-        let object = self
-            .package
+        let object = self.find_object(object_name)?;
+        let mut embeds: Vec<String> = Vec::new();
+        for section in object.sections(self.db) {
+            for embed in section.embeds {
+                let mir::RuntimeSectionRef::External { object, .. } = embed.source else {
+                    continue;
+                };
+                self.order_object(&object, order, visiting)?;
+                if !embeds.contains(&object) {
+                    embeds.push(object);
+                }
+            }
+        }
+        visiting.remove(object_name);
+        order.push(OrderedObject {
+            name: object_name.to_string(),
+            embeds,
+        });
+        Ok(())
+    }
+
+    fn find_object(&self, object_name: &str) -> Result<mir::RuntimeObject<'db>, LowerError> {
+        self.package
             .objects(self.db)
             .into_iter()
             .find(|object| object.name(self.db) == object_name)
             .ok_or_else(|| {
                 LowerError::Internal(format!("runtime object `{object_name}` not found"))
-            })?;
+            })
+    }
 
+    /// Lowers `object_name` to its own Sonatina module, embedding the code of
+    /// the compiled objects its sections embed.
+    fn lower(&self, object_name: &str) -> Result<LoweredObject, LowerError> {
+        let object = self.find_object(object_name)?;
         let mut external_code: Vec<((String, mir::RuntimeSectionName), Vec<u8>)> = Vec::new();
         for section in object.sections(self.db) {
             for embed in section.embeds {
@@ -1431,7 +1576,6 @@ impl<'db> IsolatedObjectCompiler<'db, '_> {
                 if external_code.iter().any(|(existing, _)| *existing == key) {
                     continue;
                 }
-                self.compile(&key.0)?;
                 let bytes = self.compiled[key.0.as_str()]
                     .sections
                     .get(&section_name_for_runtime(&key.1))
@@ -1456,40 +1600,49 @@ impl<'db> IsolatedObjectCompiler<'db, '_> {
         ensure_module_sonatina_ir_valid(&module)?;
         // Each isolated module has its own IDs. Keep pre/post-opt facts and
         // instruction provenance under a distinct owner for that exact module.
-        let owner = self
-            .trace_owner
-            .as_ref()
-            .map(|base| format!("{base}::object:{object_name}"));
-        let mut facts = if let Some(owner) = &owner {
-            crate::trace::emit_sonatina_trace_view_facts(
-                owner,
-                &module,
-                trace_facts::CompilerPhase::SonatinaPreOpt,
-            )?
-        } else {
-            Vec::new()
+        let trace = match &self.trace_owner {
+            Some(base) => {
+                let owner = format!("{base}::object:{object_name}");
+                let facts = crate::trace::emit_sonatina_trace_view_facts(
+                    &owner,
+                    &module,
+                    trace_facts::CompilerPhase::SonatinaPreOpt,
+                )?;
+                Some((owner, facts))
+            }
+            None => None,
         };
-        let (artifacts, postopt) = compile_runtime_objects_with_postopt_trace(
+        Ok(LoweredObject {
+            name: object_name.to_string(),
             module,
-            self.opt_level,
-            self.emit_observability,
-            owner.as_deref(),
-        )?;
-        if let Some(owner) = owner {
-            facts.extend(postopt);
-            self.trace_facts
-                .insert(object_name.to_string(), (owner, facts));
-        }
-        let artifact = artifacts
-            .into_iter()
-            .find(|artifact| artifact.object.0.as_str() == object_name)
-            .ok_or_else(|| {
-                LowerError::Internal(format!("compiled object `{object_name}` not found"))
-            })?;
-        self.in_progress.remove(object_name);
-        self.compiled.insert(object_name.to_string(), artifact);
-        Ok(())
+            trace,
+        })
     }
+}
+
+/// Optimizes and compiles a lowered object, adding its post-optimization
+/// trace facts to its trace.
+fn compile_lowered_object(
+    lowered: LoweredObject,
+    opt_level: OptLevel,
+    emit_observability: bool,
+) -> Result<(ObjectArtifact, Option<ObjectTrace>), LowerError> {
+    let LoweredObject {
+        name,
+        module,
+        mut trace,
+    } = lowered;
+    let owner = trace.as_ref().map(|(owner, _)| owner.as_str());
+    let (artifacts, postopt) =
+        compile_runtime_objects_with_postopt_trace(module, opt_level, emit_observability, owner)?;
+    if let Some((_, facts)) = &mut trace {
+        facts.extend(postopt);
+    }
+    let artifact = artifacts
+        .into_iter()
+        .find(|artifact| artifact.object.0.as_str() == name)
+        .ok_or_else(|| LowerError::Internal(format!("compiled object `{name}` not found")))?;
+    Ok((artifact, trace))
 }
 
 pub(crate) struct TracedContractBytecode {
@@ -1513,14 +1666,15 @@ pub(crate) fn emit_runtime_package_sonatina_bytecode_with_trace(
         opt_level,
         emit_observability: true,
         compiled: HashMap::new(),
-        in_progress: FxHashSet::default(),
         trace_owner: Some(trace_owner.to_string()),
         trace_facts: BTreeMap::new(),
     };
+    let roots = package.root_objects(db);
+    compiler.precompile(&roots);
     let mut out = BTreeMap::new();
-    for object in package.root_objects(db) {
+    for object in roots {
         let name = object.name(db);
-        compiler.compile(&name)?;
+        compiler.compile(std::slice::from_ref(&name))?;
         let artifact = &compiler.compiled[name.as_str()];
         let bytecode = root_contract_bytecode(
             db,
@@ -1852,20 +2006,25 @@ pub fn emit_test_module_sonatina(
         opt_level,
         emit_observability: options.emit_observability,
         compiled: HashMap::new(),
-        in_progress: FxHashSet::default(),
         trace_owner: None,
         trace_facts: BTreeMap::new(),
     };
+    let roots: Vec<_> = package
+        .root_objects(db)
+        .into_iter()
+        .filter(|object| {
+            object
+                .sections(db)
+                .first()
+                .is_some_and(|section| matches!(section.name, mir::RuntimeSectionName::Test(_)))
+        })
+        .collect();
+    compiler.precompile(&roots);
     let mut tests = Vec::new();
-    for object in package.root_objects(db) {
+    for object in roots {
         let sections = object.sections(db);
-        let Some(section) = sections.first() else {
-            continue;
-        };
-        let mir::RuntimeSectionName::Test(_) = &section.name else {
-            continue;
-        };
-        compiler.compile(&object.name(db))?;
+        let section = sections.first().expect("test roots have a test section");
+        compiler.compile(std::slice::from_ref(&object.name(db)))?;
         let artifact = &compiler.compiled[object.name(db).as_str()];
         let runtime = artifact
             .sections
