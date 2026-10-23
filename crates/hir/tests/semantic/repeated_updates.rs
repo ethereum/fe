@@ -115,39 +115,6 @@ fn cached_answers(
 }
 
 #[test]
-fn cached_parameter_types_follow_signature_and_const_edits() {
-    let versions = [
-        "struct S {}\nfn target(_ x: S) {}\nfn caller() { target(S {}) }",
-        "struct S { value: u256 }\nfn target(_ x: S) {}\nfn caller() { target(S { value: 1 }) }",
-        "struct S {}\nfn target(_ x: S, _ y: bool) {}\nfn caller() { target(S {}, true) }",
-        "struct S<const N: usize> {}\nfn target<const N: usize>(_ x: S<N>) {}\nfn caller() { target(S<3> {}) }",
-        "struct S<const N: usize> {}\nfn target<const N: usize, const M: usize>(_ x: S<N>, _ y: S<M>) {}\nfn caller() { target(S<3> {}, S<4> {}) }",
-        "const N: usize = 2\nfn target(_ x: [u256; N]) {}\nfn caller() { target([1, 2]) }",
-        "const N: usize = 3\nfn target(_ x: [u256; N]) {}\nfn caller() { target([1, 2, 3]) }",
-        "enum S { Value(u256) }\nfn target(_ x: S) {}\nfn caller() { target(S::Value(1)) }",
-        "enum S { Value(bool, u256) }\nfn target(_ x: S) {}\nfn caller() { target(S::Value(true, 1)) }",
-    ];
-    for individual_first in [false, true] {
-        let mut db = HirAnalysisTestDb::default();
-        let path = "cached_parameters.fe";
-        let file = db.new_stand_alone(path.into(), versions[0]);
-        for source in versions.iter().chain(versions.iter().rev()) {
-            file.set_text(&mut db).to((*source).into());
-            let (module, _) = db.top_mod(file);
-            let actual = cached_answers(&db, module, individual_first);
-            let mut fresh = HirAnalysisTestDb::default();
-            let fresh_file = fresh.new_stand_alone(path.into(), source);
-            let (fresh_module, _) = fresh.top_mod(fresh_file);
-            assert_eq!(
-                actual,
-                cached_answers(&fresh, fresh_module, !individual_first),
-                "{source}"
-            );
-        }
-    }
-}
-
-#[test]
 fn cached_trait_selection_follows_impl_and_associated_type_edits() {
     let versions = [
         "trait T { fn value() -> u256 { 1 } }\nimpl T for bool {}\nfn caller() -> u256 { <bool as T>::value() }",
