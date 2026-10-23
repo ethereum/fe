@@ -74,6 +74,13 @@ debug = 0
 [profile.release]
 debug = 0
 
+# Release binaries. Whole-program optimization makes the compiler ~10% faster
+# for several times the link time, so tests and local builds skip it.
+[profile.dist]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+
 # Keep compiler-heavy tests optimized while checking debug invariants.
 [profile.test-release]
 inherits = "release"
