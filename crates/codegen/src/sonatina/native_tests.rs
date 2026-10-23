@@ -41,13 +41,13 @@ pub fn emit_test_suite_native(
         return Ok(None);
     }
     let mut roots = Vec::new();
-    for object in package.root_objects(db) {
+    for &object in package.root_objects(db) {
         for section in object.sections(db) {
-            let metadata = runtime_test_root_metadata(db, &section.entry.owner(db), &section.name)
+            let metadata = runtime_test_root_metadata(db, section.entry.owner(db), &section.name)
                 .map_err(|err| match err {
-                    TestRootMetadataError::InvalidPackage(message) => LowerError::Internal(message),
-                    TestRootMetadataError::Unsupported(message) => LowerError::Unsupported(message),
-                })?;
+                TestRootMetadataError::InvalidPackage(message) => LowerError::Internal(message),
+                TestRootMetadataError::Unsupported(message) => LowerError::Unsupported(message),
+            })?;
             if metadata.expected_revert.is_some() || metadata.initial_balance.is_some() {
                 return Err(LowerError::Unsupported(format!(
                     "native test `{}` cannot use EVM `should_revert` or `balance` attributes",

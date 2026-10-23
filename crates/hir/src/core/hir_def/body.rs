@@ -8,7 +8,7 @@ use std::hash::Hash;
 use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     Cond, CondId, Expr, ExprId, Func, ItemKind, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,
@@ -23,34 +23,33 @@ use crate::{
 };
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Body<'db> {
     //    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
     /// The expression that evaluates to the value of the body.
     /// In case of a function body, this is always be the block expression.
+    #[returns(copy)]
     pub expr: ExprId,
 
+    #[returns(copy)]
     pub body_kind: BodyKind,
 
-    #[return_ref]
     pub stmts: NodeStore<StmtId, Partial<Stmt<'db>>>,
-    #[return_ref]
     pub exprs: NodeStore<ExprId, Partial<Expr<'db>>>,
-    #[return_ref]
     pub conds: NodeStore<CondId, Partial<Cond>>,
-    #[return_ref]
     pub pats: NodeStore<PatId, Partial<Pat<'db>>>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
     /// The function whose lazily lowered body contains this body, and whose
     /// body scope graph holds this body's scopes. `None` for a body lowered
     /// with its module.
+    #[returns(copy)]
     pub(crate) lazy_func: Option<Func<'db>>,
 
-    #[return_ref]
     pub(crate) source_map: BodySourceMap,
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Expr>,
 }
 
@@ -129,8 +128,11 @@ pub enum BodyKind {
     Anonymous,
 }
 
-#[derive(Debug, Hash, Clone)]
-pub struct NodeStore<K, V>(PrimaryMap<K, V>)
+#[derive(Debug, Hash, Clone, PartialEq, Eq, SalsaValue)]
+pub struct NodeStore<K, V>(
+    // SAFETY: A `PrimaryMap` owns its values; its keys are plain indices.
+    #[salsa_value(unsafe(prove(V: SalsaValue)))] PrimaryMap<K, V>,
+)
 where
     K: EntityRef;
 
@@ -178,30 +180,6 @@ where
 
     fn index(&self, k: K) -> &V {
         &self.0[k]
-    }
-}
-
-unsafe impl<K, V> Update for NodeStore<K, V>
-where
-    K: EntityRef + Update,
-    V: Update,
-{
-    unsafe fn maybe_update(old_ptr: *mut Self, new_val: Self) -> bool {
-        unsafe {
-            let old_val = &mut *old_ptr;
-            if old_val.len() != new_val.len() {
-                *old_val = new_val;
-                return true;
-            }
-
-            let mut changed = false;
-            for (k, v) in new_val.0.into_iter() {
-                let old_val = &mut old_val[k];
-                changed |= Update::maybe_update(old_val, v);
-            }
-
-            changed
-        }
     }
 }
 

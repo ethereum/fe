@@ -26,7 +26,7 @@ use hir::analysis::{
 use hir::hir_def::{ArithBinOp, FuncParamMode, ItemKind};
 use hir::semantic::{ProviderBinding, ProviderSource, constraints_for};
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::{
     db::MirDb,
@@ -1588,7 +1588,7 @@ pub(crate) struct RuntimeBodyCx<'a, 'carriers, 'db> {
     pub(crate) carriers: &'carriers [RuntimeCarrier<'db>],
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub(crate) struct RuntimeVisibleBindingPlan<'db> {
     pub(crate) binding: LocalBinding<'db>,
     pub(crate) semantic_ty: TyId<'db>,
@@ -2688,7 +2688,7 @@ pub(crate) fn contract_metadata_builtin<'db>(
     })
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn runtime_extern_builtin_return_class<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
@@ -2990,6 +2990,7 @@ mod tests {
     ) -> RuntimeInterfaceSignature<'db> {
         runtime_instance_for_semantic(db, semantic_instance_for_named_func(db, top_mod, name))
             .interface_signature(db)
+            .clone()
     }
 
     fn func_by_name<'db>(
@@ -3537,7 +3538,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
             "grant's ABI takes the receiver:\nsignature={signature:#?}"
         );
         assert_eq!(
-            signature,
+            *signature,
             runtime_declaration_signature(&db, callee.key(&db))
         );
     }

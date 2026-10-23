@@ -50,7 +50,6 @@ pub fn resolve_core_trait<'db>(
 #[salsa::interned]
 #[derive(Debug)]
 pub struct LibPath<'db> {
-    #[return_ref]
     pub string: String,
 }
 
@@ -151,12 +150,12 @@ impl MemoryAccessKind {
 
 macro_rules! define_runtime_intrinsics {
     ($($variant:ident => ($ingot:ident, [$($segment:literal),+])),+ $(,)?) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
         pub enum RuntimeBuiltinFuncKind {
             $($variant),+
         }
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(copy))]
         pub fn runtime_builtin_func_kind<'db>(
             db: &'db dyn HirAnalysisDb,
             func: Func<'db>,
@@ -735,7 +734,7 @@ pub fn resolve_core_range_types<'db>(
     })
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn resolve_lib_path<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -755,7 +754,7 @@ fn resolve_lib_path<'db>(
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn resolve_lib_func<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -781,7 +780,7 @@ fn resolve_lib_func<'db>(
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn resolve_lib_trait<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,

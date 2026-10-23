@@ -6,7 +6,7 @@
 //! `Result<E, shape>`. The type checker sees a projection call's *erased*
 //! type; the shape records which parts of that type the call grants as
 //! accesses. Semantic lowering represents an access component by a carrier.
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     const_ty::LoweringContext,
@@ -28,7 +28,7 @@ use crate::{
     span::types::LazyTySpan,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum Shape<'db> {
     Owned(TyId<'db>),
     Access(BorrowKind, TyId<'db>),

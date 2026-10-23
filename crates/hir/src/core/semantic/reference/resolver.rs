@@ -30,7 +30,7 @@ use super::{
 
 /// A pre-resolved scope reference: target scope paired with the span
 /// of the matched portion. Cached per item via salsa queries.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ResolvedScopeTarget<'db> {
     pub scope: ScopeId<'db>,
     pub span: DynLazySpan<'db>,
@@ -115,7 +115,7 @@ fn resolve_references<'db>(
 // Salsa caches the result per item, so repeated find-references calls
 // on different targets share the cached resolution work.
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_body_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Body<'db>,
@@ -123,7 +123,7 @@ pub fn resolved_body_scope_targets<'db>(
     resolve_references(db, body_references(db, body))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_func_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -131,7 +131,7 @@ pub fn resolved_func_scope_targets<'db>(
     resolve_references(db, func_signature_references(db, func))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_struct_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     struct_: Struct<'db>,
@@ -139,7 +139,7 @@ pub fn resolved_struct_scope_targets<'db>(
     resolve_references(db, struct_references(db, struct_))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_enum_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     enum_: Enum<'db>,
@@ -147,7 +147,7 @@ pub fn resolved_enum_scope_targets<'db>(
     resolve_references(db, enum_references(db, enum_))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_type_alias_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     alias: TypeAlias<'db>,
@@ -155,7 +155,7 @@ pub fn resolved_type_alias_scope_targets<'db>(
     resolve_references(db, type_alias_references(db, alias))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_impl_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_: Impl<'db>,
@@ -163,7 +163,7 @@ pub fn resolved_impl_scope_targets<'db>(
     resolve_references(db, impl_references(db, impl_))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_trait_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: Trait<'db>,
@@ -171,7 +171,7 @@ pub fn resolved_trait_scope_targets<'db>(
     resolve_references(db, trait_references(db, trait_))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_impl_trait_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
@@ -179,7 +179,7 @@ pub fn resolved_impl_trait_scope_targets<'db>(
     resolve_references(db, impl_trait_references(db, impl_trait))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_const_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     const_: Const<'db>,
@@ -187,7 +187,7 @@ pub fn resolved_const_scope_targets<'db>(
     resolve_references(db, const_references(db, const_))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_static_assert_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     assert_: StaticAssert<'db>,
@@ -195,7 +195,7 @@ pub fn resolved_static_assert_scope_targets<'db>(
     resolve_references(db, static_assert_references(db, assert_))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_use_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     use_item: Use<'db>,
@@ -203,7 +203,7 @@ pub fn resolved_use_scope_targets<'db>(
     resolve_references(db, use_references(db, use_item))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_contract_scope_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,

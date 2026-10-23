@@ -176,14 +176,14 @@ enum StopReason {
     TargetFound,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, salsa::SalsaValue)]
 pub(crate) enum TargetSolutionStatus {
     Found,
     NotFound,
     Incomplete,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub(crate) enum TargetSolutionMatch {
     Equal,
     NotEqual,
@@ -866,7 +866,7 @@ pub(super) fn has_solution<'db>(
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn ty_depth_impl<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> usize {
     match ty.data(db) {
         TyData::ConstTy(cty) => ty_depth_impl(db, cty.ty(db)),

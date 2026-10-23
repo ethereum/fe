@@ -1,5 +1,9 @@
+// Diagnostics and CTFE stops are returned on the slow path; salsa's 8-byte ids
+// put them just past clippy's 128-byte `Err` threshold.
+#![allow(clippy::result_large_err)]
+
 use cranelift_entity::EntityRef;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::analysis::{
     HirAnalysisDb,
@@ -26,13 +30,11 @@ use super::{
 #[salsa::interned]
 #[derive(Debug)]
 pub struct AdmittedSemanticBodyId<'db> {
-    #[return_ref]
     pub body: NormalizedBody<'db>,
-    #[return_ref]
     pub layout_plan: NLayoutPlan<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum SemanticBodyAdmission<'db> {
     Ready(AdmittedSemanticBodyId<'db>),
     Blocked(BlockedSemanticBody<'db>),
@@ -95,7 +97,7 @@ fn artifacts_from_admission<'db>(
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn admitted_semantic_body_query<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -111,7 +113,7 @@ fn admitted_semantic_body_query<'db>(
     normalize_and_verify(db, instance, &raw, instance.assumptions(db))
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn runtime_admitted_semantic_body_query<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -131,7 +133,7 @@ fn runtime_admitted_semantic_body_query<'db>(
     normalize_and_verify(db, instance, &folded, instance.assumptions(db))
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn provisional_admitted_semantic_body_query<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,

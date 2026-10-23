@@ -1,6 +1,5 @@
 use num_bigint::BigUint;
 use parser::ast::{self, AttrListOwner as _, prelude::AstNode as _};
-use salsa::Accumulator as _;
 
 use super::{
     attr::named_attr_specs,
@@ -582,14 +581,13 @@ fn create_selector_const<'db>(
 
     let body = if let Some(parsed) = parsed {
         if let Some(error_kind) = parsed.error {
-            MsgDiagnostic {
+            ctxt.report(MsgDiagnostic {
                 kind: error_kind,
                 file,
                 primary_range: parsed.range,
                 secondary_range: None,
                 variant_name: variant_name.to_string(),
-            }
-            .accumulate(db);
+            });
             Body::lower_ast_with_variant(
                 ctxt,
                 None,
@@ -612,14 +610,13 @@ fn create_selector_const<'db>(
         let variant_range = variant
             .name()
             .map_or_else(|| variant.syntax().text_range(), |n| n.text_range());
-        MsgDiagnostic {
+        ctxt.report(MsgDiagnostic {
             kind: MsgDiagnosticKind::Missing,
             file,
             primary_range: variant_range,
             secondary_range: None,
             variant_name: variant_name.to_string(),
-        }
-        .accumulate(db);
+        });
         Body::lower_ast_with_variant(
             ctxt,
             None,

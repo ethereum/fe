@@ -12,7 +12,7 @@ use crate::{
 };
 use common::{indexmap::IndexMap, ingot::Ingot};
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     binder::Binder,
@@ -36,13 +36,13 @@ use crate::analysis::{
     ty::ty_def::{Kind, TyData},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub(crate) enum ImplSelfKey<'db> {
     Prim(PrimTy),
     Item(ScopeId<'db>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, SalsaValue)]
 pub(crate) struct TraitImplTable<'db> {
     pub(crate) by_trait: FxHashMap<Trait<'db>, Vec<ImplTrait<'db>>>,
     pub(crate) by_self: FxHashMap<ImplSelfKey<'db>, Vec<ImplTrait<'db>>>,
@@ -114,7 +114,7 @@ fn raw_impl_self_key<'db>(
 /// of semantic type lowering is therefore the boundary that prevents query
 /// cycles. Visible candidates are semantically lowered only after this index
 /// has been assembled by [`TraitEnv`](super::trait_def::TraitEnv).
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn collect_trait_impls<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
@@ -190,10 +190,7 @@ pub(crate) fn complete_impl_assoc_ty<'db>(
     Some(with_impl_assoc_ty(db, implementor, name, ty))
 }
 
-#[salsa::tracked(
-    cycle_fn=lower_impl_assoc_ty_cycle_recover,
-    cycle_initial=lower_impl_assoc_ty_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=lower_impl_assoc_ty_cycle_initial)]
 pub(crate) fn lower_checked_impl_assoc_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
@@ -247,20 +244,11 @@ fn with_impl_assoc_ty<'db>(
 
 fn lower_impl_assoc_ty_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _impl_trait: ImplTrait<'db>,
     _name: IdentId<'db>,
 ) -> Option<TyId<'db>> {
     Some(TyId::invalid(db, InvalidCause::TypeLoweringCycle))
-}
-
-fn lower_impl_assoc_ty_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Option<TyId<'db>>,
-    _count: u32,
-    _impl_trait: ImplTrait<'db>,
-    _name: IdentId<'db>,
-) -> salsa::CycleRecoveryAction<Option<TyId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 /// `ty`, an associated type's definition, unless it holds its own cycle's
@@ -278,10 +266,7 @@ fn without_cycle<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
 /// anonymous const bodies. Keeping this query per binding lets sibling
 /// references such as `type B = Self::A` resolve locally without completing
 /// every associated type or recursively re-entering the trait environment.
-#[salsa::tracked(
-    cycle_fn=lower_impl_assoc_ty_cycle_recover,
-    cycle_initial=lower_impl_assoc_ty_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=lower_impl_assoc_ty_cycle_initial)]
 pub(crate) fn lower_candidate_impl_assoc_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
@@ -346,10 +331,7 @@ fn lower_impl_trait_candidate<'db>(
 /// so the lowered header is cached per impl. The sealed-marker admissibility
 /// check lowers marker impls eagerly; if that re-enters this header, the impl
 /// is not a candidate until the cycle converges.
-#[salsa::tracked(
-    cycle_fn=lower_impl_trait_header_cycle_recover,
-    cycle_initial=lower_impl_trait_header_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=lower_impl_trait_header_cycle_initial)]
 pub(crate) fn lower_impl_trait_header<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
@@ -375,18 +357,10 @@ pub(crate) fn lower_impl_trait_header<'db>(
 
 fn lower_impl_trait_header_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _impl_trait: ImplTrait<'db>,
 ) -> Option<ImplementorId<'db>> {
     None
-}
-
-fn lower_impl_trait_header_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Option<ImplementorId<'db>>,
-    _count: u32,
-    _impl_trait: ImplTrait<'db>,
-) -> salsa::CycleRecoveryAction<Option<ImplementorId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 /// Lower a trait reference to a trait instance implemented by `self_ty`.
@@ -397,10 +371,7 @@ fn lower_impl_trait_header_cycle_recover<'db>(
 /// bounds of `type Assoc: Encode<Self>` are read for an implementation.
 /// Defaults omitted from the reference, such as `Rhs = Self`, are completed
 /// against `self_ty`.
-#[salsa::tracked(
-    cycle_fn=lower_trait_ref_cycle_recover,
-    cycle_initial=lower_trait_ref_cycle_initial
-)]
+#[salsa::tracked(returns(clone), cycle_initial=lower_trait_ref_cycle_initial)]
 pub(crate) fn lower_trait_ref<'db>(
     db: &'db dyn HirAnalysisDb,
     self_ty: TyId<'db>,
@@ -538,6 +509,7 @@ pub(crate) fn lower_trait_ref_with_minter<'db>(
 
 fn lower_trait_ref_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _self_ty: TyId<'db>,
     _trait_ref: TraitRefId<'db>,
     _scope: ScopeId<'db>,
@@ -545,20 +517,6 @@ fn lower_trait_ref_cycle_initial<'db>(
     _owner_self: Option<TyId<'db>>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
     Err(TraitRefLowerError::Cycle)
-}
-
-#[allow(clippy::too_many_arguments)]
-fn lower_trait_ref_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Result<TraitInstId<'db>, TraitRefLowerError<'db>>,
-    _count: u32,
-    _self_ty: TyId<'db>,
-    _trait_ref: TraitRefId<'db>,
-    _scope: ScopeId<'db>,
-    _assumptions: PredicateListId<'db>,
-    _owner_self: Option<TyId<'db>>,
-) -> salsa::CycleRecoveryAction<Result<TraitInstId<'db>, TraitRefLowerError<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 pub(crate) enum TraitArgError<'db> {
@@ -736,7 +694,7 @@ fn complete_trait_args<'db>(
 /// An implementation's methods, by name. A `mut?` trait method may have one
 /// body per mode: two methods of its name, the one that takes the `mut`
 /// mode where the trait method takes `mut?` being its `mut` body.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, SalsaValue)]
 pub(crate) struct ImplementorMethods<'db> {
     /// Each name's method, or its `ref` body.
     pub methods: IndexMap<IdentId<'db>, Func<'db>>,
@@ -746,7 +704,7 @@ pub(crate) struct ImplementorMethods<'db> {
     pub conflicts: Vec<(Func<'db>, Func<'db>)>,
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn collect_implementor_methods<'db>(
     db: &'db dyn HirAnalysisDb,
     implementor: ImplementorId<'db>,
@@ -847,7 +805,7 @@ fn takes_mut_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>, trait_m: Fun
             ))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub(crate) enum TraitRefLowerError<'db> {
     PathResError(PathResError<'db>),
     InvalidDomain(PathRes<'db>),
@@ -860,6 +818,7 @@ pub(crate) enum TraitRefLowerError<'db> {
 #[cfg(test)]
 mod tests {
     use camino::Utf8PathBuf;
+    use salsa::plumbing::AsId;
 
     use super::*;
     use crate::{
@@ -875,6 +834,7 @@ mod tests {
 
         let result = lower_trait_ref_cycle_initial(
             &db,
+            top_mod.as_id(),
             TyId::invalid(&db, InvalidCause::Other),
             TraitRefId::new(&db, Partial::Absent),
             scope,

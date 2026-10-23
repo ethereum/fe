@@ -22,7 +22,7 @@ use crate::analysis::{
 };
 use crate::hir_def::{CallableDef, Func};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum MethodCandidate<'db> {
     InherentMethod(ProbedMethod<'db>),
     TraitMethod(TraitMethodCand<'db>),
@@ -44,7 +44,7 @@ impl<'db> MethodCandidate<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct TraitMethodCand<'db> {
     pub inst: Solution<TraitInstId<'db>>,
     pub method: Func<'db>,
@@ -84,13 +84,13 @@ impl<'db> AssembledTraitMethodCand<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AmbiguousTraitMethodCand<'db> {
     pub cand: TraitMethodCand<'db>,
     pub needs_confirmation: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AmbiguousTraitMethods<'db> {
     pub candidates: ThinVec<AmbiguousTraitMethodCand<'db>>,
     pub diagnostic_traits: ThinVec<TraitInstId<'db>>,
@@ -923,7 +923,7 @@ impl<'db, 'a> MethodSelector<'db, 'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum MethodSelectionError<'db> {
     AmbiguousInherentMethod(ThinVec<CallableDef<'db>>),
     AmbiguousTraitMethod(AmbiguousTraitMethods<'db>),

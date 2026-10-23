@@ -45,7 +45,7 @@ num-bigint = "0.4"
 num-traits = "0.2"
 ruint = "1.17.2"
 paste = "1.0.15"
-salsa = "0.20"
+salsa = { version = "0.28.5", default-features = false, features = ["salsa_unstable", "rayon", "macros", "inventory"] }
 smallvec = { version = "2.0.0-alpha.11" }
 smallvec1 = { version = "1", package = "smallvec" }
 thin-vec = "0.2.16"

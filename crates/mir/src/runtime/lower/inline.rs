@@ -53,7 +53,7 @@ pub(crate) fn inline_projections<'db>(
             unreachable!("found a projection call")
         };
         let callee = runtime_instance_lowered_body(db, callee)?.body(db);
-        inline_session(db, body, block, stmt, dst, &args, &callee);
+        inline_session(db, body, block, stmt, dst, &args, callee);
     }
     prune_unreachable_blocks(body);
     Ok(())

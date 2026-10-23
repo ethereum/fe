@@ -1,9 +1,13 @@
+// Diagnostics and CTFE stops are returned on the slow path; salsa's 8-byte ids
+// put them just past clippy's 128-byte `Err` threshold.
+#![allow(clippy::result_large_err)]
+
 use cranelift_entity::EntityRef;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{One, ToPrimitive, Zero};
 use ruint::aliases::U256;
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 use std::rc::Rc;
 use tiny_keccak::{Hasher, Keccak};
 
@@ -54,7 +58,7 @@ use super::{
     service::force_const_term_value_with_steps,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub struct CtfeConfig {
     pub step_limit: usize,
     pub recursion_limit: usize,
@@ -69,7 +73,7 @@ impl Default for CtfeConfig {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum CtfeError<'db> {
     NotConstEvaluable {
         origin: SemOrigin<'db>,
@@ -162,7 +166,7 @@ enum EvmModularArithmetic {
 // initial value; the machine's ref site keeps that error shape stable across
 // iterations (see `SExpr::Const(SConst::Ref(..))` in `eval_expr`), so the
 // cycle converges to a recursion error instead of panicking.
-#[salsa::tracked(cycle_initial=eval_const_instance_cycle_initial, cycle_fn=eval_const_instance_cycle_recover)]
+#[salsa::tracked(returns(clone), cycle_initial=eval_const_instance_cycle_initial)]
 pub fn eval_const_instance<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -179,6 +183,7 @@ pub fn eval_const_instance<'db>(
 
 fn eval_const_instance_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     instance: SemanticInstance<'db>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
     EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::RecursiveConst {
@@ -186,16 +191,7 @@ fn eval_const_instance_cycle_initial<'db>(
     }))
 }
 
-fn eval_const_instance_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &EvalOutcome<'db, SemConstId<'db>>,
-    _count: u32,
-    _instance: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<EvalOutcome<'db, SemConstId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
-#[salsa::tracked(cycle_initial=eval_const_ref_cycle_initial, cycle_fn=eval_const_ref_cycle_recover)]
+#[salsa::tracked(returns(clone), cycle_initial=eval_const_ref_cycle_initial)]
 pub fn eval_const_ref<'db>(
     db: &'db dyn HirAnalysisDb,
     cref: SemanticConstRef<'db>,
@@ -212,6 +208,7 @@ pub fn eval_const_ref<'db>(
 
 fn eval_const_ref_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     cref: SemanticConstRef<'db>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
     EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::RecursiveConst {
@@ -219,16 +216,7 @@ fn eval_const_ref_cycle_initial<'db>(
     }))
 }
 
-fn eval_const_ref_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &EvalOutcome<'db, SemConstId<'db>>,
-    _count: u32,
-    _cref: SemanticConstRef<'db>,
-) -> salsa::CycleRecoveryAction<EvalOutcome<'db, SemConstId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
-#[salsa::tracked(cycle_initial=eval_body_owner_const_cycle_initial, cycle_fn=eval_body_owner_const_cycle_recover)]
+#[salsa::tracked(returns(clone), cycle_initial=eval_body_owner_const_cycle_initial)]
 pub fn eval_body_owner_const<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
@@ -247,6 +235,7 @@ pub fn eval_body_owner_const<'db>(
 
 fn eval_body_owner_const_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     owner: BodyOwner<'db>,
     _subst: GenericSubst<'db>,
 ) -> EvalOutcome<'db, SemConstId<'db>> {
@@ -255,17 +244,7 @@ fn eval_body_owner_const_cycle_initial<'db>(
     }))
 }
 
-fn eval_body_owner_const_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &EvalOutcome<'db, SemConstId<'db>>,
-    _count: u32,
-    _owner: BodyOwner<'db>,
-    _subst: GenericSubst<'db>,
-) -> salsa::CycleRecoveryAction<EvalOutcome<'db, SemConstId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
-#[salsa::tracked(cycle_initial=eval_body_owner_const_with_args_cycle_initial, cycle_fn=eval_body_owner_const_with_args_cycle_recover)]
+#[salsa::tracked(returns(clone), cycle_initial=eval_body_owner_const_with_args_cycle_initial)]
 pub fn eval_body_owner_const_with_args<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: BodyOwner<'db>,
@@ -319,6 +298,7 @@ pub(super) fn execute_resolved_const_computation_with_steps<'db>(
 
 fn eval_body_owner_const_with_args_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     owner: BodyOwner<'db>,
     _subst: GenericSubst<'db>,
     _args: Vec<SemConstId<'db>>,
@@ -326,17 +306,6 @@ fn eval_body_owner_const_with_args_cycle_initial<'db>(
     EvalOutcome::Failed(EvalFailure::Ctfe(CtfeError::RecursiveConst {
         origin: SemOrigin::Body(owner),
     }))
-}
-
-fn eval_body_owner_const_with_args_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &EvalOutcome<'db, SemConstId<'db>>,
-    _count: u32,
-    _owner: BodyOwner<'db>,
-    _subst: GenericSubst<'db>,
-    _args: Vec<SemConstId<'db>>,
-) -> salsa::CycleRecoveryAction<EvalOutcome<'db, SemConstId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 pub(super) fn attempt_optional_const_fold<'db>(
@@ -1137,7 +1106,7 @@ impl<'db, 'body> CtfeMachine<'db, 'body> {
                 .config
                 .recursion_limit
                 .saturating_sub(self.frames.len().saturating_sub(self.const_stack.len())),
-            ..self.config.clone()
+            ..self.config
         };
         force_const_term_value_with_steps(self.db, term, config, origin, &mut self.steps)
             .into_result()

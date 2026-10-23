@@ -107,7 +107,7 @@ fn runtime_body_for_symbol<'db>(
         .copied()
         .find(|function| function.symbol(db).contains(symbol))
         .unwrap_or_else(|| panic!("missing runtime function `{symbol}`"));
-    function.instance(db).body(db)
+    function.instance(db).body(db).clone()
 }
 
 fn runtime_body_stmts<'a, 'db>(body: &'a RuntimeBody<'db>) -> impl Iterator<Item = &'a RStmt<'db>> {
@@ -1534,7 +1534,7 @@ fn trigger() {
             let symbol = function.symbol(&db);
             let output = emit_runtime_package_sonatina_ir_optimized(&db, &package, OptLevel::O0)
                 .expect("Sonatina IR");
-            let function_ir = sonatina_function_body(&output, &symbol);
+            let function_ir = sonatina_function_body(&output, symbol);
             assert!(
                 function_ir.contains("evm_revert 0.i256 0.i256")
                     && !function_ir.contains("evm_malloc 0.i256"),

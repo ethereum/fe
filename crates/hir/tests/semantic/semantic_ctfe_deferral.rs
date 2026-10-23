@@ -2218,7 +2218,7 @@ fn term_extraction_bounds_expanding_recursion() {
             recursion_limit: 4,
             ..CtfeConfig::default()
         };
-        let direct = force_const_computation(&db, request, config.clone());
+        let direct = force_const_computation(&db, request, config);
         assert!(
             matches!(direct, EvalOutcome::Failed(EvalFailure::Ctfe(ref error)) if matches!(root_error(error), CtfeError::RecursionLimitExceeded { .. })),
             "{direct:?}"
@@ -2261,11 +2261,11 @@ fn term_extraction_bounds_expanding_recursion() {
         recursion_limit: 128,
         ..CtfeConfig::default()
     };
-    let description = describe_const_computation(&db, request, config.clone())
+    let description = describe_const_computation(&db, request, config)
         .into_ready()
         .unwrap();
     assert!(matches!(
-        force_const_description(&db, &description, config.clone(), SemOrigin::Body(owner)),
+        force_const_description(&db, &description, config, SemOrigin::Body(owner)),
         EvalOutcome::Blocked(_)
     ));
     let ty = TyId::new(&db, TyData::TyBase(TyBase::Prim(PrimTy::Usize)));
@@ -2282,10 +2282,9 @@ fn term_extraction_bounds_expanding_recursion() {
         SemOrigin::Body(owner),
     )
     .unwrap();
-    let replayed =
-        force_const_description(&db, &specialized, config.clone(), SemOrigin::Body(owner))
-            .into_ready()
-            .unwrap();
+    let replayed = force_const_description(&db, &specialized, config, SemOrigin::Body(owner))
+        .into_ready()
+        .unwrap();
     assert_eq!(replayed.value(), int_const(&db, ty, BigInt::from(7)));
     let specialized_request =
         specialize_const_computation(&db, request, owner.scope(), &args).unwrap();

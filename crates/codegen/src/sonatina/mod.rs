@@ -577,8 +577,9 @@ fn resolve_embedded_section_artifact<'db, 'a>(
     })?;
     let runtime_section = runtime_object
         .sections(db)
-        .into_iter()
+        .iter()
         .find(|section| &section.name == section_name)
+        .cloned()
         .ok_or_else(|| {
             LowerError::Internal(format!(
                 "observability embed cannot resolve runtime section `{object}`/{section_name:?}"
@@ -746,7 +747,7 @@ fn compile_executable_sonatina_native(
         .and_then(|object| {
             object
                 .sections(db)
-                .into_iter()
+                .iter()
                 .find(|section| section.name == RuntimeSectionName::Main)
         })
         .ok_or_else(|| LowerError::Internal("native package is missing its main section".into()))?
@@ -1086,7 +1087,8 @@ fn root_objects_named<'db>(
 ) -> Vec<mir::RuntimeObject<'db>> {
     package
         .root_objects(db)
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|object| object.name(db) == name)
         .collect()
 }
@@ -1101,41 +1103,46 @@ fn filter_runtime_package_to_root_objects<'db>(
         .map(|object| object.name(db))
         .collect::<FxHashSet<_>>();
     let package_objects = package.objects(db);
-    let section_set = reachable_sections(db, &package_objects, roots);
+    let section_set = reachable_sections(db, package_objects, roots);
     let objects = package
         .objects(db)
-        .into_iter()
-        .filter_map(|object| {
+        .iter()
+        .filter_map(|&object| {
             let sections = object
                 .sections(db)
-                .into_iter()
+                .iter()
                 .filter(|section| {
                     section_set.contains(&runtime_section_key(db, object, &section.name))
                 })
+                .cloned()
                 .collect::<Vec<_>>();
-            (!sections.is_empty()).then(|| mir::RuntimeObject::new(db, object.name(db), sections))
+            (!sections.is_empty())
+                .then(|| mir::RuntimeObject::new(db, object.name(db).clone(), sections))
         })
         .collect::<Vec<_>>();
     let function_set = reachable_functions(db, &objects);
     let functions = package
         .functions(db)
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|function| function_set.contains(&function.instance(db)))
         .collect::<Vec<_>>();
     let const_region_set = reachable_const_regions(db, &objects, &functions);
     let const_regions = package
         .const_regions(db)
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|region| const_region_set.contains(region))
         .collect::<Vec<_>>();
     let code_regions = package
         .code_regions(db)
-        .into_iter()
-        .filter(|region| section_set.contains(&section_ref_key(region.source(db))))
+        .iter()
+        .copied()
+        .filter(|region| section_set.contains(&section_ref_key(region.source(db).clone())))
         .collect::<Vec<_>>();
     let root_objects = package
         .objects(db)
-        .into_iter()
+        .iter()
         .filter(|object| root_names.contains(&object.name(db)))
         .filter_map(|object| {
             objects
@@ -1184,33 +1191,36 @@ fn isolate_runtime_package_object<'db>(
         let function_set = reachable_functions(db, &objects);
         package
             .functions(db)
-            .into_iter()
+            .iter()
+            .copied()
             .filter(|function| function_set.contains(&function.instance(db)))
             .collect::<Vec<_>>()
     };
     let const_region_set = reachable_const_regions(db, &objects, &functions);
     let const_regions = package
         .const_regions(db)
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|region| const_region_set.contains(region))
         .collect::<Vec<_>>();
     let embedded_sections = object
         .sections(db)
-        .into_iter()
+        .iter()
         .flat_map(|section| {
             let own = runtime_section_key(db, object, &section.name);
             std::iter::once(own).chain(
                 section
                     .embeds
-                    .into_iter()
-                    .map(|embed| section_ref_key(embed.source)),
+                    .iter()
+                    .map(|embed| section_ref_key(embed.source.clone())),
             )
         })
         .collect::<FxHashSet<_>>();
     let code_regions = package
         .code_regions(db)
-        .into_iter()
-        .filter(|region| embedded_sections.contains(&section_ref_key(region.source(db))))
+        .iter()
+        .copied()
+        .filter(|region| embedded_sections.contains(&section_ref_key(region.source(db).clone())))
         .collect::<Vec<_>>();
     RuntimePackage::new(
         db,
@@ -1238,7 +1248,7 @@ fn reachable_sections<'db>(
         .flat_map(|object| {
             object
                 .sections(db)
-                .into_iter()
+                .iter()
                 .map(|section| runtime_section_key(db, *object, &section.name))
         })
         .collect::<VecDeque<_>>();
@@ -1251,14 +1261,14 @@ fn reachable_sections<'db>(
             .flat_map(|object| {
                 object
                     .sections(db)
-                    .into_iter()
+                    .iter()
                     .map(move |section| (*object, section))
             })
-            .filter(|(object, _)| object.name(db) == object_name)
+            .filter(|(object, _)| *object.name(db) == object_name)
             .filter(|(_, section)| section.name == section_name)
             .map(|(_, section)| section)
         {
-            for embed in section.embeds {
+            for embed in &section.embeds {
                 queue.push_back(section_ref_key(embed.source.clone()));
             }
         }
@@ -1271,7 +1281,7 @@ fn runtime_section_key<'db>(
     object: mir::RuntimeObject<'db>,
     section: &mir::RuntimeSectionName,
 ) -> (String, mir::RuntimeSectionName) {
-    (object.name(db), section.clone())
+    (object.name(db).clone(), section.clone())
 }
 
 fn section_ref_key(section_ref: mir::RuntimeSectionRef) -> (String, mir::RuntimeSectionName) {
@@ -1309,7 +1319,7 @@ fn reachable_const_regions<'db>(
 ) -> FxHashSet<mir::ConstRegionId<'db>> {
     let mut seen = FxHashSet::default();
     for section in objects.iter().flat_map(|object| object.sections(db)) {
-        seen.extend(section.const_regions);
+        seen.extend(section.const_regions.clone());
     }
     for function in functions {
         seen.extend(function.referenced_const_regions(db));
@@ -1368,10 +1378,10 @@ fn emit_runtime_package_sonatina_bytecode_with_options(
         trace_facts: BTreeMap::new(),
     };
     let roots = package.root_objects(db);
-    compiler.precompile(&roots);
+    compiler.precompile(roots);
     let mut out = BTreeMap::new();
-    for object in roots {
-        let object_name = object.name(db);
+    for &object in roots {
+        let object_name = object.name(db).clone();
         compiler.compile(std::slice::from_ref(&object_name))?;
         let artifact = &compiler.compiled[object_name.as_str()];
         let objects_by_name = HashMap::from([(object_name.clone(), object)]);
@@ -1422,7 +1432,10 @@ impl<'db> IsolatedObjectCompiler<'db, '_> {
     /// Compiles `roots` together, so that they compile in parallel. A root
     /// that fails stays uncompiled, and compiling it alone reports why.
     fn precompile(&mut self, roots: &[mir::RuntimeObject<'db>]) {
-        let names: Vec<_> = roots.iter().map(|object| object.name(self.db)).collect();
+        let names: Vec<_> = roots
+            .iter()
+            .map(|object| object.name(self.db).clone())
+            .collect();
         let _ = self.compile(&names);
     }
 
@@ -1534,13 +1547,13 @@ impl<'db> IsolatedObjectCompiler<'db, '_> {
         let object = self.find_object(object_name)?;
         let mut embeds: Vec<String> = Vec::new();
         for section in object.sections(self.db) {
-            for embed in section.embeds {
-                let mir::RuntimeSectionRef::External { object, .. } = embed.source else {
+            for embed in &section.embeds {
+                let mir::RuntimeSectionRef::External { object, .. } = &embed.source else {
                     continue;
                 };
-                self.order_object(&object, order, visiting)?;
-                if !embeds.contains(&object) {
-                    embeds.push(object);
+                self.order_object(object, order, visiting)?;
+                if !embeds.contains(object) {
+                    embeds.push(object.clone());
                 }
             }
         }
@@ -1555,7 +1568,8 @@ impl<'db> IsolatedObjectCompiler<'db, '_> {
     fn find_object(&self, object_name: &str) -> Result<mir::RuntimeObject<'db>, LowerError> {
         self.package
             .objects(self.db)
-            .into_iter()
+            .iter()
+            .copied()
             .find(|object| object.name(self.db) == object_name)
             .ok_or_else(|| {
                 LowerError::Internal(format!("runtime object `{object_name}` not found"))
@@ -1568,11 +1582,11 @@ impl<'db> IsolatedObjectCompiler<'db, '_> {
         let object = self.find_object(object_name)?;
         let mut external_code: Vec<((String, mir::RuntimeSectionName), Vec<u8>)> = Vec::new();
         for section in object.sections(self.db) {
-            for embed in section.embeds {
-                let mir::RuntimeSectionRef::External { object, section } = embed.source else {
+            for embed in &section.embeds {
+                let mir::RuntimeSectionRef::External { object, section } = &embed.source else {
                     continue;
                 };
-                let key = (object, section);
+                let key = (object.clone(), section.clone());
                 if external_code.iter().any(|(existing, _)| *existing == key) {
                     continue;
                 }
@@ -1670,10 +1684,10 @@ pub(crate) fn emit_runtime_package_sonatina_bytecode_with_trace(
         trace_facts: BTreeMap::new(),
     };
     let roots = package.root_objects(db);
-    compiler.precompile(&roots);
+    compiler.precompile(roots);
     let mut out = BTreeMap::new();
-    for object in roots {
-        let name = object.name(db);
+    for &object in roots {
+        let name = object.name(db).clone();
         compiler.compile(std::slice::from_ref(&name))?;
         let artifact = &compiler.compiled[name.as_str()];
         let bytecode = root_contract_bytecode(
@@ -1689,7 +1703,7 @@ pub(crate) fn emit_runtime_package_sonatina_bytecode_with_trace(
             .remove(&name)
             .expect("compiled root has trace facts");
         out.insert(
-            name,
+            name.clone(),
             TracedContractBytecode {
                 bytecode,
                 owner,
@@ -1729,11 +1743,11 @@ fn emit_runtime_module_sonatina_bytecode_with_options(
     let package_objects = package.objects(db);
     let objects_by_name = package_objects
         .iter()
-        .map(|object| (object.name(db), *object))
+        .map(|object| (object.name(db).clone(), *object))
         .collect::<std::collections::HashMap<_, _>>();
 
     let mut out = BTreeMap::new();
-    for object in package.root_objects(db) {
+    for &object in package.root_objects(db) {
         let object_name = object.name(db);
         out.insert(
             object_name.clone(),
@@ -1854,7 +1868,7 @@ fn root_contract_bytecode<'db>(
         deploy_observability,
         runtime_observability,
     }
-    .checked(&object_name, emit_observability)
+    .checked(object_name, emit_observability)
 }
 
 pub fn emit_runtime_package_sonatina_bytecode(
@@ -2011,7 +2025,8 @@ pub fn emit_test_module_sonatina(
     };
     let roots: Vec<_> = package
         .root_objects(db)
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|object| {
             object
                 .sections(db)
@@ -2024,7 +2039,7 @@ pub fn emit_test_module_sonatina(
     for object in roots {
         let sections = object.sections(db);
         let section = sections.first().expect("test roots have a test section");
-        compiler.compile(std::slice::from_ref(&object.name(db)))?;
+        compiler.compile(std::slice::from_ref(object.name(db)))?;
         let artifact = &compiler.compiled[object.name(db).as_str()];
         let runtime = artifact
             .sections
@@ -2035,7 +2050,7 @@ pub fn emit_test_module_sonatina(
                     object.name(db)
                 ))
             })?;
-        let metadata = runtime_test_root_metadata(db, &section.entry.owner(db), &section.name)
+        let metadata = runtime_test_root_metadata(db, section.entry.owner(db), &section.name)
             .map_err(|err| match err {
                 TestRootMetadataError::InvalidPackage(message) => LowerError::Internal(message),
                 TestRootMetadataError::Unsupported(message) => LowerError::Unsupported(message),

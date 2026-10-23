@@ -21,11 +21,11 @@ use crate::{
 };
 use either::Either;
 use ruint::aliases::U256;
-use salsa::Update;
+use salsa::SalsaValue;
 use smallvec1::SmallVec;
 use thin_vec::ThinVec;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, SalsaValue)]
 pub enum FuncBodyDiag<'db> {
     Ty(TyDiagCollection<'db>),
     Body(BodyDiag<'db>),
@@ -42,7 +42,7 @@ impl<'db> FuncBodyDiag<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, SalsaValue)]
 pub enum TyDiagCollection<'db> {
     Ty(TyLowerDiag<'db>),
     PathRes(PathResDiag<'db>),
@@ -63,7 +63,7 @@ impl<'db> TyDiagCollection<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
@@ -332,13 +332,13 @@ pub enum TyLowerDiag<'db> {
 }
 
 /// What reveals a fault in a computation written elsewhere.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum RevealedBy {
     AppliedDefault,
     Evaluation,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ContractFieldLayoutIssue {
     ExtentOverflow,
     IncompleteProjection,
@@ -425,27 +425,27 @@ impl TyLowerDiag<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct CallConstraintDiagInfo<'db> {
     pub callable_def: CallableDef<'db>,
     pub bound_span: DynLazySpan<'db>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct StaticAssertComparisonValues {
     pub op: CompBinOp,
     pub lhs: String,
     pub rhs: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum MustUseSubject<'db> {
     Type(TyId<'db>),
     Function(CallableDef<'db>),
 }
 
 /// The `mut?` choice that leaves an effect's provider read-only.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ReadOnlyProvider<'db> {
     /// A `mut?` binding, which a `mut?` function's `ref` body only reads:
     /// an effect, or a `with` value's binding.
@@ -455,7 +455,7 @@ pub enum ReadOnlyProvider<'db> {
 }
 
 /// How to make writable a binding that is assigned through.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum MutabilityFix {
     /// A value binding: `var x`.
     Var,
@@ -485,7 +485,7 @@ pub enum MutabilityFix {
 }
 
 /// Where an access marker stands in place of the names it belongs on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum MarkerPosition {
     /// A `match`, `if let` or `while let` scrutinee.
     Scrutinee,
@@ -495,7 +495,7 @@ pub enum MarkerPosition {
     LoopBase,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum BodyDiag<'db> {
     TypeMismatch {
         span: DynLazySpan<'db>,
@@ -1519,7 +1519,7 @@ impl<'db> BodyDiag<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum TraitLowerDiag<'db> {
     ConflictTraitImpl {
         primary: ImplTrait<'db>,
@@ -1557,7 +1557,7 @@ impl TraitLowerDiag<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum TraitConstraintDiag<'db> {
     KindMismatch {
         primary: LazyTraitRefSpan<'db>,
@@ -1604,7 +1604,7 @@ impl TraitConstraintDiag<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ImplDiag<'db> {
     ConflictMethodImpl {
         primary: CallableDef<'db>,

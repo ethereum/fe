@@ -29,7 +29,7 @@ use num_bigint::BigUint;
 pub use params::*;
 pub use pat::*;
 pub use path::*;
-use salsa::Update;
+use salsa::SalsaValue;
 pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
@@ -57,7 +57,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
         module_tree_impl(db, self)
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     fn all_modules(self, db: &'db dyn HirDb) -> Vec<TopLevelMod<'db>> {
         self.module_tree(db).all_modules().collect()
     }
@@ -75,7 +75,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
     /// [`TopLevelMod::external_ingots`](crate::TopLevelMod::external_ingots).
     // The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
     // access `InputIngot` directly.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     fn resolved_external_ingots(self, db: &'db dyn HirDb) -> Vec<(IdentId<'db>, Ingot<'db>)> {
         self.dependencies(db)
             .iter()
@@ -91,7 +91,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
             .collect()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     fn all_enums(self, db: &'db dyn HirDb) -> Vec<Enum<'db>> {
         self.all_modules(db)
             .iter()
@@ -102,7 +102,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
             .collect()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     fn all_impl_traits(self, db: &'db dyn HirDb) -> Vec<ImplTrait<'db>> {
         self.all_modules(db)
             .iter()
@@ -113,7 +113,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
             .collect()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     fn all_funcs(self, db: &'db dyn HirDb) -> Vec<Func<'db>> {
         self.all_modules(db)
             .iter()
@@ -124,7 +124,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
             .collect()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     fn all_impls(self, db: &'db dyn HirDb) -> Vec<Impl<'db>> {
         self.all_modules(db)
             .iter()
@@ -143,7 +143,6 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct IntegerId<'db> {
-    #[return_ref]
     pub data: BigUint,
 }
 
@@ -158,7 +157,6 @@ impl<'db> IntegerId<'db> {
 #[derive(Debug)]
 pub struct StringId<'db> {
     /// The decoded UTF-8 text of the string literal, without the quotes.
-    #[return_ref]
     pub data: String,
 }
 
@@ -173,7 +171,7 @@ impl<'db> StringId<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::SalsaValue)]
 pub enum LitKind<'db> {
     Int(IntegerId<'db>),
     String(StringId<'db>),
@@ -191,31 +189,11 @@ pub enum LitKind<'db> {
 /// This type is clearly distinguished from `Option<T>`. The
 /// `Option<T>` type is used to hold syntactically valid optional nodes, while
 /// `Partial<T>` means that a syntactically required element may be missing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, SalsaValue)]
 pub enum Partial<T> {
     Present(T),
     #[default]
     Absent,
-}
-unsafe impl<T> Update for Partial<T>
-where
-    T: Update,
-{
-    unsafe fn maybe_update(old_ptr: *mut Self, new_val: Self) -> bool {
-        unsafe {
-            use Partial::*;
-
-            let old_val = &mut *old_ptr;
-            match (old_val, new_val) {
-                (Present(old), Present(new)) => T::maybe_update(old, new),
-                (Absent, Absent) => false,
-                (old_value, new_value) => {
-                    *old_value = new_value;
-                    true
-                }
-            }
-        }
-    }
 }
 
 impl<T> Partial<T> {

@@ -6,16 +6,15 @@ use crate::analysis::{
     semantic::{ImplEnv, SemanticInstanceKey},
 };
 use crate::hir_def::{ArithBinOp, CompBinOp, HirIngot, UnOp, attr::ArithmeticMode};
-use salsa::Update;
+use salsa::SalsaValue;
 
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ConstExprId<'db> {
-    #[return_ref]
     pub data: ConstExpr<'db>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ConstExpr<'db> {
     Invocation(ConstInvocation<'db>),
     ArithBinOp {
@@ -65,7 +64,7 @@ pub enum ConstExpr<'db> {
 /// type belongs to the enclosing `ConstTyData::Abstract`. The call is its
 /// identity: every occurrence of the same call shares one term, wherever it
 /// is written, because parameters in the key and arguments name their owners.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ConstInvocation<'db> {
     pub key: SemanticInstanceKey<'db>,
     pub args: Vec<TyId<'db>>,

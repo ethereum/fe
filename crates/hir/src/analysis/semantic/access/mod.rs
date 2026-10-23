@@ -21,7 +21,7 @@ use std::{collections::VecDeque, fmt, iter};
 use common::diagnostics::CompleteDiagnostic;
 use cranelift_entity::EntityRef;
 use rustc_hash::FxHashSet;
-use salsa::Update;
+use salsa::SalsaValue;
 
 pub use self::control::{
     ExecutableBlock, ExecutableControlFlow, semantic_executable_control_flow, semantic_may_return,
@@ -60,7 +60,7 @@ use self::{
     trust::{UnsafeTrust, UntrustedUnsafeUse},
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, SalsaValue)]
 pub enum SemanticAccessCheckResult<'db> {
     /// Checked, with the body's warnings and, for a projection, the address
     /// space each access component yields: its result spaces.
@@ -150,11 +150,7 @@ pub fn projection_component_spaces<'db>(
 
 // A projection's check reads its projection callees' result spaces, so
 // recursion through projections, which the check rejects, is a cycle.
-#[salsa::tracked(
-    return_ref,
-    cycle_fn = body_check_cycle_recover,
-    cycle_initial = body_check_cycle_initial
-)]
+#[salsa::tracked(cycle_initial = body_check_cycle_initial)]
 fn body_check<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -183,21 +179,13 @@ fn body_check<'db>(
 
 fn body_check_cycle_initial<'db>(
     _: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _: SemanticInstance<'db>,
 ) -> SemanticAccessCheckResult<'db> {
     SemanticAccessCheckResult::Ok {
         warnings: Vec::new(),
         spaces: Vec::new(),
     }
-}
-
-fn body_check_cycle_recover<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: &SemanticAccessCheckResult<'db>,
-    _: u32,
-    _: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<SemanticAccessCheckResult<'db>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 pub fn check_semantic_accesses<'db>(

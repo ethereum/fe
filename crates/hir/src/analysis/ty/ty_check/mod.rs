@@ -71,7 +71,7 @@ use std::{iter, sync::Arc};
 pub use stmt::{ForLoopCall, ForLoopPlan, ForLoopStep};
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::analysis::place::{
     Place, PlaceBase, PlaceProjection, is_grant_place_expr, is_pointer_place_expr,
@@ -144,7 +144,7 @@ use crate::analysis::{
 /// A function's checked body. A `mut?` function's bodies, one per mode,
 /// report together, a diagnostic both report once; the typed body is the
 /// `ref` one's.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_func_body<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -181,7 +181,7 @@ pub fn check_func_body<'db>(
     (diags, typed)
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_const_body<'db>(
     db: &'db dyn HirAnalysisDb,
     const_: Const<'db>,
@@ -237,7 +237,7 @@ pub(crate) fn const_type_diag<'db>(
     )
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_anon_const_body<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Body<'db>,
@@ -252,7 +252,7 @@ pub fn check_anon_const_body<'db>(
 /// doesn't cascade; consts not declared in the trait fall back to their own
 /// header type. Header-vs-trait conformance itself is reported by the
 /// `ImplTrait` item diagnostics.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_impl_trait_const_bodies<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
@@ -335,7 +335,7 @@ pub fn check_impl_trait_const_bodies<'db>(
 /// against their declared types. Nothing else checks these: impls that don't
 /// override a default only force its evaluation transitively, and a trait
 /// with no concrete impl never checks it at all.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_trait_const_default_bodies<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: Trait<'db>,
@@ -390,7 +390,7 @@ pub fn check_trait_const_default_bodies<'db>(
 /// parameter's default, including one that the lowered default does not hold
 /// (`written_type_const_args`). A use may omit or override a default, so
 /// applications cannot own these diagnostics.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_generic_default_bodies<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
@@ -412,7 +412,7 @@ pub fn check_generic_default_bodies<'db>(
     diags
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub(crate) struct DefaultConstBodyCheck<'db> {
     pub(crate) body: Body<'db>,
     pub(crate) expected: TyId<'db>,
@@ -423,7 +423,7 @@ pub(crate) struct DefaultConstBodyCheck<'db> {
 /// Name/type checking stays separate from const execution so structural
 /// default discovery can remain cycle-free and checked symbolic defaults can
 /// retain their concrete-evaluation obligations.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn check_generic_default_body_types<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
@@ -833,7 +833,7 @@ pub(crate) fn effect_key_wf_diag<'db>(
     ))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_static_assert<'db>(
     db: &'db dyn HirAnalysisDb,
     assert_: StaticAssert<'db>,
@@ -1034,10 +1034,11 @@ pub(crate) fn infer_body<'db>(
 
 #[salsa::interned]
 struct BodyInferenceKey<'db> {
+    #[returns(copy)]
     owner: BodyOwner<'db>,
 }
 
-#[salsa::tracked(return_ref, cycle_initial=infer_body_cycle_initial, cycle_fn=infer_body_cycle_recover)]
+#[salsa::tracked(cycle_initial=infer_body_cycle_initial)]
 fn infer_body_query<'db>(
     db: &'db dyn HirAnalysisDb,
     key: BodyInferenceKey<'db>,
@@ -1105,6 +1106,7 @@ fn infer_body_query<'db>(
 // provisional successful value; existing query handlers may still iterate.
 fn infer_body_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     key: BodyInferenceKey<'db>,
 ) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
     let mut typed = TypedBody::empty(db);
@@ -1120,15 +1122,6 @@ fn infer_body_cycle_initial<'db>(
         )],
         typed,
     )
-}
-
-fn infer_body_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &(Vec<FuncBodyDiag<'db>>, TypedBody<'db>),
-    _count: u32,
-    _key: BodyInferenceKey<'db>,
-) -> salsa::CycleRecoveryAction<(Vec<FuncBodyDiag<'db>>, TypedBody<'db>)> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 /// Whether inference met a type lowering cycle, in the body or in the
@@ -1158,7 +1151,7 @@ pub(crate) fn inference_met_lowering_cycle<'db>(
 /// recursive const definition would be an unrecoverable salsa cycle through
 /// body checking instead of converging to a `RecursiveConst` error in the
 /// eval queries.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_const_value<'db>(
     db: &'db dyn HirAnalysisDb,
     const_: Const<'db>,
@@ -4132,7 +4125,7 @@ impl<'db> TyChecker<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EffectArg<'db> {
     Place(Place<'db>),
     Value(ExprId),
@@ -4140,7 +4133,7 @@ pub enum EffectArg<'db> {
     Unknown,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EffectPassMode {
     /// The provided effect is already a place; pass it directly.
     ByPlace,
@@ -4150,7 +4143,7 @@ pub enum EffectPassMode {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ResolvedEffectArg<'db> {
     pub param_idx: usize,
     pub binding_idx: u32,
@@ -4170,7 +4163,7 @@ pub struct ResolvedEffectArg<'db> {
 }
 
 /// Where an effect argument sits among the callee's rows.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum RowArg {
     /// A component of one of the callee's rows.
     Component(RowPath),
@@ -4180,7 +4173,7 @@ pub enum RowArg {
 }
 
 /// Resolved reference for a `const`-valued path expression.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ConstRef<'db> {
     Const(Const<'db>),
     TraitConst {
@@ -4318,11 +4311,11 @@ impl<'db> TyFoldable<'db> for ConstRef<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 struct ExprPlaceId(u32);
 entity_impl!(ExprPlaceId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum SmirLoweringIssue {
     InvalidExpr(ExprId),
     IncompleteExpr(ExprId),
@@ -4337,7 +4330,7 @@ impl SmirLoweringIssue {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 #[cfg(test)]
 pub(crate) enum SmirLoweringReadiness {
     Ready,
@@ -4350,8 +4343,11 @@ pub(crate) enum SmirLoweringReadiness {
 /// Cloning is cheap: the inferred tables are shared. The checked-body queries
 /// (`check_func_body` and friends) return a clone of the `infer_body`
 /// template, so each body's tables are stored once rather than twice.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct TypedBody<'db> {
+    // SAFETY: The tables own their data, which is salsa ids and plain values;
+    // the entity maps holding them have no `SalsaValue` impls.
+    #[salsa_value(unsafe(prove_safe_to_retain_manually))]
     tables: Arc<TypedBodyTables<'db>>,
 }
 
@@ -4494,11 +4490,7 @@ pub enum ReturnProvenance {
     Unknown,
 }
 
-#[salsa::tracked(
-    return_ref,
-    cycle_fn=func_return_provenance_cycle_recover,
-    cycle_initial=func_return_provenance_cycle_initial
-)]
+#[salsa::tracked(cycle_initial=func_return_provenance_cycle_initial)]
 fn func_return_provenance<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> ReturnProvenance {
     let (diags, typed_body) = infer_body(db, BodyOwner::func(db, func));
     if !diags.is_empty() {
@@ -4509,18 +4501,10 @@ fn func_return_provenance<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> R
 
 fn func_return_provenance_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _func: Func<'db>,
 ) -> ReturnProvenance {
     ReturnProvenance::Forwarded(Vec::new())
-}
-
-fn func_return_provenance_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &ReturnProvenance,
-    _count: u32,
-    _func: Func<'db>,
-) -> salsa::CycleRecoveryAction<ReturnProvenance> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 /// The receiver, explicit generic arguments and arguments of the deferred
@@ -4568,26 +4552,26 @@ fn call_like_expr_args(expr: &Expr<'_>, value_call: bool) -> Option<Vec<ExprId>>
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SalsaValue)]
 pub enum ValuePathRef<'db> {
     UnitVariant(ResolvedVariant<'db>),
     TypeConst(TyId<'db>),
     FunctionItem,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum CodeRegionIntrinsicKind {
     Offset,
     Len,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ConstIntrinsicKind {
     SizeOf,
     StorageSlots,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub enum SemanticExprLowering<'db> {
     Call {
         callable: Callable<'db>,
@@ -4613,7 +4597,7 @@ impl<'db> SemanticExprLowering<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum RecordInitLowering<'db> {
     Struct,
     EnumVariant(ResolvedVariant<'db>),
@@ -4873,18 +4857,6 @@ impl<'db> From<TypedBodyTables<'db>> for TypedBody<'db> {
     fn from(tables: TypedBodyTables<'db>) -> Self {
         Self {
             tables: Arc::new(tables),
-        }
-    }
-}
-
-unsafe impl<'db> Update for TypedBody<'db> {
-    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-        let old_value = unsafe { &mut *old_pointer };
-        if *old_value == new_value {
-            false
-        } else {
-            *old_value = new_value;
-            true
         }
     }
 }

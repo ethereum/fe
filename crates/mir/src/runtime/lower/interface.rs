@@ -51,7 +51,7 @@ pub(crate) fn runtime_param_locals<'db>(
         .collect()
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn runtime_param_plans<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
@@ -62,7 +62,7 @@ pub(crate) fn runtime_param_plans<'db>(
         .collect()
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn runtime_visible_binding_plans<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,

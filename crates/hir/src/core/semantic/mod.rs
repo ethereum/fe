@@ -121,7 +121,7 @@ use crate::core::adt_lower::{lower_adt, lower_contract_fields};
 use common::indexmap::IndexMap;
 use common::ingot::{Ingot, IngotKind};
 use indexmap::IndexSet;
-use salsa::Update;
+use salsa::SalsaValue;
 // Re-export from crate root for backwards compatibility
 pub use crate::diagnosable as diagnostics;
 
@@ -498,7 +498,7 @@ fn lower_self_fallback_param_ty<'db>(
 
 /// The shape of `func`'s parameter `idx` where `func` is used at `mode`, if
 /// the parameter is a product (`_ (i, x): (own usize, ref T)`).
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn func_param_product<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -529,7 +529,7 @@ fn func_param_product<'db>(
     Some(normalize_from_assumptions(db, product, scope, assumptions))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn func_return_shape<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -543,7 +543,7 @@ fn func_return_shape<'db>(
 /// Whether `func` is a `mut?` function: its signature mentions `mut?`, in a
 /// parameter, its return, an effect or a bound. Only syntax decides it, since
 /// nearly every query asks for a function's modes.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn func_is_maybe_mut<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> bool {
     signature_mentions_maybe_mut(db, func, |_| true)
 }
@@ -587,7 +587,7 @@ pub(crate) fn signature_mentions_maybe_mut<'db>(
 }
 
 /// Call checking and callee planning elaborate the same parameters repeatedly.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn func_arg_tys<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Vec<Binder<'db, TyId<'db>>> {
     func.params(db)
         .enumerate()
@@ -595,7 +595,7 @@ fn func_arg_tys<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Vec<Binder<
         .collect()
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn func_arg_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -637,7 +637,7 @@ fn func_arg_ty<'db>(
     Some(Binder::bind(func.into(), ty))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn struct_ctor_arg_tys<'db>(
     db: &'db dyn HirAnalysisDb,
     struct_: Struct<'db>,
@@ -645,7 +645,7 @@ fn struct_ctor_arg_tys<'db>(
     struct_.as_adt(db).fields(db)[0].iter_types(db).collect()
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn variant_ctor_arg_tys<'db>(
     db: &'db dyn HirAnalysisDb,
     enum_: Enum<'db>,
@@ -1672,7 +1672,9 @@ fn is_bare_self_ty<'db>(db: &'db dyn HirDb, hir_ty: TypeId<'db>) -> bool {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct RecvView<'db> {
+    #[returns(copy)]
     pub contract: Contract<'db>,
+    #[returns(copy)]
     pub recv_idx: u32,
 }
 
@@ -1701,7 +1703,9 @@ impl<'db> RecvView<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct RecvArmView<'db> {
+    #[returns(copy)]
     pub recv: RecvView<'db>,
+    #[returns(copy)]
     pub arm_idx: u32,
 }
 
@@ -1758,7 +1762,7 @@ impl<'db> RecvArmView<'db> {
         )
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(clone))]
     pub fn abi_info(self, db: &'db dyn HirAnalysisDb, abi: TyId<'db>) -> RecvArmAbiInfo<'db> {
         if self.is_fallback(db) {
             return RecvArmAbiInfo {
@@ -1810,7 +1814,7 @@ impl<'db> RecvArmView<'db> {
         }
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn arg_bindings(self, db: &'db dyn HirAnalysisDb) -> Vec<ArgBinding<'db>> {
         if self.is_fallback(db) {
             return Vec::new();
@@ -1844,7 +1848,7 @@ impl<'db> RecvArmView<'db> {
         .unwrap_or_default()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn effective_effect_requirements(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1865,7 +1869,7 @@ impl<'db> RecvArmView<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct ContractFieldInfo<'db> {
     pub index: u32,
     pub name: IdentId<'db>,
@@ -1873,14 +1877,14 @@ pub struct ContractFieldInfo<'db> {
     pub is_mut: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ArgBinding<'db> {
     pub pat: PatId,
     pub tuple_index: u32,
     pub ty: TyId<'db>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EffectRequirementKey<'db> {
     Type(TyId<'db>),
     Trait(TraitInstId<'db>),
@@ -1969,7 +1973,7 @@ impl<'db> TyFoldable<'db> for EffectRequirementKey<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct EffectRequirement<'db> {
     pub binding_name: IdentId<'db>,
     pub key: EffectRequirementKey<'db>,
@@ -1989,7 +1993,7 @@ impl<'db> EffectRequirement<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ProviderSource<'db> {
     UsesParam {
         site: EffectParamSite<'db>,
@@ -2014,7 +2018,7 @@ impl<'db> ProviderSource<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ProviderBinding<'db> {
     pub provider_idx: u32,
     pub provider_ty: TyId<'db>,
@@ -2029,13 +2033,13 @@ impl<'db> ProviderBinding<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ResolvedEffectBinding {
     pub requirement_idx: u32,
     pub provider_idx: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ResolvedEffectBindingInfo<'db> {
     pub requirement: EffectRequirement<'db>,
     pub provider: ProviderBinding<'db>,
@@ -2043,10 +2047,11 @@ pub struct ResolvedEffectBindingInfo<'db> {
 
 #[salsa::interned]
 pub struct EffectEnvSite<'db> {
+    #[returns(copy)]
     pub site: EffectParamSite<'db>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct EffectEnvView<'db> {
     site: EffectParamSite<'db>,
 }
@@ -2124,7 +2129,7 @@ impl<'db> EffectEnvView<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct RecvArmAbiInfo<'db> {
     pub is_fallback: bool,
     pub selector_value: Option<u32>,
@@ -2133,7 +2138,7 @@ pub struct RecvArmAbiInfo<'db> {
     pub ret_ty: Option<TyId<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub(crate) struct VariantSelectorInfo {
     pub(crate) value: Option<u32>,
     pub(crate) signature: Option<String>,
@@ -2202,7 +2207,7 @@ impl<'db> Contract<'db> {
             .map_or(0, |layout| layout.code_slot_count)
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn fields(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -2224,7 +2229,7 @@ impl<'db> Contract<'db> {
             .collect()
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn init_args_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         let Some(init) = self.init(db) else {
             return TyId::unit(db);
@@ -2252,12 +2257,12 @@ impl<'db> Contract<'db> {
             .fold(base, |acc, elem| TyId::app(db, acc, elem))
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn effect_requirements(self, db: &'db dyn HirAnalysisDb) -> Vec<EffectRequirement<'db>> {
         contract_effect_requirements_canonical(db, self)
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn init_effect_requirements(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -2277,7 +2282,7 @@ impl<'db> Contract<'db> {
 #[salsa::tracked]
 impl<'db> Func<'db> {
     /// The function's effects where it is used at `mode`.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn effect_requirements(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -2381,7 +2386,7 @@ pub fn provider_bindings_for_site<'db>(
     provider_bindings_for_site_query(db, EffectEnvSite::new(db, site)).as_slice()
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn provider_bindings_for_site_query<'db>(
     db: &'db dyn HirAnalysisDb,
     site: EffectEnvSite<'db>,
@@ -2410,7 +2415,7 @@ pub fn effect_resolutions_for_site<'db>(
     effect_resolutions_for_site_query(db, EffectEnvSite::new(db, site)).as_slice()
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn effect_resolutions_for_site_query<'db>(
     db: &'db dyn HirAnalysisDb,
     site: EffectEnvSite<'db>,
@@ -2447,7 +2452,7 @@ fn effect_resolutions_for_site_query<'db>(
     }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn resolved_effect_binding_infos_for_site<'db>(
     db: &'db dyn HirAnalysisDb,
     site: EffectEnvSite<'db>,
@@ -3116,7 +3121,7 @@ fn selector_local_binding_init_expr<'db>(
     None
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EffectParamOwner<'db> {
     Func(Func<'db>),
     Contract(Contract<'db>),
@@ -3177,7 +3182,7 @@ impl<'db> EffectParamView<'db> {
 
 /// A function's effects with an implementation's rows spliced in, and the
 /// declared `uses` entry each comes from.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct SplicedEffects<'db> {
     pub list: EffectParamListId<'db>,
     origins: Vec<usize>,
@@ -3188,7 +3193,7 @@ pub struct SplicedEffects<'db> {
 /// In an implementation of a trait, a `uses E` or `uses Self::E` entry naming
 /// one of the trait's rows stands for the effects the implementation gives
 /// that row, none if it gives none.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn spliced_func_effects<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> SplicedEffects<'db> {
     let declared = func.declared_effects(db);
     let impl_trait = match func.scope().parent(db) {
@@ -3920,7 +3925,7 @@ impl<'db> AdtDef<'db> {
 /// inside an ADT argument still counts every constructor, including `[T; 0]`.
 /// Shared binary type subterms and parameter states give linear-size reach
 /// clauses and growth flows, solved separately before reconstructing a witness.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn ingot_growing_cycles<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
@@ -6227,7 +6232,7 @@ impl<'db> FieldParent<'db> {
     pub fn as_adt_fields(self, db: &'db dyn HirAnalysisDb) -> AdtField<'db> {
         match self {
             FieldParent::Struct(s) => s.as_adt(db).fields(db)[0].clone(),
-            FieldParent::Contract(c) => lower_contract_fields(db, c),
+            FieldParent::Contract(c) => lower_contract_fields(db, c).clone(),
             FieldParent::Variant(v) => v.as_adt_fields(db).clone(),
         }
     }

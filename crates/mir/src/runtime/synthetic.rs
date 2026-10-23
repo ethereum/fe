@@ -268,7 +268,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
     }
 
     fn finish(self) -> RuntimeBody<'db> {
-        let signature = self.instance.interface_signature(self.db);
+        let signature = self.instance.interface_signature(self.db).clone();
         RuntimeBody {
             owner: self.instance,
             key: self.instance.key(self.db),
@@ -289,7 +289,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
         &self,
         callee: RuntimeInstance<'db>,
     ) -> RuntimeInterfaceSignature<'db> {
-        callee.interface_signature(self.db)
+        callee.interface_signature(self.db).clone()
     }
 
     fn build_entry_root(
@@ -1595,7 +1595,7 @@ pub contract ReturnContract {
         let package = build_runtime_package(&db, top_mod).expect("runtime package should build");
         let wrapper = package
             .functions(&db)
-            .into_iter()
+            .iter()
             .find(|function| {
                 matches!(
                     function.owner(&db),
@@ -1697,7 +1697,7 @@ fn test_raw_storage_root() uses (storage: mut RawStorage) {
             .find(|function| {
                 matches!(
                     function.owner(&db),
-                    RuntimeFunctionOwner::Synthetic(RuntimeSyntheticSpec::TestRoot { ref name, .. })
+                    RuntimeFunctionOwner::Synthetic(RuntimeSyntheticSpec::TestRoot { name, .. })
                         if name == "test_raw_storage_root"
                 )
             })

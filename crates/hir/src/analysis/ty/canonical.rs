@@ -1,5 +1,5 @@
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
@@ -10,7 +10,7 @@ use super::{
 };
 use crate::analysis::{HirAnalysisDb, ty::ty_def::collect_variables};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct Canonical<T> {
     value: T,
 }
@@ -84,7 +84,7 @@ where
     where
         T: Copy,
         S: UnificationStore<'db>,
-        U: TyFoldable<'db> + Clone + Update,
+        U: TyFoldable<'db> + Clone + SalsaValue,
     {
         let solution = solution.fold_with(db, table);
 
@@ -162,7 +162,7 @@ where
     ) -> Solution<U>
     where
         S: UnificationStore<'db>,
-        U: TyFoldable<'db> + Clone + Update,
+        U: TyFoldable<'db> + Clone + SalsaValue,
     {
         self.canonical.canonicalize_solution(db, table, solution)
     }
@@ -188,7 +188,7 @@ where
         solution: Solution<U>,
     ) -> U
     where
-        U: TyFoldable<'db> + Update,
+        U: TyFoldable<'db> + SalsaValue,
         S: UnificationStore<'db>,
     {
         let map = self.subst.clone();
@@ -208,10 +208,10 @@ where
 ///
 /// To extract the internal value into the environment where the query was
 /// created, use [`Canonicalized::extract_solution`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub struct Solution<T>
 where
-    T: Update,
+    T: SalsaValue,
 {
     pub(super) value: T,
 }

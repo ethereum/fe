@@ -618,6 +618,7 @@ fn ingot_logical_name<'db>(
 ) -> String {
     ingot
         .config(db)
+        .clone()
         .and_then(|config| config.metadata.name.map(|name| name.to_string()))
         .unwrap_or_else(|| match ingot.kind(db) {
             IngotKind::Core => "core".to_string(),

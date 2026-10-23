@@ -67,7 +67,7 @@ use crate::{
 };
 use common::indexmap::IndexMap;
 use indexmap::IndexSet;
-use salsa::Update;
+use salsa::SalsaValue;
 use thin_vec::ThinVec;
 
 use super::{
@@ -80,13 +80,18 @@ use super::{
 #[salsa::interned]
 #[derive(Debug)]
 pub struct SemanticInstanceKey<'db> {
+    #[returns(copy)]
     pub owner: BodyOwner<'db>,
+    #[returns(copy)]
     pub subst: GenericSubst<'db>,
+    #[returns(copy)]
     pub effect_providers: EffectProviderSubst<'db>,
+    #[returns(copy)]
     pub impl_env: ImplEnv<'db>,
     /// Proofs of the assumptions the owner's body is checked under, from the
     /// call that made this instance. One the list does not supply is proved
     /// where the body needs it.
+    #[returns(copy)]
     pub evidence: EvidenceList<'db>,
 }
 
@@ -146,6 +151,7 @@ impl<'db> SemanticInstanceKey<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct SemanticInstance<'db> {
+    #[returns(copy)]
     pub key: SemanticInstanceKey<'db>,
 }
 
@@ -173,7 +179,7 @@ pub(crate) enum SemanticBodyAdmissionError<'db> {
     InstanceLimit(crate::analysis::semantic::SemanticDiagnosticId<'db>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct CallSiteLowering<'db> {
     pub callee: Option<SemanticCalleeRef<'db>>,
     pub effect_args: Box<[ResolvedEffectArg<'db>]>,
@@ -184,7 +190,7 @@ pub struct CallSiteLowering<'db> {
     pub drops_receiver: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct ForLoopCallSites<'db> {
     /// The protocol's calls, in `ForLoopStep` order.
     pub sites: [CallSiteLowering<'db>; 4],
@@ -198,14 +204,14 @@ impl<'db> ForLoopCallSites<'db> {
 
 /// The address space of the place a call supplies to one of its callee's
 /// inputs, which the callee is instantiated for.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub(crate) struct CallSiteProviderRefinement {
     pub call_site: CallSiteId,
     pub input: RefinedInput,
     pub address_space: AddressSpace,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SalsaValue)]
 pub(crate) enum RefinedInput {
     Effect {
         binding_idx: u32,
@@ -214,15 +220,15 @@ pub(crate) enum RefinedInput {
     Param(u32),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 struct CallSiteFinalizationData<'db> {
     call_sites: Vec<Option<CallSiteLowering<'db>>>,
     for_loop_call_sites: Vec<Option<ForLoopCallSites<'db>>>,
     diagnostic: Option<crate::analysis::semantic::SemanticDiagnosticId<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
-struct ProvisionalCallSiteData<'db, T: Update + PartialEq + Eq + Clone> {
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
+struct ProvisionalCallSiteData<'db, T: SalsaValue + PartialEq + Eq + Clone> {
     sites: Vec<Option<T>>,
     diagnostic: Option<SemanticDiagnosticId<'db>>,
 }
@@ -253,19 +259,17 @@ type InstantiatedEffectEnvData<'db> = (
 #[salsa::tracked]
 #[derive(Debug)]
 pub struct InstantiatedEffectEnv<'db> {
+    #[returns(copy)]
     pub site: crate::analysis::ty::ty_check::EffectParamSite<'db>,
-    #[return_ref]
     pub requirements: Vec<EffectRequirement<'db>>,
-    #[return_ref]
     pub providers: Vec<ProviderBinding<'db>>,
-    #[return_ref]
     pub resolutions: Vec<ResolvedEffectBinding>,
-    #[return_ref]
     pub forwarded_witnesses: Vec<TraitInstId<'db>>,
+    #[returns(copy)]
     pub assumptions: PredicateListId<'db>,
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub fn instantiated_effect_env<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -284,7 +288,7 @@ pub fn instantiated_effect_env<'db>(
     ))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn instantiated_typed_body<'db>(
     db: &'db dyn HirAnalysisDb,
     key: SemanticInstanceKey<'db>,
@@ -363,7 +367,7 @@ impl<'db> TyFolder<'db> for RowProviderSubst<'_, 'db> {
     }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn provisional_call_sites<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -406,7 +410,7 @@ fn provisional_call_sites<'db>(
     ProvisionalCallSiteData { sites, diagnostic }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn provisional_for_loop_call_sites<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -656,11 +660,7 @@ fn provisional_call_site_diagnostic<'db>(
         .or(provisional_for_loop_call_sites(db, instance).diagnostic)
 }
 
-#[salsa::tracked(
-    return_ref,
-    cycle_fn=final_call_site_data_cycle_recover,
-    cycle_initial=final_call_site_data_cycle_initial
-)]
+#[salsa::tracked(cycle_initial=final_call_site_data_cycle_initial)]
 fn final_call_site_data<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -806,6 +806,7 @@ fn finalize_call_sites<'db>(
 
 fn final_call_site_data_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     instance: SemanticInstance<'db>,
 ) -> CallSiteFinalizationData<'db> {
     CallSiteFinalizationData {
@@ -815,45 +816,20 @@ fn final_call_site_data_cycle_initial<'db>(
     }
 }
 
-fn final_call_site_data_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &CallSiteFinalizationData<'db>,
-    _count: u32,
-    _instance: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<CallSiteFinalizationData<'db>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
 fn call_sites_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     instance: SemanticInstance<'db>,
 ) -> Vec<Option<CallSiteLowering<'db>>> {
     provisional_call_sites(db, instance).sites.clone()
 }
 
-fn call_sites_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Vec<Option<CallSiteLowering<'db>>>,
-    _count: u32,
-    _instance: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<Vec<Option<CallSiteLowering<'db>>>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
 fn for_loop_call_sites_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     instance: SemanticInstance<'db>,
 ) -> Vec<Option<ForLoopCallSites<'db>>> {
     provisional_for_loop_call_sites(db, instance).sites.clone()
-}
-
-fn for_loop_call_sites_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Vec<Option<ForLoopCallSites<'db>>>,
-    _count: u32,
-    _instance: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<Vec<Option<ForLoopCallSites<'db>>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 fn call_sites_have_effect_args<'db>(
@@ -1119,7 +1095,7 @@ fn specialize_provider_address_space<'db>(
 }
 
 /// The body whose types a concrete instance's layout demand reads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub(crate) enum LayoutDemandBody {
     Admitted,
     Provisional,
@@ -1129,7 +1105,7 @@ pub(crate) enum LayoutDemandBody {
 
 #[salsa::tracked]
 impl<'db> SemanticInstance<'db> {
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn assumptions(self, db: &'db dyn HirAnalysisDb) -> PredicateListId<'db> {
         instantiated_effect_env(db, self).map_or_else(
             || semantic_instance_base_assumptions_for_key(db, self.key(db)),
@@ -1137,20 +1113,12 @@ impl<'db> SemanticInstance<'db> {
         )
     }
 
-    #[salsa::tracked(
-        return_ref,
-        cycle_fn=call_sites_cycle_recover,
-        cycle_initial=call_sites_cycle_initial
-    )]
+    #[salsa::tracked(cycle_initial=call_sites_cycle_initial)]
     pub fn call_sites(self, db: &'db dyn HirAnalysisDb) -> Vec<Option<CallSiteLowering<'db>>> {
         final_call_site_data(db, self).call_sites.clone()
     }
 
-    #[salsa::tracked(
-        return_ref,
-        cycle_fn=for_loop_call_sites_cycle_recover,
-        cycle_initial=for_loop_call_sites_cycle_initial
-    )]
+    #[salsa::tracked(cycle_initial=for_loop_call_sites_cycle_initial)]
     pub fn for_loop_call_sites(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1158,7 +1126,7 @@ impl<'db> SemanticInstance<'db> {
         final_call_site_data(db, self).for_loop_call_sites.clone()
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn call_site_finalization_diagnostic(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1166,7 +1134,7 @@ impl<'db> SemanticInstance<'db> {
         final_call_site_data(db, self).diagnostic
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub(crate) fn provisional_body(self, db: &'db dyn HirAnalysisDb) -> SemanticBody<'db> {
         let key = self.key(db);
         let typed_body = key.typed_body(db);
@@ -1185,7 +1153,7 @@ impl<'db> SemanticInstance<'db> {
         body
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(clone))]
     pub fn binding_role(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1311,7 +1279,7 @@ impl<'db> SemanticInstance<'db> {
             .collect()
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn binding_ty(self, db: &'db dyn HirAnalysisDb, binding: LocalBinding<'db>) -> TyId<'db> {
         match binding {
             LocalBinding::EffectParam {
@@ -1407,14 +1375,14 @@ impl<'db> SemanticInstance<'db> {
             )
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn normalized_ty(self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
         normalize_ty(db, ty, self.normalization_scope(db), self.assumptions(db))
     }
 
     /// The state space `ty` is pinned to (`core::marker::Pinned`), where a
     /// collection's entries lie, in this instance.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn pinned_space(self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<AddressSpace> {
         crate::analysis::ty::provider::pinned_space(
             db,
@@ -1426,7 +1394,7 @@ impl<'db> SemanticInstance<'db> {
 
     /// How `ty` packs its elements into lanes when its elements are places
     /// (`core::ops::StateIndex`), in this instance.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn state_index_lanes(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1442,7 +1410,7 @@ impl<'db> SemanticInstance<'db> {
 
     /// The key and element types of `ty` when its elements are places
     /// (`core::ops::StateIndex`), in this instance.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn state_index_tys(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1456,7 +1424,7 @@ impl<'db> SemanticInstance<'db> {
         )
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn normalized_field_types(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1488,7 +1456,7 @@ impl<'db> SemanticInstance<'db> {
         ThinVec::new()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn normalized_enum_variant_field_tys(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1514,7 +1482,7 @@ impl<'db> SemanticInstance<'db> {
         ThinVec::new()
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn normalized_binding_ty(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1523,7 +1491,7 @@ impl<'db> SemanticInstance<'db> {
         self.normalized_ty(db, self.binding_ty(db, binding))
     }
 
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     /// The semantic-IR result type: a projection returns the carriers of its
     /// grants.
     pub fn normalized_result_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
@@ -1536,12 +1504,12 @@ impl<'db> SemanticInstance<'db> {
         self.normalized_ty(db, self.key(db).typed_body(db).result_ty())
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn body(self, db: &'db dyn HirAnalysisDb) -> SemanticBody<'db> {
         lower_semantic_body(db, self)
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn callees(self, db: &'db dyn HirAnalysisDb) -> Vec<SemanticCalleeRef<'db>> {
         collect_semantic_callees(db, self)
     }
@@ -1556,7 +1524,7 @@ impl<'db> SemanticInstance<'db> {
     /// demands this before canonicalization folds any value of such a type,
     /// and from expression types alone when lowering is blocked. Compile-time
     /// evaluation forces the same extents itself when it materializes them.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub(crate) fn concrete_layout_diagnostic(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1772,10 +1740,7 @@ impl<'db> SemanticInstance<'db> {
 /// that reaches a rejected one stops at the first chain to end: recursion
 /// growing its arguments in two ways makes exponentially many instances
 /// within the bounds, of which this follows one chain.
-#[salsa::tracked(
-    cycle_fn = instance_limit_violation_cycle_recover,
-    cycle_initial = instance_limit_violation_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial = instance_limit_violation_cycle_initial)]
 fn instance_limit_violation<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -1857,18 +1822,10 @@ fn instance_limit_violation<'db>(
 
 fn instance_limit_violation_cycle_initial<'db>(
     _: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _: SemanticInstance<'db>,
 ) -> Option<SemanticDiagnosticId<'db>> {
     None
-}
-
-fn instance_limit_violation_cycle_recover<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: &Option<SemanticDiagnosticId<'db>>,
-    _: u32,
-    _: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<Option<SemanticDiagnosticId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 fn normalize_adt_field_types<'db>(
@@ -1887,7 +1844,7 @@ fn normalize_adt_field_types<'db>(
         .collect()
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 pub fn resolved_provider_binding_for_instance_effect<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -2311,7 +2268,7 @@ pub fn validate_instantiated_effect_env_key<'db>(
 /// The rows an instance's effects name. Their components are effect
 /// requirements of the instance's own, numbered after its declared ones,
 /// each resolved to the provider of the same index.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn row_expansion_for_key<'db>(
     db: &'db dyn HirAnalysisDb,
     key: SemanticInstanceKey<'db>,

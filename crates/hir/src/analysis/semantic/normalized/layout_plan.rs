@@ -25,7 +25,7 @@ use super::normalize::normalized_source_local_value_ty;
 /// Semantic borrow and capability analyses consume only `NormalizedBody`.
 /// rMIR lowering uses this companion plan to locate the representation that
 /// carries a semantic value or root.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NLayoutPlan<'db> {
     pub value_representations: Vec<NValueRepresentation>,
     pub root_representations: Vec<NRootRepresentation>,
@@ -130,7 +130,7 @@ pub struct NRootRepresentation {
     pub source_local: Option<SLocalId>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NLayoutUseBacking<'db> {
     pub value: NValueId,
     pub target: Box<[LayoutBackingProjection]>,

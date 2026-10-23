@@ -1,5 +1,5 @@
 use common::indexmap::IndexMap;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::analysis::{
     HirAnalysisDb,
@@ -27,7 +27,7 @@ use crate::analysis::ty::{
 };
 
 /// A step of the protocol a `for` loop runs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ForLoopStep {
     /// `start`: the first cursor or driver state.
     Start,
@@ -44,7 +44,7 @@ impl ForLoopStep {
 }
 
 /// A call of the loop protocol, resolved.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct ForLoopCall<'db> {
     pub callable: Callable<'db>,
     pub effect_args: Vec<super::ResolvedEffectArg<'db>>,
@@ -53,7 +53,7 @@ pub struct ForLoopCall<'db> {
 /// How a `for` loop reaches its elements: the base it holds, the driver its
 /// calls take first if a method chain drives the base, and the calls it
 /// selects.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct ForLoopPlan<'db> {
     /// The base the loop holds.
     pub base: ExprId,

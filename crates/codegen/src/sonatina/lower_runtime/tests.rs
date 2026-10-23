@@ -47,7 +47,8 @@ pub fn main() -> i32 {
     let package = build_native_executable_package(&db, db.top_mod(file)).unwrap();
     let host_import = package
         .functions(&db)
-        .into_iter()
+        .iter()
+        .copied()
         .find(|function| function.linkage(&db) == RuntimeLinkage::External)
         .expect("reachable host import");
     // Model a fixed host import claiming the symbol reserved by native copy lowering.
@@ -107,7 +108,7 @@ pub contract SlotContract {
             .find(|function| function.symbol(&db) == "borrow_slot")
             .expect("slot helper")
             .instance(&db);
-        let mut body = target.body(&db);
+        let mut body = target.body(&db).clone();
         let scalar = body.signature.ret.clone().expect("word return");
         let semantic_ty = body.locals[0].semantic_ty;
         let origin = body.terminator_origins[0];
@@ -235,12 +236,12 @@ pub contract SlotContract {
         );
         lowerer.declare_functions().unwrap();
         lowerer.lower_const_regions().unwrap();
-        for function in package.functions(&db) {
+        for &function in package.functions(&db) {
             let instance = function.instance(&db);
             let selected = if instance == target {
                 body.clone()
             } else {
-                instance.body(&db)
+                instance.body(&db).clone()
             };
             let func_ref = lowerer.func_ref(instance).unwrap();
             FunctionLowerer::new(&mut lowerer, selected, func_ref)

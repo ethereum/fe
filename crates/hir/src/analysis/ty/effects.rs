@@ -182,7 +182,7 @@ pub(crate) fn canonical_effect_identity_for_binding<'db>(
 }
 
 /// Returns a per-effect mapping from effect index → hidden provider generic-arg index.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn place_effect_provider_param_index_map<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,

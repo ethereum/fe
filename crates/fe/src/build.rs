@@ -1592,7 +1592,7 @@ fn collect_contract_names(
     let mut names: Vec<_> = package
         .root_objects(db)
         .iter()
-        .map(|object| object.name(db))
+        .map(|object| object.name(db).clone())
         .collect();
     names.sort();
     names.dedup();
@@ -1826,7 +1826,11 @@ fn dependency_arithmetic_str(mode: DependencyArithmeticMode) -> &'static str {
 /// human-facing `name` and the *candidate* namespace; see [`assign_namespaces`] for the unique
 /// namespace actually used as a path prefix and dependency-map target.
 fn ingot_namespace(db: &DriverDataBase, ingot: hir::Ingot<'_>) -> String {
-    if let Some(name) = ingot.config(db).and_then(|config| config.metadata.name) {
+    if let Some(name) = ingot
+        .config(db)
+        .as_ref()
+        .and_then(|config| config.metadata.name.as_ref())
+    {
         return name.to_string();
     }
     ingot
@@ -1882,7 +1886,7 @@ fn non_builtin_closure<'db>(
     root: hir::Ingot<'db>,
 ) -> Vec<hir::Ingot<'db>> {
     let mut closure = vec![root];
-    for dep_url in db.dependency_graph().dependency_urls(db, &root.base(db)) {
+    for dep_url in db.dependency_graph().dependency_urls(db, root.base(db)) {
         let Some(dep) = dep_url.ingot(db) else {
             continue;
         };
@@ -1955,7 +1959,7 @@ fn assign_namespaces(
             n += 1;
         }
         used.insert(candidate.clone());
-        map.insert(ing.base(db), candidate);
+        map.insert(ing.base(db).clone(), candidate);
     }
     map
 }
@@ -1974,7 +1978,7 @@ fn ingot_dependencies_json(
             Some(dep) if matches!(dep.kind(db), IngotKind::Std) => "std".to_string(),
             Some(dep) if matches!(dep.kind(db), IngotKind::Core) => "core".to_string(),
             Some(dep) => namespaces
-                .get(&dep.base(db))
+                .get(dep.base(db))
                 .cloned()
                 .unwrap_or_else(|| ingot_namespace(db, dep)),
             None => alias.to_string(),
@@ -2012,7 +2016,7 @@ fn write_metadata_artifacts(
         if dep.base(db) == ingot.base(db) {
             continue;
         }
-        let ns = namespaces.get(&dep.base(db)).cloned().unwrap_or_default();
+        let ns = namespaces.get(dep.base(db)).cloned().unwrap_or_default();
         collect_ingot_sources_prefixed(db, dep, Some(&ns), &mut all_sources);
     }
 
@@ -2068,7 +2072,7 @@ fn write_metadata_artifacts(
     let ingots_arr: Vec<serde_json::Value> = closure
         .iter()
         .map(|&ing| {
-            let namespace = namespaces.get(&ing.base(db)).cloned().unwrap_or_default();
+            let namespace = namespaces.get(ing.base(db)).cloned().unwrap_or_default();
             let dep_arith = resolve_dependency_arithmetic_mode(
                 ing.config(db).as_ref(),
                 ing.workspace_config(db).as_ref(),
@@ -2076,7 +2080,7 @@ fn write_metadata_artifacts(
             );
             serde_json::json!({
                 "name": ingot_namespace(db, ing),
-                "version": ing.version(db).map(|v| v.to_string()),
+                "version": ing.version(db).as_ref().map(|v| v.to_string()),
                 "namespace": namespace,
                 "arithmetic": arithmetic_str(ing.arithmetic_mode(db)),
                 "dependencyArithmetic": dependency_arithmetic_str(dep_arith),
@@ -2237,7 +2241,8 @@ fn write_sonatina_bytecode_artifacts(
 fn derive_ingot_ir_file_stem(db: &DriverDataBase, ingot: hir::Ingot<'_>) -> String {
     if let Some(name) = ingot
         .config(db)
-        .and_then(|config| config.metadata.name)
+        .as_ref()
+        .and_then(|config| config.metadata.name.as_ref())
         .map(|name| name.to_string())
     {
         return sanitize_name_with_default(&name, "module");

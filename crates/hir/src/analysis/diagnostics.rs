@@ -1,6 +1,6 @@
-//! This module defines the diagnostics that can be accumulated inside salsa-db
-//! with span-agnostic forms. All diagnostics accumulated in salsa-db should
-//! implement [`DiagnosticVoucher`] which defines the conversion into
+//! This module defines the diagnostics that salsa queries return, in
+//! span-agnostic forms. All diagnostics stored in salsa-db should implement
+//! [`DiagnosticVoucher`] which defines the conversion into
 //! [`CompleteDiagnostic`].
 
 use crate::analysis::{
@@ -340,7 +340,7 @@ fn format_call_constraint_source<'db>(
     format!("required by this bound on `{callable_name}`")
 }
 
-/// All diagnostics accumulated in salsa-db should implement
+/// All diagnostics stored in salsa-db should implement
 /// [`DiagnosticVoucher`] which defines the conversion into
 /// [`CompleteDiagnostic`].
 ///

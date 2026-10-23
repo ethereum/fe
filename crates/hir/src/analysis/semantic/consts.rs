@@ -2,7 +2,7 @@ use common::layout::enum_tag_bits;
 use num_bigint::{BigInt, Sign};
 use num_traits::ToPrimitive;
 use rustc_hash::FxHashSet;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::analysis::{
     HirAnalysisDb,
@@ -26,7 +26,6 @@ use super::ir::VariantIndex;
 #[salsa::interned]
 #[derive(Debug)]
 pub struct SemConstId<'db> {
-    #[return_ref]
     pub value: SemConstValue<'db>,
 }
 
@@ -98,7 +97,7 @@ impl<'db> SemConstId<'db> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum SemConstValue<'db> {
     Unit,
     Scalar {
@@ -125,7 +124,7 @@ pub enum SemConstValue<'db> {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum SemConstScalar {
     Bool(bool),
     Int { value: BigInt },
@@ -249,7 +248,7 @@ pub(crate) fn verify_sem_const_description_shape<'db>(
 }
 
 // Evaluation loads the same constants repeatedly, and each value is immutable.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn verify_sem_const_shape_impl<'db>(
     db: &'db dyn HirAnalysisDb,
     value: SemConstId<'db>,
@@ -587,7 +586,7 @@ pub fn sem_const_from_ty<'db>(
 /// Reify a declaration-owned const value, specializing its expected type once
 /// with the instance's arguments. For values whose expected type already comes
 /// from an instantiated body, use `reify_runtime_const_for_ty` instead.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub fn reify_runtime_const<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -602,7 +601,7 @@ pub fn reify_runtime_const<'db>(
 /// Reify an instantiated constant against an already-instantiated expected
 /// type. Both belong to their current environment; this operation performs no
 /// generic substitution. Use `reify_runtime_const` for declaration templates.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub fn reify_runtime_const_for_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,

@@ -544,7 +544,7 @@ pub(crate) fn trait_to_impl_param_subst<'db>(
     (out, effect_pairs, effects_paired)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, salsa::SalsaValue)]
 pub(crate) struct MethodParamCorrespondence {
     pub body_to_trait_slots: Vec<Option<usize>>,
     pub trait_effect_to_body: Vec<(usize, usize)>,

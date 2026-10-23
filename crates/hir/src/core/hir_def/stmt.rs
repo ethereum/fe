@@ -3,7 +3,7 @@ use cranelift_entity::entity_impl;
 use super::{Body, CondId, ExprId, Partial, PatId, TypeId};
 use crate::{HirDb, span::stmt::LazyStmtSpan};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum Stmt<'db> {
     /// The `let` statement. The first `PatId` is the pattern for binding, the
     /// second `Option<TypeId>` is the type annotation, the third
@@ -38,7 +38,7 @@ pub enum Stmt<'db> {
     Expr(ExprId),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct StmtId(u32);
 entity_impl!(StmtId);
 

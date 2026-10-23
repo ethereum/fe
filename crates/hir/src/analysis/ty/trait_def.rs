@@ -19,7 +19,7 @@ use common::{
     ingot::{Ingot, IngotKind},
 };
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     canonical::Canonical,
@@ -40,7 +40,7 @@ use super::{
 use crate::analysis::HirAnalysisDb;
 
 /// Returns [`TraitEnv`] for the given ingot.
-#[salsa::tracked(return_ref, cycle_fn=ingot_trait_env_cycle_recover, cycle_initial=ingot_trait_env_cycle_initial)]
+#[salsa::tracked(cycle_initial=ingot_trait_env_cycle_initial)]
 pub(crate) fn ingot_trait_env<'db>(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>) -> TraitEnv<'db> {
     TraitEnv::collect(db, ingot)
 }
@@ -57,7 +57,7 @@ pub(crate) fn ingot_trait_env<'db>(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>
 /// Lowering `type Space = Inner<P>::Space` proves the bounds of `Inner`'s
 /// impl, `P: Pinned`, which looks up this trait's impls again. Consumers lower
 /// the associated types they read, one binding at a time.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn impls_for_trait_def<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
@@ -98,7 +98,7 @@ fn impl_self_ty_may_match<'db>(
 /// important: receiver-only lookup necessarily includes every blanket and
 /// otherwise unindexed impl, whose signatures may themselves require method
 /// lookup while being lowered.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn impls_for_trait_and_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
@@ -144,7 +144,7 @@ pub(crate) fn impls_for_trait_and_ty<'db>(
 /// the caller's current module ingot and can miss impls that live in either:
 /// - the trait's ingot, or
 /// - the implementor type's ingot.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn impls_for_trait_in_ingots<'db>(
     db: &'db dyn HirAnalysisDb,
     primary: Ingot<'db>,
@@ -178,7 +178,7 @@ fn is_std_evm_contract_trait_def<'db>(db: &'db dyn HirAnalysisDb, trait_def: Tra
     true
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn contract_virtual_impls<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
@@ -213,7 +213,7 @@ fn contract_virtual_impls<'db>(
     out
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn std_evm_contract_trait_def<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
@@ -240,7 +240,7 @@ fn std_evm_contract_trait_def<'db>(
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ImplementorOrigin<'db> {
     Hir(ImplTrait<'db>),
     VirtualContract(Contract<'db>),
@@ -255,6 +255,7 @@ pub enum ImplementorOrigin<'db> {
 
 fn ingot_trait_env_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     ingot: Ingot<'db>,
 ) -> TraitEnv<'db> {
     // Return an empty trait environment when we detect a cycle
@@ -266,17 +267,7 @@ fn ingot_trait_env_cycle_initial<'db>(
     }
 }
 
-fn ingot_trait_env_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &TraitEnv<'db>,
-    _count: u32,
-    _ingot: Ingot<'db>,
-) -> salsa::CycleRecoveryAction<TraitEnv<'db>> {
-    // Continue iterating to try to resolve the cycle
-    salsa::CycleRecoveryAction::Iterate
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ResolvedImplInstance<'db> {
     selected: ImplementorId<'db>,
     instantiated: ImplementorId<'db>,
@@ -368,8 +359,8 @@ impl<'db> ResolvedImplInstance<'db> {
                         implementor.trait_inst(db),
                     );
                     (
-                        correspondence.body_to_trait_slots,
-                        Some(correspondence.trait_effect_to_body),
+                        correspondence.body_to_trait_slots.clone(),
+                        Some(correspondence.trait_effect_to_body.clone()),
                     )
                 }
             },
@@ -478,7 +469,7 @@ pub(crate) fn resolve_trait_impl_instance<'db>(
 }
 
 /// An implementation selection, without candidates for an ambiguous one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 enum ImplSelection<'db> {
     Unique(ResolvedImplInstance<'db>),
     Ambiguous,
@@ -486,7 +477,7 @@ enum ImplSelection<'db> {
 }
 
 /// Call sites and method checks select the same implementations repeatedly.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn resolve_trait_impl_instance_query<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
@@ -744,7 +735,7 @@ fn impls_with_constraint_mode<'db>(
 }
 
 /// Returns all implementors for the given `ty`.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn impls_for_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
@@ -839,7 +830,7 @@ pub(crate) fn selected_assoc_const_body_template<'db>(
 
 /// Represents the trait environment of an ingot, which maintain all trait
 /// implementors which can be used in the ingot.
-#[derive(Debug, PartialEq, Eq, Clone, Update)]
+#[derive(Debug, PartialEq, Eq, Clone, SalsaValue)]
 pub(crate) struct TraitEnv<'db> {
     /// Syntax-only impl candidates grouped by trait definition.
     pub(crate) impls: FxHashMap<Trait<'db>, Vec<ImplTrait<'db>>>,
@@ -928,18 +919,18 @@ impl<'db> TraitEnv<'db> {
 /// Represents a slim, internal view of a trait impl, derived from an
 /// `ImplTrait` item and its lowered trait instance.
 #[salsa::interned]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct ImplementorId<'db> {
     /// The trait instance that this impl realizes.
+    #[returns(copy)]
     pub(crate) trait_: TraitInstId<'db>,
 
     /// The type parameters of this implementor.
-    #[return_ref]
     pub(crate) params: Vec<TyId<'db>>,
 
-    #[return_ref]
     pub(crate) types: IndexMap<IdentId<'db>, TyId<'db>>,
 
+    #[returns(copy)]
     pub(crate) origin: ImplementorOrigin<'db>,
 }
 
@@ -1231,8 +1222,8 @@ pub(crate) fn does_impl_trait_conflict<'db>(
 #[salsa::interned]
 #[derive(Debug)]
 pub struct TraitRefId<'db> {
+    #[returns(copy)]
     pub key: Trait<'db>,
-    #[return_ref]
     pub args: Vec<TyId<'db>>,
 }
 
@@ -1263,7 +1254,7 @@ impl<'db> TraitRefId<'db> {
 /// What an associated equality binds: an associated type, or an associated
 /// shape, at one mode (`Step<ref> = ref u256`) or at every mode as an impl
 /// gives it (`shape Step = mut? u256`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub struct AssocBinding<'db> {
     pub name: IdentId<'db>,
     pub mode: Option<ShapeMode>,
@@ -1293,22 +1284,22 @@ impl<'db> AssocBinding<'db> {
 
 /// A trait predicate, including associated equality evidence when present.
 #[salsa::interned]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct TraitInstId<'db> {
+    #[returns(copy)]
     pub key: Trait<'db>,
     /// Regular type and const parameters: [Self, ExplicitTypeParam1, ..., ExplicitConstParamN]
-    #[return_ref]
     pub args: Vec<TyId<'db>>,
 
     /// Associated equalities specified by user, eg `Iterator<Item=i32>` or
     /// `Driver<Step<ref> = ref u256>`
-    #[return_ref]
     pub assoc_type_bindings: IndexMap<AssocBinding<'db>, TyId<'db>>,
 
     /// The modes the predicate grants the trait's `mut?` methods at:
     /// `T: Trait` grants `ref`, `T: mut Trait` both. `mut?` (`T: mut? Trait`)
     /// is `mut` where the item it bounds is used at `mut`, and stands only
     /// in an item's declared bounds.
+    #[returns(copy)]
     pub mode: ModeMarker,
 }
 
