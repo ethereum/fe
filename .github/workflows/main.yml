@@ -8,6 +8,8 @@ on:
 
   pull_request:
 
+  workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -64,16 +66,14 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets --all-features -- -D clippy::all
 
   test:
-    # Build & Test runs on all platforms
+    # PRs skip macOS: the org shares 5 concurrent macOS runners. To test a PR
+    # branch on macOS, run `gh workflow run CI --ref <branch>`.
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-          - os: macOS-latest
-          - os: windows-latest
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest", "windows-latest"]' || '["ubuntu-latest", "macOS-latest", "windows-latest"]') }}
     env:
       # MSVC's link.exe is much slower than lld at linking the large test
       # binaries. Only affects Windows builds.
