@@ -16,6 +16,7 @@ use super::{
     generic_defaults::DefaultApplication,
     normalize::normalize_ty,
     provider::AddressSpace,
+    shape::lower_shape_list,
     trait_def::TraitInstId,
     trait_resolution::{
         PredicateListId,
@@ -80,7 +81,7 @@ fn lower_hir_ty_impl<'db>(
             let tuple = TyId::tuple(db, len);
             elems.iter().enumerate().fold(tuple, |acc, (idx, &elem)| {
                 let elem_ty = lower_child(elem, idx);
-                if !elem_ty.has_star_kind(db) {
+                if !elem_ty.is_star_kind(db) {
                     return TyId::invalid(db, InvalidCause::NotFullyApplied);
                 }
 
@@ -880,8 +881,8 @@ pub(crate) fn lower_generic_arg_list<'db>(
             // Generic args are syntactically ambiguous: `String<N>` may parse `N` as a type
             // even when `String` expects a const generic arg, so a path is lowered as the
             // constant it names, if it names one.
-            GenericArg::Type(ty_arg) => match ty_arg.ty.to_opt().map(|ty| ty.data(db)) {
-                Some(HirTyKind::Path(path)) => lower_path_impl(
+            GenericArg::Type(ty_arg) => match ty_arg.ty.to_opt().map(|ty| (ty, ty.data(db))) {
+                Some((_, HirTyKind::Path(path))) => lower_path_impl(
                     db,
                     scope,
                     *path,
@@ -889,8 +890,16 @@ pub(crate) fn lower_generic_arg_list<'db>(
                     TypePosition::GenericArg,
                     lowering_cx,
                 ),
+                // A tuple whose parts carry modes or name a shape is a
+                // parameter list, a shape: `Fn<(own A, B)>`.
+                Some((ty, HirTyKind::Tuple(_)))
+                    if let Some(list) = lower_shape_list(db, ty, scope, assumptions) =>
+                {
+                    list
+                }
                 _ => lower_opt_hir_ty_impl(db, ty_arg.ty, scope, assumptions, lowering_cx),
             },
+            GenericArg::Mode(_) => TyId::invalid(db, InvalidCause::ModeArgNotShape),
             GenericArg::Const(const_arg) => TyId::const_ty(
                 db,
                 lower_opt_const_body(db, const_arg.value, scope, assumptions, lowering_cx),
@@ -1682,6 +1691,7 @@ impl<'db> TyParamPrecursor<'db> {
 pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
     match kind {
         HirKindBound::Mono => Kind::Star,
+        HirKindBound::Shape => Kind::Shape,
         HirKindBound::Abs(lhs, rhs) => match (lhs, rhs) {
             (Partial::Present(lhs), Partial::Present(rhs)) => {
                 Kind::Abs(Box::new((lower_kind(lhs), lower_kind(rhs))))
@@ -1699,7 +1709,7 @@ pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
 
 /// Helper for extracting a lowered kind from a slice of HIR `TypeBound`s.
 /// Returns the first kind bound if present.
-pub(super) fn lower_kind_in_bounds<'db>(bounds: &[TypeBound<'db>]) -> Option<Kind> {
+pub(crate) fn lower_kind_in_bounds<'db>(bounds: &[TypeBound<'db>]) -> Option<Kind> {
     for bound in bounds {
         if let TypeBound::Kind(Partial::Present(k)) = bound {
             return Some(lower_kind(k));

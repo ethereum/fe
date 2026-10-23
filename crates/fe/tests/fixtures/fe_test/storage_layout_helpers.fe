@@ -16,7 +16,6 @@ use std::evm::{
     mapping_slot,
     read_storage_word,
     storage_at,
-    storage_at_mut,
 }
 
 struct Balances {}
@@ -64,17 +63,17 @@ fn array_slots_match_solidity() {
 #[test]
 fn helpers_find_the_collections_slots() uses (evm: mut Evm) {
     with (RawStorage = evm) {
-        let map = unsafe { StorageMap<u256, u256>::at(7) }
+        let map = unsafe { mut StorageMap<u256, u256>::at(7) }
         map[3] = 42
         let key: u256 = 3
         assert(read_storage_word(mapping_slot(7, key)) == 42)
 
-        let values = unsafe { SolArray<u256>::at(4) }
+        let values = unsafe { mut SolArray<u256>::at(4) }
         values.push(10)
         values.push(20)
         assert(read_storage_word(array_data_slot(4) + 1) == 20)
 
-        let balances = unsafe { storage_at_mut<Balances>(9) }
+        let balances = unsafe { mut storage_at<Balances>(9) }
         balances[Address::new(1)] = 5
         assert(read_storage_word(mapping_slot(9, Address::new(1))) == 5)
         assert(unsafe { storage_at<Balances>(9) }[Address::new(1)] == 5)

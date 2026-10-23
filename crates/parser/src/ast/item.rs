@@ -425,8 +425,31 @@ impl TraitUsesItem {
 }
 
 ast_node! {
+    /// `shape Step` in a trait definition, or `shape Step = (own usize,
+    /// D::Step)` in a trait implementation: an associated shape.
+    pub struct TraitShapeItem,
+    SK::TraitShapeItem,
+}
+impl super::AttrListOwner for TraitShapeItem {}
+impl TraitShapeItem {
+    /// The shape's name, after the `shape` keyword.
+    pub fn name(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| token.kind() == SK::Ident)
+            .nth(1)
+    }
+
+    /// The shape an implementation gives it, after `=`.
+    pub fn ty(&self) -> Option<super::Type> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
     pub struct TraitItem,
-    SK::Func | SK::TraitTypeItem | SK::TraitConstItem | SK::TraitUsesItem
+    SK::Func | SK::TraitTypeItem | SK::TraitConstItem | SK::TraitUsesItem | SK::TraitShapeItem
 }
 impl TraitItem {
     pub fn kind(&self) -> TraitItemKind {
@@ -441,6 +464,9 @@ impl TraitItem {
             SK::TraitUsesItem => {
                 TraitItemKind::Uses(TraitUsesItem::cast(self.syntax().clone()).unwrap())
             }
+            SK::TraitShapeItem => {
+                TraitItemKind::Shape(TraitShapeItem::cast(self.syntax().clone()).unwrap())
+            }
             _ => unreachable!(),
         }
     }
@@ -451,6 +477,7 @@ pub enum TraitItemKind {
     Type(TraitTypeItem),
     Const(TraitConstItem),
     Uses(TraitUsesItem),
+    Shape(TraitShapeItem),
 }
 
 ast_node! {

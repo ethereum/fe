@@ -23,12 +23,12 @@ error[16-0001]: access conflict in `fn external_call`
    │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `mut` projection of it is open
 
 error[16-0001]: access conflict in `fn two_blocks`
-   ┌─ unsafe_splits.fe:37:22
+   ┌─ unsafe_splits.fe:37:26
    │
-36 │     let a = unsafe { SolArray<u256>::at(0) }
-   │                      --------------------- projection opened here
-37 │     let b = unsafe { SolArray<u256>::at(1) }
-   │                      ^^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `mut` projection of it is open
+36 │     let a = unsafe { mut SolArray<u256>::at(0) }
+   │                          --------------------- projection opened here
+37 │     let b = unsafe { mut SolArray<u256>::at(1) }
+   │                          ^^^^^^^^^^^^^^^^^^^^^ this call may write storage while a `mut` projection of it is open
 
 error[16-0001]: access conflict in `fn duplicated`
    ┌─ unsafe_splits.fe:45:5

@@ -81,11 +81,15 @@ impl<'db> GenericArgListId<'db> {
                                 .name
                                 .to_opt()
                                 .map_or_else(|| "<missing>".into(), |n| n.data(db).to_string());
+                            let mode = a
+                                .mode
+                                .map_or_else(String::new, |mode| format!("<{}>", mode.keyword()));
                             let ty =
                                 a.ty.to_opt()
                                     .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db));
-                            format!("{name} = {ty}")
+                            format!("{name}{mode} = {ty}")
                         }
+                        GenericArg::Mode(mode) => mode.keyword().to_string(),
                     })
                     .collect::<Vec<_>>()
                     .join(", ")
@@ -226,6 +230,9 @@ pub enum GenericArg<'db> {
     Type(TypeGenericArg<'db>),
     Const(ConstGenericArg<'db>),
     AssocType(AssocTypeGenericArg<'db>),
+    /// `ref` or `mut`: the mode an associated shape is named at,
+    /// `D::Step<ref>`.
+    Mode(TypeMode),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -241,6 +248,8 @@ pub struct ConstGenericArg<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocTypeGenericArg<'db> {
     pub name: Partial<IdentId<'db>>,
+    /// The mode an associated shape is bound at: `Step<ref> = ref u256`.
+    pub mode: Option<TypeMode>,
     pub ty: Partial<TypeId<'db>>,
 }
 
@@ -253,26 +262,6 @@ pub enum FuncParamMode {
     Mut,
     /// `x: own T`: callee takes ownership of the argument.
     Own,
-}
-
-/// The name of the core callable shape trait `Fn(..)`, or `FnMut(..)` when
-/// `mut_receiver`, of parameters with `modes`: `Fn_ov` for `Fn(own A, B)`,
-/// `FnMut0` for `FnMut()`, and `Fn` (`Fn<T, U>`) for `Fn(own T)`.
-pub fn callable_shape_name(mut_receiver: bool, modes: &[FuncParamMode]) -> String {
-    let receiver = if mut_receiver { "FnMut" } else { "Fn" };
-    let letters: String = modes
-        .iter()
-        .map(|mode| match mode {
-            FuncParamMode::Own => 'o',
-            FuncParamMode::View => 'v',
-            FuncParamMode::Mut => 'm',
-        })
-        .collect();
-    match letters.as_str() {
-        "" => format!("{receiver}0"),
-        "o" if !mut_receiver => receiver.to_string(),
-        letters => format!("{receiver}_{letters}"),
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -301,7 +290,9 @@ impl<'db> FuncParam<'db> {
             .flatten()
             .and_then(|name| match name {
                 FuncParamName::Ident(ident) => Some(ident),
-                FuncParamName::Underscore | FuncParamName::Destructured(_) => None,
+                FuncParamName::Underscore
+                | FuncParamName::Destructured(_)
+                | FuncParamName::Spread => None,
             })
     }
 
@@ -309,7 +300,9 @@ impl<'db> FuncParam<'db> {
     pub fn name(&self) -> Option<IdentId<'db>> {
         match self.name.to_opt()? {
             FuncParamName::Ident(name) => Some(name),
-            FuncParamName::Underscore | FuncParamName::Destructured(_) => None,
+            FuncParamName::Underscore | FuncParamName::Destructured(_) | FuncParamName::Spread => {
+                None
+            }
         }
     }
 
@@ -318,7 +311,7 @@ impl<'db> FuncParam<'db> {
     pub fn binding_name(&self) -> Option<IdentId<'db>> {
         match self.name.to_opt()? {
             FuncParamName::Ident(name) | FuncParamName::Destructured(name) => Some(name),
-            FuncParamName::Underscore => None,
+            FuncParamName::Underscore | FuncParamName::Spread => None,
         }
     }
 
@@ -329,6 +322,11 @@ impl<'db> FuncParam<'db> {
     /// Whether the parameter is a pattern its body destructures it with.
     pub fn is_destructured(&self) -> bool {
         matches!(self.name.to_opt(), Some(FuncParamName::Destructured(_)))
+    }
+
+    /// Whether the parameter is a spread, `..A`.
+    pub fn is_spread(&self) -> bool {
+        matches!(self.name.to_opt(), Some(FuncParamName::Spread))
     }
 
     /// Whether the parameter is written `mut?`: `mut? self` or `x: mut? T`.
@@ -354,6 +352,9 @@ pub enum FuncParamName<'db> {
     /// `let (a, b) = %1`. The name, which source cannot write, is the
     /// parameter's `%` and its index.
     Destructured(IdentId<'db>),
+    /// `..A`: the parameters the shape `A`, the parameter's type, lists, in
+    /// its place.
+    Spread,
 }
 
 impl<'db> FuncParamName<'db> {
@@ -384,6 +385,7 @@ impl<'db> FuncParamName<'db> {
         match self {
             FuncParamName::Ident(name) => name.data(db).to_string(),
             FuncParamName::Underscore | FuncParamName::Destructured(_) => "_".to_string(),
+            FuncParamName::Spread => "..".to_string(),
         }
     }
 }
@@ -446,6 +448,8 @@ impl<'db> TraitRefId<'db> {
 pub enum KindBound {
     /// `*`
     Mono,
+    /// A `shape A` parameter's kind: a callable's parameter list.
+    Shape,
     /// `* -> *`
     Abs(Partial<Box<KindBound>>, Partial<Box<KindBound>>),
 }

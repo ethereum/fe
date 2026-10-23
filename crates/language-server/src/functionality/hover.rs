@@ -49,7 +49,7 @@ fn contract_from_effect_site<'db>(
         EffectParamSite::Contract(contract)
         | EffectParamSite::ContractInit { contract }
         | EffectParamSite::ContractRecvArm { contract, .. } => Some(contract),
-        EffectParamSite::Func(func) => match func.scope().parent_item(db) {
+        EffectParamSite::Func(func, _) => match func.scope().parent_item(db) {
             Some(ItemKind::Contract(contract)) => Some(contract),
             _ => None,
         },
@@ -63,7 +63,7 @@ fn effect_key_path_at_site<'db>(
     idx: usize,
 ) -> Option<PathId<'db>> {
     match site {
-        EffectParamSite::Func(func) => func.effect_params(db).nth(idx)?.key_path(db),
+        EffectParamSite::Func(func, _) => func.effect_params(db).nth(idx)?.key_path(db),
         EffectParamSite::Contract(contract) => contract.effect_params(db).nth(idx)?.key_path(db),
         EffectParamSite::ContractInit { contract } => contract
             .init(db)?

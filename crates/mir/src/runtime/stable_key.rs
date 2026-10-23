@@ -63,6 +63,15 @@ enum OwnerContextRenderMode {
     Textual,
 }
 
+/// A `mut?` function's bodies, one per mode, are distinct.
+fn mode_identity(mode: Option<BorrowKind>) -> &'static str {
+    match mode {
+        None => "",
+        Some(BorrowKind::Ref) => "$ref",
+        Some(BorrowKind::Mut) => "$mut",
+    }
+}
+
 fn body_owner_identity<'db>(db: &'db dyn HirAnalysisDb, owner: BodyOwner<'db>) -> String {
     body_owner_identity_in_mode(db, owner, OwnerContextRenderMode::Fingerprinted)
 }
@@ -76,12 +85,9 @@ fn body_owner_identity_in_mode<'db>(
         BodyOwner::Func(func, mode) => {
             let owner_context =
                 owner_context_identity_in_mode(db, owner, render_mode).unwrap_or_default();
-            // A `mut?` function's bodies, one per mode, are distinct in semantic
-            // instance keys; trace body identity is shared across modes.
-            let mode = match (render_mode, mode) {
-                (OwnerContextRenderMode::Textual, _) | (_, None) => "",
-                (OwnerContextRenderMode::Fingerprinted, Some(BorrowKind::Ref)) => "$ref",
-                (OwnerContextRenderMode::Fingerprinted, Some(BorrowKind::Mut)) => "$mut",
+            let mode = match render_mode {
+                OwnerContextRenderMode::Textual => "",
+                OwnerContextRenderMode::Fingerprinted => mode_identity(mode),
             };
             format!(
                 "func${}${owner_context}{mode}",
@@ -589,7 +595,7 @@ fn trait_inst_is_effect_ref_marker<'db>(
         return false;
     };
     trait_def.top_mod(db).ingot(db).kind(db) == IngotKind::Core
-        && matches!(name.data(db).as_str(), "EffectRef" | "EffectRefMut")
+        && name.data(db) == "EffectRef"
         && module_path_components_for_scope(db, trait_def.scope())
             .iter()
             .any(|component| component == "effect_ref")
@@ -657,7 +663,11 @@ fn effect_param_site_identity<'db>(
     site: EffectParamSite<'db>,
 ) -> String {
     match site {
-        EffectParamSite::Func(func) => format!("func${}", item_identity(db, func.into())),
+        EffectParamSite::Func(func, mode) => format!(
+            "func${}{}",
+            item_identity(db, func.into()),
+            mode_identity(mode)
+        ),
         EffectParamSite::Contract(contract) => {
             format!("contract${}", item_identity(db, contract.into()))
         }
@@ -703,6 +713,7 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
     match ty.data(db) {
         TyData::TyBase(base) => match base {
             TyBase::Prim(prim) => format!("prim${prim:?}"),
+            TyBase::Shape(con) => format!("shape${con:?}"),
             TyBase::Adt(adt) => format!("adt${}", item_identity(db, adt.adt_ref(db).as_item())),
             TyBase::Contract(contract) => {
                 format!("contract${}", item_identity(db, (*contract).into()))
@@ -723,24 +734,31 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
                 // and its position there identify it.
                 let def = closure.def(db);
                 let owner = closure_owner_identity(db, def);
+                let leaves: Vec<_> = closure
+                    .params(db)
+                    .iter()
+                    .flat_map(|param| param.leaves(db))
+                    .collect();
                 let tys = closure
                     .parent_args(db)
                     .iter()
                     .chain(closure.captures(db))
-                    .chain(&closure.param_tys(db))
-                    .chain([closure.ret_ty(db)].iter())
-                    .map(|ty| type_identity(db, *ty))
+                    .copied()
+                    .chain(leaves.iter().map(|&(_, ty)| ty))
+                    .chain([closure.ret_ty(db)])
+                    .map(|ty| type_identity(db, ty))
                     .collect::<Vec<_>>()
                     .join("$");
+                let shapes: Vec<_> = closure
+                    .params(db)
+                    .iter()
+                    .map(|param| param.pretty_print_product(db))
+                    .collect();
                 let proofs = closure
                     .bound_evidence(db)
                     .map(|bound| evidence_list_identity(db, bound.entries))
                     .unwrap_or_default();
-                let base = format!(
-                    "closure${owner}${}${:?}${tys}",
-                    def.expr.as_u32(),
-                    closure.modes(db)
-                );
+                let base = format!("closure${owner}${}${:?}${tys}", def.expr.as_u32(), shapes);
                 if proofs.is_empty() {
                     base
                 } else {
@@ -756,9 +774,10 @@ pub fn type_identity<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
             )
         }
         TyData::AssocTy(assoc) => format!(
-            "assoc${}${}",
+            "assoc${}${}${:?}",
             trait_ref_identity(db, assoc.trait_),
-            assoc.name.data(db)
+            assoc.name.data(db),
+            assoc.mode
         ),
         TyData::QualifiedTy(trait_inst) => format!("qualified${}", trait_identity(db, *trait_inst)),
         TyData::ConstTy(const_ty) => {
@@ -784,7 +803,7 @@ fn trait_identity<'db>(db: &'db dyn HirAnalysisDb, trait_inst: TraitInstId<'db>)
     let assoc_types = trait_inst
         .assoc_type_bindings(db)
         .iter()
-        .map(|(name, ty)| format!("{}${}", name.data(db), type_identity(db, *ty)))
+        .map(|(binding, ty)| format!("{}${}", binding.pretty_print(db), type_identity(db, *ty)))
         .collect::<Vec<_>>()
         .join("$");
     format!("{trait_ref}$assoc${assoc_types}")

@@ -2042,7 +2042,7 @@ fn runtime_class_for_root_provider_param<'db>(
     let binding_ty = binding_ty
         .as_capability(db)
         .map_or(binding_ty, |(_, inner)| canonical(inner));
-    registered_root_providers(db, EffectParamSite::Func(func))
+    registered_root_providers(db, EffectParamSite::Func(func, None))
         .iter()
         .find(|provider| canonical(provider.provider_ty) == binding_ty)
         .map(|provider| {
