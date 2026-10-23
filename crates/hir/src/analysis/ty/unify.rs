@@ -21,6 +21,7 @@ use crate::analysis::{
     HirAnalysisDb,
     ty::const_ty::{ConstCaptureEnv, ConstTyData, ConstTyId, normalize_const_tys_for_comparison},
 };
+use crate::core::semantic::EffectRequirementKey;
 
 pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<InferenceKey<'db>>>;
 
@@ -142,8 +143,10 @@ where
             }
 
             // Closure types unify structurally: the same definition with
-            // unifiable component types is the same closure. One side may
-            // still carry inference variables from the body checking it.
+            // unifiable component types and row is the same closure. One side
+            // may still carry inference variables from the body checking it,
+            // or in its row's keys, where a method probe instantiates the
+            // row's providers.
             (
                 TyData::TyBase(TyBase::Closure(closure1)),
                 TyData::TyBase(TyBase::Closure(closure2)),
@@ -160,15 +163,35 @@ where
                         .collect::<Vec<_>>()
                 };
                 let (lhs, rhs) = (components(*closure1), components(*closure2));
+                let (lhs_row, rhs_row) = (closure1.effects(db), closure2.effects(db));
                 if closure1.def(db) != closure2.def(db)
                     || closure1.modes(db) != closure2.modes(db)
                     || lhs.len() != rhs.len()
+                    || lhs_row.len() != rhs_row.len()
                 {
                     return Err(UnificationError::TypeMismatch);
                 }
-                lhs.into_iter()
-                    .zip(rhs)
-                    .try_for_each(|(lhs, rhs)| self.unify_ty(lhs, rhs))
+                for (lhs, rhs) in lhs.into_iter().zip(rhs) {
+                    self.unify_ty(lhs, rhs)?;
+                }
+                lhs_row
+                    .iter()
+                    .zip(rhs_row)
+                    .try_for_each(|(lhs, rhs)| match (&lhs.key, &rhs.key) {
+                        (EffectRequirementKey::Type(lhs), EffectRequirementKey::Type(rhs)) => {
+                            self.unify_ty(*lhs, *rhs)
+                        }
+                        (EffectRequirementKey::Trait(lhs), EffectRequirementKey::Trait(rhs)) => {
+                            lhs.unify(self, *rhs)
+                        }
+                        (EffectRequirementKey::Row(lhs), EffectRequirementKey::Row(rhs))
+                            if lhs.row == rhs.row =>
+                        {
+                            lhs.inst.unify(self, rhs.inst)
+                        }
+                        (EffectRequirementKey::Other, EffectRequirementKey::Other) => Ok(()),
+                        _ => Err(UnificationError::TypeMismatch),
+                    })
             }
 
             (TyData::TyParam(_), TyData::TyParam(_)) | (TyData::TyBase(_), TyData::TyBase(_)) => {
