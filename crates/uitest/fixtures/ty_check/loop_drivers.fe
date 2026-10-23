@@ -10,11 +10,12 @@ fn not_a_driver(_ xs: [u256; 3]) {
 }
 
 // Only the elements a driver projects can be mutated.
-struct Firsts {}
+struct Firsts<B> {}
 
-impl<B: Collection<Cursor = usize>> Driver<B> for Firsts {
+impl<B: Collection<Cursor = usize>> Driver for Firsts<B> {
+    type Base = B
     type State = usize
-    type Item = B::Item
+    shape Step = ref B::Item
 
     fn start(self, _ base: B) -> usize uses B::E {
         base.start()
@@ -28,8 +29,8 @@ impl<B: Collection<Cursor = usize>> Driver<B> for Firsts {
         s + 1
     }
 
-    fn at(self, _ base: B, _ s: usize) -> ((), ref B::Item) uses B::E {
-        ((), Collection::at(base, s))
+    fn at(self, _ base: B, _ s: usize) -> ref B::Item uses B::E {
+        Collection::at(base, s)
     }
 }
 
@@ -55,7 +56,7 @@ fn reads(_ accounts: [Account; 2]) {
     }
 }
 
-// Without anything beside it, a driver binds its element alone.
+// A step of the element alone binds it alone.
 fn binds_the_element(_ xs: [u256; 3]) {
     for (i, x) in xs.reversed() {
     }
@@ -63,7 +64,20 @@ fn binds_the_element(_ xs: [u256; 3]) {
 
 // A method chain drives a collection it passes through.
 fn chain_over_a_driver() {
-    let d = Reversed {}
+    let d = Reversed<[u256; 3]> {}
     for x in d.take(2) {
+    }
+}
+
+// A driver runs over its own base's type.
+fn other_base(_ xs: [u256; 3]) {
+    let d = Reversed<[u256; 4]> {}
+    for x in xs.by(d) {
+    }
+}
+
+// A generic driver's base is its own unless a bound names the loop's.
+fn generic_base<C: Collection, D: Driver>(_ xs: C, _ d: own D) {
+    for x in xs.by(d) {
     }
 }

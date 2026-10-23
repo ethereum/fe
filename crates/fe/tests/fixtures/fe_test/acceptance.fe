@@ -190,12 +190,12 @@ fn case38_grant_writes() {
 
 struct Tag { n: u256 }
 
-struct Tagged {}
+struct Tagged<B> {}
 
-impl<B: Collection> Driver<B> for Tagged {
+impl<B: Collection> Driver for Tagged<B> {
+    type Base = B
     type State = B::Cursor
-    type Item = B::Item
-    type Extra = Tag
+    shape Step = (own Tag, ref B::Item)
 
     fn start(self, _ base: B) -> B::Cursor uses (B::E, E) {
         base.start()
@@ -209,12 +209,13 @@ impl<B: Collection> Driver<B> for Tagged {
         base.next(s)
     }
 
-    fn at(self, _ base: B, _ s: B::Cursor) -> (Tag, ref B::Item) uses (B::E, E) {
+    fn at(self, _ base: B, _ s: B::Cursor) -> (own Tag, ref B::Item) uses (B::E, E) {
         (Tag { n: 1 }, base.at(s))
     }
 }
 
-// 40. A copied traversal of `Copy` items keeps a non-`Copy` owned `Extra`.
+// 40. A step's owned part, a non-`Copy` tag, moves into the pattern beside a
+// copied element.
 #[test]
 fn case40_owned_extra() {
     let xs: [u256; 3] = [1, 2, 3]

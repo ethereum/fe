@@ -29,3 +29,13 @@ error[16-0001]: access conflict in `fn while_let`
    │                                     --------- projection opened here
 26 │         xs[0] = 7
    │         ^^ cannot mutably access this place while a `mut` projection of it is open
+
+error[16-0001]: access conflict in `fn enumerated`
+   ┌─ loop_sessions.fe:43:9
+   │
+42 │ ╭     for (i, ref item) in items.enumerate() {
+43 │ │         items[i] = Item { n: 0 }
+   │ │         ^^^^^^^^^^^^^^^^^^^^^^^^ cannot write to this place while a `ref` projection of it is open
+44 │ │         assert(item.n > 0)
+45 │ │     }
+   │ ╰─────' projection opened here

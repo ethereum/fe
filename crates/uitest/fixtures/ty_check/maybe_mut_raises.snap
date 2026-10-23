@@ -3,23 +3,6 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/maybe_mut_raises.fe
 ---
-error[8-0018]: left-hand side of assignment is immutable
-    ┌─ maybe_mut_raises.fe:182:5
-    │
-181 │     let (mut a, mut b) = unsafe { (ref c.a, ref c.b) }
-    │          ----- `a` is a read access; bind it with `mut` to write through it
-182 │     a = 1
-    │     ^ immutable assignment
-
-error[8-0018]: left-hand side of assignment is immutable
-    ┌─ maybe_mut_raises.fe:183:5
-    │
-181 │     let (mut a, mut b) = unsafe { (ref c.a, ref c.b) }
-    │                 ----- `b` is a read access; bind it with `mut` to write through it
-182 │     a = 1
-183 │     b = 2
-    │     ^ immutable assignment
-
 error[8-0037]: effect `Store` must be mutable when calling `cell`
    ┌─ maybe_mut_raises.fe:44:5
    │

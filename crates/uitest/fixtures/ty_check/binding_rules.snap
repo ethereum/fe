@@ -146,6 +146,14 @@ error[8-0123]: a `mut` binding needs a mutable place or access
     │
     = write `var` for a mutable copy, or use the `mut` projection to write through
 
+error[8-0123]: a `mut` binding needs a mutable place or access
+    ┌─ binding_rules.fe:206:13
+    │
+206 │     let (i, mut item) = first(items)
+    │             ^^^^^^^^ this binds part of a read access
+    │
+    = write `var` for a mutable copy, or use the `mut` projection to write through
+
 error[8-0129]: a `mut` result needs a `mut` binding
     ┌─ binding_rules.fe:189:9
     │

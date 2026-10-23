@@ -26,3 +26,28 @@ fn mut_extra(_ xs: mut [u256; 2]) {
         i += x as usize
     }
 }
+
+struct Account { balance: u256 }
+
+// S-70. Rejected: a step's non-`Copy` element is bound `ref`, and its owned
+// index by value.
+fn non_copy_step(_ accounts: [Account; 2]) {
+    for (i, account) in accounts.enumerate() {
+    }
+}
+
+// Rejected: a step bound whole, which the pattern must take apart, or which
+// generic code only passes on; `ref` and `mut` on it add nothing more.
+fn whole_step(_ xs: mut [u256; 2]) {
+    for ref t in xs.enumerate() {
+    }
+    for mut t in xs.enumerate() {
+    }
+}
+
+fn whole_opaque_step<D: Copy + core::iter::Driver<Base = [u256; 2]>>(_ xs: [u256; 2], _ d: D)
+    uses D::E
+{
+    for ref x in xs.by(d) {
+    }
+}

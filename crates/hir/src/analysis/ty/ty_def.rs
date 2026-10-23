@@ -92,27 +92,15 @@ impl<'db> TyId<'db> {
         !self.is_view(db) && self.pinned_part(db).is_none()
     }
 
-    /// A `#[view]` type this type holds as a part: a type argument of an
-    /// ADT, a tuple, an array or a pointer, at any depth.
+    /// A `#[view]` type this type holds as a part, at any depth: in a field,
+    /// a tuple or array element, or as a pointer's target. A type argument no
+    /// field holds is not a part: `Identity<MemSlice<T>>` names a view's type
+    /// without holding one.
     pub fn view_part(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
-        if let Some((_, target)) = self.as_capability(db) {
-            return target.view_part(db);
+        match self.as_capability(db) {
+            Some((_, target)) => target.view_part(db),
+            None => super::adt_def::ty_view_part(db, self),
         }
-        let holds_args = match self.base_ty(db).data(db) {
-            TyData::TyBase(TyBase::Adt(_)) => true,
-            TyData::TyBase(TyBase::Prim(prim)) => {
-                matches!(prim, PrimTy::Tuple(_) | PrimTy::Array | PrimTy::Ptr(_))
-            }
-            _ => false,
-        };
-        if !holds_args {
-            return None;
-        }
-        self.generic_args(db).iter().find_map(|arg| {
-            arg.is_view(db)
-                .then_some(*arg)
-                .or_else(|| arg.view_part(db))
-        })
     }
 
     /// The pinned type this type is or holds in a field, in a tuple or

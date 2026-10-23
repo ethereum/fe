@@ -173,6 +173,82 @@ fn ty_pinned_part_cycle_recover<'db>(
     salsa::CycleRecoveryAction::Iterate
 }
 
+/// The `#[view]` type `ty` holds as a part: an argument of a tuple, an array
+/// or a pointer, or of an ADT parameter its fields mention, at any depth; see
+/// `TyId::view_part`.
+pub(crate) fn ty_view_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
+    let held = match ty.base_ty(db).data(db) {
+        TyData::TyBase(TyBase::Adt(adt)) => adt_field_params(db, *adt).as_slice(),
+        TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_) | PrimTy::Array | PrimTy::Ptr(_))) => &[],
+        _ => return None,
+    };
+    ty.generic_args(db)
+        .iter()
+        .enumerate()
+        .filter(|(idx, _)| held.get(*idx).copied().unwrap_or(true))
+        .find_map(|(_, &arg)| arg.is_view(db).then_some(arg).or_else(|| arg.view_part(db)))
+}
+
+/// Whether some field of `adt` holds a value of each of its parameters: an
+/// argument for one that none does only distinguishes the type. Type lowering
+/// asks this of every ADT it names, impl headers included, so the fields'
+/// const bodies stay unevaluated: evaluating one proves bounds through those
+/// impls, and a const holds no value anyway.
+#[salsa::tracked(return_ref, cycle_fn = adt_field_params_cycle_recover, cycle_initial = adt_field_params_cycle_initial)]
+pub(crate) fn adt_field_params<'db>(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Vec<bool> {
+    let params = adt.params(db);
+    if params.is_empty() {
+        return Vec::new();
+    }
+    let fields: Vec<_> = adt
+        .fields(db)
+        .iter()
+        .flat_map(|variant| {
+            (0..variant.num_types()).map(|i| variant.ty_in_mode(db, i, ConstBodyLowering::Deferred))
+        })
+        .map(|field| field.instantiate_identity())
+        .collect();
+    params
+        .iter()
+        .map(|&param| fields.iter().any(|&field| holds(db, field, param)))
+        .collect()
+}
+
+/// Whether a value of `ty` holds a value of `param`: it is one, or holds one
+/// through an argument of a tuple, an array or a pointer, or of an ADT
+/// parameter that its fields hold. A projection may be any type, an
+/// equality's among them, so it holds every parameter.
+fn holds<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, param: TyId<'db>) -> bool {
+    if ty == param {
+        return true;
+    }
+    match ty.base_ty(db).data(db) {
+        TyData::AssocTy(_) | TyData::QualifiedTy(_) => true,
+        TyData::TyBase(TyBase::Adt(adt)) => {
+            let held = adt_field_params(db, *adt);
+            ty.generic_args(db)
+                .iter()
+                .enumerate()
+                .any(|(idx, &arg)| held.get(idx).copied().unwrap_or(true) && holds(db, arg, param))
+        }
+        _ => ty.generic_args(db).iter().any(|&arg| holds(db, arg, param)),
+    }
+}
+
+// Until the fields are known, every parameter may be held.
+fn adt_field_params_cycle_initial<'db>(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Vec<bool> {
+    vec![true; adt.params(db).len()]
+}
+
+fn adt_field_params_cycle_recover<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: &Vec<bool>,
+    _: u32,
+    _: AdtDef<'db>,
+) -> salsa::CycleRecoveryAction<Vec<bool>> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
 impl<'db> AdtDef<'db> {
     pub(crate) fn name(self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
         self.adt_ref(db).name(db)

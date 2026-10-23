@@ -12,7 +12,7 @@ use super::{
     effects::{
         CanonicalEffectIdentity, EffectKeyCanonMode, EffectKeyKind,
         canonical_effect_identity_for_binding, place_effect_provider_param_index_map,
-        rows::row_is_empty,
+        rows::{RowKey, row_is_empty},
     },
     fold::{TyFoldable, TyFolder},
     normalize::{normalize_from_assumptions, normalize_ty},
@@ -741,7 +741,7 @@ fn collect_effect_provider_entries<'db>(
                     rebase_same_trait_uses,
                 )
             });
-            identity.key_trait = identity.key_trait.map(|inst| {
+            let normalize = |inst| {
                 normalize_predicate_for_comparison(
                     db,
                     inst,
@@ -750,6 +750,11 @@ fn collect_effect_provider_entries<'db>(
                     trait_inst,
                     rebase_same_trait_uses,
                 )
+            };
+            identity.key_trait = identity.key_trait.map(normalize);
+            identity.key_row = identity.key_row.map(|row| RowKey {
+                inst: normalize(row.inst),
+                ..row
             });
 
             EffectProviderEntry {
@@ -826,9 +831,16 @@ fn effect_identity_matches<'db>(
             }
             _ => false,
         },
+        // A row is its self type's, unlike a trait key, whose `Self` is the
+        // provider.
         EffectKeyKind::Row => match (trait_identity.key_row, impl_identity.key_row) {
             (Some(trait_row), Some(impl_row)) => {
                 trait_row.row == impl_row.row
+                    && effect_identity_tys_match(
+                        db,
+                        trait_row.inst.self_ty(db),
+                        impl_row.inst.self_ty(db),
+                    )
                     && trait_effect_key_matches_with(
                         db,
                         trait_row.inst,

@@ -68,7 +68,7 @@ use num_traits::ToPrimitive;
 pub use owner::BodyOwner;
 pub use owner::EffectParamOwner;
 use std::{iter, sync::Arc};
-pub use stmt::{ForLoopCall, ForLoopItem, ForLoopPlan, ForLoopStep};
+pub use stmt::{ForLoopCall, ForLoopPlan, ForLoopStep};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
@@ -3524,34 +3524,45 @@ impl<'db> TyChecker<'db> {
     /// Whether `pat` binds a component of `shape` that is a `ref` access with
     /// a `mut` binding, which needs the access to be `mut`.
     fn pattern_asks_mut(&self, pat: PatId, shape: &Shape<'db>) -> bool {
+        self.access_pats(pat, shape).into_iter().any(|(pat, kind)| {
+            kind == BorrowKind::Ref && self.first_marked_binding(pat, BindingMarker::Mut).is_some()
+        })
+    }
+
+    /// The parts of `pat` that bind the access components of `shape`, with
+    /// each component's kind.
+    pub(super) fn access_pats(&self, pat: PatId, shape: &Shape<'db>) -> Vec<(PatId, BorrowKind)> {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
-            return false;
+            return Vec::new();
         };
         match (shape, pat_data) {
-            (Shape::Owned(_) | Shape::Access(BorrowKind::Mut, _), _) => false,
-            (Shape::Access(BorrowKind::Ref, _), _) => {
-                self.first_marked_binding(pat, BindingMarker::Mut).is_some()
-            }
+            (Shape::Access(kind, _), _) => vec![(pat, *kind)],
             (_, Pat::Or(lhs, rhs)) => {
-                self.pattern_asks_mut(*lhs, shape) || self.pattern_asks_mut(*rhs, shape)
+                let mut pats = self.access_pats(*lhs, shape);
+                pats.extend(self.access_pats(*rhs, shape));
+                pats
             }
             (Shape::Tuple(elems), Pat::Tuple(pats)) => {
                 let rest = pats
                     .iter()
                     .position(|pat| pat.is_rest(self.db, self.body()));
-                pats.iter().enumerate().any(|(idx, &pat)| {
-                    let elem = match rest {
-                        Some(rest) if idx > rest => (elems.len() + idx).checked_sub(pats.len()),
-                        _ => Some(idx),
-                    };
-                    elem.and_then(|elem| elems.get(elem))
-                        .is_some_and(|elem| self.pattern_asks_mut(pat, elem))
-                })
+                pats.iter()
+                    .enumerate()
+                    .flat_map(|(idx, &pat)| {
+                        let elem = match rest {
+                            Some(rest) if idx > rest => (elems.len() + idx).checked_sub(pats.len()),
+                            _ => Some(idx),
+                        };
+                        elem.and_then(|elem| elems.get(elem))
+                            .map_or_else(Vec::new, |elem| self.access_pats(pat, elem))
+                    })
+                    .collect()
             }
-            (Shape::Sum { payload, .. }, Pat::PathTuple(_, pats)) => {
-                matches!(pats.as_slice(), [payload_pat] if self.pattern_asks_mut(*payload_pat, payload))
-            }
-            _ => false,
+            (Shape::Sum { payload, .. }, Pat::PathTuple(_, pats)) => match pats.as_slice() {
+                [payload_pat] => self.access_pats(*payload_pat, payload),
+                _ => Vec::new(),
+            },
+            _ => Vec::new(),
         }
     }
 

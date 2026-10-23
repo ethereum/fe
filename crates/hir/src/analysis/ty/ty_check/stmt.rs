@@ -1,3 +1,4 @@
+use common::indexmap::IndexMap;
 use salsa::Update;
 
 use crate::analysis::{
@@ -5,7 +6,7 @@ use crate::analysis::{
     name_resolution::method_selection::{MethodCandidate, select_method_candidate},
 };
 use crate::core::hir_def::{
-    BindingMarker, Expr, ExprId, IdentId, Partial, Pat, PatId, Stmt, StmtId, Trait,
+    BindingMarker, Expr, ExprId, IdentId, ModeMarker, Partial, Pat, PatId, Stmt, StmtId, Trait,
 };
 use crate::span::DynLazySpan;
 
@@ -19,7 +20,7 @@ use crate::analysis::ty::{
     diagnostics::{BodyDiag, MarkerPosition},
     fold::{TyFoldable, TyFolder},
     shape::Shape,
-    trait_def::TraitInstId,
+    trait_def::{AssocBinding, TraitInstId},
     trait_resolution::{GoalSatisfiability, TraitSolveCx, is_goal_satisfiable},
     ty_def::{BorrowKind, InvalidCause, TyId},
     visitor::TyVisitable,
@@ -42,18 +43,6 @@ impl ForLoopStep {
     pub const ALL: [Self; 4] = [Self::Start, Self::Has, Self::Next, Self::At];
 }
 
-/// What a loop's body receives from each step.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
-pub enum ForLoopItem {
-    /// A copy of the element and of what a driver yields beside it, taken
-    /// before the body runs, so the element's session ends first.
-    Copy,
-    /// The element's access, open while the body uses it.
-    Access(BorrowKind),
-    /// A producer's owned value.
-    Produced,
-}
-
 /// A call of the loop protocol, resolved.
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct ForLoopCall<'db> {
@@ -62,8 +51,8 @@ pub struct ForLoopCall<'db> {
 }
 
 /// How a `for` loop reaches its elements: the base it holds, the driver its
-/// calls take first if a method chain drives the base, the calls it selects
-/// and what its body receives.
+/// calls take first if a method chain drives the base, and the calls it
+/// selects.
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct ForLoopPlan<'db> {
     /// The base the loop holds.
@@ -71,13 +60,13 @@ pub struct ForLoopPlan<'db> {
     /// The method chain that drives the base: all of `xs.reversed()` in
     /// `for x in xs.reversed()`, whose base is `xs`.
     pub driver: Option<ExprId>,
+    /// Whether the driver is a producer, whose `produce` advances it.
+    pub produces: bool,
     pub state_ty: TyId<'db>,
-    /// What an `at` or `produce` call yields: the element's access, beside
-    /// what a driver yields with it, or a producer's value.
+    /// What an `at` or `produce` call yields, which the pattern binds as a
+    /// `let` binds it: a step's accesses, with what a driver adds beside
+    /// them, or a producer's value.
     pub shape: Shape<'db>,
-    pub item: ForLoopItem,
-    /// The pattern binds the element alone: a driver yields nothing beside it.
-    pub binds_element: bool,
     /// The calls, in `ForLoopStep` order.
     pub calls: [ForLoopCall<'db>; 4],
 }
@@ -85,14 +74,6 @@ pub struct ForLoopPlan<'db> {
 impl<'db> ForLoopPlan<'db> {
     pub fn call(&self, step: ForLoopStep) -> &ForLoopCall<'db> {
         &self.calls[step as usize]
-    }
-
-    /// The shape of what the pattern binds.
-    pub fn pattern_shape(&self) -> &Shape<'db> {
-        match &self.shape {
-            Shape::Tuple(parts) if self.binds_element => &parts[1],
-            shape => shape,
-        }
     }
 }
 
@@ -402,48 +383,46 @@ impl<'db> TyChecker<'db> {
             self.consume_access(*base);
         }
         let base = (*base, prop.ty);
-        // The item pattern chooses the traversal: a read one, unless the item
-        // is bound `mut`, which opens the base mutably.
+        // The pattern chooses the traversal: a read one, unless it binds an
+        // access of the step `mut`, which opens the base mutably.
         let mut plan = self.plan_for_loop(base, false);
         if let Some(read) = &plan {
-            let item = self.loop_item_pat(*pat, read);
+            let items: Vec<_> = self
+                .access_pats(*pat, &read.shape)
+                .into_iter()
+                .map(|(item, _)| item)
+                .collect();
             // A method chain's plan holds the receiver it drives.
             let held = read.base;
-            self.take_initializer_marker(held, item.as_slice(), MarkerPosition::LoopBase);
+            self.take_initializer_marker(held, &items, MarkerPosition::LoopBase);
             // Over a mutable base, a `mut` item would write the elements.
             if self.env.typed_expr(held).is_some_and(|prop| {
                 prop.is_mut || matches!(prop.shape, Some(Shape::Access(BorrowKind::Mut, _)))
             }) {
-                self.record_mutable_sources(item.as_slice());
+                self.record_mutable_sources(&items);
             }
-            if let Some(mut_pat) =
-                item.and_then(|item| self.first_marked_binding(item, BindingMarker::Mut))
+            if let Some(mut_pat) = items
+                .iter()
+                .find_map(|&item| self.first_marked_binding(item, BindingMarker::Mut))
                 && self.open_loop_base(held, mut_pat)
             {
                 plan = self.plan_for_loop(base, true);
             }
         }
         match plan {
-            Some(mut plan) => {
-                // `for ref x in c` holds each element's access, `Copy` or not.
-                if plan.item == ForLoopItem::Copy
-                    && self
-                        .first_marked_binding(*pat, BindingMarker::Ref)
-                        .is_some()
+            Some(plan) => {
+                // The pattern binds the step as a `let` binds a projection's
+                // result.
+                self.check_pat(*pat, plan.shape.erased_ty(self.db));
+                if let Some(root) = self.env.pattern_store().root(*pat)
+                    && !self.env.pattern_store().is_irrefutable(self.db, root)
                 {
-                    plan.item = ForLoopItem::Access(BorrowKind::Ref);
+                    self.push_diag(BodyDiag::RefutableLoopPattern {
+                        primary: pat.span(self.body()).into(),
+                    });
                 }
-                let pattern_shape = plan.pattern_shape().clone();
-                self.check_pat(*pat, pattern_shape.erased_ty(self.db));
-                if let ForLoopItem::Access(_) = plan.item {
-                    let authority = self.expr_has_authority(base.0);
-                    self.bind_pattern_accesses(
-                        *pat,
-                        &pattern_shape,
-                        authority,
-                        AccessBinding::Result,
-                    );
-                }
+                let authority = self.expr_has_authority(base.0);
+                self.bind_pattern_accesses(*pat, &plan.shape, authority, AccessBinding::Result);
                 self.env.register_for_loop_plan(stmt, plan);
             }
             None => {
@@ -462,23 +441,6 @@ impl<'db> TyChecker<'db> {
         self.env.leave_loop();
 
         TyId::unit(self.db)
-    }
-
-    /// The part of the loop pattern `pat` binding the element `plan` yields:
-    /// the item beside a driver's `Extra`, or the whole pattern. A
-    /// producer's values are no items.
-    fn loop_item_pat(&self, pat: PatId, plan: &ForLoopPlan<'db>) -> Option<PatId> {
-        if plan.item == ForLoopItem::Produced {
-            return None;
-        }
-        match (pat.data(self.db, self.body()), &plan.shape) {
-            (Partial::Present(Pat::Tuple(parts)), Shape::Tuple(_))
-                if parts.len() == 2 && !plan.binds_element =>
-            {
-                Some(parts[1])
-            }
-            _ => Some(pat),
-        }
     }
 
     /// Opens the loop base `base` mutably for the `mut` item `mut_pat`, as a
@@ -549,23 +511,74 @@ impl<'db> TyChecker<'db> {
             None => self.plan_protocol(base, None, mutates),
         };
         if plan.is_none() {
-            self.push_diag(BodyDiag::TraitNotImplemented {
-                primary: expr.span(self.body()).into(),
-                ty: ty.pretty_print(self.db).to_string(),
-                trait_name: IdentId::new(self.db, "Collection".to_string()),
-            });
+            let primary = expr.span(self.body()).into();
+            // A driver over another base, or over none of the chain's.
+            let diag = match self.driver_base(ty) {
+                Some(base) => {
+                    let mut root = expr;
+                    while let Partial::Present(Expr::MethodCall(receiver, ..)) =
+                        root.data(self.db, self.body())
+                    {
+                        root = *receiver;
+                    }
+                    let receiver = self
+                        .env
+                        .typed_expr(root)
+                        .filter(|_| root != expr)
+                        .map(|prop| prop.ty.fold_with(self.db, &mut self.table))
+                        .filter(|&root_ty| self.driver_base(root_ty).is_none());
+                    BodyDiag::LoopDriverBase {
+                        primary,
+                        driver: ty,
+                        base,
+                        receiver,
+                    }
+                }
+                None => BodyDiag::TraitNotImplemented {
+                    primary,
+                    ty: ty.pretty_print(self.db).to_string(),
+                    trait_name: IdentId::new(self.db, "Collection".to_string()),
+                },
+            };
+            self.push_diag(diag);
         }
         plan
     }
 
+    /// The base `ty` drives if it is a driver or a producer.
+    fn driver_base(&mut self, ty: TyId<'db>) -> Option<TyId<'db>> {
+        let solve_cx =
+            TraitSolveCx::new(self.db, self.env.scope()).with_assumptions(self.env.assumptions());
+        let base = IdentId::new(self.db, "Base".to_string());
+        let projection = ["Driver", "Producer"].into_iter().find_map(|name| {
+            let trait_def = resolve_core_trait(self.db, self.env.scope(), &["iter", name])?;
+            let inst = TraitInstId::new(
+                self.db,
+                trait_def,
+                vec![ty],
+                IndexMap::new(),
+                ModeMarker::None,
+            );
+            matches!(
+                is_goal_satisfiable(self.db, solve_cx, inst),
+                GoalSatisfiability::Satisfied(_)
+            )
+            .then(|| inst.project_assoc_ty(self.db, base))
+            .flatten()
+        })?;
+        Some(self.normalize_ty(projection))
+    }
+
     /// The receiver a method chain of type `ty` drives, the nearest first:
     /// `xs` in `xs.reversed().take(3)`, and the projected `buf.span()` in
-    /// `buf.span().reversed()`.
+    /// `buf.span().reversed()`. A driver or producer names its base's type,
+    /// `Base`, which the receiver has.
     fn chain_base(&mut self, expr: ExprId, ty: TyId<'db>) -> Option<(ExprId, TyId<'db>)> {
         let traits = ["Driver", "Producer"]
             .map(|name| resolve_core_trait(self.db, self.env.scope(), &["iter", name]));
         let solve_cx =
             TraitSolveCx::new(self.db, self.env.scope()).with_assumptions(self.env.assumptions());
+        let base = AssocBinding::of(IdentId::new(self.db, "Base".to_string()));
         let mut receiver = expr;
         while let Partial::Present(Expr::MethodCall(next, ..)) = receiver.data(self.db, self.body())
         {
@@ -576,7 +589,13 @@ impl<'db> TyChecker<'db> {
                 .ty
                 .fold_with(self.db, &mut self.table);
             let drives = traits.iter().flatten().any(|&trait_def| {
-                let goal = TraitInstId::new_simple(self.db, trait_def, vec![ty, receiver_ty]);
+                let goal = TraitInstId::new(
+                    self.db,
+                    trait_def,
+                    vec![ty],
+                    IndexMap::from_iter([(base, receiver_ty)]),
+                    ModeMarker::None,
+                );
                 !matches!(
                     is_goal_satisfiable(self.db, solve_cx, goal),
                     GoalSatisfiability::UnSat(_) | GoalSatisfiability::ContainsInvalid
@@ -592,8 +611,7 @@ impl<'db> TyChecker<'db> {
     /// The protocol of a loop over `base`, of type `base_ty`, run by the
     /// method chain `driver` or by the collection itself. A loop that mutates
     /// its elements selects the `mut` form of `at`; otherwise a producer's
-    /// owned values come before a driver's elements, which the body sees as
-    /// copies when they are `Copy` and as `ref` accesses otherwise.
+    /// owned values come before a driver's steps.
     fn plan_protocol(
         &mut self,
         base: (ExprId, TyId<'db>),
@@ -629,7 +647,7 @@ impl<'db> TyChecker<'db> {
             }
         };
         // A loop that mutates its elements takes them at `mut`, from a
-        // `mut Collection` or a `mut Driver<B>`.
+        // `mut Collection` or a `mut Driver`.
         if mutates {
             let span = driver.map_or_else(
                 || span.clone(),
@@ -667,37 +685,19 @@ impl<'db> TyChecker<'db> {
             Some(shape) => shape.map_tys(self.db, &mut |ty| self.normalize_ty(ty)),
             None => Shape::Owned(self.normalize_ty(at.callable.ret_ty(self.db))),
         };
-        // The element, beside what a driver yields with it.
-        let element = match &shape {
-            Shape::Tuple(parts) => parts.get(1).map(|part| part.erased_ty(self.db)),
-            Shape::Access(_, element) => Some(*element),
-            _ => None,
-        };
-        let item = match element {
-            None => ForLoopItem::Produced,
-            Some(_) if mutates => ForLoopItem::Access(BorrowKind::Mut),
-            Some(element) if self.ty_is_copy(element) => ForLoopItem::Copy,
-            Some(_) => ForLoopItem::Access(BorrowKind::Ref),
-        };
-        // A driver that yields nothing beside its elements binds them alone.
-        let binds_element = match &shape {
-            Shape::Tuple(parts) => parts[0] == Shape::Owned(TyId::unit(self.db)),
-            _ => true,
-        };
         Some(ForLoopPlan {
             base,
             driver: driver.map(|(driver, _)| driver),
+            produces: at_name == "produce",
             state_ty,
             shape,
-            item,
-            binds_element,
             calls: [start, has, next, at],
         })
     }
 
     /// The instance of `trait_def`, selected through its method `method`, that
-    /// a loop's receiver of type `receiver_ty` implements: for a driver, over
-    /// the base of type `base_ty`.
+    /// a loop's receiver of type `receiver_ty` implements: for a driver, one
+    /// whose `Base` is `base_ty`.
     fn select_loop_trait(
         &mut self,
         span: DynLazySpan<'db>,
@@ -719,27 +719,40 @@ impl<'db> TyChecker<'db> {
             Ok(MethodCandidate::NeedsConfirmation(cand)) => (cand, true),
             _ => return None,
         };
-        let snapshot = self.snapshot_state();
         let inst = canonical.extract_solution(&mut self.table, cand.inst);
-        if let Some(base_ty) = base_ty
-            && inst
-                .args(self.db)
-                .get(1)
-                .is_none_or(|&arg| self.table.unify(arg, base_ty).is_err())
-        {
-            self.rollback_state(snapshot);
-            return None;
+        // A driver's base is the loop's. Its unique solution infers a driver
+        // built without naming the base, `let d = Identity {}`.
+        let bindings: IndexMap<_, _> = base_ty
+            .map(|base_ty| {
+                let base = IdentId::new(self.db, "Base".to_string());
+                (AssocBinding::of(base), base_ty)
+            })
+            .into_iter()
+            .collect();
+        let goal = TraitInstId::new(
+            self.db,
+            inst.def(self.db),
+            inst.args(self.db).clone(),
+            bindings,
+            inst.mode(self.db),
+        );
+        if base_ty.is_some() {
+            match self.trait_effect_goal_satisfiability(goal) {
+                GoalSatisfiability::Satisfied(solution) => {
+                    self.commit_trait_goal_solution(goal, solution);
+                }
+                GoalSatisfiability::UnSat(_) | GoalSatisfiability::ContainsInvalid => return None,
+                GoalSatisfiability::NeedsConfirmation { .. } => {}
+            }
         }
-        self.commit_state(snapshot);
-        let inst = inst.fold_with(self.db, &mut self.table);
         if confirm || base_ty.is_some() {
             self.env.register_trait_obligation(TraitObligation {
-                goal: inst,
+                goal: goal.fold_with(self.db, &mut self.table),
                 origin: TraitObligationOrigin::GenericConfirmation,
                 span,
             });
         }
-        Some(inst)
+        Some(inst.fold_with(self.db, &mut self.table))
     }
 
     fn check_while(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {

@@ -3313,7 +3313,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn trait_effect_goal_satisfiability(
+    pub(super) fn trait_effect_goal_satisfiability(
         &self,
         trait_goal: TraitInstId<'db>,
     ) -> GoalSatisfiability<'db> {
@@ -5454,6 +5454,14 @@ impl<'db> TyChecker<'db> {
         if !typed_lhs.is_mut {
             let binding = self.find_base_binding(lhs);
             if self.report_write_to_capture(binding, lhs.span(self.body()).into()) {
+                return AssignLhsStatus::Immutable;
+            }
+            // A `mut` binding of a read access is reported where it binds.
+            if let Some(binding @ LocalBinding::Local { pat, .. }) = binding
+                && self.env.binding_access(&binding).is_some()
+                && let Partial::Present(Pat::Path(_, marker)) = pat.data(self.db, self.body())
+                && self.binding_marker(pat, *marker) == BindingMarker::Mut
+            {
                 return AssignLhsStatus::Immutable;
             }
             let binding = binding.map(|binding| {

@@ -1,7 +1,7 @@
 // Closures are values of their captures, copied or moved in, and implement
 // the callable shape of their parameter modes; unannotated parameters take
 // their modes and types from the shape the callee expects.
-use core::iter::{Adapt, Collection, FromProducer}
+use core::iter::{Collection, FromProducer}
 use core::option::Option
 use core::ptr::MemArray
 

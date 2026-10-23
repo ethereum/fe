@@ -62,10 +62,11 @@ parameters out, unlabeled, and a call passes one argument for each.
 Unannotated parameters take their modes and types from the shape bound of
 the parameter the closure is passed to, after the arguments before it: in
 `xs.fold(0, |acc, x| acc + x)`, `acc` is `own u256` and `x` is a view of the
-item. A closure passed to a function without such a bound, like the
-`filter` and `map` adapters on a driver, annotates its parameters:
-`for x in xs.reversed().filter(|x: u256| x % 2 == 0)`. A closure literal, or a
-function named by its path, may be passed to a `mut` parameter directly.
+item. The `filter` and `map` adapters on a driver take its step, so
+`xs.enumerate().filter(|(i, x)| i % 2 == 0)` destructures an owned index and
+a view of the element. A closure passed to a function without such a bound
+annotates its parameters. A closure literal, or a function named by its path,
+may be passed to a `mut` parameter directly.
 
 ## Calls
 

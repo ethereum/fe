@@ -28,9 +28,9 @@ use crate::{
             shape::{Shape, SumKind, sum_kind},
             ty_check::{
                 BindingAccess, BodyOwner, CallParam, Callable, CodeRegionIntrinsicKind,
-                ConstIntrinsicKind, ConstRef, ForLoopItem, ForLoopStep, LocalBinding,
-                PathReadSemantics, RecordInitLowering, RecordLike, SemanticExprLowering, TypedBody,
-                ValuePathRef, constructed_variant, infer_body, transparent_newtype_field_ty,
+                ConstIntrinsicKind, ConstRef, ForLoopStep, LocalBinding, PathReadSemantics,
+                RecordInitLowering, RecordLike, SemanticExprLowering, TypedBody, ValuePathRef,
+                constructed_variant, infer_body, transparent_newtype_field_ty,
             },
             ty_def::{BorrowKind, TyData, TyId},
             ty_is_copy, ty_is_snapshot,
@@ -2455,7 +2455,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         // the whole loop, unless it is `Copy`.
         let driver = plan.driver.map(|driver| {
             let ty = self.expr_ty(driver);
-            if plan.item != ForLoopItem::Produced
+            if !plan.produces
                 && !ty_is_copy(self.db, self.body.scope(), ty, self.assumptions)
                 && let Some(place) = self.try_lower_place(driver)
             {
@@ -2543,65 +2543,17 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let mut at_args = with_state(self, state);
         // `produce` advances the driver through a `mut` access.
         if let (Some(temp), Some(driver)) = (driver, plan.driver)
-            && plan.item == ForLoopItem::Produced
+            && plan.produces
         {
             let ty = self.locals[temp.value.index()].ty;
             let place = SPlace::new(temp.value);
             at_args[0] = SOperand::synthetic(self.emit_borrow(driver, place, BorrowKind::Mut, ty));
         }
+        // The pattern binds the step as a `let` binds a projection's result:
+        // copies end the step's session before the body runs.
         let yielded = call(self, ForLoopStep::At, at_args, shape.carrier_ty(self.db));
-        // The part of what the step yields that the pattern binds.
-        let (element, element_shape) = match shape {
-            Shape::Tuple(parts) if plan.binds_element => (
-                self.emit_expr(
-                    parts[1].carrier_ty(self.db),
-                    SExpr::Field {
-                        base: SOperand::synthetic(yielded),
-                        field: FieldIndex(1),
-                    },
-                ),
-                &parts[1],
-            ),
-            shape => (yielded, shape),
-        };
-        // A copy ends the element's session before the body runs.
-        let element = match plan.item {
-            ForLoopItem::Copy => {
-                let read = |this: &mut Self, carrier, shape: &Shape<'db>| match shape {
-                    Shape::Access(_, ty) => this.emit_expr(
-                        *ty,
-                        SExpr::ReadPlace {
-                            place: SPlace::new(carrier),
-                        },
-                    ),
-                    _ => carrier,
-                };
-                match element_shape {
-                    Shape::Tuple(parts) => {
-                        let fields = parts
-                            .iter()
-                            .enumerate()
-                            .map(|(idx, part)| {
-                                let field = self.emit_expr(
-                                    part.carrier_ty(self.db),
-                                    SExpr::Field {
-                                        base: SOperand::synthetic(element),
-                                        field: FieldIndex(idx as u16),
-                                    },
-                                );
-                                SOperand::synthetic(read(self, field, part))
-                            })
-                            .collect();
-                        let ty = element_shape.erased_ty(self.db);
-                        self.emit_expr(ty, SExpr::AggregateMake { ty, fields })
-                    }
-                    shape => read(self, element, shape),
-                }
-            }
-            ForLoopItem::Access(_) | ForLoopItem::Produced => element,
-        };
-        let element = self.value_pattern_source(element);
-        self.bind_pattern(pat, element);
+        let step = self.value_pattern_source(yielded);
+        self.bind_pattern(pat, step);
         let _ = self.lower_expr(body_expr);
         let falls_through = !self.is_terminated(self.current);
         if falls_through {
