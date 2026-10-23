@@ -50,5 +50,4 @@ testutils = []
 ascii_tree = "0.1"
 camino.workspace = true
 dir-test.workspace = true
-driver.workspace = true
 test-utils.workspace = true
