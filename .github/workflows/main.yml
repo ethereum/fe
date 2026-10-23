@@ -170,6 +170,8 @@ jobs:
           -E 'not (package(=fe-language-server) and test(/^mock_client_tests::/))'
       - name: Upload build timings
         if: always()
+        # Timings are diagnostics; an artifact service outage shouldn't fail the job.
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: cargo-timings-${{ runner.os }}
