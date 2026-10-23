@@ -3,7 +3,7 @@ use hir::analysis::{
     HirAnalysisDb,
     semantic::{
         ExecutableBlock, PlaceProvenance, SLocal, SLocalId, SemOrigin, SemanticBody,
-        SemanticInstance, SemanticLocalRole, get_or_build_semantic_instance,
+        SemanticInstance, SemanticLocalRole,
         normalized::{
             NBlock, NBlockId, NEffectArgValue, NExpr, NLayoutBackingSource, NLayoutLocals,
             NLayoutPlan, NOperand, NPlace, NPlaceBase, NRootId, NRootKind, NStatementKind,
@@ -303,7 +303,7 @@ impl<'db> RuntimeSemanticBody<'db> {
                 effect_args,
                 ..
             } => {
-                let callee = get_or_build_semantic_instance(db, callee.key);
+                let callee = SemanticInstance::new(db, callee.key);
                 // A view of the local, or the local itself when it is a view,
                 // for a parameter that needs its address passes the local's
                 // own storage, so the callee does not copy it on every call.

@@ -1,6 +1,7 @@
+use fe_hir::analysis::semantic::SemanticInstance;
 use fe_hir::analysis::{
     analysis_pass::AnalysisPassManager,
-    semantic::{get_or_build_semantic_instance, identity_semantic_instance_key},
+    semantic::identity_semantic_instance_key,
     ty::ty_check::BodyOwner,
     ty::{AdtDefAnalysisPass, FuncAnalysisPass},
 };
@@ -86,7 +87,7 @@ fn cached_answers(
             ));
         }
         if func.body(db).is_some() {
-            let instance = get_or_build_semantic_instance(
+            let instance = SemanticInstance::new(
                 db,
                 identity_semantic_instance_key(db, BodyOwner::Func(func, None)),
             );

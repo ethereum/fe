@@ -39,7 +39,7 @@ use crate::{
                 BlockedSemanticBody, SemanticDiagnosticId, SemanticDiagnosticSpan,
                 SemanticNormalizationFailure,
             },
-            get_or_build_semantic_instance, identity_semantic_instance_key,
+            identity_semantic_instance_key,
             normalized::{
                 NDataProjection, NExpr, NPlace, NStatementKind, SemanticBodyAdmission,
                 normalize_semantic_body, semantic_body_admission,
@@ -265,7 +265,7 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
         .map(|owner| {
             let key = identity_semantic_instance_key(db, owner);
             (
-                get_or_build_semantic_instance(db, key),
+                SemanticInstance::new(db, key),
                 None::<SemanticDiagnosticSpan>,
             )
         })
@@ -348,7 +348,7 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
                 pending.extend(
                     callees
                         .into_iter()
-                        .map(|(key, call)| (get_or_build_semantic_instance(db, key), Some(call))),
+                        .map(|(key, call)| (SemanticInstance::new(db, key), Some(call))),
                 );
             }
             SemanticAccessCheckResult::Blocked(_) => {}

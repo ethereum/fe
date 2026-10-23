@@ -11,8 +11,8 @@ use crate::analysis::{
         SemanticInstanceKey, SemanticLocalRole, array_const, bool_const,
         consts::{instantiate_const_template, retype_verified_sem_const},
         enum_const, execute_scalar_cast, execute_source_int_binary, execute_source_int_unary,
-        get_or_build_semantic_instance, int_const, int_ty_shape, normalize_int_to_shape,
-        sem_const_from_ty, sem_const_ty, struct_const, tuple_const,
+        int_const, int_ty_shape, normalize_int_to_shape, sem_const_from_ty, sem_const_ty,
+        struct_const, tuple_const,
     },
     ty::{
         const_expr::{ConstExpr, ConstExprId, ConstInvocation},
@@ -368,9 +368,7 @@ fn extract_pure_body_term<'db>(
     extraction.remaining = extraction.remaining.checked_sub(1)?;
     let mut stack = stack.to_vec();
     stack.push(key.owner(db));
-    let body = get_or_build_semantic_instance(db, key)
-        .admitted_body(db)
-        .ok()?;
+    let body = SemanticInstance::new(db, key).admitted_body(db).ok()?;
     if body.entry_locals.len() != inputs.len() || body.blocks.is_empty() {
         return None;
     }
@@ -706,7 +704,7 @@ impl<'db> BodyTermWalk<'_, 'db> {
                 // parameter for runtime ABI selection. Translate only this
                 // explicit template; other operands are already in context.
                 let term = if matches!(constant, SConst::Evidence(_)) {
-                    instantiate_const_template(db, get_or_build_semantic_instance(db, key), term)
+                    instantiate_const_template(db, SemanticInstance::new(db, key), term)
                 } else {
                     term
                 };
@@ -1435,7 +1433,7 @@ fn term_operation_error<'db>(
         for frame in provenance.frames.iter().rev() {
             error = CtfeError::CalleeError {
                 origin: frame.origin,
-                callee: get_or_build_semantic_instance(db, frame.callee),
+                callee: SemanticInstance::new(db, frame.callee),
                 source: Box::new(error),
             };
         }
@@ -1508,7 +1506,7 @@ fn force_const_term<'db>(
                 let error = if wraps_callee {
                     CtfeError::CalleeError {
                         origin,
-                        callee: get_or_build_semantic_instance(db, invocation.key),
+                        callee: SemanticInstance::new(db, invocation.key),
                         source: Box::new(error),
                     }
                 } else {

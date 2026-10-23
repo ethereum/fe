@@ -109,9 +109,9 @@ use crate::analysis::semantic::SemanticCodeRegionRef;
 use crate::analysis::semantic::{
     BlockedInfo, ConstDependency, ConstUsePolicy, CtfeConfig, CtfeError, EffectProviderSubst,
     EvalFailure, EvalOutcome, GenericSubst, ImplEnv, RuntimeSizeError, SemConstId, SemConstScalar,
-    SemConstValue, SemOrigin, SemanticInstanceKey, const_computation_for_instance,
-    describe_const_computation, eval_body_owner_const, eval_const_instance,
-    get_or_build_semantic_instance, reify_runtime_const_for_ty, runtime_size_bytes_with_source,
+    SemConstValue, SemOrigin, SemanticInstance, SemanticInstanceKey,
+    const_computation_for_instance, describe_const_computation, eval_body_owner_const,
+    eval_const_instance, reify_runtime_const_for_ty, runtime_size_bytes_with_source,
 };
 use crate::analysis::ty::ty_def::{ClosureDef, ClosureTy, TyBase, TyData};
 use crate::analysis::ty::{
@@ -656,7 +656,7 @@ pub(super) fn condition_outcome_in<'db>(
         impl_env,
         EvidenceList::none(db),
     );
-    let outcome = eval_const_instance(db, get_or_build_semantic_instance(db, key));
+    let outcome = eval_const_instance(db, SemanticInstance::new(db, key));
     condition_outcome_from(db, owner, outcome)
 }
 
@@ -1289,7 +1289,7 @@ fn const_body_ctfe_diags_with_context<'db>(
                     ImplEnv::empty(db, owner.scope()),
                     EvidenceList::none(db),
                 );
-                let semantic = get_or_build_semantic_instance(db, key);
+                let semantic = SemanticInstance::new(db, key);
                 if reify_runtime_const_for_ty(db, semantic, expected, value).is_none() {
                     push_const_eval_diag(
                         &mut diags,

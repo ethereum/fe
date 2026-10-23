@@ -13,7 +13,7 @@ use crate::{
             SemanticLocalRole, ValueProvenance, VariantIndex,
             capability::array::ArrayLength,
             capability::semantics::contains_capability,
-            eval_const_ref, get_or_build_semantic_instance,
+            eval_const_ref,
             lower::layout_backing_source_path_is_prefix,
             normalized::{
                 NBlock, NBlockId, NDataPath, NDataProjection, NEffectArg, NEffectArgValue, NExpr,
@@ -427,7 +427,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                         self.normalize_expr(raw_block, statement.origin, *dst, expr)?;
                     let mut source = Some(statement.id);
                     if let NExpr::Call { callee, .. } = &normalized {
-                        let callee = get_or_build_semantic_instance(self.db, callee.key);
+                        let callee = SemanticInstance::new(self.db, callee.key);
                         let returned_ty = callee.normalized_result_ty(self.db);
                         let target_ty = self.normalized_local_ty(*dst);
                         if returned_ty.as_borrow(self.db).is_some()
@@ -459,7 +459,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                     if let NExpr::Call { callee, .. } = &normalized
                         && let Some(target) = self.normalized_local_ty(*dst).as_view(self.db)
                     {
-                        let callee = get_or_build_semantic_instance(self.db, callee.key);
+                        let callee = SemanticInstance::new(self.db, callee.key);
                         let returned_ty = callee.normalized_result_ty(self.db);
                         if returned_ty.as_capability(self.db).is_none()
                             && !returned_ty.is_never(self.db)
@@ -2208,7 +2208,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         callee: crate::analysis::semantic::SemanticCalleeRef<'db>,
         index: usize,
     ) -> Option<TyId<'db>> {
-        let instance = get_or_build_semantic_instance(self.db, callee.key);
+        let instance = SemanticInstance::new(self.db, callee.key);
         let binding = *instance
             .key(self.db)
             .typed_body(self.db)
@@ -2918,8 +2918,8 @@ mod tests {
     use crate::{
         analysis::{
             semantic::{
-                FieldIndex, Mutability, SConst, SStmtId, VariantIndex,
-                get_or_build_semantic_instance, identity_semantic_instance_key,
+                FieldIndex, Mutability, SConst, SStmtId, SemanticInstance, VariantIndex,
+                identity_semantic_instance_key,
                 normalized::{
                     NDataPath, NDataProjection, NEffectArgValue, NExpr, NIndex, NPlace, NPlaceBase,
                     NRootId, NStatementKind, NTerminatorKind, NValueDefinition, NValueId,
@@ -2957,7 +2957,7 @@ mod tests {
                 _ => None,
             })
             .unwrap_or_else(|| panic!("missing function `{name}`"));
-        let instance = get_or_build_semantic_instance(
+        let instance = SemanticInstance::new(
             db,
             identity_semantic_instance_key(db, BodyOwner::Func(func, None)),
         );

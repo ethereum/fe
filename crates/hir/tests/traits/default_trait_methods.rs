@@ -1,7 +1,7 @@
 use camino::Utf8PathBuf;
 use fe_hir::analysis::semantic::{
-    GenericSubst, get_or_build_semantic_instance, instantiate_typed_body,
-    root_semantic_instance_key, typed_body_template,
+    GenericSubst, SemanticInstance, instantiate_typed_body, root_semantic_instance_key,
+    typed_body_template,
 };
 use fe_hir::analysis::ty::evidence::prove;
 use fe_hir::analysis::ty::trait_resolution::TraitSolveCx;
@@ -123,7 +123,7 @@ fn run() uses (evm: mut Evm) {
     typed_body
         .callable_expr(method_call)
         .expect("missing callable for create2");
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(run, None))
             .expect("missing root semantic key"),
@@ -206,7 +206,7 @@ fn test_large_by_value_array_args() uses (evm: mut Evm) {
         target.containing_trait(&db).is_some(),
         "typed create2 callable should still be a trait method"
     );
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(test_func, None))
             .expect("missing root semantic key"),
@@ -267,7 +267,7 @@ fn run() uses (evm: mut Evm) {
             _ => None,
         })
         .expect("missing run function");
-    let root = get_or_build_semantic_instance(
+    let root = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(run, None))
             .expect("missing root semantic key"),
@@ -282,7 +282,7 @@ fn run() uses (evm: mut Evm) {
                     .to_opt()
                     .is_some_and(|name| name.data(&db) == "create2") =>
             {
-                Some(get_or_build_semantic_instance(&db, callee.key))
+                Some(SemanticInstance::new(&db, callee.key))
             }
             _ => None,
         })
@@ -297,7 +297,7 @@ fn run() uses (evm: mut Evm) {
                     .to_opt()
                     .is_some_and(|name| name.data(&db) == "create2_raw") =>
             {
-                Some(get_or_build_semantic_instance(&db, callee.key))
+                Some(SemanticInstance::new(&db, callee.key))
             }
             _ => None,
         })
@@ -408,7 +408,7 @@ fn test_large_by_value_array_args() uses (evm: mut Evm) {
             _ => None,
         })
         .expect("missing test function");
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(test_func, None))
             .expect("missing root semantic key"),

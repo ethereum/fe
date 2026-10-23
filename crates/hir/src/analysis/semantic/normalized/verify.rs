@@ -6,8 +6,8 @@ use crate::{
         HirAnalysisDb,
         semantic::{
             FieldIndex, Mutability, SConst, SemanticInstance, VariantIndex,
-            capability::semantics::contains_capability, get_or_build_semantic_instance,
-            lower::enum_tag_ty, normalized::*, sem_const_ty,
+            capability::semantics::contains_capability, lower::enum_tag_ty, normalized::*,
+            sem_const_ty,
         },
         ty::{
             adt_def::AdtRef,
@@ -399,7 +399,7 @@ fn verify_expr<'db>(
             effect_args,
             ..
         } => {
-            let callee = get_or_build_semantic_instance(db, callee.key);
+            let callee = SemanticInstance::new(db, callee.key);
             let typed_body = callee.key(db).typed_body(db);
             let param_tys: Vec<_> = typed_body
                 .input_bindings()

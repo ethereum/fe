@@ -9,12 +9,11 @@ use fe_hir::{
         semantic::{
             ConstDesc, ConstRepr, CtfeConfig, CtfeError, EffectProviderSubst, EvalFailure,
             EvalOutcome, GenericSubst, ImplEnv, SExpr, SStmtKind, SemConstId, SemConstScalar,
-            SemConstValue, SemOrigin, SemanticInstanceKey, array_const,
+            SemConstValue, SemOrigin, SemanticInstance, SemanticInstanceKey, array_const,
             const_computation_for_instance, describe_const_computation, eval_body_owner_const,
-            force_const_computation, force_const_description, get_or_build_semantic_instance,
-            identity_semantic_instance_key, int_const, reify_runtime_const,
-            reify_runtime_const_for_ty, sem_const_ty, specialize_const_computation,
-            specialize_const_description, tuple_const,
+            force_const_computation, force_const_description, identity_semantic_instance_key,
+            int_const, reify_runtime_const, reify_runtime_const_for_ty, sem_const_ty,
+            specialize_const_computation, specialize_const_description, tuple_const,
         },
         ty::{
             const_expr::{ConstExpr, ConstExprId, ConstInvocation},
@@ -1876,7 +1875,7 @@ const fn selected<const X: usize, const Y: usize>() -> usize { Selected<{ X + 0 
     let outer_owner = BodyOwner::Func(function(&db, module, "mixed"), None);
     let outer = identity_semantic_instance_key(&db, outer_owner);
     let caller_y = outer.subst(&db).generic_args(&db)[1];
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         SemanticInstanceKey::new(
             &db,
@@ -2096,7 +2095,7 @@ fn ctfe_typed_read_through_frame_local_borrow_evaluates() {
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     let read = function(&db, module, "read");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(read, None)),
     );
@@ -2141,7 +2140,7 @@ fn runtime_reification_rejects_mismatched_scalar_and_array_element_types() {
     db.assert_no_diags(module);
     let owner = BodyOwner::Func(function(&db, module, "anchor"), None);
     let key = identity_semantic_instance_key(&db, owner);
-    let instance = get_or_build_semantic_instance(&db, key);
+    let instance = SemanticInstance::new(&db, key);
     let array_ty = key.typed_body(&db).result_ty();
     let zero_array_ty =
         identity_semantic_instance_key(&db, BodyOwner::Func(function(&db, module, "zero"), None))
@@ -2371,7 +2370,7 @@ const fn pair() -> (u8, u8) { (1, 2) }
         integer_const_arg(&db, u8_ty, 7),
         integer_const_arg(&db, usize_ty, 2),
     ];
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         SemanticInstanceKey::new(
             &db,

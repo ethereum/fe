@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, VecDeque};
 use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap, entity_impl};
 use hir::analysis::{
     semantic::{
-        ExecutableBlock, SLocalId, SemanticInstance, get_or_build_semantic_instance,
+        ExecutableBlock, SLocalId, SemanticInstance,
         normalized::{
             NExpr, NOperand, NPlace, NPlaceBase, NValueDefinition, NValueId, NormalizedBody,
             normalize_semantic_body,
@@ -481,7 +481,7 @@ impl<'db> RawTransportTracer<'_, 'db> {
                         return self.record(projection, Some(AddressSpace::Memory));
                     }
                     NExpr::Call { callee, .. } => {
-                        let callee = get_or_build_semantic_instance(self.db, callee.key);
+                        let callee = SemanticInstance::new(self.db, callee.key);
                         let prefix = projection.len();
                         for (suffix, space) in returned_raw_transports(self.db, callee) {
                             projection.extend_from_slice(suffix);
@@ -1136,9 +1136,7 @@ mod tests {
     use driver::DriverDataBase;
     use hir::{
         analysis::{
-            semantic::{
-                SemanticLocalKind, get_or_build_semantic_instance, root_semantic_instance_key,
-            },
+            semantic::{SemanticLocalKind, root_semantic_instance_key},
             ty::ty_check::{BodyOwner, ReturnSource},
         },
         hir_def::TopLevelMod,
@@ -1173,7 +1171,7 @@ mod tests {
             .unwrap_or_else(|| panic!("missing function `{name}`"));
         let key = root_semantic_instance_key(db, BodyOwner::Func(func, None))
             .unwrap_or_else(|err| panic!("failed to root semantic function instance: {err:?}"));
-        get_or_build_semantic_instance(db, key)
+        SemanticInstance::new(db, key)
     }
 
     fn legacy_return_class_for_key<'db>(

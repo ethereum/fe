@@ -620,8 +620,7 @@ mod tests {
     use common::InputDb;
     use driver::DriverDataBase;
     use hir::{
-        analysis::semantic::{get_or_build_semantic_instance, root_semantic_instance_key},
-        analysis::ty::ty_check::BodyOwner,
+        analysis::semantic::root_semantic_instance_key, analysis::ty::ty_check::BodyOwner,
         hir_def::TopLevelMod,
     };
     use url::Url;
@@ -885,7 +884,7 @@ fn shapes(_ a: *A, _ b: *B, _ odd: *Odd) {}
             })
             .unwrap_or_else(|| panic!("missing function `{func}`"));
         let key = root_semantic_instance_key(db, BodyOwner::Func(func, None)).expect("root key");
-        let semantic = get_or_build_semantic_instance(db, key);
+        let semantic = SemanticInstance::new(db, key);
         let typed_body = semantic.key(db).typed_body(db);
         let binding = typed_body.param_binding(idx).expect("parameter binding");
         let env = RuntimeTypeEnv::for_semantic(db, semantic);
