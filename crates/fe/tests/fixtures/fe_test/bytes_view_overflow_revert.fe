@@ -1,5 +1,5 @@
 use core::ptr::{self, MemBuffer, MemSpan}
-use core::abi::{ByteInput, store_word}
+use core::abi::{ByteSource, store_word}
 use std::abi::{decode_bytes_view, decode_bytes_view_at}
 use std::evm::{Address, CallData, Evm}
 
@@ -73,13 +73,13 @@ fn test_overflowing_bytes_offsets_and_lengths_revert_empty() uses (evm: mut Evm)
 
 const TWO_64: u256 = 0x10000000000000000
 
-// Model an input longer than `2**64` bytes without allocating it: two words
-// at offsets 0 and 32, zero everywhere else. Its bounds checks pass for any
-// offset and length, so only the explicit `2**64` limits reject them.
+// Model the longest input, `2**64 - 1` bytes, without allocating it: two
+// words at offsets 0 and 32, zero everywhere else. An offset or length of
+// `2**64` or more cannot fit it.
 struct SparseInput { w0: u256, w1: u256 }
 impl Copy for SparseInput {}
-impl ByteInput for SparseInput {
-    fn len(self) -> u256 { MAX }
+impl ByteSource for SparseInput {
+    fn size(self) -> u64 { 0xffffffffffffffff }
     fn word_at(self, _ byte_offset: u256) -> u256 {
         if byte_offset == 0 {
             self.w0
@@ -94,9 +94,10 @@ impl ByteInput for SparseInput {
 }
 
 #[test]
-fn test_offsets_and_lengths_below_two_64_accepted_on_long_input() {
-    assert!(decode_bytes_view(SparseInput { w0: TWO_64 - 32, w1: 0 }).len() == 0)
-    assert!(decode_bytes_view(SparseInput { w0: 0x20, w1: TWO_64 - 1 }).len() as u256 == TWO_64 - 1)
+fn test_offsets_and_lengths_that_fit_accepted_on_long_input() {
+    let len = TWO_64 - 1
+    assert!(decode_bytes_view(SparseInput { w0: len - 32, w1: 0 }).len() == 0)
+    assert!(decode_bytes_view(SparseInput { w0: 0x20, w1: len - 0x40 }).len() as u256 == len - 0x40)
 }
 
 #[test(should_revert)]
