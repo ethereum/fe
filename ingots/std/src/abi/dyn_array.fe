@@ -295,7 +295,11 @@ fn payload_end_with_input_len<A: Abi, T, I>(_ input: I, tail_at: u256, elem_coun
 {
     let elems_base = checked_frame_end<A>(tail_at, 32, input_len)
     let element_head_size = abi_field_head_size<T>()
-    if element_head_size != 0 && elem_count > (input_len - elems_base) / element_head_size {
+    // No input bounds the count of zero-sized elements, so limit it below
+    // `2**64` like a Solidity length word.
+    if (element_head_size == 0 && elem_count >= 0x10000000000000000)
+        || (element_head_size != 0 && elem_count > (input_len - elems_base) / element_head_size)
+    {
         A::decode_error()
     }
     let head_size = elem_count * element_head_size
