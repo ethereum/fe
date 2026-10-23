@@ -1,12 +1,9 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    convert::Infallible,
-};
+use std::{collections::HashMap, convert::Infallible};
 
 pub(crate) use item::ItemListScope;
 use smallvec::SmallVec;
 
-use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
+use self::token_stream::{LexicalToken, TokenStream};
 use crate::{ExpectedKind, GreenNode, SyntaxKind, TextRange, syntax_node::SyntaxNode};
 
 pub mod token_stream;
@@ -50,14 +47,15 @@ impl RecoveryMode {
 
 /// Parser to build a rowan syntax tree.
 pub struct Parser<S: TokenStream> {
-    /// Token stream to parse.
-    stream: BackTrackableTokenStream<S>,
+    /// The tokens to parse, trivia included.
+    tokens: Vec<S::Token>,
+    /// The index in `tokens` of the next token to bump.
+    token_pos: usize,
 
     builder: rowan::GreenNodeBuilder<'static>,
     parents: Vec<ScopeEntry>,
     errors: Vec<ParseError>,
 
-    next_trivias: VecDeque<S::Token>,
     /// if `is_newline_trivia` is `true`, `Newline` is also regarded as a trivia
     /// token.
     is_newline_trivia: bool,
@@ -66,8 +64,7 @@ pub struct Parser<S: TokenStream> {
     end_of_prev_token: rowan::TextSize,
     /// The dry run states which holds the each state of the parser when it
     /// enters dry run mode.
-    dry_run_states: Vec<DryRunState<S>>,
-    dry_run_next_trivias_pool: Vec<VecDeque<S::Token>>,
+    dry_run_states: Vec<DryRunState>,
 
     /// Outcomes of the speculative probes run so far, see [`Parser::probe`].
     probe_cache: HashMap<(rowan::TextSize, bool, ProbeKind), bool>,
@@ -97,18 +94,17 @@ pub(crate) enum ProbeKind {
 
 impl<S: TokenStream> Parser<S> {
     /// Create a parser with the given token stream.
-    pub fn new(stream: S, recovery_mode: RecoveryMode) -> Self {
+    pub fn new(mut stream: S, recovery_mode: RecoveryMode) -> Self {
         Self {
-            stream: BackTrackableTokenStream::new(stream),
+            tokens: std::iter::from_fn(|| stream.next()).collect(),
+            token_pos: 0,
             builder: rowan::GreenNodeBuilder::new(),
             parents: Vec::new(),
             errors: Vec::new(),
             current_pos: rowan::TextSize::from(0),
             end_of_prev_token: rowan::TextSize::from(0),
             is_newline_trivia: true,
-            next_trivias: VecDeque::new(),
             dry_run_states: Vec::new(),
-            dry_run_next_trivias_pool: Vec::new(),
             probe_cache: HashMap::new(),
             probe_depth: 0,
             recovery_mode,
@@ -461,42 +457,24 @@ impl<S: TokenStream> Parser<S> {
         F: FnOnce(&mut Self) -> R,
     {
         // Enters the dry run mode.
-        self.stream.set_bt_point();
-        let mut next_trivias = self.dry_run_next_trivias_pool.pop().unwrap_or_default();
-        next_trivias.clone_from(&self.next_trivias);
         self.dry_run_states.push(DryRunState {
+            token_pos: self.token_pos,
             pos: self.current_pos,
             end_of_prev_token: self.end_of_prev_token,
             err_num: self.errors.len(),
-            next_trivias,
             err: false,
         });
 
         let r = f(self);
 
         // Leaves the dry run mode.
-        self.stream.backtrack();
         let state = self.dry_run_states.pop().unwrap();
         self.errors.truncate(state.err_num);
+        self.token_pos = state.token_pos;
         self.current_pos = state.pos;
         self.end_of_prev_token = state.end_of_prev_token;
-        let next_trivias = std::mem::replace(&mut self.next_trivias, state.next_trivias);
-        self.recycle_dry_run_next_trivias(next_trivias);
 
         r
-    }
-
-    fn recycle_dry_run_next_trivias(&mut self, mut next_trivias: VecDeque<S::Token>) {
-        // Keep a small pool to amortize dry-run allocations without retaining
-        // unbounded buffer memory from pathological inputs.
-        if self.dry_run_next_trivias_pool.len() >= 8 {
-            return;
-        }
-
-        if next_trivias.capacity() <= 256 {
-            next_trivias.clear();
-            self.dry_run_next_trivias_pool.push(next_trivias);
-        }
     }
 
     /// Bumps the current token and its leading trivias.
@@ -668,13 +646,11 @@ impl<S: TokenStream> Parser<S> {
     /// Bumps the current token and
     /// current branch.
     fn bump_raw(&mut self) {
-        let tok = match self.next_trivias.pop_front() {
-            Some(tok) => tok,
-            None => self.stream.next().unwrap(),
-        };
+        let tok = &self.tokens[self.token_pos];
+        self.token_pos += 1;
 
         self.current_pos += rowan::TextSize::of(tok.text());
-        if !self.is_dry_run() {
+        if self.dry_run_states.is_empty() {
             self.builder.token(tok.syntax_kind().into(), tok.text());
         }
     }
@@ -689,117 +665,52 @@ impl<S: TokenStream> Parser<S> {
         }
     }
 
+    /// The kinds of the tokens that have not been bumped yet.
+    fn remaining_kinds(&self) -> impl Iterator<Item = SyntaxKind> + '_ {
+        self.tokens[self.token_pos..]
+            .iter()
+            .map(LexicalToken::syntax_kind)
+    }
+
     /// Peek the next non-trivia token.
-    fn peek_non_trivia(&mut self) -> Option<S::Token> {
-        if !self.is_newline_trivia {
-            for tok in &self.next_trivias {
-                if tok.syntax_kind() == SyntaxKind::Newline {
-                    return Some(tok.clone());
-                }
-            }
-        }
-
-        while let Some(next) = self.stream.peek().map(|tok| tok.syntax_kind()) {
-            if self.is_trivia(next) {
-                let next = self.stream.next().unwrap();
-                self.next_trivias.push_back(next);
-                continue;
-            }
-            return self.stream.peek().cloned();
-        }
-
-        None
+    fn peek_non_trivia(&self) -> Option<S::Token> {
+        self.tokens[self.token_pos..]
+            .iter()
+            .find(|tok| !self.is_trivia(tok.syntax_kind()))
+            .cloned()
     }
 
-    fn peek_raw(&mut self) -> Option<S::Token> {
-        if let Some(tok) = self.next_trivias.front() {
-            Some(tok.clone())
-        } else {
-            self.stream.peek().cloned()
-        }
+    fn peek_raw(&self) -> Option<S::Token> {
+        self.tokens.get(self.token_pos).cloned()
     }
 
-    fn has_continuation_newline(&mut self) -> bool {
-        self.stream.set_bt_point();
-
-        let mut next_trivia_index = 0;
-        let mut has_newline = false;
-        loop {
-            let kind = if let Some(tok) = self.next_trivias.get(next_trivia_index) {
-                next_trivia_index += 1;
-                Some(tok.syntax_kind())
-            } else {
-                self.stream.next().map(|tok| tok.syntax_kind())
-            };
-
-            match kind {
-                Some(SyntaxKind::WhiteSpace) => {}
-                Some(SyntaxKind::Newline) => {
-                    has_newline = true;
-                    break;
-                }
-                _ => break,
-            }
-        }
-
-        self.stream.backtrack();
-        has_newline
+    fn has_continuation_newline(&self) -> bool {
+        self.remaining_kinds()
+            .find(|&kind| kind != SyntaxKind::WhiteSpace)
+            == Some(SyntaxKind::Newline)
     }
 
     /// Skip trivias (and newlines), then peek the next three tokens.
-    pub fn peek_three(&mut self) -> (Option<SyntaxKind>, Option<SyntaxKind>, Option<SyntaxKind>) {
-        self.stream.set_bt_point();
-
-        while let Some(next) = self.stream.peek().map(|tok| tok.syntax_kind()) {
-            if !(next.is_trivia() || next == SyntaxKind::Newline) {
-                break;
-            }
-            self.stream.next();
-        }
-
-        let tokens = (
-            self.stream.next().map(|t| t.syntax_kind()),
-            self.stream.next().map(|t| t.syntax_kind()),
-            self.stream.next().map(|t| t.syntax_kind()),
-        );
-
-        self.stream.backtrack();
-        tokens
+    pub fn peek_three(&self) -> (Option<SyntaxKind>, Option<SyntaxKind>, Option<SyntaxKind>) {
+        let mut kinds = self
+            .remaining_kinds()
+            .skip_while(|&kind| kind.is_trivia() || kind == SyntaxKind::Newline);
+        (kinds.next(), kinds.next(), kinds.next())
     }
 
     /// Skip leading trivias, then peek the next two raw tokens.
-    pub fn peek_two(&mut self) -> (Option<SyntaxKind>, Option<SyntaxKind>) {
+    pub fn peek_two(&self) -> (Option<SyntaxKind>, Option<SyntaxKind>) {
         let (a, b, _) = self.peek_three();
         (a, b)
     }
 
     /// Peek up to `n` non-trivia tokens, skipping trivia before and between
     /// tokens.
-    pub fn peek_n_non_trivia(&mut self, n: usize) -> SmallVec<SyntaxKind, 4> {
-        self.stream.set_bt_point();
-
-        let mut next_trivia_index = 0;
-        let mut tokens = SmallVec::new();
-        while tokens.len() < n {
-            let next = if let Some(tok) = self.next_trivias.get(next_trivia_index) {
-                next_trivia_index += 1;
-                Some(tok.syntax_kind())
-            } else {
-                self.stream.next().map(|tok| tok.syntax_kind())
-            };
-
-            let Some(kind) = next else {
-                break;
-            };
-
-            if self.is_trivia(kind) {
-                continue;
-            }
-            tokens.push(kind);
-        }
-
-        self.stream.backtrack();
-        tokens
+    pub fn peek_n_non_trivia(&self, n: usize) -> SmallVec<SyntaxKind, 4> {
+        self.remaining_kinds()
+            .filter(|&kind| !self.is_trivia(kind))
+            .take(n)
+            .collect()
     }
 
     /// Add the `msg` to the error list, at `current_pos`.
@@ -906,14 +817,14 @@ impl From<Recovery<Infallible>> for Recovery<ErrProof> {
     }
 }
 
-struct DryRunState<S: TokenStream> {
+struct DryRunState {
+    /// The token index when the dry run started.
+    token_pos: usize,
     /// The text position is the position when the dry run started.
     pos: rowan::TextSize,
     end_of_prev_token: rowan::TextSize,
     /// The number of errors when the dry run started.
     err_num: usize,
-    /// The stored trivias when the dry run started.
-    next_trivias: VecDeque<S::Token>,
     err: bool,
 }
 
