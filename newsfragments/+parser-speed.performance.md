@@ -1,0 +1,1 @@
+The parser is about twice as fast: a failed lookahead no longer scans to the end of the file (a file with thousands of shifts like `w << 4` parsed quadratically), scopes no longer allocate, and tokens are lexed into a vector up front (parsing `core` and `std` drops from 36 ms to 17 ms).
