@@ -8,6 +8,7 @@ doctest = false
 
 [dependencies]
 common.workspace = true
+glob = "0.3"
 insta = { default-features = false, version = "1.42", features = ["filters"] }
 regex = "1"
 tracing.workspace = true

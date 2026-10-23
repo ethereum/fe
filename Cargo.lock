@@ -2584,6 +2584,7 @@ name = "fe-test-utils"
 version = "26.4.0"
 dependencies = [
  "fe-common",
+ "glob",
  "insta",
  "regex",
  "tracing",
