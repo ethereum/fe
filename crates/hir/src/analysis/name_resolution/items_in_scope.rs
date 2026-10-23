@@ -1,4 +1,6 @@
-use crate::core::hir_def::{Body, ExprId, ItemKind, Mod, TopLevelMod, scope_graph::ScopeId};
+use std::iter;
+
+use crate::core::hir_def::{ItemKind, scope_graph::ScopeId};
 use common::indexmap::IndexMap;
 
 use crate::analysis::{
@@ -19,9 +21,20 @@ pub fn items_in_scope<'db>(
     scope: ScopeId<'db>,
     domain: NameDomain,
 ) -> &'db IndexMap<String, NameRes<'db>> {
-    let scope_kind = ItemScopeKind::from_scope(db, scope);
-    let item_scope = ItemScope::new(db, scope_kind, domain);
-    items_in_scope_impl(db, item_scope)
+    items_in_scope_impl(db, ItemScope::new(db, item_scope(db, scope), domain))
+}
+
+/// Returns the innermost module or block scope containing `scope`, which
+/// holds the items and imports visible in `scope`.
+pub(super) fn item_scope<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> ScopeId<'db> {
+    iter::successors(Some(scope), |scope| scope.parent(db))
+        .find(|scope| {
+            matches!(
+                scope,
+                ScopeId::Item(ItemKind::TopMod(_) | ItemKind::Mod(_)) | ScopeId::Block(..)
+            )
+        })
+        .unwrap()
 }
 
 #[salsa::tracked(return_ref)]
@@ -32,7 +45,7 @@ fn items_in_scope_impl<'db>(
     // Use NameResBucket to properly handle precedence:
     // Def > NamedImported > GlobImported > Lex > External > Prim
     let mut buckets: IndexMap<String, NameResBucket<'db>> = IndexMap::default();
-    let scope = i_scope.scope_kind(db).to_scope();
+    let scope = i_scope.scope(db);
     let domain = i_scope.domain(db);
 
     let imports = &resolve_imports(db, scope.ingot(db)).1;
@@ -132,46 +145,6 @@ fn items_in_scope_impl<'db>(
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ItemScope<'db> {
-    scope_kind: ItemScopeKind<'db>,
+    scope: ScopeId<'db>,
     domain: NameDomain,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ItemScopeKind<'db> {
-    TopLevelMod(TopLevelMod<'db>),
-    Module(Mod<'db>),
-    Block(Body<'db>, ExprId),
-}
-
-impl<'db> ItemScopeKind<'db> {
-    fn from_scope(db: &'db dyn HirAnalysisDb, mut scope: ScopeId<'db>) -> Self {
-        loop {
-            match scope {
-                ScopeId::Item(item) => match item {
-                    ItemKind::TopMod(top_level_mod) => {
-                        return ItemScopeKind::TopLevelMod(top_level_mod);
-                    }
-                    ItemKind::Mod(mod_) => {
-                        return ItemScopeKind::Module(mod_);
-                    }
-                    _ => {}
-                },
-                ScopeId::Block(body, expr_id) => {
-                    return ItemScopeKind::Block(body, expr_id);
-                }
-                _ => {}
-            }
-            scope = scope.parent(db).unwrap();
-        }
-    }
-
-    fn to_scope(&self) -> ScopeId<'db> {
-        match self {
-            ItemScopeKind::TopLevelMod(top_level_mod) => {
-                ScopeId::Item(ItemKind::TopMod(*top_level_mod))
-            }
-            ItemScopeKind::Module(mod_) => ScopeId::Item(ItemKind::Mod(*mod_)),
-            ItemScopeKind::Block(body, expr_id) => ScopeId::Block(*body, *expr_id),
-        }
-    }
 }
