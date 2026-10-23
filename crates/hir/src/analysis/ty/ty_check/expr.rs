@@ -1939,6 +1939,7 @@ impl<'db> TyChecker<'db> {
 
         self.env.effect_env_mut().push_frame();
         let outer_choices = self.env.choices;
+        let mut ambiguous_opening = false;
 
         for binding in bindings {
             let named = if binding.key_path.is_none()
@@ -1946,7 +1947,76 @@ impl<'db> TyChecker<'db> {
                 && let Some(path) = path.to_opt()
             {
                 match resolve_impl_name(self.db, path, self.env.scope()) {
-                    ImplNameRes::Found(implementation) => Some((path, implementation)),
+                    ImplNameRes::Found(implementation) => {
+                        // A bare value and a named implementation are separate
+                        // meanings, not a priority between namespaces. Resolve
+                        // the ordinary expression name without checking or
+                        // evaluating the value before selecting either one.
+                        if let Some(name) = path.as_ident(self.db) {
+                            let span = binding.value.span(self.body()).into();
+                            let resolved = resolve_ident_expr(
+                                self.db,
+                                &self.env,
+                                path,
+                                span,
+                                &LoweringContext::new(),
+                            );
+                            let value_span = match resolved {
+                                ResolvedPathInBody::Binding(value) => {
+                                    Some(value.def_span(&self.env))
+                                }
+                                ResolvedPathInBody::Reso(value) => match value {
+                                    PathRes::Ty(ty) | PathRes::TyAlias(_, ty)
+                                        if ty.const_ty_ty(self.db).is_none()
+                                            && (!matches!(value, PathRes::Ty(_))
+                                                || ty.tuple_struct_ctor_ty(self.db).is_none()) =>
+                                    {
+                                        None
+                                    }
+                                    PathRes::Trait(_) | PathRes::Mod(_) => None,
+                                    PathRes::EnumVariant(variant)
+                                        if matches!(
+                                            variant.kind(self.db),
+                                            VariantKind::Record(_)
+                                        ) =>
+                                    {
+                                        None
+                                    }
+                                    _ => value.name_span(self.db),
+                                },
+                                ResolvedPathInBody::Diag(diagnostic) => {
+                                    self.push_diag(diagnostic);
+                                    self.env.named_impl_operands.insert(binding.value);
+                                    self.env.type_expr(
+                                        binding.value,
+                                        ExprProp::new(TyId::unit(self.db), false),
+                                    );
+                                    continue;
+                                }
+                                ResolvedPathInBody::NewBinding(_) | ResolvedPathInBody::Invalid => {
+                                    None
+                                }
+                            };
+                            if let Some(value_span) = value_span {
+                                ambiguous_opening = true;
+                                self.push_diag(PathResDiag::Ambiguous(
+                                    binding.value.span(self.body()).into(),
+                                    name,
+                                    vec![
+                                        (implementation.span().into(), false),
+                                        (value_span, false),
+                                    ],
+                                ));
+                                self.env.named_impl_operands.insert(binding.value);
+                                self.env.type_expr(
+                                    binding.value,
+                                    ExprProp::new(TyId::unit(self.db), false),
+                                );
+                                continue;
+                            }
+                        }
+                        Some((path, implementation))
+                    }
                     ImplNameRes::NotVisible { name, definition } => {
                         self.push_diag(PathResDiag::Invisible(
                             binding.value.span(self.body()).into(),
@@ -1958,7 +2028,21 @@ impl<'db> TyChecker<'db> {
                             .type_expr(binding.value, ExprProp::new(TyId::unit(self.db), false));
                         continue;
                     }
-                    ImplNameRes::Ambiguous | ImplNameRes::NotFound => None,
+                    ImplNameRes::Ambiguous => {
+                        ambiguous_opening = true;
+                        // An ambiguous implementation name cannot become an
+                        // effect operand merely because selection failed.
+                        self.push_diag(PathResDiag::Ambiguous(
+                            binding.value.span(self.body()).into(),
+                            path.ident(self.db).expect("implementation path identifier"),
+                            Vec::new(),
+                        ));
+                        self.env.named_impl_operands.insert(binding.value);
+                        self.env
+                            .type_expr(binding.value, ExprProp::new(TyId::unit(self.db), false));
+                        continue;
+                    }
+                    ImplNameRes::NotFound => None,
                 }
             } else {
                 None
@@ -2246,6 +2330,28 @@ impl<'db> TyChecker<'db> {
                     return ExprProp::invalid(self.db);
                 }
             }
+        }
+        if ambiguous_opening {
+            // Preparation consumes demands before final diagnostics. An invalid
+            // header must not let an unrelated provider execute first.
+            if let Some(opening) = self.env.choices.and_then(|choices| {
+                choices.items(self.db).iter().find_map(|entry| match entry {
+                    super::super::trait_resolution::ChoiceEntry::Provider(opening) => {
+                        Some(*opening)
+                    }
+                    super::super::trait_resolution::ChoiceEntry::Impl(_) => None,
+                })
+            }) {
+                use salsa::Accumulator;
+                super::super::trait_resolution::generation::GenerationDemand {
+                    opening: opening.key(self.db).clone(),
+                    demand: Err("ambiguous implementation operand in `with` header".into()),
+                }
+                .accumulate(self.db);
+            }
+            self.env.effect_env_mut().pop_frame();
+            self.env.choices = outer_choices;
+            return ExprProp::invalid(self.db);
         }
         let result = if result_discarded {
             self.check_expr_with_discarded_result(body_expr, expected)
