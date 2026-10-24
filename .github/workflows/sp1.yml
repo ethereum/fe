@@ -92,3 +92,23 @@ jobs:
       - name: Prove and verify a Fe guest
         if: inputs.prove
         run: cargo nextest r --locked --release --no-fail-fast --manifest-path tests/sp1/Cargo.toml --run-ignored only
+
+  prune-caches:
+    # See the job of the same name in main.yml.
+    needs: execute
+    if: ${{ !cancelled() && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Delete superseded Rust caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: .github/scripts/prune-rust-caches.sh
