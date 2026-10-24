@@ -204,6 +204,27 @@ jobs:
       - name: Check filesystem crates for wasm32-wasip1
         run: cargo check --locked -p fe-driver -p fe-resolver --target wasm32-wasip1
 
+  prune-caches:
+    # Master saves new Rust caches when the lockfile or toolchain changes; delete
+    # the ones they replace before GitHub evicts other caches to make room.
+    needs: [lint, test, wasm-wasi-check]
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Delete superseded Rust caches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: .github/scripts/prune-rust-caches.sh
+
   release-build:
     # Only run this when we push a tag
     if: startsWith(github.ref, 'refs/tags/')
