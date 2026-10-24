@@ -84,6 +84,15 @@ jobs:
       # binaries. Only affects Windows builds.
       CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER: rust-lld.exe
     steps:
+      # Defender scans every file the build writes and every test binary it
+      # runs. The runner is discarded after the job.
+      - name: Disable Windows Defender real-time scanning
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Set-MpPreference -DisableRealtimeMonitoring $true
+          Get-MpPreference | Select-Object DisableRealtimeMonitoring
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           persist-credentials: false
@@ -295,23 +304,23 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         # `fe/cranelift` enables the native backend (`fe build --backend native`).
-        run: cargo build --locked --release --target ${{ matrix.target }} --features fe/cranelift ${{ matrix.EXTRA_FEATURES }}
+        run: cargo build --locked --profile dist --target ${{ matrix.target }} --features fe/cranelift ${{ matrix.EXTRA_FEATURES }}
       - name: Check native backend is available
         # Cross-compiled binaries can't run on the build host.
         if: matrix.target != 'aarch64-unknown-linux-gnu' && matrix.target != 'x86_64-apple-darwin'
         shell: bash
-        run: target/${{ matrix.target }}/release/fe${{ matrix.EXT }} build --help | grep -q native
+        run: target/${{ matrix.target }}/dist/fe${{ matrix.EXT }} build --help | grep -q native
       - name: Strip binary (Unix)
         if: runner.os != 'Windows'
-        run: ${{ matrix.STRIP }} target/${{ matrix.target }}/release/fe
+        run: ${{ matrix.STRIP }} target/${{ matrix.target }}/dist/fe
       - name: Rename binary
         shell: bash
-        run: mv target/${{ matrix.target }}/release/fe${{ matrix.EXT }} target/${{ matrix.target }}/release/${{ matrix.BIN_FILE }}
+        run: mv target/${{ matrix.target }}/dist/fe${{ matrix.EXT }} target/${{ matrix.target }}/dist/${{ matrix.BIN_FILE }}
       - name: Upload release binary
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: fe-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/${{ matrix.BIN_FILE }}
+          path: target/${{ matrix.target }}/dist/${{ matrix.BIN_FILE }}
           if-no-files-found: error
           retention-days: 1
 

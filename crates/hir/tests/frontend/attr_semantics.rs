@@ -3,8 +3,8 @@ use fe_hir::{
     analysis::{
         semantic::{
             NExpr, NStatementKind, SExpr, SStmtKind, SemanticCodeRegionRef,
-            SemanticCodeRegionTarget, get_or_build_semantic_instance,
-            identity_semantic_instance_key, normalize_semantic_body,
+            SemanticCodeRegionTarget, SemanticInstance, identity_semantic_instance_key,
+            normalize_semantic_body,
         },
         ty::ty_check::{BodyOwner, check_func_body},
     },
@@ -321,7 +321,7 @@ fn runtime() uses (evm: mut Evm) {}"#,
         SemanticCodeRegionRef::ManualContractRoot { func } if *func == runtime
     )));
 
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(init, None)),
     );
@@ -456,7 +456,7 @@ fn runtime() uses (evm: mut Evm) {}"#,
         Some(SemanticCodeRegionRef::ManualContractRoot { func }) if func == runtime
     )));
 
-    let init_instance = get_or_build_semantic_instance(
+    let init_instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(init, None)),
     );
@@ -503,7 +503,7 @@ fn runtime() uses (evm: mut Evm) {}"#,
             instance
                 .callees(&db)
                 .iter()
-                .map(|callee| get_or_build_semantic_instance(&db, callee.key)),
+                .map(|callee| SemanticInstance::new(&db, callee.key)),
         );
     }
     assert!(saw_len);
@@ -525,7 +525,7 @@ fn array_repeat_lowering_preserves_repeat_expr_through_normalization() {
     let [func] = top_mod.all_funcs(&db).as_slice() else {
         panic!("expected exactly one function");
     };
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -576,7 +576,7 @@ fn generic_array_repeat_with_symbolic_len_normalizes_as_repeat() {
     let [func] = top_mod.all_funcs(&db).as_slice() else {
         panic!("expected exactly one function");
     };
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -644,7 +644,7 @@ impl Tower {
         .copied()
         .find(|func| matches!(func.name(&db), Partial::Present(name) if name.data(&db) == "add"))
         .expect("expected add method");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(add, None)),
     );

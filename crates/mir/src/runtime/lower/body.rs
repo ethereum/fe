@@ -8,7 +8,7 @@ use hir::analysis::{
         SemConstScalar, SemConstValue, SemOrigin, SemanticCalleeRef, SemanticCodeRegionRef,
         SemanticCodeRegionTarget, SemanticConstRef, SemanticInstance, SemanticInstanceKey,
         SemanticLocalRole, VariantIndex, core_method_callee_key, eval_const_ref,
-        generated_callee_key, get_or_build_semantic_instance,
+        generated_callee_key,
         normalized::{
             NBlockId, NDataPath, NDataProjection, NEffectArg, NEffectArgValue, NExpr, NIndex,
             NOperand, NPlace, NPlaceBase, NRootKind, NStatement, NStatementId, NStatementKind,
@@ -171,8 +171,7 @@ pub(super) fn check_runtime_body_supported<'db>(
                 && let BodyOwner::Func(func, _) = callee.key.owner(db)
                 && func.containing_trait(db).is_some()
                 && func.body(db).is_none()
-                && contract_metadata_builtin(db, get_or_build_semantic_instance(db, callee.key))
-                    .is_none()
+                && contract_metadata_builtin(db, SemanticInstance::new(db, callee.key)).is_none()
             {
                 return Err(LowerError::Unsupported(format!(
                     "runtime call requires a selected implementation before layout planning: caller={key:?} callee={:?}",
@@ -978,7 +977,7 @@ impl<'db> RmirEmitter<'db> {
             effect_args,
             ..
         } = expr
-            && semantic_never_returns(self.db, get_or_build_semantic_instance(self.db, callee.key))
+            && semantic_never_returns(self.db, SemanticInstance::new(self.db, callee.key))
         {
             self.lower_call(bb, normalized_id, *callee, args, effect_args);
             return;
@@ -3124,7 +3123,7 @@ impl<'db> RmirEmitter<'db> {
         args: &[NOperand],
         effect_args: &[NEffectArg<'db>],
     ) -> RLocalId {
-        let semantic = get_or_build_semantic_instance(self.db, callee.key);
+        let semantic = SemanticInstance::new(self.db, callee.key);
         if let Some(ret) = self.lower_core_primitive_wrapper_call(bb, semantic, args) {
             return ret;
         }
@@ -3460,10 +3459,7 @@ impl<'db> RmirEmitter<'db> {
         let semantic_key =
             generated_callee_key(self.db, scope, assumptions, func, None, &[value_ty])
                 .unwrap_or_else(|error| panic!("{}", generated_call_error(self.db, func, error)));
-        runtime_instance_for_semantic(
-            self.db,
-            get_or_build_semantic_instance(self.db, semantic_key),
-        )
+        runtime_instance_for_semantic(self.db, SemanticInstance::new(self.db, semantic_key))
     }
 
     fn assert_panic_payload_encodable(
@@ -4822,7 +4818,7 @@ impl<'db> RmirEmitter<'db> {
             let NExpr::Call { callee, args, effect_args, .. } = expr else {
                 return true;
             };
-            let semantic = get_or_build_semantic_instance(self.db, callee.key);
+            let semantic = SemanticInstance::new(self.db, callee.key);
             let mut sites = BoundarySiteAllocator::default();
             let plan = compile_call_input_plan_for_semantic(
                 self.db, &self.semantic_body, semantic, self.env, effect_args, &mut sites,
@@ -5695,7 +5691,7 @@ impl<'db> RmirEmitter<'db> {
                 .unwrap_or_else(|error| {
                     panic!("failed to finalize generated call to `{name}`: {error:?}")
                 });
-        get_or_build_semantic_instance(self.db, key)
+        SemanticInstance::new(self.db, key)
     }
 
     fn read_semantic_value(&mut self, bb: RBlockId, local: SLocalId) -> RLocalId {
@@ -6448,7 +6444,7 @@ mod tests {
     use common::InputDb;
     use driver::DriverDataBase;
     use hir::analysis::{
-        semantic::{get_or_build_semantic_instance, identity_semantic_instance_key},
+        semantic::{SemanticInstance, identity_semantic_instance_key},
         ty::ty_check::BodyOwner,
     };
     use url::Url;
@@ -6504,7 +6500,7 @@ fn forward<const ROOT: u256>(value: own Mixed<ROOT>) -> Mixed<ROOT> {
                         .is_some_and(|func_name| func_name.data(&db) == name)
                 })
                 .unwrap_or_else(|| panic!("missing function `{name}`"));
-            let semantic = get_or_build_semantic_instance(
+            let semantic = SemanticInstance::new(
                 &db,
                 identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
             );

@@ -78,29 +78,26 @@ pub(crate) fn typed_body_for_body<'db>(
     }
 
     // Try contract bodies (init and recv arms)
-    let scope_graph = body.scope().scope_graph(db);
-    for item in scope_graph.items_dfs(db) {
-        if let ItemKind::Contract(contract) = item {
-            // Check init body
-            if let Some(init) = contract.init(db)
-                && init.body(db) == body
-            {
-                return Some(&check_contract_init_body(db, contract).1);
-            }
-            // Check recv arm bodies
-            for (recv_idx, recv) in contract.recvs(db).data(db).iter().enumerate() {
-                for (arm_idx, arm) in recv.arms.data(db).iter().enumerate() {
-                    if arm.body == body {
-                        return Some(
-                            &check_contract_recv_arm_body(
-                                db,
-                                contract,
-                                recv_idx as u32,
-                                arm_idx as u32,
-                            )
-                            .1,
-                        );
-                    }
+    for &contract in body.top_mod(db).all_contracts(db) {
+        // Check init body
+        if let Some(init) = contract.init(db)
+            && init.body(db) == body
+        {
+            return Some(&check_contract_init_body(db, contract).1);
+        }
+        // Check recv arm bodies
+        for (recv_idx, recv) in contract.recvs(db).data(db).iter().enumerate() {
+            for (arm_idx, arm) in recv.arms.data(db).iter().enumerate() {
+                if arm.body == body {
+                    return Some(
+                        &check_contract_recv_arm_body(
+                            db,
+                            contract,
+                            recv_idx as u32,
+                            arm_idx as u32,
+                        )
+                        .1,
+                    );
                 }
             }
         }

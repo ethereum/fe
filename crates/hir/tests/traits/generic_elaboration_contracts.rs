@@ -3,7 +3,7 @@ use common::{InputDb, indexmap::IndexMap, stdlib::HasBuiltinCore};
 use fe_hir::{
     analysis::{
         semantic::{
-            SemanticInstanceKey, check_semantic_accesses, get_or_build_semantic_instance,
+            SemanticInstance, SemanticInstanceKey, check_semantic_accesses,
             identity_semantic_instance_key, root_semantic_instance_key,
         },
         ty::{
@@ -29,7 +29,7 @@ fn first_callee_key<'db>(
     db: &'db HirAnalysisTestDb,
     key: SemanticInstanceKey<'db>,
 ) -> SemanticInstanceKey<'db> {
-    get_or_build_semantic_instance(db, key)
+    SemanticInstance::new(db, key)
         .call_sites(db)
         .iter()
         .flatten()
@@ -114,7 +114,7 @@ fn caller(_ x: mut Counter) { x.target() }",
             };
             assert_eq!(root, called, "{source}");
             assert_eq!(identity_semantic_instance_key(&db, target), called);
-            let instance = get_or_build_semantic_instance(&db, root);
+            let instance = SemanticInstance::new(&db, root);
             check_semantic_accesses(&db, instance).expect("valid root accesses");
             db.assert_no_diags(module);
         }
@@ -135,7 +135,7 @@ fn target<T: Value>(_ x: own T) -> T { x }",
         let owner = BodyOwner::Func(find_func(&db, module, "target"), None);
         let key = identity_semantic_instance_key(&db, owner);
         assert_eq!(key.impl_env(&db).normalization_scope(&db), owner.scope());
-        let instance = get_or_build_semantic_instance(&db, key);
+        let instance = SemanticInstance::new(&db, key);
         check_semantic_accesses(&db, instance).expect("valid root accesses");
     }
 }
@@ -334,7 +334,7 @@ fn access() -> u256 uses (raw: mut RawStorage) { unsafe { raw.sload(0) } }
     db.assert_no_diags(module);
     let func = find_func(&db, module, "access");
     let identity = identity_semantic_instance_key(&db, BodyOwner::Func(func, None));
-    let instance = get_or_build_semantic_instance(&db, identity);
+    let instance = SemanticInstance::new(&db, identity);
     check_semantic_accesses(&db, instance).expect("sealed effect call must pass access validation");
     let BodyOwner::Func(selected, _) = first_callee_key(&db, identity).owner(&db) else {
         panic!("sealed effect callee is not a function");

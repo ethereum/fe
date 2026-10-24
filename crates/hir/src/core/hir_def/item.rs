@@ -471,10 +471,10 @@ impl<'db> TopLevelMod<'db> {
         s_graph.child_items(scope)
     }
 
-    /// Returns all the children of this module, including nested items.
+    /// Returns all the children of this module, including nested items and
+    /// every body.
     pub fn children_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind<'db>> + 'db {
-        let s_graph = self.scope_graph(db);
-        s_graph.items_dfs(db)
+        self.all_items(db).iter().copied()
     }
 
     pub fn parent(self, db: &'db dyn HirDb) -> Option<TopLevelMod<'db>> {
@@ -490,20 +490,30 @@ impl<'db> TopLevelMod<'db> {
     }
 
     /// Returns all items in the top level module including ones in nested
-    /// modules.
+    /// modules, and every body, in depth-first order. This lowers each
+    /// function body that is lowered on demand.
     #[salsa::tracked(return_ref)]
     pub fn all_items(self, db: &'db dyn HirDb) -> Vec<ItemKind<'db>> {
-        self.children_nested(db).collect()
+        let mut items = Vec::new();
+        for item in self.scope_graph(db).items_dfs() {
+            items.push(item);
+            if let ItemKind::Func(func) = item
+                && let Some(graph) = lower::func_body_graph_impl(db, func)
+            {
+                items.extend(graph.items_dfs());
+            }
+        }
+        items
     }
 
     /// Returns all structs in the top level module including ones in nested
     /// modules.
     #[salsa::tracked(return_ref)]
     pub fn all_structs(self, db: &'db dyn HirDb) -> Vec<Struct<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::Struct(struct_) => Some(*struct_),
+                ItemKind::Struct(struct_) => Some(struct_),
                 _ => None,
             })
             .collect()
@@ -513,10 +523,10 @@ impl<'db> TopLevelMod<'db> {
     /// modules.
     #[salsa::tracked(return_ref)]
     pub fn all_enums(self, db: &'db dyn HirDb) -> Vec<Enum<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::Enum(enum_) => Some(*enum_),
+                ItemKind::Enum(enum_) => Some(enum_),
                 _ => None,
             })
             .collect()
@@ -526,10 +536,10 @@ impl<'db> TopLevelMod<'db> {
     /// modules.
     #[salsa::tracked(return_ref)]
     pub fn all_contracts(self, db: &'db dyn HirDb) -> Vec<Contract<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::Contract(contract) => Some(*contract),
+                ItemKind::Contract(contract) => Some(contract),
                 _ => None,
             })
             .collect()
@@ -539,10 +549,10 @@ impl<'db> TopLevelMod<'db> {
     /// nested modules.
     #[salsa::tracked(return_ref)]
     pub fn all_type_aliases(self, db: &'db dyn HirDb) -> Vec<TypeAlias<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::TypeAlias(alias) => Some(*alias),
+                ItemKind::TypeAlias(alias) => Some(alias),
                 _ => None,
             })
             .collect()
@@ -552,10 +562,10 @@ impl<'db> TopLevelMod<'db> {
     /// modules.
     #[salsa::tracked(return_ref)]
     pub fn all_traits(self, db: &'db dyn HirDb) -> Vec<Trait<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::Trait(trait_) => Some(*trait_),
+                ItemKind::Trait(trait_) => Some(trait_),
                 _ => None,
             })
             .collect()
@@ -563,10 +573,10 @@ impl<'db> TopLevelMod<'db> {
 
     #[salsa::tracked(return_ref)]
     pub fn all_funcs(self, db: &'db dyn HirDb) -> Vec<Func<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::Func(func_) => Some(*func_),
+                ItemKind::Func(func_) => Some(func_),
                 _ => None,
             })
             .collect()
@@ -576,10 +586,10 @@ impl<'db> TopLevelMod<'db> {
     /// modules.
     #[salsa::tracked(return_ref)]
     pub fn all_impl_traits(self, db: &'db dyn HirDb) -> Vec<ImplTrait<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::ImplTrait(impl_trait) => Some(*impl_trait),
+                ItemKind::ImplTrait(impl_trait) => Some(impl_trait),
                 _ => None,
             })
             .collect()
@@ -589,10 +599,10 @@ impl<'db> TopLevelMod<'db> {
     /// modules.
     #[salsa::tracked(return_ref)]
     pub fn all_impls(self, db: &'db dyn HirDb) -> Vec<Impl<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::Impl(impl_) => Some(*impl_),
+                ItemKind::Impl(impl_) => Some(impl_),
                 _ => None,
             })
             .collect()
@@ -602,10 +612,10 @@ impl<'db> TopLevelMod<'db> {
     /// modules.
     #[salsa::tracked(return_ref)]
     pub fn all_mods(self, db: &'db dyn HirDb) -> Vec<Mod<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::Mod(mod_) => Some(*mod_),
+                ItemKind::Mod(mod_) => Some(mod_),
                 _ => None,
             })
             .collect()
@@ -613,10 +623,10 @@ impl<'db> TopLevelMod<'db> {
 
     #[salsa::tracked(return_ref)]
     pub fn all_static_asserts(self, db: &'db dyn HirDb) -> Vec<StaticAssert<'db>> {
-        self.all_items(db)
-            .iter()
+        self.scope_graph(db)
+            .items_dfs()
             .filter_map(|item| match item {
-                ItemKind::StaticAssert(assert_) => Some(*assert_),
+                ItemKind::StaticAssert(assert_) => Some(assert_),
                 _ => None,
             })
             .collect()
@@ -669,7 +679,7 @@ pub struct FuncModifiers {
 #[derive(Debug)]
 pub struct Func<'db> {
     #[id]
-    id: TrackedItemId<'db>,
+    pub(in crate::core) id: TrackedItemId<'db>,
 
     pub name: Partial<IdentId<'db>>,
     pub(in crate::core) attributes: AttrListId<'db>,
@@ -679,7 +689,9 @@ pub struct Func<'db> {
     pub(crate) declared_effects: EffectParamListId<'db>,
     pub(in crate::core) ret_type_ref: Option<TypeId<'db>>,
     pub(in crate::core) modifiers: FuncModifiers,
-    pub body: Option<Body<'db>>,
+    /// The body when it is lowered with the module: a generated body, or one
+    /// that declares items. Other bodies are lowered on demand.
+    pub(in crate::core) eager_body: Option<Body<'db>>,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -689,6 +701,13 @@ pub struct Func<'db> {
 impl<'db> Func<'db> {
     pub fn span(self) -> LazyFuncSpan<'db> {
         LazyFuncSpan::new(self)
+    }
+
+    /// Returns the body, lowering it on first use unless it was lowered with
+    /// the module.
+    pub fn body(self, db: &'db dyn HirDb) -> Option<Body<'db>> {
+        self.eager_body(db)
+            .or_else(|| lower::func_body_graph_impl(db, self).as_ref()?.root.body())
     }
 
     pub fn scope(self) -> ScopeId<'db> {

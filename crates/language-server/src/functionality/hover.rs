@@ -347,7 +347,7 @@ fn layout_definition_hover(
     top_mod: hir::hir_def::TopLevelMod<'_>,
     cursor: Cursor,
 ) -> Option<Hover> {
-    for item in top_mod.scope_graph(db).items_dfs(db) {
+    for &item in top_mod.all_items(db) {
         let ItemKind::Contract(contract) = item else {
             continue;
         };

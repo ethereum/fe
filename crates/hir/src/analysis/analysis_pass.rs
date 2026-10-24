@@ -17,7 +17,7 @@ use crate::{
     AbiStructDiagnosticKind, AttrMisuseError, ErrorDiagnostic, EventError, EventErrorKind,
     FieldModifierError, MsgDiagnostic, ParserError,
     hir_def::{ModuleTree, Partial, TopLevelMod, TypeKind},
-    lower::{parse_file_impl, scope_graph_impl, top_mod_ast},
+    lower::{func_body_graph_impl, parse_file_impl, scope_graph_impl, top_mod_ast},
     semantic::constraints_for,
     span::{DesugaredOrigin, HirOrigin},
 };
@@ -497,10 +497,16 @@ impl ModuleAnalysisPass for AttrMisusePass {
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher>> {
-        let mut diags = scope_graph_impl::accumulated::<AttrMisuseError>(db, top_mod)
-            .into_iter()
-            .map(|d| Box::new(d.clone()) as _)
-            .collect::<Vec<_>>();
+        // Loop attributes in a function body are checked when the body is
+        // lowered, which may happen apart from the module.
+        let mut diags =
+            scope_graph_impl::accumulated::<AttrMisuseError>(db, top_mod)
+                .into_iter()
+                .chain(top_mod.all_funcs(db).iter().flat_map(|&func| {
+                    func_body_graph_impl::accumulated::<AttrMisuseError>(db, func)
+                }))
+                .map(|d| Box::new(d.clone()) as _)
+                .collect::<Vec<_>>();
         diags.extend(
             scope_graph_impl::accumulated::<FieldModifierError>(db, top_mod)
                 .into_iter()

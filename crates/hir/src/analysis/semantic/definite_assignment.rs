@@ -24,8 +24,7 @@ use crate::{
         HirAnalysisDb,
         semantic::{
             BlockedSemanticBody, SConst, SemConstScalar, SemConstValue, SemanticDiagnosticId,
-            SemanticInstance, SemanticNormalizationFailure, get_or_build_semantic_instance,
-            identity_semantic_instance_key,
+            SemanticInstance, SemanticNormalizationFailure, identity_semantic_instance_key,
             normalized::{
                 NBlockId, NDataProjection, NEffectArg, NEffectArgValue, NExpr, NOperand, NPlace,
                 NPlaceBase, NRootKind, NStatementKind, NTerminatorKind, NValueId, NormalizedBody,
@@ -68,7 +67,7 @@ pub fn contract_init_assigned_fields<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
 ) -> Result<Option<FxHashSet<u32>>, SemanticNormalizationFailure<'db>> {
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         db,
         identity_semantic_instance_key(db, BodyOwner::ContractInit { contract }),
     );
@@ -405,7 +404,7 @@ impl<'a, 'db> DefiniteAssignment<'a, 'db> {
         let BodyOwner::Func(callee_func, _) = callee_key.owner(self.db) else {
             return Ok(());
         };
-        let callee = get_or_build_semantic_instance(self.db, callee_key);
+        let callee = SemanticInstance::new(self.db, callee_key);
         let summary = match instance_assigned_targets(self.db, callee) {
             AssignedTargetsResult::Ready(Some(summary)) => summary,
             AssignedTargetsResult::Ready(None) => return Ok(()),

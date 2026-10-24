@@ -28,10 +28,9 @@ pub fn module_references<'db>(
     db: &'db dyn HirAnalysisDb,
     top_mod: TopLevelMod<'db>,
 ) -> Vec<ResolvedRef<'db>> {
-    let scope_graph = top_mod.scope_graph(db);
     let mut refs = Vec::new();
 
-    for item in scope_graph.items_dfs(db) {
+    for &item in top_mod.all_items(db) {
         for resolved in resolved_item_scope_targets(db, item) {
             refs.push(ResolvedRef {
                 target: resolved.scope,

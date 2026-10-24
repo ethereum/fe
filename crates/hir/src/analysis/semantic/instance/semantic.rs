@@ -143,7 +143,7 @@ impl<'db> SemanticInstanceKey<'db> {
     }
 }
 
-#[salsa::tracked]
+#[salsa::interned]
 #[derive(Debug)]
 pub struct SemanticInstance<'db> {
     pub key: SemanticInstanceKey<'db>,
@@ -1603,11 +1603,7 @@ impl<'db> SemanticInstance<'db> {
                 SStmtKind::Assign {
                     expr: SExpr::Call { callee, args, .. },
                     ..
-                } => Some((
-                    stmt.origin,
-                    get_or_build_semantic_instance(db, callee.key),
-                    args,
-                )),
+                } => Some((stmt.origin, SemanticInstance::new(db, callee.key), args)),
                 _ => None,
             })
             .flat_map(|(origin, callee, args)| {
@@ -1797,8 +1793,7 @@ fn instance_limit_violation<'db>(
     if let BodyOwner::Func(_, _) = instance.key(db).owner(db) {
         let identity = identity_semantic_instance_key(db, instance.key(db).owner(db));
         if identity != instance.key(db)
-            && let Some(diag) =
-                instance_limit_violation(db, get_or_build_semantic_instance(db, identity))
+            && let Some(diag) = instance_limit_violation(db, SemanticInstance::new(db, identity))
         {
             return Some(diag);
         }
@@ -1836,7 +1831,7 @@ fn instance_limit_violation<'db>(
                 })
                 .is_some();
         if !within {
-            let callee = checker_name(db, get_or_build_semantic_instance(db, callee.key));
+            let callee = checker_name(db, SemanticInstance::new(db, callee.key));
             return Some(SemanticDiagnosticId::new(
                 db,
                 SemanticDiagnostic::new(
@@ -1855,9 +1850,9 @@ fn instance_limit_violation<'db>(
             ));
         }
     }
-    calls.iter().find_map(|(_, callee)| {
-        instance_limit_violation(db, get_or_build_semantic_instance(db, callee.key))
-    })
+    calls
+        .iter()
+        .find_map(|(_, callee)| instance_limit_violation(db, SemanticInstance::new(db, callee.key)))
 }
 
 fn instance_limit_violation_cycle_initial<'db>(
@@ -2221,14 +2216,6 @@ pub fn identity_semantic_instance_key<'db>(
         root_impl_env(db, owner, subst),
         EvidenceList::none(db),
     )
-}
-
-#[salsa::tracked]
-pub fn get_or_build_semantic_instance<'db>(
-    db: &'db dyn HirAnalysisDb,
-    key: SemanticInstanceKey<'db>,
-) -> SemanticInstance<'db> {
-    SemanticInstance::new(db, key)
 }
 
 fn lower_semantic_body<'db>(
@@ -2850,7 +2837,7 @@ where
 mod tests {
     use super::*;
     use crate::{
-        analysis::semantic::{get_or_build_semantic_instance, identity_semantic_instance_key},
+        analysis::semantic::identity_semantic_instance_key,
         test_db::{HirAnalysisTestDb, find_func},
     };
 
@@ -2872,7 +2859,7 @@ mod tests {
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let instance = get_or_build_semantic_instance(
+        let instance = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(
                 &db,
@@ -2932,7 +2919,7 @@ mod tests {
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let instance = get_or_build_semantic_instance(
+        let instance = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(
                 &db,
@@ -3003,7 +2990,7 @@ mod tests {
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let instance = get_or_build_semantic_instance(
+        let instance = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(
                 &db,

@@ -1,0 +1,1 @@
+Native builds no longer fail with `unproven escape of local object` when a reference to a local object is packed into a tuple or enum that stays in the function, as in `let (_, ref n) = cell.peek()` at -O0 or the drop of a matched enum payload.

@@ -65,7 +65,7 @@ jobs:
         with:
           repository: fe-lang/sonatina
           persist-credentials: false
-          ref: 6dcaaa55706ee73c21e7ce22f73fa012226ca087
+          ref: b21df8e613821e4a85d4c2f04f6cf4f577b51f48
           path: target/sonatina-sp1-tools
           sparse-checkout: crates/sp1
       - name: Install checksum-pinned Succinct toolchain

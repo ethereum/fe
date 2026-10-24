@@ -12,7 +12,7 @@ use crate::{
         HirAnalysisDb,
         semantic::instance::{
             GenericSubst, ImplEnv, SemanticBodyAdmissionError, SemanticInstance,
-            SemanticInstanceKey, get_or_build_semantic_instance,
+            SemanticInstanceKey,
         },
         semantic::{
             BlockedInfo, ConstDemandKind, ConstDependency, EvalFailure, EvalOutcome, FieldIndex,
@@ -242,7 +242,7 @@ pub fn eval_body_owner_const<'db>(
         ImplEnv::empty(db, owner.scope()),
         EvidenceList::none(db),
     );
-    eval_const_instance(db, get_or_build_semantic_instance(db, key))
+    eval_const_instance(db, SemanticInstance::new(db, key))
 }
 
 fn eval_body_owner_const_cycle_initial<'db>(
@@ -309,7 +309,7 @@ pub(super) fn execute_resolved_const_computation_with_steps<'db>(
         .collect::<EvalResult<'db, Vec<_>>>();
     let outcome = match args {
         Ok(args) => machine
-            .eval_root(get_or_build_semantic_instance(db, key), args, origin)
+            .eval_root(SemanticInstance::new(db, key), args, origin)
             .into(),
         Err(stop) => EvalOutcome::from(Err(stop)),
     };
@@ -3385,7 +3385,7 @@ mod tests {
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let instance = get_or_build_semantic_instance(
+        let instance = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(module.all_funcs(&db)[0], None)),
         );
@@ -3412,11 +3412,11 @@ mod tests {
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
         let funcs = module.all_funcs(&db);
-        let read = get_or_build_semantic_instance(
+        let read = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(funcs[0], None)),
         );
-        let anchor = get_or_build_semantic_instance(
+        let anchor = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(funcs[1], None)),
         );
@@ -3494,15 +3494,15 @@ mod tests {
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
         let funcs = module.all_funcs(&db);
-        let read = get_or_build_semantic_instance(
+        let read = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(funcs[0], None)),
         );
-        let anchor = get_or_build_semantic_instance(
+        let anchor = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(funcs[1], None)),
         );
-        let dependent = get_or_build_semantic_instance(
+        let dependent = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(funcs[2], None)),
         );
@@ -3618,7 +3618,7 @@ mod tests {
         );
         let (module, _) = db.top_mod(file);
         db.assert_no_diags(module);
-        let instance = get_or_build_semantic_instance(
+        let instance = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(module.all_funcs(&db)[0], None)),
         );

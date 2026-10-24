@@ -5,8 +5,7 @@ use hir::{
     analysis::{
         semantic::{
             ManualContractSection, RootSemanticInstanceError, SemanticInstance,
-            generated_callee_key, get_or_build_semantic_instance, root_semantic_instance_key,
-            same_owner_effect_binding,
+            generated_callee_key, root_semantic_instance_key, same_owner_effect_binding,
         },
         ty::{
             const_ty::ConstTyData,
@@ -1388,7 +1387,7 @@ fn semantic_instance_for_root_owner<'db>(
             "root semantic instance is not closed under synthesized root substitution: {err:?}"
         )),
     })?;
-    Ok(get_or_build_semantic_instance(db, key))
+    Ok(SemanticInstance::new(db, key))
 }
 
 fn contract_object_spec<'db>(
@@ -1421,7 +1420,7 @@ fn runtime_root_candidate<'db>(
         return Ok(RuntimeRootCandidate::NotRoot);
     }
     let semantic = match root_semantic_instance_key(db, BodyOwner::Func(func, None)) {
-        Ok(key) => get_or_build_semantic_instance(db, key),
+        Ok(key) => SemanticInstance::new(db, key),
         Err(err) => {
             return Ok(RuntimeRootCandidate::Rejected(RuntimeRootRejection {
                 func,
@@ -1629,7 +1628,7 @@ fn resolve_decode_runtime_args_instance<'db>(
         &[host_ty, sol_abi_ty(db, scope)?, msg_ty],
     )
     .map_err(|error| generated_call_error(db, func, error))?;
-    let semantic = get_or_build_semantic_instance(db, key);
+    let semantic = SemanticInstance::new(db, key);
     Ok(runtime_instance_for_semantic_with_visible_param_overrides(
         db,
         semantic,
@@ -1672,7 +1671,7 @@ pub(crate) fn resolve_trait_runtime_instance<'db>(
     .map_err(|error| generated_call_error(db, func, error))?;
     Ok(runtime_instance_for_semantic(
         db,
-        get_or_build_semantic_instance(db, key),
+        SemanticInstance::new(db, key),
     ))
 }
 
@@ -2669,7 +2668,7 @@ fn invalid(result: mut u256) -> u256 {
                     .is_some_and(|name| name.data(&db) == "invalid")
             })
             .expect("invalid function");
-        let semantic = get_or_build_semantic_instance(
+        let semantic = SemanticInstance::new(
             &db,
             hir::analysis::semantic::identity_semantic_instance_key(
                 &db,

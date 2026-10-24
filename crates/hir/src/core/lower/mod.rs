@@ -13,8 +13,8 @@ use self::{item::lower_module_items, scope_builder::ScopeGraphBuilder};
 use crate::{
     HirDb, LowerHirDb,
     hir_def::{
-        AttrListId, ExprId, IdentId, IntegerId, ItemKind, LitKind, ModuleTree, Partial, PathId,
-        StringId, TopLevelMod, TrackedItemId, TrackedItemVariant, Use, Visibility,
+        AttrListId, Body, ExprId, Func, IdentId, IntegerId, ItemKind, LitKind, ModuleTree, Partial,
+        PathId, StringId, TopLevelMod, TrackedItemId, TrackedItemVariant, Use, Visibility,
         module_tree_impl,
         scope_graph::ScopeGraph,
         use_tree::{UsePathId, UsePathSegment},
@@ -163,6 +163,24 @@ pub(crate) fn scope_graph_impl<'db>(
     ctxt.build()
 }
 
+/// Returns the scope graph of the body of `func`, lowered on its own, or `None`
+/// if the function has no body in source or its body was lowered with the
+/// module because it declares items.
+#[salsa::tracked(return_ref)]
+pub(crate) fn func_body_graph_impl<'db>(
+    db: &'db dyn HirDb,
+    func: Func<'db>,
+) -> Option<ScopeGraph<'db>> {
+    let (None, HirOrigin::Raw(ptr)) = (func.eager_body(db), func.origin(db)) else {
+        return None;
+    };
+    let ast = ptr.to_node(top_mod_ast(db, func.top_mod(db)).syntax());
+    let body = ast.body()?;
+    let mut ctxt = FileLowerCtxt::enter_func_body(db, func);
+    Body::lower_func_body(&mut ctxt, &ast, body);
+    Some(ctxt.build())
+}
+
 #[salsa::tracked]
 pub(crate) fn top_mod_attributes_impl<'db>(
     db: &'db dyn HirDb,
@@ -199,6 +217,15 @@ impl<'db> FileLowerCtxt<'db> {
         }
     }
 
+    fn enter_func_body(db: &'db dyn HirDb, func: Func<'db>) -> Self {
+        Self {
+            builder: ScopeGraphBuilder::enter_func_body(db, func),
+            next_impl_idx: 0,
+            next_impl_trait_idx: 0,
+            next_static_assert_idx: 0,
+        }
+    }
+
     pub(super) fn build(self) -> ScopeGraph<'db> {
         self.builder.build()
     }
@@ -209,6 +236,10 @@ impl<'db> FileLowerCtxt<'db> {
 
     pub(super) fn top_mod(&self) -> TopLevelMod<'db> {
         self.builder.top_mod
+    }
+
+    pub(super) fn lazy_func(&self) -> Option<Func<'db>> {
+        self.builder.lazy_func
     }
 
     /// The path naming the core ingot from the file: `ingot` within core.

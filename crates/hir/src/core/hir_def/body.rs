@@ -12,10 +12,12 @@ use salsa::Update;
 
 use super::{
     Cond, CondId, Expr, ExprId, Func, ItemKind, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,
-    TrackedItemId, scope_graph::ScopeId,
+    TrackedItemId,
+    scope_graph::{ScopeGraph, ScopeId},
 };
 use crate::{
     HirDb,
+    lower::func_body_graph_impl,
     span::{HirOrigin, item::LazyBodySpan},
     visitor::prelude::*,
 };
@@ -41,6 +43,10 @@ pub struct Body<'db> {
     #[return_ref]
     pub pats: NodeStore<PatId, Partial<Pat<'db>>>,
     pub top_mod: TopLevelMod<'db>,
+    /// The function whose lazily lowered body contains this body, and whose
+    /// body scope graph holds this body's scopes. `None` for a body lowered
+    /// with its module.
+    pub(crate) lazy_func: Option<Func<'db>>,
 
     #[return_ref]
     pub(crate) source_map: BodySourceMap,
@@ -55,6 +61,16 @@ impl<'db> Body<'db> {
 
     pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
+    }
+
+    /// Returns the scope graph that holds this body's scopes.
+    pub fn scope_graph(self, db: &'db dyn HirDb) -> &'db ScopeGraph<'db> {
+        match self.lazy_func(db) {
+            Some(func) => func_body_graph_impl(db, func)
+                .as_ref()
+                .expect("a lazily lowered body has a scope graph"),
+            None => self.top_mod(db).scope_graph(db),
+        }
     }
 
     /// Find the function that contains this body.

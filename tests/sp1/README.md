@@ -23,7 +23,7 @@ modify rustup aliases:
 
 ```sh
 git clone https://github.com/fe-lang/sonatina.git /tmp/fe-sp1-sonatina
-git -C /tmp/fe-sp1-sonatina checkout 6dcaaa55706ee73c21e7ce22f73fa012226ca087
+git -C /tmp/fe-sp1-sonatina checkout b21df8e613821e4a85d4c2f04f6cf4f577b51f48
 bash /tmp/fe-sp1-sonatina/crates/sp1/install-toolchain.sh /tmp/fe-sp1-toolchain
 export SONATINA_SP1_TOOLCHAIN=/tmp/fe-sp1-toolchain
 

@@ -5,7 +5,7 @@ use salsa::Update;
 use crate::analysis::{
     HirAnalysisDb,
     semantic::{
-        SStmtId, SemanticInstance, get_or_build_semantic_instance,
+        SStmtId, SemanticInstance,
         normalized::{
             NExpr, NStatementKind, NTerminatorKind, NormalizedBody, normalize_semantic_body,
         },
@@ -45,7 +45,7 @@ fn executable_flow<'db>(
                 NStatementKind::Define {
                     expr: NExpr::Call { callee, .. },
                     ..
-                } if !semantic_may_return(db, get_or_build_semantic_instance(db, callee.key)) => {
+                } if !semantic_may_return(db, SemanticInstance::new(db, callee.key)) => {
                     statement.source
                 }
                 _ => None,

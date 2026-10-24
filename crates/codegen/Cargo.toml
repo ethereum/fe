@@ -16,6 +16,7 @@ trace-facts.workspace = true
 blake3.workspace = true
 hex = "0.4"
 num-bigint.workspace = true
+rayon = "1"
 ruint.workspace = true
 rustc-hash.workspace = true
 sonatina-ir.workspace = true

@@ -8,7 +8,7 @@ use cranelift_entity::{EntityRef, PrimaryMap, entity_impl};
 use hir::analysis::{
     semantic::{
         FieldIndex, Mutability, SConst, SLocal, SLocalId, SemanticInstance, SemanticLocalKind,
-        SemanticLocalRole, ValueProvenance, VariantIndex, get_or_build_semantic_instance,
+        SemanticLocalRole, ValueProvenance, VariantIndex,
         normalized::{
             NDataPath, NDataProjection, NEffectArg, NExpr, NIndex, NOperand, NPlace, NPlaceBase,
             NRootKind, NStatementKind, NValueDefinition, NValueId, copied_scalar_ty,
@@ -313,7 +313,7 @@ impl<'db> BodyStaticFacts<'db> {
                 // A call that never returns ends its executable block, and lowering
                 // never assigns its result.
                 if let NExpr::Call { callee, .. } = expr
-                    && semantic_never_returns(db, get_or_build_semantic_instance(db, callee.key))
+                    && semantic_never_returns(db, SemanticInstance::new(db, callee.key))
                 {
                     continue;
                 }
@@ -1557,7 +1557,7 @@ impl<'db> ExprStaticFactsBuilder<'_, 'db> {
                 effect_args,
                 ..
             } => {
-                let semantic = get_or_build_semantic_instance(db, callee.key);
+                let semantic = SemanticInstance::new(db, callee.key);
                 let builtin_return_class = extern_builtin_return_class(db, semantic, result_ty);
                 let return_decision = static_runtime_return_decision(db, semantic);
                 let needs_input_plan = builtin_return_class.is_none()
@@ -2924,8 +2924,7 @@ mod tests {
     use hir::{
         analysis::semantic::{
             EffectProviderSubst, GenericSubst, ImplEnv, NEffectArg, NStatementKind,
-            SemanticCalleeRef, SemanticInstance, SemanticInstanceKey,
-            get_or_build_semantic_instance, owner_effect_bindings,
+            SemanticCalleeRef, SemanticInstance, SemanticInstanceKey, owner_effect_bindings,
             resolved_provider_binding_for_instance_effect, root_semantic_instance_key,
         },
         analysis::ty::{
@@ -3020,7 +3019,7 @@ mod tests {
             root_semantic_instance_key(db, BodyOwner::Func(func, None)).unwrap_or_else(|err| {
                 panic!("failed to build root semantic key for `{name}`: {err:?}")
             });
-        get_or_build_semantic_instance(db, key)
+        SemanticInstance::new(db, key)
     }
 
     #[test]
@@ -3491,8 +3490,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
             .expect("erc20 fixture should define a contract");
         let init_key = root_semantic_instance_key(&db, BodyOwner::ContractInit { contract })
             .unwrap_or_else(|err| panic!("failed to build root init semantic key: {err:?}"));
-        let init =
-            runtime_instance_for_semantic(&db, get_or_build_semantic_instance(&db, init_key));
+        let init = runtime_instance_for_semantic(&db, SemanticInstance::new(&db, init_key));
         let grant = init
             .calls(&db)
             .iter()
@@ -3676,7 +3674,7 @@ uses (slot: Slot<u256>)
         let top_mod = db.top_mod(file);
         let contract = contract_by_name(&db, top_mod, "B");
         for arm_idx in [1, 2, 4] {
-            let semantic = get_or_build_semantic_instance(
+            let semantic = SemanticInstance::new(
                 &db,
                 root_semantic_instance_key(
                     &db,
@@ -3758,7 +3756,7 @@ uses (slot: Slot<u256>)
             .expect("file should be loaded");
         let top_mod = db.top_mod(file);
         let contract = contract_by_name(&db, top_mod, "B");
-        let semantic = get_or_build_semantic_instance(
+        let semantic = SemanticInstance::new(
             &db,
             root_semantic_instance_key(
                 &db,
@@ -4012,7 +4010,7 @@ fn caller() -> u256 {
             .expect("file should be loaded");
         let top_mod = db.top_mod(file);
         let contract = contract_by_name(&db, top_mod, "C");
-        let semantic = get_or_build_semantic_instance(
+        let semantic = SemanticInstance::new(
             &db,
             root_semantic_instance_key(
                 &db,

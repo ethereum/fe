@@ -1,0 +1,1 @@
+Loops use less gas at -O1 and -O2: each iteration ends in one conditional branch instead of a test at the top and a jump back to it, and when the stack needs reordering for the jump back, that jump sits just before the loop header (verifying a 64-level Merkle proof drops from 11,428 to 10,718 gas).

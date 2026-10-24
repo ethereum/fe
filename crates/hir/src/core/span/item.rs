@@ -1115,11 +1115,7 @@ mod tests {
     /// reverted back to `to_node`.
     #[test]
     fn incomplete_recv_arm_span_resolve_does_not_panic() {
-        use crate::{
-            lower::{map_file_to_mod, scope_graph},
-            semantic::reference::HasReferences,
-            span::LazySpan,
-        };
+        use crate::{lower::map_file_to_mod, semantic::reference::HasReferences, span::LazySpan};
 
         let mut db = TestDb::default();
 
@@ -1158,8 +1154,7 @@ pub contract Counter {
         for text in cases {
             let file = db.standalone_file(text);
             let top_mod = map_file_to_mod(&db, file);
-            let sg = scope_graph(&db, top_mod);
-            for item in sg.items_dfs(&db) {
+            for &item in top_mod.all_items(&db) {
                 for reference in item.references(&db) {
                     // Must not panic — should return Some(span) or None
                     let _ = reference.span().resolve(&db);

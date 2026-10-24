@@ -7,8 +7,8 @@ use fe_hir::{
     analysis::{
         semantic::{
             CtfeError, EvalFailure, EvalOutcome, GenericSubst, SConst, SExpr, SStmtKind,
-            SemConstId, SemConstScalar, SemConstValue, canonicalize_semantic_consts,
-            eval_body_owner_const, eval_body_owner_const_with_args, get_or_build_semantic_instance,
+            SemConstId, SemConstScalar, SemConstValue, SemanticInstance,
+            canonicalize_semantic_consts, eval_body_owner_const, eval_body_owner_const_with_args,
             identity_semantic_instance_key, reify_runtime_const_for_ty,
         },
         ty::{
@@ -47,7 +47,7 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
     let (top_mod, _) = db.top_mod(file);
     db.assert_no_diags(top_mod);
     let func = find_func(&db, top_mod, "answer");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
@@ -185,7 +185,7 @@ fn semantic_const_operands_keep_formal_evidence_distinct() {
     let (module, _) = db.top_mod(file);
     db.assert_no_diags(module);
     let func = module.all_funcs(&db)[0];
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
@@ -318,7 +318,7 @@ fn wrap() {
         .find(|func| matches!(func.name(&db), Partial::Present(name) if name.data(&db) == "wrap"))
         .expect("expected wrap function");
 
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -920,12 +920,12 @@ fn contract_init_fixed_array_arg_fixture_has_no_type_level_semantic_consts() {
 
     for item in top_mod.all_items(&db) {
         match item {
-            ItemKind::Func(func) => pending.push_back(get_or_build_semantic_instance(
+            ItemKind::Func(func) => pending.push_back(SemanticInstance::new(
                 &db,
                 identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
             )),
             ItemKind::Contract(contract) => {
-                pending.push_back(get_or_build_semantic_instance(
+                pending.push_back(SemanticInstance::new(
                     &db,
                     identity_semantic_instance_key(
                         &db,
@@ -936,7 +936,7 @@ fn contract_init_fixed_array_arg_fixture_has_no_type_level_semantic_consts() {
                 ));
                 for (recv_idx, recv) in contract.recvs(&db).data(&db).iter().enumerate() {
                     for arm_idx in 0..recv.arms.data(&db).len() {
-                        pending.push_back(get_or_build_semantic_instance(
+                        pending.push_back(SemanticInstance::new(
                             &db,
                             identity_semantic_instance_key(
                                 &db,
@@ -1000,7 +1000,7 @@ fn contract_init_fixed_array_arg_fixture_has_no_type_level_semantic_consts() {
             }
         }
         for callee in instance.callees(&db) {
-            pending.push_back(get_or_build_semantic_instance(&db, callee.key));
+            pending.push_back(SemanticInstance::new(&db, callee.key));
         }
     }
 
@@ -1032,7 +1032,7 @@ fn test_add_overflow_u8() {
         })
         .expect("expected test_add_overflow_u8 function");
 
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -1072,7 +1072,7 @@ fn evaluate(x: u8) -> u8 {
     );
     let (module, _) = db.top_mod(file);
     let func = module.all_funcs(&db)[0];
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
     );
@@ -1128,7 +1128,7 @@ fn signed_mul_no_overflow_i8_neg_neg() {
         })
         .expect("expected signed_mul_no_overflow_i8_neg_neg function");
 
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -1210,7 +1210,7 @@ fn entry() -> u256 {
         .find(|func| matches!(func.name(&db), Partial::Present(name) if name.data(&db) == "entry"))
         .expect("expected entry function");
 
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -1277,7 +1277,7 @@ fn wraps_after_aug_assign() -> bool {
         })
         .expect("expected wraps_after_aug_assign function");
 
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -1340,7 +1340,7 @@ fn negated_min_i8_compares_equal() -> bool {
         })
         .expect("expected negated_min_i8_compares_equal function");
 
-    let semantic = get_or_build_semantic_instance(
+    let semantic = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(*func, None)),
     );
@@ -1488,7 +1488,7 @@ fn probe(index: usize) -> bool {{
         let func = top_mod.all_funcs(&db).iter().copied().find(|func| {
             matches!(func.name(&db), Partial::Present(name) if name.data(&db) == "probe")
         }).unwrap();
-        let instance = get_or_build_semantic_instance(
+        let instance = SemanticInstance::new(
             &db,
             identity_semantic_instance_key(&db, BodyOwner::Func(func, None)),
         );

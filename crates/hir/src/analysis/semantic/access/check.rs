@@ -30,7 +30,7 @@ use crate::{
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticKind, SemanticDiagnosticSpan, operand_origin,
             },
-            effect_param_site, get_or_build_semantic_instance,
+            effect_param_site,
             instance::row_expansion_for_key,
             normalized::{
                 NBlockId, NDataPath, NDataProjection, NEffectArg, NEffectArgValue, NExpr, NOperand,
@@ -245,10 +245,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                             NStatementKind::Define {
                                 expr: NExpr::Call { callee, .. },
                                 ..
-                            } => !semantic_may_return(
-                                db,
-                                get_or_build_semantic_instance(db, callee.key),
-                            ),
+                            } => !semantic_may_return(db, SemanticInstance::new(db, callee.key)),
                             _ => false,
                         });
             }
@@ -794,7 +791,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     && let Some(shape) = func.return_shape(self.db, mode)
                 {
                     self.sessions
-                        .insert(result, get_or_build_semantic_instance(self.db, callee.key));
+                        .insert(result, SemanticInstance::new(self.db, callee.key));
                     return self.open_session(result, origin, callee.key, shape, args, effect_args);
                 }
                 Held::new()
@@ -1428,7 +1425,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
             } = &statement.kind
                 && reaches_instance(
                     self.db,
-                    get_or_build_semantic_instance(self.db, callee.key),
+                    SemanticInstance::new(self.db, callee.key),
                     self.instance,
                     &mut explored,
                 )
@@ -2440,12 +2437,7 @@ fn reaches_instance<'db>(
     }
     instance == target
         || instance.callees(db).iter().any(|callee| {
-            reaches_instance(
-                db,
-                get_or_build_semantic_instance(db, callee.key),
-                target,
-                explored,
-            )
+            reaches_instance(db, SemanticInstance::new(db, callee.key), target, explored)
         })
 }
 

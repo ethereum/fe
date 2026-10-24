@@ -1,6 +1,6 @@
 use camino::Utf8PathBuf;
 use fe_hir::analysis::semantic::{
-    get_or_build_semantic_instance, identity_semantic_instance_key, root_semantic_instance_key,
+    SemanticInstance, identity_semantic_instance_key, root_semantic_instance_key,
     typed_body_template,
 };
 use fe_hir::analysis::ty::evidence::{Evidence, EvidenceId};
@@ -331,7 +331,7 @@ fn an_instance_receives_its_callers_proofs_of_its_bounds() {
     // `bound<Wrap<u256>>` receives it, so its call `x.grow()`, checked
     // against the bound, carries the blanket implementation with its
     // conditions proved.
-    let root = get_or_build_semantic_instance(
+    let root = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(func(&db, top_mod, "root"), None))
             .expect("missing root key"),
@@ -340,7 +340,7 @@ fn an_instance_receives_its_callers_proofs_of_its_bounds() {
         .callees(&db)
         .iter()
         .find(|callee| callee.key.owner(&db) == BodyOwner::Func(outer_fn, None))
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .expect("`root` calls `outer`");
     let bound_fn = func(&db, top_mod, "bound");
     let bound = outer
@@ -405,7 +405,7 @@ fn a_constant_body_receives_proofs_of_its_assumptions() {
     // `T::E` in `generic_e` is the trait's default once `T` is known: in
     // `generic_e<u256>`, which `root_e` makes, the use's proof of
     // `Self: HasE`, the instance's own `u256: HasE`, supplies it.
-    let root_e = get_or_build_semantic_instance(
+    let root_e = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(func(&db, top_mod, "root_e"), None))
             .expect("missing root key"),
@@ -433,7 +433,7 @@ fn an_instance_proves_the_bounds_its_arguments_close() {
     // proves `U: Grow` by its own bound. In `pair<u256, U>`, which `half`'s
     // body makes, `x.grow()` so carries the blanket implementation, and
     // `y.grow()` still holds by `half`'s bound.
-    let half = get_or_build_semantic_instance(
+    let half = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(func(&db, top_mod, "half"), None)),
     );
@@ -481,7 +481,7 @@ fn a_generic_instance_dispatches_through_the_bound_its_caller_proved() {
     // through that bound, although the blanket implementation also applies
     // where `U: Copy` is assumed: no body is chosen until `U` is known.
     let relay_fn = func(&db, top_mod, "relay");
-    let relay = get_or_build_semantic_instance(
+    let relay = SemanticInstance::new(
         &db,
         identity_semantic_instance_key(&db, BodyOwner::Func(relay_fn, None)),
     );

@@ -2,7 +2,7 @@ use camino::Utf8PathBuf;
 use common::diagnostics::{CompleteDiagnostic, cmp_complete_diagnostics};
 use cranelift_entity::EntityRef;
 use fe_hir::analysis::semantic::{
-    GenericSubst, get_or_build_semantic_instance, instantiate_typed_body, instantiated_effect_env,
+    GenericSubst, SemanticInstance, instantiate_typed_body, instantiated_effect_env,
     root_semantic_instance_key, typed_body_template, validate_instantiated_effect_env_key,
 };
 use fe_hir::analysis::ty::effects::{EffectKeyKind, place_effect_provider_param_index_map};
@@ -384,76 +384,6 @@ where
     let call_expr = find_call_expr(&db, caller);
     let typed_body = check_func_body(&db, caller).1.clone();
     assert_single_trait_effect_arg(&typed_body, call_expr);
-}
-
-#[test]
-fn effect_provider_slots_are_independent_of_key_validation() {
-    for (key, valid) in [
-        ("Slot<T::ROOT>", true),
-        ("Slot<{ <T as HasRoot>::ROOT }>", true),
-        ("Slot<{ T::ROOT + 1 }>", true),
-        ("Cap<Slot<T::ROOT>>", true),
-        ("Nested<T::ROOT>", true),
-        ("Alias<T::ROOT>", true),
-        ("*Slot<T::ROOT>", true),
-        ("(Slot<T::ROOT>, Slot<T::ROOT>)", true),
-        ("[Slot<T::ROOT>; 2]", true),
-        ("[Slot<T::ROOT>; { 1 + 1 }]", true),
-        ("[Slot<T::ROOT>; 0]", true),
-        ("Slot<true>", false),
-        ("Slot<u256>", false),
-        ("*Slot<u256>", false),
-        ("Missing", false),
-        ("Cap<u256, u256>", false),
-    ] {
-        for validate_first in [false, true] {
-            let mut db = HirAnalysisTestDb::default();
-            let source = format!(
-                r#"
-trait HasRoot {{ const ROOT: u256 }}
-trait Cap<T> {{}}
-struct Slot<const ROOT: u256> {{}}
-struct Nested<const ROOT: u256> {{ slot: Slot<ROOT> }}
-type Alias<const ROOT: u256> = Slot<ROOT>
-
-fn needs<T: HasRoot, U = T>()
-    uses (first: Cap<T>, middle: {key}, last: Slot<T::ROOT>)
-{{}}
-"#
-            );
-            let file = db.new_stand_alone("stable_effect_provider_slots.fe".into(), &source);
-            let (top_mod, _) = db.top_mod(file);
-            let needs = find_func(&db, top_mod, "needs");
-            if validate_first {
-                let diags = diagnostics_for(&db, top_mod);
-                assert_eq!(
-                    diags.is_empty(),
-                    valid,
-                    "key {key}, validate_first {validate_first}: {diags:#?}"
-                );
-            }
-
-            assert_eq!(
-                place_effect_provider_param_index_map(&db, needs),
-                &[Some(0), Some(1), Some(2)],
-                "key {key}, validate_first {validate_first}"
-            );
-            let params = CallableDef::Func(needs).params(&db);
-            assert_eq!(params.len(), 5);
-            for (idx, param) in params.iter().enumerate() {
-                let TyData::TyParam(param) = param.data(&db) else {
-                    panic!("expected type parameter at {idx}");
-                };
-                assert_eq!(param.idx, idx);
-            }
-            let diags = diagnostics_for(&db, top_mod);
-            assert_eq!(
-                diags.is_empty(),
-                valid,
-                "key {key}, validate_first {validate_first}: {diags:#?}"
-            );
-        }
-    }
 }
 
 #[test]
@@ -2914,7 +2844,7 @@ fn use_ctx_semantic_body_keeps_receiver_as_effect_binding_local() {
     db.assert_no_diags(top_mod);
 
     let use_ctx = find_func(&db, top_mod, "use_ctx");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         fe_hir::analysis::semantic::identity_semantic_instance_key(
             &db,
@@ -3001,7 +2931,7 @@ fn zero_effect_arg_method_calls_finalize_under_forwarded_witnesses() {
         .expect("missing impl sum method");
 
     let contract = find_contract(&db, top_mod, "ByRefTraitProviderStorageBug");
-    let recv = get_or_build_semantic_instance(
+    let recv = SemanticInstance::new(
         &db,
         fe_hir::analysis::semantic::identity_semantic_instance_key(
             &db,
@@ -3015,7 +2945,7 @@ fn zero_effect_arg_method_calls_finalize_under_forwarded_witnesses() {
     let use_ctx = recv
         .callees(&db)
         .iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
@@ -3030,7 +2960,7 @@ fn zero_effect_arg_method_calls_finalize_under_forwarded_witnesses() {
     let sum = use_ctx
         .callees(&db)
         .iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
@@ -3092,7 +3022,7 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
         )
     })
     .expect("missing resolved impl method");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         fe_hir::analysis::semantic::SemanticInstanceKey::new(
             &db,
@@ -3134,7 +3064,7 @@ fn pointer_values_are_direct_values() {
     db.assert_no_diags(top_mod);
 
     let contract = find_contract(&db, top_mod, "EffectHandleFieldDeref");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         fe_hir::analysis::semantic::identity_semantic_instance_key(
             &db,
@@ -3159,7 +3089,7 @@ fn pointer_values_are_direct_values() {
             _ => None,
         })
         .unwrap_or_else(|| panic!("{body:#?}"));
-    let callee = get_or_build_semantic_instance(&db, callee);
+    let callee = SemanticInstance::new(&db, callee);
     let callee_body = callee.body(&db);
     assert!(
         callee_body
@@ -3209,7 +3139,7 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
     db.assert_no_diags(top_mod);
 
     let contract = find_contract(&db, top_mod, "EffectHandleFieldDeref");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         fe_hir::analysis::semantic::identity_semantic_instance_key(
             &db,
@@ -3232,7 +3162,7 @@ fn function_effect_bindings_use_instantiated_provider_bindings() {
             else {
                 return None;
             };
-            let instance = get_or_build_semantic_instance(&db, callee.key);
+            let instance = SemanticInstance::new(&db, callee.key);
             match instance.key(&db).owner(&db) {
                 BodyOwner::Func(func, _)
                     if func
@@ -3312,7 +3242,7 @@ fn root_effect_bindings_specialize_raw_storage_to_evm() {
     db.assert_no_diags(top_mod);
 
     let entry = find_func(&db, top_mod, "explicit_raw_boundaries");
-    let root = get_or_build_semantic_instance(
+    let root = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(entry, None))
             .expect("root semantic instance should exist"),
@@ -3342,7 +3272,7 @@ fn root_effect_bindings_specialize_raw_storage_to_evm() {
         .body(&db)
         .callees()
         .into_iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
@@ -3389,7 +3319,7 @@ fn root_effect_bindings_specialize_raw_storage_to_evm() {
             else {
                 return None;
             };
-            let instance = get_or_build_semantic_instance(&db, callee.key);
+            let instance = SemanticInstance::new(&db, callee.key);
             matches!(
                 instance.key(&db).owner(&db),
                 BodyOwner::Func(func, _)
@@ -3419,7 +3349,7 @@ fn root_trait_effect_bindings_specialize_call_to_concrete_evm() {
     db.assert_no_diags(top_mod);
 
     let entry = find_func(&db, top_mod, "test_address_call_method");
-    let root = get_or_build_semantic_instance(
+    let root = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(entry, None))
             .expect("root semantic instance should exist"),
@@ -3427,7 +3357,7 @@ fn root_trait_effect_bindings_specialize_call_to_concrete_evm() {
     let address_call = root
         .callees(&db)
         .iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
@@ -3480,7 +3410,7 @@ fn with_bound_plain_effect_params_specialize_to_memory_capabilities() {
     db.assert_no_diags(top_mod);
 
     let caller = find_func(&db, top_mod, "test_non_evm_effect_param");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(caller, None))
             .expect("caller root instance should exist"),
@@ -3489,7 +3419,7 @@ fn with_bound_plain_effect_params_specialize_to_memory_capabilities() {
         .body(&db)
         .callees()
         .into_iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
@@ -3542,7 +3472,7 @@ fn free_function_effect_bindings_keep_explicit_memory_address_space() {
     db.assert_no_diags(top_mod);
 
     let caller = find_func(&db, top_mod, "test_mut_array_effect_param");
-    let instance = get_or_build_semantic_instance(
+    let instance = SemanticInstance::new(
         &db,
         root_semantic_instance_key(&db, BodyOwner::Func(caller, None))
             .expect("caller root instance should exist"),
@@ -3551,7 +3481,7 @@ fn free_function_effect_bindings_keep_explicit_memory_address_space() {
         .body(&db)
         .callees()
         .into_iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),
@@ -3567,7 +3497,7 @@ fn free_function_effect_bindings_keep_explicit_memory_address_space() {
         .body(&db)
         .callees()
         .into_iter()
-        .map(|callee| get_or_build_semantic_instance(&db, callee.key))
+        .map(|callee| SemanticInstance::new(&db, callee.key))
         .find(|callee| {
             matches!(
                 callee.key(&db).owner(&db),

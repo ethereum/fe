@@ -215,7 +215,7 @@ fn find_scope_at_cursor<'db>(
     use hir::span::LazySpan;
 
     // Find the smallest enclosing item
-    let items = top_mod.scope_graph(db).items_dfs(db);
+    let items = top_mod.all_items(db).iter().copied();
     let mut best_scope = None;
     let mut best_size = None;
 
@@ -296,7 +296,11 @@ fn collect_auto_import_completions<'db>(
     let import_position = find_module_import_position(db, current_scope, file_text);
 
     // Iterate all items in the ingot (includes nested inline modules)
-    for item in ingot.all_items(db).iter().copied() {
+    for item in ingot
+        .all_modules(db)
+        .iter()
+        .flat_map(|top_mod| top_mod.scope_graph(db).items_dfs())
+    {
         // Only include items visible from the current scope
         let item_scope = ScopeId::from_item(item);
         if !is_scope_visible_from(db, item_scope, current_scope) {
@@ -755,10 +759,9 @@ fn collect_member_completions<'db>(
     use hir::span::LazySpan;
 
     // Find the enclosing function
-    let scope_graph = top_mod.scope_graph(db);
     let mut enclosing_func = None;
 
-    for item in scope_graph.items_dfs(db) {
+    for &item in top_mod.all_items(db) {
         if let ItemKind::Func(func) = item
             && let Some(span) = func.span().resolve(db)
             && span.range.contains(cursor)
@@ -957,7 +960,7 @@ fn collect_methods_for_type<'db>(
     let mut seen_methods = std::collections::HashSet::new();
 
     // Look for inherent impl blocks in the module
-    for item in top_mod.scope_graph(db).items_dfs(db) {
+    for &item in top_mod.all_items(db) {
         if let ItemKind::Impl(impl_) = item {
             // Check if this impl is for our type by comparing target type name
             let impl_ty_name = impl_.ty(db).pretty_print(db);

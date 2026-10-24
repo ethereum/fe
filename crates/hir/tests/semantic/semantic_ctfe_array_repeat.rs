@@ -3,10 +3,10 @@ use fe_hir::{
     analysis::{
         semantic::{
             CtfeError, EvalFailure, EvalOutcome, GenericSubst, SConst, SExpr, SStmtKind,
-            SemConstId, SemConstScalar, SemConstValue, SemanticInstanceKey,
+            SemConstId, SemConstScalar, SemConstValue, SemanticInstance, SemanticInstanceKey,
             canonicalize_semantic_consts, eval_body_owner_const, eval_const_instance,
-            get_or_build_semantic_instance, identity_semantic_instance_key, reify_runtime_const,
-            reify_runtime_const_for_ty, sem_const_ty,
+            identity_semantic_instance_key, reify_runtime_const, reify_runtime_const_for_ty,
+            sem_const_ty,
         },
         ty::{
             const_ty::ConstTyId,
@@ -232,7 +232,7 @@ const fn changed_fixed<const N: usize, const I: usize>() -> u8 { fixed_store<N, 
                 identity.impl_env(&db),
                 EvidenceList::none(&db),
             );
-            let instance = get_or_build_semantic_instance(&db, key);
+            let instance = SemanticInstance::new(&db, key);
             let reified = eval_const_instance(&db, instance).into_ready();
             let expected = match name {
                 "concrete" => [3, 5, 11].get(index as usize).copied(),
@@ -520,7 +520,7 @@ const fn record<const N: usize, const X: u8>() -> Rows<N> { store_record<N>(X) }
                 EvidenceList::none(&db),
             );
             let expected = key.typed_body(&db).result_ty();
-            let instance = get_or_build_semantic_instance(&db, key);
+            let instance = SemanticInstance::new(&db, key);
             let reified = match eval_const_instance(&db, instance) {
                 EvalOutcome::Ready(value) => {
                     let reified = reify_runtime_const_for_ty(&db, instance, expected, value);
@@ -792,8 +792,7 @@ const fn checked<const N: usize, const X: u8>() -> [Wrapped; N] { [Wrapped { ite
                 identity.impl_env(&db),
                 EvidenceList::none(&db),
             );
-            let reified =
-                eval_const_instance(&db, get_or_build_semantic_instance(&db, key)).into_ready();
+            let reified = eval_const_instance(&db, SemanticInstance::new(&db, key)).into_ready();
             if name == "checked" && element == 0 {
                 assert!(
                     reified.is_none(),
@@ -929,8 +928,7 @@ const fn checked<const N: usize, const X: u8>() -> u8 { [(Pair { value: X }, [10
                 identity.impl_env(&db),
                 EvidenceList::none(&db),
             );
-            let reified =
-                eval_const_instance(&db, get_or_build_semantic_instance(&db, key)).into_ready();
+            let reified = eval_const_instance(&db, SemanticInstance::new(&db, key)).into_ready();
             if len == 0 || (name == "checked" && element == 0) {
                 assert!(
                     reified.is_none(),
@@ -984,7 +982,7 @@ fn outer<const A: usize, const B: usize>() {}
             identity.impl_env(&db),
             EvidenceList::none(&db),
         );
-        let instance = get_or_build_semantic_instance(&db, key);
+        let instance = SemanticInstance::new(&db, key);
         let expected = key.typed_body(&db).result_ty();
         let reified = reify_runtime_const_for_ty(&db, instance, expected, template_value).unwrap();
         assert_eq!(
