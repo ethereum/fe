@@ -109,7 +109,7 @@ pub(crate) fn collect_func_effect_provider_constraints<'db>(
 }
 
 /// Returns a constraints list which is derived from the given type.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn ty_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: TyId<'db>,
@@ -143,7 +143,7 @@ pub(crate) fn ty_constraints<'db>(
 
 /// Collect super traits of the given trait.
 /// The returned trait ref is bound by the given trait's generic parameters.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn super_trait_cycle<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: Trait<'db>,
@@ -175,10 +175,7 @@ pub fn super_trait_cycle_impl<'db>(
     None
 }
 
-#[salsa::tracked(
-    cycle_fn=collect_func_def_constraints_cycle_recover,
-    cycle_initial=collect_func_def_constraints_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=collect_func_def_constraints_cycle_initial)]
 pub(crate) fn collect_func_decl_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     func: CallableDef<'db>,
@@ -261,10 +258,7 @@ pub(crate) fn collect_func_decl_constraint_pairs<'db>(
     collect_decl_constraint_pairs_impl(db, hir_func.into(), parent_pairs, ConstBodyLowering::Eager)
 }
 
-#[salsa::tracked(
-    cycle_fn=collect_func_def_constraints_cycle_recover,
-    cycle_initial=collect_func_def_constraints_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=collect_func_def_constraints_cycle_initial)]
 pub(crate) fn collect_func_def_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     func: CallableDef<'db>,
@@ -292,20 +286,11 @@ pub(crate) fn collect_func_def_constraints<'db>(
 
 fn collect_func_def_constraints_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     func: CallableDef<'db>,
     _include_parent: bool,
 ) -> Binder<'db, PredicateListId<'db>> {
     Binder::bind(func.generic_owner(), PredicateListId::empty_list(db))
-}
-
-fn collect_func_def_constraints_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Binder<'db, PredicateListId<'db>>,
-    _count: u32,
-    _func: CallableDef<'db>,
-    _include_parent: bool,
-) -> salsa::CycleRecoveryAction<Binder<'db, PredicateListId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 /// Where a collected predicate was written. Recorded during constraint
@@ -313,7 +298,7 @@ fn collect_func_def_constraints_cycle_recover<'db>(
 /// re-deriving it from a list index: the final list is parent-first,
 /// deduplicated, and resolution-ordered, so indices don't map back to
 /// written bounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub(crate) enum PredicateSource<'db> {
     GenericParamBound {
         owner: GenericParamOwner<'db>,
@@ -327,10 +312,7 @@ pub(crate) enum PredicateSource<'db> {
     },
 }
 
-#[salsa::tracked(
-    cycle_fn=collect_constraints_cycle_recover,
-    cycle_initial=collect_constraints_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=collect_constraints_cycle_initial)]
 pub(crate) fn collect_decl_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
@@ -349,11 +331,7 @@ pub(crate) fn collect_decl_constraints<'db>(
 
 /// Declared constraints of `owner` paired with the bound each was collected
 /// from. The key sequence is exactly the `PredicateListId` order.
-#[salsa::tracked(
-    return_ref,
-    cycle_fn=decl_constraint_pairs_cycle_recover,
-    cycle_initial=decl_constraint_pairs_cycle_initial
-)]
+#[salsa::tracked(cycle_initial=decl_constraint_pairs_cycle_initial)]
 pub(crate) fn decl_constraint_pairs<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
@@ -361,11 +339,7 @@ pub(crate) fn decl_constraint_pairs<'db>(
     collect_decl_constraint_pairs_impl(db, owner, &[], ConstBodyLowering::Eager)
 }
 
-#[salsa::tracked(
-    return_ref,
-    cycle_fn=decl_constraint_pairs_cycle_recover,
-    cycle_initial=decl_constraint_pairs_cycle_initial
-)]
+#[salsa::tracked(cycle_initial=decl_constraint_pairs_cycle_initial)]
 fn candidate_decl_constraint_pairs<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
@@ -382,18 +356,10 @@ fn candidate_decl_constraint_pairs<'db>(
 
 fn decl_constraint_pairs_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _owner: GenericParamOwner<'db>,
 ) -> Vec<(TraitInstId<'db>, PredicateSource<'db>)> {
     Vec::new()
-}
-
-fn decl_constraint_pairs_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Vec<(TraitInstId<'db>, PredicateSource<'db>)>,
-    _count: u32,
-    _owner: GenericParamOwner<'db>,
-) -> salsa::CycleRecoveryAction<Vec<(TraitInstId<'db>, PredicateSource<'db>)>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 fn collect_decl_constraint_pairs_impl<'db>(
@@ -513,21 +479,13 @@ fn collect_decl_constraint_pairs_impl<'db>(
 
 fn collect_constraints_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     owner: GenericParamOwner<'db>,
 ) -> Binder<'db, PredicateListId<'db>> {
     Binder::bind(owner, PredicateListId::empty_list(db))
 }
 
-fn collect_constraints_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Binder<'db, PredicateListId<'db>>,
-    _count: u32,
-    _owner: GenericParamOwner<'db>,
-) -> salsa::CycleRecoveryAction<Binder<'db, PredicateListId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
-#[salsa::tracked(cycle_fn=collect_constraints_cycle_recover, cycle_initial=collect_constraints_cycle_initial)]
+#[salsa::tracked(returns(copy), cycle_initial=collect_constraints_cycle_initial)]
 pub fn collect_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
@@ -538,7 +496,7 @@ pub fn collect_constraints<'db>(
     }
 }
 
-#[salsa::tracked(cycle_fn=collect_constraints_cycle_recover, cycle_initial=collect_constraints_cycle_initial)]
+#[salsa::tracked(returns(copy), cycle_initial=collect_constraints_cycle_initial)]
 pub(crate) fn collect_candidate_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,

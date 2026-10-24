@@ -1,11 +1,12 @@
 use std::io;
 
+use crate::core::lower::LowerDiagnostic;
 use common::{
     indexmap::{IndexMap, IndexSet},
     ingot::Ingot,
 };
 use rustc_hash::FxHashSet;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     AssocConstDecl, AssocTyDecl, AttrListId, Body, Const, Contract, Enum, EnumVariant, ExprId,
@@ -21,7 +22,7 @@ use crate::{
 
 /// Represents a scope relation graph in a top-level module, or in a function
 /// body that is lowered on its own (see [`Body::scope_graph`]).
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct ScopeGraph<'db> {
     /// The top-level module containing the scope graph.
     pub top_mod: TopLevelMod<'db>,
@@ -31,6 +32,8 @@ pub struct ScopeGraph<'db> {
     pub scopes: IndexMap<ScopeId<'db>, Scope<'db>>,
     /// The all unresolved uses in the graph, this is used in name resolution.
     pub unresolved_uses: FxHashSet<Use<'db>>,
+    /// The diagnostics reported while lowering the graph's items.
+    pub lower_diagnostics: Vec<LowerDiagnostic>,
 }
 
 impl<'db> ScopeGraph<'db> {
@@ -81,7 +84,7 @@ impl<'db> ScopeGraph<'db> {
 }
 
 /// An reference to a `[ScopeData]` in a `ScopeGraph`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub enum ScopeId<'db> {
     /// An item scope.
     Item(ItemKind<'db>),
@@ -477,7 +480,7 @@ impl<'db> std::iter::Iterator for ScopeGraphItemIterDfs<'db, '_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct Scope<'db> {
     pub id: ScopeId<'db>,
     pub edges: IndexSet<ScopeEdge<'db>>,
@@ -498,7 +501,7 @@ impl<'db> Scope<'db> {
 /// The edge contains the destination of the edge and the kind of the edge.
 /// [`EdgeKind`] is contains supplementary information about the destination
 /// scope, which is used for name resolution.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub struct ScopeEdge<'db> {
     pub dest: ScopeId<'db>,
     pub kind: EdgeKind<'db>,
@@ -509,7 +512,9 @@ pub struct ScopeEdge<'db> {
 /// NOTE: The internal types of each variants contains very small amount of
 /// information, the reason why we need to prepare each internal types is to
 /// allow us to implement traits to each edges directly.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub enum EdgeKind<'db> {
     /// An edge to a lexical parent scope.
     Lex(LexEdge),
@@ -603,28 +608,44 @@ impl<'db> EdgeKind<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LexEdge();
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct ModEdge<'db>(pub IdentId<'db>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct TypeEdge<'db>(pub IdentId<'db>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct TraitEdge<'db>(pub IdentId<'db>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct TraitTypeEdge<'db>(pub IdentId<'db>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct ValueEdge<'db>(pub IdentId<'db>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct GenericParamEdge<'db>(pub IdentId<'db>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct FieldEdge<'db>(pub IdentId<'db>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub struct VariantEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

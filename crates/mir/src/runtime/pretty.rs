@@ -145,14 +145,14 @@ pub fn format_runtime_package<'db>(db: &'db dyn MirDb, package: &RuntimePackage<
         let names = package
             .root_objects(db)
             .iter()
-            .map(|object| object.name(db))
+            .map(|object| object.name(db).as_str())
             .collect::<Vec<_>>()
             .join(", ");
         let _ = writeln!(out, "  root_objects: [{names}]");
     }
     if !package.objects(db).is_empty() {
         let _ = writeln!(out, "  objects:");
-        for object in package.objects(db) {
+        for &object in package.objects(db) {
             write_object_summary(db, &mut out, object);
         }
     }
@@ -164,7 +164,7 @@ pub fn format_runtime_package<'db>(db: &'db dyn MirDb, package: &RuntimePackage<
                 "    {} -> {} @ {} root={}",
                 code_region.symbol(db),
                 format_code_region(db, code_region.region(db)),
-                format_section_ref(&code_region.source(db)),
+                format_section_ref(code_region.source(db)),
                 code_region.root(db).symbol(db)
             );
         }
@@ -185,7 +185,7 @@ pub fn format_runtime_package<'db>(db: &'db dyn MirDb, package: &RuntimePackage<
     if !package.functions(db).is_empty() {
         let _ = writeln!(out, "  functions:");
         for function in package.functions(db) {
-            write_function_summary(db, &mut out, function);
+            write_function_summary(db, &mut out, *function);
         }
     }
     out.push('}');
@@ -195,7 +195,7 @@ pub fn format_runtime_package<'db>(db: &'db dyn MirDb, package: &RuntimePackage<
 fn write_object_summary<'db>(db: &'db dyn MirDb, out: &mut String, object: RuntimeObject<'db>) {
     let _ = writeln!(out, "    object {}:", object.name(db));
     for section in object.sections(db) {
-        write_section_summary(db, out, &section);
+        write_section_summary(db, out, section);
     }
 }
 
@@ -262,7 +262,7 @@ fn write_function_summary<'db>(
         return;
     }
     let body = function.instance(db).body(db);
-    for line in format_runtime_body(db, &body).lines() {
+    for line in format_runtime_body(db, body).lines() {
         let _ = writeln!(out, "      {line}");
     }
 }

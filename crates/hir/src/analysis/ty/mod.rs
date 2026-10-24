@@ -169,7 +169,7 @@ pub fn state_index_tys<'db>(
     Some((assoc("Key")?, assoc("Entry")?))
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn ty_is_copy_query<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -402,7 +402,7 @@ fn events_with_indexed_dynamic_fields<'db>(
 /// A field of an `#[abi]`, `#[event]` or `#[error]` struct whose type holds
 /// a fixed array of non-`Copy` elements, which the fixed-array ABI codecs
 /// cannot handle.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub(crate) struct NonCopyArrayAbiField<'db> {
     pub(crate) origin: DesugaredOrigin,
     pub(crate) ast_struct: parser::ast::AstPtr<parser::ast::Struct>,
@@ -413,7 +413,7 @@ pub(crate) struct NonCopyArrayAbiField<'db> {
 
 /// Shared by the `#[abi]`, `#[event]` and `#[error]` lowering passes, which
 /// report the fields, and the body pass, which skips the generated bodies.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn non_copy_array_abi_fields<'db>(
     db: &'db dyn HirAnalysisDb,
     top_mod: TopLevelMod<'db>,
@@ -453,7 +453,7 @@ pub(crate) fn non_copy_array_abi_fields<'db>(
 
 /// A field of an `#[abi]` struct whose type lacks ABI traits that the
 /// generated codec needs.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub(crate) struct UnsupportedAbiStructField<'db> {
     pub(crate) ast_struct: parser::ast::AstPtr<parser::ast::Struct>,
     pub(crate) field_idx: usize,
@@ -463,7 +463,7 @@ pub(crate) struct UnsupportedAbiStructField<'db> {
 
 /// How the fields of the module's `#[abi]` structs meet the requirements of
 /// their generated impls.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub(crate) struct AbiStructFieldChecks<'db> {
     /// Fields lacking a codec trait, each reported once at the field.
     pub(crate) unsupported: Vec<UnsupportedAbiStructField<'db>>,
@@ -476,7 +476,7 @@ pub(crate) struct AbiStructFieldChecks<'db> {
     pub(crate) without_sol_compat: Vec<DesugaredOrigin>,
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn abi_struct_field_checks<'db>(
     db: &'db dyn HirAnalysisDb,
     top_mod: TopLevelMod<'db>,
@@ -924,7 +924,7 @@ impl ModuleAnalysisPass for ContractAnalysisPass {
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub fn resolve_default_root_effect_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,

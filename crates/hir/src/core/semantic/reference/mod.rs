@@ -213,7 +213,7 @@ impl<'db> TargetResolution<'db> {
 }
 
 /// Context for where a path appears in a function body.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum BodyPathContext {
     /// Path in an expression (e.g., `x` in `x + 1` or `foo()`)
     Expr(ExprId),
@@ -226,14 +226,14 @@ pub enum BodyPathContext {
 /// An unlabeled entry of a contract `init`'s or recv arm's `uses`. Its key
 /// names what the compiler resolves the entry to: a field of the contract, or
 /// an effect of the contract's own `uses`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct UsesEntry<'db> {
     pub site: EffectParamSite<'db>,
     pub idx: usize,
 }
 
 /// A view of a path reference in the HIR.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct PathView<'db> {
     pub path: PathId<'db>,
     pub scope: ScopeId<'db>,
@@ -460,7 +460,7 @@ impl<'db> PathView<'db> {
 }
 
 /// A view of a field access expression (`expr.field`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct FieldAccessView<'db> {
     pub body: Body<'db>,
     pub expr: ExprId,
@@ -524,7 +524,7 @@ impl<'db> FieldAccessView<'db> {
 }
 
 /// A view of a method call expression (`expr.method(...)`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct MethodCallView<'db> {
     pub body: Body<'db>,
     pub expr: ExprId,
@@ -567,7 +567,7 @@ impl<'db> MethodCallView<'db> {
 }
 
 /// A view of a use path segment.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct UsePathView<'db> {
     pub use_item: Use<'db>,
     pub segment: usize,
@@ -673,7 +673,7 @@ impl<'db> UsePathView<'db> {
 /// This enum provides a common interface for working with different kinds
 /// of references, enabling heterogeneous collections and uniform handling
 /// in the language server.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum ReferenceView<'db> {
     /// A path reference (expression, pattern, type, or trait ref)
     Path(PathView<'db>),

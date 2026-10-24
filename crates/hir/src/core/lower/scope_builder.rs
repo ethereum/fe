@@ -1,3 +1,4 @@
+use super::LowerDiagnostic;
 use cranelift_entity::{EntityRef, PrimaryMap, entity_impl};
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -72,8 +73,8 @@ impl<'db> ScopeGraphBuilder<'db> {
         }
     }
 
-    pub(super) fn build(self) -> ScopeGraph<'db> {
-        self.graph.build(self.top_mod)
+    pub(super) fn build(self, lower_diagnostics: Vec<LowerDiagnostic>) -> ScopeGraph<'db> {
+        self.graph.build(self.top_mod, lower_diagnostics)
     }
 
     pub(super) fn enter_item_scope(&mut self, id: TrackedItemId<'db>, is_mod: bool) {
@@ -525,7 +526,11 @@ struct IntermediateScopeGraph<'db> {
 }
 
 impl<'db> IntermediateScopeGraph<'db> {
-    fn build(mut self, top_mod: TopLevelMod<'db>) -> ScopeGraph<'db> {
+    fn build(
+        mut self,
+        top_mod: TopLevelMod<'db>,
+        lower_diagnostics: Vec<LowerDiagnostic>,
+    ) -> ScopeGraph<'db> {
         // The first scope entered is the root.
         let root = self.nodes[NodeId::new(0)].0;
         for (from_node, edges) in self.edges {
@@ -547,6 +552,7 @@ impl<'db> IntermediateScopeGraph<'db> {
             root,
             scopes,
             unresolved_uses: self.unresolved_uses,
+            lower_diagnostics,
         }
     }
 

@@ -41,7 +41,7 @@ struct ConstCanonicalizationCx<'a, 'db> {
     mode: ConstCanonicalizationMode,
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn canonicalize_semantic_consts_query<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,

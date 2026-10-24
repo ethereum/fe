@@ -64,13 +64,13 @@ use crate::analysis::{
 
 pub type PathResolutionResult<'db, T> = Result<T, PathResError<'db>>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct PathResError<'db> {
     pub kind: PathResErrorKind<'db>,
     pub failed_at: PathId<'db>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum PathResErrorKind<'db> {
     /// The name is not found.
     NotFound {
@@ -591,7 +591,7 @@ fn make_query<'db>(
     EarlyNameQueryId::new(db, name, scope, directive)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum PathRes<'db> {
     Ty(TyId<'db>),
     TyAlias(TyAlias<'db>, TyId<'db>),
@@ -746,7 +746,7 @@ impl<'db> PathRes<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ResolvedVariant<'db> {
     pub ty: TyId<'db>,
     pub variant: EnumVariant<'db>,
@@ -1681,7 +1681,7 @@ pub(crate) enum FindAssociatedTypeError {
 /// Maps `(impl target base type, const name)` to the inherent impls of this
 /// ingot that define an associated const with that name, so const path
 /// resolution doesn't have to scan every impl.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn ingot_impl_const_map<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: common::ingot::Ingot<'db>,

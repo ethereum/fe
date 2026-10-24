@@ -188,7 +188,7 @@ impl<'db> PredicateKeyBuilder<'_, 'db> {
 /// The generic parameters that a predicate's expression mentions, each
 /// once, as types. The ambient trait assumptions it is checked under are not
 /// dependencies of the expression, so their parameters are left out.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn predicate_params<'db>(db: &'db dyn HirAnalysisDb, predicate: Body<'db>) -> Vec<TyId<'db>> {
     use crate::analysis::ty::visitor::walk_ty;
     struct Params<'db> {
@@ -226,7 +226,7 @@ fn predicate_params<'db>(db: &'db dyn HirAnalysisDb, predicate: Body<'db>) -> Ve
 
 /// Why a const requirement does not hold at a use. Discharge decides it, and
 /// the use's diagnostic renders it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum RequirementFailure {
     /// The condition evaluated to `false`.
     False,
@@ -249,7 +249,7 @@ pub enum RequirementFailure {
 }
 
 /// Why compile-time evaluation of a condition stopped.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EvaluationStop {
     DivisionByZero,
     Overflow,
@@ -272,14 +272,14 @@ impl RequirementFailure {
 }
 
 /// Whether a use's const requirement holds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub(super) enum Discharge {
     Holds,
     Fails(RequirementFailure),
 }
 
 /// Whether a predicate can be discharged.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub(super) enum FormationStatus<'db> {
     /// It type checks as a `bool` const body and does not depend on itself.
     /// Discharge reads its typed body.
@@ -288,7 +288,7 @@ pub(super) enum FormationStatus<'db> {
     Recursive,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub(super) struct PredicateFormation<'db> {
     /// The predicate's own diagnostics, reported at its declaration.
     pub(super) diags: Vec<FuncBodyDiag<'db>>,
@@ -370,7 +370,7 @@ fn unmet_requirement_diag<'db>(
     .into()
 }
 
-#[salsa::tracked(return_ref, cycle_initial=formation_cycle_initial, cycle_fn=formation_cycle_recover)]
+#[salsa::tracked(cycle_initial=formation_cycle_initial)]
 pub(super) fn check_predicate_formation<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Body<'db>,
@@ -1525,7 +1525,7 @@ fn check_type_requirements<'db>(
         })
 }
 
-#[salsa::tracked(cycle_initial=requirement_cycle_initial, cycle_fn=requirement_cycle_recover)]
+#[salsa::tracked(returns(copy), cycle_initial=requirement_cycle_initial)]
 fn discharge_requirement<'db>(
     db: &'db dyn HirAnalysisDb,
     declaration: WhereClauseOwner<'db>,
@@ -1629,6 +1629,7 @@ fn discharge_requirement<'db>(
 // A requirement reached again while it is being discharged depends on itself.
 fn requirement_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _declaration: WhereClauseOwner<'db>,
     _predicate: Body<'db>,
     _args: Vec<TyId<'db>>,
@@ -1637,22 +1638,11 @@ fn requirement_cycle_initial<'db>(
     Discharge::Fails(RequirementFailure::Recursive)
 }
 
-fn requirement_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Discharge,
-    _count: u32,
-    _declaration: WhereClauseOwner<'db>,
-    _predicate: Body<'db>,
-    _args: Vec<TyId<'db>>,
-    _caller: Option<GenericParamOwner<'db>>,
-) -> salsa::CycleRecoveryAction<Discharge> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
 // A predicate reached again while its formation is checked depends on
 // itself.
 fn formation_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     body: Body<'db>,
 ) -> PredicateFormation<'db> {
     PredicateFormation {
@@ -1660,15 +1650,6 @@ fn formation_cycle_initial<'db>(
         status: FormationStatus::Recursive,
     }
 }
-fn formation_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &PredicateFormation<'db>,
-    _count: u32,
-    _body: Body<'db>,
-) -> salsa::CycleRecoveryAction<PredicateFormation<'db>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
 /// The assumptions a type written at `scope` is lowered with.
 fn assumptions_at<'db>(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> PredicateListId<'db> {
     constraints_for(db, enclosing_item(db, scope))
@@ -1741,7 +1722,7 @@ pub(crate) fn check_declared_type_requirements<'db>(
 
 /// A position in an item or body that `written_type_check` checks, in the
 /// order it checks them.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 enum WrittenEntry<'db> {
     /// Anonymous constants written in a type or trait reference, each with
     /// the type its position checks it against.
@@ -1750,7 +1731,7 @@ enum WrittenEntry<'db> {
     Type(WrittenType<'db>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 struct WrittenType<'db> {
     span: DynLazySpan<'db>,
     scope: ScopeId<'db>,
@@ -1767,6 +1748,7 @@ struct WrittenType<'db> {
 
 #[salsa::interned]
 struct WrittenTypeRegion<'db> {
+    #[returns(copy)]
     item: ItemKind<'db>,
 }
 
@@ -1780,7 +1762,7 @@ fn written_types<'db>(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> &'db [
     written_types_query(db, WrittenTypeRegion::new(db, item))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn written_types_query<'db>(
     db: &'db dyn HirAnalysisDb,
     region: WrittenTypeRegion<'db>,
@@ -2022,7 +2004,7 @@ fn written_type_check<'db>(
     written_type_check_query(db, WrittenTypeRegion::new(db, item))
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn written_type_check_query<'db>(
     db: &'db dyn HirAnalysisDb,
     region: WrittenTypeRegion<'db>,

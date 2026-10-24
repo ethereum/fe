@@ -306,7 +306,7 @@ impl<'db> Visitor<'db> for ReferenceCollector<'db> {
     }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn body_references<'db>(db: &'db dyn HirDb, body: Body<'db>) -> Vec<ReferenceView<'db>> {
     // The condition's body records the references of a comparison's sides.
     if body.is_static_assert_comparison_side(db) {
@@ -318,7 +318,7 @@ pub fn body_references<'db>(db: &'db dyn HirDb, body: Body<'db>) -> Vec<Referenc
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn func_signature_references<'db>(
     db: &'db dyn HirDb,
     func: Func<'db>,
@@ -329,7 +329,7 @@ pub fn func_signature_references<'db>(
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn struct_references<'db>(db: &'db dyn HirDb, struct_: Struct<'db>) -> Vec<ReferenceView<'db>> {
     let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_struct(db, struct_);
@@ -337,7 +337,7 @@ pub fn struct_references<'db>(db: &'db dyn HirDb, struct_: Struct<'db>) -> Vec<R
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn enum_references<'db>(db: &'db dyn HirDb, enum_: Enum<'db>) -> Vec<ReferenceView<'db>> {
     let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_enum(db, enum_);
@@ -345,7 +345,7 @@ pub fn enum_references<'db>(db: &'db dyn HirDb, enum_: Enum<'db>) -> Vec<Referen
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn type_alias_references<'db>(
     db: &'db dyn HirDb,
     type_alias: TypeAlias<'db>,
@@ -356,7 +356,7 @@ pub fn type_alias_references<'db>(
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn impl_references<'db>(db: &'db dyn HirDb, impl_: Impl<'db>) -> Vec<ReferenceView<'db>> {
     let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_impl(db, impl_);
@@ -364,7 +364,7 @@ pub fn impl_references<'db>(db: &'db dyn HirDb, impl_: Impl<'db>) -> Vec<Referen
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn trait_references<'db>(db: &'db dyn HirDb, trait_: Trait<'db>) -> Vec<ReferenceView<'db>> {
     let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_trait(db, trait_);
@@ -372,7 +372,7 @@ pub fn trait_references<'db>(db: &'db dyn HirDb, trait_: Trait<'db>) -> Vec<Refe
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn impl_trait_references<'db>(
     db: &'db dyn HirDb,
     impl_trait: ImplTrait<'db>,
@@ -383,7 +383,7 @@ pub fn impl_trait_references<'db>(
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn const_references<'db>(db: &'db dyn HirDb, const_: Const<'db>) -> Vec<ReferenceView<'db>> {
     let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_const(db, const_);
@@ -391,7 +391,7 @@ pub fn const_references<'db>(db: &'db dyn HirDb, const_: Const<'db>) -> Vec<Refe
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn static_assert_references<'db>(
     db: &'db dyn HirDb,
     assert_: StaticAssert<'db>,
@@ -402,7 +402,7 @@ pub fn static_assert_references<'db>(
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn use_references<'db>(db: &'db dyn HirDb, use_item: Use<'db>) -> Vec<ReferenceView<'db>> {
     let mut collector = ReferenceCollector::new(db);
     let mut ctxt = VisitorCtxt::with_use(db, use_item);
@@ -410,7 +410,7 @@ pub fn use_references<'db>(db: &'db dyn HirDb, use_item: Use<'db>) -> Vec<Refere
     collector.refs
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn contract_references<'db>(
     db: &'db dyn HirDb,
     contract: Contract<'db>,

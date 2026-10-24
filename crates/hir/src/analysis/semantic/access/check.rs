@@ -8,6 +8,10 @@
 //! accesses open around it: overlapping accesses conflict unless both read,
 //! except that an access through a carrier is authorized by the accesses the
 //! carrier was derived from.
+
+// Diagnostics and CTFE stops are returned on the slow path; salsa's 8-byte ids
+// put them just past clippy's 128-byte `Err` threshold.
+#![allow(clippy::result_large_err)]
 use std::collections::BTreeSet;
 
 use common::ingot::IngotKind;

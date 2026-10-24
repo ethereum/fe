@@ -387,11 +387,7 @@ impl<'db> RuntimeSemanticBody<'db> {
 /// instead of each copying the argument into the callee's own storage. A
 /// scalar view is always passed by value, so rooting its argument saves
 /// nothing.
-#[salsa::tracked(
-    return_ref,
-    cycle_fn = params_needing_place_cycle_recover,
-    cycle_initial = params_needing_place_cycle_initial
-)]
+#[salsa::tracked(cycle_initial = params_needing_place_cycle_initial)]
 pub(crate) fn params_needing_place<'db>(
     db: &'db dyn MirDb,
     instance: SemanticInstance<'db>,
@@ -434,16 +430,8 @@ pub(crate) fn params_needing_place<'db>(
 
 fn params_needing_place_cycle_initial<'db>(
     _: &'db dyn MirDb,
+    _: salsa::Id,
     _: SemanticInstance<'db>,
 ) -> Vec<bool> {
     Vec::new()
-}
-
-fn params_needing_place_cycle_recover<'db>(
-    _: &'db dyn MirDb,
-    _: &Vec<bool>,
-    _: u32,
-    _: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<Vec<bool>> {
-    salsa::CycleRecoveryAction::Iterate
 }

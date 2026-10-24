@@ -303,9 +303,10 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
             .or_else(|| {
                 self.package
                     .functions(self.db)
-                    .into_iter()
+                    .iter()
+                    .copied()
                     .find(|function| function.instance(self.db) == instance)
-                    .map(|function| function.symbol(self.db))
+                    .map(|function| function.symbol(self.db).clone())
             })
             .unwrap_or_else(|| format!("{:?}", instance.key(self.db)))
     }
@@ -318,7 +319,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
     }
 
     fn declare_functions(&mut self) -> Result<(), LowerError> {
-        for function in self.package.functions(self.db) {
+        for &function in self.package.functions(self.db) {
             let signature = self.lower_signature(function)?;
             let func_ref = self.builder.declare_function(signature).map_err(|err| {
                 LowerError::Internal(format!("failed to declare function: {err}"))
@@ -389,7 +390,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
     }
 
     fn lower_const_regions(&mut self) -> Result<(), LowerError> {
-        for region in self.package.const_regions(self.db) {
+        for &region in self.package.const_regions(self.db) {
             self.lower_const_region(region)?;
         }
         Ok(())
@@ -542,7 +543,8 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
         let resolved = self
             .package
             .code_regions(self.db)
-            .into_iter()
+            .iter()
+            .copied()
             .find(|resolved| resolved.region(self.db) == region)?;
         let source = resolved.source(self.db);
         self.external_code
@@ -551,12 +553,12 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
     }
 
     fn lower_bodies(&mut self) -> Result<(), LowerError> {
-        for function in self.package.functions(self.db) {
+        for &function in self.package.functions(self.db) {
             if function.linkage(self.db) == RuntimeLinkage::External {
                 continue;
             }
             let instance = function.instance(self.db);
-            let body = instance.body(self.db);
+            let body = instance.body(self.db).clone();
             let func_ref = self.func_ref(instance)?;
             let ctx = FunctionLowerer::new(self, body, func_ref)?;
             ctx.lower()?;
@@ -565,7 +567,7 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
     }
 
     fn declare_objects(&mut self) -> Result<(), LowerError> {
-        for object in self.package.objects(self.db) {
+        for &object in self.package.objects(self.db) {
             let mut object_builder = ObjectBuilder::new(object.name(self.db).clone());
             for section in object.sections(self.db) {
                 let section_builder =
@@ -611,14 +613,15 @@ impl<'db, 'a, I: LoweringInstSet + 'static> ModuleLowerer<'db, 'a, I> {
         section: &mir::RuntimeSectionName,
     ) -> bool {
         self.explicit_code_region_sections
-            .contains(&(object.name(self.db), section.clone()))
+            .contains(&(object.name(self.db).clone(), section.clone()))
     }
 
     fn mark_explicit_code_region(&mut self, region: mir::RuntimeCodeRegion<'db>) {
         let Some(resolved) = self
             .package
             .code_regions(self.db)
-            .into_iter()
+            .iter()
+            .copied()
             .find(|resolved| resolved.region(self.db) == region)
         else {
             return;
@@ -903,13 +906,13 @@ fn assign_sonatina_function_symbols<'db>(
                             .to_string()
                     })
                 }),
-            fallback_symbol: function.symbol(db),
+            fallback_symbol: function.symbol(db).clone(),
             variant_suffix: String::new(),
             disambiguator: mir::runtime_instance_symbol_key(db, function.instance(db)),
         })
         .collect::<Vec<_>>();
     functions
-        .into_iter()
+        .iter()
         .zip(assign_function_symbols(db, &inputs, reserved))
         .map(|(function, symbol)| (function.instance(db), symbol))
         .collect()
@@ -2874,10 +2877,7 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 .find(|resolved| resolved.region(self.module.db) == region)
                 .is_some_and(|resolved| {
                     self.current_sections.iter().all(|current_section| {
-                        runtime_section_refs_match(
-                            &resolved.source(self.module.db),
-                            current_section,
-                        )
+                        runtime_section_refs_match(resolved.source(self.module.db), current_section)
                     })
                 })
         {
@@ -2971,9 +2971,9 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 let call = Call::new(self.module.inst_set(), self.module.func_ref(*callee)?, args);
                 // A diverging callee may still declare a return value; the call
                 // must match its signature even though the result is unused.
-                match callee.interface_signature(self.module.db).ret {
+                match &callee.interface_signature(self.module.db).ret {
                     Some(class) => {
-                        let ret_ty = self.module.ty_for_class(&class)?;
+                        let ret_ty = self.module.ty_for_class(class)?;
                         self.fb.insert_inst(call, ret_ty);
                     }
                     None => {
@@ -6689,7 +6689,7 @@ fn compute_section_membership<'db>(
 ) -> FxHashMap<mir::RuntimeInstance<'db>, Vec<mir::RuntimeSectionRef>> {
     let mut membership =
         FxHashMap::<mir::RuntimeInstance<'db>, Vec<mir::RuntimeSectionRef>>::default();
-    for object in package.objects(db) {
+    for &object in package.objects(db) {
         for section in object.sections(db) {
             let section_ref = mir::RuntimeSectionRef::Local {
                 object: object.name(db).clone(),
@@ -6725,7 +6725,7 @@ fn code_region_symbol<'db>(
         .find(|resolved| resolved.region(db) == region)
         .map_or_else(
             || format!("code_region_{}", stable_hash(&region)),
-            |resolved| resolved.symbol(db),
+            |resolved| resolved.symbol(db).clone(),
         )
 }
 

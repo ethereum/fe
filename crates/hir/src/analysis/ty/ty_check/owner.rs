@@ -8,10 +8,10 @@ use crate::{
     hir_def::{Body, Const, Contract, EffectParamListId, Func, scope_graph::ScopeId},
     span::item::LazyRecvArmSpan,
 };
-use salsa::Update;
+use salsa::SalsaValue;
 
 /// Identifies the HIR owner of a [`Body`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum BodyOwner<'db> {
     /// A function's body, at the mode it is checked at if it is a `mut?`
     /// function: one body per mode.
@@ -40,7 +40,7 @@ pub enum BodyOwner<'db> {
 }
 
 /// Identifies the HIR owner of an effect parameter list (`uses (...)`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EffectParamOwner<'db> {
     Func(Func<'db>),
     Contract(Contract<'db>),

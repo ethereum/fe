@@ -166,7 +166,7 @@ pub fn emit_mir_facts<'db>(db: &'db dyn MirDb, package: RuntimePackage<'db>) -> 
                 ))),
             )));
         }
-        let cfg = runtime_cfg(&body);
+        let cfg = runtime_cfg(body);
         let indexed_predecessors = cfg
             .predecessors
             .iter()

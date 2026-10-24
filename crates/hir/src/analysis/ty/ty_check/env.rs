@@ -13,7 +13,7 @@ use common::indexmap::IndexMap;
 use cranelift_entity::{PrimaryMap, SecondaryMap};
 use num_bigint::BigInt;
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::Update;
+use salsa::SalsaValue;
 use thin_vec::ThinVec;
 
 use super::effect_env as keyed_effect_env;
@@ -77,7 +77,7 @@ pub(crate) fn func_signature<'db>(
 /// with a trait method's `Self: Trait`, and those its trait-keyed effects and
 /// their rows' components put on their providers. A call proves these for
 /// the instance of `func` it makes; the instance proves what they imply.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn func_declared_bounds<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -221,13 +221,13 @@ pub(crate) struct TyCheckEnv<'db> {
 
 /// A closure expression's parameters and captured bindings, in the order of
 /// its type's environment fields.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ClosureInfo<'db> {
     pub params: Vec<LocalBinding<'db>>,
     pub captures: Vec<ClosureCapture<'db>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ClosureCapture<'db> {
     pub binding: LocalBinding<'db>,
     pub ty: TyId<'db>,
@@ -1892,7 +1892,7 @@ impl<'db> BlockEnv<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EffectParamSite<'db> {
     /// A function's effects, at the mode of the body that binds them (`None`
     /// for a function without one).
@@ -1931,7 +1931,7 @@ impl<'db> EffectParamSite<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ParamSite<'db> {
     Func(Func<'db>),
     ContractInit(Contract<'db>),
@@ -2200,7 +2200,7 @@ impl<'db> EffectOrigin<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ExprProp<'db> {
     pub ty: TyId<'db>,
     /// Whether the place this expression names is writable.
@@ -2241,14 +2241,14 @@ impl<'db> ExprProp<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum PathReadSemantics {
     ReuseLocal,
     ForwardInterface,
     MaterializeValue,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum LocalBinding<'db> {
     Local {
         pat: PatId,
@@ -2280,7 +2280,7 @@ pub enum LocalBinding<'db> {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum PatBindingMode {
     ByValue,
     /// The binding is a named access to a place, open until its last use,
@@ -2294,7 +2294,7 @@ pub enum PatBindingMode {
 /// How a binding refers to its value: an owned value has no access; a view
 /// parameter reads the caller's place; `ref`/`mut` bindings and `mut`
 /// parameters are accesses of their kind.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum BindingAccess {
     View,
     Ref,

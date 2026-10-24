@@ -9,7 +9,7 @@ use crate::{
         params::LazyGenericArgListSpan,
     },
 };
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     BodyOwner, EffectParamSite, ExprProp, LocalBinding, TraitObligationOutcome, TyChecker,
@@ -60,7 +60,7 @@ pub(super) enum CallGenericArgPhase {
     Check,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum EffectProviderProvenance<'db> {
     Binding {
         owner: BodyOwner<'db>,
@@ -72,7 +72,7 @@ pub enum EffectProviderProvenance<'db> {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct EffectProviderSpecialization<'db> {
     pub provider: ProviderBinding<'db>,
     pub provenance: EffectProviderProvenance<'db>,
@@ -258,7 +258,7 @@ pub struct CallParam<'db> {
     pub shape: Shape<'db>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct Callable<'db> {
     pub callable_def: CallableDef<'db>,
     base_ty: TyId<'db>,

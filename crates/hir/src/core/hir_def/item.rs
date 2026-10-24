@@ -42,7 +42,7 @@ use crate::{
     Ord,
     derive_more::From,
     derive_more::TryInto,
-    salsa::Update,
+    salsa::SalsaValue,
 )]
 pub enum ItemKind<'db> {
     TopMod(TopLevelMod<'db>),
@@ -230,7 +230,7 @@ impl<'db> From<WhereClauseOwner<'db>> for ItemKind<'db> {
     Ord,
     derive_more::From,
     salsa::Supertype,
-    salsa::Update,
+    salsa::SalsaValue,
 )]
 pub enum GenericParamOwner<'db> {
     Func(Func<'db>),
@@ -335,7 +335,7 @@ impl<'db> GenericParamOwner<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::SalsaValue)]
 pub enum CallableDef<'db> {
     Func(Func<'db>),
     VariantCtor(EnumVariant<'db>),
@@ -344,7 +344,7 @@ pub enum CallableDef<'db> {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From, salsa::Update,
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From, salsa::SalsaValue,
 )]
 pub enum WhereClauseOwner<'db> {
     Func(Func<'db>),
@@ -414,11 +414,13 @@ impl<'db> From<WhereClauseOwner<'db>> for GenericParamOwner<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct TopLevelMod<'db> {
     // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
     // of `module_scope_graph`.
+    #[returns(copy)]
     pub name: IdentId<'db>,
+    #[returns(copy)]
     pub(crate) file: File,
 }
 
@@ -492,7 +494,7 @@ impl<'db> TopLevelMod<'db> {
     /// Returns all items in the top level module including ones in nested
     /// modules, and every body, in depth-first order. This lowers each
     /// function body that is lowered on demand.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_items(self, db: &'db dyn HirDb) -> Vec<ItemKind<'db>> {
         let mut items = Vec::new();
         for item in self.scope_graph(db).items_dfs() {
@@ -508,7 +510,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all structs in the top level module including ones in nested
     /// modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_structs(self, db: &'db dyn HirDb) -> Vec<Struct<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -521,7 +523,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all enums in the top level module including ones in nested
     /// modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_enums(self, db: &'db dyn HirDb) -> Vec<Enum<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -534,7 +536,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all contracts in the top level module including ones in nested
     /// modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_contracts(self, db: &'db dyn HirDb) -> Vec<Contract<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -547,7 +549,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all type aliases in the top level module including ones in
     /// nested modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_type_aliases(self, db: &'db dyn HirDb) -> Vec<TypeAlias<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -560,7 +562,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_traits(self, db: &'db dyn HirDb) -> Vec<Trait<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -571,7 +573,7 @@ impl<'db> TopLevelMod<'db> {
             .collect()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_funcs(self, db: &'db dyn HirDb) -> Vec<Func<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -584,7 +586,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_impl_traits(self, db: &'db dyn HirDb) -> Vec<ImplTrait<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -597,7 +599,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all impls in the top level module including ones in nested
     /// modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_impls(self, db: &'db dyn HirDb) -> Vec<Impl<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -610,7 +612,7 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all mods in the top level module including ones in nested
     /// modules.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_mods(self, db: &'db dyn HirDb) -> Vec<Mod<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -621,7 +623,7 @@ impl<'db> TopLevelMod<'db> {
             .collect()
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn all_static_asserts(self, db: &'db dyn HirDb) -> Vec<StaticAssert<'db>> {
         self.scope_graph(db)
             .items_dfs()
@@ -634,18 +636,21 @@ impl<'db> TopLevelMod<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Mod<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub vis: Visibility,
 
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Mod>,
 }
 impl<'db> Mod<'db> {
@@ -667,7 +672,7 @@ impl<'db> Mod<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct FuncModifiers {
     pub vis: Visibility,
     pub is_unsafe: bool,
@@ -676,25 +681,34 @@ pub struct FuncModifiers {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Func<'db> {
-    #[id]
+    #[returns(copy)]
     pub(in crate::core) id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) generic_params: GenericParamListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) where_clause: WhereClauseId<'db>,
+    #[returns(copy)]
     pub(in crate::core) params_list: Partial<FuncParamListId<'db>>,
+    #[returns(copy)]
     pub(crate) declared_effects: EffectParamListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) ret_type_ref: Option<TypeId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) modifiers: FuncModifiers,
     /// The body when it is lowered with the module: a generated body, or one
     /// that declares items. Other bodies are lowered on demand.
+    #[returns(copy)]
     pub(in crate::core) eager_body: Option<Body<'db>>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub origin: HirOrigin<ast::Func>,
 }
 
@@ -847,23 +861,30 @@ impl<'db> Func<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Struct<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub vis: Visibility,
+    #[returns(copy)]
     pub(in crate::core) generic_params: GenericParamListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) where_clause: WhereClauseId<'db>,
+    #[returns(copy)]
     pub(in crate::core) fields: FieldDefListId<'db>,
     /// `true` for a tuple struct such as `struct Month(pub u8)`, whose fields
     /// are named `0`, `1`, ... by position.
+    #[returns(copy)]
     pub is_tuple: bool,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Struct>,
 }
 
@@ -912,24 +933,31 @@ impl<'db> Struct<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Contract<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub vis: Visibility,
+    #[returns(copy)]
     pub(in crate::core) hir_fields: FieldDefListId<'db>,
     /// `uses` clause attached to the contract header
+    #[returns(copy)]
     pub effects: EffectParamListId<'db>,
     /// Optional init block owned by the contract.
+    #[returns(copy)]
     pub init: Option<ContractInit<'db>>,
     /// Receive handlers declared in the contract
+    #[returns(copy)]
     pub recvs: ContractRecvListId<'db>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Contract>,
 }
 
@@ -962,16 +990,20 @@ impl<'db> Contract<'db> {
 #[salsa::tracked]
 #[derive(Debug)]
 pub struct ContractInit<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub params: FuncParamListId<'db>,
+    #[returns(copy)]
     pub effects: EffectParamListId<'db>,
+    #[returns(copy)]
     pub body: Body<'db>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::ContractInit>,
 }
 
@@ -985,11 +1017,10 @@ impl<'db> ContractInit<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ContractRecvListId<'db> {
-    #[return_ref]
     pub data: Vec<ContractRecv<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ContractRecv<'db> {
     pub msg_path: Option<PathId<'db>>,
     pub arms: ContractRecvArmListId<'db>,
@@ -998,11 +1029,10 @@ pub struct ContractRecv<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ContractRecvArmListId<'db> {
-    #[return_ref]
     pub data: Vec<ContractRecvArm<'db>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ContractRecvArm<'db> {
     pub pat: PatId,
     pub ret_ty: Option<TypeId<'db>>,
@@ -1043,20 +1073,26 @@ impl<'db> ContractRecvArm<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Enum<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub vis: Visibility,
+    #[returns(copy)]
     pub(in crate::core) generic_params: GenericParamListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) where_clause: WhereClauseId<'db>,
+    #[returns(copy)]
     pub(in crate::core) variants_list: VariantDefListId<'db>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Enum>,
 }
 
@@ -1084,7 +1120,7 @@ impl<'db> Enum<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::SalsaValue)]
 pub struct EnumVariant<'db> {
     pub enum_: Enum<'db>,
     pub idx: u16,
@@ -1129,19 +1165,24 @@ impl<'db> EnumVariant<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct TypeAlias<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub vis: Visibility,
+    #[returns(copy)]
     pub(in crate::core) generic_params: GenericParamListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) type_ref: Partial<TypeId<'db>>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::TypeAlias>,
 }
 
@@ -1158,20 +1199,23 @@ impl<'db> TypeAlias<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Impl<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub(in crate::core) type_ref: super::Partial<TypeId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) generic_params: GenericParamListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) where_clause: WhereClauseId<'db>,
-    #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDef<'db>>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Impl>,
 }
 
@@ -1213,38 +1257,39 @@ impl<'db> Impl<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Trait<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
 
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) modifiers: TraitModifiers,
+    #[returns(copy)]
     pub(in crate::core) generic_params: GenericParamListId<'db>,
-    #[return_ref]
     pub(in crate::core) super_traits_refs: Vec<TraitRefId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) where_clause: WhereClauseId<'db>,
-    #[return_ref]
     pub(in crate::core) types: Vec<AssocTyDecl<'db>>,
-    #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDecl<'db>>,
     /// The effect rows: `uses E` in a trait, `uses E = ..` in an
     /// implementation.
-    #[return_ref]
     pub rows: Vec<AssocRow<'db>>,
 
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
 
 /// A trait's visibility, and whether it is an `unsafe trait`, one whose
 /// implementations assert a contract the compiler relies on without checking
 /// it, so each is written `unsafe impl`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct TraitModifiers {
     pub vis: Visibility,
     pub is_unsafe: bool,
@@ -1297,7 +1342,7 @@ impl<'db> Trait<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AssocTyDecl<'db> {
     pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
@@ -1317,14 +1362,14 @@ impl AssocTyDecl<'_> {
 
 /// An associated effect row: `uses E` in a trait, with an optional default
 /// `uses E = (..)`, or `uses E = (..)` in an implementation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AssocRow<'db> {
     pub name: Partial<IdentId<'db>>,
     /// The row's effects, if given.
     pub effects: Option<EffectParamListId<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AssocConstDecl<'db> {
     pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
@@ -1333,29 +1378,32 @@ pub struct AssocConstDecl<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct ImplTrait<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub(in crate::core) trait_ref: Partial<TraitRefId<'db>>,
+    #[returns(copy)]
     pub(crate) type_ref: Partial<TypeId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) generic_params: GenericParamListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) where_clause: WhereClauseId<'db>,
-    #[return_ref]
     pub(crate) types: Vec<AssocTyDef<'db>>,
-    #[return_ref]
     pub(in crate::core) consts: Vec<AssocConstDef<'db>>,
     /// The effect rows: `uses E` in a trait, `uses E = ..` in an
     /// implementation.
-    #[return_ref]
     pub rows: Vec<AssocRow<'db>>,
     /// `unsafe impl`, of an `unsafe trait`.
+    #[returns(copy)]
     pub is_unsafe: bool,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
 }
 
@@ -1410,7 +1458,7 @@ impl<'db> ImplTrait<'db> {
     // Semantic `ty` lives in `crate::semantic`.
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AssocTyDef<'db> {
     pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
@@ -1420,7 +1468,7 @@ pub struct AssocTyDef<'db> {
     pub is_shape: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AssocConstDef<'db> {
     pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
@@ -1432,19 +1480,24 @@ pub struct AssocConstDef<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Const<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub name: Partial<IdentId<'db>>,
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub(in crate::core) type_ref: Partial<TypeId<'db>>,
+    #[returns(copy)]
     pub body: Partial<Body<'db>>,
+    #[returns(copy)]
     pub vis: Visibility,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Const>,
 }
 
@@ -1462,7 +1515,7 @@ impl<'db> Const<'db> {
     // raw type_ref access kept; shim exposes public ___tmp method.
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct StaticAssertComparison<'db> {
     pub op: CompBinOp,
     pub lhs: Body<'db>,
@@ -1470,17 +1523,20 @@ pub struct StaticAssertComparison<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct StaticAssert<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub condition: Body<'db>,
+    #[returns(copy)]
     pub comparison: Option<StaticAssertComparison<'db>>,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::StaticAssert>,
 }
 
@@ -1495,18 +1551,22 @@ impl<'db> StaticAssert<'db> {
 }
 
 #[salsa::tracked]
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Use<'db> {
-    #[id]
+    #[returns(copy)]
     id: TrackedItemId<'db>,
 
+    #[returns(copy)]
     pub(in crate::core) attributes: AttrListId<'db>,
+    #[returns(copy)]
     pub path: Partial<super::UsePathId<'db>>,
+    #[returns(copy)]
     pub alias: Option<Partial<UseAlias<'db>>>,
+    #[returns(copy)]
     pub vis: Visibility,
+    #[returns(copy)]
     pub top_mod: TopLevelMod<'db>,
 
-    #[return_ref]
     pub(crate) origin: HirOrigin<ast::Use>,
 }
 
@@ -1594,7 +1654,6 @@ impl FuncModifiers {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct FieldDefListId<'db> {
-    #[return_ref]
     pub data: Vec<FieldDef<'db>>,
 }
 
@@ -1628,7 +1687,7 @@ impl<'db> FieldDefListId<'db> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, salsa::Update)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, salsa::SalsaValue)]
 pub enum FieldParent<'db> {
     Struct(Struct<'db>),
     Contract(Contract<'db>),
@@ -1691,7 +1750,7 @@ impl<'db> FieldParent<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct FieldDef<'db> {
     pub attributes: AttrListId<'db>,
     pub is_event_indexed: bool,
@@ -1741,11 +1800,10 @@ impl<'db> FieldDef<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct VariantDefListId<'db> {
-    #[return_ref]
     pub data: Vec<VariantDef<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct VariantDef<'db> {
     pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
@@ -1778,7 +1836,7 @@ impl VariantDef<'_> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum VariantKind<'db> {
     Unit,
     Tuple(TupleTypeId<'db>),
@@ -1807,6 +1865,7 @@ impl Visibility {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct TrackedItemId<'db> {
+    #[returns(copy)]
     parent: Option<TrackedItemId<'db>>,
     variant: TrackedItemVariant<'db>,
 }
@@ -1817,7 +1876,7 @@ impl<'db> TrackedItemId<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum TrackedItemVariant<'db> {
     TopLevelMod(IdentId<'db>),
     Mod(Partial<IdentId<'db>>),

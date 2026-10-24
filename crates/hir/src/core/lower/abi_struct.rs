@@ -1,5 +1,4 @@
 use parser::ast::{self, prelude::*};
-use salsa::Accumulator as _;
 
 use super::{
     FileLowerCtxt,
@@ -24,7 +23,6 @@ use crate::{
 };
 
 /// Diagnostics for `#[abi]` struct declarations.
-#[salsa::accumulator]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AbiStructDiagnostic {
     pub kind: AbiStructDiagnosticKind,
@@ -54,12 +52,11 @@ pub(super) fn report_abi_attr_conflict<'db>(ctxt: &mut FileLowerCtxt<'db>, ast: 
     let db = ctxt.db();
     let file = ctxt.top_mod().file(db);
     for attr in named_attr_specs(ast.attr_list(), "abi") {
-        AbiStructDiagnostic {
+        ctxt.report(AbiStructDiagnostic {
             kind: AbiStructDiagnosticKind::AttrConflict,
             file,
             primary_range: attr.range,
-        }
-        .accumulate(db);
+        });
     }
 }
 
@@ -98,15 +95,14 @@ pub(super) fn lower_abi_struct<'db>(
     let struct_ = builder.struct_item(name, attributes, vis, generic_params, where_clause, fields);
 
     if !generic_params.data(db).is_empty() {
-        AbiStructDiagnostic {
+        ctxt.report(AbiStructDiagnostic {
             kind: AbiStructDiagnosticKind::GenericStruct,
             file,
             primary_range: ast
                 .generic_params()
                 .map(|g| g.syntax().text_range())
                 .unwrap_or_else(|| ast.syntax().text_range()),
-        }
-        .accumulate(db);
+        });
         return struct_;
     }
 

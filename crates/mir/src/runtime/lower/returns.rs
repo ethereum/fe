@@ -18,7 +18,7 @@ use hir::analysis::{
     },
 };
 use rustc_hash::FxHashSet;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::{
     db::MirDb,
@@ -45,7 +45,7 @@ use super::{
 };
 use crate::runtime::synthetic::runtime_synthetic_exit_behavior;
 
-#[derive(Clone, Debug, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, SalsaValue)]
 pub(crate) enum StaticRuntimeReturnDecision<'db> {
     Known(Option<RuntimeClass<'db>>),
     Dynamic,
@@ -63,23 +63,6 @@ pub(crate) struct RuntimeReturnSummary<'db> {
     pub(crate) slice_assignment_positions: SecondaryMap<AssignmentId, Option<SliceAssignmentId>>,
     pub(crate) slice_assignments_by_local: Vec<Vec<AssignmentId>>,
     pub(crate) slice_dynamic_dependents_by_local: Vec<Vec<SLocalId>>,
-}
-
-impl<'db> PartialEq for RuntimeReturnSummary<'db> {
-    fn eq(&self, _other: &Self) -> bool {
-        false
-    }
-}
-
-impl<'db> Eq for RuntimeReturnSummary<'db> {}
-
-unsafe impl<'db> salsa::Update for RuntimeReturnSummary<'db> {
-    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
-        unsafe {
-            *old_pointer = new_value;
-        }
-        true
-    }
 }
 
 impl<'db> RuntimeReturnSummary<'db> {
@@ -195,7 +178,7 @@ impl<'db> RuntimeReturnSummary<'db> {
 
 /// A projection is inlined into each of its callers, so its grant has the
 /// class its body yields rather than one fixed by its declaration.
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn projection_return_class<'db>(
     db: &'db dyn MirDb,
     key: RuntimeInstanceKey<'db>,
@@ -340,11 +323,7 @@ pub(crate) fn declaration_runtime_return_class<'db>(
 /// The raw transport of each borrow a body returns, by its projection in the
 /// result: the memory space when every returning path takes the borrow
 /// through a raw pointer, `None` when paths disagree.
-#[salsa::tracked(
-    return_ref,
-    cycle_fn=returned_raw_transports_cycle_recover,
-    cycle_initial=returned_raw_transports_cycle_initial
-)]
+#[salsa::tracked(cycle_initial=returned_raw_transports_cycle_initial)]
 fn returned_raw_transports<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
@@ -375,18 +354,10 @@ fn returned_raw_transports<'db>(
 
 fn returned_raw_transports_cycle_initial<'db>(
     _: &'db dyn MirDb,
+    _: salsa::Id,
     _: SemanticInstance<'db>,
 ) -> BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>> {
     BTreeMap::new()
-}
-
-fn returned_raw_transports_cycle_recover<'db>(
-    _: &'db dyn MirDb,
-    _: &BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>,
-    _: u32,
-    _: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<BTreeMap<Vec<ReturnProjectionStep>, Option<AddressSpace>>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 struct RawTransportTracer<'a, 'db> {
@@ -843,7 +814,7 @@ pub(crate) fn runtime_exit_behavior<'db>(
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 pub(crate) fn static_runtime_return_decision<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,

@@ -12,10 +12,14 @@
 //! `while true { .. break }`), which is decided per-block without tracking
 //! facts across joins.
 
+// Diagnostics and CTFE stops are returned on the slow path; salsa's 8-byte ids
+// put them just past clippy's 128-byte `Err` threshold.
+#![allow(clippy::result_large_err)]
+
 use cranelift_entity::{EntityRef, SecondaryMap};
 use dataflow::{JoinSemiLattice, try_solve_forward_cfg};
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::Update;
+use salsa::SalsaValue;
 
 use num_traits::ToPrimitive;
 
@@ -42,7 +46,7 @@ use crate::{
 
 /// A caller-visible write target a body definitely assigns (whole-value)
 /// on every normal exit.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
 enum AssignedTarget<'db> {
     /// A contract field bound as an effect provider (e.g. `uses (mut x)` in
     /// `init`).
@@ -98,7 +102,7 @@ pub fn contract_init_assigned_fields<'db>(
 /// Targets `instance`'s body definitely assigns on every normal exit.
 /// `Ready(None)` means no normal exit is reachable. Admission failures remain
 /// explicit so callers cannot mistake an unanalyzable body for divergence.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 enum AssignedTargetsResult<'db> {
     Ready(Option<Vec<AssignedTarget<'db>>>),
     Blocked(BlockedSemanticBody<'db>),
@@ -113,11 +117,7 @@ enum AssignedTargetsFailure<'db> {
     InternalFailure(SemanticDiagnosticId<'db>),
 }
 
-#[salsa::tracked(
-    return_ref,
-    cycle_fn=assigned_targets_cycle_recover,
-    cycle_initial=assigned_targets_cycle_initial
-)]
+#[salsa::tracked(cycle_initial=assigned_targets_cycle_initial)]
 fn instance_assigned_targets<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -183,19 +183,11 @@ fn instance_assigned_targets<'db>(
 
 fn assigned_targets_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _instance: SemanticInstance<'db>,
 ) -> AssignedTargetsResult<'db> {
     // Recursive calls initially contribute no writes; iteration refines.
     AssignedTargetsResult::Ready(Some(Vec::new()))
-}
-
-fn assigned_targets_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &AssignedTargetsResult<'db>,
-    _count: u32,
-    _instance: SemanticInstance<'db>,
-) -> salsa::CycleRecoveryAction<AssignedTargetsResult<'db>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 #[derive(Clone, Default, PartialEq, Eq)]

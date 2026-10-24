@@ -1,5 +1,5 @@
 use cranelift_entity::{EntityRef, entity_impl};
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::{
     analysis::{
@@ -32,11 +32,11 @@ pub struct NBlockId(u32);
 entity_impl!(NBlockId);
 
 /// Stable identity for every normalized operation, including synthetic operations.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub struct NStatementId(u32);
 entity_impl!(NStatementId);
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NormalizedBody<'db> {
     pub owner: SemanticInstance<'db>,
     pub template_owner: BodyOwner<'db>,
@@ -204,7 +204,7 @@ impl<'db> NormalizedBody<'db> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NValue<'db> {
     pub ty: TyId<'db>,
     pub mutability: Mutability,
@@ -221,7 +221,7 @@ pub enum NValueDefinition {
     Statement { block: NBlockId, statement: u32 },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NRoot<'db> {
     pub kind: NRootKind<'db>,
     pub ty: TyId<'db>,
@@ -230,7 +230,7 @@ pub struct NRoot<'db> {
     pub origin: SemOrigin<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum NRootKind<'db> {
     LocalSlot {
         binding: Option<LocalBinding<'db>>,
@@ -250,7 +250,7 @@ pub enum NRootKind<'db> {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NPlace<'db> {
     pub base: NPlaceBase,
     pub path: NDataPath,
@@ -356,7 +356,7 @@ pub struct NOperand {
     pub mode: ReadMode,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NEffectArg<'db> {
     pub binding_idx: u32,
     pub arg: NEffectArgValue<'db>,
@@ -366,7 +366,7 @@ pub struct NEffectArg<'db> {
     pub provider: Option<AddressSpace>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum NEffectArgValue<'db> {
     Place(NPlace<'db>),
     Value(NOperand),
@@ -377,7 +377,7 @@ pub enum ViewAccess {
     Read,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum NExpr<'db> {
     Forward {
         src: NOperand,
@@ -563,14 +563,14 @@ pub struct StructuralRepack {
     pub fields: Box<[(NDataPath, NDataPath)]>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NBlock<'db> {
     pub params: Box<[NValueId]>,
     pub statements: Vec<NStatement<'db>>,
     pub terminator: NTerminator<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NStatement<'db> {
     pub id: NStatementId,
     /// Stable raw-SMIR identity when this operation directly corresponds to a
@@ -581,7 +581,7 @@ pub struct NStatement<'db> {
     pub kind: NStatementKind<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum NStatementKind<'db> {
     Define {
         result: NValueId,
@@ -604,13 +604,13 @@ pub struct NSuccessor {
     pub args: Box<[NOperand]>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct NTerminator<'db> {
     pub origin: SemOrigin<'db>,
     pub kind: NTerminatorKind<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum NTerminatorKind<'db> {
     Goto(NSuccessor),
     Branch {

@@ -184,7 +184,7 @@ fn msg_variants<'db>(
 }
 
 /// The msg a recv block handles.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum RecvMsg<'db> {
     /// `recv { .. }`, whose arms handle any msg variant.
     Any,
@@ -195,7 +195,7 @@ pub enum RecvMsg<'db> {
 }
 
 /// A recv block's msg, resolved from its path once for every use of it.
-#[derive(Debug, Clone, PartialEq, Eq, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, salsa::SalsaValue)]
 pub struct RecvMsgResolution<'db> {
     pub msg: RecvMsg<'db>,
     /// What resolving the path reports.
@@ -204,7 +204,7 @@ pub struct RecvMsgResolution<'db> {
 
 /// Resolves the msg path of `contract`'s recv block `recv_idx` where it's
 /// written.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn recv_msg<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -269,7 +269,7 @@ pub fn recv_msg<'db>(
 }
 
 /// The msg variant a recv arm handles.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct RecvArmVariant<'db> {
     pub variant_struct: Struct<'db>,
     pub ty: TyId<'db>,
@@ -277,7 +277,7 @@ pub struct RecvArmVariant<'db> {
 
 /// The path that a recv arm's variant path is resolved as, from the
 /// contract's scope.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct RecvArmLookup<'db> {
     /// The arm's path or, for a single segment in a named recv block, that
     /// segment under the msg's path, so that `V` in `recv M { .. }` is `M::V`.
@@ -294,7 +294,7 @@ impl<'db> RecvArmLookup<'db> {
 }
 
 /// A recv arm's variant path, resolved once for every use of it.
-#[derive(Debug, Clone, Default, PartialEq, Eq, salsa::Update)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, salsa::SalsaValue)]
 pub struct RecvArmResolution<'db> {
     /// The path resolved for the arm, unless the arm names no variant or its
     /// block's msg doesn't resolve.
@@ -311,7 +311,7 @@ pub struct RecvArmResolution<'db> {
 /// Resolves the variant path of arm `arm_idx` of `contract`'s recv block
 /// `recv_idx` as a type written in the arm, which must be a msg variant, and
 /// one of the block's msg's in a named block.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn recv_arm_resolution<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -516,7 +516,7 @@ fn recv_arm_path_span<'db>(
 /// Checks `contract`'s recv block `recv_idx`: its msg and arm paths, the
 /// variants its arms handle, and, for a named block, that they handle each
 /// of its msg's variants.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_contract_recv_block<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -621,7 +621,7 @@ pub fn check_contract_recv_block<'db>(
     diags
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_contract_recv_blocks<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -853,7 +853,7 @@ pub(crate) fn eval_msg_variant_selector<'db>(
     }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_contract_recv_arm_body<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -910,7 +910,7 @@ pub(crate) fn contract_field_slot<'db>(
 
 /// Reports the `#[slot(e)]` arguments of `contract`'s fields that are not
 /// constant `u256`s.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_contract_field_slots<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -922,7 +922,7 @@ pub fn check_contract_field_slots<'db>(
         .collect()
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_contract_field_address_spaces<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -967,7 +967,7 @@ fn valid_contract_fields<'db>(
         })
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_contract_immutable_fields_initialized<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -1029,7 +1029,7 @@ pub fn check_contract_immutable_fields_initialized<'db>(
         .collect()
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub fn check_contract_init_body<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,

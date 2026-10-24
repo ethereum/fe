@@ -1,4 +1,4 @@
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::{
     analysis::{
@@ -19,7 +19,7 @@ use crate::{
 
 use super::resolve_default_root_effect_ty;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub enum AddressSpace {
     Memory,
     Storage,
@@ -44,7 +44,7 @@ impl AddressSpace {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ProviderKind {
     /// The provider is an object owned by the root, passed by value.
     RootObject,
@@ -53,14 +53,14 @@ pub enum ProviderKind {
     Place,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ProviderTransport {
     ByValue,
     ByPlace,
     ByTempPlace,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct ProviderSemantics<'db> {
     pub provider_ty: TyId<'db>,
     pub kind: ProviderKind,
@@ -69,7 +69,7 @@ pub struct ProviderSemantics<'db> {
     pub transport: ProviderTransport,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum RootProviderSiteKind {
     Func,
     Contract,
@@ -83,7 +83,7 @@ pub enum RootProviderSiteKind {
 /// registrations, so a root provider's identity names the contract rather than
 /// the arm that materialized it. Callees specialized to it do not depend on the
 /// arm.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum RootProviderScope<'db> {
     Func(Func<'db>),
     Contract(Contract<'db>),
@@ -101,7 +101,7 @@ impl<'db> RootProviderScope<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub struct RootProviderRegistration<'db> {
     pub idx: u32,
     pub site_kind: RootProviderSiteKind,
@@ -142,7 +142,7 @@ pub fn registered_root_providers<'db>(
     }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn registered_root_providers_for_func<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
@@ -150,7 +150,7 @@ fn registered_root_providers_for_func<'db>(
     registered_root_providers_for_scope(db, RootProviderSiteKind::Func, func.scope())
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn registered_root_providers_for_contract<'db>(
     db: &'db dyn HirAnalysisDb,
     contract: Contract<'db>,
@@ -218,7 +218,7 @@ pub fn provider_semantics_for_specialized_call<'db>(
 /// The state space `ty` is pinned to (`core::marker::Pinned`) under
 /// `assumptions`: the one its implementation's `Space` names or forwards.
 /// A collection's entries (`core::ops::StateIndex`) lie in its space.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub fn pinned_space<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -283,13 +283,13 @@ pub fn is_state_pin<'db>(db: &'db dyn HirAnalysisDb, impl_trait: ImplTrait<'db>)
 /// packs its elements into lanes: its `Lanes` codec, when that codes the
 /// element type (`LaneCodec<Entry>`) in at most 128 bits. An element of a
 /// wider codec takes whole slots.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct StateIndexLanes<'db> {
     pub codec: TyId<'db>,
     pub bits: u16,
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub fn state_index_lanes<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,

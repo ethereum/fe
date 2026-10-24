@@ -57,7 +57,7 @@ use crate::{
     verify::verify_runtime_package,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum LowerError {
     Unsupported(String),
 }
@@ -181,7 +181,7 @@ impl<'db> RuntimeGraphBuilder<'db> {
                 .map_err(|err| wrap_runtime_lowering_error(self.db, instance, err))?;
             let direct_callees = lowered
                 .direct_callees(self.db)
-                .into_iter()
+                .iter()
                 .map(|edge| edge.callee)
                 .collect::<Vec<_>>();
             let referenced_const_regions = lowered.referenced_const_regions(self.db);
@@ -189,13 +189,13 @@ impl<'db> RuntimeGraphBuilder<'db> {
             for callee in direct_callees.iter().copied() {
                 self.enqueue(callee);
             }
-            self.process_referenced_regions(&referenced_code_regions)?;
+            self.process_referenced_regions(referenced_code_regions)?;
             self.nodes.insert(
                 instance,
                 RuntimeGraphNode {
                     direct_callees,
-                    referenced_const_regions,
-                    referenced_code_regions,
+                    referenced_const_regions: referenced_const_regions.clone(),
+                    referenced_code_regions: referenced_code_regions.clone(),
                 },
             );
         }
@@ -1118,7 +1118,7 @@ fn build_sectioned_package<'db>(
         .collect();
     let root_objects: Vec<_> = objects
         .iter()
-        .filter(|object| root_object_names.contains(&object.name(db)))
+        .filter(|object| root_object_names.contains(object.name(db)))
         .copied()
         .collect();
     let primary_object = primary_object_name.and_then(|primary| {
@@ -1152,7 +1152,7 @@ fn rewrite_object_embeds<'db>(
 ) -> RuntimeObject<'db> {
     let section_refs = code_region_map
         .iter()
-        .map(|(region, resolved)| (*region, resolved.source(db)))
+        .map(|(region, resolved)| (*region, resolved.source(db).clone()))
         .collect::<FxHashMap<_, _>>();
     let sections = object
         .sections(db)
@@ -1167,14 +1167,14 @@ fn rewrite_object_embeds<'db>(
                 &reachable,
                 &section_refs,
                 RuntimeSectionRef::Local {
-                    object: object.name(db),
+                    object: object.name(db).clone(),
                     section: section.name.clone(),
                 },
             );
             section
         })
         .collect();
-    make_runtime_object(db, object.name(db), sections)
+    make_runtime_object(db, object.name(db).clone(), sections)
 }
 
 fn resolve_code_regions<'db>(
@@ -1184,7 +1184,7 @@ fn resolve_code_regions<'db>(
     let mut resolved = Vec::new();
     for object in objects {
         for section in object.sections(db) {
-            let Some((region, symbol)) = resolved_section_region(db, &section) else {
+            let Some((region, symbol)) = resolved_section_region(db, section) else {
                 continue;
             };
             resolved.push(make_resolved_code_region(
@@ -1214,19 +1214,29 @@ fn resolved_section_region<'db>(
             | RuntimeSyntheticSpec::ContractRuntimeRoot { contract, .. },
         ) => match section.name {
             RuntimeSectionName::Init => Some((
-                RuntimeCodeRegion::new(db, RuntimeCodeRegionKey::ContractInit { contract }),
-                format!("{}_init", contract_name(db, contract)),
+                RuntimeCodeRegion::new(
+                    db,
+                    RuntimeCodeRegionKey::ContractInit {
+                        contract: *contract,
+                    },
+                ),
+                format!("{}_init", contract_name(db, *contract)),
             )),
             RuntimeSectionName::Runtime => Some((
-                RuntimeCodeRegion::new(db, RuntimeCodeRegionKey::ContractRuntime { contract }),
-                format!("{}_runtime", contract_name(db, contract)),
+                RuntimeCodeRegion::new(
+                    db,
+                    RuntimeCodeRegionKey::ContractRuntime {
+                        contract: *contract,
+                    },
+                ),
+                format!("{}_runtime", contract_name(db, *contract)),
             )),
             RuntimeSectionName::Main | RuntimeSectionName::Test(_) => None,
         },
         RuntimeFunctionOwner::Synthetic(RuntimeSyntheticSpec::ManualContractRoot {
             func, ..
         }) => {
-            let region = runtime_code_region_for_manual_root(db, func)?;
+            let region = runtime_code_region_for_manual_root(db, *func)?;
             Some((region, code_region_symbol(db, region)))
         }
         RuntimeFunctionOwner::Semantic(semantic) => {
@@ -1354,7 +1364,7 @@ fn materialized_contracts_for_roots<'db>(
         .filter_map(|root| match root.key(db).source(db) {
             RuntimeInstanceSource::Synthetic(synthetic) => match synthetic.spec(db) {
                 RuntimeSyntheticSpec::ContractInitRoot { contract, .. }
-                | RuntimeSyntheticSpec::ContractRuntimeRoot { contract, .. } => Some(contract),
+                | RuntimeSyntheticSpec::ContractRuntimeRoot { contract, .. } => Some(*contract),
                 RuntimeSyntheticSpec::MainRoot { .. }
                 | RuntimeSyntheticSpec::TestRoot { .. }
                 | RuntimeSyntheticSpec::ManualContractRoot { .. }
@@ -1912,11 +1922,11 @@ pub fn runtime_instance_symbol_key<'db>(
     db: &'db dyn MirDb,
     instance: RuntimeInstance<'db>,
 ) -> String {
-    runtime_instance_symbol_key_query(db, instance)
+    runtime_instance_symbol_key_query(db, instance).clone()
 }
 
 fn runtime_instance_sort_key<'db>(db: &'db dyn MirDb, instance: RuntimeInstance<'db>) -> String {
-    runtime_instance_sort_key_query(db, instance)
+    runtime_instance_sort_key_query(db, instance).clone()
 }
 
 #[salsa::tracked]
@@ -1942,8 +1952,8 @@ fn runtime_instance_key_in_mode<'db>(
     mode: IdentityMode,
 ) -> String {
     match mode {
-        IdentityMode::Sort => runtime_instance_sort_key_query(db, instance),
-        IdentityMode::Symbol => runtime_instance_symbol_key_query(db, instance),
+        IdentityMode::Sort => runtime_instance_sort_key_query(db, instance).clone(),
+        IdentityMode::Symbol => runtime_instance_symbol_key_query(db, instance).clone(),
     }
 }
 
@@ -1976,7 +1986,7 @@ fn runtime_instance_source_key<'db>(
             )
         }
         RuntimeInstanceSource::Synthetic(synthetic) => {
-            runtime_synthetic_spec_key(db, synthetic.spec(db), mode)
+            runtime_synthetic_spec_key(db, synthetic.spec(db).clone(), mode)
         }
     }
 }
@@ -2297,7 +2307,7 @@ fn target_root_provider_materialization_sort_key<'db>(
 }
 
 fn layout_sort_key<'db>(db: &'db dyn MirDb, layout: LayoutId<'db>) -> String {
-    layout_sort_key_query(db, layout)
+    layout_sort_key_query(db, layout).clone()
 }
 
 #[salsa::tracked]
@@ -2357,7 +2367,7 @@ pub(crate) fn runtime_instance_display_name<'db>(
             symbol_base_for_semantic_instance(db, semantic)
         }
         RuntimeInstanceSource::Synthetic(synthetic) => {
-            symbol_base_for_runtime_instance(db, &synthetic.spec(db))
+            symbol_base_for_runtime_instance(db, synthetic.spec(db))
         }
     }
 }
@@ -2562,7 +2572,7 @@ pub fn main() -> i32 {
         let package = build_native_executable_package(&db, db.top_mod(file)).unwrap();
         let imports = package
             .functions(&db)
-            .into_iter()
+            .iter()
             .filter(|function| function.linkage(&db) == RuntimeLinkage::External)
             .collect::<Vec<_>>();
         assert_eq!(imports.len(), 1);
@@ -2597,7 +2607,7 @@ pub fn main() -> i32 {
             panic!("recv wrapper should be synthetic");
         };
         match synthetic.spec(db) {
-            RuntimeSyntheticSpec::ContractRecvAbi { plan } => plan,
+            RuntimeSyntheticSpec::ContractRecvAbi { plan } => plan.clone(),
             other => panic!("expected recv wrapper synthetic spec, got {other:?}"),
         }
     }
@@ -2693,8 +2703,8 @@ fn invalid(result: mut u256) -> u256 {
     fn package_object_names(db: &DriverDataBase, package: RuntimePackage<'_>) -> Vec<String> {
         let mut names = package
             .objects(db)
-            .into_iter()
-            .map(|object| object.name(db))
+            .iter()
+            .map(|object| object.name(db).clone())
             .collect::<Vec<_>>();
         names.sort();
         names
@@ -2703,8 +2713,8 @@ fn invalid(result: mut u256) -> u256 {
     fn package_root_object_names(db: &DriverDataBase, package: RuntimePackage<'_>) -> Vec<String> {
         let mut names = package
             .root_objects(db)
-            .into_iter()
-            .map(|object| object.name(db))
+            .iter()
+            .map(|object| object.name(db).clone())
             .collect::<Vec<_>>();
         names.sort();
         names
@@ -2921,7 +2931,7 @@ pub contract NoInitBox {}
             panic!("expected synthetic contract init root");
         };
         assert_eq!(
-            root_init_abi, init_abi,
+            *root_init_abi, init_abi,
             "contract init root should always call the synthesized init abi wrapper"
         );
     }

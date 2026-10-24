@@ -3,7 +3,7 @@ use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, Span, SubDiagnostic,
 };
 use cranelift_entity::EntityRef;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::{
     analysis::{
@@ -365,7 +365,7 @@ pub(crate) fn checker_name<'db>(
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub struct SemanticDiagnostic<'db> {
     pub kind: SemanticDiagnosticKind,
     pub instance: SemanticInstance<'db>,
@@ -373,13 +373,13 @@ pub struct SemanticDiagnostic<'db> {
     pub secondaries: Vec<SemanticDiagnosticLabel<'db>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub struct SemanticDiagnosticLabel<'db> {
     pub message: String,
     pub span: SemanticDiagnosticSpan<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum SemanticDiagnosticSpan<'db> {
     Origin {
         owner: BodyOwner<'db>,
@@ -406,7 +406,7 @@ pub struct SemanticDiagnosticId<'db> {
     pub diag: SemanticDiagnostic<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub struct BlockedSemanticBody<'db> {
     pub instance: SemanticInstance<'db>,
     pub causes: Box<[SmirLoweringIssue]>,
@@ -434,7 +434,7 @@ impl<'db> From<SemanticDiagnostic<'db>> for SemanticNormalizationFailure<'db> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum SemanticDiagnosticKind {
     AccessConflict,
     MoveConflict,

@@ -7,8 +7,8 @@ use crate::{
 #[salsa::interned]
 #[derive(Debug)]
 pub struct GenericArgListId<'db> {
-    #[return_ref]
     pub data: Vec<GenericArg<'db>>,
+    #[returns(copy)]
     pub is_given: bool,
 }
 
@@ -101,7 +101,6 @@ impl<'db> GenericArgListId<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct GenericParamListId<'db> {
-    #[return_ref]
     pub data: Vec<GenericParam<'db>>,
 }
 
@@ -114,7 +113,6 @@ impl GenericParamListId<'_> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct FuncParamListId<'db> {
-    #[return_ref]
     pub data: Vec<FuncParam<'db>>,
 }
 
@@ -123,7 +121,6 @@ pub struct FuncParamListId<'db> {
 pub struct WhereClauseId<'db> {
     /// The clause's predicates, in source order. A predicate's position
     /// here is its index for the clause's spans.
-    #[return_ref]
     pub predicates: Vec<WhereClausePredicate<'db>>,
 }
 
@@ -149,7 +146,7 @@ impl<'db> WhereClauseId<'db> {
     }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn where_clause_const_predicates<'db>(
     db: &'db dyn HirDb,
     clause: WhereClauseId<'db>,
@@ -165,7 +162,7 @@ fn where_clause_const_predicates<'db>(
 }
 
 /// A predicate of a `where` clause.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum WhereClausePredicate<'db> {
     /// A trait or kind bound on a type, `T: Trait`.
     Type(WherePredicate<'db>),
@@ -173,7 +170,7 @@ pub enum WhereClausePredicate<'db> {
     Const(Body<'db>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, salsa::SalsaValue)]
 pub enum GenericParam<'db> {
     Type(TypeGenericParam<'db>),
     Const(ConstGenericParam<'db>),
@@ -211,21 +208,21 @@ impl<'db> GenericParamView<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct TypeGenericParam<'db> {
     pub name: Partial<IdentId<'db>>,
     pub bounds: Vec<TypeBound<'db>>,
     pub default_ty: Option<TypeId<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ConstGenericParam<'db> {
     pub name: Partial<IdentId<'db>>,
     pub ty: Partial<TypeId<'db>>,
     pub default: Option<Body<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, salsa::SalsaValue)]
 pub enum GenericArg<'db> {
     Type(TypeGenericArg<'db>),
     Const(ConstGenericArg<'db>),
@@ -235,17 +232,17 @@ pub enum GenericArg<'db> {
     Mode(TypeMode),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct TypeGenericArg<'db> {
     pub ty: Partial<TypeId<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ConstGenericArg<'db> {
     pub value: Partial<Body<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AssocTypeGenericArg<'db> {
     pub name: Partial<IdentId<'db>>,
     /// The mode an associated shape is bound at: `Step<ref> = ref u256`.
@@ -253,7 +250,7 @@ pub struct AssocTypeGenericArg<'db> {
     pub ty: Partial<TypeId<'db>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum FuncParamMode {
     /// Default `x: T` (or `x: ref T`): the caller's place is read-accessible
     /// for the call.
@@ -264,7 +261,7 @@ pub enum FuncParamMode {
     Own,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct FuncParam<'db> {
     /// The mode at `ref`. A `mut?` parameter, whose `ty` is `mut? T`, is a
     /// view at `ref` and `mut` at `mut`.
@@ -337,13 +334,13 @@ impl<'db> FuncParam<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct WherePredicate<'db> {
     pub ty: Partial<TypeId<'db>>,
     pub bounds: Vec<TypeBound<'db>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum FuncParamName<'db> {
     Ident(IdentId<'db>),
     Underscore,
@@ -390,7 +387,7 @@ impl<'db> FuncParamName<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum TypeBound<'db> {
     /// A trait bound, with the modes it grants the trait's `mut?` methods
     /// at.
@@ -400,7 +397,7 @@ pub enum TypeBound<'db> {
 
 /// The mode written before an effect or a trait bound: none, `mut`, or
 /// `mut?`, the item's mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum ModeMarker {
     /// `uses (c: Ctx)`, `T: Trait`: read only, or the `ref` modes of a
     /// trait's `mut?` methods.
@@ -428,6 +425,7 @@ impl ModeMarker {
 #[derive(Debug)]
 pub struct TraitRefId<'db> {
     /// The path to the trait.
+    #[returns(copy)]
     pub path: Partial<PathId<'db>>,
 }
 

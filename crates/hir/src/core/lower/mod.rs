@@ -27,7 +27,7 @@ pub use attr::{AttrMisuseError, AttrMisuseErrorKind};
 pub use error::{ErrorDiagnostic, ErrorDiagnosticKind};
 pub use event::{EventError, EventErrorKind};
 pub use item::{FieldModifierError, FieldModifierErrorKind, MsgDiagnostic, MsgDiagnosticKind};
-pub use parse::parse_file_impl;
+pub use parse::{ParsedFile, parse_file_impl};
 
 pub(crate) mod parse;
 
@@ -127,7 +127,7 @@ pub fn module_tree<'db>(db: &'db dyn LowerHirDb, ingot: Ingot<'db>) -> &'db Modu
     module_tree_impl(db, ingot)
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn map_file_to_mod_impl<'db>(db: &'db dyn HirDb, file: File) -> TopLevelMod<'db> {
     let path = file.path(db);
     let path = path.as_ref().unwrap_or_else(|| {
@@ -144,7 +144,7 @@ pub(crate) fn map_file_to_mod_impl<'db>(db: &'db dyn HirDb, file: File) -> TopLe
     TopLevelMod::new(db, mod_name, file)
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn scope_graph_impl<'db>(
     db: &'db dyn HirDb,
     top_mod: TopLevelMod<'db>,
@@ -166,7 +166,7 @@ pub(crate) fn scope_graph_impl<'db>(
 /// Returns the scope graph of the body of `func`, lowered on its own, or `None`
 /// if the function has no body in source or its body was lowered with the
 /// module because it declares items.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn func_body_graph_impl<'db>(
     db: &'db dyn HirDb,
     func: Func<'db>,
@@ -181,7 +181,7 @@ pub(crate) fn func_body_graph_impl<'db>(
     Some(ctxt.build())
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn top_mod_attributes_impl<'db>(
     db: &'db dyn HirDb,
     top_mod: TopLevelMod<'db>,
@@ -195,9 +195,21 @@ pub(crate) fn top_mod_attributes_impl<'db>(
 }
 
 pub(crate) fn top_mod_ast(db: &dyn HirDb, top_mod: TopLevelMod) -> ast::Root {
-    let node = SyntaxNode::new_root(parse_file_impl(db, top_mod));
+    let node = SyntaxNode::new_root(parse_file_impl(db, top_mod).root.clone());
     // This cast never fails even if the file content is empty.
     ast::Root::cast(node).unwrap()
+}
+
+/// A diagnostic reported while lowering a module or a function body.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
+pub enum LowerDiagnostic {
+    Msg(MsgDiagnostic),
+    FieldModifier(FieldModifierError),
+    Event(EventError),
+    Error(ErrorDiagnostic),
+    AbiStruct(AbiStructDiagnostic),
+    AbiField(AbiFieldDiagnostic),
+    AttrMisuse(AttrMisuseError),
 }
 
 pub(super) struct FileLowerCtxt<'db> {
@@ -205,6 +217,7 @@ pub(super) struct FileLowerCtxt<'db> {
     next_impl_idx: u32,
     next_impl_trait_idx: u32,
     next_static_assert_idx: u32,
+    diagnostics: Vec<LowerDiagnostic>,
 }
 
 impl<'db> FileLowerCtxt<'db> {
@@ -214,6 +227,7 @@ impl<'db> FileLowerCtxt<'db> {
             next_impl_idx: 0,
             next_impl_trait_idx: 0,
             next_static_assert_idx: 0,
+            diagnostics: Vec::new(),
         }
     }
 
@@ -223,11 +237,16 @@ impl<'db> FileLowerCtxt<'db> {
             next_impl_idx: 0,
             next_impl_trait_idx: 0,
             next_static_assert_idx: 0,
+            diagnostics: Vec::new(),
         }
     }
 
     pub(super) fn build(self) -> ScopeGraph<'db> {
-        self.builder.build()
+        self.builder.build(self.diagnostics)
+    }
+
+    pub(super) fn report(&mut self, diagnostic: impl Into<LowerDiagnostic>) {
+        self.diagnostics.push(diagnostic.into());
     }
 
     pub(super) fn db(&self) -> &'db dyn HirDb {

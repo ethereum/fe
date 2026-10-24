@@ -2,7 +2,7 @@
 //! effect argument and each `mut` or view argument names, which instantiates
 //! the callee per space.
 use cranelift_entity::EntityRef;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::check::{Analysis, callee_input_access};
 use crate::analysis::{
@@ -23,7 +23,7 @@ use crate::analysis::{
 };
 
 /// The address spaces a provisional body passes to its callees' inputs.
-#[derive(Clone, Debug, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, SalsaValue)]
 pub(crate) enum CallSiteRefinements<'db> {
     Refined(Vec<CallSiteProviderRefinement>),
     /// Upstream causes block the provisional body.
@@ -31,7 +31,7 @@ pub(crate) enum CallSiteRefinements<'db> {
     Rejected(SemanticDiagnosticId<'db>),
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn provisional_call_site_provider_refinements<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,

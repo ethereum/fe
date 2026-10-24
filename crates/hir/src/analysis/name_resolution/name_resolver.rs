@@ -17,7 +17,7 @@ use crate::{
 };
 use bitflags::bitflags;
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::Update;
+use salsa::SalsaValue;
 use thin_vec::ThinVec;
 
 use super::{
@@ -30,9 +30,12 @@ use crate::analysis::HirAnalysisDb;
 #[derive(Debug)]
 pub struct EarlyNameQueryId<'db> {
     /// The name to be resolved.
+    #[returns(copy)]
     name: IdentId<'db>,
     /// The scope where the name is resolved.
+    #[returns(copy)]
     scope: ScopeId<'db>,
+    #[returns(copy)]
     directive: QueryDirective,
 }
 
@@ -100,7 +103,7 @@ impl Default for QueryDirective {
 /// The struct contains the lookup result of a name query.
 /// The results can contain more than one name resolutions which belong to
 /// different name domains.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, SalsaValue)]
 pub struct NameResBucket<'db> {
     // Contains a maximum of 3 entries (one for each distinct NameDomain)
     pub(super) bucket: ThinVec<(NameDomain, NameResolutionResult<'db, NameRes<'db>>)>,
@@ -240,7 +243,7 @@ impl<'db> From<NameRes<'db>> for NameResBucket<'db> {
 }
 
 /// The struct contains the lookup result of a name query.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub struct NameRes<'db> {
     /// The kind of the resolution.
     pub kind: NameResKind<'db>,
@@ -380,7 +383,9 @@ impl<'db> NameRes<'db> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, SalsaValue,
+)]
 pub enum NameResKind<'db> {
     /// The name is resolved to a scope.
     Scope(ScopeId<'db>),
@@ -407,7 +412,7 @@ impl<'db> NameResKind<'db> {
 /// The name derivation indicates where a name resolution comes from.
 /// Name derivation is used to track the origin of a resolution, and to
 /// determine the shadowing rules.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum NameDerivation<'db> {
     /// Derived from a definition in the current scope.
     Def,
@@ -707,7 +712,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum NameResolutionError<'db> {
     /// The name is not found.
     NotFound,
@@ -750,7 +755,7 @@ impl fmt::Display for NameResolutionError<'_> {
 impl std::error::Error for NameResolutionError<'_> {}
 
 bitflags! {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
     /// Each resolved name is associated with a domain that indicates which domain
     /// the name belongs to.
     /// The multiple same names can be introduced in a same scope as long as they

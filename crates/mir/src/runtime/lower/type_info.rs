@@ -10,7 +10,7 @@ use hir::analysis::{
 };
 use num_traits::ToPrimitive;
 use rustc_hash::FxHashSet;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use crate::{
     db::MirDb,
@@ -41,13 +41,13 @@ impl<'db> RuntimeTypeEnv<'db> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, SalsaValue)]
 struct RuntimeTypeModel<'db> {
     repr_ty: TyId<'db>,
     shape: RuntimeTypeShape<'db>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, PartialEq, Eq, SalsaValue)]
 enum RuntimeTypeShape<'db> {
     Borrow { kind: BorrowKind, inner: TyId<'db> },
     Capability { inner: TyId<'db> },
@@ -266,7 +266,7 @@ pub(crate) fn validate_runtime_array_extents_in_env<'db>(
     visit(db, env, ty, &mut FxHashSet::default())
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn runtime_interface_ty<'db>(
     db: &'db dyn MirDb,
     ty: TyId<'db>,
@@ -284,7 +284,7 @@ pub(crate) fn runtime_interface_ty_in_env<'db>(
     runtime_interface_ty(db, ty, env.scope, env.assumptions)
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn runtime_storage_ty<'db>(
     db: &'db dyn MirDb,
     ty: TyId<'db>,
@@ -306,10 +306,7 @@ pub(crate) fn runtime_storage_ty_in_env<'db>(
     runtime_storage_ty(db, ty, env.scope, env.assumptions)
 }
 
-#[salsa::tracked(
-    cycle_fn=runtime_zero_sized_ty_cycle_recover,
-    cycle_initial=runtime_zero_sized_ty_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=runtime_zero_sized_ty_cycle_initial)]
 pub(super) fn runtime_zero_sized_ty<'db>(
     db: &'db dyn MirDb,
     ty: TyId<'db>,
@@ -525,7 +522,7 @@ pub(crate) fn deref_transport_class_in_env<'db>(
     })
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn runtime_top_level_class<'db>(
     db: &'db dyn MirDb,
     ty: TyId<'db>,
@@ -550,7 +547,7 @@ fn runtime_type_model<'db>(
     RuntimeTypeModel::new(db, ty, RuntimeTypeEnv::new(scope, assumptions))
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(clone))]
 fn runtime_stored_class<'db>(
     db: &'db dyn MirDb,
     ty: TyId<'db>,
@@ -561,10 +558,7 @@ fn runtime_stored_class<'db>(
         .stored_class(db, RuntimeTypeEnv::new(scope, assumptions))
 }
 
-#[salsa::tracked(
-    cycle_fn=runtime_transport_sensitive_aggregate_cycle_recover,
-    cycle_initial=runtime_transport_sensitive_aggregate_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=runtime_transport_sensitive_aggregate_cycle_initial)]
 pub(super) fn runtime_transport_sensitive_aggregate<'db>(
     db: &'db dyn MirDb,
     ty: TyId<'db>,
@@ -577,42 +571,22 @@ pub(super) fn runtime_transport_sensitive_aggregate<'db>(
 
 fn runtime_zero_sized_ty_cycle_initial<'db>(
     _db: &'db dyn MirDb,
+    _: salsa::Id,
     _ty: TyId<'db>,
     _scope: Option<hir::hir_def::scope_graph::ScopeId<'db>>,
     _assumptions: PredicateListId<'db>,
 ) -> bool {
     false
-}
-
-fn runtime_zero_sized_ty_cycle_recover<'db>(
-    _db: &'db dyn MirDb,
-    _value: &bool,
-    _count: u32,
-    _ty: TyId<'db>,
-    _scope: Option<hir::hir_def::scope_graph::ScopeId<'db>>,
-    _assumptions: PredicateListId<'db>,
-) -> salsa::CycleRecoveryAction<bool> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 fn runtime_transport_sensitive_aggregate_cycle_initial<'db>(
     _db: &'db dyn MirDb,
+    _: salsa::Id,
     _ty: TyId<'db>,
     _scope: Option<hir::hir_def::scope_graph::ScopeId<'db>>,
     _assumptions: PredicateListId<'db>,
 ) -> bool {
     false
-}
-
-fn runtime_transport_sensitive_aggregate_cycle_recover<'db>(
-    _db: &'db dyn MirDb,
-    _value: &bool,
-    _count: u32,
-    _ty: TyId<'db>,
-    _scope: Option<hir::hir_def::scope_graph::ScopeId<'db>>,
-    _assumptions: PredicateListId<'db>,
-) -> salsa::CycleRecoveryAction<bool> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 #[cfg(test)]

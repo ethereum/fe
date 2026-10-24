@@ -11,7 +11,7 @@
 //! dispatches through a bound reaches its implementation without selecting
 //! it again.
 
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     const_ty::const_body_assumptions,
@@ -41,11 +41,10 @@ use crate::{
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EvidenceId<'db> {
-    #[return_ref]
     pub data: Evidence<'db>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SalsaValue)]
 pub enum Evidence<'db> {
     /// An implementation, `selected` and as `instantiated` for the goal,
     /// with a proof of each of its conditions in the order
@@ -138,7 +137,7 @@ impl<'db> EvidenceId<'db> {
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 fn evidence_is_closed<'db>(db: &'db dyn HirAnalysisDb, evidence: EvidenceId<'db>) -> bool {
     match evidence.data(db) {
         Evidence::Assumption(_) => false,
@@ -152,7 +151,6 @@ fn evidence_is_closed<'db>(db: &'db dyn HirAnalysisDb, evidence: EvidenceId<'db>
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EvidenceList<'db> {
-    #[return_ref]
     pub entries: Vec<Option<EvidenceId<'db>>>,
 }
 
@@ -328,7 +326,7 @@ pub(crate) fn declared_bound_evidence<'db>(
     )
 }
 
-#[salsa::tracked(cycle_fn = prove_cycle_recover, cycle_initial = prove_cycle_initial)]
+#[salsa::tracked(returns(copy), cycle_initial = prove_cycle_initial)]
 fn prove_in<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
@@ -433,7 +431,7 @@ pub(crate) fn instantiated_selection<'db>(
 /// implementation's conditions, as a proof selecting the implementation
 /// proves them, followed by the assumptions `nominal`'s body is checked
 /// under, as the call proves them. Absent for a method of no implementation.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn impl_method_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Func<'db>,
@@ -481,7 +479,7 @@ pub(crate) fn impl_method_evidence<'db>(
 /// assumptions it is checked under from the implementation's conditions, as
 /// a proof selecting the implementation proves them. Absent for a body of no
 /// implementation.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn impl_const_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Body<'db>,
@@ -569,7 +567,7 @@ fn instantiate_proofs<'db>(
 /// and the call's proofs of `nominal`'s assumptions, `bound`. `subst`
 /// instantiates `body`. Calls of one method with one substitution and one
 /// selection share them.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn impl_method_bound_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     (body, nominal, mode): (Func<'db>, Func<'db>, Option<BorrowKind>),
@@ -598,7 +596,7 @@ pub(crate) fn impl_method_bound_evidence<'db>(
 /// The proofs a use supplies to the value `body` of the implementation's
 /// constant its `selection` proof selects: from the selection's proofs of
 /// the implementation's conditions. `subst` instantiates `body`'s owner.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn impl_const_bound_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Body<'db>,
@@ -626,7 +624,7 @@ pub(crate) fn impl_const_bound_evidence<'db>(
 /// of. A use leaves its callee's closed goals to the instance, and a proof
 /// of one naming the use's own assumptions names those of a body the
 /// instance does not run in.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn instance_evidence<'db>(
     db: &'db dyn HirAnalysisDb,
     goals: PredicateListId<'db>,
@@ -653,18 +651,9 @@ pub(crate) fn instance_evidence<'db>(
 
 fn prove_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _solve_cx: TraitSolveCx<'db>,
     _goal: TraitInstId<'db>,
 ) -> Option<EvidenceId<'db>> {
     None
-}
-
-fn prove_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Option<EvidenceId<'db>>,
-    _count: u32,
-    _solve_cx: TraitSolveCx<'db>,
-    _goal: TraitInstId<'db>,
-) -> salsa::CycleRecoveryAction<Option<EvidenceId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
 }

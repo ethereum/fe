@@ -35,7 +35,7 @@ pub(super) fn item_scope<'db>(db: &'db dyn HirAnalysisDb, mut scope: ScopeId<'db
     scope
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn items_in_scope_impl<'db>(
     db: &'db dyn HirAnalysisDb,
     i_scope: ItemScope<'db>,
@@ -126,6 +126,8 @@ fn items_in_scope_impl<'db>(
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ItemScope<'db> {
+    #[returns(copy)]
     scope: ScopeId<'db>,
+    #[returns(copy)]
     domain: NameDomain,
 }

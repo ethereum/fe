@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     canonical::{Canonicalized, Solution},
@@ -165,7 +165,7 @@ where
     where
         U: TyFoldable<'db>
             + TyVisitable<'db>
-            + Update
+            + SalsaValue
             + ScratchRepr<'db>
             + private::ScratchOps<'db>,
     {
@@ -459,7 +459,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use salsa::Update;
+    use salsa::SalsaValue;
 
     use super::{Canonicalized, ScratchRepr, private};
     use crate::{
@@ -523,7 +523,7 @@ mod tests {
         });
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, SalsaValue)]
     struct RepeatedAndConstVars<'db> {
         lhs: TyId<'db>,
         rhs: TyId<'db>,

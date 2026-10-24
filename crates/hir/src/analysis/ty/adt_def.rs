@@ -4,7 +4,7 @@ use crate::hir_def::{
 };
 use crate::span::DynLazySpan;
 use common::ingot::Ingot;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     binder::Binder,
@@ -30,22 +30,21 @@ use crate::analysis::HirAnalysisDb;
 #[salsa::tracked]
 #[derive(Debug)]
 pub struct AdtDef<'db> {
+    #[returns(copy)]
     pub adt_ref: AdtRef<'db>,
 
     /// Type parameters of the ADT.
-    #[return_ref]
     pub param_set: GenericParamTypeSet<'db>,
 
     /// Fields of the ADT, if the ADT is an enum, this represents variants.
     /// Otherwise, `fields[0]` represents all fields of the struct.
-    #[return_ref]
     pub fields: Vec<AdtField<'db>>,
 }
 
 /// Where a type is pinned: to the state space its `core::marker::Pinned`
 /// implementation names as `Space`. Implementing the trait is the pinning
 /// declaration.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, SalsaValue)]
 pub enum Pin {
     /// No implementation pins the type, or any instance of it.
     Unpinned,
@@ -60,7 +59,7 @@ pub enum Pin {
 /// no implementation is selected for is undecided while one could still
 /// apply to an instance of it (its parameters, or bounds they leave open),
 /// and unpinned otherwise.
-#[salsa::tracked(cycle_fn = ty_pin_cycle_recover, cycle_initial = ty_pin_cycle_initial)]
+#[salsa::tracked(returns(copy), cycle_initial = ty_pin_cycle_initial)]
 pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
     let Some(adt) = ty.adt_def(db) else {
         return Pin::Unpinned;
@@ -106,22 +105,13 @@ pub(crate) fn ty_pin<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Pin {
     }
 }
 
-fn ty_pin_cycle_initial<'db>(_: &'db dyn HirAnalysisDb, _: TyId<'db>) -> Pin {
+fn ty_pin_cycle_initial<'db>(_: &'db dyn HirAnalysisDb, _: salsa::Id, _: TyId<'db>) -> Pin {
     Pin::Unpinned
-}
-
-fn ty_pin_cycle_recover<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: &Pin,
-    _: u32,
-    _: TyId<'db>,
-) -> salsa::CycleRecoveryAction<Pin> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 /// The type that is or may be pinned that `ty` is or holds in a field, or
 /// in a tuple or array element; see `TyId::pinned_part`.
-#[salsa::tracked(cycle_fn = ty_pinned_part_cycle_recover, cycle_initial = ty_pinned_part_cycle_initial)]
+#[salsa::tracked(returns(copy), cycle_initial = ty_pinned_part_cycle_initial)]
 pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Option<TyId<'db>> {
     match ty.base_ty(db).data(db) {
         TyData::TyBase(TyBase::Adt(adt)) => {
@@ -160,17 +150,12 @@ pub(crate) fn ty_pinned_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> 
     }
 }
 
-fn ty_pinned_part_cycle_initial<'db>(_: &'db dyn HirAnalysisDb, _: TyId<'db>) -> Option<TyId<'db>> {
-    None
-}
-
-fn ty_pinned_part_cycle_recover<'db>(
+fn ty_pinned_part_cycle_initial<'db>(
     _: &'db dyn HirAnalysisDb,
-    _: &Option<TyId<'db>>,
-    _: u32,
+    _: salsa::Id,
     _: TyId<'db>,
-) -> salsa::CycleRecoveryAction<Option<TyId<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
+) -> Option<TyId<'db>> {
+    None
 }
 
 /// The `#[view]` type `ty` holds as a part: an argument of a tuple, an array
@@ -194,7 +179,7 @@ pub(crate) fn ty_view_part<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Op
 /// asks this of every ADT it names, impl headers included, so the fields'
 /// const bodies stay unevaluated: evaluating one proves bounds through those
 /// impls, and a const holds no value anyway.
-#[salsa::tracked(return_ref, cycle_fn = adt_field_params_cycle_recover, cycle_initial = adt_field_params_cycle_initial)]
+#[salsa::tracked(cycle_initial = adt_field_params_cycle_initial)]
 pub(crate) fn adt_field_params<'db>(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Vec<bool> {
     let params = adt.params(db);
     if params.is_empty() {
@@ -236,17 +221,12 @@ fn holds<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, param: TyId<'db>) -> bo
 }
 
 // Until the fields are known, every parameter may be held.
-fn adt_field_params_cycle_initial<'db>(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Vec<bool> {
+fn adt_field_params_cycle_initial<'db>(
+    db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
+    adt: AdtDef<'db>,
+) -> Vec<bool> {
     vec![true; adt.params(db).len()]
-}
-
-fn adt_field_params_cycle_recover<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: &Vec<bool>,
-    _: u32,
-    _: AdtDef<'db>,
-) -> salsa::CycleRecoveryAction<Vec<bool>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 impl<'db> AdtDef<'db> {
@@ -330,7 +310,7 @@ impl<'db> AdtDef<'db> {
 
 /// This struct represents a field of an ADT. If the ADT is an enum, this
 /// represents a variant.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AdtField<'db> {
     /// Field types as HIR type refs. To allow recursive types, these are kept
     /// at the HIR level and lowered on demand.
@@ -393,7 +373,9 @@ impl<'db> AdtField<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::Supertype, Update)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::Supertype, SalsaValue,
+)]
 pub enum AdtRef<'db> {
     Enum(Enum<'db>),
     Struct(Struct<'db>),
@@ -469,7 +451,7 @@ impl<'db> AdtRef<'db> {
 }
 
 /// Struct for downstream diagnostics that refer to cycle members.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AdtCycleMember<'db> {
     pub adt: AdtDef<'db>,
     pub field_idx: usize,

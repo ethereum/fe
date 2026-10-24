@@ -14,7 +14,7 @@ use crate::{
 
 /// Whether a value of `ty` holds a capability carrier, without following one
 /// to its target. A pointer is data.
-#[salsa::tracked(cycle_fn=contains_capability_cycle_recover, cycle_initial=contains_capability_cycle_initial)]
+#[salsa::tracked(returns(copy), cycle_initial=contains_capability_cycle_initial)]
 pub fn contains_capability<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -49,22 +49,12 @@ pub fn contains_capability<'db>(
 
 fn contains_capability_cycle_initial<'db>(
     _: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _: ScopeId<'db>,
     _: PredicateListId<'db>,
     _: TyId<'db>,
 ) -> bool {
     false
-}
-
-fn contains_capability_cycle_recover<'db>(
-    _: &'db dyn HirAnalysisDb,
-    _: &bool,
-    _: u32,
-    _: ScopeId<'db>,
-    _: PredicateListId<'db>,
-    _: TyId<'db>,
-) -> salsa::CycleRecoveryAction<bool> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 /// Whether a semantic-IR value of `ty` carries accesses: a carrier, a

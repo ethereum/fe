@@ -67,7 +67,7 @@ pub(crate) fn traits_available_for_selection<'db>(
     available
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn available_traits_in_scope_impl<'db>(
     db: &'db dyn HirAnalysisDb,
     t_scope: TraitScope<'db>,
@@ -125,5 +125,6 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
 #[salsa::interned]
 #[derive(Debug)]
 pub struct TraitScope<'db> {
+    #[returns(copy)]
     scope: ScopeId<'db>,
 }

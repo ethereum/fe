@@ -903,6 +903,7 @@ fn emit_cross_ingot_references<'db>(
             let name = index_util::ingot_display_name(db, target_ingot);
             let version = target_ingot
                 .version(db)
+                .as_ref()
                 .map_or_else(|| "0.0.0".to_string(), |v| v.to_string());
             (name, version)
         });

@@ -3,11 +3,10 @@ use super::{IdentId, ModeMarker, Partial, TypeId};
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EffectParamListId<'db> {
-    #[return_ref]
     pub data: Vec<EffectParam<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct EffectParam<'db> {
     pub name: Option<IdentId<'db>>,
     pub key_ty: Partial<TypeId<'db>>,

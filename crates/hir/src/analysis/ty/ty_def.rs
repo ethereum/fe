@@ -20,7 +20,7 @@ use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use ruint::aliases::U256;
 use rustc_hash::FxHashSet;
-use salsa::Update;
+use salsa::SalsaValue;
 use smallvec::SmallVec;
 
 use super::{
@@ -58,14 +58,13 @@ pub const MAX_INLINE_STRING_BYTES: usize = 31;
 #[salsa::interned]
 #[derive(Debug)]
 pub struct TyId<'db> {
-    #[return_ref]
     pub data: TyData<'db>,
 }
 
 #[salsa::tracked]
 impl<'db> TyId<'db> {
     /// Returns the kind of the type.
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn kind(self, db: &'db dyn HirAnalysisDb) -> Kind {
         self.data(db).kind(db)
     }
@@ -276,7 +275,7 @@ impl<'db> TyId<'db> {
         self.flags(db).contains(TyFlags::HAS_PROJECTION)
     }
 
-    #[salsa::tracked(return_ref)]
+    #[salsa::tracked]
     pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
         self.pretty_print_with_mode(db, TypePrintMode::Concrete)
     }
@@ -710,7 +709,7 @@ impl<'db> TyId<'db> {
     /// - tuples/structs/arrays are zero-sized iff all elements/fields are zero-sized
     /// - a pinned type never is: its root number identifies its region
     // Borrow checking asks about the same types repeatedly.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn is_zero_sized(self, db: &'db dyn HirAnalysisDb) -> bool {
         fn inner<'db>(
             db: &'db dyn HirAnalysisDb,
@@ -1264,7 +1263,7 @@ impl<'db> TyId<'db> {
 
 // Borrow checking and layout code ask for the same aggregates' field types
 // repeatedly; instantiating ADT field shapes is not free.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 fn ty_field_types<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Vec<TyId<'db>> {
     if ty.is_tuple(db) {
         let (_, elems) = ty.decompose_ty_app(db);
@@ -1303,7 +1302,7 @@ pub struct ApplicableTyProp<'db> {
     pub const_ty: Option<TyId<'db>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum TyData<'db> {
     /// Type variable.
     TyVar(TyVar<'db>),
@@ -1337,7 +1336,7 @@ pub enum TyData<'db> {
 /// A closure expression within the body that contains it, at the mode that
 /// body is checked at: each body of a `mut?` function defines its own
 /// closure.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ClosureDef<'db> {
     pub body: Body<'db>,
     pub expr: ExprId,
@@ -1351,23 +1350,21 @@ pub struct ClosureDef<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ClosureTy<'db> {
+    #[returns(copy)]
     pub def: ClosureDef<'db>,
     /// Generic arguments of the item whose body defines the closure. The
     /// closure's semantic instances substitute the parent's typed-body
     /// template with these.
-    #[return_ref]
     pub parent_args: Vec<TyId<'db>>,
     /// Environment field types, one per captured binding, in capture order.
-    #[return_ref]
     pub captures: Vec<TyId<'db>>,
     /// The parameters' shapes: each an owned value, a view or `mut`
     /// access, or a product of parts.
-    #[return_ref]
     pub params: Vec<Shape<'db>>,
+    #[returns(copy)]
     pub ret_ty: TyId<'db>,
     /// The effects the body uses that its own `with` blocks do not provide:
     /// its row `E`, which the caller of each call provides.
-    #[return_ref]
     pub effects: Vec<RowComponent<'db>>,
 }
 
@@ -1386,7 +1383,7 @@ impl<'db> ClosureTy<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum InvalidCause<'db> {
     /// Type is not fully applied where it is required.
     NotFullyApplied,
@@ -1448,7 +1445,11 @@ pub enum InvalidCause<'db> {
         n_given_args: usize,
     },
 
-    AliasCycle(SmallVec<HirTypeAlias<'db>, 4>),
+    AliasCycle(
+        // SAFETY: A `SmallVec` owns its elements.
+        #[salsa_value(unsafe(prove(HirTypeAlias<'db>: salsa::SalsaValue)))]
+        SmallVec<HirTypeAlias<'db>, 4>,
+    ),
 
     // The given expression is not supported yet in the const type context.
     // TODO: Remove this error kind and introduce a new error kind for more specific cause when
@@ -1809,7 +1810,7 @@ impl fmt::Display for Kind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct TyVar<'db> {
     pub sort: TyVarSort,
     pub kind: Kind,
@@ -1901,7 +1902,7 @@ impl TyVar<'_> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct AssocTy<'db> {
     pub trait_: TraitRefId<'db>,
     pub name: IdentId<'db>,
@@ -1913,7 +1914,7 @@ pub struct AssocTy<'db> {
 
 /// The mode an associated shape is named at: its `mut?` parts and the shapes
 /// it names without a mode are at it.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub enum ShapeMode {
     /// `D::Step<ref>`, or `D::Step` in an item used at `ref`.
     Ref,
@@ -1966,7 +1967,7 @@ impl<'db> AssocTy<'db> {
 
 /// Type generics parameter. We also treat `Self` type in a trait definition as
 /// a special type parameter.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct TyParam<'db> {
     pub name: IdentId<'db>,
     // The index points to the lowered type parameter list, which means that the idx doesn't
@@ -2200,7 +2201,7 @@ enum Variant {
     Implicit,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, SalsaValue)]
 pub enum TyBase<'db> {
     Prim(PrimTy),
     Adt(AdtDef<'db>),
@@ -2212,7 +2213,7 @@ pub enum TyBase<'db> {
 
 /// A constructor of shape terms, the types of `shape` kind a callable's
 /// parameter list is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum ShapeCon {
     /// `own T`, of kind `* -> shape`.
     Owned,
@@ -2394,7 +2395,7 @@ pub enum PrimTy {
 
 /// Access kinds, ordered by strength: a `mut` access can stand in for a
 /// `ref` one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::SalsaValue)]
 pub enum BorrowKind {
     Ref,
     Mut,
@@ -2740,7 +2741,7 @@ fn pretty_print_ty_app<'db>(
 
 /// Decompose type application into the base type and type arguments.
 /// e.g., `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn decompose_ty_app<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: TyId<'db>,
@@ -2765,7 +2766,7 @@ bitflags! {
     }
 }
 
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlags {
     struct Collector<'db> {
         db: &'db dyn HirAnalysisDb,

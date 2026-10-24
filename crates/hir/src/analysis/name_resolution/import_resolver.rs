@@ -21,7 +21,7 @@ use std::{cell::RefCell, mem};
 use common::{indexmap::IndexMap, ingot::Ingot};
 use petgraph::{algo::tarjan_scc, graphmap::DiGraphMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
-use salsa::Update;
+use salsa::SalsaValue;
 use thin_vec::ThinVec;
 
 use super::{
@@ -754,7 +754,7 @@ fn use_path<'db>(
         .ok_or((0, NameResolutionError::Invalid))
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, SalsaValue)]
 pub struct ResolvedImports<'db> {
     pub named_resolved: IndexMap<ScopeId<'db>, NamedImportSet<'db>>,
     pub glob_resolved: IndexMap<ScopeId<'db>, GlobImportSet<'db>>,
@@ -816,7 +816,7 @@ impl<'db> Importer<'db> for ImportResolver<'db> {
 
 pub type NamedImportSet<'db> = FxHashMap<IdentId<'db>, NameResBucket<'db>>;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, SalsaValue)]
 pub struct GlobImportSet<'db> {
     imported: IndexMap<Use<'db>, GlobNames<'db>>,
 }

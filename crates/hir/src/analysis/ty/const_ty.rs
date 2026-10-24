@@ -7,7 +7,7 @@ use crate::core::hir_def::{
     BinOp, Body, Const, Expr, ExprId, GenericParamOwner, HirIngot, IdentId, ImplTrait, LitKind,
     Partial, PathId, Stmt, UnOp,
 };
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::const_expr::{ConstExpr, ConstExprId, ConstInvocation, pretty_print_un_op};
 use super::{
@@ -106,7 +106,7 @@ impl<'db> ConstCanonEnv<'db> {
 }
 
 /// A callable's input: its receiver, a value parameter or an effect.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub enum CallableInputOrigin {
     Receiver,
     ValueParam(usize),
@@ -1593,7 +1593,6 @@ pub(crate) fn validate_unevaluated_const_ty<'db>(
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ConstTyId<'db> {
-    #[return_ref]
     pub data: ConstTyData<'db>,
 }
 
@@ -1800,7 +1799,7 @@ fn specialize_available_const_assumptions<'db>(
     PredicateListId::new(db, predicates)
 }
 
-#[salsa::tracked(cycle_initial=evaluate_const_ty_cycle_initial, cycle_fn=evaluate_const_ty_cycle_recover)]
+#[salsa::tracked(returns(copy), cycle_initial=evaluate_const_ty_cycle_initial)]
 pub(crate) fn evaluate_const_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     const_ty: ConstTyId<'db>,
@@ -2368,20 +2367,11 @@ pub(crate) fn const_body_assumptions<'db>(
 
 fn evaluate_const_ty_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     const_ty: ConstTyId<'db>,
     _expected_ty: Option<TyId<'db>>,
 ) -> ConstTyId<'db> {
     const_ty
-}
-
-fn evaluate_const_ty_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &ConstTyId<'db>,
-    _count: u32,
-    _const_ty: ConstTyId<'db>,
-    _expected_ty: Option<TyId<'db>>,
-) -> salsa::CycleRecoveryAction<ConstTyId<'db>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 pub(crate) fn const_ty_from_assoc_const_use<'db>(
@@ -3014,7 +3004,7 @@ impl<'db> ConstTyId<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum ConstCaptureEnv<'db> {
     Empty,
     Identity(ConstCaptureDomain<'db>),
@@ -3023,7 +3013,7 @@ pub enum ConstCaptureEnv<'db> {
 
 /// A structural capture description. It can be recorded while the full
 /// callable slot plan is still being discovered, then materialized later.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub struct ConstCaptureDomain<'db> {
     owner: GenericParamOwner<'db>,
     basis: ParamBasis,
@@ -3269,7 +3259,7 @@ impl UnevaluatedConstPolicy {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum ConstTyData<'db> {
     TyVar(TyVar<'db>, TyId<'db>),
     TyParam(TyParam<'db>, TyId<'db>),

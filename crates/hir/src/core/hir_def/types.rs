@@ -4,7 +4,6 @@ use crate::HirDb;
 #[salsa::interned]
 #[derive(Debug)]
 pub struct TypeId<'db> {
-    #[return_ref]
     pub data: TypeKind<'db>,
 }
 
@@ -136,7 +135,7 @@ impl TypeMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum TypeKind<'db> {
     Ptr(Partial<TypeId<'db>>),
     Mode(TypeMode, Partial<TypeId<'db>>),
@@ -150,7 +149,6 @@ pub enum TypeKind<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct TupleTypeId<'db> {
-    #[return_ref]
     pub data: Vec<Partial<TypeId<'db>>>,
 }
 

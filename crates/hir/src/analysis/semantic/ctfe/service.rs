@@ -1,3 +1,7 @@
+// Diagnostics and CTFE stops are returned on the slow path; salsa's 8-byte ids
+// put them just past clippy's 128-byte `Err` threshold.
+#![allow(clippy::result_large_err)]
+
 use cranelift_entity::EntityRef;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -235,7 +239,7 @@ pub fn describe_const_computation<'db>(
     computation: ConstComputationId<'db>,
     config: CtfeConfig,
 ) -> EvalOutcome<'db, ConstDesc<'db>> {
-    let mut cx = ForceContext::new(config.clone());
+    let mut cx = ForceContext::new(config);
     let extracted = extract_whole_const_term(db, computation, &config);
     if let Some(provenance) = extracted.as_ref()
         && let ConstTyData::Abstract(expr, _) = provenance.term.data(db)
@@ -1060,7 +1064,7 @@ impl ForceContext {
     ) -> EvalOutcome<'db, SemConstId<'db>> {
         let config = CtfeConfig {
             recursion_limit: self.config.recursion_limit.saturating_sub(self.depth),
-            ..self.config.clone()
+            ..self.config
         };
         execute_resolved_const_computation_with_steps(
             db,
@@ -1694,7 +1698,7 @@ pub fn force_const_computation<'db>(
     force_const_computation_with_cost(db, computation, config).0
 }
 
-#[salsa::tracked(cycle_initial=force_const_computation_cycle_initial, cycle_fn=force_const_computation_cycle_recover)]
+#[salsa::tracked(returns(clone), cycle_initial=force_const_computation_cycle_initial)]
 fn force_const_computation_with_cost<'db>(
     db: &'db dyn HirAnalysisDb,
     computation: ConstComputationId<'db>,
@@ -1819,6 +1823,7 @@ fn force_const_computation_in_context<'db>(
 
 fn force_const_computation_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     computation: ConstComputationId<'db>,
     _config: CtfeConfig,
 ) -> (EvalOutcome<'db, VerifiedConstValueId<'db>>, usize) {
@@ -1828,16 +1833,6 @@ fn force_const_computation_cycle_initial<'db>(
         })),
         0,
     )
-}
-
-fn force_const_computation_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &(EvalOutcome<'db, VerifiedConstValueId<'db>>, usize),
-    _count: u32,
-    _computation: ConstComputationId<'db>,
-    _config: CtfeConfig,
-) -> salsa::CycleRecoveryAction<(EvalOutcome<'db, VerifiedConstValueId<'db>>, usize)> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 fn force_selected_const_ty<'db>(

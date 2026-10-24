@@ -27,7 +27,7 @@ use crate::{
 use common::indexmap::IndexSet;
 use constraint::collect_constraints;
 use rustc_hash::FxHashSet;
-use salsa::Update;
+use salsa::SalsaValue;
 
 pub(crate) mod constraint;
 mod table_solver;
@@ -36,7 +36,7 @@ pub(crate) use table_solver::answering_assumption;
 
 pub(crate) const TRAIT_SOLVER_ROOT_ANSWER_LIMIT: usize = 2;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct TraitSolverQuery<'db> {
     pub goal: TraitInstId<'db>,
     pub assumptions: PredicateListId<'db>,
@@ -95,7 +95,7 @@ impl<'db> CanonicalGoalQuery<'db> {
     ) -> U
     where
         S: crate::analysis::ty::unify::UnificationStore<'db>,
-        U: TyFoldable<'db> + Update,
+        U: TyFoldable<'db> + SalsaValue,
     {
         self.original.extract_solution(table, solution)
     }
@@ -119,7 +119,7 @@ pub enum Selection<T> {
     NotFound,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub struct TraitSolveCx<'db> {
     origin_ingot: Ingot<'db>,
     assumptions: PredicateListId<'db>,
@@ -284,11 +284,7 @@ pub(crate) fn normalize_trait_inst_preserving_validity<'db>(
     }
 }
 
-#[salsa::tracked(
-    return_ref,
-    cycle_fn=is_query_satisfiable_cycle_recover,
-    cycle_initial=is_query_satisfiable_cycle_initial
-)]
+#[salsa::tracked(cycle_initial=is_query_satisfiable_cycle_initial)]
 fn is_query_satisfiable<'db>(
     db: &'db dyn HirAnalysisDb,
     origin_ingot: Ingot<'db>,
@@ -303,6 +299,7 @@ fn is_query_satisfiable<'db>(
 
 fn is_query_satisfiable_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _origin_ingot: Ingot<'db>,
     _query: Canonical<TraitSolverQuery<'db>>,
 ) -> GoalSatisfiability<'db> {
@@ -316,20 +313,7 @@ fn is_query_satisfiable_cycle_initial<'db>(
     }
 }
 
-fn is_query_satisfiable_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &GoalSatisfiability<'db>,
-    _count: u32,
-    _origin_ingot: Ingot<'db>,
-    _query: Canonical<TraitSolverQuery<'db>>,
-) -> salsa::CycleRecoveryAction<GoalSatisfiability<'db>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
-#[salsa::tracked(
-    cycle_fn=query_has_solution_cycle_recover,
-    cycle_initial=query_has_solution_cycle_initial
-)]
+#[salsa::tracked(returns(copy), cycle_initial=query_has_solution_cycle_initial)]
 fn query_has_solution<'db>(
     db: &'db dyn HirAnalysisDb,
     origin_ingot: Ingot<'db>,
@@ -345,24 +329,13 @@ fn query_has_solution<'db>(
 
 fn query_has_solution_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     _origin_ingot: Ingot<'db>,
     _query: Canonical<TraitSolverQuery<'db>>,
     _target: Canonical<TraitInstId<'db>>,
     _relation: TargetSolutionMatch,
 ) -> TargetSolutionStatus {
     TargetSolutionStatus::Incomplete
-}
-
-fn query_has_solution_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &TargetSolutionStatus,
-    _count: u32,
-    _origin_ingot: Ingot<'db>,
-    _query: Canonical<TraitSolverQuery<'db>>,
-    _target: Canonical<TraitInstId<'db>>,
-    _relation: TargetSolutionMatch,
-) -> salsa::CycleRecoveryAction<TargetSolutionStatus> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 pub(crate) fn goal_query_has_solution<'db>(
@@ -438,7 +411,7 @@ pub fn goal_holds<'db>(
 
 /// Checks if the given type is well-formed, i.e., the arguments of the given
 /// type applications satisfies the constraints under the given assumptions.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn check_ty_wf<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
@@ -718,7 +691,7 @@ fn unsatisfied_goal<'db>(
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, SalsaValue)]
 pub(crate) enum WellFormedness<'db> {
     WellFormed,
     IllFormed {
@@ -735,7 +708,7 @@ impl WellFormedness<'_> {
 
 /// Checks if the given trait instance are well-formed, i.e., the arguments of
 /// the trait satisfies all constraints under the given assumptions.
-#[salsa::tracked]
+#[salsa::tracked(returns(copy))]
 pub(crate) fn check_trait_inst_wf<'db>(
     db: &'db dyn HirAnalysisDb,
     solve_cx: TraitSolveCx<'db>,
@@ -836,13 +809,13 @@ pub(crate) fn mentions_ty<'db>(
     finder.found
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, SalsaValue)]
 pub struct TraitGoalSolution<'db> {
     pub(crate) inst: TraitInstId<'db>,
     pub(crate) implementor: ImplementorId<'db>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SalsaValue)]
 pub enum TraitSolveCompletion {
     /// The complete least-fixpoint answer set was computed.
     Saturated,
@@ -870,7 +843,7 @@ impl TraitSolveCompletion {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub enum GoalSatisfiability<'db> {
     /// Goal is satisfied with the unique solution.
     Satisfied(Solution<TraitGoalSolution<'db>>),
@@ -903,7 +876,6 @@ impl GoalSatisfiability<'_> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct PredicateListId<'db> {
-    #[return_ref]
     pub list: Vec<TraitInstId<'db>>,
 }
 
@@ -1034,10 +1006,7 @@ impl<'db> PredicateListId<'db> {
 
 // Normalizing implied bounds can resolve traits under assumptions that lead
 // back here. Iterate from the unextended list; extension only adds bounds.
-#[salsa::tracked(
-    cycle_initial = extend_all_bounds_cycle_initial,
-    cycle_fn = extend_all_bounds_cycle_recover
-)]
+#[salsa::tracked(returns(copy), cycle_initial = extend_all_bounds_cycle_initial)]
 fn extend_all_bounds_query<'db>(
     db: &'db dyn HirAnalysisDb,
     predicates: PredicateListId<'db>,
@@ -1047,18 +1016,10 @@ fn extend_all_bounds_query<'db>(
 
 fn extend_all_bounds_cycle_initial<'db>(
     _db: &'db dyn HirAnalysisDb,
+    _: salsa::Id,
     predicates: PredicateListId<'db>,
 ) -> PredicateListId<'db> {
     predicates
-}
-
-fn extend_all_bounds_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &PredicateListId<'db>,
-    _count: u32,
-    _predicates: PredicateListId<'db>,
-) -> salsa::CycleRecoveryAction<PredicateListId<'db>> {
-    salsa::CycleRecoveryAction::Iterate
 }
 
 fn predicate_has_recursive_assoc_projection<'db>(

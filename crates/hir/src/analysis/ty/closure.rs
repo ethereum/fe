@@ -12,7 +12,7 @@
 use crate::hir_def::ModeMarker;
 use common::indexmap::IndexMap;
 use cranelift_entity::EntityRef;
-use salsa::Update;
+use salsa::SalsaValue;
 
 use super::{
     binder::Binder,
@@ -252,7 +252,7 @@ pub(crate) fn out_ident<'db>(db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
 /// The innermost closure whose body each expression and statement of a body
 /// is part of; `None` for the item body itself. A closure expression is part
 /// of the region it appears in.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub(crate) struct ClosureRegions {
     exprs: Vec<Option<ExprId>>,
     stmts: Vec<Option<ExprId>>,
@@ -268,7 +268,7 @@ impl ClosureRegions {
     }
 }
 
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn closure_regions<'db>(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> ClosureRegions {
     let mut walk = RegionWalk {
         db,

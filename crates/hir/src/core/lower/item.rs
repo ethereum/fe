@@ -1,6 +1,5 @@
 use common::ingot::IngotKind;
 use parser::ast::{self, WhereClauseOwner as _, prelude::*};
-use salsa::Accumulator as _;
 
 use super::{
     FileLowerCtxt,
@@ -17,7 +16,6 @@ use crate::{
 };
 
 /// Diagnostics produced while lowering or analyzing a `msg` block.
-#[salsa::accumulator]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MsgDiagnostic {
     pub kind: MsgDiagnosticKind,
@@ -71,7 +69,6 @@ pub enum MsgDiagnosticKind {
 }
 
 /// Field modifier errors accumulated during record-field lowering.
-#[salsa::accumulator]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldModifierError {
     pub kind: FieldModifierErrorKind,
@@ -327,14 +324,13 @@ pub(super) fn report_unsupported_field_mut<'db>(
         return;
     };
     let db = ctxt.db();
-    FieldModifierError {
+    ctxt.report(FieldModifierError {
         kind: FieldModifierErrorKind::UnsupportedMut,
         file: ctxt.top_mod().file(db),
         primary_range: mut_kw.text_range(),
         field_kind,
         field_name: field.name().map(|name| name.text().to_string()),
-    }
-    .accumulate(db);
+    });
 }
 
 fn report_indexed_attrs_outside_event_struct<'db>(

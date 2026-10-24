@@ -721,7 +721,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::SalsaValue)]
 pub struct InferenceKey<'db>(pub(super) u32, pub(super) PhantomData<&'db ()>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

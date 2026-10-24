@@ -37,7 +37,6 @@ pub fn typed_body_template<'db>(
 #[salsa::interned]
 #[derive(Debug)]
 pub struct GenericSubst<'db> {
-    #[return_ref]
     pub mapping: Option<CompleteSubst<'db>>,
 }
 
@@ -110,9 +109,10 @@ impl<'db> GenericSubst<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct ImplEnv<'db> {
+    #[returns(copy)]
     pub normalization_scope: ScopeId<'db>,
+    #[returns(copy)]
     pub assumptions: PredicateListId<'db>,
-    #[return_ref]
     pub witnesses: Vec<TraitInstId<'db>>,
 }
 
@@ -133,9 +133,7 @@ impl<'db> ImplEnv<'db> {
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EffectProviderSubst<'db> {
-    #[return_ref]
     pub providers: Vec<ProviderBinding<'db>>,
-    #[return_ref]
     pub param_spaces: Vec<(u32, AddressSpace)>,
 }
 
